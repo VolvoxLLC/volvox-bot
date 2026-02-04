@@ -72,7 +72,7 @@ export async function execute(interaction) {
           { name: '📊 Process ID', value: `${status.process.pid}`, inline: true },
           { name: '🖥️ Platform', value: status.process.platform, inline: true },
           { name: '📦 Node Version', value: status.process.nodeVersion, inline: true },
-          { name: '⚙️ Process Uptime', value: `${Math.floor(status.process.uptime())}s`, inline: true },
+          { name: '⚙️ Process Uptime', value: `${Math.floor(status.process.uptime)}s`, inline: true },
           { name: '🔢 Heap Used', value: `${status.memory.heapUsed}MB`, inline: true },
           { name: '💾 RSS', value: `${status.memory.rss}MB`, inline: true },
           { name: '📡 External', value: `${status.memory.external}MB`, inline: true },
