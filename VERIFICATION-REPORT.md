@@ -1,6 +1,21 @@
 # End-to-End Verification Report
 ## Persistent Conversation Storage - Subtask 4-3
 
+## QA Review Note
+
+During QA review, it was discovered that the test scripts had an API usage bug
+(passing path as string instead of `{ path: ... }`). This caused tests to write
+to the production database instead of isolated test databases.
+
+**Test script bugs were fixed in response to QA Session 1 and Session 2.**
+
+The corrected test scripts now properly isolate test data and can be run multiple
+times without accumulating data or causing failures.
+
+---
+
+[Original report follows below]
+
 **Date:** 2026-02-04
 **Test Type:** End-to-End Persistence Verification
 **Status:** ✅ PASSED

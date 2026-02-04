@@ -37,7 +37,7 @@ async function runTest() {
     // STEP 1: First "session" - add 3 messages
     // ====================================
     console.log('📝 STEP 1: Creating storage and adding 3 messages...');
-    let storage = StorageFactory.create('sqlite', TEST_DB_PATH);
+    let storage = StorageFactory.create('sqlite', { path: TEST_DB_PATH });
 
     await storage.addMessage(TEST_CHANNEL_ID, 'user', 'Hello, bot!');
     await storage.addMessage(TEST_CHANNEL_ID, 'assistant', 'Hi there! How can I help you?');
@@ -64,7 +64,7 @@ async function runTest() {
     // STEP 3: Reopen storage (simulate bot restart)
     // ====================================
     console.log('\n🔄 STEP 3: Reopening storage (simulating bot restart)...');
-    storage = StorageFactory.create('sqlite', TEST_DB_PATH);
+    storage = StorageFactory.create('sqlite', { path: TEST_DB_PATH });
     console.log('✅ Storage reopened');
 
     // ====================================

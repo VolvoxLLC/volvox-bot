@@ -30,7 +30,7 @@ async function runTest() {
     // STEP 1: First "session" - add 3 messages
     // ====================================
     console.log('📝 STEP 1: Creating JSON storage and adding 3 messages...');
-    let storage = StorageFactory.create('json', TEST_DATA_DIR);
+    let storage = StorageFactory.create('json', { path: TEST_DATA_DIR });
 
     await storage.addMessage(TEST_CHANNEL_ID, 'user', 'Test message 1');
     await storage.addMessage(TEST_CHANNEL_ID, 'assistant', 'Response 1');
@@ -56,7 +56,7 @@ async function runTest() {
     // STEP 3: Reopen storage (simulate restart)
     // ====================================
     console.log('\n🔄 STEP 3: Reopening JSON storage (simulating bot restart)...');
-    storage = StorageFactory.create('json', TEST_DATA_DIR);
+    storage = StorageFactory.create('json', { path: TEST_DATA_DIR });
     console.log('✅ Storage reopened');
 
     // ====================================

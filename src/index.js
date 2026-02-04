@@ -35,8 +35,10 @@ try {
 
 // Initialize storage backend from config
 const storage = StorageFactory.create(
-  config.storage?.backend || 'memory',
-  { path: config.storage?.path }
+  process.env.STORAGE_BACKEND || config.storage?.backend || 'memory',
+  {
+    path: process.env.STORAGE_PATH || config.storage?.path,
+  }
 );
 
 // OpenClaw API endpoint
@@ -77,7 +79,8 @@ function isSpam(content) {
  * Get conversation history for a channel
  */
 async function getHistory(channelId) {
-  return await storage.getHistory(channelId, config.storage?.maxHistory || 20);
+  const maxHistory = parseInt(process.env.STORAGE_MAX_HISTORY) || config.storage?.maxHistory || 20;
+  return await storage.getHistory(channelId, maxHistory);
 }
 
 /**
@@ -169,12 +172,12 @@ async function sendSpamAlert(message) {
  * Run conversation pruning
  */
 async function runPruning() {
-  if (!config.storage?.pruneAfterDays) return;
+  const pruneAfterDays = parseInt(process.env.STORAGE_PRUNE_AFTER_DAYS) || config.storage?.pruneAfterDays;
+  if (!pruneAfterDays) return;
 
   try {
-    const days = config.storage.pruneAfterDays;
-    console.log(`🗑️ Pruning conversations older than ${days} days...`);
-    await storage.pruneOldMessages(days);
+    console.log(`🗑️ Pruning conversations older than ${pruneAfterDays} days...`);
+    await storage.pruneOldMessages(pruneAfterDays);
     console.log(`✅ Pruning complete`);
   } catch (err) {
     console.error('❌ Pruning failed:', err.message);
