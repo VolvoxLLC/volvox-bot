@@ -5,7 +5,7 @@
  * Run with: node src/deploy-commands.js
  */
 
-import { REST, Routes } from 'discord.js';
+import { REST, Routes, ApplicationCommandOptionType } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 
 dotenvConfig();
@@ -33,7 +33,7 @@ const commands = [
       {
         name: 'detailed',
         description: 'Show detailed diagnostics (admin only)',
-        type: 5, // Boolean type
+        type: ApplicationCommandOptionType.Boolean,
         required: false,
       },
     ],
