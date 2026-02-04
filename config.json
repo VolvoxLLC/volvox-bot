@@ -15,5 +15,14 @@
     "enabled": true,
     "alertChannelId": "1438665401243275284",
     "autoDelete": false
+  },
+  "permissions": {
+    "enabled": true,
+    "adminRoleId": null,
+    "usePermissions": true,
+    "allowedCommands": {
+      "ping": "everyone",
+      "config": "admin"
+    }
   }
 }
