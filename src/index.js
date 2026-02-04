@@ -77,35 +77,26 @@ function isSpam(content) {
 }
 
 /**
- * Get or create conversation history for a channel
+ * Get conversation history for a channel
  */
-function getHistory(channelId) {
-  if (!conversationHistory.has(channelId)) {
-    conversationHistory.set(channelId, []);
-  }
-  return conversationHistory.get(channelId);
+async function getHistory(channelId) {
+  return await storage.getHistory(channelId, MAX_HISTORY);
 }
 
 /**
  * Add message to history
  */
-function addToHistory(channelId, role, content) {
-  const history = getHistory(channelId);
-  history.push({ role, content });
-  
-  // Trim old messages
-  while (history.length > MAX_HISTORY) {
-    history.shift();
-  }
+async function addToHistory(channelId, role, content) {
+  await storage.addMessage(channelId, role, content);
 }
 
 /**
  * Generate AI response using OpenClaw's chat completions endpoint
  */
 async function generateResponse(channelId, userMessage, username) {
-  const history = getHistory(channelId);
-  
-  const systemPrompt = config.ai?.systemPrompt || `You are Volvox Bot, a helpful and friendly Discord bot for the Volvox developer community. 
+  const history = await getHistory(channelId);
+
+  const systemPrompt = config.ai?.systemPrompt || `You are Volvox Bot, a helpful and friendly Discord bot for the Volvox developer community.
 You're witty, knowledgeable about programming and tech, and always eager to help.
 Keep responses concise and Discord-friendly (under 2000 chars).
 You can use Discord markdown formatting.`;
@@ -137,11 +128,11 @@ You can use Discord markdown formatting.`;
 
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content || "I got nothing. Try again?";
-    
+
     // Update history
-    addToHistory(channelId, 'user', `${username}: ${userMessage}`);
-    addToHistory(channelId, 'assistant', reply);
-    
+    await addToHistory(channelId, 'user', `${username}: ${userMessage}`);
+    await addToHistory(channelId, 'assistant', reply);
+
     return reply;
   } catch (err) {
     console.error('OpenClaw API error:', err.message);
