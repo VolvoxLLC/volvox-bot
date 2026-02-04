@@ -145,7 +145,7 @@ You can use Discord markdown formatting.`;
  */
 async function sendSpamAlert(message) {
   if (!config.moderation?.alertChannelId) return;
-  
+
   const alertChannel = await client.channels.fetch(config.moderation.alertChannelId).catch(() => null);
   if (!alertChannel) return;
 
@@ -161,10 +161,26 @@ async function sendSpamAlert(message) {
     .setTimestamp();
 
   await alertChannel.send({ embeds: [embed] });
-  
+
   // Auto-delete if enabled
   if (config.moderation?.autoDelete) {
     await message.delete().catch(() => {});
+  }
+}
+
+/**
+ * Run conversation pruning
+ */
+async function runPruning() {
+  if (!config.storage?.pruneAfterDays) return;
+
+  try {
+    const days = config.storage.pruneAfterDays;
+    console.log(`🗑️ Pruning conversations older than ${days} days...`);
+    await storage.pruneOldMessages(days);
+    console.log(`✅ Pruning complete`);
+  } catch (err) {
+    console.error('❌ Pruning failed:', err.message);
   }
 }
 
@@ -172,7 +188,7 @@ async function sendSpamAlert(message) {
 client.once('ready', () => {
   console.log(`✅ ${client.user.tag} is online!`);
   console.log(`📡 Serving ${client.guilds.cache.size} server(s)`);
-  
+
   if (config.welcome?.enabled) {
     console.log(`👋 Welcome messages → #${config.welcome.channelId}`);
   }
@@ -181,6 +197,16 @@ client.once('ready', () => {
   }
   if (config.moderation?.enabled) {
     console.log(`🛡️ Moderation enabled`);
+  }
+
+  // Run pruning on startup
+  runPruning();
+
+  // Schedule daily pruning (every 24 hours)
+  if (config.storage?.pruneAfterDays) {
+    const pruneInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    setInterval(runPruning, pruneInterval);
+    console.log(`⏰ Scheduled daily conversation pruning`);
   }
 });
 
