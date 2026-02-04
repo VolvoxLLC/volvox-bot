@@ -13,6 +13,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { HealthMonitor } from './utils/health.js';
+import * as statusCommand from './commands/status.js';
 
 dotenvConfig();
 
@@ -282,11 +283,17 @@ client.on('interactionCreate', async (interaction) => {
   try {
     console.log(`[INTERACTION] /${interaction.commandName} from ${interaction.user.tag}`);
 
-    // Command handling will be implemented in future subtasks
-    await interaction.reply({
-      content: 'Command system is being set up. Check back soon!',
-      ephemeral: true
-    });
+    // Route commands
+    switch (interaction.commandName) {
+      case 'status':
+        await statusCommand.execute(interaction);
+        break;
+      default:
+        await interaction.reply({
+          content: 'Unknown command!',
+          ephemeral: true
+        });
+    }
   } catch (err) {
     console.error('Interaction error:', err.message);
 
