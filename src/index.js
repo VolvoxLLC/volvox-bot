@@ -319,6 +319,46 @@ process.on('unhandledRejection', (error) => {
   console.error('Unhandled rejection:', error);
 });
 
+/**
+ * Graceful shutdown handler
+ */
+async function gracefulShutdown(signal) {
+  console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
+
+  // 1. Save state
+  console.log('💾 Saving conversation state...');
+  saveState();
+
+  // 2. Wait for pending requests with timeout
+  const SHUTDOWN_TIMEOUT = 5000; // 5 seconds
+  if (pendingRequests.size > 0) {
+    console.log(`⏳ Waiting for ${pendingRequests.size} pending request(s)...`);
+    const startTime = Date.now();
+
+    while (pendingRequests.size > 0 && (Date.now() - startTime) < SHUTDOWN_TIMEOUT) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    if (pendingRequests.size > 0) {
+      console.log(`⚠️ Timeout: ${pendingRequests.size} request(s) still pending`);
+    } else {
+      console.log('✅ All requests completed');
+    }
+  }
+
+  // 3. Destroy Discord client
+  console.log('🔌 Disconnecting from Discord...');
+  client.destroy();
+
+  // 4. Log clean exit
+  console.log('✅ Shutdown complete');
+  process.exit(0);
+}
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 // Start
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -327,5 +367,8 @@ if (!token) {
 }
 
 console.log(`🔗 Using OpenClaw API at ${OPENCLAW_URL}`);
+
+// Load previous state on startup
+loadState();
 
 client.login(token);
