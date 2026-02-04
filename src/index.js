@@ -298,6 +298,16 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+// Handle slash command interactions
+client.on('interactionCreate', async (interaction) => {
+  console.log('Received interaction');
+
+  // Only handle slash commands
+  if (!interaction.isChatInputCommand()) return;
+
+  // Command handling will be implemented in subsequent subtasks
+});
+
 // Error handling
 client.on('error', (error) => {
   console.error('Discord error:', error);
