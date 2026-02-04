@@ -14,7 +14,7 @@
 class HealthMonitor {
   constructor() {
     if (HealthMonitor.instance) {
-      return HealthMonitor.instance;
+      throw new Error('Use HealthMonitor.getInstance() to obtain the singleton');
     }
 
     this.startTime = Date.now();
