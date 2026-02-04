@@ -57,6 +57,7 @@ AI-powered Discord bot for the Volvox community.
     "enabled": true,
     "model": "claude-sonnet-4-20250514",
     "maxTokens": 1024,
+    "historyMode": "user",  // "user" = history per-user across channels, "channel" = history per-channel
     "systemPrompt": "...",
     "channels": []  // empty = all channels, or list specific channel IDs
   },
@@ -72,6 +73,10 @@ AI-powered Discord bot for the Volvox community.
   }
 }
 ```
+
+## Commands
+
+- **`/clear`** - Clears your conversation history with the AI (user mode only)
 
 ## Architecture
 
