@@ -5,8 +5,17 @@
  * Admin mode (detailed: true) shows additional diagnostics
  */
 
-import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import { HealthMonitor } from '../utils/health.js';
+
+export const data = new SlashCommandBuilder()
+  .setName('status')
+  .setDescription('Display bot health metrics and status')
+  .addBooleanOption(option =>
+    option.setName('detailed')
+      .setDescription('Show detailed diagnostics (admin only)')
+      .setRequired(false)
+  );
 
 /**
  * Format timestamp as relative time
