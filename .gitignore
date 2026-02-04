@@ -4,6 +4,9 @@ node_modules/
 
 # Auto Claude data directory
 .auto-claude/
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
 
 # State persistence data (keep structure, ignore content)
 data/*
