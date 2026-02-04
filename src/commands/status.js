@@ -49,6 +49,15 @@ export async function execute(interaction) {
     const healthMonitor = HealthMonitor.getInstance();
 
     if (detailed) {
+      // Check if user has admin permissions
+      if (!interaction.member?.permissions.has('Administrator')) {
+        await interaction.reply({
+          content: '❌ Detailed diagnostics are only available to administrators.',
+          ephemeral: true
+        });
+        return;
+      }
+
       // Detailed mode - admin diagnostics
       const status = healthMonitor.getDetailedStatus();
 
