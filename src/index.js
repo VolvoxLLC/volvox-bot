@@ -139,7 +139,12 @@ You can use Discord markdown formatting.`;
     
     return reply;
   } catch (err) {
-    console.error('OpenClaw API error:', err.message);
+    error('OpenClaw API error', {
+      error: err.message,
+      stack: err.stack,
+      channelId,
+      username
+    });
     return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
   }
 }
@@ -211,7 +216,14 @@ client.on('guildMemberAdd', async (member) => {
       channelId: channel.id
     });
   } catch (err) {
-    console.error('Welcome error:', err.message);
+    error('Welcome message failed', {
+      error: err.message,
+      stack: err.stack,
+      user: member.user.tag,
+      userId: member.id,
+      guild: member.guild.name,
+      guildId: member.guild.id
+    });
   }
 });
 
@@ -278,21 +290,29 @@ client.on('messageCreate', async (message) => {
 });
 
 // Error handling
-client.on('error', (error) => {
-  console.error('Discord error:', error);
+client.on('error', (err) => {
+  error('Discord client error', {
+    error: err.message,
+    stack: err.stack,
+    code: err.code
+  });
 });
 
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled rejection:', error);
+process.on('unhandledRejection', (err) => {
+  error('Unhandled promise rejection', {
+    error: err?.message || String(err),
+    stack: err?.stack,
+    type: typeof err
+  });
 });
 
 // Start
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
-  console.error('❌ DISCORD_TOKEN not set');
+  error('DISCORD_TOKEN not set');
   process.exit(1);
 }
 
-console.log(`🔗 Using OpenClaw API at ${OPENCLAW_URL}`);
+info('Using OpenClaw API', { url: OPENCLAW_URL });
 
 client.login(token);
