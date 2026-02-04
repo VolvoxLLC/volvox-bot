@@ -211,11 +211,7 @@ client.on('interactionCreate', async (interaction) => {
 async function gracefulShutdown(signal) {
   console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
 
-  // 1. Save state
-  console.log('💾 Saving conversation state...');
-  saveState();
-
-  // 2. Wait for pending requests with timeout
+  // 1. Wait for pending requests with timeout
   const SHUTDOWN_TIMEOUT = 10000; // 10 seconds
   if (pendingRequests.size > 0) {
     console.log(`⏳ Waiting for ${pendingRequests.size} pending request(s)...`);
@@ -231,6 +227,10 @@ async function gracefulShutdown(signal) {
       console.log('✅ All requests completed');
     }
   }
+
+  // 2. Save state after pending requests complete
+  console.log('💾 Saving conversation state...');
+  saveState();
 
   // 3. Destroy Discord client
   console.log('🔌 Disconnecting from Discord...');
