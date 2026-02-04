@@ -8,6 +8,7 @@
  * - Spam/scam detection and moderation
  * - Health monitoring and status command
  * - Graceful shutdown handling
+ * - Structured logging
  */
 
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
@@ -15,6 +16,7 @@ import { config as dotenvConfig } from 'dotenv';
 import { readdirSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { info, warn, error } from './logger.js';
 import { loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { HealthMonitor } from './utils/health.js';
@@ -89,9 +91,9 @@ function saveState() {
       timestamp: new Date().toISOString(),
     };
     writeFileSync(statePath, JSON.stringify(stateData, null, 2), 'utf-8');
-    console.log('💾 State saved successfully');
+    info('State saved successfully');
   } catch (err) {
-    console.error('❌ Failed to save state:', err.message);
+    error('Failed to save state', { error: err.message });
   }
 }
 
@@ -106,10 +108,10 @@ function loadState() {
     const stateData = JSON.parse(readFileSync(statePath, 'utf-8'));
     if (stateData.conversationHistory) {
       setConversationHistory(new Map(stateData.conversationHistory));
-      console.log('📂 State loaded successfully');
+      info('State loaded successfully');
     }
   } catch (err) {
-    console.error('❌ Failed to load state:', err.message);
+    error('Failed to load state', { error: err.message });
   }
 }
 
@@ -126,12 +128,12 @@ async function loadCommands() {
       const command = await import(filePath);
       if (command.data && command.execute) {
         client.commands.set(command.data.name, command);
-        console.log(`✅ Loaded command: ${command.data.name}`);
+        info('Loaded command', { command: command.data.name });
       } else {
-        console.warn(`⚠️ Command ${file} missing data or execute export`);
+        warn('Command missing data or execute export', { file });
       }
     } catch (err) {
-      console.error(`❌ Failed to load command ${file}:`, err.message);
+      error('Failed to load command', { file, error: err.message });
     }
   }
 }
@@ -153,7 +155,7 @@ client.once('ready', async () => {
       guildId
     );
   } catch (err) {
-    console.error('Command registration failed:', err.message);
+    error('Command registration failed', { error: err.message });
   }
 });
 
@@ -164,7 +166,7 @@ client.on('interactionCreate', async (interaction) => {
   const { commandName, member } = interaction;
 
   try {
-    console.log(`[INTERACTION] /${commandName} from ${interaction.user.tag}`);
+    info('Slash command received', { command: commandName, user: interaction.user.tag });
 
     // Permission check
     if (!hasPermission(member, commandName, config)) {
@@ -172,7 +174,7 @@ client.on('interactionCreate', async (interaction) => {
         content: getPermissionError(commandName),
         ephemeral: true
       });
-      console.log(`[DENIED] ${interaction.user.tag} attempted /${commandName}`);
+      warn('Permission denied', { user: interaction.user.tag, command: commandName });
       return;
     }
 
@@ -187,9 +189,9 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     await command.execute(interaction);
-    console.log(`[CMD] ${interaction.user.tag} used /${commandName}`);
+    info('Command executed', { command: commandName, user: interaction.user.tag });
   } catch (err) {
-    console.error(`Command error (/${commandName}):`, err.message);
+    error('Command error', { command: commandName, error: err.message, stack: err.stack });
 
     const errorMessage = {
       content: '❌ An error occurred while executing this command.',
@@ -209,12 +211,12 @@ client.on('interactionCreate', async (interaction) => {
  * @param {string} signal - Signal that triggered shutdown
  */
 async function gracefulShutdown(signal) {
-  console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
+  info('Shutdown initiated', { signal });
 
   // 1. Wait for pending requests with timeout
   const SHUTDOWN_TIMEOUT = 10000; // 10 seconds
   if (pendingRequests.size > 0) {
-    console.log(`⏳ Waiting for ${pendingRequests.size} pending request(s)...`);
+    info('Waiting for pending requests', { count: pendingRequests.size });
     const startTime = Date.now();
 
     while (pendingRequests.size > 0 && (Date.now() - startTime) < SHUTDOWN_TIMEOUT) {
@@ -222,22 +224,22 @@ async function gracefulShutdown(signal) {
     }
 
     if (pendingRequests.size > 0) {
-      console.log(`⚠️ Timeout: ${pendingRequests.size} request(s) still pending`);
+      warn('Shutdown timeout, requests still pending', { count: pendingRequests.size });
     } else {
-      console.log('✅ All requests completed');
+      info('All requests completed');
     }
   }
 
   // 2. Save state after pending requests complete
-  console.log('💾 Saving conversation state...');
+  info('Saving conversation state');
   saveState();
 
   // 3. Destroy Discord client
-  console.log('🔌 Disconnecting from Discord...');
+  info('Disconnecting from Discord');
   client.destroy();
 
   // 4. Log clean exit
-  console.log('✅ Shutdown complete');
+  info('Shutdown complete');
   process.exit(0);
 }
 
@@ -245,10 +247,27 @@ async function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+// Error handling
+client.on('error', (err) => {
+  error('Discord client error', {
+    error: err.message,
+    stack: err.stack,
+    code: err.code
+  });
+});
+
+process.on('unhandledRejection', (err) => {
+  error('Unhandled promise rejection', {
+    error: err?.message || String(err),
+    stack: err?.stack,
+    type: typeof err
+  });
+});
+
 // Start bot
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
-  console.error('❌ DISCORD_TOKEN not set');
+  error('DISCORD_TOKEN not set');
   process.exit(1);
 }
 
@@ -259,6 +278,6 @@ loadState();
 loadCommands()
   .then(() => client.login(token))
   .catch((err) => {
-    console.error('❌ Startup failed:', err.message);
+    error('Startup failed', { error: err.message });
     process.exit(1);
   });

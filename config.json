@@ -16,6 +16,10 @@
     "alertChannelId": "1438665401243275284",
     "autoDelete": false
   },
+  "logging": {
+    "level": "info",
+    "fileOutput": true
+  },
   "permissions": {
     "enabled": true,
     "adminRoleId": null,
