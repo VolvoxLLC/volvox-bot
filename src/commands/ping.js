@@ -5,11 +5,12 @@ export const data = new SlashCommandBuilder()
   .setDescription('Check bot latency and responsiveness');
 
 export async function execute(interaction) {
-  const sent = await interaction.reply({
+  const response = await interaction.reply({
     content: 'Pinging...',
-    fetchReply: true
+    withResponse: true
   });
 
+  const sent = response.resource.message;
   const latency = sent.createdTimestamp - interaction.createdTimestamp;
   const apiLatency = Math.round(interaction.client.ws.ping);
 
