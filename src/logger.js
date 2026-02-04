@@ -46,6 +46,80 @@ if (fileOutputEnabled) {
 }
 
 /**
+ * Sensitive field names that should be redacted from logs
+ */
+const SENSITIVE_FIELDS = [
+  'DISCORD_TOKEN',
+  'OPENCLAW_TOKEN',
+  'token',
+  'password',
+  'apiKey',
+  'authorization'
+];
+
+/**
+ * Recursively filter sensitive data from objects
+ */
+function filterSensitiveData(obj) {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => filterSensitiveData(item));
+  }
+
+  const filtered = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Check if key matches any sensitive field (case-insensitive)
+    const isSensitive = SENSITIVE_FIELDS.some(
+      field => key.toLowerCase() === field.toLowerCase()
+    );
+
+    if (isSensitive) {
+      filtered[key] = '[REDACTED]';
+    } else if (typeof value === 'object' && value !== null) {
+      filtered[key] = filterSensitiveData(value);
+    } else {
+      filtered[key] = value;
+    }
+  }
+
+  return filtered;
+}
+
+/**
+ * Winston format that redacts sensitive data
+ */
+const redactSensitiveData = winston.format((info) => {
+  // Reserved winston properties that should not be filtered
+  const reserved = ['level', 'message', 'timestamp', 'stack'];
+
+  // Filter each property in the info object
+  for (const key in info) {
+    if (Object.prototype.hasOwnProperty.call(info, key) && !reserved.includes(key)) {
+      // Check if this key is sensitive (case-insensitive)
+      const isSensitive = SENSITIVE_FIELDS.some(
+        field => key.toLowerCase() === field.toLowerCase()
+      );
+
+      if (isSensitive) {
+        info[key] = '[REDACTED]';
+      } else if (typeof info[key] === 'object' && info[key] !== null) {
+        // Recursively filter nested objects
+        info[key] = filterSensitiveData(info[key]);
+      }
+    }
+  }
+
+  return info;
+})();
+
+/**
  * Custom format for console output with emoji prefixes
  */
 const consoleFormat = winston.format.printf(({ level, message, timestamp, ...meta }) => {
@@ -68,6 +142,7 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, ...met
 const transports = [
   new winston.transports.Console({
     format: winston.format.combine(
+      redactSensitiveData,
       winston.format.colorize(),
       winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
       consoleFormat
@@ -84,6 +159,7 @@ if (fileOutputEnabled) {
       maxSize: '20m',
       maxFiles: '14d',
       format: winston.format.combine(
+        redactSensitiveData,
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston.format.json()
       )
@@ -99,6 +175,7 @@ if (fileOutputEnabled) {
       maxSize: '20m',
       maxFiles: '14d',
       format: winston.format.combine(
+        redactSensitiveData,
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston.format.json()
       )
@@ -109,10 +186,8 @@ if (fileOutputEnabled) {
 const logger = winston.createLogger({
   level: logLevel,
   format: winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.errors({ stack: true }),
-    winston.format.splat(),
-    winston.format.json()
+    winston.format.splat()
   ),
   transports
 });
