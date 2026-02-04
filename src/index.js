@@ -51,6 +51,9 @@ const client = new Client({
 const conversationHistory = new Map();
 const MAX_HISTORY = 20;
 
+// Track bot start time for uptime calculation
+const startTime = Date.now();
+
 // Spam patterns
 const SPAM_PATTERNS = [
   /free\s*(crypto|bitcoin|btc|eth|nft)/i,
@@ -378,6 +381,65 @@ client.on('interactionCreate', async (interaction) => {
           ephemeral: true
         });
       }
+    } else if (commandName === 'status') {
+      // Calculate uptime
+      const uptime = Date.now() - startTime;
+      const seconds = Math.floor(uptime / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      let uptimeStr = '';
+      if (days > 0) uptimeStr += `${days}d `;
+      if (hours % 24 > 0) uptimeStr += `${hours % 24}h `;
+      if (minutes % 60 > 0) uptimeStr += `${minutes % 60}m `;
+      uptimeStr += `${seconds % 60}s`;
+
+      // Get memory usage
+      const memoryUsage = process.memoryUsage();
+      const memoryMB = (memoryUsage.heapUsed / 1024 / 1024).toFixed(2);
+
+      // Get server count
+      const serverCount = client.guilds.cache.size;
+
+      // Check API health
+      let apiStatus = '🟢 Operational';
+      try {
+        const healthCheck = await fetch(OPENCLAW_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(OPENCLAW_TOKEN && { 'Authorization': `Bearer ${OPENCLAW_TOKEN}` })
+          },
+          body: JSON.stringify({
+            model: config.ai?.model || 'claude-sonnet-4-20250514',
+            max_tokens: 1,
+            messages: [{ role: 'user', content: 'ping' }],
+          }),
+        });
+
+        if (!healthCheck.ok) {
+          apiStatus = '🟡 Degraded';
+        }
+      } catch {
+        apiStatus = '🔴 Unavailable';
+      }
+
+      // Create status embed
+      const embed = new EmbedBuilder()
+        .setColor(0x43B581)
+        .setTitle('📊 Bot Status')
+        .addFields(
+          { name: '⏱️ Uptime', value: uptimeStr, inline: true },
+          { name: '📡 Servers', value: serverCount.toString(), inline: true },
+          { name: '🧠 Memory', value: `${memoryMB} MB`, inline: true },
+          { name: '🤖 AI Status', value: apiStatus, inline: false },
+          { name: '🏓 Latency', value: `${client.ws.ping}ms`, inline: true }
+        )
+        .setFooter({ text: `${client.user.tag}` })
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
     }
   } catch (err) {
     console.error(`Error handling /${commandName}:`, err.message);
