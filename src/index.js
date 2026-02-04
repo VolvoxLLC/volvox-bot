@@ -362,6 +362,22 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
+    } else if (commandName === 'clear') {
+      // Clear conversation history for this channel
+      const channelId = interaction.channel.id;
+
+      if (conversationHistory.has(channelId)) {
+        conversationHistory.delete(channelId);
+        await interaction.reply({
+          content: '🧹 Conversation history cleared! Starting fresh.',
+          ephemeral: true
+        });
+      } else {
+        await interaction.reply({
+          content: '✨ No conversation history to clear - already fresh!',
+          ephemeral: true
+        });
+      }
     }
   } catch (err) {
     console.error(`Error handling /${commandName}:`, err.message);
