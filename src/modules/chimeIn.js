@@ -5,34 +5,59 @@
  * How it works:
  * - Accumulates messages per channel in a ring buffer (capped at maxBufferSize)
  * - After every `evaluateEvery` messages, asks a cheap LLM: should I chime in?
- * - If YES → generates a full response via the existing AI pipeline and sends it
+ * - If YES → generates a full response via a separate AI context and sends it
  * - If NO  → resets the counter but keeps the buffer for context continuity
  */
 
 import { info, warn, error as logError } from '../logger.js';
-import { generateResponse } from './ai.js';
+import { OPENCLAW_URL, OPENCLAW_TOKEN } from './ai.js';
 
 // ── Per-channel state ──────────────────────────────────────────────────────────
-// Map<channelId, { messages: Array<{author, content}>, counter: number }>
+// Map<channelId, { messages: Array<{author, content}>, counter: number, lastActive: number }>
 const channelBuffers = new Map();
 
 // Guard against concurrent evaluations on the same channel
 const evaluatingChannels = new Set();
 
-// OpenClaw API (same endpoint as ai.js)
-const OPENCLAW_URL = process.env.OPENCLAW_URL || 'http://localhost:18789/v1/chat/completions';
-const OPENCLAW_TOKEN = process.env.OPENCLAW_TOKEN || '';
+// LRU eviction settings
+const MAX_TRACKED_CHANNELS = 100;
+const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+/**
+ * Evict inactive channels from the buffer to prevent unbounded memory growth.
+ */
+function evictInactiveChannels() {
+  const now = Date.now();
+  for (const [channelId, buf] of channelBuffers) {
+    if (now - buf.lastActive > CHANNEL_INACTIVE_MS) {
+      channelBuffers.delete(channelId);
+    }
+  }
+
+  // If still over limit, evict oldest
+  if (channelBuffers.size > MAX_TRACKED_CHANNELS) {
+    const entries = [...channelBuffers.entries()]
+      .sort((a, b) => a[1].lastActive - b[1].lastActive);
+    const toEvict = entries.slice(0, channelBuffers.size - MAX_TRACKED_CHANNELS);
+    for (const [channelId] of toEvict) {
+      channelBuffers.delete(channelId);
+    }
+  }
+}
 
 /**
  * Get or create the buffer state for a channel
  */
 function getBuffer(channelId) {
   if (!channelBuffers.has(channelId)) {
-    channelBuffers.set(channelId, { messages: [], counter: 0 });
+    evictInactiveChannels();
+    channelBuffers.set(channelId, { messages: [], counter: 0, lastActive: Date.now() });
   }
-  return channelBuffers.get(channelId);
+  const buf = channelBuffers.get(channelId);
+  buf.lastActive = Date.now();
+  return buf;
 }
 
 /**
@@ -58,19 +83,20 @@ async function shouldChimeIn(buffer, config) {
   const model = chimeInConfig.model || 'claude-haiku-4-5';
   const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
 
-  // Format the buffered conversation
+  // Format the buffered conversation with structured delimiters to prevent injection
   const conversationText = buffer.messages
     .map((m) => `${m.author}: ${m.content}`)
     .join('\n');
 
+  // User content first, system instruction last to mitigate prompt injection
   const messages = [
     {
-      role: 'system',
-      content: `You have the following personality:\n${systemPrompt}\n\nYou're monitoring a Discord conversation. Based on the messages below, could you add something genuinely valuable, interesting, funny, or helpful? Only say YES if a real person would actually want to chime in. Don't chime in just to be present. Reply with only YES or NO.`,
+      role: 'user',
+      content: `<conversation>\n${conversationText}\n</conversation>`,
     },
     {
-      role: 'user',
-      content: conversationText,
+      role: 'system',
+      content: `You have the following personality:\n${systemPrompt}\n\nYou're monitoring a Discord conversation shown inside <conversation> tags above. Based on those messages, could you add something genuinely valuable, interesting, funny, or helpful? Only say YES if a real person would actually want to chime in. Don't chime in just to be present. Reply with only YES or NO.`,
     },
   ];
 
@@ -86,6 +112,7 @@ async function shouldChimeIn(buffer, config) {
         max_tokens: 10,
         messages,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
@@ -103,6 +130,56 @@ async function shouldChimeIn(buffer, config) {
   }
 }
 
+/**
+ * Generate a chime-in response using a separate context (not shared AI history).
+ * This avoids polluting the main conversation history used by @mention responses.
+ */
+async function generateChimeInResponse(buffer, config) {
+  const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
+  const model = config.ai?.model || 'claude-sonnet-4-20250514';
+  const maxTokens = config.ai?.maxTokens || 1024;
+
+  const conversationText = buffer.messages
+    .map((m) => `${m.author}: ${m.content}`)
+    .join('\n');
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: `[Conversation context — you noticed this discussion and decided to chime in. Respond naturally as if you're joining the conversation organically. Don't announce that you're "chiming in" — just contribute.]\n\n${conversationText}`,
+    },
+  ];
+
+  // Wrap in Promise.race for a 30s timeout
+  const fetchPromise = fetch(OPENCLAW_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(OPENCLAW_TOKEN && { Authorization: `Bearer ${OPENCLAW_TOKEN}` }),
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      messages,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('ChimeIn response generation timed out')), 30_000),
+  );
+
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 /**
@@ -110,14 +187,16 @@ async function shouldChimeIn(buffer, config) {
  * Called from the messageCreate handler for every non-bot guild message.
  *
  * @param {Object} message - Discord.js Message object
- * @param {Object} client  - Discord.js Client
  * @param {Object} config  - Bot configuration
  * @param {Object} healthMonitor - Health monitor instance
  */
-export async function accumulate(message, client, config, healthMonitor) {
+export async function accumulate(message, config, healthMonitor) {
   const chimeInConfig = config.chimeIn;
   if (!chimeInConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, chimeInConfig)) return;
+
+  // Skip empty or attachment-only messages
+  if (!message.content?.trim()) return;
 
   const channelId = message.channel.id;
   const buf = getBuffer(channelId);
@@ -153,31 +232,27 @@ export async function accumulate(message, client, config, healthMonitor) {
     if (yes) {
       info('ChimeIn triggered — generating response', { channelId });
 
-      // Build a context string from the buffered messages
-      const contextLines = buf.messages.map((m) => `${m.author}: ${m.content}`).join('\n');
-      const contextMessage = `[Conversation context — you noticed this discussion and decided to chime in. Respond naturally as if you're joining the conversation organically. Don't announce that you're "chiming in" — just contribute.]\n\n${contextLines}`;
-
       await message.channel.sendTyping();
 
-      const response = await generateResponse(
-        channelId,
-        contextMessage,
-        '_chime-in_',   // pseudo-username so ai.js logs it distinctly
-        config,
-        healthMonitor,
-      );
+      // Use separate context to avoid polluting shared AI history
+      const response = await generateChimeInResponse(buf, config);
 
-      // Send as a plain channel message (not a reply)
-      if (response.length > 2000) {
-        const chunks = response.match(/[\s\S]{1,1990}/g) || [];
-        for (const chunk of chunks) {
-          await message.channel.send(chunk);
-        }
+      // Don't send error-like or empty responses as unsolicited messages
+      if (!response || response.startsWith('Sorry, I') || response.startsWith('Error')) {
+        warn('ChimeIn suppressed error-like response', { channelId, response: response?.substring(0, 100) });
       } else {
-        await message.channel.send(response);
+        // Send as a plain channel message (not a reply)
+        if (response.length > 2000) {
+          const chunks = response.match(/[\s\S]{1,1990}/g) || [];
+          for (const chunk of chunks) {
+            await message.channel.send(chunk);
+          }
+        } else {
+          await message.channel.send(response);
+        }
       }
 
-      // Clear the buffer entirely after a successful chime-in
+      // Clear the buffer entirely after a chime-in attempt
       buf.messages = [];
       buf.counter = 0;
     } else {
@@ -204,4 +279,14 @@ export function resetCounter(channelId) {
   if (buf) {
     buf.counter = 0;
   }
+}
+
+/**
+ * Check if a channel is currently being evaluated for chime-in.
+ *
+ * @param {string} channelId
+ * @returns {boolean}
+ */
+export function isEvaluating(channelId) {
+  return evaluatingChannels.has(channelId);
 }

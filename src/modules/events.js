@@ -66,10 +66,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
       return;
     }
 
-    // Chime-in: accumulate message for organic participation (fire-and-forget)
-    accumulate(message, client, config, healthMonitor);
-
-    // AI chat - respond when mentioned
+    // AI chat - respond when mentioned (checked BEFORE accumulate to prevent double responses)
     if (config.ai?.enabled) {
       const isMentioned = message.mentions.has(client.user);
       const isReply = message.reference && message.mentions.repliedUser?.id === client.user.id;
@@ -111,8 +108,15 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
         } else {
           await message.reply(response);
         }
+
+        return; // Don't accumulate direct mentions into chime-in buffer
       }
     }
+
+    // Chime-in: accumulate message for organic participation (fire-and-forget)
+    accumulate(message, config, healthMonitor).catch((err) => {
+      console.error('ChimeIn accumulate error:', err.message);
+    });
   });
 }
 
