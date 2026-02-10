@@ -11,6 +11,7 @@
 
 import { info, warn, error as logError } from '../logger.js';
 import { OPENCLAW_URL, OPENCLAW_TOKEN } from './ai.js';
+import { splitMessage, needsSplitting } from '../utils/splitMessage.js';
 
 // ── Per-channel state ──────────────────────────────────────────────────────────
 // Map<channelId, { messages: Array<{author, content}>, counter: number, lastActive: number, abortController: AbortController|null }>
@@ -258,20 +259,8 @@ export async function accumulate(message, config) {
         warn('ChimeIn suppressed empty response', { channelId });
       } else {
         // Send as a plain channel message (not a reply)
-        if (response.length > 2000) {
-          // Split on word boundaries to avoid breaking mid-word/URL/emoji
-          const chunks = [];
-          let remaining = response;
-          while (remaining.length > 0) {
-            if (remaining.length <= 1990) {
-              chunks.push(remaining);
-              break;
-            }
-            let splitAt = remaining.lastIndexOf(' ', 1990);
-            if (splitAt <= 0) splitAt = 1990;
-            chunks.push(remaining.slice(0, splitAt));
-            remaining = remaining.slice(splitAt).trimStart();
-          }
+        if (needsSplitting(response)) {
+          const chunks = splitMessage(response);
           for (const chunk of chunks) {
             await message.channel.send(chunk);
           }

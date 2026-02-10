@@ -7,6 +7,7 @@ import { sendWelcomeMessage } from './welcome.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
+import { splitMessage, needsSplitting } from '../utils/splitMessage.js';
 
 /**
  * Register bot ready event handler
@@ -100,8 +101,8 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
         );
 
         // Split long responses
-        if (response.length > 2000) {
-          const chunks = response.match(/[\s\S]{1,1990}/g) || [];
+        if (needsSplitting(response)) {
+          const chunks = splitMessage(response);
           for (const chunk of chunks) {
             await message.channel.send(chunk);
           }
