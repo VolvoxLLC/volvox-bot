@@ -53,7 +53,7 @@ function evictInactiveChannels() {
 function getBuffer(channelId) {
   if (!channelBuffers.has(channelId)) {
     evictInactiveChannels();
-    channelBuffers.set(channelId, { messages: [], counter: 0, lastActive: Date.now() });
+    channelBuffers.set(channelId, { messages: [], counter: 0, lastActive: Date.now(), abortController: null });
   }
   const buf = channelBuffers.get(channelId);
   buf.lastActive = Date.now();
@@ -147,7 +147,7 @@ async function generateChimeInResponse(buffer, config) {
     { role: 'system', content: systemPrompt },
     {
       role: 'user',
-      content: `[Conversation context — you noticed this discussion and decided to chime in. Respond naturally as if you're joining the conversation organically. Don't announce that you're "chiming in" — just contribute.]\n\n${conversationText}`,
+      content: `[Conversation context — you noticed this discussion and decided to chime in. Respond naturally as if you're joining the conversation organically. Don't announce that you're "chiming in" — just contribute.]\n\n<conversation>\n${conversationText}\n</conversation>`,
     },
   ];
 
@@ -216,10 +216,20 @@ export async function accumulate(message, config) {
   if (evaluatingChannels.has(channelId)) return;
   evaluatingChannels.add(channelId);
 
+  // Create a new AbortController for this evaluation cycle
+  const abortController = new AbortController();
+  buf.abortController = abortController;
+
   try {
     info('ChimeIn evaluating', { channelId, buffered: buf.messages.length, counter: buf.counter });
 
     const yes = await shouldChimeIn(buf, config);
+
+    // Check if this evaluation was cancelled (e.g. bot was @mentioned during evaluation)
+    if (abortController.signal.aborted) {
+      info('ChimeIn evaluation cancelled — bot was mentioned or counter reset', { channelId });
+      return;
+    }
 
     if (yes) {
       info('ChimeIn triggered — generating response', { channelId });
@@ -229,9 +239,15 @@ export async function accumulate(message, config) {
       // Use separate context to avoid polluting shared AI history
       const response = await generateChimeInResponse(buf, config);
 
-      // Don't send error-like or empty responses as unsolicited messages
-      if (!response || response.startsWith('Sorry, I') || response.startsWith('Error')) {
-        warn('ChimeIn suppressed error-like response', { channelId, response: response?.substring(0, 100) });
+      // Re-check cancellation after response generation
+      if (abortController.signal.aborted) {
+        info('ChimeIn response suppressed — bot was mentioned during generation', { channelId });
+        return;
+      }
+
+      // Don't send empty/whitespace responses as unsolicited messages
+      if (!response?.trim()) {
+        warn('ChimeIn suppressed empty response', { channelId });
       } else {
         // Send as a plain channel message (not a reply)
         if (response.length > 2000) {
@@ -270,5 +286,11 @@ export function resetCounter(channelId) {
   const buf = channelBuffers.get(channelId);
   if (buf) {
     buf.counter = 0;
+
+    // Cancel any in-flight chime-in evaluation to prevent double-responses
+    if (buf.abortController) {
+      buf.abortController.abort();
+      buf.abortController = null;
+    }
   }
 }
