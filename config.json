@@ -10,7 +10,7 @@
     "enabled": true,
     "evaluateEvery": 1,
     "model": "claude-haiku-4-5",
-    "maxBufferSize": 30,
+    "maxBufferSize": 10,
     "channels": [],
     "excludeChannels": []
   },
