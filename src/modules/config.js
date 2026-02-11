@@ -17,31 +17,19 @@ let configCache = {};
 
 /**
  * Load config.json from disk (used as seed/fallback)
- * @param {Object} [options] - Options
- * @param {boolean} [options.exitOnError=true] - Whether to call process.exit on failure (false throws instead)
  * @returns {Object} Configuration object from file
+ * @throws {Error} If config.json is missing or unparseable
  */
-export function loadConfigFromFile({ exitOnError = true } = {}) {
+export function loadConfigFromFile() {
+  if (!existsSync(configPath)) {
+    const err = new Error('config.json not found!');
+    err.code = 'CONFIG_NOT_FOUND';
+    throw err;
+  }
   try {
-    if (!existsSync(configPath)) {
-      const msg = 'config.json not found!';
-      if (exitOnError) {
-        console.error(`❌ ${msg}`);
-        process.exit(1);
-      }
-      const err = new Error(msg);
-      err.code = 'CONFIG_NOT_FOUND';
-      throw err;
-    }
     return JSON.parse(readFileSync(configPath, 'utf-8'));
   } catch (err) {
-    if (err.code === 'CONFIG_NOT_FOUND') throw err;
-    const msg = `Failed to load config.json: ${err.message}`;
-    if (exitOnError) {
-      console.error(`❌ ${msg}`);
-      process.exit(1);
-    }
-    throw new Error(msg);
+    throw new Error(`Failed to load config.json: ${err.message}`);
   }
 }
 
@@ -54,7 +42,7 @@ export async function loadConfig() {
   // Try loading config.json but don't hard-exit — DB may have valid config
   let fileConfig;
   try {
-    fileConfig = loadConfigFromFile({ exitOnError: false });
+    fileConfig = loadConfigFromFile();
   } catch {
     fileConfig = null;
     info('config.json not available, will rely on database for configuration');
@@ -146,9 +134,6 @@ export async function setConfigValue(path, value) {
   const finalKey = parts[parts.length - 1];
   const parsedVal = parseValue(value);
 
-  // Build the JSONB sub-path for atomic DB update (keys after the section)
-  const subPath = parts.slice(1);
-
   // Deep clone the section for the INSERT case (new section that doesn't exist yet)
   const sectionClone = structuredClone(configCache[section] || {});
   let current = sectionClone;
@@ -160,19 +145,53 @@ export async function setConfigValue(path, value) {
   }
   current[finalKey] = parsedVal;
 
-  // Write to database first using jsonb_set for atomic partial update,
-  // preventing concurrent setConfigValue calls from overwriting each other
+  // Write to database first, then update cache.
+  // Uses a transaction with row lock to prevent concurrent writes from clobbering.
+  // Reads the current row, applies the change in JS (handles arbitrary nesting),
+  // then writes back — safe because the row is locked for the duration.
   let dbPersisted = false;
   try {
     const pool = getPool();
-    await pool.query(
-      `INSERT INTO config (key, value) VALUES ($1, $2)
-       ON CONFLICT (key) DO UPDATE
-       SET value = jsonb_set(config.value, $3::text[], $4::jsonb, true),
-           updated_at = NOW()`,
-      [section, JSON.stringify(sectionClone), subPath, JSON.stringify(parsedVal)]
-    );
-    dbPersisted = true;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Lock the row (or prepare for INSERT if missing)
+      const { rows } = await client.query(
+        'SELECT value FROM config WHERE key = $1 FOR UPDATE',
+        [section]
+      );
+
+      if (rows.length > 0) {
+        // Row exists — merge change into the live DB value
+        const dbSection = rows[0].value;
+        let node = dbSection;
+        for (let i = 1; i < parts.length - 1; i++) {
+          if (node[parts[i]] === undefined || typeof node[parts[i]] !== 'object') {
+            node[parts[i]] = {};
+          }
+          node = node[parts[i]];
+        }
+        node[finalKey] = parsedVal;
+
+        await client.query(
+          'UPDATE config SET value = $1, updated_at = NOW() WHERE key = $2',
+          [JSON.stringify(dbSection), section]
+        );
+      } else {
+        // New section — insert the full clone
+        await client.query(
+          'INSERT INTO config (key, value) VALUES ($1, $2)',
+          [section, JSON.stringify(sectionClone)]
+        );
+      }
+      await client.query('COMMIT');
+      dbPersisted = true;
+    } catch (txErr) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw txErr;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     logError('Database unavailable for config write — updating in-memory only', { error: err.message });
   }
@@ -200,7 +219,7 @@ export async function setConfigValue(path, value) {
  * @returns {Promise<Object>} Reset config
  */
 export async function resetConfig(section) {
-  const fileConfig = loadConfigFromFile({ exitOnError: false });
+  const fileConfig = loadConfigFromFile();
 
   let pool = null;
   try {
@@ -292,8 +311,13 @@ function parseValue(value) {
   // Null
   if (value === 'null') return null;
 
-  // Numbers
-  if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
+  // Numbers (keep as string if beyond safe integer range to avoid precision loss)
+  if (/^-?\d+(\.\d+)?$/.test(value)) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return value;
+    if (!value.includes('.') && !Number.isSafeInteger(num)) return value;
+    return num;
+  }
 
   // JSON arrays/objects
   if ((value.startsWith('[') && value.endsWith(']')) || (value.startsWith('{') && value.endsWith('}'))) {
