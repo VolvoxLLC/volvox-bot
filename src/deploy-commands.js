@@ -19,8 +19,7 @@ import { registerCommands } from './utils/registerCommands.js';
 
 dotenvConfig();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID || process.env.CLIENT_ID;
@@ -59,6 +58,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  logError('Command deployment failed', { error: err.message });
+  logError('Command deployment failed', { error: err.message, stack: err.stack });
   process.exit(1);
 });
