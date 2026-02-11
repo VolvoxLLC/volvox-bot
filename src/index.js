@@ -18,7 +18,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { info, warn, error } from './logger.js';
 import { initDb, closeDb } from './db.js';
-import { loadConfig } from './modules/config.js';
+import { loadConfig, getConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { HealthMonitor } from './utils/health.js';
 import { registerCommands } from './utils/registerCommands.js';
@@ -49,6 +49,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 

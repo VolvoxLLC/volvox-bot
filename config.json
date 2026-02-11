@@ -17,7 +17,19 @@
   "welcome": {
     "enabled": true,
     "channelId": "1438631182379253814",
-    "message": "Welcome to Volvox, {user}! 🌱 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask — we're here to help. 💚"
+    "message": "Welcome to Volvox, {user}! 🌱 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask — we're here to help. 💚",
+    "dynamic": {
+      "enabled": true,
+      "timezone": "America/New_York",
+      "activityWindowMinutes": 45,
+      "milestoneInterval": 25,
+      "highlightChannels": [
+        "1438631182379253814",
+        "1444154471704957069",
+        "1446317676988465242"
+      ],
+      "excludeChannels": []
+    }
   },
   "moderation": {
     "enabled": true,

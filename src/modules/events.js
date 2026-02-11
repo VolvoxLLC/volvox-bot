@@ -3,7 +3,7 @@
  * Handles Discord event listeners and handlers
  */
 
-import { sendWelcomeMessage } from './welcome.js';
+import { sendWelcomeMessage, recordCommunityActivity } from './welcome.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
@@ -66,6 +66,9 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
       await sendSpamAlert(message, client, config);
       return;
     }
+
+    // Feed welcome-context activity tracker
+    recordCommunityActivity(message, config);
 
     // AI chat - respond when mentioned (checked BEFORE accumulate to prevent double responses)
     if (config.ai?.enabled) {

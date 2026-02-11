@@ -5,7 +5,7 @@ AI-powered Discord bot for the Volvox community.
 ## Features
 
 - **AI Chat** - Powered by Claude (via OpenClaw), responds when mentioned
-- **Welcome Messages** - Greets new members in a configurable channel
+- **Welcome Messages** - Dynamic, contextual onboarding (time of day, activity pulse, milestones)
 - **Moderation** - Detects spam/scam patterns and alerts mods
 
 ## Requirements
@@ -51,7 +51,7 @@ AI-powered Discord bot for the Volvox community.
 
 ## Config
 
-```json
+```jsonc
 {
   "ai": {
     "enabled": true,
@@ -63,7 +63,14 @@ AI-powered Discord bot for the Volvox community.
   "welcome": {
     "enabled": true,
     "channelId": "...",
-    "message": "Welcome, {user}!"  // placeholders: {user}, {username}, {server}, {memberCount}
+    "message": "Welcome, {user}!", // used when dynamic.enabled=false
+    "dynamic": {
+      "enabled": true,
+      "timezone": "America/New_York",
+      "activityWindowMinutes": 45,
+      "milestoneInterval": 25,
+      "highlightChannels": ["..."]
+    }
   },
   "moderation": {
     "enabled": true,
