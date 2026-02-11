@@ -138,7 +138,7 @@ async function handleView(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0x5865F2)
       .setTitle('⚙️ Bot Configuration')
-      .setFooter({ text: 'Stored in PostgreSQL • Use /config set to modify' })
+      .setFooter({ text: `${process.env.DATABASE_URL ? 'Stored in PostgreSQL' : 'Stored in memory (config.json)'} • Use /config set to modify` })
       .setTimestamp();
 
     if (section) {
