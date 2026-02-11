@@ -15,19 +15,25 @@ const configPath = join(__dirname, '..', '..', 'config.json');
 /** @type {Object} In-memory config cache */
 let configCache = {};
 
+/** @type {Object|null} Cached config.json contents (loaded once, never invalidated) */
+let fileConfigCache = null;
+
 /**
  * Load config.json from disk (used as seed/fallback)
  * @returns {Object} Configuration object from file
  * @throws {Error} If config.json is missing or unparseable
  */
 export function loadConfigFromFile() {
+  if (fileConfigCache) return fileConfigCache;
+
   if (!existsSync(configPath)) {
     const err = new Error('config.json not found!');
     err.code = 'CONFIG_NOT_FOUND';
     throw err;
   }
   try {
-    return JSON.parse(readFileSync(configPath, 'utf-8'));
+    fileConfigCache = JSON.parse(readFileSync(configPath, 'utf-8'));
+    return fileConfigCache;
   } catch (err) {
     throw new Error(`Failed to load config.json: ${err.message}`);
   }
@@ -39,7 +45,7 @@ export function loadConfigFromFile() {
  * @returns {Promise<Object>} Configuration object
  */
 export async function loadConfig() {
-  // Try loading config.json but don't hard-exit — DB may have valid config
+  // Try loading config.json — DB may have valid config even if file is missing
   let fileConfig;
   try {
     fileConfig = loadConfigFromFile();
@@ -58,7 +64,7 @@ export async function loadConfig() {
         throw new Error('No configuration source available: config.json is missing and database is not initialized');
       }
       info('Database not available, using config.json');
-      configCache = { ...fileConfig };
+      configCache = structuredClone(fileConfig);
       return configCache;
     }
 
@@ -82,7 +88,7 @@ export async function loadConfig() {
         }
         await client.query('COMMIT');
         info('Config seeded to database');
-        configCache = { ...fileConfig };
+        configCache = structuredClone(fileConfig);
       } catch (txErr) {
         try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
         throw txErr;
@@ -103,7 +109,7 @@ export async function loadConfig() {
       throw err;
     }
     logError('Failed to load config from database, using config.json', { error: err.message });
-    configCache = { ...fileConfig };
+    configCache = structuredClone(fileConfig);
   }
 
   return configCache;
@@ -177,9 +183,9 @@ export async function setConfigValue(path, value) {
           [JSON.stringify(dbSection), section]
         );
       } else {
-        // New section — insert the full clone
+        // New section — use ON CONFLICT to handle concurrent inserts safely
         await client.query(
-          'INSERT INTO config (key, value) VALUES ($1, $2)',
+          'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
           [section, JSON.stringify(sectionClone)]
         );
       }
@@ -232,20 +238,24 @@ export async function resetConfig(section) {
     }
 
     if (pool) {
-      await pool.query(
-        'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-        [section, JSON.stringify(fileConfig[section])]
-      );
+      try {
+        await pool.query(
+          'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
+          [section, JSON.stringify(fileConfig[section])]
+        );
+      } catch (err) {
+        logError('Database error during section reset — updating in-memory only', { section, error: err.message });
+      }
     }
 
-    // Mutate in-place so references stay valid
+    // Mutate in-place so references stay valid (deep clone to avoid shared refs)
     const sectionData = configCache[section];
-    if (sectionData && typeof sectionData === 'object') {
+    if (sectionData && typeof sectionData === 'object' && !Array.isArray(sectionData)) {
       for (const key of Object.keys(sectionData)) delete sectionData[key];
-      Object.assign(sectionData, fileConfig[section]);
+      Object.assign(sectionData, structuredClone(fileConfig[section]));
     } else {
       configCache[section] = isPlainObject(fileConfig[section])
-        ? { ...fileConfig[section] }
+        ? structuredClone(fileConfig[section])
         : fileConfig[section];
     }
     info('Config section reset', { section });
@@ -272,13 +282,13 @@ export async function resetConfig(section) {
         await client.query('COMMIT');
       } catch (txErr) {
         try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
-        throw txErr;
+        logError('Database error during full config reset — updating in-memory only', { error: txErr.message });
       } finally {
         client.release();
       }
     }
 
-    // Mutate in-place and remove stale keys from cache
+    // Mutate in-place and remove stale keys from cache (deep clone to avoid shared refs)
     for (const key of Object.keys(configCache)) {
       if (!(key in fileConfig)) {
         delete configCache[key];
@@ -287,9 +297,9 @@ export async function resetConfig(section) {
     for (const [key, value] of Object.entries(fileConfig)) {
       if (configCache[key] && isPlainObject(configCache[key]) && isPlainObject(value)) {
         for (const k of Object.keys(configCache[key])) delete configCache[key][k];
-        Object.assign(configCache[key], value);
+        Object.assign(configCache[key], structuredClone(value));
       } else {
-        configCache[key] = isPlainObject(value) ? { ...value } : value;
+        configCache[key] = isPlainObject(value) ? structuredClone(value) : value;
       }
     }
     info('All config reset to defaults');
@@ -315,10 +325,11 @@ function validatePathSegments(segments) {
 }
 
 /**
- * Set a value at a nested path within an object, creating intermediate objects as needed.
- * @param {Object} root - Target object to modify (the section-level object)
- * @param {string[]} pathParts - Path segments below the section (e.g., ['model'] for 'ai.model')
- * @param {*} value - Value to set at the leaf key
+ * Traverse a nested object along dot-notation path segments, creating
+ * intermediate objects as needed, and set the leaf value.
+ * @param {Object} root - Object to traverse
+ * @param {string[]} pathParts - Path segments (excluding the root key)
+ * @param {*} value - Value to set at the leaf
  */
 function setNestedValue(root, pathParts, value) {
   if (pathParts.length === 0) {
@@ -326,12 +337,26 @@ function setNestedValue(root, pathParts, value) {
   }
   let current = root;
   for (let i = 0; i < pathParts.length - 1; i++) {
-    if (current[pathParts[i]] == null || typeof current[pathParts[i]] !== 'object' || Array.isArray(current[pathParts[i]])) {
+    // Defensive: reject prototype-pollution keys even for internal callers
+    if (DANGEROUS_KEYS.has(pathParts[i])) {
+      throw new Error(`Invalid config path segment: '${pathParts[i]}' is a reserved key`);
+    }
+    if (current[pathParts[i]] == null || typeof current[pathParts[i]] !== 'object') {
       current[pathParts[i]] = {};
+    } else if (Array.isArray(current[pathParts[i]])) {
+      // Keep arrays intact when the next path segment is a valid numeric index;
+      // otherwise replace with a plain object (legacy behaviour for non-numeric keys).
+      if (!/^\d+$/.test(pathParts[i + 1])) {
+        current[pathParts[i]] = {};
+      }
     }
     current = current[pathParts[i]];
   }
-  current[pathParts[pathParts.length - 1]] = value;
+  const leafKey = pathParts[pathParts.length - 1];
+  if (DANGEROUS_KEYS.has(leafKey)) {
+    throw new Error(`Invalid config path segment: '${leafKey}' is a reserved key`);
+  }
+  current[leafKey] = value;
 }
 
 /**
@@ -350,7 +375,7 @@ function isPlainObject(val) {
  * - "true" / "false" → boolean
  * - "null" → null
  * - Numeric strings → number (unless beyond Number.MAX_SAFE_INTEGER)
- * - JSON arrays/objects/quoted strings → parsed value
+ * - JSON arrays/objects → parsed value
  * - Everything else → kept as-is string
  *
  * To force a literal string (e.g. the word "true"), wrap it in JSON quotes:
