@@ -1,10 +1,19 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+/**
+ * Config Command
+ * View, set, and reset bot configuration via slash commands
+ */
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const configPath = join(__dirname, '..', '..', 'config.json');
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { getConfig, setConfigValue, resetConfig, loadConfigFromFile } from '../modules/config.js';
+
+// Derived from config.json top-level keys so static slash-command choices stay in sync automatically.
+const VALID_SECTIONS = Object.keys(loadConfigFromFile());
+
+/** @type {Array<{name: string, value: string}>} Derived choices for section options */
+const SECTION_CHOICES = VALID_SECTIONS.map(s => ({
+  name: s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, ' $1'),
+  value: s,
+}));
 
 export const data = new SlashCommandBuilder()
   .setName('config')
@@ -18,69 +27,283 @@ export const data = new SlashCommandBuilder()
           .setName('section')
           .setDescription('Specific config section to view')
           .setRequired(false)
-          .addChoices(
-            { name: 'AI Settings', value: 'ai' },
-            { name: 'Welcome Messages', value: 'welcome' },
-            { name: 'Moderation', value: 'moderation' },
-            { name: 'Permissions', value: 'permissions' }
-          )
+          .addChoices(...SECTION_CHOICES)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('set')
+      .setDescription('Set a configuration value')
+      .addStringOption(option =>
+        option
+          .setName('path')
+          .setDescription('Dot-notation path (e.g., ai.model, welcome.enabled)')
+          .setRequired(true)
+          .setAutocomplete(true)
+      )
+      .addStringOption(option =>
+        option
+          .setName('value')
+          .setDescription('Value (auto-coerces true/false/null/numbers; use "\\"text\\"" for literal strings)')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('reset')
+      .setDescription('Reset configuration to defaults from config.json')
+      .addStringOption(option =>
+        option
+          .setName('section')
+          .setDescription('Section to reset (omit to reset all)')
+          .setRequired(false)
+          .addChoices(...SECTION_CHOICES)
       )
   );
 
 export const adminOnly = true;
 
+/**
+ * Recursively collect leaf-only dot-notation paths from a config object.
+ * Only emits paths that point to non-object values (leaves), preventing
+ * autocomplete from suggesting intermediate paths whose selection would
+ * overwrite all nested config beneath them with a scalar.
+ * @param {Object} obj - Object to flatten
+ * @param {string} prefix - Current path prefix
+ * @returns {string[]} Array of dot-notation leaf paths
+ */
+function flattenConfigKeys(obj, prefix) {
+  const paths = [];
+  for (const [key, value] of Object.entries(obj)) {
+    const fullPath = `${prefix}.${key}`;
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      paths.push(...flattenConfigKeys(value, fullPath));
+    } else {
+      paths.push(fullPath);
+    }
+  }
+  return paths;
+}
+
+/**
+ * Handle autocomplete for the `path` option in /config set.
+ *
+ * The `section` option (used by view/reset) uses static choices via
+ * addChoices(), so Discord resolves those client-side and never fires
+ * an autocomplete event for them. Only the `path` option is registered
+ * with setAutocomplete(true).
+ *
+ * Suggests dot-notation leaf paths (≥2 segments) that setConfigValue
+ * actually accepts.
+ *
+ * @param {Object} interaction - Discord interaction
+ */
+export async function autocomplete(interaction) {
+  try {
+    const focusedValue = interaction.options.getFocused().toLowerCase();
+    const config = getConfig();
+
+    const paths = [];
+    for (const [section, value] of Object.entries(config)) {
+      if (typeof value === 'object' && value !== null) {
+        paths.push(...flattenConfigKeys(value, section));
+      }
+    }
+
+    const choices = paths
+      .filter(p => p.includes('.') && p.toLowerCase().includes(focusedValue))
+      .sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(focusedValue);
+        const bStarts = b.toLowerCase().startsWith(focusedValue);
+        if (aStarts !== bStarts) return aStarts ? -1 : 1;
+        return a.localeCompare(b);
+      })
+      .slice(0, 25)
+      .map(p => ({ name: p, value: p }));
+
+    await interaction.respond(choices);
+  } catch {
+    // Silently ignore — autocomplete failures (e.g. expired interaction token)
+    // are non-critical and must not produce unhandled promise rejections.
+  }
+}
+
+/**
+ * Execute the config command
+ * @param {Object} interaction - Discord interaction
+ */
 export async function execute(interaction) {
   const subcommand = interaction.options.getSubcommand();
 
-  if (subcommand === 'view') {
-    try {
-      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
-      const section = interaction.options.getString('section');
+  switch (subcommand) {
+    case 'view':
+      await handleView(interaction);
+      break;
+    case 'set':
+      await handleSet(interaction);
+      break;
+    case 'reset':
+      await handleReset(interaction);
+      break;
+  }
+}
 
-      const embed = new EmbedBuilder()
-        .setColor(0x5865F2)
-        .setTitle('⚙️ Bot Configuration')
-        .setTimestamp();
+/** @type {number} Discord embed total character limit */
+const EMBED_CHAR_LIMIT = 6000;
 
-      if (section) {
-        // Show specific section
-        const sectionData = config[section];
-        if (!sectionData) {
-          return await interaction.reply({
-            content: `❌ Section '${section}' not found in config`,
-            ephemeral: true
-          });
-        }
+/**
+ * Handle /config view
+ */
+async function handleView(interaction) {
+  try {
+    const config = getConfig();
+    const section = interaction.options.getString('section');
 
-        embed.setDescription(`**${section.toUpperCase()} Configuration**`);
-        embed.addFields({
-          name: 'Settings',
-          value: '```json\n' + JSON.stringify(sectionData, null, 2) + '\n```'
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setTitle('⚙️ Bot Configuration')
+      .setFooter({ text: `${process.env.DATABASE_URL ? 'Stored in PostgreSQL' : 'Stored in memory (config.json)'} • Use /config set to modify` })
+      .setTimestamp();
+
+    if (section) {
+      const sectionData = config[section];
+      if (!sectionData) {
+        return await interaction.reply({
+          content: `❌ Section '${section}' not found in config`,
+          ephemeral: true
         });
-      } else {
-        // Show all sections
-        embed.setDescription('Current bot configuration');
-
-        for (const [key, value] of Object.entries(config)) {
-          const jsonStr = JSON.stringify(value, null, 2);
-          const truncated = jsonStr.length > 1000
-            ? jsonStr.slice(0, 997) + '...'
-            : jsonStr;
-
-          embed.addFields({
-            name: `${key.toUpperCase()}`,
-            value: '```json\n' + truncated + '\n```',
-            inline: false
-          });
-        }
       }
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
-    } catch (err) {
-      await interaction.reply({
-        content: `❌ Failed to load config: ${err.message}`,
-        ephemeral: true
+      embed.setDescription(`**${section.toUpperCase()} Configuration**`);
+      const sectionJson = JSON.stringify(sectionData, null, 2);
+      embed.addFields({
+        name: 'Settings',
+        value: '```json\n' + (sectionJson.length > 1000 ? sectionJson.slice(0, 997) + '...' : sectionJson) + '\n```'
       });
+    } else {
+      embed.setDescription('Current bot configuration');
+
+      // Track cumulative embed size to stay under Discord's 6000-char limit
+      let totalLength = embed.data.title.length + embed.data.description.length;
+      let truncated = false;
+
+      for (const [key, value] of Object.entries(config)) {
+        const jsonStr = JSON.stringify(value, null, 2);
+        const fieldValue = '```json\n' + (jsonStr.length > 1000 ? jsonStr.slice(0, 997) + '...' : jsonStr) + '\n```';
+        const fieldName = key.toUpperCase();
+        const fieldLength = fieldName.length + fieldValue.length;
+
+        if (totalLength + fieldLength > EMBED_CHAR_LIMIT - 200) {
+          // Reserve space for a truncation notice
+          embed.addFields({
+            name: '⚠️ Truncated',
+            value: `Use \`/config view section:<name>\` to see remaining sections.`,
+            inline: false
+          });
+          truncated = true;
+          break;
+        }
+
+        totalLength += fieldLength;
+        embed.addFields({
+          name: fieldName,
+          value: fieldValue,
+          inline: false
+        });
+      }
+
+      if (truncated) {
+        embed.setFooter({ text: 'Some sections omitted • Use /config view section:<name> for details' });
+      }
+    }
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+  } catch (err) {
+    await interaction.reply({
+      content: `❌ Failed to load config: ${err.message}`,
+      ephemeral: true
+    });
+  }
+}
+
+/**
+ * Handle /config set
+ */
+async function handleSet(interaction) {
+  const path = interaction.options.getString('path');
+  const value = interaction.options.getString('value');
+
+  // Validate section exists in live config (may include DB-added sections beyond config.json)
+  const section = path.split('.')[0];
+  const liveSections = Object.keys(getConfig());
+  if (!liveSections.includes(section)) {
+    return await interaction.reply({
+      content: `❌ Invalid section '${section}'. Valid sections: ${liveSections.join(', ')}`,
+      ephemeral: true
+    });
+  }
+
+  try {
+    await interaction.deferReply({ ephemeral: true });
+
+    const updatedSection = await setConfigValue(path, value);
+
+    // Traverse to the actual leaf value for display
+    const leafValue = path.split('.').slice(1).reduce((obj, k) => obj?.[k], updatedSection);
+
+    const displayValue = JSON.stringify(leafValue, null, 2) ?? value;
+    const truncatedValue = displayValue.length > 1000 ? displayValue.slice(0, 997) + '...' : displayValue;
+
+    const embed = new EmbedBuilder()
+      .setColor(0x57F287)
+      .setTitle('✅ Config Updated')
+      .addFields(
+        { name: 'Path', value: `\`${path}\``, inline: true },
+        { name: 'New Value', value: `\`${truncatedValue}\``, inline: true }
+      )
+      .setFooter({ text: 'Changes take effect immediately' })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    const content = `❌ Failed to set config: ${err.message}`;
+    if (interaction.deferred) {
+      await interaction.editReply({ content });
+    } else {
+      await interaction.reply({ content, ephemeral: true });
+    }
+  }
+}
+
+/**
+ * Handle /config reset
+ */
+async function handleReset(interaction) {
+  const section = interaction.options.getString('section');
+
+  try {
+    await interaction.deferReply({ ephemeral: true });
+
+    await resetConfig(section || undefined);
+
+    const embed = new EmbedBuilder()
+      .setColor(0xFEE75C)
+      .setTitle('🔄 Config Reset')
+      .setDescription(
+        section
+          ? `Section **${section}** has been reset to defaults from config.json.`
+          : 'All configuration has been reset to defaults from config.json.'
+      )
+      .setFooter({ text: 'Changes take effect immediately' })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    const content = `❌ Failed to reset config: ${err.message}`;
+    if (interaction.deferred) {
+      await interaction.editReply({ content });
+    } else {
+      await interaction.reply({ content, ephemeral: true });
     }
   }
 }
