@@ -4,9 +4,10 @@
  */
 
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { getConfig, setConfigValue, resetConfig } from '../modules/config.js';
+import { getConfig, setConfigValue, resetConfig, loadConfigFromFile } from '../modules/config.js';
 
-const VALID_SECTIONS = ['ai', 'chimeIn', 'welcome', 'moderation', 'logging', 'permissions'];
+// Derived from config.json top-level keys so static slash-command choices stay in sync automatically.
+const VALID_SECTIONS = Object.keys(loadConfigFromFile());
 
 /** @type {Array<{name: string, value: string}>} Derived choices for section options */
 const SECTION_CHOICES = VALID_SECTIONS.map(s => ({
@@ -232,11 +233,12 @@ async function handleSet(interaction) {
   const path = interaction.options.getString('path');
   const value = interaction.options.getString('value');
 
-  // Validate section exists
+  // Validate section exists in live config (may include DB-added sections beyond config.json)
   const section = path.split('.')[0];
-  if (!VALID_SECTIONS.includes(section)) {
+  const liveSections = Object.keys(getConfig());
+  if (!liveSections.includes(section)) {
     return await interaction.reply({
-      content: `❌ Invalid section '${section}'. Valid sections: ${VALID_SECTIONS.join(', ')}`,
+      content: `❌ Invalid section '${section}'. Valid sections: ${liveSections.join(', ')}`,
       ephemeral: true
     });
   }
