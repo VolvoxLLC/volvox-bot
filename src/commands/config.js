@@ -4,8 +4,8 @@
  */
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { getConfig, resetConfig, setConfigValue } from '../modules/config.js';
 import { warn as logWarn } from '../logger.js';
+import { getConfig, resetConfig, setConfigValue } from '../modules/config.js';
 
 /**
  * Escape backticks in user-provided strings to prevent breaking Discord inline code formatting.
