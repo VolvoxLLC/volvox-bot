@@ -277,23 +277,6 @@ async function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Error handling
-client.on('error', (err) => {
-  error('Discord client error', {
-    error: err.message,
-    stack: err.stack,
-    code: err.code,
-  });
-});
-
-process.on('unhandledRejection', (err) => {
-  error('Unhandled promise rejection', {
-    error: err?.message || String(err),
-    stack: err?.stack,
-    type: typeof err,
-  });
-});
-
 // Start bot
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
