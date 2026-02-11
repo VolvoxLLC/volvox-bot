@@ -89,6 +89,24 @@ describe('db module', () => {
       const pool2 = await initDb();
       expect(pool1).toBe(pool2);
     });
+
+    it('should reject concurrent initDb calls while initialization is in progress', async () => {
+      let resolveConnect;
+      const pendingConnect = new Promise((resolve) => {
+        resolveConnect = resolve;
+      });
+      mockPool.connect.mockImplementationOnce(() => pendingConnect);
+
+      const firstInit = initDb();
+      const secondInit = initDb();
+
+      await expect(secondInit).rejects.toThrow('initDb is already in progress');
+
+      resolveConnect(mockClient);
+      const pool = await firstInit;
+      expect(pool).toBeDefined();
+      expect(mockPool.connect).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getPool', () => {

@@ -52,10 +52,10 @@ function getSslConfig(connectionString) {
  * @returns {Promise<pg.Pool>} The connection pool
  */
 export async function initDb() {
-  if (pool) return pool;
   if (initializing) {
     throw new Error('initDb is already in progress');
   }
+  if (pool) return pool;
 
   initializing = true;
   try {
