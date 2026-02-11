@@ -336,7 +336,18 @@ function isPlainObject(val) {
 }
 
 /**
- * Parse a string value into its appropriate JS type
+ * Parse a string value into its appropriate JS type.
+ *
+ * Coercion rules:
+ * - "true" / "false" → boolean
+ * - "null" → null
+ * - Numeric strings → number (unless beyond Number.MAX_SAFE_INTEGER)
+ * - JSON arrays/objects/quoted strings → parsed value
+ * - Everything else → kept as-is string
+ *
+ * To force a literal string (e.g. the word "true"), wrap it in JSON quotes:
+ *   "\"true\"" → parsed by JSON.parse into the string "true"
+ *
  * @param {string} value - String value to parse
  * @returns {*} Parsed value
  */
@@ -358,8 +369,12 @@ function parseValue(value) {
     return num;
   }
 
-  // JSON arrays/objects
-  if ((value.startsWith('[') && value.endsWith(']')) || (value.startsWith('{') && value.endsWith('}'))) {
+  // JSON strings (e.g. "\"true\"" → force literal string "true"), arrays, and objects
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith('[') && value.endsWith(']')) ||
+    (value.startsWith('{') && value.endsWith('}'))
+  ) {
     try {
       return JSON.parse(value);
     } catch {

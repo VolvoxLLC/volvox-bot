@@ -43,7 +43,7 @@ export const data = new SlashCommandBuilder()
       .addStringOption(option =>
         option
           .setName('value')
-          .setDescription('Value to set (strings, numbers, booleans, JSON arrays)')
+          .setDescription('Value (auto-coerces true/false/null/numbers; use "\\"text\\"" for literal strings)')
           .setRequired(true)
       )
   )
