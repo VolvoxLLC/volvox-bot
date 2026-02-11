@@ -89,23 +89,28 @@ function flattenConfigKeys(obj, prefix) {
  * @param {Object} interaction - Discord interaction
  */
 export async function autocomplete(interaction) {
-  const focusedValue = interaction.options.getFocused().toLowerCase();
-  const config = getConfig();
+  try {
+    const focusedValue = interaction.options.getFocused().toLowerCase();
+    const config = getConfig();
 
-  const paths = [];
-  for (const [section, value] of Object.entries(config)) {
-    if (typeof value === 'object' && value !== null) {
-      paths.push(...flattenConfigKeys(value, section));
+    const paths = [];
+    for (const [section, value] of Object.entries(config)) {
+      if (typeof value === 'object' && value !== null) {
+        paths.push(...flattenConfigKeys(value, section));
+      }
     }
+
+    const filtered = paths
+      .filter(p => p.toLowerCase().includes(focusedValue))
+      .slice(0, 25);
+
+    await interaction.respond(
+      filtered.map(p => ({ name: p, value: p }))
+    );
+  } catch {
+    // Silently ignore — autocomplete failures (e.g. expired interaction token)
+    // are non-critical and must not produce unhandled promise rejections.
   }
-
-  const filtered = paths
-    .filter(p => p.toLowerCase().includes(focusedValue))
-    .slice(0, 25);
-
-  await interaction.respond(
-    filtered.map(p => ({ name: p, value: p }))
-  );
 }
 
 /**
