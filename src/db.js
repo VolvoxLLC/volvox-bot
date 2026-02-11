@@ -112,6 +112,11 @@ export async function initDb() {
         ON conversations (channel_id, created_at)
       `);
 
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_conversations_created_at
+        ON conversations (created_at)
+      `);
+
       info('Database schema initialized');
     } catch (err) {
       // Clean up the pool so getPool() doesn't return an unusable instance

@@ -79,8 +79,9 @@ describe('db module', () => {
         true,
       );
 
-      // Should have created index
+      // Should have created indexes
       expect(queries.some((q) => q.includes('idx_conversations_channel_created'))).toBe(true);
+      expect(queries.some((q) => q.includes('idx_conversations_created_at'))).toBe(true);
     });
 
     it('should return existing pool on subsequent calls', async () => {
@@ -142,6 +143,16 @@ describe('db module', () => {
       expect(indexSql).toBeDefined();
       expect(indexSql).toContain('channel_id');
       expect(indexSql).toContain('created_at');
+    });
+
+    it('should create standalone created_at index for TTL cleanup', async () => {
+      await initDb();
+
+      const queries = mockPool.query.mock.calls.map((c) => c[0]);
+      const indexSql = queries.find((q) => q.includes('idx_conversations_created_at'));
+
+      expect(indexSql).toBeDefined();
+      expect(indexSql).toContain('ON conversations (created_at)');
     });
   });
 });
