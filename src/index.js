@@ -249,7 +249,11 @@ async function gracefulShutdown(signal) {
 
   // 3. Close database pool
   info('Closing database connection');
-  await closeDb();
+  try {
+    await closeDb();
+  } catch (err) {
+    error('Failed to close database pool', { error: err.message });
+  }
 
   // 4. Destroy Discord client
   info('Disconnecting from Discord');

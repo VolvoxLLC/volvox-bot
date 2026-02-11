@@ -17,18 +17,29 @@ let configCache = {};
 
 /**
  * Load config.json from disk (used as seed/fallback)
+ * @param {Object} [options] - Options
+ * @param {boolean} [options.exitOnError=true] - Whether to call process.exit on failure (false throws instead)
  * @returns {Object} Configuration object from file
  */
-export function loadConfigFromFile() {
+export function loadConfigFromFile({ exitOnError = true } = {}) {
   try {
     if (!existsSync(configPath)) {
-      console.error('❌ config.json not found!');
-      process.exit(1);
+      const msg = 'config.json not found!';
+      if (exitOnError) {
+        console.error(`❌ ${msg}`);
+        process.exit(1);
+      }
+      throw new Error(msg);
     }
     return JSON.parse(readFileSync(configPath, 'utf-8'));
   } catch (err) {
-    console.error('❌ Failed to load config.json:', err.message);
-    process.exit(1);
+    if (err.message === 'config.json not found!') throw err;
+    const msg = `Failed to load config.json: ${err.message}`;
+    if (exitOnError) {
+      console.error(`❌ ${msg}`);
+      process.exit(1);
+    }
+    throw new Error(msg);
   }
 }
 
@@ -55,16 +66,26 @@ export async function loadConfig() {
     const { rows } = await pool.query('SELECT key, value FROM config');
 
     if (rows.length === 0) {
-      // Seed database from config.json
+      // Seed database from config.json inside a transaction
       info('No config in database, seeding from config.json');
-      for (const [key, value] of Object.entries(fileConfig)) {
-        await pool.query(
-          'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-          [key, JSON.stringify(value)]
-        );
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        for (const [key, value] of Object.entries(fileConfig)) {
+          await client.query(
+            'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
+            [key, JSON.stringify(value)]
+          );
+        }
+        await client.query('COMMIT');
+        info('Config seeded to database');
+        configCache = { ...fileConfig };
+      } catch (txErr) {
+        await client.query('ROLLBACK');
+        throw txErr;
+      } finally {
+        client.release();
       }
-      info('Config seeded to database');
-      configCache = { ...fileConfig };
     } else {
       // Load from database
       configCache = {};
@@ -90,15 +111,6 @@ export function getConfig() {
 }
 
 /**
- * Get a specific config section
- * @param {string} section - Top-level config section name
- * @returns {Object|undefined} Section config or undefined
- */
-export function getConfigSection(section) {
-  return configCache[section];
-}
-
-/**
  * Set a config value using dot notation (e.g., "ai.model" or "welcome.enabled")
  * Persists to database and updates in-memory cache
  * @param {string} path - Dot-notation path (e.g., "ai.model")
@@ -112,15 +124,12 @@ export async function setConfigValue(path, value) {
   }
 
   const section = parts[0];
-  const sectionConfig = { ...(configCache[section] || {}) };
 
-  // Ensure section exists in cache
-  if (!configCache[section]) {
-    configCache[section] = {};
-  }
+  // Deep clone the section so we can write to DB first before mutating cache
+  const sectionClone = structuredClone(configCache[section] || {});
 
-  // Navigate to the nested key and set the value (mutate in-place for reference propagation)
-  let current = configCache[section];
+  // Navigate to the nested key in the clone and set the value
+  let current = sectionClone;
   for (let i = 1; i < parts.length - 1; i++) {
     if (current[parts[i]] === undefined || typeof current[parts[i]] !== 'object') {
       current[parts[i]] = {};
@@ -131,14 +140,33 @@ export async function setConfigValue(path, value) {
   const finalKey = parts[parts.length - 1];
   current[finalKey] = parseValue(value);
 
-  // Update database
-  const pool = getPool();
-  await pool.query(
-    'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-    [section, JSON.stringify(configCache[section])]
-  );
+  // Write to database first, then update cache on success
+  let dbPersisted = false;
+  try {
+    const pool = getPool();
+    await pool.query(
+      'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
+      [section, JSON.stringify(sectionClone)]
+    );
+    dbPersisted = true;
+  } catch (err) {
+    logError('Database unavailable for config write — updating in-memory only', { error: err.message });
+  }
 
-  info('Config updated', { path, value: current[finalKey] });
+  // Update in-memory cache (mutate in-place for reference propagation)
+  if (!configCache[section] || typeof configCache[section] !== 'object') {
+    configCache[section] = {};
+  }
+  let target = configCache[section];
+  for (let i = 1; i < parts.length - 1; i++) {
+    if (target[parts[i]] === undefined || typeof target[parts[i]] !== 'object') {
+      target[parts[i]] = {};
+    }
+    target = target[parts[i]];
+  }
+  target[finalKey] = parseValue(value);
+
+  info('Config updated', { path, value: target[finalKey], persisted: dbPersisted });
   return configCache[section];
 }
 
@@ -148,18 +176,26 @@ export async function setConfigValue(path, value) {
  * @returns {Promise<Object>} Reset config
  */
 export async function resetConfig(section) {
-  const fileConfig = loadConfigFromFile();
-  const pool = getPool();
+  const fileConfig = loadConfigFromFile({ exitOnError: false });
+
+  let pool = null;
+  try {
+    pool = getPool();
+  } catch {
+    logError('Database unavailable for config reset — updating in-memory only');
+  }
 
   if (section) {
     if (!fileConfig[section]) {
       throw new Error(`Section '${section}' not found in config.json defaults`);
     }
 
-    await pool.query(
-      'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-      [section, JSON.stringify(fileConfig[section])]
-    );
+    if (pool) {
+      await pool.query(
+        'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
+        [section, JSON.stringify(fileConfig[section])]
+      );
+    }
 
     // Mutate in-place so references stay valid
     const sectionData = configCache[section];
@@ -167,27 +203,54 @@ export async function resetConfig(section) {
       for (const key of Object.keys(sectionData)) delete sectionData[key];
       Object.assign(sectionData, fileConfig[section]);
     } else {
-      configCache[section] = { ...fileConfig[section] };
+      configCache[section] = isPlainObject(fileConfig[section])
+        ? { ...fileConfig[section] }
+        : fileConfig[section];
     }
     info('Config section reset', { section });
   } else {
-    // Reset all — mutate in-place
+    // Reset all inside a transaction
+    if (pool) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        for (const [key, value] of Object.entries(fileConfig)) {
+          await client.query(
+            'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
+            [key, JSON.stringify(value)]
+          );
+        }
+        await client.query('COMMIT');
+      } catch (txErr) {
+        await client.query('ROLLBACK');
+        throw txErr;
+      } finally {
+        client.release();
+      }
+    }
+
+    // Mutate in-place
     for (const [key, value] of Object.entries(fileConfig)) {
-      await pool.query(
-        'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-        [key, JSON.stringify(value)]
-      );
-      if (configCache[key] && typeof configCache[key] === 'object') {
+      if (configCache[key] && isPlainObject(configCache[key]) && isPlainObject(value)) {
         for (const k of Object.keys(configCache[key])) delete configCache[key][k];
         Object.assign(configCache[key], value);
       } else {
-        configCache[key] = { ...value };
+        configCache[key] = isPlainObject(value) ? { ...value } : value;
       }
     }
     info('All config reset to defaults');
   }
 
   return configCache;
+}
+
+/**
+ * Check if a value is a plain object (not null, not array)
+ * @param {*} val - Value to check
+ * @returns {boolean} True if plain object
+ */
+function isPlainObject(val) {
+  return typeof val === 'object' && val !== null && !Array.isArray(val);
 }
 
 /**

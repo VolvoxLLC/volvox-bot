@@ -8,6 +8,12 @@ import { getConfig, setConfigValue, resetConfig } from '../modules/config.js';
 
 const VALID_SECTIONS = ['ai', 'chimeIn', 'welcome', 'moderation', 'logging', 'permissions'];
 
+/** @type {Array<{name: string, value: string}>} Derived choices for section options */
+const SECTION_CHOICES = VALID_SECTIONS.map(s => ({
+  name: s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, ' $1'),
+  value: s,
+}));
+
 export const data = new SlashCommandBuilder()
   .setName('config')
   .setDescription('View or manage bot configuration (Admin only)')
@@ -20,14 +26,7 @@ export const data = new SlashCommandBuilder()
           .setName('section')
           .setDescription('Specific config section to view')
           .setRequired(false)
-          .addChoices(
-            { name: 'AI Settings', value: 'ai' },
-            { name: 'Chime In', value: 'chimeIn' },
-            { name: 'Welcome Messages', value: 'welcome' },
-            { name: 'Moderation', value: 'moderation' },
-            { name: 'Logging', value: 'logging' },
-            { name: 'Permissions', value: 'permissions' }
-          )
+          .addChoices(...SECTION_CHOICES)
       )
   )
   .addSubcommand(subcommand =>
@@ -57,18 +56,29 @@ export const data = new SlashCommandBuilder()
           .setName('section')
           .setDescription('Section to reset (omit to reset all)')
           .setRequired(false)
-          .addChoices(
-            { name: 'AI Settings', value: 'ai' },
-            { name: 'Chime In', value: 'chimeIn' },
-            { name: 'Welcome Messages', value: 'welcome' },
-            { name: 'Moderation', value: 'moderation' },
-            { name: 'Logging', value: 'logging' },
-            { name: 'Permissions', value: 'permissions' }
-          )
+          .addChoices(...SECTION_CHOICES)
       )
   );
 
 export const adminOnly = true;
+
+/**
+ * Recursively flatten config keys into dot-notation paths
+ * @param {Object} obj - Object to flatten
+ * @param {string} prefix - Current path prefix
+ * @returns {string[]} Array of dot-notation paths
+ */
+function flattenConfigKeys(obj, prefix) {
+  const paths = [];
+  for (const [key, value] of Object.entries(obj)) {
+    const fullPath = `${prefix}.${key}`;
+    paths.push(fullPath);
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      paths.push(...flattenConfigKeys(value, fullPath));
+    }
+  }
+  return paths;
+}
 
 /**
  * Handle autocomplete for config paths
@@ -81,9 +91,7 @@ export async function autocomplete(interaction) {
   const paths = [];
   for (const [section, value] of Object.entries(config)) {
     if (typeof value === 'object' && value !== null) {
-      for (const key of Object.keys(value)) {
-        paths.push(`${section}.${key}`);
-      }
+      paths.push(...flattenConfigKeys(value, section));
     }
   }
 
@@ -116,6 +124,9 @@ export async function execute(interaction) {
   }
 }
 
+/** @type {number} Discord embed total character limit */
+const EMBED_CHAR_LIMIT = 6000;
+
 /**
  * Handle /config view
  */
@@ -147,15 +158,31 @@ async function handleView(interaction) {
     } else {
       embed.setDescription('Current bot configuration');
 
+      // Track cumulative embed size to stay under Discord's 6000-char limit
+      let totalLength = embed.data.title.length + embed.data.description.length;
+      let truncated = false;
+
       for (const [key, value] of Object.entries(config)) {
         const jsonStr = JSON.stringify(value, null, 2);
-        const truncated = jsonStr.length > 1000
-          ? jsonStr.slice(0, 997) + '...'
-          : jsonStr;
+        const fieldValue = '```json\n' + (jsonStr.length > 1000 ? jsonStr.slice(0, 997) + '...' : jsonStr) + '\n```';
+        const fieldName = key.toUpperCase();
+        const fieldLength = fieldName.length + fieldValue.length;
 
+        if (totalLength + fieldLength > EMBED_CHAR_LIMIT - 200) {
+          // Reserve space for a truncation notice
+          embed.addFields({
+            name: '⚠️ Truncated',
+            value: `Use \`/config view section:<name>\` to see remaining sections.`,
+            inline: false
+          });
+          truncated = true;
+          break;
+        }
+
+        totalLength += fieldLength;
         embed.addFields({
-          name: `${key.toUpperCase()}`,
-          value: '```json\n' + truncated + '\n```',
+          name: fieldName,
+          value: fieldValue,
           inline: false
         });
       }
@@ -191,12 +218,15 @@ async function handleSet(interaction) {
 
     const updatedSection = await setConfigValue(path, value);
 
+    // Traverse to the actual leaf value for display
+    const leafValue = path.split('.').slice(1).reduce((obj, k) => obj?.[k], updatedSection);
+
     const embed = new EmbedBuilder()
       .setColor(0x57F287)
       .setTitle('✅ Config Updated')
       .addFields(
         { name: 'Path', value: `\`${path}\``, inline: true },
-        { name: 'New Value', value: `\`${JSON.stringify(updatedSection[path.split('.').slice(1)[0]], null, 2) ?? value}\``, inline: true }
+        { name: 'New Value', value: `\`${JSON.stringify(leafValue, null, 2) ?? value}\``, inline: true }
       )
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();

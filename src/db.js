@@ -26,8 +26,17 @@ export async function initDb() {
     max: 5,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
-    // Railway internal connections don't need SSL
-    ssl: connectionString.includes('railway.internal') ? false : { rejectUnauthorized: false },
+    // Railway internal connections don't need SSL; others default to verified TLS
+    ssl: connectionString.includes('railway.internal')
+      ? false
+      : process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
+        ? { rejectUnauthorized: false }
+        : { rejectUnauthorized: true },
+  });
+
+  // Prevent unhandled pool errors from crashing the process
+  pool.on('error', (err) => {
+    logError('Unexpected database pool error', { error: err.message });
   });
 
   // Test connection
