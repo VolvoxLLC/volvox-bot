@@ -100,7 +100,7 @@ export async function initDb() {
         CREATE TABLE IF NOT EXISTS conversations (
           id SERIAL PRIMARY KEY,
           channel_id TEXT NOT NULL,
-          role TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
           content TEXT NOT NULL,
           username TEXT,
           created_at TIMESTAMPTZ DEFAULT NOW()
