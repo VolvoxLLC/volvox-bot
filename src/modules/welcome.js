@@ -96,7 +96,7 @@ export async function sendWelcomeMessage(member, client, config) {
     await channel.send(message);
     info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });
   } catch (err) {
-    logError('Welcome error', { error: err.message });
+    logError('Welcome error', { error: err.message, stack: err.stack });
   }
 }
 
