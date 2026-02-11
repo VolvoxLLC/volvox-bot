@@ -39,25 +39,33 @@ export async function initDb() {
     logError('Unexpected database pool error', { error: err.message });
   });
 
-  // Test connection
-  const client = await pool.connect();
   try {
-    await client.query('SELECT NOW()');
-    info('Database connected');
-  } finally {
-    client.release();
+    // Test connection
+    const client = await pool.connect();
+    try {
+      await client.query('SELECT NOW()');
+      info('Database connected');
+    } finally {
+      client.release();
+    }
+
+    // Create schema
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS config (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    info('Database schema initialized');
+  } catch (err) {
+    // Clean up the pool so getPool() doesn't return an unusable instance
+    await pool.end().catch(() => {});
+    pool = null;
+    throw err;
   }
 
-  // Create schema
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS config (
-      key TEXT PRIMARY KEY,
-      value JSONB NOT NULL,
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  info('Database schema initialized');
   return pool;
 }
 

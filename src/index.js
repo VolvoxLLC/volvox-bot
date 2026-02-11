@@ -36,7 +36,10 @@ const statePath = join(dataDir, 'state.json');
 // Load environment variables
 dotenvConfig();
 
-// Config is loaded asynchronously after DB init (see startup below)
+// Config is loaded asynchronously after DB init (see startup below).
+// After loadConfig() resolves, `config` points to the same object as
+// configCache inside modules/config.js, so in-place mutations from
+// setConfigValue() propagate here automatically without re-assignment.
 let config = {};
 
 // Initialize Discord client with required intents

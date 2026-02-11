@@ -29,11 +29,13 @@ export function loadConfigFromFile({ exitOnError = true } = {}) {
         console.error(`❌ ${msg}`);
         process.exit(1);
       }
-      throw new Error(msg);
+      const err = new Error(msg);
+      err.code = 'CONFIG_NOT_FOUND';
+      throw err;
     }
     return JSON.parse(readFileSync(configPath, 'utf-8'));
   } catch (err) {
-    if (err.message === 'config.json not found!') throw err;
+    if (err.code === 'CONFIG_NOT_FOUND') throw err;
     const msg = `Failed to load config.json: ${err.message}`;
     if (exitOnError) {
       console.error(`❌ ${msg}`);
@@ -49,14 +51,24 @@ export function loadConfigFromFile({ exitOnError = true } = {}) {
  * @returns {Promise<Object>} Configuration object
  */
 export async function loadConfig() {
-  const fileConfig = loadConfigFromFile();
+  // Try loading config.json but don't hard-exit — DB may have valid config
+  let fileConfig;
+  try {
+    fileConfig = loadConfigFromFile({ exitOnError: false });
+  } catch {
+    fileConfig = null;
+    info('config.json not available, will rely on database for configuration');
+  }
 
   try {
     let pool;
     try {
       pool = getPool();
     } catch {
-      // DB not initialized — use file config
+      // DB not initialized — file config is our only option
+      if (!fileConfig) {
+        throw new Error('No configuration source available: config.json is missing and database is not initialized');
+      }
       info('Database not available, using config.json');
       configCache = { ...fileConfig };
       return configCache;
@@ -66,6 +78,9 @@ export async function loadConfig() {
     const { rows } = await pool.query('SELECT key, value FROM config');
 
     if (rows.length === 0) {
+      if (!fileConfig) {
+        throw new Error('No configuration source available: database is empty and config.json is missing');
+      }
       // Seed database from config.json inside a transaction
       info('No config in database, seeding from config.json');
       const client = await pool.connect();
@@ -95,6 +110,10 @@ export async function loadConfig() {
       info('Config loaded from database');
     }
   } catch (err) {
+    if (!fileConfig) {
+      // No fallback available — re-throw
+      throw err;
+    }
     logError('Failed to load config from database, using config.json', { error: err.message });
     configCache = { ...fileConfig };
   }
@@ -124,11 +143,14 @@ export async function setConfigValue(path, value) {
   }
 
   const section = parts[0];
+  const finalKey = parts[parts.length - 1];
+  const parsedVal = parseValue(value);
 
-  // Deep clone the section so we can write to DB first before mutating cache
+  // Build the JSONB sub-path for atomic DB update (keys after the section)
+  const subPath = parts.slice(1);
+
+  // Deep clone the section for the INSERT case (new section that doesn't exist yet)
   const sectionClone = structuredClone(configCache[section] || {});
-
-  // Navigate to the nested key in the clone and set the value
   let current = sectionClone;
   for (let i = 1; i < parts.length - 1; i++) {
     if (current[parts[i]] === undefined || typeof current[parts[i]] !== 'object') {
@@ -136,17 +158,19 @@ export async function setConfigValue(path, value) {
     }
     current = current[parts[i]];
   }
+  current[finalKey] = parsedVal;
 
-  const finalKey = parts[parts.length - 1];
-  current[finalKey] = parseValue(value);
-
-  // Write to database first, then update cache on success
+  // Write to database first using jsonb_set for atomic partial update,
+  // preventing concurrent setConfigValue calls from overwriting each other
   let dbPersisted = false;
   try {
     const pool = getPool();
     await pool.query(
-      'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-      [section, JSON.stringify(sectionClone)]
+      `INSERT INTO config (key, value) VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE
+       SET value = jsonb_set(config.value, $3::text[], $4::jsonb, true),
+           updated_at = NOW()`,
+      [section, JSON.stringify(sectionClone), subPath, JSON.stringify(parsedVal)]
     );
     dbPersisted = true;
   } catch (err) {
@@ -164,9 +188,9 @@ export async function setConfigValue(path, value) {
     }
     target = target[parts[i]];
   }
-  target[finalKey] = parseValue(value);
+  target[finalKey] = parsedVal;
 
-  info('Config updated', { path, value: target[finalKey], persisted: dbPersisted });
+  info('Config updated', { path, value: parsedVal, persisted: dbPersisted });
   return configCache[section];
 }
 

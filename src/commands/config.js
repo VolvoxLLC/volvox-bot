@@ -151,9 +151,10 @@ async function handleView(interaction) {
       }
 
       embed.setDescription(`**${section.toUpperCase()} Configuration**`);
+      const sectionJson = JSON.stringify(sectionData, null, 2);
       embed.addFields({
         name: 'Settings',
-        value: '```json\n' + JSON.stringify(sectionData, null, 2) + '\n```'
+        value: '```json\n' + (sectionJson.length > 1000 ? sectionJson.slice(0, 997) + '...' : sectionJson) + '\n```'
       });
     } else {
       embed.setDescription('Current bot configuration');
@@ -185,6 +186,10 @@ async function handleView(interaction) {
           value: fieldValue,
           inline: false
         });
+      }
+
+      if (truncated) {
+        embed.setFooter({ text: 'Some sections omitted • Use /config view section:<name> for details' });
       }
     }
 
