@@ -18,7 +18,7 @@ vi.mock('../../src/modules/config.js', () => ({
   })),
 }));
 
-import { info, warn } from '../../src/logger.js';
+import { info, error as logError, warn } from '../../src/logger.js';
 import {
   _setPoolGetter,
   addToHistory,
@@ -163,7 +163,7 @@ describe('ai module', () => {
       ]);
     });
 
-    it('should not crash when DB write fails', () => {
+    it('should not crash when DB write fails', async () => {
       const mockQuery = vi.fn().mockRejectedValue(new Error('DB error'));
       const mockPool = { query: mockQuery };
       setPool(mockPool);
@@ -171,6 +171,18 @@ describe('ai module', () => {
       // Should not throw
       addToHistory('ch1', 'user', 'hello');
       expect(mockQuery).toHaveBeenCalled();
+
+      await vi.waitFor(() => {
+        expect(logError).toHaveBeenCalledWith(
+          'Failed to persist message to DB',
+          expect.objectContaining({
+            channelId: 'ch1',
+            role: 'user',
+            username: null,
+            error: 'DB error',
+          }),
+        );
+      });
     });
 
     it('should work without DB (graceful fallback)', () => {
