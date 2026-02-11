@@ -235,12 +235,15 @@ async function handleSet(interaction) {
     // Traverse to the actual leaf value for display
     const leafValue = path.split('.').slice(1).reduce((obj, k) => obj?.[k], updatedSection);
 
+    const displayValue = JSON.stringify(leafValue, null, 2) ?? value;
+    const truncatedValue = displayValue.length > 1000 ? displayValue.slice(0, 997) + '...' : displayValue;
+
     const embed = new EmbedBuilder()
       .setColor(0x57F287)
       .setTitle('✅ Config Updated')
       .addFields(
         { name: 'Path', value: `\`${path}\``, inline: true },
-        { name: 'New Value', value: `\`${JSON.stringify(leafValue, null, 2) ?? value}\``, inline: true }
+        { name: 'New Value', value: `\`${truncatedValue}\``, inline: true }
       )
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();
