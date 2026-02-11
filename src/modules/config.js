@@ -187,7 +187,7 @@ export async function setConfigValue(path, value) {
       await client.query('COMMIT');
       dbPersisted = true;
     } catch (txErr) {
-      await client.query('ROLLBACK').catch(() => {});
+      try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
       throw txErr;
     } finally {
       client.release();
