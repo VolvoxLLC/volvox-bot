@@ -263,16 +263,29 @@ export async function resetConfig(section) {
             [key, JSON.stringify(value)]
           );
         }
+        // Remove stale keys that exist in DB but not in config.json
+        const fileKeys = Object.keys(fileConfig);
+        if (fileKeys.length > 0) {
+          await client.query(
+            'DELETE FROM config WHERE key != ALL($1::text[])',
+            [fileKeys]
+          );
+        }
         await client.query('COMMIT');
       } catch (txErr) {
-        await client.query('ROLLBACK');
+        try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
         throw txErr;
       } finally {
         client.release();
       }
     }
 
-    // Mutate in-place
+    // Mutate in-place and remove stale keys from cache
+    for (const key of Object.keys(configCache)) {
+      if (!(key in fileConfig)) {
+        delete configCache[key];
+      }
+    }
     for (const [key, value] of Object.entries(fileConfig)) {
       if (configCache[key] && isPlainObject(configCache[key]) && isPlainObject(value)) {
         for (const k of Object.keys(configCache[key])) delete configCache[key][k];
