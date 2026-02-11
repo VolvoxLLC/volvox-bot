@@ -6,6 +6,7 @@
  */
 
 import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { error as logError } from '../logger.js';
 import { HealthMonitor } from '../utils/health.js';
 
 export const data = new SlashCommandBuilder()
@@ -136,7 +137,7 @@ export async function execute(interaction) {
       await interaction.reply({ embeds: [embed] });
     }
   } catch (err) {
-    console.error('Status command error:', err.message);
+    logError('Status command error', { error: err.message });
 
     const reply = {
       content: "Sorry, I couldn't retrieve the status. Try again in a moment!",

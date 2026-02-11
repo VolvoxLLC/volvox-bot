@@ -14,6 +14,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config as dotenvConfig } from 'dotenv';
+import { error as logError } from './logger.js';
 import { registerCommands } from './utils/registerCommands.js';
 
 dotenvConfig();
@@ -26,12 +27,12 @@ const clientId = process.env.DISCORD_CLIENT_ID || process.env.CLIENT_ID;
 const guildId = process.env.GUILD_ID || null;
 
 if (!token) {
-  console.error('❌ DISCORD_TOKEN is required.');
+  logError('DISCORD_TOKEN is required');
   process.exit(1);
 }
 
 if (!clientId) {
-  console.error('❌ DISCORD_CLIENT_ID (or legacy CLIENT_ID) is required.');
+  logError('DISCORD_CLIENT_ID (or legacy CLIENT_ID) is required');
   process.exit(1);
 }
 
@@ -56,6 +57,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('❌ Command deployment failed:', err.message);
+  logError('Command deployment failed', { error: err.message });
   process.exit(1);
 });

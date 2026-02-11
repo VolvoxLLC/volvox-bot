@@ -3,6 +3,7 @@
  * Handles Discord event listeners and handlers
  */
 
+import { error as logError, info, warn } from '../logger.js';
 import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
@@ -17,8 +18,7 @@ import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
  */
 export function registerReadyHandler(client, config, healthMonitor) {
   client.once('clientReady', () => {
-    console.log(`✅ ${client.user.tag} is online!`);
-    console.log(`📡 Serving ${client.guilds.cache.size} server(s)`);
+    info(`${client.user.tag} is online`, { servers: client.guilds.cache.size });
 
     // Record bot start time
     if (healthMonitor) {
@@ -26,13 +26,13 @@ export function registerReadyHandler(client, config, healthMonitor) {
     }
 
     if (config.welcome?.enabled) {
-      console.log(`👋 Welcome messages → #${config.welcome.channelId}`);
+      info('Welcome messages enabled', { channelId: config.welcome.channelId });
     }
     if (config.ai?.enabled) {
-      console.log(`🤖 AI chat enabled (${config.ai.model || 'claude-sonnet-4-20250514'})`);
+      info('AI chat enabled', { model: config.ai.model || 'claude-sonnet-4-20250514' });
     }
     if (config.moderation?.enabled) {
-      console.log(`🛡️ Moderation enabled`);
+      info('Moderation enabled');
     }
   });
 }
@@ -62,7 +62,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
 
     // Spam detection
     if (config.moderation?.enabled && isSpam(message.content)) {
-      console.log(`[SPAM] ${message.author.tag}: ${message.content.slice(0, 50)}...`);
+      warn('Spam detected', { user: message.author.tag, content: message.content.slice(0, 50) });
       await sendSpamAlert(message, client, config);
       return;
     }
@@ -120,7 +120,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
 
     // Chime-in: accumulate message for organic participation (fire-and-forget)
     accumulate(message, config).catch((err) => {
-      console.error('ChimeIn accumulate error:', err.message);
+      logError('ChimeIn accumulate error', { error: err.message });
     });
   });
 }
@@ -130,12 +130,12 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
  * @param {Object} client - Discord client
  */
 export function registerErrorHandlers(client) {
-  client.on('error', (error) => {
-    console.error('Discord error:', error);
+  client.on('error', (err) => {
+    logError('Discord error', { error: err.message, stack: err.stack });
   });
 
-  process.on('unhandledRejection', (error) => {
-    console.error('Unhandled rejection:', error);
+  process.on('unhandledRejection', (err) => {
+    logError('Unhandled rejection', { error: err?.message, stack: err?.stack });
   });
 }
 

@@ -3,7 +3,7 @@
  * Handles AI chat functionality powered by Claude via OpenClaw
  */
 
-import { info } from '../logger.js';
+import { error as logError, info } from '../logger.js';
 
 // Conversation history per channel (simple in-memory store)
 let conversationHistory = new Map();
@@ -136,7 +136,7 @@ You can use Discord markdown formatting.`;
 
     return reply;
   } catch (err) {
-    console.error('OpenClaw API error:', err.message);
+    logError('OpenClaw API error', { error: err.message });
     if (healthMonitor) {
       healthMonitor.setAPIStatus('error');
     }

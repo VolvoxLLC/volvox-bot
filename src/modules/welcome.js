@@ -3,6 +3,8 @@
  * Handles dynamic welcome messages for new members
  */
 
+import { error as logError, info } from '../logger.js';
+
 const guildActivity = new Map();
 const DEFAULT_ACTIVITY_WINDOW_MINUTES = 45;
 const MAX_EVENTS_PER_CHANNEL = 250;
@@ -92,9 +94,9 @@ export async function sendWelcomeMessage(member, client, config) {
         );
 
     await channel.send(message);
-    console.log(`[WELCOME] ${member.user.tag} joined ${member.guild.name}`);
+    info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });
   } catch (err) {
-    console.error('Welcome error:', err.message);
+    logError('Welcome error', { error: err.message });
   }
 }
 

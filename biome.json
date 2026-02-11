@@ -20,7 +20,7 @@
       },
       "suspicious": {
         "noVar": "error",
-        "noConsole": "off"
+        "noConsole": "error"
       }
     }
   },
