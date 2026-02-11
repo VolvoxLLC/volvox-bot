@@ -225,6 +225,31 @@ describe('ai module', () => {
       );
     });
 
+    it('should dedupe concurrent hydration calls for the same channel', async () => {
+      let resolveHydration;
+      const mockQuery = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveHydration = resolve;
+          }),
+      );
+      const mockPool = { query: mockQuery };
+      setPool(mockPool);
+
+      const p1 = getHistoryAsync('ch-race');
+      const p2 = getHistoryAsync('ch-race');
+
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+
+      resolveHydration({
+        rows: [{ role: 'user', content: 'hydrated once' }],
+      });
+
+      const [h1, h2] = await Promise.all([p1, p2]);
+      expect(h1).toBe(h2);
+      expect(h1).toEqual([{ role: 'user', content: 'hydrated once' }]);
+    });
+
     it('should return empty array when DB has no data', async () => {
       const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
       const mockPool = { query: mockQuery };

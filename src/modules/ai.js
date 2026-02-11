@@ -22,6 +22,9 @@ const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 /** Reference to the cleanup interval timer */
 let cleanupTimer = null;
 
+/** In-flight async hydrations keyed by channel ID (dedupes concurrent DB reads) */
+const pendingHydrations = new Map();
+
 /**
  * Get the configured history length from config
  * @returns {number} History length
@@ -98,6 +101,7 @@ export function getConversationHistory() {
  */
 export function setConversationHistory(history) {
   conversationHistory = history;
+  pendingHydrations.clear();
 }
 
 // OpenClaw API endpoint/token (exported for shared use by other modules)
@@ -170,39 +174,54 @@ export async function getHistoryAsync(channelId) {
     return conversationHistory.get(channelId);
   }
 
-  // Try to load from DB
-  const pool = getPool();
-  if (pool) {
-    try {
-      const limit = getHistoryLength();
-      const { rows } = await pool.query(
-        `SELECT role, content FROM conversations
-         WHERE channel_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2`,
-        [channelId, limit],
-      );
-
-      if (rows.length > 0) {
-        // Rows come back newest-first, reverse for chronological order
-        const history = rows.reverse().map((row) => ({
-          role: row.role,
-          content: row.content,
-        }));
-        conversationHistory.set(channelId, history);
-        info('Hydrated history from DB for channel', { channelId, count: history.length });
-        return history;
-      }
-    } catch (err) {
-      logWarn('Failed to load history from DB, using empty cache', {
-        channelId,
-        error: err.message,
-      });
-    }
+  const pending = pendingHydrations.get(channelId);
+  if (pending) {
+    return pending;
   }
 
-  conversationHistory.set(channelId, []);
-  return conversationHistory.get(channelId);
+  const hydrationPromise = (async () => {
+    // Try to load from DB
+    const pool = getPool();
+    if (pool) {
+      try {
+        const limit = getHistoryLength();
+        const { rows } = await pool.query(
+          `SELECT role, content FROM conversations
+           WHERE channel_id = $1
+           ORDER BY created_at DESC
+           LIMIT $2`,
+          [channelId, limit],
+        );
+
+        if (rows.length > 0) {
+          // Rows come back newest-first, reverse for chronological order
+          const history = rows.reverse().map((row) => ({
+            role: row.role,
+            content: row.content,
+          }));
+          conversationHistory.set(channelId, history);
+          info('Hydrated history from DB for channel', { channelId, count: history.length });
+          return history;
+        }
+      } catch (err) {
+        logWarn('Failed to load history from DB, using empty cache', {
+          channelId,
+          error: err.message,
+        });
+      }
+    }
+
+    conversationHistory.set(channelId, []);
+    return conversationHistory.get(channelId);
+  })();
+
+  pendingHydrations.set(channelId, hydrationPromise);
+
+  try {
+    return await hydrationPromise;
+  } finally {
+    pendingHydrations.delete(channelId);
+  }
 }
 
 /**
