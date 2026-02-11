@@ -263,6 +263,37 @@ describe('ai module', () => {
       expect(h1).toEqual([{ role: 'user', content: 'hydrated once' }]);
     });
 
+    it('should await hydration started by getHistory on cache miss', async () => {
+      let resolveHydration;
+      const mockQuery = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveHydration = resolve;
+          }),
+      );
+      const mockPool = { query: mockQuery };
+      setPool(mockPool);
+
+      const historyRef = getHistory('ch-sync-first');
+      expect(historyRef).toEqual([]);
+
+      const asyncHistoryPromise = getHistoryAsync('ch-sync-first');
+      const raceResult = await Promise.race([
+        asyncHistoryPromise.then(() => 'hydrated'),
+        Promise.resolve('pending'),
+      ]);
+      expect(raceResult).toBe('pending');
+
+      resolveHydration({
+        rows: [{ role: 'user', content: 'from db' }],
+      });
+
+      const hydratedHistory = await asyncHistoryPromise;
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+      expect(hydratedHistory).toBe(historyRef);
+      expect(hydratedHistory).toEqual([{ role: 'user', content: 'from db' }]);
+    });
+
     it('should return empty array when DB has no data', async () => {
       const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
       const mockPool = { query: mockQuery };

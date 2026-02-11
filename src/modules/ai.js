@@ -112,116 +112,108 @@ export const OPENCLAW_URL =
 export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_TOKEN || '';
 
 /**
- * Get or create conversation history for a channel
- * Falls back to DB on cache miss, returns in-memory cache otherwise
+ * Hydrate conversation history for a channel from DB.
+ * Dedupes concurrent hydrations and merges DB rows with in-flight in-memory writes.
+ * @param {string} channelId - Channel ID
+ * @returns {Promise<Array>} Conversation history
+ */
+function hydrateHistory(channelId) {
+  const pending = pendingHydrations.get(channelId);
+  if (pending) {
+    return pending;
+  }
+
+  if (!conversationHistory.has(channelId)) {
+    conversationHistory.set(channelId, []);
+  }
+
+  const historyRef = conversationHistory.get(channelId);
+  const pool = getPool();
+  if (!pool) {
+    return Promise.resolve(historyRef);
+  }
+
+  const limit = getHistoryLength();
+  const hydrationPromise = pool
+    .query(
+      `SELECT role, content FROM conversations
+       WHERE channel_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [channelId, limit],
+    )
+    .then(({ rows }) => {
+      if (rows.length > 0) {
+        const dbHistory = rows.reverse().map((row) => ({
+          role: row.role,
+          content: row.content,
+        }));
+
+        // Merge DB history with any messages added while hydration was in-flight.
+        const arr = conversationHistory.get(channelId) || historyRef;
+        const merged = [...dbHistory, ...arr];
+
+        // Mutate the existing array in-place so callers holding references
+        // (e.g. getHistory callers) observe hydrated contents.
+        arr.length = 0;
+        arr.push(...merged.slice(-limit));
+
+        info('Hydrated history from DB for channel', {
+          channelId,
+          count: dbHistory.length,
+          merged: merged.length,
+        });
+      }
+
+      return conversationHistory.get(channelId) || historyRef;
+    })
+    .catch((err) => {
+      logWarn('Failed to load history from DB, using in-memory only', {
+        channelId,
+        error: err.message,
+      });
+      return conversationHistory.get(channelId) || historyRef;
+    })
+    .finally(() => {
+      pendingHydrations.delete(channelId);
+    });
+
+  pendingHydrations.set(channelId, hydrationPromise);
+  return hydrationPromise;
+}
+
+/**
+ * Get or create conversation history for a channel.
+ * Returns in-memory history immediately and triggers async hydration on cache miss.
+ * Prefer getHistoryAsync when callers need hydrated data before proceeding.
  * @param {string} channelId - Channel ID
  * @returns {Array} Conversation history
  */
 export function getHistory(channelId) {
   if (!conversationHistory.has(channelId)) {
     conversationHistory.set(channelId, []);
-
-    // Best-effort async DB fallback on cache miss (non-blocking)
-    const pool = getPool();
-    if (pool) {
-      const limit = getHistoryLength();
-      pool
-        .query(
-          `SELECT role, content FROM conversations
-           WHERE channel_id = $1
-           ORDER BY created_at DESC
-           LIMIT $2`,
-          [channelId, limit],
-        )
-        .then(({ rows }) => {
-          if (rows.length > 0) {
-            const dbHistory = rows
-              .reverse()
-              .map((row) => ({ role: row.role, content: row.content }));
-            // Merge: keep any messages added concurrently via addToHistory
-            const arr = conversationHistory.get(channelId) || [];
-            // DB messages come first, then append any new messages added since cache miss
-            const merged = [...dbHistory, ...arr];
-            // Trim to configured limit — mutate the existing array in-place
-            // so callers holding a reference see the updated contents
-            arr.length = 0;
-            arr.push(...merged.slice(-limit));
-            info('Hydrated history from DB for channel', {
-              channelId,
-              count: dbHistory.length,
-              merged: merged.length,
-            });
-          }
-        })
-        .catch((err) => {
-          logWarn('Failed to load history from DB, using in-memory only', {
-            channelId,
-            error: err.message,
-          });
-        });
-    }
+    // Best-effort async DB fallback on cache miss (non-blocking).
+    void hydrateHistory(channelId);
   }
+
   return conversationHistory.get(channelId);
 }
 
 /**
- * Async version of getHistory that can hydrate from DB on cache miss
+ * Async version of getHistory that waits for in-flight hydration.
  * @param {string} channelId - Channel ID
  * @returns {Promise<Array>} Conversation history
  */
 export async function getHistoryAsync(channelId) {
   if (conversationHistory.has(channelId)) {
-    return conversationHistory.get(channelId);
-  }
-
-  const pending = pendingHydrations.get(channelId);
-  if (pending) {
-    return pending;
-  }
-
-  const hydrationPromise = (async () => {
-    // Try to load from DB
-    const pool = getPool();
-    if (pool) {
-      try {
-        const limit = getHistoryLength();
-        const { rows } = await pool.query(
-          `SELECT role, content FROM conversations
-           WHERE channel_id = $1
-           ORDER BY created_at DESC
-           LIMIT $2`,
-          [channelId, limit],
-        );
-
-        if (rows.length > 0) {
-          // Rows come back newest-first, reverse for chronological order
-          const history = rows.reverse().map((row) => ({
-            role: row.role,
-            content: row.content,
-          }));
-          conversationHistory.set(channelId, history);
-          info('Hydrated history from DB for channel', { channelId, count: history.length });
-          return history;
-        }
-      } catch (err) {
-        logWarn('Failed to load history from DB, using empty cache', {
-          channelId,
-          error: err.message,
-        });
-      }
+    const pending = pendingHydrations.get(channelId);
+    if (pending) {
+      await pending;
     }
-
-    conversationHistory.set(channelId, []);
     return conversationHistory.get(channelId);
-  })();
-
-  pendingHydrations.set(channelId, hydrationPromise);
-
-  try {
-    return await hydrationPromise;
-  } finally {
-    pendingHydrations.delete(channelId);
   }
+
+  return hydrateHistory(channelId);
 }
 
 /**
