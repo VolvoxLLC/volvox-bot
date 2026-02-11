@@ -143,5 +143,5 @@ After every code change, check whether these files need updating:
 2. **Config is async** — `loadConfig()` returns a Promise; it must be awaited at startup
 3. **Discord intents** — the bot needs MessageContent, GuildMembers, and GuildVoiceStates intents enabled
 4. **DATABASE_URL optional** — the bot works without a database (uses config.json only), but config persistence requires PostgreSQL
-5. **Undici override** — `pnpm.overrides` pins undici for Node 18 compatibility; don't remove it without checking
+5. **Undici override** — `pnpm.overrides` pins undici; this was originally added for Node 18 compatibility and may no longer be needed on Node 22. Verify before removing
 6. **2000-char limit** — Discord messages can't exceed 2000 characters; use `splitMessage()` utility

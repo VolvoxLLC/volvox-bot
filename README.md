@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/BillChirico/bills-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/BillChirico/bills-bot/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-22-green.svg)](https://nodejs.org)
 
 AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community. Built with discord.js v14 and powered by Claude via [OpenClaw](https://openclaw.com).
 
@@ -35,7 +35,7 @@ Discord User
 
 ## 📋 Prerequisites
 
-- [Node.js](https://nodejs.org) 18+ (22 recommended)
+- [Node.js](https://nodejs.org) 22+
 - [pnpm](https://pnpm.io) (`npm install -g pnpm`)
 - [PostgreSQL](https://www.postgresql.org/) database
 - [OpenClaw](https://openclaw.com) gateway (for AI chat features)
