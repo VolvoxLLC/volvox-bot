@@ -205,8 +205,8 @@ describe('getUserFriendlyMessage', () => {
     expect(msg).toContain('unexpected');
   });
 
-  it('should return default message for truly unknown errors', () => {
-    const err = new Error('completely unknown');
+  it('should return default message for error with empty message', () => {
+    const err = new Error();
     const msg = getUserFriendlyMessage(err);
     expect(typeof msg).toBe('string');
     expect(msg.length).toBeGreaterThan(0);
