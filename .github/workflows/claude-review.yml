@@ -25,5 +25,5 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-20250514
+          model: claude-opus-4-6-20250616
           timeout_minutes: 10
