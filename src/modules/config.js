@@ -223,7 +223,7 @@ export async function resetConfig(section) {
   try {
     pool = getPool();
   } catch {
-    logError('Database unavailable for config reset — updating in-memory only');
+    logWarn('Database unavailable for config reset — updating in-memory only');
   }
 
   if (section) {
