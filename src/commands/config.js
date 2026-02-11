@@ -85,49 +85,40 @@ function flattenConfigKeys(obj, prefix) {
 }
 
 /**
- * Handle autocomplete for config paths and section names.
+ * Handle autocomplete for the `path` option in /config set.
  *
- * The `section` option (used by view/reset) suggests top-level section names.
- * The `path` option (used by set) suggests dot-notation leaf paths that
- * setConfigValue actually accepts (≥2 segments, leaf values only).
+ * The `section` option (used by view/reset) uses static choices via
+ * addChoices(), so Discord resolves those client-side and never fires
+ * an autocomplete event for them. Only the `path` option is registered
+ * with setAutocomplete(true).
+ *
+ * Suggests dot-notation leaf paths (≥2 segments) that setConfigValue
+ * actually accepts.
  *
  * @param {Object} interaction - Discord interaction
  */
 export async function autocomplete(interaction) {
   try {
-    const focusedOption = interaction.options.getFocused(true);
-    const focusedValue = focusedOption.value.toLowerCase();
+    const focusedValue = interaction.options.getFocused().toLowerCase();
     const config = getConfig();
 
-    let choices;
-
-    if (focusedOption.name === 'section') {
-      // Autocomplete section names for view/reset subcommands
-      choices = Object.keys(config)
-        .filter(s => s.toLowerCase().includes(focusedValue))
-        .slice(0, 25)
-        .map(s => ({ name: s, value: s }));
-    } else {
-      // Autocomplete dot-notation leaf paths for set subcommand.
-      // Only suggest paths with ≥2 segments that setConfigValue accepts.
-      const paths = [];
-      for (const [section, value] of Object.entries(config)) {
-        if (typeof value === 'object' && value !== null) {
-          paths.push(...flattenConfigKeys(value, section));
-        }
+    const paths = [];
+    for (const [section, value] of Object.entries(config)) {
+      if (typeof value === 'object' && value !== null) {
+        paths.push(...flattenConfigKeys(value, section));
       }
-
-      choices = paths
-        .filter(p => p.includes('.') && p.toLowerCase().includes(focusedValue))
-        .sort((a, b) => {
-          const aStarts = a.toLowerCase().startsWith(focusedValue);
-          const bStarts = b.toLowerCase().startsWith(focusedValue);
-          if (aStarts !== bStarts) return aStarts ? -1 : 1;
-          return a.localeCompare(b);
-        })
-        .slice(0, 25)
-        .map(p => ({ name: p, value: p }));
     }
+
+    const choices = paths
+      .filter(p => p.includes('.') && p.toLowerCase().includes(focusedValue))
+      .sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(focusedValue);
+        const bStarts = b.toLowerCase().startsWith(focusedValue);
+        if (aStarts !== bStarts) return aStarts ? -1 : 1;
+        return a.localeCompare(b);
+      })
+      .slice(0, 25)
+      .map(p => ({ name: p, value: p }));
 
     await interaction.respond(choices);
   } catch {
