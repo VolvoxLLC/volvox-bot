@@ -194,7 +194,7 @@ export async function setConfigValue(path, value) {
   }
 
   // Update in-memory cache (mutate in-place for reference propagation)
-  if (!configCache[section] || typeof configCache[section] !== 'object') {
+  if (!configCache[section] || typeof configCache[section] !== 'object' || Array.isArray(configCache[section])) {
     configCache[section] = {};
   }
   setNestedValue(configCache[section], nestedParts, parsedVal);
