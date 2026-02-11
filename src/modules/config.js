@@ -84,7 +84,7 @@ export async function loadConfig() {
         info('Config seeded to database');
         configCache = { ...fileConfig };
       } catch (txErr) {
-        await client.query('ROLLBACK');
+        try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
         throw txErr;
       } finally {
         client.release();
