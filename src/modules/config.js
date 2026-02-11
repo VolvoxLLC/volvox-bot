@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getPool } from '../db.js';
-import { info, error as logError } from '../logger.js';
+import { info, warn as logWarn, error as logError } from '../logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', '..', 'config.json');
@@ -154,7 +154,7 @@ export async function setConfigValue(path, value) {
     pool = getPool();
   } catch {
     // DB not initialized — skip persistence, fall through to in-memory update
-    logError('Database not initialized for config write — updating in-memory only');
+    logWarn('Database not initialized for config write — updating in-memory only');
   }
 
   if (pool) {
