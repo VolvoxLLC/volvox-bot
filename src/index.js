@@ -11,19 +11,20 @@
  * - Structured logging
  */
 
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
-import { readdirSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { info, warn, error } from './logger.js';
-import { initDb, closeDb } from './db.js';
-import { loadConfig, getConfig } from './modules/config.js';
+import { closeDb, initDb } from './db.js';
+import { error, info, warn } from './logger.js';
+import { getConversationHistory, setConversationHistory } from './modules/ai.js';
+import { loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { HealthMonitor } from './utils/health.js';
+import { loadCommandsFromDirectory } from './utils/loadCommands.js';
+import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
-import { hasPermission, getPermissionError } from './utils/permissions.js';
-import { getConversationHistory, setConversationHistory } from './modules/ai.js';
 
 // ES module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -125,39 +126,25 @@ function loadState() {
  */
 async function loadCommands() {
   const commandsPath = join(__dirname, 'commands');
-  const commandFiles = readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-  for (const file of commandFiles) {
-    const filePath = join(commandsPath, file);
-    try {
-      const command = await import(filePath);
-      if (command.data && command.execute) {
-        client.commands.set(command.data.name, command);
-        info('Loaded command', { command: command.data.name });
-      } else {
-        warn('Command missing data or execute export', { file });
-      }
-    } catch (err) {
-      error('Failed to load command', { file, error: err.message });
-    }
-  }
+  await loadCommandsFromDirectory({
+    commandsPath,
+    onCommandLoaded: (command) => {
+      client.commands.set(command.data.name, command);
+    },
+  });
 }
 
 // Event handlers are registered after config loads (see startup below)
 
 // Extend ready handler to register slash commands
-client.once('clientReady', async () => {
+client.once(Events.ClientReady, async () => {
   // Register slash commands with Discord
   try {
     const commands = Array.from(client.commands.values());
     const guildId = process.env.GUILD_ID || null;
 
-    await registerCommands(
-      commands,
-      client.user.id,
-      process.env.DISCORD_TOKEN,
-      guildId
-    );
+    await registerCommands(commands, client.user.id, process.env.DISCORD_TOKEN, guildId);
   } catch (err) {
     error('Command registration failed', { error: err.message });
   }
@@ -189,7 +176,7 @@ client.on('interactionCreate', async (interaction) => {
     if (!hasPermission(member, commandName, config)) {
       await interaction.reply({
         content: getPermissionError(commandName),
-        ephemeral: true
+        ephemeral: true,
       });
       warn('Permission denied', { user: interaction.user.tag, command: commandName });
       return;
@@ -200,7 +187,7 @@ client.on('interactionCreate', async (interaction) => {
     if (!command) {
       await interaction.reply({
         content: '❌ Command not found.',
-        ephemeral: true
+        ephemeral: true,
       });
       return;
     }
@@ -212,7 +199,7 @@ client.on('interactionCreate', async (interaction) => {
 
     const errorMessage = {
       content: '❌ An error occurred while executing this command.',
-      ephemeral: true
+      ephemeral: true,
     };
 
     if (interaction.replied || interaction.deferred) {
@@ -236,8 +223,8 @@ async function gracefulShutdown(signal) {
     info('Waiting for pending requests', { count: pendingRequests.size });
     const startTime = Date.now();
 
-    while (pendingRequests.size > 0 && (Date.now() - startTime) < SHUTDOWN_TIMEOUT) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    while (pendingRequests.size > 0 && Date.now() - startTime < SHUTDOWN_TIMEOUT) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     if (pendingRequests.size > 0) {
@@ -277,7 +264,7 @@ client.on('error', (err) => {
   error('Discord client error', {
     error: err.message,
     stack: err.stack,
-    code: err.code
+    code: err.code,
   });
 });
 
@@ -285,7 +272,7 @@ process.on('unhandledRejection', (err) => {
   error('Unhandled promise rejection', {
     error: err?.message || String(err),
     stack: err?.stack,
-    type: typeof err
+    type: typeof err,
   });
 });
 

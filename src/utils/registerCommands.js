@@ -5,6 +5,7 @@
  */
 
 import { REST, Routes } from 'discord.js';
+import { info, error as logError } from '../logger.js';
 
 /**
  * Register slash commands with Discord
@@ -25,7 +26,7 @@ export async function registerCommands(commands, clientId, token, guildId = null
   }
 
   // Convert command modules to JSON for API
-  const commandData = commands.map(cmd => {
+  const commandData = commands.map((cmd) => {
     if (!cmd.data || typeof cmd.data.toJSON !== 'function') {
       throw new Error('Each command must have a .data property with toJSON() method');
     }
@@ -35,26 +36,24 @@ export async function registerCommands(commands, clientId, token, guildId = null
   const rest = new REST({ version: '10' }).setToken(token);
 
   try {
-    console.log(`🔄 Registering ${commandData.length} slash command(s)...`);
+    info(`Registering ${commandData.length} slash command(s)`);
 
     let data;
     if (guildId) {
       // Guild-specific commands (instant updates, good for development)
-      data = await rest.put(
-        Routes.applicationGuildCommands(clientId, guildId),
-        { body: commandData }
-      );
+      data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+        body: commandData,
+      });
     } else {
       // Global commands (can take up to 1 hour to update)
-      data = await rest.put(
-        Routes.applicationCommands(clientId),
-        { body: commandData }
-      );
+      data = await rest.put(Routes.applicationCommands(clientId), { body: commandData });
     }
 
-    console.log(`✅ Successfully registered ${data.length} slash command(s)${guildId ? ' (guild)' : ' (global)'}`);
+    info(`Successfully registered ${data.length} slash command(s)`, {
+      scope: guildId ? 'guild' : 'global',
+    });
   } catch (err) {
-    console.error('❌ Failed to register commands:', err.message);
+    logError('Failed to register commands', { error: err.message, stack: err.stack });
     throw err;
   }
 }

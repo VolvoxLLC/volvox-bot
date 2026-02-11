@@ -23,11 +23,7 @@
       "timezone": "America/New_York",
       "activityWindowMinutes": 45,
       "milestoneInterval": 25,
-      "highlightChannels": [
-        "1438631182379253814",
-        "1444154471704957069",
-        "1446317676988465242"
-      ],
+      "highlightChannels": ["1438631182379253814", "1444154471704957069", "1446317676988465242"],
       "excludeChannels": []
     }
   },

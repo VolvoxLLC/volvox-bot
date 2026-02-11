@@ -48,7 +48,7 @@ export function classifyError(error, context = {}) {
   const status = error.status || context.status || context.statusCode;
 
   // Network errors
-  if (code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'ETIMEDOUT') {
+  if (code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
     return ErrorType.NETWORK;
   }
   if (code === 'ETIMEDOUT' || message.includes('timeout')) {
@@ -115,31 +115,44 @@ export function getUserFriendlyMessage(error, context = {}) {
   const errorType = classifyError(error, context);
 
   const messages = {
-    [ErrorType.NETWORK]: "I'm having trouble connecting to my brain right now. Check if the AI service is running and try again!",
+    [ErrorType.NETWORK]:
+      "I'm having trouble connecting to my brain right now. Check if the AI service is running and try again!",
 
-    [ErrorType.TIMEOUT]: "That took too long to process. Try again with a shorter message, or wait a moment and retry!",
+    [ErrorType.TIMEOUT]:
+      'That took too long to process. Try again with a shorter message, or wait a moment and retry!',
 
-    [ErrorType.API_RATE_LIMIT]: "Whoa, too many requests! Let's take a quick breather. Try again in a minute.",
+    [ErrorType.API_RATE_LIMIT]:
+      "Whoa, too many requests! Let's take a quick breather. Try again in a minute.",
 
-    [ErrorType.API_UNAUTHORIZED]: "I'm having authentication issues with the AI service. An admin needs to check the API credentials.",
+    [ErrorType.API_UNAUTHORIZED]:
+      "I'm having authentication issues with the AI service. An admin needs to check the API credentials.",
 
-    [ErrorType.API_NOT_FOUND]: "The AI service endpoint isn't responding. Please check if it's configured correctly.",
+    [ErrorType.API_NOT_FOUND]:
+      "The AI service endpoint isn't responding. Please check if it's configured correctly.",
 
-    [ErrorType.API_SERVER_ERROR]: "The AI service is having technical difficulties. It should recover automatically - try again in a moment!",
+    [ErrorType.API_SERVER_ERROR]:
+      'The AI service is having technical difficulties. It should recover automatically - try again in a moment!',
 
-    [ErrorType.API_ERROR]: "Something went wrong with the AI service. Give it another shot in a moment!",
+    [ErrorType.API_ERROR]:
+      'Something went wrong with the AI service. Give it another shot in a moment!',
 
-    [ErrorType.DISCORD_PERMISSION]: "I don't have permission to do that! An admin needs to check my role permissions.",
+    [ErrorType.DISCORD_PERMISSION]:
+      "I don't have permission to do that! An admin needs to check my role permissions.",
 
-    [ErrorType.DISCORD_CHANNEL_NOT_FOUND]: "I can't find that channel. It might have been deleted, or I don't have access to it.",
+    [ErrorType.DISCORD_CHANNEL_NOT_FOUND]:
+      "I can't find that channel. It might have been deleted, or I don't have access to it.",
 
-    [ErrorType.DISCORD_MISSING_ACCESS]: "I don't have access to that resource. Please check my permissions!",
+    [ErrorType.DISCORD_MISSING_ACCESS]:
+      "I don't have access to that resource. Please check my permissions!",
 
-    [ErrorType.CONFIG_MISSING]: "Configuration file not found! Please create a config.json file (you can copy from config.example.json).",
+    [ErrorType.CONFIG_MISSING]:
+      'Configuration file not found! Please create a config.json file (you can copy from config.example.json).',
 
-    [ErrorType.CONFIG_INVALID]: "The configuration file has errors. Please check config.json for syntax errors or missing required fields.",
+    [ErrorType.CONFIG_INVALID]:
+      'The configuration file has errors. Please check config.json for syntax errors or missing required fields.',
 
-    [ErrorType.UNKNOWN]: "Something unexpected happened. Try again, and if it keeps happening, check the logs for details.",
+    [ErrorType.UNKNOWN]:
+      'Something unexpected happened. Try again, and if it keeps happening, check the logs for details.',
   };
 
   return messages[errorType] || messages[ErrorType.UNKNOWN];
@@ -156,27 +169,34 @@ export function getSuggestedNextSteps(error, context = {}) {
   const errorType = classifyError(error, context);
 
   const suggestions = {
-    [ErrorType.NETWORK]: "Make sure the AI service (OpenClaw) is running and accessible.",
+    [ErrorType.NETWORK]: 'Make sure the AI service (OpenClaw) is running and accessible.',
 
-    [ErrorType.TIMEOUT]: "Try a shorter message or wait a moment before retrying.",
+    [ErrorType.TIMEOUT]: 'Try a shorter message or wait a moment before retrying.',
 
-    [ErrorType.API_RATE_LIMIT]: "Wait 60 seconds before trying again.",
+    [ErrorType.API_RATE_LIMIT]: 'Wait 60 seconds before trying again.',
 
-    [ErrorType.API_UNAUTHORIZED]: "Check the OPENCLAW_TOKEN environment variable and API credentials.",
+    [ErrorType.API_UNAUTHORIZED]:
+      'Check the OPENCLAW_API_KEY environment variable (or legacy OPENCLAW_TOKEN) and API credentials.',
 
-    [ErrorType.API_NOT_FOUND]: "Verify the OPENCLAW_URL environment variable points to the correct endpoint.",
+    [ErrorType.API_NOT_FOUND]:
+      'Verify OPENCLAW_API_URL (or legacy OPENCLAW_URL) points to the correct endpoint.',
 
-    [ErrorType.API_SERVER_ERROR]: "The service should recover automatically. If it persists, restart the AI service.",
+    [ErrorType.API_SERVER_ERROR]:
+      'The service should recover automatically. If it persists, restart the AI service.',
 
-    [ErrorType.DISCORD_PERMISSION]: "Grant the bot appropriate permissions in Server Settings > Roles.",
+    [ErrorType.DISCORD_PERMISSION]:
+      'Grant the bot appropriate permissions in Server Settings > Roles.',
 
-    [ErrorType.DISCORD_CHANNEL_NOT_FOUND]: "Update the channel ID in config.json or verify the channel exists.",
+    [ErrorType.DISCORD_CHANNEL_NOT_FOUND]:
+      'Update the channel ID in config.json or verify the channel exists.',
 
-    [ErrorType.DISCORD_MISSING_ACCESS]: "Ensure the bot has access to the required channels and roles.",
+    [ErrorType.DISCORD_MISSING_ACCESS]:
+      'Ensure the bot has access to the required channels and roles.',
 
-    [ErrorType.CONFIG_MISSING]: "Create config.json from config.example.json and fill in your settings.",
+    [ErrorType.CONFIG_MISSING]:
+      'Create config.json from config.example.json and fill in your settings.',
 
-    [ErrorType.CONFIG_INVALID]: "Validate your config.json syntax using a JSON validator.",
+    [ErrorType.CONFIG_INVALID]: 'Validate your config.json syntax using a JSON validator.',
   };
 
   return suggestions[errorType] || null;

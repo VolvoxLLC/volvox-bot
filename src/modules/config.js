@@ -3,11 +3,11 @@
  * Loads config from PostgreSQL with config.json as the seed/fallback
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getPool } from '../db.js';
-import { info, warn as logWarn, error as logError } from '../logger.js';
+import { info, error as logError, warn as logWarn } from '../logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', '..', 'config.json');
@@ -61,7 +61,9 @@ export async function loadConfig() {
     } catch {
       // DB not initialized — file config is our only option
       if (!fileConfig) {
-        throw new Error('No configuration source available: config.json is missing and database is not initialized');
+        throw new Error(
+          'No configuration source available: config.json is missing and database is not initialized',
+        );
       }
       info('Database not available, using config.json');
       configCache = structuredClone(fileConfig);
@@ -73,7 +75,9 @@ export async function loadConfig() {
 
     if (rows.length === 0) {
       if (!fileConfig) {
-        throw new Error('No configuration source available: database is empty and config.json is missing');
+        throw new Error(
+          'No configuration source available: database is empty and config.json is missing',
+        );
       }
       // Seed database from config.json inside a transaction
       info('No config in database, seeding from config.json');
@@ -83,14 +87,18 @@ export async function loadConfig() {
         for (const [key, value] of Object.entries(fileConfig)) {
           await client.query(
             'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-            [key, JSON.stringify(value)]
+            [key, JSON.stringify(value)],
           );
         }
         await client.query('COMMIT');
         info('Config seeded to database');
         configCache = structuredClone(fileConfig);
       } catch (txErr) {
-        try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          /* ignore rollback failure */
+        }
         throw txErr;
       } finally {
         client.release();
@@ -168,31 +176,34 @@ export async function setConfigValue(path, value) {
     try {
       await client.query('BEGIN');
       // Lock the row (or prepare for INSERT if missing)
-      const { rows } = await client.query(
-        'SELECT value FROM config WHERE key = $1 FOR UPDATE',
-        [section]
-      );
+      const { rows } = await client.query('SELECT value FROM config WHERE key = $1 FOR UPDATE', [
+        section,
+      ]);
 
       if (rows.length > 0) {
         // Row exists — merge change into the live DB value
         const dbSection = rows[0].value;
         setNestedValue(dbSection, nestedParts, parsedVal);
 
-        await client.query(
-          'UPDATE config SET value = $1, updated_at = NOW() WHERE key = $2',
-          [JSON.stringify(dbSection), section]
-        );
+        await client.query('UPDATE config SET value = $1, updated_at = NOW() WHERE key = $2', [
+          JSON.stringify(dbSection),
+          section,
+        ]);
       } else {
         // New section — use ON CONFLICT to handle concurrent inserts safely
         await client.query(
           'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-          [section, JSON.stringify(sectionClone)]
+          [section, JSON.stringify(sectionClone)],
         );
       }
       await client.query('COMMIT');
       dbPersisted = true;
     } catch (txErr) {
-      try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        /* ignore rollback failure */
+      }
       throw txErr;
     } finally {
       client.release();
@@ -200,7 +211,11 @@ export async function setConfigValue(path, value) {
   }
 
   // Update in-memory cache (mutate in-place for reference propagation)
-  if (!configCache[section] || typeof configCache[section] !== 'object' || Array.isArray(configCache[section])) {
+  if (
+    !configCache[section] ||
+    typeof configCache[section] !== 'object' ||
+    Array.isArray(configCache[section])
+  ) {
     configCache[section] = {};
   }
   setNestedValue(configCache[section], nestedParts, parsedVal);
@@ -221,7 +236,7 @@ export async function resetConfig(section) {
   } catch {
     throw new Error(
       'Cannot reset configuration: config.json is not available. ' +
-      'Reset requires the default config file as a baseline.'
+        'Reset requires the default config file as a baseline.',
     );
   }
 
@@ -241,10 +256,13 @@ export async function resetConfig(section) {
       try {
         await pool.query(
           'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-          [section, JSON.stringify(fileConfig[section])]
+          [section, JSON.stringify(fileConfig[section])],
         );
       } catch (err) {
-        logError('Database error during section reset — updating in-memory only', { section, error: err.message });
+        logError('Database error during section reset — updating in-memory only', {
+          section,
+          error: err.message,
+        });
       }
     }
 
@@ -268,21 +286,24 @@ export async function resetConfig(section) {
         for (const [key, value] of Object.entries(fileConfig)) {
           await client.query(
             'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-            [key, JSON.stringify(value)]
+            [key, JSON.stringify(value)],
           );
         }
         // Remove stale keys that exist in DB but not in config.json
         const fileKeys = Object.keys(fileConfig);
         if (fileKeys.length > 0) {
-          await client.query(
-            'DELETE FROM config WHERE key != ALL($1::text[])',
-            [fileKeys]
-          );
+          await client.query('DELETE FROM config WHERE key != ALL($1::text[])', [fileKeys]);
         }
         await client.query('COMMIT');
       } catch (txErr) {
-        try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
-        logError('Database error during full config reset — updating in-memory only', { error: txErr.message });
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          /* ignore rollback failure */
+        }
+        logError('Database error during full config reset — updating in-memory only', {
+          error: txErr.message,
+        });
       } finally {
         client.release();
       }

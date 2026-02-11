@@ -5,8 +5,8 @@
  * exponential backoff and integration with error classification.
  */
 
-import { isRetryable, classifyError } from './errors.js';
-import { warn, error, debug } from '../logger.js';
+import { debug, error, warn } from '../logger.js';
+import { classifyError, isRetryable } from './errors.js';
 
 /**
  * Sleep for a specified duration
@@ -14,7 +14,7 @@ import { warn, error, debug } from '../logger.js';
  * @returns {Promise<void>}
  */
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -26,7 +26,7 @@ function sleep(ms) {
  */
 function calculateBackoff(attempt, baseDelay, maxDelay) {
   // Exponential backoff: baseDelay * 2^attempt
-  const delay = baseDelay * Math.pow(2, attempt);
+  const delay = baseDelay * 2 ** attempt;
 
   // Cap at maxDelay
   return Math.min(delay, maxDelay);

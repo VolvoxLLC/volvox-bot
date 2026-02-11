@@ -3,11 +3,16 @@
  * Handles Discord event listeners and handlers
  */
 
-import { sendWelcomeMessage, recordCommunityActivity } from './welcome.js';
-import { isSpam, sendSpamAlert } from './spam.js';
+import { Events } from 'discord.js';
+import { info, error as logError, warn } from '../logger.js';
+import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
-import { splitMessage, needsSplitting } from '../utils/splitMessage.js';
+import { isSpam, sendSpamAlert } from './spam.js';
+import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
+
+/** @type {boolean} Guard against duplicate process-level handler registration */
+let processHandlersRegistered = false;
 
 /**
  * Register bot ready event handler
@@ -16,9 +21,8 @@ import { splitMessage, needsSplitting } from '../utils/splitMessage.js';
  * @param {Object} healthMonitor - Health monitor instance
  */
 export function registerReadyHandler(client, config, healthMonitor) {
-  client.once('clientReady', () => {
-    console.log(`✅ ${client.user.tag} is online!`);
-    console.log(`📡 Serving ${client.guilds.cache.size} server(s)`);
+  client.once(Events.ClientReady, () => {
+    info(`${client.user.tag} is online`, { servers: client.guilds.cache.size });
 
     // Record bot start time
     if (healthMonitor) {
@@ -26,13 +30,13 @@ export function registerReadyHandler(client, config, healthMonitor) {
     }
 
     if (config.welcome?.enabled) {
-      console.log(`👋 Welcome messages → #${config.welcome.channelId}`);
+      info('Welcome messages enabled', { channelId: config.welcome.channelId });
     }
     if (config.ai?.enabled) {
-      console.log(`🤖 AI chat enabled (${config.ai.model || 'claude-sonnet-4-20250514'})`);
+      info('AI chat enabled', { model: config.ai.model || 'claude-sonnet-4-20250514' });
     }
     if (config.moderation?.enabled) {
-      console.log(`🛡️ Moderation enabled`);
+      info('Moderation enabled');
     }
   });
 }
@@ -62,7 +66,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
 
     // Spam detection
     if (config.moderation?.enabled && isSpam(message.content)) {
-      console.log(`[SPAM] ${message.author.tag}: ${message.content.slice(0, 50)}...`);
+      warn('Spam detected', { userId: message.author.id, contentPreview: '[redacted]' });
       await sendSpamAlert(message, client, config);
       return;
     }
@@ -77,7 +81,8 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
 
       // Check if in allowed channel (if configured)
       const allowedChannels = config.ai?.channels || [];
-      const isAllowedChannel = allowedChannels.length === 0 || allowedChannels.includes(message.channel.id);
+      const isAllowedChannel =
+        allowedChannels.length === 0 || allowedChannels.includes(message.channel.id);
 
       if ((isMentioned || isReply) && isAllowedChannel) {
         // Reset chime-in counter so we don't double-respond
@@ -100,7 +105,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
           cleanContent,
           message.author.username,
           config,
-          healthMonitor
+          healthMonitor,
         );
 
         // Split long responses
@@ -119,7 +124,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
 
     // Chime-in: accumulate message for organic participation (fire-and-forget)
     accumulate(message, config).catch((err) => {
-      console.error('ChimeIn accumulate error:', err.message);
+      logError('ChimeIn accumulate error', { error: err?.message });
     });
   });
 }
@@ -129,13 +134,16 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
  * @param {Object} client - Discord client
  */
 export function registerErrorHandlers(client) {
-  client.on('error', (error) => {
-    console.error('Discord error:', error);
+  client.on('error', (err) => {
+    logError('Discord error', { error: err.message, stack: err.stack });
   });
 
-  process.on('unhandledRejection', (error) => {
-    console.error('Unhandled rejection:', error);
-  });
+  if (!processHandlersRegistered) {
+    process.on('unhandledRejection', (err) => {
+      logError('Unhandled rejection', { error: err?.message, stack: err?.stack });
+    });
+    processHandlersRegistered = true;
+  }
 }
 
 /**

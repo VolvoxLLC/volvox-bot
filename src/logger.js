@@ -8,11 +8,11 @@
  * - Console transport (file transport added in phase 3)
  */
 
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { readFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', 'config.json');
@@ -28,7 +28,7 @@ try {
     logLevel = process.env.LOG_LEVEL || config.logging?.level || 'info';
     fileOutputEnabled = config.logging?.fileOutput || false;
   }
-} catch (err) {
+} catch (_err) {
   // Fallback to default if config can't be loaded
   logLevel = process.env.LOG_LEVEL || 'info';
 }
@@ -39,7 +39,7 @@ if (fileOutputEnabled) {
     if (!existsSync(logsDir)) {
       mkdirSync(logsDir, { recursive: true });
     }
-  } catch (err) {
+  } catch (_err) {
     // Log directory creation failed, but continue without file logging
     fileOutputEnabled = false;
   }
@@ -50,11 +50,12 @@ if (fileOutputEnabled) {
  */
 const SENSITIVE_FIELDS = [
   'DISCORD_TOKEN',
+  'OPENCLAW_API_KEY',
   'OPENCLAW_TOKEN',
   'token',
   'password',
   'apiKey',
-  'authorization'
+  'authorization',
 ];
 
 /**
@@ -70,15 +71,13 @@ function filterSensitiveData(obj) {
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(item => filterSensitiveData(item));
+    return obj.map((item) => filterSensitiveData(item));
   }
 
   const filtered = {};
   for (const [key, value] of Object.entries(obj)) {
     // Check if key matches any sensitive field (case-insensitive)
-    const isSensitive = SENSITIVE_FIELDS.some(
-      field => key.toLowerCase() === field.toLowerCase()
-    );
+    const isSensitive = SENSITIVE_FIELDS.some((field) => key.toLowerCase() === field.toLowerCase());
 
     if (isSensitive) {
       filtered[key] = '[REDACTED]';
@@ -101,10 +100,10 @@ const redactSensitiveData = winston.format((info) => {
 
   // Filter each property in the info object
   for (const key in info) {
-    if (Object.prototype.hasOwnProperty.call(info, key) && !reserved.includes(key)) {
+    if (Object.hasOwn(info, key) && !reserved.includes(key)) {
       // Check if this key is sensitive (case-insensitive)
       const isSensitive = SENSITIVE_FIELDS.some(
-        field => key.toLowerCase() === field.toLowerCase()
+        (field) => key.toLowerCase() === field.toLowerCase(),
       );
 
       if (isSensitive) {
@@ -126,7 +125,7 @@ const EMOJI_MAP = {
   error: '❌',
   warn: '⚠️',
   info: '✅',
-  debug: '🔍'
+  debug: '🔍',
 };
 
 /**
@@ -140,13 +139,15 @@ const preserveOriginalLevel = winston.format((info) => {
 /**
  * Custom format for console output with emoji prefixes
  */
-const consoleFormat = winston.format.printf(({ level, message, timestamp, originalLevel, ...meta }) => {
-  // Use originalLevel for emoji lookup since 'level' may contain ANSI color codes
-  const prefix = EMOJI_MAP[originalLevel] || '📝';
-  const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
+const consoleFormat = winston.format.printf(
+  ({ level, message, timestamp, originalLevel, ...meta }) => {
+    // Use originalLevel for emoji lookup since 'level' may contain ANSI color codes
+    const prefix = EMOJI_MAP[originalLevel] || '📝';
+    const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
 
-  return `${prefix} [${timestamp}] ${level.toUpperCase()}: ${message}${metaStr}`;
-});
+    return `${prefix} [${timestamp}] ${originalLevel.toUpperCase()}: ${message}${metaStr}`;
+  },
+);
 
 /**
  * Create winston logger instance
@@ -158,9 +159,9 @@ const transports = [
       preserveOriginalLevel,
       winston.format.colorize(),
       winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      consoleFormat
-    )
-  })
+      consoleFormat,
+    ),
+  }),
 ];
 
 // Add file transport if enabled in config
@@ -174,9 +175,9 @@ if (fileOutputEnabled) {
       format: winston.format.combine(
         redactSensitiveData,
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        winston.format.json()
-      )
-    })
+        winston.format.json(),
+      ),
+    }),
   );
 
   // Separate transport for error-level logs only
@@ -190,19 +191,16 @@ if (fileOutputEnabled) {
       format: winston.format.combine(
         redactSensitiveData,
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        winston.format.json()
-      )
-    })
+        winston.format.json(),
+      ),
+    }),
   );
 }
 
 const logger = winston.createLogger({
   level: logLevel,
-  format: winston.format.combine(
-    winston.format.errors({ stack: true }),
-    winston.format.splat()
-  ),
-  transports
+  format: winston.format.combine(winston.format.errors({ stack: true }), winston.format.splat()),
+  transports,
 });
 
 /**
@@ -239,5 +237,5 @@ export default {
   info,
   warn,
   error,
-  logger // Export winston logger instance for advanced usage
+  logger, // Export winston logger instance for advanced usage
 };

@@ -9,9 +9,9 @@
  * - If NO  → resets the counter but keeps the buffer for context continuity
  */
 
-import { info, warn, error as logError } from '../logger.js';
-import { OPENCLAW_URL, OPENCLAW_TOKEN } from './ai.js';
-import { splitMessage, needsSplitting } from '../utils/splitMessage.js';
+import { info, error as logError, warn } from '../logger.js';
+import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
+import { OPENCLAW_TOKEN, OPENCLAW_URL } from './ai.js';
 
 // ── Per-channel state ──────────────────────────────────────────────────────────
 // Map<channelId, { messages: Array<{author, content}>, counter: number, lastActive: number, abortController: AbortController|null }>
@@ -39,8 +39,7 @@ function evictInactiveChannels() {
 
   // If still over limit, evict oldest
   if (channelBuffers.size > MAX_TRACKED_CHANNELS) {
-    const entries = [...channelBuffers.entries()]
-      .sort((a, b) => a[1].lastActive - b[1].lastActive);
+    const entries = [...channelBuffers.entries()].sort((a, b) => a[1].lastActive - b[1].lastActive);
     const toEvict = entries.slice(0, channelBuffers.size - MAX_TRACKED_CHANNELS);
     for (const [channelId] of toEvict) {
       channelBuffers.delete(channelId);
@@ -54,7 +53,12 @@ function evictInactiveChannels() {
 function getBuffer(channelId) {
   if (!channelBuffers.has(channelId)) {
     evictInactiveChannels();
-    channelBuffers.set(channelId, { messages: [], counter: 0, lastActive: Date.now(), abortController: null });
+    channelBuffers.set(channelId, {
+      messages: [],
+      counter: 0,
+      lastActive: Date.now(),
+      abortController: null,
+    });
   }
   const buf = channelBuffers.get(channelId);
   buf.lastActive = Date.now();
@@ -85,9 +89,7 @@ async function shouldChimeIn(buffer, config, signal) {
   const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
 
   // Format the buffered conversation with structured delimiters to prevent injection
-  const conversationText = buffer.messages
-    .map((m) => `${m.author}: ${m.content}`)
-    .join('\n');
+  const conversationText = buffer.messages.map((m) => `${m.author}: ${m.content}`).join('\n');
 
   // System instruction first (required by OpenAI-compatible proxies for Anthropic models)
   const messages = [
@@ -144,9 +146,7 @@ async function generateChimeInResponse(buffer, config, signal) {
   const model = config.ai?.model || 'claude-sonnet-4-20250514';
   const maxTokens = config.ai?.maxTokens || 1024;
 
-  const conversationText = buffer.messages
-    .map((m) => `${m.author}: ${m.content}`)
-    .join('\n');
+  const conversationText = buffer.messages.map((m) => `${m.author}: ${m.content}`).join('\n');
 
   const messages = [
     { role: 'system', content: systemPrompt },

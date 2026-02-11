@@ -24,7 +24,7 @@ const SPAM_PATTERNS = [
  * @returns {boolean} True if spam detected
  */
 export function isSpam(content) {
-  return SPAM_PATTERNS.some(pattern => pattern.test(content));
+  return SPAM_PATTERNS.some((pattern) => pattern.test(content));
 }
 
 /**
@@ -36,17 +36,19 @@ export function isSpam(content) {
 export async function sendSpamAlert(message, client, config) {
   if (!config.moderation?.alertChannelId) return;
 
-  const alertChannel = await client.channels.fetch(config.moderation.alertChannelId).catch(() => null);
+  const alertChannel = await client.channels
+    .fetch(config.moderation.alertChannelId)
+    .catch(() => null);
   if (!alertChannel) return;
 
   const embed = new EmbedBuilder()
-    .setColor(0xFF6B6B)
+    .setColor(0xff6b6b)
     .setTitle('⚠️ Potential Spam Detected')
     .addFields(
       { name: 'Author', value: `<@${message.author.id}>`, inline: true },
       { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
       { name: 'Content', value: message.content.slice(0, 1000) || '*empty*' },
-      { name: 'Link', value: `[Jump](${message.url})` }
+      { name: 'Link', value: `[Jump](${message.url})` },
     )
     .setTimestamp();
 

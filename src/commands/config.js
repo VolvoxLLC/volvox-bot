@@ -3,8 +3,8 @@
  * View, set, and reset bot configuration via slash commands
  */
 
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { getConfig, setConfigValue, resetConfig } from '../modules/config.js';
+import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { getConfig, resetConfig, setConfigValue } from '../modules/config.js';
 
 /**
  * Escape backticks in user-provided strings to prevent breaking Discord inline code formatting.
@@ -18,47 +18,49 @@ function escapeInlineCode(str) {
 export const data = new SlashCommandBuilder()
   .setName('config')
   .setDescription('View or manage bot configuration (Admin only)')
-  .addSubcommand(subcommand =>
+  .addSubcommand((subcommand) =>
     subcommand
       .setName('view')
       .setDescription('View current configuration')
-      .addStringOption(option =>
+      .addStringOption((option) =>
         option
           .setName('section')
           .setDescription('Specific config section to view')
           .setRequired(false)
-          .setAutocomplete(true)
-      )
+          .setAutocomplete(true),
+      ),
   )
-  .addSubcommand(subcommand =>
+  .addSubcommand((subcommand) =>
     subcommand
       .setName('set')
       .setDescription('Set a configuration value')
-      .addStringOption(option =>
+      .addStringOption((option) =>
         option
           .setName('path')
           .setDescription('Dot-notation path (e.g., ai.model, welcome.enabled)')
           .setRequired(true)
-          .setAutocomplete(true)
+          .setAutocomplete(true),
       )
-      .addStringOption(option =>
+      .addStringOption((option) =>
         option
           .setName('value')
-          .setDescription('Value (auto-coerces true/false/null/numbers; use "\\"text\\"" for literal strings)')
-          .setRequired(true)
-      )
+          .setDescription(
+            'Value (auto-coerces true/false/null/numbers; use "\\"text\\"" for literal strings)',
+          )
+          .setRequired(true),
+      ),
   )
-  .addSubcommand(subcommand =>
+  .addSubcommand((subcommand) =>
     subcommand
       .setName('reset')
       .setDescription('Reset configuration to defaults from config.json')
-      .addStringOption(option =>
+      .addStringOption((option) =>
         option
           .setName('section')
           .setDescription('Section to reset (omit to reset all)')
           .setRequired(false)
-          .setAutocomplete(true)
-      )
+          .setAutocomplete(true),
+      ),
   );
 
 export const adminOnly = true;
@@ -124,14 +126,14 @@ export async function autocomplete(interaction) {
   if (focusedOption.name === 'section') {
     // Autocomplete section names from live config
     choices = Object.keys(config)
-      .filter(s => s.toLowerCase().includes(focusedValue))
+      .filter((s) => s.toLowerCase().includes(focusedValue))
       .slice(0, 25)
-      .map(s => ({ name: s, value: s }));
+      .map((s) => ({ name: s, value: s }));
   } else {
     // Autocomplete dot-notation paths (leaf-only)
     const paths = collectConfigPaths(config);
     choices = paths
-      .filter(p => p.toLowerCase().includes(focusedValue))
+      .filter((p) => p.toLowerCase().includes(focusedValue))
       .sort((a, b) => {
         const aLower = a.toLowerCase();
         const bLower = b.toLowerCase();
@@ -143,7 +145,7 @@ export async function autocomplete(interaction) {
         return aLower.localeCompare(bLower);
       })
       .slice(0, 25)
-      .map(p => ({ name: p, value: p }));
+      .map((p) => ({ name: p, value: p }));
   }
 
   await interaction.respond(choices);
@@ -169,7 +171,7 @@ export async function execute(interaction) {
     default:
       await interaction.reply({
         content: `❌ Unknown subcommand: \`${subcommand}\``,
-        ephemeral: true
+        ephemeral: true,
       });
       break;
   }
@@ -187,9 +189,11 @@ async function handleView(interaction) {
     const section = interaction.options.getString('section');
 
     const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
+      .setColor(0x5865f2)
       .setTitle('⚙️ Bot Configuration')
-      .setFooter({ text: `${process.env.DATABASE_URL ? 'Stored in PostgreSQL' : 'Stored in memory (config.json)'} • Use /config set to modify` })
+      .setFooter({
+        text: `${process.env.DATABASE_URL ? 'Stored in PostgreSQL' : 'Stored in memory (config.json)'} • Use /config set to modify`,
+      })
       .setTimestamp();
 
     if (section) {
@@ -198,7 +202,7 @@ async function handleView(interaction) {
         const safeSection = escapeInlineCode(section);
         return await interaction.reply({
           content: `❌ Section \`${safeSection}\` not found in config`,
-          ephemeral: true
+          ephemeral: true,
         });
       }
 
@@ -206,7 +210,10 @@ async function handleView(interaction) {
       const sectionJson = JSON.stringify(sectionData, null, 2);
       embed.addFields({
         name: 'Settings',
-        value: '```json\n' + (sectionJson.length > 1000 ? sectionJson.slice(0, 997) + '...' : sectionJson) + '\n```'
+        value:
+          '```json\n' +
+          (sectionJson.length > 1000 ? `${sectionJson.slice(0, 997)}...` : sectionJson) +
+          '\n```',
       });
     } else {
       embed.setDescription('Current bot configuration');
@@ -217,7 +224,7 @@ async function handleView(interaction) {
 
       for (const [key, value] of Object.entries(config)) {
         const jsonStr = JSON.stringify(value, null, 2);
-        const fieldValue = '```json\n' + (jsonStr.length > 1000 ? jsonStr.slice(0, 997) + '...' : jsonStr) + '\n```';
+        const fieldValue = `\`\`\`json\n${jsonStr.length > 1000 ? `${jsonStr.slice(0, 997)}...` : jsonStr}\n\`\`\``;
         const fieldName = key.toUpperCase();
         const fieldLength = fieldName.length + fieldValue.length;
 
@@ -226,7 +233,7 @@ async function handleView(interaction) {
           embed.addFields({
             name: '⚠️ Truncated',
             value: 'Use `/config view section:<name>` to see remaining sections.',
-            inline: false
+            inline: false,
           });
           truncated = true;
           break;
@@ -236,20 +243,24 @@ async function handleView(interaction) {
         embed.addFields({
           name: fieldName,
           value: fieldValue,
-          inline: false
+          inline: false,
         });
       }
 
       if (truncated) {
-        embed.setFooter({ text: 'Some sections omitted • Use /config view section:<name> for details' });
+        embed.setFooter({
+          text: 'Some sections omitted • Use /config view section:<name> for details',
+        });
       }
     }
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
   } catch (err) {
+    const safeMessage =
+      process.env.NODE_ENV === 'production' ? 'An internal error occurred.' : err.message;
     await interaction.reply({
-      content: `❌ Failed to load config: ${err.message}`,
-      ephemeral: true
+      content: `❌ Failed to load config: ${safeMessage}`,
+      ephemeral: true,
     });
   }
 }
@@ -268,7 +279,7 @@ async function handleSet(interaction) {
     const safeSection = escapeInlineCode(section);
     return await interaction.reply({
       content: `❌ Invalid section \`${safeSection}\`. Valid sections: ${validSections.join(', ')}`,
-      ephemeral: true
+      ephemeral: true,
     });
   }
 
@@ -278,24 +289,30 @@ async function handleSet(interaction) {
     const updatedSection = await setConfigValue(path, value);
 
     // Traverse to the actual leaf value for display
-    const leafValue = path.split('.').slice(1).reduce((obj, k) => obj?.[k], updatedSection);
+    const leafValue = path
+      .split('.')
+      .slice(1)
+      .reduce((obj, k) => obj?.[k], updatedSection);
 
     const displayValue = JSON.stringify(leafValue, null, 2) ?? value;
-    const truncatedValue = displayValue.length > 1000 ? displayValue.slice(0, 997) + '...' : displayValue;
+    const truncatedValue =
+      displayValue.length > 1000 ? `${displayValue.slice(0, 997)}...` : displayValue;
 
     const embed = new EmbedBuilder()
-      .setColor(0x57F287)
+      .setColor(0x57f287)
       .setTitle('✅ Config Updated')
       .addFields(
-        { name: 'Path', value: `\`${path}\``, inline: true },
-        { name: 'New Value', value: `\`${truncatedValue}\``, inline: true }
+        { name: 'Path', value: `\`${escapeInlineCode(path)}\``, inline: true },
+        { name: 'New Value', value: `\`${escapeInlineCode(truncatedValue)}\``, inline: true },
       )
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {
-    const content = `❌ Failed to set config: ${err.message}`;
+    const safeMessage =
+      process.env.NODE_ENV === 'production' ? 'An internal error occurred.' : err.message;
+    const content = `❌ Failed to set config: ${safeMessage}`;
     if (interaction.deferred) {
       await interaction.editReply({ content });
     } else {
@@ -316,19 +333,21 @@ async function handleReset(interaction) {
     await resetConfig(section || undefined);
 
     const embed = new EmbedBuilder()
-      .setColor(0xFEE75C)
+      .setColor(0xfee75c)
       .setTitle('🔄 Config Reset')
       .setDescription(
         section
-          ? `Section **${section}** has been reset to defaults from config.json.`
-          : 'All configuration has been reset to defaults from config.json.'
+          ? `Section **${escapeInlineCode(section)}** has been reset to defaults from config.json.`
+          : 'All configuration has been reset to defaults from config.json.',
       )
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {
-    const content = `❌ Failed to reset config: ${err.message}`;
+    const safeMessage =
+      process.env.NODE_ENV === 'production' ? 'An internal error occurred.' : err.message;
+    const content = `❌ Failed to reset config: ${safeMessage}`;
     if (interaction.deferred) {
       await interaction.editReply({ content });
     } else {
