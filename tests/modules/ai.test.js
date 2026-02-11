@@ -328,7 +328,7 @@ describe('ai module', () => {
       expect(ch2.length).toBe(1);
 
       expect(mockQuery).toHaveBeenCalledTimes(1);
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER()'), [20]);
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER()'), [20, 30]);
       expect(info).toHaveBeenCalledWith(
         'Conversation history hydrated from DB',
         expect.objectContaining({ channels: 2, totalMessages: 3 }),
