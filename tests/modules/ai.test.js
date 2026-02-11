@@ -440,6 +440,25 @@ describe('ai module', () => {
       expect(info).toHaveBeenCalledWith('Conversation cleanup scheduler stopped');
     });
 
+    it('should unref cleanup timer so it does not keep the event loop alive', () => {
+      const mockQuery = vi.fn().mockResolvedValue({ rowCount: 0 });
+      const mockPool = { query: mockQuery };
+      setPool(mockPool);
+
+      const unref = vi.fn();
+      const fakeTimer = { unref };
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval').mockReturnValue(fakeTimer);
+      const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval').mockImplementation(() => {});
+
+      startConversationCleanup();
+
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+      expect(unref).toHaveBeenCalledTimes(1);
+
+      stopConversationCleanup();
+      expect(clearIntervalSpy).toHaveBeenCalledWith(fakeTimer);
+    });
+
     it('should run cleanup query on start', async () => {
       const mockQuery = vi.fn().mockResolvedValue({ rowCount: 5 });
       const mockPool = { query: mockQuery };

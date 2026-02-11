@@ -337,6 +337,7 @@ export function startConversationCleanup() {
   // Run cleanup immediately once, then on interval
   runCleanup();
   cleanupTimer = setInterval(runCleanup, CLEANUP_INTERVAL_MS);
+  cleanupTimer.unref();
   info('Conversation cleanup scheduler started', {
     intervalHours: CLEANUP_INTERVAL_MS / (60 * 60 * 1000),
   });
