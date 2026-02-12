@@ -100,9 +100,9 @@ Moderation commands follow a shared pattern via `src/modules/moderation.js`:
 
 1. `deferReply({ ephemeral: true })` — respond privately
 2. Validate inputs (hierarchy check, target vs. moderator, etc.)
-3. Execute the Discord action (ban, kick, timeout, etc.)
-4. `createCase()` — record in `mod_cases` table
-5. `sendDmNotification()` — DM the target (if enabled in config)
+3. `sendDmNotification()` — DM the target (if enabled in config)
+4. Execute the Discord action (ban, kick, timeout, etc.)
+5. `createCase()` — record in `mod_cases` table
 6. `sendModLogEmbed()` — post embed to the configured mod log channel
 7. `checkEscalation()` — for warn commands, check auto-escalation thresholds
 
@@ -173,4 +173,4 @@ After every code change, check whether these files need updating:
 8. **Hierarchy checks** — `checkHierarchy(moderator, target)` prevents moderating users with equal or higher roles; always call this before executing mod actions
 9. **Duration caps** — Discord timeouts max at 28 days; slowmode caps at 6 hours (21600s). Both are enforced in command logic
 10. **Tempban scheduler** — runs on a 60s interval; started in `index.js` startup and stopped in graceful shutdown. Catches up on missed unbans after restart
-11. **Case numbering** — per-guild sequential via `getNextCaseNumber(guildId)`. Uses `COALESCE(MAX(case_number), 0) + 1` pattern
+11. **Case numbering** — per-guild sequential and assigned atomically inside `createCase()` using `COALESCE(MAX(case_number), 0) + 1` in a single INSERT

@@ -146,7 +146,7 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `enabled` | boolean | Enable spam detection |
+| `enabled` | boolean | Enable moderation features |
 | `alertChannelId` | string | Channel for mod alerts |
 | `autoDelete` | boolean | Auto-delete detected spam |
 | `dmNotifications.warn` | boolean | DM users when warned |
