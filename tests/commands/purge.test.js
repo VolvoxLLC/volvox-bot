@@ -253,7 +253,7 @@ describe('purge command', () => {
       await execute(interaction);
 
       expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to delete messages'),
+        expect.stringContaining('An error occurred'),
       );
     });
   });

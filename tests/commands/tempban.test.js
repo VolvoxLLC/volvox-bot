@@ -62,6 +62,7 @@ describe('tempban command', () => {
       members: {
         ban: vi.fn().mockResolvedValue(undefined),
         fetch: vi.fn().mockResolvedValue(mockMember),
+        me: { roles: { highest: { position: 10 } } },
       },
     },
     member: { roles: { highest: { position: 10 } } },
@@ -137,7 +138,7 @@ describe('tempban command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to execute'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

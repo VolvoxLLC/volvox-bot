@@ -3,7 +3,7 @@
  * Set channel slowmode duration
  */
 
-import { SlashCommandBuilder } from 'discord.js';
+import { ChannelType, SlashCommandBuilder } from 'discord.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { createCase, sendModLogEmbed } from '../modules/moderation.js';
@@ -19,7 +19,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   )
   .addChannelOption((opt) =>
-    opt.setName('channel').setDescription('Channel (defaults to current)').setRequired(false),
+    opt
+      .setName('channel')
+      .setDescription('Channel (defaults to current)')
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(false),
   )
   .addStringOption((opt) =>
     opt.setName('reason').setDescription('Reason for changing slowmode').setRequired(false),
@@ -32,15 +36,14 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
-  const channel = interaction.options.getChannel('channel') || interaction.channel;
-  const durationStr = interaction.options.getString('duration');
-  const reason = interaction.options.getString('reason');
-
   try {
+    await interaction.deferReply({ ephemeral: true });
+
+    const channel = interaction.options.getChannel('channel') || interaction.channel;
+    const durationStr = interaction.options.getString('duration');
+    const reason = interaction.options.getString('reason');
+
     let seconds = 0;
-    let capped = false;
-    let requestedSeconds = 0;
 
     if (durationStr !== '0') {
       const ms = parseDuration(durationStr);
@@ -50,12 +53,11 @@ export async function execute(interaction) {
         );
       }
 
-      requestedSeconds = Math.floor(ms / 1000);
-      seconds = requestedSeconds;
-      if (seconds > 21600) {
-        seconds = 21600;
-        capped = true;
+      if (ms > 6 * 60 * 60 * 1000) {
+        return await interaction.editReply('❌ Duration cannot exceed 6 hours.');
       }
+
+      seconds = Math.floor(ms / 1000);
     }
 
     await channel.setRateLimitPerUser(seconds);
@@ -69,9 +71,7 @@ export async function execute(interaction) {
       moderatorTag: interaction.user.tag,
       reason:
         reason ||
-        (seconds === 0
-          ? 'Slowmode disabled'
-          : `Slowmode set to ${formatDuration(seconds * 1000)}${capped ? ` (requested ${formatDuration(requestedSeconds * 1000)})` : ''}`),
+        (seconds === 0 ? 'Slowmode disabled' : `Slowmode set to ${formatDuration(seconds * 1000)}`),
       duration: seconds > 0 ? formatDuration(seconds * 1000) : null,
     });
 
@@ -84,15 +84,14 @@ export async function execute(interaction) {
       );
     } else {
       info('Slowmode set', { channelId: channel.id, seconds, moderator: interaction.user.tag });
-      const capNote = capped
-        ? ` ⚠️ Requested **${formatDuration(requestedSeconds * 1000)}**, capped at the 6-hour maximum.`
-        : '';
       await interaction.editReply(
-        `✅ Slowmode set to **${formatDuration(seconds * 1000)}** in ${channel}.${capNote} (Case #${caseData.case_number})`,
+        `✅ Slowmode set to **${formatDuration(seconds * 1000)}** in ${channel}. (Case #${caseData.case_number})`,
       );
     }
   } catch (err) {
     logError('Slowmode command failed', { error: err.message, command: 'slowmode' });
-    await interaction.editReply(`❌ Failed to set slowmode: ${err.message}`);
+    await interaction
+      .editReply('❌ An error occurred. Please try again or contact an administrator.')
+      .catch(() => {});
   }
 }

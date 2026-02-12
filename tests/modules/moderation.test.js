@@ -529,6 +529,26 @@ describe('moderation module', () => {
       const target = { roles: { highest: { position: 10 } } };
       expect(checkHierarchy(moderator, target)).toContain('cannot moderate');
     });
+
+    it('should return null when botMember is null', () => {
+      const moderator = { roles: { highest: { position: 10 } } };
+      const target = { roles: { highest: { position: 5 } } };
+      expect(checkHierarchy(moderator, target, null)).toBeNull();
+    });
+
+    it('should return error when bot role is too low', () => {
+      const moderator = { roles: { highest: { position: 10 } } };
+      const target = { roles: { highest: { position: 5 } } };
+      const botMember = { roles: { highest: { position: 4 } } };
+      expect(checkHierarchy(moderator, target, botMember)).toContain('my role is not high enough');
+    });
+
+    it('should pass when bot role is higher than target', () => {
+      const moderator = { roles: { highest: { position: 10 } } };
+      const target = { roles: { highest: { position: 5 } } };
+      const botMember = { roles: { highest: { position: 8 } } };
+      expect(checkHierarchy(moderator, target, botMember)).toBeNull();
+    });
   });
 
   describe('shouldSendDm', () => {

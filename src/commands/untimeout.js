@@ -23,9 +23,9 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
-
   try {
+    await interaction.deferReply({ ephemeral: true });
+
     const config = getConfig();
     const target = interaction.options.getMember('user');
     if (!target) {
@@ -33,7 +33,7 @@ export async function execute(interaction) {
     }
     const reason = interaction.options.getString('reason');
 
-    const hierarchyError = checkHierarchy(interaction.member, target);
+    const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
     if (hierarchyError) {
       return await interaction.editReply(hierarchyError);
     }
@@ -57,11 +57,8 @@ export async function execute(interaction) {
     );
   } catch (err) {
     logError('Command error', { error: err.message, command: 'untimeout' });
-    const content = `❌ Failed to execute: ${err.message}`;
-    if (interaction.deferred) {
-      await interaction.editReply(content);
-    } else {
-      await interaction.reply({ content, ephemeral: true });
-    }
+    await interaction
+      .editReply('❌ An error occurred. Please try again or contact an administrator.')
+      .catch(() => {});
   }
 }

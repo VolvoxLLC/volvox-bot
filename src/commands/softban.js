@@ -37,9 +37,9 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
-
   try {
+    await interaction.deferReply({ ephemeral: true });
+
     const config = getConfig();
     const target = interaction.options.getMember('user');
     if (!target) {
@@ -48,7 +48,7 @@ export async function execute(interaction) {
     const reason = interaction.options.getString('reason');
     const deleteMessageDays = interaction.options.getInteger('delete_messages') ?? 7;
 
-    const hierarchyError = checkHierarchy(interaction.member, target);
+    const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
     if (hierarchyError) {
       return await interaction.editReply(hierarchyError);
     }
@@ -82,12 +82,6 @@ export async function execute(interaction) {
       }
     }
 
-    if (unbanError) {
-      throw new Error(
-        'Softban unban step failed after multiple attempts. The user may still be banned.',
-      );
-    }
-
     const caseData = await createCase(interaction.guild.id, {
       action: 'softban',
       targetId: target.id,
@@ -100,16 +94,20 @@ export async function execute(interaction) {
     await sendModLogEmbed(interaction.client, config, caseData);
 
     info('User softbanned', { target: target.user.tag, moderator: interaction.user.tag });
-    await interaction.editReply(
-      `✅ **${target.user.tag}** has been soft-banned. (Case #${caseData.case_number})`,
-    );
+
+    if (unbanError) {
+      await interaction.editReply(
+        `⚠️ **${target.user.tag}** was banned but the unban failed — they remain banned. Please manually unban. (Case #${caseData.case_number})`,
+      );
+    } else {
+      await interaction.editReply(
+        `✅ **${target.user.tag}** has been soft-banned. (Case #${caseData.case_number})`,
+      );
+    }
   } catch (err) {
     logError('Command error', { error: err.message, command: 'softban' });
-    const content = `❌ Failed to execute: ${err.message}`;
-    if (interaction.deferred) {
-      await interaction.editReply(content);
-    } else {
-      await interaction.reply({ content, ephemeral: true });
-    }
+    await interaction
+      .editReply('❌ An error occurred. Please try again or contact an administrator.')
+      .catch(() => {});
   }
 }

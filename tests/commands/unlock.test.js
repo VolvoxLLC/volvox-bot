@@ -139,7 +139,7 @@ describe('unlock command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to unlock channel'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

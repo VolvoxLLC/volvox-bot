@@ -140,7 +140,7 @@ describe('lock command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to lock channel'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

@@ -19,11 +19,10 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
-
-  const user = interaction.options.getUser('user');
-
   try {
+    await interaction.deferReply({ ephemeral: true });
+
+    const user = interaction.options.getUser('user');
     const pool = getPool();
     const { rows } = await pool.query(
       'SELECT * FROM mod_cases WHERE guild_id = $1 AND target_id = $2 ORDER BY created_at DESC LIMIT 25',

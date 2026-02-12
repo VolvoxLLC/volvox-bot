@@ -64,7 +64,11 @@ export async function execute(interaction) {
     }
 
     if (member) {
-      const hierarchyError = checkHierarchy(interaction.member, member);
+      const hierarchyError = checkHierarchy(
+        interaction.member,
+        member,
+        interaction.guild.members.me,
+      );
       if (hierarchyError) {
         return await interaction.editReply(hierarchyError);
       }
@@ -106,11 +110,8 @@ export async function execute(interaction) {
     );
   } catch (err) {
     logError('Command error', { error: err.message, command: 'tempban' });
-    const content = `❌ Failed to execute: ${err.message}`;
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply(content).catch(() => {});
-    } else {
-      await interaction.reply({ content, ephemeral: true }).catch(() => {});
-    }
+    await interaction
+      .editReply('❌ An error occurred. Please try again or contact an administrator.')
+      .catch(() => {});
   }
 }

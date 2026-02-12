@@ -103,7 +103,7 @@ describe('unban command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to execute'),
+      expect.stringContaining('An error occurred'),
     );
   });
 
@@ -114,7 +114,7 @@ describe('unban command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to execute'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

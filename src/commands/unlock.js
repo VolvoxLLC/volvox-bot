@@ -66,13 +66,8 @@ export async function execute(interaction) {
     await interaction.editReply(`✅ ${channel} has been unlocked.`);
   } catch (err) {
     logError('Unlock command failed', { error: err.message, command: 'unlock' });
-
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply(`❌ Failed to unlock channel: ${err.message}`).catch(() => {});
-    } else {
-      await interaction
-        .reply({ content: `❌ Failed to unlock channel: ${err.message}`, ephemeral: true })
-        .catch(() => {});
-    }
+    await interaction
+      .editReply('❌ An error occurred. Please try again or contact an administrator.')
+      .catch(() => {});
   }
 }

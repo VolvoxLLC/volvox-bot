@@ -101,13 +101,12 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
-
-  const subcommand = interaction.options.getSubcommand();
-  const count = interaction.options.getInteger('count');
-  const channel = interaction.channel;
-
   try {
+    await interaction.deferReply({ ephemeral: true });
+
+    const subcommand = interaction.options.getSubcommand();
+    const count = interaction.options.getInteger('count');
+    const channel = interaction.channel;
     const fetched = await channel.messages.fetch({ limit: count });
 
     // Filter out messages older than 14 days (Discord bulk delete limit)
@@ -168,9 +167,9 @@ export async function execute(interaction) {
       `Deleted **${deleted.size}** message(s) from **${fetched.size}** scanned message(s).`,
     );
   } catch (err) {
-    logError('Purge command failed', { error: err.message, subcommand });
-    await interaction.editReply(
-      'Failed to delete messages. Messages older than 14 days cannot be bulk deleted.',
-    );
+    logError('Purge command failed', { error: err.message, command: 'purge' });
+    await interaction
+      .editReply('❌ An error occurred. Please try again or contact an administrator.')
+      .catch(() => {});
   }
 }

@@ -440,14 +440,18 @@ export function stopTempbanScheduler() {
 }
 
 /**
- * Check if the bot can moderate a target member (role hierarchy check).
+ * Check if the moderator (and optionally the bot) can moderate a target member.
  * @param {import('discord.js').GuildMember} moderator - The moderator
  * @param {import('discord.js').GuildMember} target - The target member
+ * @param {import('discord.js').GuildMember|null} [botMember=null] - The bot's own guild member
  * @returns {string|null} Error message if cannot moderate, null if OK
  */
-export function checkHierarchy(moderator, target) {
+export function checkHierarchy(moderator, target, botMember = null) {
   if (target.roles.highest.position >= moderator.roles.highest.position) {
     return '❌ You cannot moderate a member with an equal or higher role than yours.';
+  }
+  if (botMember && target.roles.highest.position >= botMember.roles.highest.position) {
+    return '❌ I cannot moderate this member — my role is not high enough.';
   }
   return null;
 }

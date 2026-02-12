@@ -50,6 +50,7 @@ describe('softban command', () => {
           members: {
             ban: vi.fn().mockResolvedValue(undefined),
             unban: vi.fn().mockResolvedValue(undefined),
+            me: { roles: { highest: { position: 10 } } },
           },
         },
         member: { roles: { highest: { position: 10 } } },
@@ -125,7 +126,7 @@ describe('softban command', () => {
     expect(interaction.editReply).toHaveBeenCalledWith('❌ User is not in this server.');
   });
 
-  it('should report failure if unban keeps failing', async () => {
+  it('should warn moderator if unban keeps failing but still create case', async () => {
     const { interaction } = createInteraction();
     interaction.guild.members.unban.mockRejectedValue(new Error('still failing'));
 
@@ -136,9 +137,8 @@ describe('softban command', () => {
     vi.useRealTimers();
 
     expect(interaction.guild.members.unban).toHaveBeenCalledTimes(3);
-    expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('user may still be banned'),
-    );
+    expect(createCase).toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('unban failed'));
   });
 
   it('should reject when hierarchy check fails', async () => {
@@ -160,7 +160,7 @@ describe('softban command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to execute'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

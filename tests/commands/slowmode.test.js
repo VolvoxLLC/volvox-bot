@@ -99,16 +99,16 @@ describe('slowmode command', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('Invalid duration'));
   });
 
-  it('should cap at 6 hours and notify about capping', async () => {
-    parseDuration.mockReturnValue(86400000); // 24 hours
+  it('should reject duration exceeding 6 hours', async () => {
+    parseDuration.mockReturnValue(7 * 60 * 60 * 1000); // 7 hours
 
-    const interaction = createInteraction('24h');
+    const interaction = createInteraction('7h');
     await execute(interaction);
 
-    expect(interaction.channel.setRateLimitPerUser).toHaveBeenCalledWith(21600);
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('capped at the 6-hour maximum'),
+      expect.stringContaining('cannot exceed 6 hours'),
     );
+    expect(interaction.channel.setRateLimitPerUser).not.toHaveBeenCalled();
   });
 
   it('should use specified channel when provided', async () => {
@@ -137,7 +137,7 @@ describe('slowmode command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to set slowmode'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

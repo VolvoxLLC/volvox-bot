@@ -49,7 +49,11 @@ describe('timeout command', () => {
         return null;
       }),
     },
-    guild: { id: 'guild1', name: 'Test Server' },
+    guild: {
+      id: 'guild1',
+      name: 'Test Server',
+      members: { me: { roles: { highest: { position: 10 } } } },
+    },
     member: { roles: { highest: { position: 10 } } },
     user: { id: 'mod1', tag: 'Mod#0001' },
     client: { user: { id: 'bot1', tag: 'Bot#0001' } },
@@ -131,7 +135,7 @@ describe('timeout command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to execute'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

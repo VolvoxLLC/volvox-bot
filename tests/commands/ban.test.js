@@ -115,8 +115,10 @@ describe('ban command', () => {
   });
 
   it('should reject when bot role is too low', async () => {
+    checkHierarchy.mockReturnValueOnce(
+      '❌ I cannot moderate this member — my role is not high enough.',
+    );
     const interaction = createInteraction();
-    interaction.guild.members.me.roles.highest.position = 5;
 
     await execute(interaction);
 
@@ -133,7 +135,7 @@ describe('ban command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to execute'),
+      expect.stringContaining('An error occurred'),
     );
   });
 });

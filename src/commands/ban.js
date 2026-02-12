@@ -37,9 +37,9 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
-
   try {
+    await interaction.deferReply({ ephemeral: true });
+
     const config = getConfig();
     const user = interaction.options.getUser('user');
     const reason = interaction.options.getString('reason');
@@ -53,16 +53,13 @@ export async function execute(interaction) {
     }
 
     if (member) {
-      const hierarchyError = checkHierarchy(interaction.member, member);
+      const hierarchyError = checkHierarchy(
+        interaction.member,
+        member,
+        interaction.guild.members.me,
+      );
       if (hierarchyError) {
         return await interaction.editReply(hierarchyError);
-      }
-
-      const botMember = interaction.guild.members.me;
-      if (botMember && member.roles.highest.position >= botMember.roles.highest.position) {
-        return await interaction.editReply(
-          '❌ I cannot ban this member because my role is not high enough.',
-        );
       }
 
       if (shouldSendDm(config, 'ban')) {
@@ -92,21 +89,8 @@ export async function execute(interaction) {
     );
   } catch (err) {
     logError('Command error', { error: err.message, command: 'ban' });
-
-    const lower = err.message?.toLowerCase() || '';
-    const content =
-      lower.includes('missing permissions') || lower.includes('missing access')
-        ? '❌ I do not have permission to ban that user.'
-        : `❌ Failed to execute: ${err.message}`;
-
-    try {
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply(content);
-      } else {
-        await interaction.reply({ content, ephemeral: true });
-      }
-    } catch {
-      // Interaction expired/already handled
-    }
+    await interaction
+      .editReply('❌ An error occurred. Please try again or contact an administrator.')
+      .catch(() => {});
   }
 }
