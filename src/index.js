@@ -291,8 +291,10 @@ async function startup() {
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
 
-  // Start tempban scheduler for automatic unbans
-  startTempbanScheduler(client);
+  // Start tempban scheduler for automatic unbans (DB required)
+  if (dbPool) {
+    startTempbanScheduler(client);
+  }
 
   // Load commands and login
   await loadCommands();

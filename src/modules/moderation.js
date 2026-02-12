@@ -14,7 +14,7 @@ import { getConfig } from './config.js';
  * Color map for mod log embeds by action type.
  * @type {Record<string, number>}
  */
-const ACTION_COLORS = {
+export const ACTION_COLORS = {
   warn: 0xfee75c,
   kick: 0xed4245,
   timeout: 0xe67e22,
@@ -26,6 +26,7 @@ const ACTION_COLORS = {
   purge: 0x5865f2,
   lock: 0xe67e22,
   unlock: 0x57f287,
+  slowmode: 0x5865f2,
 };
 
 /**
@@ -47,7 +48,7 @@ const ACTION_PAST_TENSE = {
  * Channel config key for each action type (maps to moderation.logging.channels.*).
  * @type {Record<string, string>}
  */
-const ACTION_LOG_CHANNEL_KEY = {
+export const ACTION_LOG_CHANNEL_KEY = {
   warn: 'warns',
   kick: 'kicks',
   timeout: 'timeouts',
@@ -59,27 +60,18 @@ const ACTION_LOG_CHANNEL_KEY = {
   purge: 'purges',
   lock: 'locks',
   unlock: 'locks',
+  slowmode: 'locks',
 };
 
 /** @type {ReturnType<typeof setInterval> | null} */
 let schedulerInterval = null;
 
-/**
- * Get the next case number for a guild.
- * @param {string} guildId - Discord guild ID
- * @returns {Promise<number>} Next sequential case number
- */
-export async function getNextCaseNumber(guildId) {
-  const pool = getPool();
-  const { rows } = await pool.query(
-    'SELECT MAX(case_number) AS max_num FROM mod_cases WHERE guild_id = $1',
-    [guildId],
-  );
-  return (rows[0]?.max_num || 0) + 1;
-}
+/** @type {boolean} */
+let schedulerPollInFlight = false;
 
 /**
  * Create a moderation case in the database.
+ * Uses a per-guild advisory lock to atomically assign sequential case numbers.
  * @param {string} guildId - Discord guild ID
  * @param {Object} data - Case data
  * @param {string} data.action - Action type (warn, kick, ban, etc.)
@@ -90,38 +82,96 @@ export async function getNextCaseNumber(guildId) {
  * @param {string} [data.reason] - Reason for action
  * @param {string} [data.duration] - Duration string (for timeout/tempban)
  * @param {Date} [data.expiresAt] - Expiration timestamp
- * @returns {Promise<Object>} Created case with case_number
+ * @returns {Promise<Object>} Created case row
  */
 export async function createCase(guildId, data) {
   const pool = getPool();
-  const caseNumber = await getNextCaseNumber(guildId);
+  const client = await pool.connect();
 
-  const { rows } = await pool.query(
-    `INSERT INTO mod_cases
-      (guild_id, case_number, action, target_id, target_tag, moderator_id, moderator_tag, reason, duration, expires_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    RETURNING *`,
-    [
+  try {
+    await client.query('BEGIN');
+
+    // Serialize case-number generation per guild to prevent race conditions.
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [guildId]);
+
+    const { rows } = await client.query(
+      `INSERT INTO mod_cases
+        (
+          guild_id,
+          case_number,
+          action,
+          target_id,
+          target_tag,
+          moderator_id,
+          moderator_tag,
+          reason,
+          duration,
+          expires_at
+        )
+      VALUES (
+        $1,
+        COALESCE((SELECT MAX(case_number) FROM mod_cases WHERE guild_id = $1), 0) + 1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+      )
+      RETURNING *`,
+      [
+        guildId,
+        data.action,
+        data.targetId,
+        data.targetTag,
+        data.moderatorId,
+        data.moderatorTag,
+        data.reason || null,
+        data.duration || null,
+        data.expiresAt || null,
+      ],
+    );
+
+    await client.query('COMMIT');
+
+    const createdCase = rows[0];
+    info('Moderation case created', {
       guildId,
-      caseNumber,
-      data.action,
-      data.targetId,
-      data.targetTag,
-      data.moderatorId,
-      data.moderatorTag,
-      data.reason || null,
-      data.duration || null,
-      data.expiresAt || null,
-    ],
-  );
+      caseNumber: createdCase.case_number,
+      action: data.action,
+      target: data.targetTag,
+      moderator: data.moderatorTag,
+    });
 
-  info('Moderation case created', {
-    guildId,
-    caseNumber,
-    action: data.action,
-    target: data.targetTag,
-    moderator: data.moderatorTag,
-  });
+    return createdCase;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Schedule a moderation action for future execution.
+ * @param {string} guildId - Discord guild ID
+ * @param {string} action - Action type (e.g. unban)
+ * @param {string} targetId - Target user ID
+ * @param {number|null} caseId - Related case ID (if any)
+ * @param {Date} executeAt - When to execute the action
+ * @returns {Promise<Object>} Created scheduled action row
+ */
+export async function scheduleAction(guildId, action, targetId, caseId, executeAt) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `INSERT INTO mod_scheduled_actions
+      (guild_id, action, target_id, case_id, execute_at)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING *`,
+    [guildId, action, targetId, caseId || null, executeAt],
+  );
 
   return rows[0];
 }
@@ -196,8 +246,12 @@ export async function sendModLogEmbed(client, config, caseData) {
         sentMessage.id,
         caseData.id,
       ]);
-    } catch {
-      // Non-critical — log message ID storage failure
+    } catch (err) {
+      logError('Failed to store log message ID', {
+        caseId: caseData.id,
+        messageId: sentMessage.id,
+        error: err.message,
+      });
     }
 
     return sentMessage;
@@ -287,30 +341,45 @@ export async function checkEscalation(
  * @param {import('discord.js').Client} client - Discord client
  */
 async function pollTempbans(client) {
+  if (schedulerPollInFlight) {
+    return;
+  }
+
+  schedulerPollInFlight = true;
+
   try {
     const pool = getPool();
     const { rows } = await pool.query(
       `SELECT * FROM mod_scheduled_actions
-       WHERE executed = FALSE AND execute_at <= NOW()`,
+       WHERE executed = FALSE AND execute_at <= NOW()
+       ORDER BY execute_at ASC
+       LIMIT 50`,
     );
 
     for (const row of rows) {
+      // Claim this row to prevent concurrent polls from processing it twice.
+      const claim = await pool.query(
+        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1 AND executed = FALSE RETURNING id',
+        [row.id],
+      );
+      if (claim.rows.length === 0) {
+        continue;
+      }
+
       try {
         const guild = await client.guilds.fetch(row.guild_id);
         await guild.members.unban(row.target_id, 'Tempban expired');
 
-        await pool.query('UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1', [
-          row.id,
-        ]);
+        const targetUser = await client.users.fetch(row.target_id).catch(() => null);
 
         // Create unban case
         const config = getConfig();
         const unbanCase = await createCase(row.guild_id, {
           action: 'unban',
           targetId: row.target_id,
-          targetTag: row.target_id,
-          moderatorId: client.user.id,
-          moderatorTag: client.user.tag,
+          targetTag: targetUser?.tag || row.target_id,
+          moderatorId: client.user?.id || 'system',
+          moderatorTag: client.user?.tag || 'System',
           reason: `Tempban expired (case #${row.case_id ? row.case_id : 'unknown'})`,
         });
 
@@ -327,15 +396,12 @@ async function pollTempbans(client) {
           guildId: row.guild_id,
           targetId: row.target_id,
         });
-
-        // Mark permanently failed actions to prevent infinite retry
-        await pool
-          .query('UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1', [row.id])
-          .catch(() => {});
       }
     }
   } catch (err) {
     logError('Tempban scheduler poll error', { error: err.message });
+  } finally {
+    schedulerPollInFlight = false;
   }
 }
 

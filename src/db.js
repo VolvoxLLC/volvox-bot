@@ -141,12 +141,6 @@ export async function initDb() {
         CREATE INDEX IF NOT EXISTS idx_mod_cases_guild_target
         ON mod_cases (guild_id, target_id, created_at)
       `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_mod_cases_guild_case
-        ON mod_cases (guild_id, case_number)
-      `);
-
       await pool.query(`
         CREATE TABLE IF NOT EXISTS mod_scheduled_actions (
           id SERIAL PRIMARY KEY,

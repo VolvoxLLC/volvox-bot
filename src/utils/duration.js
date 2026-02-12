@@ -45,6 +45,15 @@ const UNIT_LIST = [
 
 /**
  * Format milliseconds into a human-readable duration string.
+ * Contract:
+ * - Accepts a number of milliseconds.
+ * - Only returns exact single-unit values from UNIT_LIST (weeks/days/hours/minutes/seconds).
+ * - For exact matches, returns singular/plural form (e.g. "1 hour", "2 days").
+ * - For non-exact or invalid inputs, returns "0 seconds".
+ *
+ * This pairs cleanly with parseDuration(): values produced by parseDuration() round-trip
+ * through formatDuration() as long as they remain unchanged.
+ *
  * @param {number} ms - Duration in milliseconds
  * @returns {string} Human-readable string (e.g. "1 hour", "2 days")
  */
