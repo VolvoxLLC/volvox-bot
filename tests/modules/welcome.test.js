@@ -9,6 +9,8 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 import {
+  __getCommunityActivityState,
+  __resetCommunityActivityState,
   recordCommunityActivity,
   renderWelcomeMessage,
   sendWelcomeMessage,
@@ -137,40 +139,52 @@ describe('recordCommunityActivity', () => {
   });
 
   it('should prune stale activity data after enough calls', () => {
+    __resetCommunityActivityState();
+
     const config = {
       welcome: {
-        dynamic: { activityWindowMinutes: 1 },
+        dynamic: { activityWindowMinutes: 5 },
       },
     };
 
-    // Record activity in a channel
-    const msg = {
+    const baseTime = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(baseTime);
+
+    // Record activity in a channel that will become stale
+    const staleMsg = {
       guild: { id: 'prune-guild' },
       channel: { id: 'prune-ch', isTextBased: () => true },
       author: { bot: false },
     };
-    recordCommunityActivity(msg, config);
+    recordCommunityActivity(staleMsg, config);
 
-    // Fast-forward time past the activity window by making many calls
-    // with a fresh channel so the old one becomes stale.
-    // The eviction interval is 50, so we need at least 50 calls.
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + 2 * 60 * 1000); // 2 minutes later
+    expect(__getCommunityActivityState('prune-guild')).toEqual({
+      'prune-ch': [baseTime],
+    });
+
+    // Fast-forward time past the activity window and trigger periodic eviction.
+    // The eviction interval is 50, so we exceed it.
+    nowSpy.mockReturnValue(baseTime + 10 * 60 * 1000);
 
     const freshMsg = {
       guild: { id: 'prune-guild' },
       channel: { id: 'fresh-ch', isTextBased: () => true },
       author: { bot: false },
     };
+
     for (let i = 0; i < 55; i++) {
       recordCommunityActivity(freshMsg, config);
     }
 
-    vi.restoreAllMocks();
+    const state = __getCommunityActivityState('prune-guild');
 
-    // Stale channel should have been pruned — calling recordCommunityActivity
-    // for the stale channel should create a fresh entry (no old timestamps)
-    // We can't inspect the Map directly, but at minimum it shouldn't crash
+    // Prove stale channel was evicted and only fresh channel timestamps remain.
+    expect(state['prune-ch']).toBeUndefined();
+    expect(state['fresh-ch']).toHaveLength(55);
+    expect(state['fresh-ch']).toEqual(Array(55).fill(baseTime + 10 * 60 * 1000));
+
+    vi.restoreAllMocks();
+    __resetCommunityActivityState();
   });
 });
 
