@@ -82,7 +82,16 @@ describe('warn command', () => {
       }),
     );
     expect(sendModLogEmbed).toHaveBeenCalled();
-    expect(checkEscalation).toHaveBeenCalled();
+    expect(checkEscalation).toHaveBeenCalledWith(
+      interaction.client,
+      'guild1',
+      'user1',
+      'bot1',
+      'Bot#0001',
+      expect.objectContaining({
+        moderation: expect.any(Object),
+      }),
+    );
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('has been warned'));
   });
 
@@ -105,7 +114,7 @@ describe('warn command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to execute'),
+      '❌ Failed to execute command. Please contact an administrator.',
     );
   });
 });

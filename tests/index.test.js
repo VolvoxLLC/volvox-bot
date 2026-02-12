@@ -162,6 +162,16 @@ vi.mock('../src/utils/registerCommands.js', () => ({
   registerCommands: mocks.registerCommands,
 }));
 
+async function settleStartupHops() {
+  // startup() currently requires 3 microtask hops plus 1 macrotask hop
+  // to settle async initialization side-effects in this test harness.
+  // If startup() adds/removes awaits, update this helper's hop count.
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
 async function importIndex({
   token = 'test-token',
   databaseUrl = 'postgres://db',
@@ -196,7 +206,7 @@ async function importIndex({
   mocks.logger.warn.mockReset();
   mocks.logger.error.mockReset();
 
-  mocks.db.initDb.mockReset().mockResolvedValue(undefined);
+  mocks.db.initDb.mockReset().mockResolvedValue({ query: vi.fn() });
   mocks.db.closeDb.mockReset().mockResolvedValue(undefined);
 
   mocks.ai.getConversationHistory.mockReset().mockReturnValue(new Map());
@@ -252,14 +262,7 @@ async function importIndex({
   });
 
   const mod = await import('../src/index.js');
-  // Pragmatic workaround: settle async microtasks from startup().
-  // The hops are coupled to the current async hop count in startup().
-  // If startup() gains more awaits, this settling sequence may need
-  // to be extended.
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
-  await new Promise((resolve) => setImmediate(resolve));
+  await settleStartupHops();
   return mod;
 }
 
@@ -286,6 +289,7 @@ describe('index.js', () => {
     expect(mocks.db.initDb).toHaveBeenCalled();
     expect(mocks.config.loadConfig).toHaveBeenCalled();
     expect(mocks.events.registerEventHandlers).toHaveBeenCalled();
+    expect(mocks.moderation.startTempbanScheduler).toHaveBeenCalled();
     expect(mocks.client.login).toHaveBeenCalledWith('abc');
   });
 
@@ -296,6 +300,7 @@ describe('index.js', () => {
     expect(mocks.logger.warn).toHaveBeenCalledWith(
       'DATABASE_URL not set — using config.json only (no persistence)',
     );
+    expect(mocks.moderation.startTempbanScheduler).not.toHaveBeenCalled();
     expect(mocks.client.login).toHaveBeenCalledWith('abc');
   });
 

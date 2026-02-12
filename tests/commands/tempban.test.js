@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/modules/moderation.js', () => ({
   createCase: vi.fn().mockResolvedValue({ case_number: 1, action: 'tempban', id: 1 }),
+  scheduleAction: vi.fn().mockResolvedValue({ id: 10 }),
   sendDmNotification: vi.fn().mockResolvedValue(undefined),
   sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
   checkHierarchy: vi.fn().mockReturnValue(null),
@@ -22,17 +23,15 @@ vi.mock('../../src/utils/duration.js', () => ({
   formatDuration: vi.fn().mockReturnValue('1 day'),
 }));
 
-vi.mock('../../src/db.js', () => ({
-  getPool: vi.fn().mockReturnValue({
-    query: vi.fn().mockResolvedValue({ rows: [] }),
-  }),
-}));
-
 vi.mock('../../src/logger.js', () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 
 import { adminOnly, data, execute } from '../../src/commands/tempban.js';
-import { getPool } from '../../src/db.js';
-import { checkHierarchy, createCase, sendDmNotification } from '../../src/modules/moderation.js';
+import {
+  checkHierarchy,
+  createCase,
+  scheduleAction,
+  sendDmNotification,
+} from '../../src/modules/moderation.js';
 import { parseDuration } from '../../src/utils/duration.js';
 
 describe('tempban command', () => {
@@ -101,10 +100,7 @@ describe('tempban command', () => {
         duration: '1 day',
       }),
     );
-    expect(getPool().query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO mod_scheduled_actions'),
-      expect.arrayContaining(['guild1', 'unban', 'user1']),
-    );
+    expect(scheduleAction).toHaveBeenCalledWith('guild1', 'unban', 'user1', 1, expect.any(Date));
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.stringContaining('has been temporarily banned'),
     );

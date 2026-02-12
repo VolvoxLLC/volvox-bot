@@ -1,3 +1,4 @@
+import { ChannelType } from 'discord.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/modules/moderation.js', () => ({
@@ -29,6 +30,7 @@ describe('lock command', () => {
     channel: {
       id: 'chan1',
       name: 'general',
+      type: ChannelType.GuildText,
       permissionOverwrites: { edit: vi.fn().mockResolvedValue(undefined) },
       send: vi.fn().mockResolvedValue(undefined),
     },
@@ -40,6 +42,8 @@ describe('lock command', () => {
     client: { channels: { fetch: vi.fn() } },
     deferReply: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),
+    reply: vi.fn().mockResolvedValue(undefined),
+    deferred: true,
     ...overrides,
   });
 
@@ -80,6 +84,7 @@ describe('lock command', () => {
     const targetChannel = {
       id: 'chan2',
       name: 'announcements',
+      type: ChannelType.GuildText,
       permissionOverwrites: { edit: vi.fn().mockResolvedValue(undefined) },
       send: vi.fn().mockResolvedValue(undefined),
     };
@@ -116,6 +121,16 @@ describe('lock command', () => {
     expect(interaction.channel.send).toHaveBeenCalledWith(
       expect.objectContaining({ embeds: expect.any(Array) }),
     );
+  });
+
+  it('should reject non-text channels', async () => {
+    const interaction = createInteraction();
+    interaction.channel.type = ChannelType.GuildVoice;
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('text channels'));
+    expect(createCase).not.toHaveBeenCalled();
   });
 
   it('should handle errors gracefully', async () => {

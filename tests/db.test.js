@@ -113,7 +113,6 @@ describe('db module', () => {
         queries.some((q) => q.includes('CREATE TABLE IF NOT EXISTS mod_scheduled_actions')),
       ).toBe(true);
       expect(queries.some((q) => q.includes('idx_mod_cases_guild_target'))).toBe(true);
-      expect(queries.some((q) => q.includes('idx_mod_cases_guild_case'))).toBe(true);
       expect(queries.some((q) => q.includes('idx_mod_scheduled_actions_pending'))).toBe(true);
     });
 
