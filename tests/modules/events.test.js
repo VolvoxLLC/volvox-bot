@@ -31,6 +31,11 @@ vi.mock('../../src/modules/welcome.js', () => ({
   recordCommunityActivity: vi.fn(),
 }));
 
+// Mock errors utility
+vi.mock('../../src/utils/errors.js', () => ({
+  getUserFriendlyMessage: vi.fn().mockReturnValue('Something went wrong. Try again!'),
+}));
+
 // Mock splitMessage
 vi.mock('../../src/utils/splitMessage.js', () => ({
   needsSplitting: vi.fn().mockReturnValue(false),
@@ -48,6 +53,7 @@ import {
 } from '../../src/modules/events.js';
 import { isSpam, sendSpamAlert } from '../../src/modules/spam.js';
 import { recordCommunityActivity, sendWelcomeMessage } from '../../src/modules/welcome.js';
+import { getUserFriendlyMessage } from '../../src/utils/errors.js';
 import { needsSplitting, splitMessage } from '../../src/utils/splitMessage.js';
 
 describe('events module', () => {
@@ -236,6 +242,42 @@ describe('events module', () => {
       await onCallbacks.messageCreate(message);
       expect(mockSend).toHaveBeenCalledWith('chunk1');
       expect(mockSend).toHaveBeenCalledWith('chunk2');
+    });
+
+    it('should handle message.reply() failure gracefully', async () => {
+      setup();
+      const mockReply = vi.fn().mockRejectedValue(new Error('Missing Permissions'));
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: `<@bot-user-id> hello`,
+        channel: { id: 'c1', sendTyping: vi.fn().mockResolvedValue(undefined), send: vi.fn() },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: mockReply,
+      };
+      await onCallbacks.messageCreate(message);
+      // Should not throw — error is caught and logged
+      expect(getUserFriendlyMessage).toHaveBeenCalled();
+    });
+
+    it('should handle message.channel.send() failure during split gracefully', async () => {
+      setup();
+      needsSplitting.mockReturnValueOnce(true);
+      splitMessage.mockReturnValueOnce(['chunk1', 'chunk2']);
+      const mockSend = vi.fn().mockRejectedValue(new Error('Unknown Channel'));
+      const mockReply = vi.fn().mockRejectedValue(new Error('Unknown Channel'));
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: `<@bot-user-id> tell me a story`,
+        channel: { id: 'c1', sendTyping: vi.fn().mockResolvedValue(undefined), send: mockSend },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: mockReply,
+      };
+      await onCallbacks.messageCreate(message);
+      // Should not throw — error is caught and logged
     });
 
     it('should respect allowed channels', async () => {

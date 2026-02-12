@@ -8,6 +8,10 @@ import { info, error as logError } from '../logger.js';
 const guildActivity = new Map();
 const DEFAULT_ACTIVITY_WINDOW_MINUTES = 45;
 const MAX_EVENTS_PER_CHANNEL = 250;
+const EVICTION_INTERVAL = 50;
+
+/** Counter for throttled eviction inside recordCommunityActivity */
+let activityCallCount = 0;
 
 /** Notable member-count milestones (hoisted to avoid allocation per welcome event) */
 const NOTABLE_MILESTONES = new Set([10, 25, 50, 100, 250, 500, 1000]);
@@ -68,6 +72,31 @@ export function recordCommunityActivity(message, config) {
   }
 
   activityMap.set(message.channel.id, timestamps);
+
+  // Periodically prune stale channels to prevent unbounded memory growth
+  activityCallCount += 1;
+  if (activityCallCount >= EVICTION_INTERVAL) {
+    activityCallCount = 0;
+    pruneStaleActivity(cutoff);
+  }
+}
+
+/**
+ * Prune channels with only stale timestamps from all guilds.
+ * @param {number} cutoff - Timestamp threshold; entries older than this are stale
+ */
+function pruneStaleActivity(cutoff) {
+  for (const [guildId, activityMap] of guildActivity) {
+    for (const [channelId, timestamps] of activityMap) {
+      // If the newest timestamp is older than the cutoff, the entire array is stale
+      if (!timestamps.length || timestamps[timestamps.length - 1] < cutoff) {
+        activityMap.delete(channelId);
+      }
+    }
+    if (activityMap.size === 0) {
+      guildActivity.delete(guildId);
+    }
+  }
 }
 
 /**

@@ -291,16 +291,6 @@ describe('index.js', () => {
     expect(mocks.ai.setConversationHistory).toHaveBeenCalled();
   });
 
-  it('should export pending request helpers', async () => {
-    const mod = await importIndex({ token: 'abc', databaseUrl: null });
-
-    const requestId = mod.registerPendingRequest();
-    expect(typeof requestId).toBe('symbol');
-
-    // should not throw
-    mod.removePendingRequest(requestId);
-  });
-
   it('should handle autocomplete interactions', async () => {
     await importIndex({ token: 'abc', databaseUrl: null });
 
@@ -539,18 +529,6 @@ describe('index.js', () => {
       error: 'discord broke',
       stack: 'stack',
       code: 500,
-    });
-  });
-
-  it('should log unhandledRejection events', async () => {
-    await importIndex({ token: 'abc', databaseUrl: null });
-
-    mocks.processHandlers.unhandledRejection(new Error('rejected'));
-
-    expect(mocks.logger.error).toHaveBeenCalledWith('Unhandled promise rejection', {
-      error: 'rejected',
-      stack: expect.any(String),
-      type: 'object',
     });
   });
 

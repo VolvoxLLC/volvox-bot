@@ -281,6 +281,7 @@ export async function accumulate(message, config) {
     // Reset counter so we don't spin on errors
     buf.counter = 0;
   } finally {
+    buf.abortController = null;
     evaluatingChannels.delete(channelId);
   }
 }

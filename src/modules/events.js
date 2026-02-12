@@ -5,6 +5,7 @@
 
 import { Client, Events } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
+import { getUserFriendlyMessage } from '../utils/errors.js';
 import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
@@ -93,29 +94,42 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
           .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
           .trim();
 
-        if (!cleanContent) {
-          await message.reply("Hey! What's up?");
-          return;
-        }
-
-        await message.channel.sendTyping();
-
-        const response = await generateResponse(
-          message.channel.id,
-          cleanContent,
-          message.author.username,
-          config,
-          healthMonitor,
-        );
-
-        // Split long responses
-        if (needsSplitting(response)) {
-          const chunks = splitMessage(response);
-          for (const chunk of chunks) {
-            await message.channel.send(chunk);
+        try {
+          if (!cleanContent) {
+            await message.reply("Hey! What's up?");
+            return;
           }
-        } else {
-          await message.reply(response);
+
+          await message.channel.sendTyping();
+
+          const response = await generateResponse(
+            message.channel.id,
+            cleanContent,
+            message.author.username,
+            config,
+            healthMonitor,
+          );
+
+          // Split long responses
+          if (needsSplitting(response)) {
+            const chunks = splitMessage(response);
+            for (const chunk of chunks) {
+              await message.channel.send(chunk);
+            }
+          } else {
+            await message.reply(response);
+          }
+        } catch (sendErr) {
+          logError('Failed to send AI response', {
+            channelId: message.channel.id,
+            error: sendErr.message,
+          });
+          // Best-effort fallback — if the channel is still reachable, let the user know
+          try {
+            await message.reply(getUserFriendlyMessage(sendErr));
+          } catch {
+            // Channel is unreachable — nothing more we can do
+          }
         }
 
         return; // Don't accumulate direct mentions into chime-in buffer
