@@ -27,10 +27,12 @@ export function parseDuration(str) {
   if (!match) return null;
 
   const value = Number(match[1]);
-  if (value <= 0) return null;
+  if (value <= 0 || !Number.isSafeInteger(value)) return null;
 
   const unit = match[2].toLowerCase();
-  return value * UNITS[unit];
+  const ms = value * UNITS[unit];
+  if (!Number.isFinite(ms)) return null;
+  return ms;
 }
 
 const UNIT_LIST = [

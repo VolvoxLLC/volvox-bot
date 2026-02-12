@@ -34,6 +34,9 @@ export async function execute(interaction) {
   try {
     const config = getConfig();
     const target = interaction.options.getMember('user');
+    if (!target) {
+      return await interaction.editReply('❌ User is not in this server.');
+    }
     const reason = interaction.options.getString('reason');
 
     const hierarchyError = checkHierarchy(interaction.member, target);
