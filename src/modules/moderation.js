@@ -327,6 +327,11 @@ async function pollTempbans(client) {
           guildId: row.guild_id,
           targetId: row.target_id,
         });
+
+        // Mark permanently failed actions to prevent infinite retry
+        await pool
+          .query('UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1', [row.id])
+          .catch(() => {});
       }
     }
   } catch (err) {

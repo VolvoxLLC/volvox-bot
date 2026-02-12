@@ -5,7 +5,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { info } from '../logger.js';
+import { info, error as logError } from '../logger.js';
 
 export const data = new SlashCommandBuilder()
   .setName('history')
@@ -70,7 +70,8 @@ export async function execute(interaction) {
     });
 
     await interaction.editReply({ embeds: [embed] });
-  } catch {
-    await interaction.editReply('Failed to fetch moderation history.');
+  } catch (err) {
+    logError('Command error', { error: err.message, command: 'history' });
+    await interaction.editReply('❌ Failed to fetch moderation history.');
   }
 }
