@@ -21,6 +21,9 @@ data/*
 # Test and coverage outputs
 coverage/
 
+# Specs (tracked outside repo)
+.specs/
+
 # Verification scripts
 verify-*.js
 VERIFICATION_GUIDE.md
