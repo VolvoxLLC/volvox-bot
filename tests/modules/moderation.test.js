@@ -210,6 +210,60 @@ describe('moderation module', () => {
       expect(result).toEqual({ id: 'msg1' });
     });
 
+    it('should fall back to default channel when action-specific channel is missing', async () => {
+      const mockSendMessage = vi.fn().mockResolvedValue({ id: 'msg-default' });
+      const mockChannel = { send: mockSendMessage };
+      const client = { channels: { fetch: vi.fn().mockResolvedValue(mockChannel) } };
+      const config = {
+        moderation: {
+          logging: { channels: { default: '123', warns: null } },
+        },
+      };
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await sendModLogEmbed(client, config, {
+        id: 2,
+        case_number: 2,
+        action: 'warn',
+        target_id: 'user1',
+        target_tag: 'User#0001',
+        moderator_id: 'mod1',
+        moderator_tag: 'Mod#0001',
+        reason: 'test',
+      });
+
+      expect(client.channels.fetch).toHaveBeenCalledWith('123');
+    });
+
+    it('should include duration field when provided', async () => {
+      const mockSend = vi.fn().mockResolvedValue({ id: 'msg3' });
+      const mockChannel = { send: mockSend };
+      const client = {
+        channels: { fetch: vi.fn().mockResolvedValue(mockChannel) },
+      };
+      const config = {
+        moderation: { logging: { channels: { default: '123' } } },
+      };
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await sendModLogEmbed(client, config, {
+        id: 3,
+        case_number: 3,
+        action: 'timeout',
+        target_id: 'user1',
+        target_tag: 'User#0001',
+        moderator_id: 'mod1',
+        moderator_tag: 'Mod#0001',
+        reason: 'test',
+        duration: '1h',
+        created_at: new Date().toISOString(),
+      });
+
+      const embed = mockSend.mock.calls[0][0].embeds[0];
+      const fields = embed.toJSON().fields;
+      expect(fields.some((f) => f.name === 'Duration')).toBe(true);
+    });
+
     it('should log when storing log_message_id fails', async () => {
       const mockChannel = { send: vi.fn().mockResolvedValue({ id: 'msg1' }) };
       const client = { channels: { fetch: vi.fn().mockResolvedValue(mockChannel) } };
@@ -237,6 +291,16 @@ describe('moderation module', () => {
       const result = await sendModLogEmbed(
         { channels: { fetch: vi.fn() } },
         { moderation: {} },
+        { action: 'warn' },
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when action channel and default channel are both missing', async () => {
+      const result = await sendModLogEmbed(
+        { channels: { fetch: vi.fn() } },
+        { moderation: { logging: { channels: { warns: null, default: null } } } },
         { action: 'warn' },
       );
 
@@ -282,6 +346,12 @@ describe('moderation module', () => {
   describe('checkEscalation', () => {
     it('should return null when escalation is disabled', async () => {
       const config = { moderation: { escalation: { enabled: false } } };
+      const result = await checkEscalation(null, 'guild1', 'user1', 'mod1', 'Mod#0001', config);
+      expect(result).toBeNull();
+    });
+
+    it('should return null when no thresholds are configured', async () => {
+      const config = { moderation: { escalation: { enabled: true, thresholds: [] } } };
       const result = await checkEscalation(null, 'guild1', 'user1', 'mod1', 'Mod#0001', config);
       expect(result).toBeNull();
     });
