@@ -41,7 +41,12 @@ describe('unban command', () => {
     },
     member: { roles: { highest: { position: 10 } } },
     user: { id: 'mod1', tag: 'Mod#0001' },
-    client: { user: { id: 'bot1', tag: 'Bot#0001' } },
+    client: {
+      user: { id: 'bot1', tag: 'Bot#0001' },
+      users: {
+        fetch: vi.fn().mockResolvedValue({ tag: 'User#0001' }),
+      },
+    },
     deferReply: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),
     reply: vi.fn().mockResolvedValue(undefined),
@@ -63,15 +68,42 @@ describe('unban command', () => {
 
     expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
     expect(interaction.guild.members.unban).toHaveBeenCalledWith('123456789', 'test reason');
+    expect(interaction.client.users.fetch).toHaveBeenCalledWith('123456789');
     expect(createCase).toHaveBeenCalledWith(
       'guild1',
       expect.objectContaining({
         action: 'unban',
         targetId: '123456789',
+        targetTag: 'User#0001',
       }),
     );
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.stringContaining('has been unbanned'),
+    );
+  });
+
+  it('should fall back to raw user id when user fetch fails', async () => {
+    const interaction = createInteraction();
+    interaction.client.users.fetch.mockRejectedValueOnce(new Error('not found'));
+
+    await execute(interaction);
+
+    expect(createCase).toHaveBeenCalledWith(
+      'guild1',
+      expect.objectContaining({
+        targetTag: '123456789',
+      }),
+    );
+  });
+
+  it('should handle unban API failure gracefully', async () => {
+    const interaction = createInteraction();
+    interaction.guild.members.unban.mockRejectedValueOnce(new Error('unban failed'));
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to execute'),
     );
   });
 

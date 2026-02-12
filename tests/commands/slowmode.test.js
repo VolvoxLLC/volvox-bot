@@ -2,7 +2,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/utils/duration.js', () => ({
   parseDuration: vi.fn(),
-  formatDuration: vi.fn().mockReturnValue('5 minutes'),
+  formatDuration: vi.fn().mockImplementation((ms) => {
+    if (ms === 300000) return '5 minutes';
+    if (ms === 21600000) return '6 hours';
+    if (ms === 86400000) return '1 day';
+    if (ms === 60000) return '1 minute';
+    return 'duration';
+  }),
+}));
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({ moderation: { logging: { channels: { default: '123' } } } }),
+}));
+vi.mock('../../src/modules/moderation.js', () => ({
+  createCase: vi.fn().mockResolvedValue({ case_number: 12, action: 'slowmode', id: 12 }),
+  sendModLogEmbed: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('../../src/logger.js', () => ({
   info: vi.fn(),
@@ -11,6 +24,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 import { adminOnly, data, execute } from '../../src/commands/slowmode.js';
+import { createCase } from '../../src/modules/moderation.js';
 import { parseDuration } from '../../src/utils/duration.js';
 
 function createInteraction(duration = '5m', channel = null) {
@@ -23,11 +37,17 @@ function createInteraction(duration = '5m', channel = null) {
 
   return {
     options: {
-      getString: vi.fn().mockReturnValue(duration),
+      getString: vi.fn().mockImplementation((name) => {
+        if (name === 'duration') return duration;
+        if (name === 'reason') return null;
+        return null;
+      }),
       getChannel: vi.fn().mockReturnValue(null),
     },
     channel: mockChannel,
+    guild: { id: 'guild1' },
     user: { id: 'mod1', tag: 'Mod#0001' },
+    client: {},
     deferReply: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),
   };
@@ -46,13 +66,17 @@ describe('slowmode command', () => {
     expect(adminOnly).toBe(true);
   });
 
-  it('should set slowmode with valid duration', async () => {
+  it('should set slowmode with valid duration and create case', async () => {
     parseDuration.mockReturnValue(300000); // 5 minutes
 
     const interaction = createInteraction('5m');
     await execute(interaction);
 
     expect(interaction.channel.setRateLimitPerUser).toHaveBeenCalledWith(300);
+    expect(createCase).toHaveBeenCalledWith(
+      'guild1',
+      expect.objectContaining({ action: 'slowmode', targetId: 'ch1' }),
+    );
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('Slowmode set to'));
   });
 
@@ -75,13 +99,16 @@ describe('slowmode command', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('Invalid duration'));
   });
 
-  it('should cap at 6 hours (21600 seconds)', async () => {
+  it('should cap at 6 hours and notify about capping', async () => {
     parseDuration.mockReturnValue(86400000); // 24 hours
 
     const interaction = createInteraction('24h');
     await execute(interaction);
 
     expect(interaction.channel.setRateLimitPerUser).toHaveBeenCalledWith(21600);
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('capped at the 6-hour maximum'),
+    );
   });
 
   it('should use specified channel when provided', async () => {

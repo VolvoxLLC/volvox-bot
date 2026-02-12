@@ -61,6 +61,15 @@ describe('modlog command', () => {
     expect(adminOnly).toBe(true);
   });
 
+  it('should reply for unknown subcommand', async () => {
+    const interaction = createInteraction('wat');
+    await execute(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('Unknown subcommand') }),
+    );
+  });
+
   describe('view subcommand', () => {
     it('should display current log routing config', async () => {
       const interaction = createInteraction('view');
@@ -94,13 +103,13 @@ describe('modlog command', () => {
       await execute(interaction);
 
       expect(setConfigValue).toHaveBeenCalledTimes(7);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.default', 'null');
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.warns', 'null');
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.bans', 'null');
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.kicks', 'null');
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.timeouts', 'null');
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.purges', 'null');
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.locks', 'null');
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.default', null);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.warns', null);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.bans', null);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.kicks', null);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.timeouts', null);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.purges', null);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.locks', null);
 
       expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('disabled'));
     });

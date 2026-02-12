@@ -100,6 +100,18 @@ describe('timeout command', () => {
     expect(createCase).not.toHaveBeenCalled();
   });
 
+  it('should reject durations above 28 days', async () => {
+    parseDuration.mockReturnValueOnce(29 * 24 * 60 * 60 * 1000);
+    const interaction = createInteraction();
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      '❌ Timeout duration cannot exceed 28 days.',
+    );
+    expect(createCase).not.toHaveBeenCalled();
+  });
+
   it('should reject when hierarchy check fails', async () => {
     checkHierarchy.mockReturnValueOnce(
       '❌ You cannot moderate a member with an equal or higher role than yours.',

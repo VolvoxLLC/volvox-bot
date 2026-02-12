@@ -49,6 +49,9 @@ describe('ban command', () => {
       members: {
         ban: vi.fn().mockResolvedValue(undefined),
         fetch: vi.fn().mockResolvedValue(mockMember),
+        me: {
+          roles: { highest: { position: 10 } },
+        },
       },
     },
     member: { roles: { highest: { position: 10 } } },
@@ -108,6 +111,18 @@ describe('ban command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('cannot moderate'));
+    expect(interaction.guild.members.ban).not.toHaveBeenCalled();
+  });
+
+  it('should reject when bot role is too low', async () => {
+    const interaction = createInteraction();
+    interaction.guild.members.me.roles.highest.position = 5;
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('my role is not high enough'),
+    );
     expect(interaction.guild.members.ban).not.toHaveBeenCalled();
   });
 
