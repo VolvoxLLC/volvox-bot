@@ -20,6 +20,29 @@ const NOTABLE_MILESTONES = new Set([10, 25, 50, 100, 250, 500, 1000]);
 let excludedChannelsCache = null;
 
 /**
+ * Test-only helper: snapshot guild activity state.
+ * @param {string} guildId - Guild ID
+ * @returns {Record<string, number[]>}
+ */
+export function __getCommunityActivityState(guildId) {
+  const activityMap = guildActivity.get(guildId);
+  if (!activityMap) return {};
+
+  return Object.fromEntries(
+    [...activityMap.entries()].map(([channelId, timestamps]) => [channelId, [...timestamps]]),
+  );
+}
+
+/**
+ * Test-only helper: clear in-memory activity state.
+ */
+export function __resetCommunityActivityState() {
+  guildActivity.clear();
+  activityCallCount = 0;
+  excludedChannelsCache = null;
+}
+
+/**
  * Render welcome message with placeholder replacements
  * @param {string} messageTemplate - Welcome message template
  * @param {Object} member - Member object with id and optional username
