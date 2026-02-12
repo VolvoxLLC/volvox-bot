@@ -156,6 +156,17 @@ describe('moderation module', () => {
       expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
     });
 
+    it('should use fallback reason when none provided', async () => {
+      const mockSend = vi.fn().mockResolvedValue(undefined);
+      const member = { send: mockSend };
+
+      await sendDmNotification(member, 'kick', null, 'Test Server');
+
+      const embed = mockSend.mock.calls[0][0].embeds[0];
+      const fields = embed.toJSON().fields;
+      expect(fields[0].value).toBe('No reason provided');
+    });
+
     it('should silently catch DM failures', async () => {
       const member = { send: vi.fn().mockRejectedValue(new Error('DMs disabled')) };
 
