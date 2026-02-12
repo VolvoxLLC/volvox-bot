@@ -169,6 +169,30 @@ describe('config command', () => {
           }),
         );
       });
+
+      it('should hide raw error details when NODE_ENV is unset', async () => {
+        const originalEnv = process.env.NODE_ENV;
+        delete process.env.NODE_ENV;
+
+        getConfig.mockImplementationOnce(() => {
+          throw new Error('pg: connection refused at 10.0.0.5:5432');
+        });
+        const mockReply = vi.fn();
+        const interaction = {
+          options: {
+            getSubcommand: vi.fn().mockReturnValue('view'),
+            getString: vi.fn().mockReturnValue(null),
+          },
+          reply: mockReply,
+        };
+
+        await execute(interaction);
+        const content = mockReply.mock.calls[0][0].content;
+        expect(content).toContain('An internal error occurred.');
+        expect(content).not.toContain('pg: connection refused');
+
+        process.env.NODE_ENV = originalEnv;
+      });
     });
 
     describe('set subcommand', () => {

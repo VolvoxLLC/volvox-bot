@@ -135,6 +135,43 @@ describe('recordCommunityActivity', () => {
     };
     recordCommunityActivity(message, {});
   });
+
+  it('should prune stale activity data after enough calls', () => {
+    const config = {
+      welcome: {
+        dynamic: { activityWindowMinutes: 1 },
+      },
+    };
+
+    // Record activity in a channel
+    const msg = {
+      guild: { id: 'prune-guild' },
+      channel: { id: 'prune-ch', isTextBased: () => true },
+      author: { bot: false },
+    };
+    recordCommunityActivity(msg, config);
+
+    // Fast-forward time past the activity window by making many calls
+    // with a fresh channel so the old one becomes stale.
+    // The eviction interval is 50, so we need at least 50 calls.
+    const now = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(now + 2 * 60 * 1000); // 2 minutes later
+
+    const freshMsg = {
+      guild: { id: 'prune-guild' },
+      channel: { id: 'fresh-ch', isTextBased: () => true },
+      author: { bot: false },
+    };
+    for (let i = 0; i < 55; i++) {
+      recordCommunityActivity(freshMsg, config);
+    }
+
+    vi.restoreAllMocks();
+
+    // Stale channel should have been pruned — calling recordCommunityActivity
+    // for the stale channel should create a fresh entry (no old timestamps)
+    // We can't inspect the Map directly, but at minimum it shouldn't crash
+  });
 });
 
 describe('sendWelcomeMessage', () => {

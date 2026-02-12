@@ -67,27 +67,6 @@ client.commands = new Collection();
 // Initialize health monitor
 const healthMonitor = HealthMonitor.getInstance();
 
-// Track pending AI requests for graceful shutdown
-const pendingRequests = new Set();
-
-/**
- * Register a pending request for tracking
- * @returns {Symbol} Request ID to use for cleanup
- */
-export function registerPendingRequest() {
-  const requestId = Symbol('request');
-  pendingRequests.add(requestId);
-  return requestId;
-}
-
-/**
- * Remove a pending request from tracking
- * @param {Symbol} requestId - Request ID to remove
- */
-export function removePendingRequest(requestId) {
-  pendingRequests.delete(requestId);
-}
-
 /**
  * Save conversation history to disk
  */
@@ -224,31 +203,14 @@ client.on('interactionCreate', async (interaction) => {
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });
 
-  // 1. Wait for pending requests with timeout
-  const SHUTDOWN_TIMEOUT = 10000; // 10 seconds
-  if (pendingRequests.size > 0) {
-    info('Waiting for pending requests', { count: pendingRequests.size });
-    const startTime = Date.now();
-
-    while (pendingRequests.size > 0 && Date.now() - startTime < SHUTDOWN_TIMEOUT) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-
-    if (pendingRequests.size > 0) {
-      warn('Shutdown timeout, requests still pending', { count: pendingRequests.size });
-    } else {
-      info('All requests completed');
-    }
-  }
-
-  // 2. Stop conversation cleanup timer
+  // 1. Stop conversation cleanup timer
   stopConversationCleanup();
 
-  // 3. Save state after pending requests complete
+  // 2. Save state
   info('Saving conversation state');
   saveState();
 
-  // 4. Close database pool
+  // 3. Close database pool
   info('Closing database connection');
   try {
     await closeDb();
@@ -256,11 +218,11 @@ async function gracefulShutdown(signal) {
     error('Failed to close database pool', { error: err.message });
   }
 
-  // 5. Destroy Discord client
+  // 4. Destroy Discord client
   info('Disconnecting from Discord');
   client.destroy();
 
-  // 6. Log clean exit
+  // 5. Log clean exit
   info('Shutdown complete');
   process.exit(0);
 }
@@ -278,13 +240,6 @@ client.on('error', (err) => {
   });
 });
 
-process.on('unhandledRejection', (err) => {
-  error('Unhandled promise rejection', {
-    error: err?.message || String(err),
-    stack: err?.stack,
-    type: typeof err,
-  });
-});
 // Start bot
 const token = process.env.DISCORD_TOKEN;
 if (!token) {

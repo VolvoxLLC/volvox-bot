@@ -257,7 +257,7 @@ async function handleView(interaction) {
     await interaction.reply({ embeds: [embed], ephemeral: true });
   } catch (err) {
     const safeMessage =
-      process.env.NODE_ENV === 'production' ? 'An internal error occurred.' : err.message;
+      process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
     await interaction.reply({
       content: `❌ Failed to load config: ${safeMessage}`,
       ephemeral: true,
@@ -311,7 +311,7 @@ async function handleSet(interaction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {
     const safeMessage =
-      process.env.NODE_ENV === 'production' ? 'An internal error occurred.' : err.message;
+      process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
     const content = `❌ Failed to set config: ${safeMessage}`;
     if (interaction.deferred) {
       await interaction.editReply({ content });
@@ -346,7 +346,7 @@ async function handleReset(interaction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {
     const safeMessage =
-      process.env.NODE_ENV === 'production' ? 'An internal error occurred.' : err.message;
+      process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
     const content = `❌ Failed to reset config: ${safeMessage}`;
     if (interaction.deferred) {
       await interaction.editReply({ content });
