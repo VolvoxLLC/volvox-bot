@@ -42,6 +42,12 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
   splitMessage: vi.fn().mockReturnValue(['chunk1', 'chunk2']),
 }));
 
+// Mock threading module
+vi.mock('../../src/modules/threading.js', () => ({
+  shouldUseThread: vi.fn().mockReturnValue(false),
+  getOrCreateThread: vi.fn().mockResolvedValue({ thread: null, isNew: false }),
+}));
+
 import { generateResponse } from '../../src/modules/ai.js';
 import { accumulate, resetCounter } from '../../src/modules/chimeIn.js';
 import {
@@ -52,6 +58,7 @@ import {
   registerReadyHandler,
 } from '../../src/modules/events.js';
 import { isSpam, sendSpamAlert } from '../../src/modules/spam.js';
+import { getOrCreateThread, shouldUseThread } from '../../src/modules/threading.js';
 import { recordCommunityActivity, sendWelcomeMessage } from '../../src/modules/welcome.js';
 import { getUserFriendlyMessage } from '../../src/utils/errors.js';
 import { needsSplitting, splitMessage } from '../../src/utils/splitMessage.js';
@@ -295,6 +302,91 @@ describe('events module', () => {
       await onCallbacks.messageCreate(message);
       // Should NOT respond (channel not in allowed list)
       expect(generateResponse).not.toHaveBeenCalled();
+    });
+
+    it('should use threading when shouldUseThread returns true', async () => {
+      setup();
+      shouldUseThread.mockReturnValueOnce(true);
+      const mockThread = {
+        id: 'thread-123',
+        sendTyping: vi.fn().mockResolvedValue(undefined),
+        send: vi.fn().mockResolvedValue(undefined),
+      };
+      getOrCreateThread.mockResolvedValueOnce({ thread: mockThread, isNew: true });
+
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> hello from channel',
+        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: vi.fn(),
+      };
+      await onCallbacks.messageCreate(message);
+
+      expect(shouldUseThread).toHaveBeenCalledWith(message);
+      expect(getOrCreateThread).toHaveBeenCalledWith(message, 'hello from channel');
+      expect(mockThread.sendTyping).toHaveBeenCalled();
+      expect(mockThread.send).toHaveBeenCalledWith('AI response');
+      // generateResponse should use thread ID for history
+      expect(generateResponse).toHaveBeenCalledWith(
+        'thread-123',
+        'hello from channel',
+        'user',
+        config,
+        null,
+      );
+    });
+
+    it('should fall back to inline reply when thread creation fails', async () => {
+      setup();
+      shouldUseThread.mockReturnValueOnce(true);
+      getOrCreateThread.mockResolvedValueOnce({ thread: null, isNew: false });
+
+      const mockReply = vi.fn().mockResolvedValue(undefined);
+      const mockSendTyping = vi.fn().mockResolvedValue(undefined);
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> hello',
+        channel: { id: 'c1', sendTyping: mockSendTyping, send: vi.fn() },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: mockReply,
+      };
+      await onCallbacks.messageCreate(message);
+
+      // Should fall back to inline reply
+      expect(mockSendTyping).toHaveBeenCalled();
+      expect(mockReply).toHaveBeenCalledWith('AI response');
+    });
+
+    it('should split long responses in threads', async () => {
+      setup();
+      shouldUseThread.mockReturnValueOnce(true);
+      needsSplitting.mockReturnValueOnce(true);
+      splitMessage.mockReturnValueOnce(['chunk1', 'chunk2']);
+      const mockThread = {
+        id: 'thread-456',
+        sendTyping: vi.fn().mockResolvedValue(undefined),
+        send: vi.fn().mockResolvedValue(undefined),
+      };
+      getOrCreateThread.mockResolvedValueOnce({ thread: mockThread, isNew: true });
+
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> tell me a long story',
+        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: vi.fn(),
+      };
+      await onCallbacks.messageCreate(message);
+
+      expect(mockThread.send).toHaveBeenCalledWith('chunk1');
+      expect(mockThread.send).toHaveBeenCalledWith('chunk2');
     });
 
     it('should accumulate messages for chimeIn', async () => {

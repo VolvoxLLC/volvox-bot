@@ -10,6 +10,7 @@ import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
 import { isSpam, sendSpamAlert } from './spam.js';
+import { getOrCreateThread, shouldUseThread } from './threading.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 
 /** @type {boolean} Guard against duplicate process-level handler registration */
@@ -100,10 +101,25 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
             return;
           }
 
-          await message.channel.sendTyping();
+          // Determine whether to use threading
+          const useThread = shouldUseThread(message);
+          let targetChannel = message.channel;
+
+          if (useThread) {
+            const { thread } = await getOrCreateThread(message, cleanContent);
+            if (thread) {
+              targetChannel = thread;
+            }
+            // If thread is null, fall back to inline reply (targetChannel stays as message.channel)
+          }
+
+          await targetChannel.sendTyping();
+
+          // Use thread ID for conversation history when in a thread, otherwise channel ID
+          const historyId = targetChannel.id;
 
           const response = await generateResponse(
-            message.channel.id,
+            historyId,
             cleanContent,
             message.author.username,
             config,
@@ -114,10 +130,14 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
           if (needsSplitting(response)) {
             const chunks = splitMessage(response);
             for (const chunk of chunks) {
-              await message.channel.send(chunk);
+              await targetChannel.send(chunk);
             }
-          } else {
+          } else if (targetChannel === message.channel) {
+            // Inline reply — use message.reply for the reference
             await message.reply(response);
+          } else {
+            // Thread reply — send directly to the thread
+            await targetChannel.send(response);
           }
         } catch (sendErr) {
           logError('Failed to send AI response', {
