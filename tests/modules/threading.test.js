@@ -34,6 +34,8 @@ import {
   getOrCreateThread,
   getThreadConfig,
   shouldUseThread,
+  snapAutoArchiveDuration,
+  stopEvictionTimer,
 } from '../../src/modules/threading.js';
 
 describe('threading module', () => {
@@ -94,6 +96,115 @@ describe('threading module', () => {
       const config = getThreadConfig();
       expect(config.autoArchiveMinutes).toBe(1440);
       expect(config.reuseWindowMs).toBe(15 * 60 * 1000);
+    });
+
+    it('should snap invalid autoArchiveMinutes to nearest valid value', () => {
+      getConfig.mockReturnValue({
+        ai: {
+          threadMode: {
+            enabled: true,
+            autoArchiveMinutes: 100,
+            reuseWindowMinutes: 30,
+          },
+        },
+      });
+      const config = getThreadConfig();
+      expect(config.autoArchiveMinutes).toBe(60);
+    });
+
+    it('should fall back to default for NaN autoArchiveMinutes', () => {
+      getConfig.mockReturnValue({
+        ai: {
+          threadMode: {
+            enabled: true,
+            autoArchiveMinutes: 'invalid',
+            reuseWindowMinutes: 30,
+          },
+        },
+      });
+      const config = getThreadConfig();
+      expect(config.autoArchiveMinutes).toBe(60);
+    });
+
+    it('should fall back to default for NaN reuseWindowMinutes', () => {
+      getConfig.mockReturnValue({
+        ai: {
+          threadMode: {
+            enabled: true,
+            autoArchiveMinutes: 60,
+            reuseWindowMinutes: 'bad',
+          },
+        },
+      });
+      const config = getThreadConfig();
+      expect(config.reuseWindowMs).toBe(30 * 60 * 1000);
+    });
+
+    it('should fall back to default for negative reuseWindowMinutes', () => {
+      getConfig.mockReturnValue({
+        ai: {
+          threadMode: {
+            enabled: true,
+            autoArchiveMinutes: 60,
+            reuseWindowMinutes: -5,
+          },
+        },
+      });
+      const config = getThreadConfig();
+      expect(config.reuseWindowMs).toBe(30 * 60 * 1000);
+    });
+
+    it('should fall back to default for zero reuseWindowMinutes', () => {
+      getConfig.mockReturnValue({
+        ai: {
+          threadMode: {
+            enabled: true,
+            autoArchiveMinutes: 60,
+            reuseWindowMinutes: 0,
+          },
+        },
+      });
+      const config = getThreadConfig();
+      expect(config.reuseWindowMs).toBe(30 * 60 * 1000);
+    });
+  });
+
+  describe('snapAutoArchiveDuration', () => {
+    it('should return 60 for values close to 60', () => {
+      expect(snapAutoArchiveDuration(60)).toBe(60);
+      expect(snapAutoArchiveDuration(30)).toBe(60);
+      expect(snapAutoArchiveDuration(100)).toBe(60);
+    });
+
+    it('should return 1440 for values close to 1440', () => {
+      expect(snapAutoArchiveDuration(1440)).toBe(1440);
+      expect(snapAutoArchiveDuration(1000)).toBe(1440);
+    });
+
+    it('should return 4320 for values close to 4320', () => {
+      expect(snapAutoArchiveDuration(4320)).toBe(4320);
+      expect(snapAutoArchiveDuration(3000)).toBe(4320);
+    });
+
+    it('should return 10080 for values close to 10080', () => {
+      expect(snapAutoArchiveDuration(10080)).toBe(10080);
+      expect(snapAutoArchiveDuration(9000)).toBe(10080);
+    });
+
+    it('should return default for NaN', () => {
+      expect(snapAutoArchiveDuration(Number.NaN)).toBe(60);
+    });
+
+    it('should return default for non-number', () => {
+      expect(snapAutoArchiveDuration('bad')).toBe(60);
+    });
+
+    it('should return default for negative', () => {
+      expect(snapAutoArchiveDuration(-100)).toBe(60);
+    });
+
+    it('should return default for zero', () => {
+      expect(snapAutoArchiveDuration(0)).toBe(60);
     });
   });
 
