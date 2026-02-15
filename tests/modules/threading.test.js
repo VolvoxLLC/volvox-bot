@@ -404,6 +404,27 @@ describe('threading module', () => {
       const name = generateThreadName('Eve', '   ');
       expect(name).toBe('Chat with Eve');
     });
+
+    it('should handle very long username (98+ chars) and stay within 100 chars', () => {
+      const longUsername = 'A'.repeat(98);
+      const name = generateThreadName(longUsername, 'Hello world');
+      expect(name.length).toBeLessThanOrEqual(100);
+      // Should truncate the username and still produce a valid name
+      expect(name.length).toBeGreaterThan(0);
+    });
+
+    it('should handle very long username with empty content', () => {
+      const longUsername = 'B'.repeat(120);
+      const name = generateThreadName(longUsername, '');
+      expect(name.length).toBeLessThanOrEqual(100);
+      expect(name).toContain('Chat with');
+    });
+
+    it('should handle username exactly at the max length boundary', () => {
+      const longUsername = 'C'.repeat(95);
+      const name = generateThreadName(longUsername, 'Short msg');
+      expect(name.length).toBeLessThanOrEqual(100);
+    });
   });
 
   describe('buildThreadKey', () => {

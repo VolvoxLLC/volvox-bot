@@ -141,18 +141,34 @@ export function generateThreadName(username, messageContent) {
   // Use first line of message content, truncated
   const firstLine = messageContent.split('\n')[0].trim();
 
+  // Clamp username to leave room for at least a few content chars or the fallback format
+  const maxUsernameLength = MAX_THREAD_NAME_LENGTH - 10; // reserve 10 chars minimum
+  const safeUsername =
+    username.length > maxUsernameLength
+      ? `${username.substring(0, maxUsernameLength - 1)}…`
+      : username;
+
   let name;
   if (firstLine.length > 0) {
-    // Truncate to fit within Discord's limit with username prefix
-    const prefix = `${username}: `;
+    const prefix = `${safeUsername}: `;
     const maxContentLength = MAX_THREAD_NAME_LENGTH - prefix.length;
-    const truncatedContent =
-      firstLine.length > maxContentLength
-        ? `${firstLine.substring(0, maxContentLength - 1)}…`
-        : firstLine;
-    name = `${prefix}${truncatedContent}`;
+    if (maxContentLength <= 0) {
+      // Username is so long that even with truncation we can't fit content — use fallback
+      name = `Chat with ${safeUsername}`;
+    } else {
+      const truncatedContent =
+        firstLine.length > maxContentLength
+          ? `${firstLine.substring(0, maxContentLength - 1)}…`
+          : firstLine;
+      name = `${prefix}${truncatedContent}`;
+    }
   } else {
-    name = `Chat with ${username}`;
+    name = `Chat with ${safeUsername}`;
+  }
+
+  // Final safety clamp — should never be needed but guarantees the contract
+  if (name.length > MAX_THREAD_NAME_LENGTH) {
+    name = `${name.substring(0, MAX_THREAD_NAME_LENGTH - 1)}…`;
   }
 
   return name;
