@@ -710,4 +710,60 @@ describe('threading module', () => {
       expect(getActiveThreads().size).toBe(0);
     });
   });
+
+  describe('sweepExpiredThreads', () => {
+    let sweepExpiredThreads;
+
+    beforeEach(async () => {
+      // Dynamic import to get the function after mocks are set up
+      const mod = await import('../../src/modules/threading.js');
+      sweepExpiredThreads = mod.sweepExpiredThreads;
+    });
+
+    it('should remove entries older than the reuse window', () => {
+      const now = Date.now();
+      getActiveThreads().set('expired', {
+        threadId: 't1',
+        lastActive: now - 31 * 60 * 1000, // 31 min ago (default reuse = 30 min)
+        threadName: 'Old',
+      });
+      getActiveThreads().set('fresh', {
+        threadId: 't2',
+        lastActive: now,
+        threadName: 'New',
+      });
+
+      sweepExpiredThreads();
+
+      expect(getActiveThreads().has('expired')).toBe(false);
+      expect(getActiveThreads().has('fresh')).toBe(true);
+    });
+
+    it('should enforce max-size cap by evicting oldest entries', () => {
+      const now = Date.now();
+      // Add 1002 entries (over the 1000 cap), all fresh
+      for (let i = 0; i < 1002; i++) {
+        getActiveThreads().set(`key${i}`, {
+          threadId: `t${i}`,
+          lastActive: now - (1002 - i), // oldest first
+          threadName: `Thread ${i}`,
+        });
+      }
+
+      sweepExpiredThreads();
+
+      expect(getActiveThreads().size).toBeLessThanOrEqual(1000);
+      // Oldest 2 should have been evicted
+      expect(getActiveThreads().has('key0')).toBe(false);
+      expect(getActiveThreads().has('key1')).toBe(false);
+      // Newest should survive
+      expect(getActiveThreads().has('key1001')).toBe(true);
+    });
+  });
+
+  describe('eviction timer', () => {
+    it('stopEvictionTimer should not throw when called', () => {
+      expect(() => stopEvictionTimer()).not.toThrow();
+    });
+  });
 });
