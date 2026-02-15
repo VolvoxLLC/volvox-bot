@@ -26,6 +26,30 @@ const DEFAULT_REUSE_WINDOW_MS = 30 * 60 * 1000;
 /** Maximum thread name length (Discord limit) */
 const MAX_THREAD_NAME_LENGTH = 100;
 
+/** Discord's allowed autoArchiveDuration values (minutes) */
+const VALID_AUTO_ARCHIVE_DURATIONS = [60, 1440, 4320, 10080];
+
+/**
+ * Snap a value to the nearest valid Discord autoArchiveDuration.
+ * @param {number} minutes - Desired archive duration in minutes
+ * @returns {number} Nearest valid Discord autoArchiveDuration
+ */
+export function snapAutoArchiveDuration(minutes) {
+  if (typeof minutes !== 'number' || Number.isNaN(minutes) || minutes <= 0) {
+    return DEFAULT_AUTO_ARCHIVE_MINUTES;
+  }
+  let closest = VALID_AUTO_ARCHIVE_DURATIONS[0];
+  let minDiff = Math.abs(minutes - closest);
+  for (const valid of VALID_AUTO_ARCHIVE_DURATIONS) {
+    const diff = Math.abs(minutes - valid);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = valid;
+    }
+  }
+  return closest;
+}
+
 /**
  * Retrieve threading configuration derived from the bot config, falling back to sensible defaults.
  * @returns {{ enabled: boolean, autoArchiveMinutes: number, reuseWindowMs: number }} An object where `enabled` is `true` if threading is enabled; `autoArchiveMinutes` is the thread auto-archive duration in minutes; and `reuseWindowMs` is the thread reuse window in milliseconds.
@@ -34,10 +58,22 @@ export function getThreadConfig() {
   try {
     const config = getConfig();
     const threadMode = config?.ai?.threadMode;
+
+    const rawArchive = threadMode?.autoArchiveMinutes;
+    const autoArchiveMinutes = snapAutoArchiveDuration(
+      typeof rawArchive === 'number' && !Number.isNaN(rawArchive)
+        ? rawArchive
+        : DEFAULT_AUTO_ARCHIVE_MINUTES,
+    );
+
+    const rawReuse = threadMode?.reuseWindowMinutes;
+    const reuseMinutes =
+      typeof rawReuse === 'number' && !Number.isNaN(rawReuse) && rawReuse > 0 ? rawReuse : 30;
+
     return {
       enabled: threadMode?.enabled ?? false,
-      autoArchiveMinutes: threadMode?.autoArchiveMinutes ?? DEFAULT_AUTO_ARCHIVE_MINUTES,
-      reuseWindowMs: (threadMode?.reuseWindowMinutes ?? 30) * 60 * 1000,
+      autoArchiveMinutes,
+      reuseWindowMs: reuseMinutes * 60 * 1000,
     };
   } catch {
     return {
