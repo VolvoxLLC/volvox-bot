@@ -698,6 +698,46 @@ describe('threading module', () => {
       expect(result.thread).toBeNull();
       expect(result.isNew).toBe(false);
     });
+
+    it('should not create duplicate threads for concurrent calls from the same user+channel', async () => {
+      const createdThread = { id: 'single-thread' };
+      let callCount = 0;
+      const message = makeMessage({
+        startThread: vi.fn().mockImplementation(async () => {
+          callCount++;
+          // Simulate async delay
+          await new Promise((r) => setTimeout(r, 50));
+          return createdThread;
+        }),
+        channel: {
+          id: 'ch1',
+          permissionsFor: vi.fn().mockReturnValue({
+            has: vi.fn().mockReturnValue(true),
+          }),
+          threads: {
+            fetch: vi.fn().mockImplementation(async (threadId) => {
+              // After first thread is created, subsequent fetches find it
+              if (threadId === 'single-thread') {
+                return { id: 'single-thread', archived: false };
+              }
+              return null;
+            }),
+          },
+        },
+      });
+
+      // Fire two concurrent calls
+      const [result1, result2] = await Promise.all([
+        getOrCreateThread(message, 'Hello'),
+        getOrCreateThread(message, 'Hello again'),
+      ]);
+
+      // Only one thread should have been created via startThread
+      expect(callCount).toBe(1);
+      // Both should reference the same thread
+      expect(result1.thread.id).toBe('single-thread');
+      expect(result2.thread.id).toBe('single-thread');
+    });
   });
 
   describe('clearActiveThreads', () => {

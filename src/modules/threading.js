@@ -301,6 +301,36 @@ export async function getOrCreateThread(message, cleanContent) {
     return { thread: null, isNew: false };
   }
 
+  // Serialize concurrent calls for the same user+channel to prevent duplicate threads
+  const key = buildThreadKey(message.author.id, message.channel.id);
+  const pending = pendingThreadCreations.get(key);
+  if (pending) {
+    // Another call is already in flight — wait for it, then try to reuse its result
+    await pending.catch(() => {}); // ignore errors from the other call
+    const existingThread = await findExistingThread(message);
+    if (existingThread) {
+      return { thread: existingThread, isNew: false };
+    }
+    // The other call failed or expired — fall through to create our own
+  }
+
+  const resultPromise = _getOrCreateThreadInner(message, cleanContent);
+  pendingThreadCreations.set(key, resultPromise);
+  try {
+    return await resultPromise;
+  } finally {
+    // Only delete if it's still our promise (not replaced by another call)
+    if (pendingThreadCreations.get(key) === resultPromise) {
+      pendingThreadCreations.delete(key);
+    }
+  }
+}
+
+/**
+ * Internal implementation of getOrCreateThread (without locking).
+ * @private
+ */
+async function _getOrCreateThreadInner(message, cleanContent) {
   // Try to reuse an existing thread
   const existingThread = await findExistingThread(message);
   if (existingThread) {
@@ -350,6 +380,13 @@ export function sweepExpiredThreads() {
     }
   }
 }
+
+/**
+ * Per-key lock map to prevent concurrent thread creation for the same user+channel.
+ * Maps cache key -> Promise that resolves when the in-flight getOrCreateThread completes.
+ * @type {Map<string, Promise>}
+ */
+const pendingThreadCreations = new Map();
 
 /** Timer ID for the periodic eviction sweep */
 let evictionTimer = null;
