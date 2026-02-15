@@ -27,8 +27,8 @@ const DEFAULT_REUSE_WINDOW_MS = 30 * 60 * 1000;
 const MAX_THREAD_NAME_LENGTH = 100;
 
 /**
- * Get threading configuration from bot config
- * @returns {{ enabled: boolean, autoArchiveMinutes: number, reuseWindowMs: number }}
+ * Retrieve threading configuration derived from the bot config, falling back to sensible defaults.
+ * @returns {{ enabled: boolean, autoArchiveMinutes: number, reuseWindowMs: number }} An object where `enabled` is `true` if threading is enabled; `autoArchiveMinutes` is the thread auto-archive duration in minutes; and `reuseWindowMs` is the thread reuse window in milliseconds.
  */
 export function getThreadConfig() {
   try {
@@ -49,9 +49,9 @@ export function getThreadConfig() {
 }
 
 /**
- * Check if a message should be handled via threading
- * @param {import('discord.js').Message} message - Discord message
- * @returns {boolean} Whether threading should be used
+ * Determine whether a given Discord message should be handled in a thread.
+ * @param {import('discord.js').Message} message - The message to evaluate.
+ * @returns {boolean} `true` if the message is eligible for thread handling, `false` otherwise.
  */
 export function shouldUseThread(message) {
   const threadConfig = getThreadConfig();
@@ -71,9 +71,9 @@ export function shouldUseThread(message) {
 }
 
 /**
- * Check if the bot has permission to create threads in a channel
- * @param {import('discord.js').Message} message - Discord message
- * @returns {boolean} Whether the bot can create threads
+ * Determines whether the bot can create public threads and send messages in threads for the message's channel.
+ * @param {import('discord.js').Message} message - The triggering Discord message.
+ * @returns {boolean} `true` if the bot has CreatePublicThreads and SendMessagesInThreads permissions in the channel and the message is in a guild, `false` otherwise.
  */
 export function canCreateThread(message) {
   if (!message.guild) return false;
@@ -96,11 +96,10 @@ export function canCreateThread(message) {
 }
 
 /**
- * Generate a thread name from the user message
- * Truncates to Discord's limit and sanitizes
- * @param {string} username - The user's display name
- * @param {string} messageContent - The cleaned message content
- * @returns {string} Thread name
+ * Build a Discord thread name from a user's display name and the first line of their message.
+ * @param {string} username - The user's display name used as a prefix.
+ * @param {string} messageContent - The cleaned message content; only its first line is used.
+ * @returns {string} The constructed thread name, truncated to fit Discord's length limit.
  */
 export function generateThreadName(username, messageContent) {
   // Use first line of message content, truncated
@@ -134,9 +133,12 @@ export function buildThreadKey(userId, channelId) {
 }
 
 /**
- * Find an existing thread to reuse for this user+channel combination
- * @param {import('discord.js').Message} message - Discord message
- * @returns {Promise<import('discord.js').ThreadChannel|null>} Thread to reuse, or null
+ * Locate a previously cached thread for the message author in the same channel and prepare it for reuse.
+ *
+ * If a valid, non-expired thread is found it will be returned; the function will update the thread's last-active timestamp
+ * and attempt to unarchive the thread if necessary. Stale, missing, or inaccessible entries are removed from the cache.
+ * @param {import('discord.js').Message} message - The triggering Discord message (used to identify user and channel).
+ * @returns {Promise<import('discord.js').ThreadChannel|null>} `ThreadChannel` if a reusable thread was found and prepared, `null` otherwise.
  */
 export async function findExistingThread(message) {
   const threadConfig = getThreadConfig();
@@ -189,10 +191,10 @@ export async function findExistingThread(message) {
 }
 
 /**
- * Create a new thread for the conversation
- * @param {import('discord.js').Message} message - The triggering message
- * @param {string} cleanContent - The cleaned message content (mention removed)
- * @returns {Promise<import('discord.js').ThreadChannel>} The created thread
+ * Start a new thread for the triggering message and record it for reuse.
+ * @param {import('discord.js').Message} message - The message that triggers thread creation.
+ * @param {string} cleanContent - The cleaned message content used to generate the thread name.
+ * @returns {Promise<import('discord.js').ThreadChannel>} The created thread channel.
  */
 export async function createThread(message, cleanContent) {
   const threadConfig = getThreadConfig();
@@ -225,11 +227,10 @@ export async function createThread(message, cleanContent) {
 }
 
 /**
- * Get or create a thread for a user's AI conversation
- * Returns the thread to respond in, or null if threading should be skipped (fallback to inline)
- * @param {import('discord.js').Message} message - The triggering message
- * @param {string} cleanContent - The cleaned message content
- * @returns {Promise<{ thread: import('discord.js').ThreadChannel|null, isNew: boolean }>}
+ * Obtain an existing thread for the user in the channel or create a new one for the AI conversation.
+ * @param {import('discord.js').Message} message - The triggering message.
+ * @param {string} cleanContent - Cleaned content used to generate the thread name when creating a new thread.
+ * @returns {Promise<{ thread: import('discord.js').ThreadChannel|null, isNew: boolean }>} An object containing the thread to use (or `null` if threading was skipped) and `isNew` set to `true` when a new thread was created, `false` otherwise.
  */
 export async function getOrCreateThread(message, cleanContent) {
   // Check permissions first
