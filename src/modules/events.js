@@ -55,10 +55,10 @@ export function registerGuildMemberAddHandler(client, config) {
 }
 
 /**
- * Register message create event handler
- * @param {Client} client - Discord client
- * @param {Object} config - Bot configuration
- * @param {Object} healthMonitor - Health monitor instance
+ * Register the MessageCreate event handler that processes incoming messages for spam detection, community activity recording, AI-driven replies (mentions/replies, optional threading, channel whitelisting), and organic chime-in accumulation.
+ * @param {Client} client - Discord client instance used to listen and respond to message events.
+ * @param {Object} config - Bot configuration (reads moderation.enabled, ai.enabled, ai.channels and other settings referenced by handlers).
+ * @param {Object} healthMonitor - Optional health monitor used when generating AI responses to record metrics.
  */
 export function registerMessageCreateHandler(client, config, healthMonitor) {
   client.on(Events.MessageCreate, async (message) => {
