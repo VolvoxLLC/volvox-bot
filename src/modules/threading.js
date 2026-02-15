@@ -14,8 +14,15 @@ import { getConfig } from './config.js';
 /**
  * Active thread tracker: Map<`${userId}:${channelId}`, { threadId, lastActive, threadName }>
  * Tracks which thread to reuse for a given user+channel combination.
+ * Entries are evicted by a periodic sweep and a max-size cap.
  */
 const activeThreads = new Map();
+
+/** Maximum number of entries in the activeThreads cache */
+const MAX_CACHE_SIZE = 1000;
+
+/** Eviction sweep interval in milliseconds (5 minutes) */
+const EVICTION_INTERVAL_MS = 5 * 60 * 1000;
 
 /** Default thread auto-archive duration in minutes */
 const DEFAULT_AUTO_ARCHIVE_MINUTES = 60;
@@ -317,6 +324,58 @@ export async function getOrCreateThread(message, cleanContent) {
     return { thread: null, isNew: false };
   }
 }
+
+/**
+ * Sweep expired entries from the activeThreads cache.
+ * Removes entries older than the configured reuse window and
+ * enforces the MAX_CACHE_SIZE cap by evicting oldest entries.
+ */
+export function sweepExpiredThreads() {
+  const config = getThreadConfig();
+  const now = Date.now();
+
+  // Remove expired entries
+  for (const [key, entry] of activeThreads) {
+    if (now - entry.lastActive > config.reuseWindowMs) {
+      activeThreads.delete(key);
+    }
+  }
+
+  // Enforce max-size cap — evict oldest entries first
+  if (activeThreads.size > MAX_CACHE_SIZE) {
+    const entries = [...activeThreads.entries()].sort((a, b) => a[1].lastActive - b[1].lastActive);
+    const toRemove = entries.slice(0, activeThreads.size - MAX_CACHE_SIZE);
+    for (const [key] of toRemove) {
+      activeThreads.delete(key);
+    }
+  }
+}
+
+/** Timer ID for the periodic eviction sweep */
+let evictionTimer = null;
+
+/**
+ * Start the periodic eviction sweep (idempotent).
+ */
+export function startEvictionTimer() {
+  if (evictionTimer) return;
+  evictionTimer = setInterval(sweepExpiredThreads, EVICTION_INTERVAL_MS);
+  // Allow the Node.js process to exit even if the timer is running
+  if (evictionTimer.unref) evictionTimer.unref();
+}
+
+/**
+ * Stop the periodic eviction sweep (for testing / shutdown).
+ */
+export function stopEvictionTimer() {
+  if (evictionTimer) {
+    clearInterval(evictionTimer);
+    evictionTimer = null;
+  }
+}
+
+// Start the eviction timer on module load
+startEvictionTimer();
 
 /**
  * Get the active threads map (for testing)
