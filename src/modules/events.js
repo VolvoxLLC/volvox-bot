@@ -82,9 +82,14 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
       const isReply = message.reference && message.mentions.repliedUser?.id === client.user.id;
 
       // Check if in allowed channel (if configured)
+      // When inside a thread, check the parent channel ID against the allowlist
+      // so thread replies aren't blocked by the whitelist.
       const allowedChannels = config.ai?.channels || [];
+      const channelIdToCheck = message.channel.isThread?.()
+        ? message.channel.parentId
+        : message.channel.id;
       const isAllowedChannel =
-        allowedChannels.length === 0 || allowedChannels.includes(message.channel.id);
+        allowedChannels.length === 0 || allowedChannels.includes(channelIdToCheck);
 
       if ((isMentioned || isReply) && isAllowedChannel) {
         // Reset chime-in counter so we don't double-respond
