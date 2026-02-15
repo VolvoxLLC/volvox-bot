@@ -189,7 +189,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: `<@bot-user-id> hello`,
-        channel: { id: 'c1', sendTyping: mockSendTyping, send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: mockSendTyping,
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: mockReply,
@@ -207,7 +212,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: 'follow up',
-        channel: { id: 'c1', sendTyping: mockSendTyping, send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: mockSendTyping,
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(false), repliedUser: { id: 'bot-user-id' } },
         reference: { messageId: 'ref-123' },
         reply: mockReply,
@@ -223,7 +233,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: `<@bot-user-id>`,
-        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: mockReply,
@@ -241,7 +256,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: `<@bot-user-id> tell me a story`,
-        channel: { id: 'c1', sendTyping: vi.fn(), send: mockSend },
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn(),
+          send: mockSend,
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: vi.fn(),
@@ -258,7 +278,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: `<@bot-user-id> hello`,
-        channel: { id: 'c1', sendTyping: vi.fn().mockResolvedValue(undefined), send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn().mockResolvedValue(undefined),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: mockReply,
@@ -278,7 +303,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: `<@bot-user-id> tell me a story`,
-        channel: { id: 'c1', sendTyping: vi.fn().mockResolvedValue(undefined), send: mockSend },
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn().mockResolvedValue(undefined),
+          send: mockSend,
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: mockReply,
@@ -294,13 +324,66 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> hello',
-        channel: { id: 'not-allowed-ch', sendTyping: vi.fn(), send: vi.fn() },
+        channel: {
+          id: 'not-allowed-ch',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: mockReply,
       };
       await onCallbacks.messageCreate(message);
       // Should NOT respond (channel not in allowed list)
+      expect(generateResponse).not.toHaveBeenCalled();
+    });
+
+    it('should allow thread messages when parent channel is in the allowlist', async () => {
+      setup({ ai: { enabled: true, channels: ['allowed-ch'] } });
+      const mockReply = vi.fn().mockResolvedValue(undefined);
+      const mockSendTyping = vi.fn().mockResolvedValue(undefined);
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> hello from thread',
+        channel: {
+          id: 'thread-id-999',
+          parentId: 'allowed-ch',
+          sendTyping: mockSendTyping,
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(true),
+        },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: mockReply,
+      };
+      await onCallbacks.messageCreate(message);
+      // Should respond because parent channel is in the allowlist
+      expect(generateResponse).toHaveBeenCalled();
+      expect(mockReply).toHaveBeenCalledWith('AI response');
+    });
+
+    it('should block thread messages when parent channel is NOT in the allowlist', async () => {
+      setup({ ai: { enabled: true, channels: ['allowed-ch'] } });
+      const mockReply = vi.fn();
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> hello from thread',
+        channel: {
+          id: 'thread-id-999',
+          parentId: 'some-other-ch',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(true),
+        },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: mockReply,
+      };
+      await onCallbacks.messageCreate(message);
+      // Should NOT respond (parent channel not in allowed list)
       expect(generateResponse).not.toHaveBeenCalled();
     });
 
@@ -318,7 +401,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> hello from channel',
-        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: vi.fn(),
@@ -350,7 +438,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> hello',
-        channel: { id: 'c1', sendTyping: mockSendTyping, send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: mockSendTyping,
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: mockReply,
@@ -378,7 +471,12 @@ describe('events module', () => {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> tell me a long story',
-        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
         reply: vi.fn(),
