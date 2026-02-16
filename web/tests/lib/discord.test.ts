@@ -116,6 +116,54 @@ describe("fetchWithRateLimit", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(4);
   });
 
+  it("aborts sleep when signal fires during rate-limit wait", async () => {
+    const controller = new AbortController();
+    const headers = new Map([["retry-after", "30"]]); // 30 seconds
+    let callCount = 0;
+    fetchSpy.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          status: 429,
+          headers: { get: (key: string) => headers.get(key) ?? null },
+        } as unknown as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200 } as Response);
+    });
+
+    const promise = fetchWithRateLimit("https://example.com/api", {
+      signal: controller.signal,
+    });
+
+    // Advance a little, then abort (well before the 30s retry-after)
+    await vi.advanceTimersByTimeAsync(100);
+    controller.abort(new DOMException("Timed out", "TimeoutError"));
+
+    await expect(promise).rejects.toThrow();
+    // Should only have made 1 fetch call (the initial 429), not retried
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws immediately if signal already aborted before sleep", async () => {
+    const controller = new AbortController();
+    controller.abort(new DOMException("Already aborted", "AbortError"));
+
+    const headers = new Map([["retry-after", "1"]]);
+    fetchSpy.mockResolvedValue({
+      status: 429,
+      headers: { get: (key: string) => headers.get(key) ?? null },
+    } as unknown as Response);
+
+    // Attach rejection handler immediately — no timer advance needed since
+    // the signal is already aborted and the throw is synchronous.
+    await expect(
+      fetchWithRateLimit("https://example.com/api", {
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("uses 1000ms default when no retry-after header", async () => {
     let callCount = 0;
     fetchSpy.mockImplementation(() => {
@@ -297,6 +345,28 @@ describe("fetchBotGuilds", () => {
 
     const result = await fetchBotGuilds();
     expect(result).toEqual({ available: false, guilds: [] });
+  });
+
+  it("forwards AbortSignal to the underlying fetch", async () => {
+    process.env.BOT_API_URL = "http://localhost:3001";
+    process.env.BOT_API_SECRET = "test-secret";
+
+    const controller = new AbortController();
+    controller.abort(new DOMException("Aborted", "AbortError"));
+
+    fetchSpy.mockRejectedValue(new DOMException("Aborted", "AbortError"));
+
+    // fetchBotGuilds catches errors internally and returns unavailable
+    const result = await fetchBotGuilds(controller.signal);
+    expect(result).toEqual({ available: false, guilds: [] });
+
+    // Verify signal was forwarded to fetch
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://localhost:3001/api/guilds",
+      expect.objectContaining({
+        signal: controller.signal,
+      }),
+    );
   });
 
   it("sends Authorization header with BOT_API_SECRET", async () => {

@@ -39,7 +39,23 @@ export async function fetchWithRateLimit(
     logger.warn(
       `[discord] Rate limited on ${url}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
     );
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    // Abort-aware sleep: if the caller's signal fires while we're waiting,
+    // cancel the delay immediately instead of blocking for the full duration.
+    const signal = init?.signal;
+    if (signal?.aborted) {
+      throw signal.reason;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, waitMs);
+      signal?.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timer);
+          reject(signal.reason);
+        },
+        { once: true },
+      );
+    });
   }
 
   // Should never reach here, but satisfies TypeScript
@@ -117,7 +133,7 @@ export interface BotGuildResult {
   guilds: BotGuild[];
 }
 
-export async function fetchBotGuilds(): Promise<BotGuildResult> {
+export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResult> {
   const botApiUrl = process.env.BOT_API_URL;
 
   if (!botApiUrl) {
@@ -138,10 +154,11 @@ export async function fetchBotGuilds(): Promise<BotGuildResult> {
   }
 
   try {
-    const response = await fetch(`${botApiUrl}/api/guilds`, {
+    const response = await fetchWithRateLimit(`${botApiUrl}/api/guilds`, {
       headers: {
         Authorization: `Bearer ${botApiSecret}`,
       },
+      signal,
       cache: "no-store",
     } as RequestInit);
 
@@ -185,7 +202,7 @@ export async function getMutualGuilds(
     // Defensive catch: even though fetchBotGuilds handles errors internally,
     // wrap at the Promise.all level so an unexpected throw can never break
     // the entire guild fetch — gracefully degrade to showing all user guilds.
-    fetchBotGuilds().catch((err) => {
+    fetchBotGuilds(signal).catch((err) => {
       logger.warn("[discord] Unexpected error fetching bot guilds — degrading gracefully.", err);
       return { available: false, guilds: [] } as BotGuildResult;
     }),
