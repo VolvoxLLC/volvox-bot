@@ -6,6 +6,7 @@
 
 import { info, error as logError, warn as logWarn } from '../logger.js';
 import { getConfig } from './config.js';
+import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // Conversation history per channel (in-memory cache)
 let conversationHistory = new Map();
@@ -368,12 +369,18 @@ async function runCleanup() {
 }
 
 /**
- * Generate AI response using OpenClaw's chat completions endpoint
+ * Generate AI response using OpenClaw's chat completions endpoint.
+ *
+ * Memory integration:
+ * - Pre-response: searches mem0 for relevant user memories and appends them to the system prompt.
+ * - Post-response: fires off memory extraction (non-blocking) so new facts get persisted.
+ *
  * @param {string} channelId - Channel ID
  * @param {string} userMessage - User's message
  * @param {string} username - Username
  * @param {Object} config - Bot configuration
  * @param {Object} healthMonitor - Health monitor instance (optional)
+ * @param {string} [userId] - Discord user ID for memory scoping
  * @returns {Promise<string>} AI response
  */
 export async function generateResponse(
@@ -382,15 +389,29 @@ export async function generateResponse(
   username,
   config,
   healthMonitor = null,
+  userId = null,
 ) {
   const history = await getHistoryAsync(channelId);
 
-  const systemPrompt =
+  let systemPrompt =
     config.ai?.systemPrompt ||
     `You are Volvox Bot, a helpful and friendly Discord bot for the Volvox developer community.
 You're witty, knowledgeable about programming and tech, and always eager to help.
 Keep responses concise and Discord-friendly (under 2000 chars).
 You can use Discord markdown formatting.`;
+
+  // Pre-response: inject user memory context into system prompt
+  if (userId) {
+    try {
+      const memoryContext = await buildMemoryContext(userId, username, userMessage);
+      if (memoryContext) {
+        systemPrompt += memoryContext;
+      }
+    } catch (err) {
+      // Memory lookup failed — continue without it
+      logWarn('Memory context lookup failed', { userId, error: err.message });
+    }
+  }
 
   // Build messages array for OpenAI-compatible API
   const messages = [
@@ -438,6 +459,13 @@ You can use Discord markdown formatting.`;
     // Update history with username for DB persistence
     addToHistory(channelId, 'user', `${username}: ${userMessage}`, username);
     addToHistory(channelId, 'assistant', reply);
+
+    // Post-response: extract and store memorable facts (fire-and-forget)
+    if (userId) {
+      extractAndStoreMemories(userId, username, userMessage, reply).catch((err) => {
+        logWarn('Memory extraction failed', { userId, error: err.message });
+      });
+    }
 
     return reply;
   } catch (err) {
