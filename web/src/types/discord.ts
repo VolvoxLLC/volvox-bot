@@ -14,5 +14,5 @@ export interface BotGuild {
 }
 
 export interface MutualGuild extends DiscordGuild {
-  botPresent: true;
+  botPresent: boolean;
 }
