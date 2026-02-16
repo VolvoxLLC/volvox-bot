@@ -72,6 +72,6 @@ export async function execute(interaction) {
     await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
     logError('Command error', { error: err.message, command: 'history' });
-    await safeEditReply(interaction, '❌ Failed to fetch moderation history.');
+    await safeEditReply(interaction, '❌ Failed to fetch moderation history.').catch(() => {});
   }
 }
