@@ -305,6 +305,37 @@ describe('ai module', () => {
       });
     });
 
+    it('should timeout memory context lookup after 5 seconds', async () => {
+      vi.useFakeTimers();
+
+      // buildMemoryContext never resolves
+      buildMemoryContext.mockImplementation(() => new Promise(() => {}));
+
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'Still working without memory!' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      const config = { ai: { systemPrompt: 'You are a bot.' } };
+      const replyPromise = generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
+
+      // Advance past the 5s timeout
+      await vi.advanceTimersByTimeAsync(5000);
+
+      const reply = await replyPromise;
+      expect(reply).toBe('Still working without memory!');
+
+      // System prompt should NOT contain memory context
+      const fetchCall = globalThis.fetch.mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.messages[0].content).toBe('You are a bot.');
+
+      vi.useRealTimers();
+    });
+
     it('should continue working when memory context lookup fails', async () => {
       buildMemoryContext.mockRejectedValue(new Error('mem0 down'));
 
