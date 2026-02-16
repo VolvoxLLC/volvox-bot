@@ -14,7 +14,13 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
   splitMessage: vi.fn().mockReturnValue([]),
 }));
 
-import { safeEditReply, safeFollowUp, safeReply, safeSend, safeUpdate } from '../../src/utils/safeSend.js';
+import {
+  safeEditReply,
+  safeFollowUp,
+  safeReply,
+  safeSend,
+  safeUpdate,
+} from '../../src/utils/safeSend.js';
 import { needsSplitting, splitMessage } from '../../src/utils/splitMessage.js';
 
 const ZWS = '\u200B';
