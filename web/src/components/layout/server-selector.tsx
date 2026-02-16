@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import { ChevronsUpDown, Server } from "lucide-react";
+import { ChevronsUpDown, Server, RefreshCw, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MutualGuild } from "@/types/discord";
 import { getGuildIconUrl } from "@/lib/discord";
-import { logger } from "@/lib/logger";
 
 interface ServerSelectorProps {
   className?: string;
@@ -22,10 +21,18 @@ interface ServerSelectorProps {
 
 const SELECTED_GUILD_KEY = "bills-bot-selected-guild";
 
+/** Build the bot invite URL, or return null when CLIENT_ID is not configured. */
+function getBotInviteUrl(): string | null {
+  const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+  if (!clientId) return null;
+  return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
+}
+
 export function ServerSelector({ className }: ServerSelectorProps) {
   const [guilds, setGuilds] = useState<MutualGuild[]>([]);
   const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   // Persist selected guild to localStorage
   const selectGuild = (guild: MutualGuild) => {
@@ -37,41 +44,47 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     }
   };
 
-  useEffect(() => {
-    async function loadGuilds() {
+  const loadGuilds = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setError(false);
+    try {
+      const response = await fetch("/api/guilds", { signal });
+      if (!response.ok) throw new Error("Failed to fetch");
+      const data: MutualGuild[] = await response.json();
+      setGuilds(data);
+
+      // Restore previously selected guild from localStorage
+      let restored = false;
       try {
-        const response = await fetch("/api/guilds");
-        if (response.ok) {
-          const data: MutualGuild[] = await response.json();
-          setGuilds(data);
-
-          // Restore previously selected guild from localStorage
-          let restored = false;
-          try {
-            const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
-            if (savedId) {
-              const saved = data.find((g: MutualGuild) => g.id === savedId);
-              if (saved) {
-                setSelectedGuild(saved);
-                restored = true;
-              }
-            }
-          } catch {
-            // localStorage unavailable
-          }
-
-          if (!restored && data.length > 0) {
-            setSelectedGuild(data[0]);
+        const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
+        if (savedId) {
+          const saved = data.find((g: MutualGuild) => g.id === savedId);
+          if (saved) {
+            setSelectedGuild(saved);
+            restored = true;
           }
         }
-      } catch (error) {
-        logger.error("[server-selector] Failed to load guilds:", error);
-      } finally {
-        setLoading(false);
+      } catch {
+        // localStorage unavailable
       }
+
+      if (!restored && data.length > 0) {
+        setSelectedGuild(data[0]);
+      }
+    } catch (err) {
+      // Don't treat aborted fetches as errors
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setError(true);
+    } finally {
+      setLoading(false);
     }
-    loadGuilds();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadGuilds(controller.signal);
+    return () => controller.abort();
+  }, [loadGuilds]);
 
   if (loading) {
     return (
@@ -82,11 +95,43 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     );
   }
 
-  if (guilds.length === 0) {
+  // Error state — allow retry
+  if (error) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+      <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+        <span>Failed to load servers</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1"
+          onClick={() => loadGuilds()}
+        >
+          <RefreshCw className="h-3 w-3" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // Empty state — invite link or info message
+  if (guilds.length === 0) {
+    const inviteUrl = getBotInviteUrl();
+    return (
+      <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground text-center">
         <Server className="h-4 w-4" />
         <span>No servers found</span>
+        {inviteUrl ? (
+          <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+            <Button variant="discord" size="sm" className="gap-1">
+              <Bot className="h-3 w-3" />
+              Add Bot to a Server
+            </Button>
+          </a>
+        ) : (
+          <span className="text-xs">
+            The bot isn&apos;t in any of your servers yet.
+          </span>
+        )}
       </div>
     );
   }

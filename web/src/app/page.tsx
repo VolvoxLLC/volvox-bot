@@ -55,9 +55,28 @@ const features = [
   },
 ];
 
-export default function LandingPage() {
-  const botInviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ?? ""}&permissions=8&scope=bot%20applications.commands`;
+/** Build the bot invite URL, or return null when CLIENT_ID is not configured. */
+function getBotInviteUrl(): string | null {
+  const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+  if (!clientId) return null;
+  return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
+}
 
+/** Render an "Add to Server" button — disabled/hidden when CLIENT_ID is unset. */
+function InviteButton({ size = "sm", className }: { size?: "sm" | "lg"; className?: string }) {
+  const url = getBotInviteUrl();
+  if (!url) return null;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer">
+      <Button variant="discord" size={size} className={className}>
+        {size === "lg" && <Bot className="mr-2 h-5 w-5" />}
+        Add to Server
+      </Button>
+    </a>
+  );
+}
+
+export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Navbar */}
@@ -75,11 +94,7 @@ export default function LandingPage() {
                 Sign In
               </Button>
             </Link>
-            <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="discord" size="sm">
-                Add to Server
-              </Button>
-            </a>
+            <InviteButton size="sm" />
           </nav>
         </div>
       </header>
@@ -98,12 +113,7 @@ export default function LandingPage() {
           dashboard.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
-          <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
-            <Button variant="discord" size="lg" className="gap-2">
-              <Bot className="h-5 w-5" />
-              Add to Server
-            </Button>
-          </a>
+          <InviteButton size="lg" className="gap-2" />
           <Link href="/login">
             <Button variant="outline" size="lg">
               Open Dashboard
@@ -151,12 +161,7 @@ export default function LandingPage() {
             Add Bill Bot to your Discord server and manage everything from this
             dashboard.
           </p>
-          <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
-            <Button variant="discord" size="lg" className="gap-2">
-              <Bot className="h-5 w-5" />
-              Add to Server
-            </Button>
-          </a>
+          <InviteButton size="lg" className="gap-2" />
         </div>
       </section>
 
