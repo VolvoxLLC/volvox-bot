@@ -83,11 +83,9 @@ export default function LandingPage() {
             <span className="font-bold text-lg">Bill Bot</span>
           </div>
           <nav className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                Sign In
-              </Button>
-            </Link>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/login">Sign In</Link>
+            </Button>
             <InviteButton size="sm" />
           </nav>
         </div>
@@ -108,11 +106,9 @@ export default function LandingPage() {
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
           <InviteButton size="lg" className="gap-2" />
-          <Link href="/login">
-            <Button variant="outline" size="lg">
-              Open Dashboard
-            </Button>
-          </Link>
+          <Button variant="outline" size="lg" asChild>
+            <Link href="/login">Open Dashboard</Link>
+          </Button>
         </div>
       </section>
 
