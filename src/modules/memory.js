@@ -114,10 +114,7 @@ export function isMemoryAvailable() {
   if (mem0Available) return true;
 
   // Auto-recovery: if cooldown has elapsed, tentatively re-enable
-  if (
-    mem0UnavailableSince > 0 &&
-    Date.now() - mem0UnavailableSince >= RECOVERY_COOLDOWN_MS
-  ) {
+  if (mem0UnavailableSince > 0 && Date.now() - mem0UnavailableSince >= RECOVERY_COOLDOWN_MS) {
     info('mem0 cooldown expired, attempting auto-recovery');
     markAvailable();
     return true;
