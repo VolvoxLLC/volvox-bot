@@ -114,23 +114,28 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     );
   }
 
-  // Empty state — invite link or info message
+  // Empty state — distinguish between "no mutual servers" and "no guilds at all"
   if (guilds.length === 0) {
     const inviteUrl = getBotInviteUrl();
     return (
       <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground text-center">
-        <Server className="h-4 w-4" />
-        <span>No servers found</span>
+        <Bot className="h-5 w-5" />
+        <span className="font-medium">No mutual servers</span>
+        <span className="text-xs">
+          Bill Bot isn&apos;t in any of your Discord servers yet.
+        </span>
         {inviteUrl ? (
           <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
             <Button variant="discord" size="sm" className="gap-1">
               <Bot className="h-3 w-3" />
-              Add Bot to a Server
+              Invite Bill Bot
             </Button>
           </a>
         ) : (
           <span className="text-xs">
-            The bot isn&apos;t in any of your servers yet.
+            Ask a server admin to add the bot, or check that{" "}
+            <code className="text-[0.7rem]">NEXT_PUBLIC_DISCORD_CLIENT_ID</code>{" "}
+            is set for the invite link.
           </span>
         )}
       </div>
