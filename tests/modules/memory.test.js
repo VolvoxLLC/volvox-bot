@@ -890,12 +890,13 @@ describe('memory module', () => {
         {
           user_id: 'user123',
           app_id: 'bills-bot',
+          metadata: { username: 'testuser' },
           enable_graph: true,
         },
       );
     });
 
-    it('should return false on SDK failure and mark unavailable', async () => {
+    it('should return false on SDK failure but NOT mark unavailable (fire-and-forget safety)', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({
         add: vi.fn().mockRejectedValue(new Error('API error')),
@@ -904,7 +905,8 @@ describe('memory module', () => {
 
       const result = await extractAndStoreMemories('user123', 'testuser', 'hi', 'hello');
       expect(result).toBe(false);
-      expect(isMemoryAvailable()).toBe(false);
+      // Should still be available — background failures must not disable the system
+      expect(isMemoryAvailable()).toBe(true);
     });
 
     it('should return false when client is null', async () => {

@@ -504,6 +504,7 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
     await c.add(messages, {
       user_id: userId,
       app_id: APP_ID,
+      metadata: { username },
       enable_graph: true,
     });
 
@@ -514,8 +515,10 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
     });
     return true;
   } catch (err) {
+    // Only log — do NOT call markUnavailable() here.
+    // This runs fire-and-forget in the background; a failure for one user's
+    // extraction should not disable the memory system for all other users.
     logWarn('Memory extraction failed', { userId, error: err.message });
-    if (!isTransientError(err)) markUnavailable();
     return false;
   }
 }
