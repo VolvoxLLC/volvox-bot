@@ -164,6 +164,34 @@ describe("fetchWithRateLimit", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("cleans up abort listener after rate-limit sleep resolves normally", async () => {
+    const controller = new AbortController();
+    const removeListenerSpy = vi.spyOn(controller.signal, "removeEventListener");
+
+    const headers = new Map([["retry-after", "0.001"]]);
+    let callCount = 0;
+    fetchSpy.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          status: 429,
+          headers: { get: (key: string) => headers.get(key) ?? null },
+        } as unknown as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200 } as Response);
+    });
+
+    const promise = fetchWithRateLimit("https://example.com/api", {
+      signal: controller.signal,
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const response = await promise;
+    expect(response.status).toBe(200);
+    // The abort listener should have been removed after the sleep resolved
+    expect(removeListenerSpy).toHaveBeenCalledWith("abort", expect.any(Function));
+    removeListenerSpy.mockRestore();
+  });
+
   it("uses 1000ms default when no retry-after header", async () => {
     let callCount = 0;
     fetchSpy.mockImplementation(() => {

@@ -46,15 +46,15 @@ export async function fetchWithRateLimit(
       throw signal.reason;
     }
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(resolve, waitMs);
-      signal?.addEventListener(
-        "abort",
-        () => {
-          clearTimeout(timer);
-          reject(signal.reason);
-        },
-        { once: true },
-      );
+      const onAbort = () => {
+        clearTimeout(timer);
+        reject(signal!.reason);
+      };
+      const timer = setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, waitMs);
+      signal?.addEventListener("abort", onAbort, { once: true });
     });
   }
 
