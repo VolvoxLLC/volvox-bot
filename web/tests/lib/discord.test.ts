@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { getGuildIconUrl, getUserAvatarUrl } from "@/lib/discord";
 import {
-  getGuildIconUrl,
-  getUserAvatarUrl,
   fetchUserGuilds,
   fetchBotGuilds,
   getMutualGuilds,
   fetchWithRateLimit,
-} from "@/lib/discord";
+} from "@/lib/discord.server";
 
 describe("getGuildIconUrl", () => {
   it("returns default icon when no icon hash", () => {

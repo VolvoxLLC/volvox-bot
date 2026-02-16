@@ -17,9 +17,9 @@ vi.mock("next-auth/jwt", () => ({
   getToken: (...args: unknown[]) => mockGetToken(...args),
 }));
 
-// Mock discord lib
+// Mock discord server lib
 const mockGetMutualGuilds = vi.fn();
-vi.mock("@/lib/discord", () => ({
+vi.mock("@/lib/discord.server", () => ({
   getMutualGuilds: (...args: unknown[]) => mockGetMutualGuilds(...args),
 }));
 

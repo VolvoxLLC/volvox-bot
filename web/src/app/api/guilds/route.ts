@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { getMutualGuilds } from "@/lib/discord";
+import { getMutualGuilds } from "@/lib/discord.server";
 
 export async function GET(request: NextRequest) {
   const token = await getToken({ req: request });
