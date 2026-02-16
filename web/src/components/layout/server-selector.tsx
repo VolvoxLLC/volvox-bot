@@ -78,7 +78,14 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setError(true);
     } finally {
-      setLoading(false);
+      // Only reset loading if this request is still the current one.
+      // When loadGuilds is called again (e.g. retry), the previous request
+      // is aborted and a new controller replaces the ref. Without this
+      // guard the aborted request's finally block would set loading=false,
+      // cancelling out the new request's loading=true.
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   }, []);
 
