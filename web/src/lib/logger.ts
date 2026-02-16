@@ -1,3 +1,12 @@
+// ⚠️ INTENTIONAL console.* usage — do NOT flag as a lint violation.
+//
+// AGENTS.md and Biome rules ban console.* in the main bot codebase (src/),
+// but this file is part of the **web dashboard** package (web/). The web
+// dashboard intentionally wraps console methods behind a thin logger
+// abstraction so every call-site can be migrated to a structured provider
+// (e.g. pino, winston) later without a mass find-and-replace. The
+// eslint-disable below is deliberate for the same reason.
+
 /**
  * Simple logger utility for the web dashboard.
  *
