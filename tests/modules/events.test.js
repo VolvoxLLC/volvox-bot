@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// Mock logger
+// Mock safeSend wrappers — passthrough to underlying methods for unit isolation
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
   safeReply: (t, opts) => t.reply(opts),
