@@ -177,7 +177,7 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
 
 // Mock memory module
 vi.mock('../../src/modules/memory.js', () => ({
-  isMemoryAvailable: vi.fn(() => true),
+  checkAndRecoverMemory: vi.fn(() => true),
   getMemories: vi.fn(() => Promise.resolve([])),
   deleteAllMemories: vi.fn(() => Promise.resolve(true)),
   searchMemories: vi.fn(() => Promise.resolve({ memories: [], relations: [] })),
@@ -201,10 +201,10 @@ vi.mock('../../src/logger.js', () => ({
 import { PermissionFlagsBits } from 'discord.js';
 import { data, execute } from '../../src/commands/memory.js';
 import {
+  checkAndRecoverMemory,
   deleteAllMemories,
   deleteMemory,
   getMemories,
-  isMemoryAvailable,
   searchMemories,
 } from '../../src/modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../../src/modules/optout.js';
@@ -253,7 +253,7 @@ function createMockInteraction({
 describe('memory command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isMemoryAvailable.mockReturnValue(true);
+    checkAndRecoverMemory.mockReturnValue(true);
     getMemories.mockResolvedValue([]);
     deleteAllMemories.mockResolvedValue(true);
     searchMemories.mockResolvedValue({ memories: [], relations: [] });
@@ -271,7 +271,7 @@ describe('memory command', () => {
 
   describe('unavailable state', () => {
     it('should reply with unavailable message when memory is not available', async () => {
-      isMemoryAvailable.mockReturnValue(false);
+      checkAndRecoverMemory.mockReturnValue(false);
       const interaction = createMockInteraction();
 
       await execute(interaction);
@@ -369,7 +369,7 @@ describe('memory command', () => {
     });
 
     it('should work even when memory system is unavailable', async () => {
-      isMemoryAvailable.mockReturnValue(false);
+      checkAndRecoverMemory.mockReturnValue(false);
       toggleOptOut.mockReturnValue({ optedOut: true });
       const interaction = createMockInteraction({ subcommand: 'optout' });
 
@@ -734,7 +734,7 @@ describe('memory command', () => {
     });
 
     it('should reply unavailable when memory system is down', async () => {
-      isMemoryAvailable.mockReturnValue(false);
+      checkAndRecoverMemory.mockReturnValue(false);
       const interaction = createMockInteraction({
         subcommand: 'view',
         subcommandGroup: 'admin',

@@ -25,10 +25,10 @@ import {
 } from 'discord.js';
 import { info, warn } from '../logger.js';
 import {
+  checkAndRecoverMemory,
   deleteAllMemories,
   deleteMemory,
   getMemories,
-  isMemoryAvailable,
   searchMemories,
 } from '../modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../modules/optout.js';
@@ -113,7 +113,7 @@ export async function execute(interaction) {
     return;
   }
 
-  if (!isMemoryAvailable()) {
+  if (!checkAndRecoverMemory()) {
     await interaction.reply({
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',
@@ -309,7 +309,7 @@ async function handleAdmin(interaction, subcommand) {
     return;
   }
 
-  if (!isMemoryAvailable()) {
+  if (!checkAndRecoverMemory()) {
     await interaction.reply({
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',

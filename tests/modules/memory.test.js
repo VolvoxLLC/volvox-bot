@@ -38,6 +38,7 @@ import {
   _setMem0Available,
   addMemory,
   buildMemoryContext,
+  checkAndRecoverMemory,
   checkMem0Health,
   deleteAllMemories,
   deleteMemory,
@@ -131,12 +132,7 @@ describe('memory module', () => {
     });
   });
 
-  describe('isMemoryAvailable', () => {
-    afterEach(() => {
-      // Ensure fake timers never leak into other tests, even if a test fails mid-way
-      vi.useRealTimers();
-    });
-
+  describe('isMemoryAvailable (pure — no side effects)', () => {
     it('should return false when mem0 is not available', () => {
       _setMem0Available(false);
       expect(isMemoryAvailable()).toBe(false);
@@ -153,7 +149,7 @@ describe('memory module', () => {
       expect(isMemoryAvailable()).toBe(false);
     });
 
-    it('should auto-recover after cooldown period expires', async () => {
+    it('should NOT auto-recover (no side effects)', async () => {
       vi.useFakeTimers();
       _setMem0Available(true);
 
@@ -166,11 +162,54 @@ describe('memory module', () => {
       await addMemory('user123', 'test');
       expect(isMemoryAvailable()).toBe(false);
 
+      // Advance time past the cooldown — pure check should still return false
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      expect(isMemoryAvailable()).toBe(false);
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe('checkAndRecoverMemory (with auto-recovery side effect)', () => {
+    afterEach(() => {
+      // Ensure fake timers never leak into other tests, even if a test fails mid-way
+      vi.useRealTimers();
+    });
+
+    it('should return false when mem0 is not available and cooldown not expired', () => {
+      _setMem0Available(false);
+      expect(checkAndRecoverMemory()).toBe(false);
+    });
+
+    it('should return true when enabled and available', () => {
+      _setMem0Available(true);
+      expect(checkAndRecoverMemory()).toBe(true);
+    });
+
+    it('should return false when disabled in config', () => {
+      _setMem0Available(true);
+      getConfig.mockReturnValue({ memory: { enabled: false } });
+      expect(checkAndRecoverMemory()).toBe(false);
+    });
+
+    it('should auto-recover after cooldown period expires', async () => {
+      vi.useFakeTimers();
+      _setMem0Available(true);
+
+      const failingClient = createMockClient({
+        add: vi.fn().mockRejectedValue(new Error('API error')),
+      });
+      _setClient(failingClient);
+
+      // This will fail and call markUnavailable()
+      await addMemory('user123', 'test');
+      expect(checkAndRecoverMemory()).toBe(false);
+
       // Advance time past the cooldown
       vi.advanceTimersByTime(_getRecoveryCooldownMs());
 
       // Should now auto-recover
-      expect(isMemoryAvailable()).toBe(true);
+      expect(checkAndRecoverMemory()).toBe(true);
     });
 
     it('should not auto-recover before cooldown expires', async () => {
@@ -183,15 +222,15 @@ describe('memory module', () => {
 
       // Trigger a failure to markUnavailable
       await addMemory('user123', 'test');
-      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
 
       // Advance time but not enough
       vi.advanceTimersByTime(_getRecoveryCooldownMs() - 1000);
-      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
 
       // Now advance past the cooldown
       vi.advanceTimersByTime(1000);
-      expect(isMemoryAvailable()).toBe(true);
+      expect(checkAndRecoverMemory()).toBe(true);
     });
 
     it('should re-disable if recovery attempt also fails', async () => {
@@ -205,15 +244,15 @@ describe('memory module', () => {
 
       // Trigger initial failure
       await addMemory('user123', 'test');
-      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
 
       // Advance past cooldown - auto-recovery kicks in
       vi.advanceTimersByTime(_getRecoveryCooldownMs());
-      expect(isMemoryAvailable()).toBe(true);
+      expect(checkAndRecoverMemory()).toBe(true);
 
       // But the next operation also fails
       await searchMemories('user123', 'test');
-      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
     });
   });
 

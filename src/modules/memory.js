@@ -154,13 +154,28 @@ export function getMemoryConfig() {
 }
 
 /**
- * Check if memory feature is enabled and mem0 is available.
- * Supports auto-recovery: if mem0 was marked unavailable due to a transient
- * error and the cooldown period has elapsed, it will be tentatively re-enabled
- * so the next request can check if the service has recovered.
+ * Pure availability check — no side effects.
+ * Returns true only if memory is both enabled in config and currently marked available.
+ * Does NOT trigger auto-recovery. Use {@link checkAndRecoverMemory} when you want
+ * the cooldown-based recovery logic.
  * @returns {boolean}
  */
 export function isMemoryAvailable() {
+  const memConfig = getMemoryConfig();
+  if (!memConfig.enabled) return false;
+  return mem0Available;
+}
+
+/**
+ * Check if memory feature is enabled and mem0 is available, with auto-recovery.
+ * If mem0 was marked unavailable due to a transient error and the cooldown period
+ * has elapsed, this will tentatively re-enable it so the next request can check
+ * if the service has recovered.
+ *
+ * Use this instead of {@link isMemoryAvailable} when you want the recovery side effect.
+ * @returns {boolean}
+ */
+export function checkAndRecoverMemory() {
   const memConfig = getMemoryConfig();
   if (!memConfig.enabled) return false;
 
@@ -286,7 +301,7 @@ export async function checkMem0Health() {
  * @returns {Promise<boolean>} true if stored successfully
  */
 export async function addMemory(userId, text, metadata = {}) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
 
   try {
     const c = getClient();
@@ -318,7 +333,7 @@ export async function addMemory(userId, text, metadata = {}) {
  * @returns {Promise<{memories: Array<{memory: string, score?: number}>, relations: Array}>}
  */
 export async function searchMemories(userId, query, limit) {
-  if (!isMemoryAvailable()) return { memories: [], relations: [] };
+  if (!checkAndRecoverMemory()) return { memories: [], relations: [] };
 
   const memConfig = getMemoryConfig();
   const maxResults = limit ?? memConfig.maxContextMemories;
@@ -358,7 +373,7 @@ export async function searchMemories(userId, query, limit) {
  * @returns {Promise<Array<{id: string, memory: string}>>} All user memories
  */
 export async function getMemories(userId) {
-  if (!isMemoryAvailable()) return [];
+  if (!checkAndRecoverMemory()) return [];
 
   try {
     const c = getClient();
@@ -389,7 +404,7 @@ export async function getMemories(userId) {
  * @returns {Promise<boolean>} true if deleted successfully
  */
 export async function deleteAllMemories(userId) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
 
   try {
     const c = getClient();
@@ -411,7 +426,7 @@ export async function deleteAllMemories(userId) {
  * @returns {Promise<boolean>} true if deleted successfully
  */
 export async function deleteMemory(memoryId) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
 
   try {
     const c = getClient();
@@ -453,7 +468,7 @@ export function formatRelations(relations) {
  * @returns {Promise<string>} Context string or empty string
  */
 export async function buildMemoryContext(userId, username, query) {
-  if (!isMemoryAvailable()) return '';
+  if (!checkAndRecoverMemory()) return '';
   if (isOptedOut(userId)) return '';
 
   const { memories, relations } = await searchMemories(userId, query);
@@ -486,7 +501,7 @@ export async function buildMemoryContext(userId, username, query) {
  * @returns {Promise<boolean>} true if any memories were stored
  */
 export async function extractAndStoreMemories(userId, username, userMessage, assistantReply) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
   if (isOptedOut(userId)) return false;
 
   const memConfig = getMemoryConfig();
