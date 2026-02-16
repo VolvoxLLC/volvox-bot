@@ -297,10 +297,14 @@ async function startup() {
   try {
     await Promise.race([
       checkMem0Health(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('mem0 health check timed out')), 10_000)),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('mem0 health check timed out')), 10_000),
+      ),
     ]);
   } catch (err) {
-    warn('mem0 health check timed out or failed — continuing without memory features', { error: err.message });
+    warn('mem0 health check timed out or failed — continuing without memory features', {
+      error: err.message,
+    });
   }
 
   // Register event handlers with live config reference

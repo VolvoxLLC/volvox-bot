@@ -405,7 +405,9 @@ You can use Discord markdown formatting.`;
     try {
       const memoryContext = await Promise.race([
         buildMemoryContext(userId, username, userMessage),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Memory context timeout')), 5000)),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Memory context timeout')), 5000),
+        ),
       ]);
       if (memoryContext) {
         systemPrompt += memoryContext;

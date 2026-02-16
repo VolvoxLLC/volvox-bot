@@ -282,9 +282,7 @@ async function handleForgetTopic(interaction, userId, username, topic) {
     if (matchesWithIds.length === 0) break;
 
     const results = await Promise.allSettled(matchesWithIds.map((m) => deleteMemory(m.id)));
-    const batchDeleted = results.filter(
-      (r) => r.status === 'fulfilled' && r.value === true,
-    ).length;
+    const batchDeleted = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
     totalDeleted += batchDeleted;
 
     // If we got fewer results than the batch size, we've reached the end
