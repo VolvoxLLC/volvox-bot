@@ -2,11 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 /**
- * Next.js 16 proxy (route protection).
- * Redirects unauthenticated users to the login page for protected routes.
+ * Route protection middleware.
  *
- * Next.js 16 renamed the middleware convention to proxy and requires
- * either a named `proxy` export or a default export.
+ * Compatibility note: This file uses the Next.js 16 `proxy` export convention
+ * (renamed from `middleware`). NextAuth v4 relies on standard Next.js middleware
+ * patterns and is installed with --legacy-peer-deps for Next.js 16 compatibility.
+ * The proxy export works correctly as middleware for route protection.
+ *
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/proxy
  */
 export async function proxy(request: NextRequest) {
