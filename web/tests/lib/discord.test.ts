@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getGuildIconUrl, getUserAvatarUrl, fetchUserGuilds, getMutualGuilds } from "@/lib/discord";
+import { getGuildIconUrl, getUserAvatarUrl, fetchUserGuilds, fetchBotGuilds, getMutualGuilds } from "@/lib/discord";
 
 describe("getGuildIconUrl", () => {
   it("returns default icon when no icon hash", () => {
@@ -95,6 +95,53 @@ describe("fetchUserGuilds", () => {
   });
 });
 
+describe("fetchBotGuilds", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns empty array when bot API returns non-OK response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: "Service Unavailable",
+    });
+
+    const originalEnv = process.env.BOT_API_URL;
+    process.env.BOT_API_URL = "http://localhost:3001";
+
+    const result = await fetchBotGuilds();
+
+    process.env.BOT_API_URL = originalEnv;
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns empty array when bot API is unreachable (network error)", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+
+    const originalEnv = process.env.BOT_API_URL;
+    process.env.BOT_API_URL = "http://localhost:3001";
+
+    const result = await fetchBotGuilds();
+
+    process.env.BOT_API_URL = originalEnv;
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns empty array when BOT_API_URL is not set", async () => {
+    const originalEnv = process.env.BOT_API_URL;
+    delete process.env.BOT_API_URL;
+
+    const result = await fetchBotGuilds();
+
+    process.env.BOT_API_URL = originalEnv;
+
+    expect(result).toEqual([]);
+  });
+});
+
 describe("getMutualGuilds", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -133,6 +180,62 @@ describe("getMutualGuilds", () => {
     expect(mutualGuilds[0].id).toBe("1");
     expect(mutualGuilds[1].id).toBe("3");
     expect(mutualGuilds[0].botPresent).toBe(true);
+  });
+
+  it("returns all user guilds unfiltered when bot API returns non-OK response", async () => {
+    const userGuilds = [
+      { id: "1", name: "Server 1", icon: null, owner: true, permissions: "8", features: [] },
+      { id: "2", name: "Server 2", icon: null, owner: false, permissions: "0", features: [] },
+    ];
+
+    let callCount = 0;
+    global.fetch = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(userGuilds) });
+      }
+      // Bot API returns 500
+      return Promise.resolve({ ok: false, status: 500, statusText: "Internal Server Error" });
+    });
+
+    const originalEnv = process.env.BOT_API_URL;
+    process.env.BOT_API_URL = "http://localhost:3001";
+
+    const mutualGuilds = await getMutualGuilds("test-token");
+
+    process.env.BOT_API_URL = originalEnv;
+
+    // Bot API failed — should return all user guilds unfiltered with botPresent=false
+    expect(mutualGuilds).toHaveLength(2);
+    expect(mutualGuilds[0].botPresent).toBe(false);
+    expect(mutualGuilds[1].botPresent).toBe(false);
+  });
+
+  it("returns all user guilds unfiltered when bot API is unreachable", async () => {
+    const userGuilds = [
+      { id: "1", name: "Server 1", icon: null, owner: true, permissions: "8", features: [] },
+    ];
+
+    let callCount = 0;
+    global.fetch = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(userGuilds) });
+      }
+      // Bot API network error
+      return Promise.reject(new Error("ECONNREFUSED"));
+    });
+
+    const originalEnv = process.env.BOT_API_URL;
+    process.env.BOT_API_URL = "http://localhost:3001";
+
+    const mutualGuilds = await getMutualGuilds("test-token");
+
+    process.env.BOT_API_URL = originalEnv;
+
+    // Bot API unreachable — should return all user guilds unfiltered
+    expect(mutualGuilds).toHaveLength(1);
+    expect(mutualGuilds[0].botPresent).toBe(false);
   });
 
   it("returns empty when no BOT_API_URL is set", async () => {

@@ -82,24 +82,34 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
     return [];
   }
 
-  const headers: Record<string, string> = {};
-  const botApiSecret = process.env.BOT_API_SECRET;
-  if (botApiSecret) {
-    headers.Authorization = `Bearer ${botApiSecret}`;
-  }
+  try {
+    const headers: Record<string, string> = {};
+    const botApiSecret = process.env.BOT_API_SECRET;
+    if (botApiSecret) {
+      headers.Authorization = `Bearer ${botApiSecret}`;
+    }
 
-  const response = await fetch(`${botApiUrl}/api/guilds`, {
-    headers,
-    next: { revalidate: 60 },
-  } as RequestInit);
+    const response = await fetch(`${botApiUrl}/api/guilds`, {
+      headers,
+      next: { revalidate: 60 },
+    } as RequestInit);
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch bot guilds: ${response.status} ${response.statusText}`,
+    if (!response.ok) {
+      logger.warn(
+        `[discord] Bot API returned ${response.status} ${response.statusText} — ` +
+          "continuing without bot guild filtering.",
+      );
+      return [];
+    }
+
+    return response.json();
+  } catch (error) {
+    logger.warn(
+      "[discord] Bot API is unreachable — continuing without bot guild filtering.",
+      error,
     );
+    return [];
   }
-
-  return response.json();
 }
 
 /**
