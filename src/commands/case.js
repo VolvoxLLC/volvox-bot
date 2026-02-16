@@ -8,6 +8,7 @@ import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { ACTION_COLORS, ACTION_LOG_CHANNEL_KEY } from '../modules/moderation.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('case')
@@ -117,7 +118,7 @@ export async function execute(interaction) {
     }
   } catch (err) {
     logError('Case command failed', { error: err.message, subcommand });
-    await interaction.editReply('Failed to execute case command.');
+    await safeEditReply(interaction, 'Failed to execute case command.');
   }
 }
 
@@ -135,11 +136,11 @@ async function handleView(interaction) {
   );
 
   if (rows.length === 0) {
-    return await interaction.editReply(`Case #${caseId} not found.`);
+    return await safeEditReply(interaction, `Case #${caseId} not found.`);
   }
 
   const embed = buildCaseEmbed(rows[0]);
-  await interaction.editReply({ embeds: [embed] });
+  await safeEditReply(interaction, { embeds: [embed] });
 }
 
 /**
@@ -172,7 +173,7 @@ async function handleList(interaction) {
   const { rows } = await pool.query(query, params);
 
   if (rows.length === 0) {
-    return await interaction.editReply('No cases found matching the criteria.');
+    return await safeEditReply(interaction, 'No cases found matching the criteria.');
   }
 
   const lines = rows.map((row) => {
@@ -192,7 +193,7 @@ async function handleList(interaction) {
     .setFooter({ text: `Showing ${rows.length} case(s)` })
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed] });
+  await safeEditReply(interaction, { embeds: [embed] });
 }
 
 /**
@@ -210,7 +211,7 @@ async function handleReason(interaction) {
   );
 
   if (rows.length === 0) {
-    return await interaction.editReply(`Case #${caseId} not found.`);
+    return await safeEditReply(interaction, `Case #${caseId} not found.`);
   }
 
   const caseRow = rows[0];
@@ -249,7 +250,7 @@ async function handleReason(interaction) {
     moderator: interaction.user.tag,
   });
 
-  await interaction.editReply(`Updated reason for case #${caseId}.`);
+  await safeEditReply(interaction, `Updated reason for case #${caseId}.`);
 }
 
 /**
@@ -266,7 +267,7 @@ async function handleDelete(interaction) {
   );
 
   if (rows.length === 0) {
-    return await interaction.editReply(`Case #${caseId} not found.`);
+    return await safeEditReply(interaction, `Case #${caseId} not found.`);
   }
 
   info('Case deleted', {
@@ -275,5 +276,5 @@ async function handleDelete(interaction) {
     moderator: interaction.user.tag,
   });
 
-  await interaction.editReply(`Deleted case #${caseId} (${rows[0].action}).`);
+  await safeEditReply(interaction, `Deleted case #${caseId} (${rows[0].action}).`);
 }

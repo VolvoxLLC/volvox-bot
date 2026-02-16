@@ -8,6 +8,7 @@
 import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { error as logError } from '../logger.js';
 import { HealthMonitor } from '../utils/health.js';
+import { safeFollowUp, safeReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('status')
@@ -66,7 +67,7 @@ export async function execute(interaction) {
     if (detailed) {
       // Check if user has admin permissions
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        await interaction.reply({
+        await safeReply(interaction, {
           content: '❌ Detailed diagnostics are only available to administrators.',
           ephemeral: true,
         });
@@ -108,7 +109,7 @@ export async function execute(interaction) {
         .setTimestamp()
         .setFooter({ text: 'Detailed diagnostics mode' });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await safeReply(interaction, { embeds: [embed], ephemeral: true });
     } else {
       // Basic mode - user-friendly status
       const status = healthMonitor.getStatus();
@@ -134,7 +135,7 @@ export async function execute(interaction) {
         .setTimestamp()
         .setFooter({ text: 'Use /status detailed:true for more info' });
 
-      await interaction.reply({ embeds: [embed] });
+      await safeReply(interaction, { embeds: [embed] });
     }
   } catch (err) {
     logError('Status command error', { error: err.message });
@@ -145,9 +146,9 @@ export async function execute(interaction) {
     };
 
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(reply).catch(() => {});
+      await safeFollowUp(interaction, reply).catch(() => {});
     } else {
-      await interaction.reply(reply).catch(() => {});
+      await safeReply(interaction, reply).catch(() => {});
     }
   }
 }

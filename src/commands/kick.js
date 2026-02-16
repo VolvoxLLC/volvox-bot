@@ -13,6 +13,7 @@ import {
   sendModLogEmbed,
   shouldSendDm,
 } from '../modules/moderation.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('kick')
@@ -35,13 +36,13 @@ export async function execute(interaction) {
     const config = getConfig();
     const target = interaction.options.getMember('user');
     if (!target) {
-      return await interaction.editReply('❌ User is not in this server.');
+      return await safeEditReply(interaction, '❌ User is not in this server.');
     }
     const reason = interaction.options.getString('reason');
 
     const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
     if (hierarchyError) {
-      return await interaction.editReply(hierarchyError);
+      return await safeEditReply(interaction, hierarchyError);
     }
 
     if (shouldSendDm(config, 'kick')) {
@@ -62,13 +63,15 @@ export async function execute(interaction) {
     await sendModLogEmbed(interaction.client, config, caseData);
 
     info('User kicked', { target: target.user.tag, moderator: interaction.user.tag });
-    await interaction.editReply(
+    await safeEditReply(
+      interaction,
       `✅ **${target.user.tag}** has been kicked. (Case #${caseData.case_number})`,
     );
   } catch (err) {
     logError('Command error', { error: err.message, command: 'kick' });
-    await interaction
-      .editReply('❌ An error occurred. Please try again or contact an administrator.')
-      .catch(() => {});
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
   }
 }

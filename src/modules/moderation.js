@@ -8,6 +8,7 @@ import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { parseDuration } from '../utils/duration.js';
+import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
 
 /**
@@ -193,7 +194,7 @@ export async function sendDmNotification(member, action, reason, guildName) {
     .setTimestamp();
 
   try {
-    await member.send({ embeds: [embed] });
+    await safeSend(member, { embeds: [embed] });
   } catch {
     // User has DMs disabled — silently continue
   }
@@ -237,7 +238,7 @@ export async function sendModLogEmbed(client, config, caseData) {
   }
 
   try {
-    const sentMessage = await channel.send({ embeds: [embed] });
+    const sentMessage = await safeSend(channel, { embeds: [embed] });
 
     // Store log message ID for future editing
     try {

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 // Mock discord.js with proper class mocks
+vi.mock('../../src/utils/safeSend.js', () => ({
+  safeSend: (ch, opts) => ch.send(opts),
+  safeReply: (t, opts) => t.reply(opts),
+  safeFollowUp: (t, opts) => t.followUp(opts),
+  safeEditReply: (t, opts) => t.editReply(opts),
+}));
 vi.mock('discord.js', () => {
   class MockSlashCommandBuilder {
     constructor() {

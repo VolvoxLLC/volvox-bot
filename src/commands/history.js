@@ -6,6 +6,7 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('history')
@@ -30,7 +31,7 @@ export async function execute(interaction) {
     );
 
     if (rows.length === 0) {
-      return await interaction.editReply(`No moderation history found for ${user.tag}.`);
+      return await safeEditReply(interaction, `No moderation history found for ${user.tag}.`);
     }
 
     const lines = rows.map((row) => {
@@ -68,9 +69,9 @@ export async function execute(interaction) {
       caseCount: rows.length,
     });
 
-    await interaction.editReply({ embeds: [embed] });
+    await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
     logError('Command error', { error: err.message, command: 'history' });
-    await interaction.editReply('❌ Failed to fetch moderation history.');
+    await safeEditReply(interaction, '❌ Failed to fetch moderation history.');
   }
 }

@@ -232,7 +232,10 @@ describe('sendWelcomeMessage', () => {
       },
     };
     await sendWelcomeMessage(member, client, config);
-    expect(mockSend).toHaveBeenCalledWith('Welcome <@123> to Test Server!');
+    expect(mockSend).toHaveBeenCalledWith({
+      content: 'Welcome <@123> to Test Server!',
+      allowedMentions: { parse: ['users'] },
+    });
   });
 
   it('should send dynamic welcome message when enabled', async () => {
@@ -264,7 +267,7 @@ describe('sendWelcomeMessage', () => {
     };
     await sendWelcomeMessage(member, client, config);
     expect(mockSend).toHaveBeenCalled();
-    const sentMessage = mockSend.mock.calls[0][0];
+    const sentMessage = mockSend.mock.calls[0][0].content;
     expect(sentMessage).toContain('<@123>');
   });
 
@@ -309,7 +312,7 @@ describe('sendWelcomeMessage', () => {
       },
     };
     await sendWelcomeMessage(member, client, config);
-    const sentMessage = mockSend.mock.calls[0][0];
+    const sentMessage = mockSend.mock.calls[0][0].content;
     expect(sentMessage).toContain('#100');
     expect(sentMessage).toContain('milestone');
   });
@@ -324,7 +327,10 @@ describe('sendWelcomeMessage', () => {
     const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
     const config = { welcome: { enabled: true, channelId: 'ch1' } };
     await sendWelcomeMessage(member, client, config);
-    expect(mockSend).toHaveBeenCalledWith('Welcome, <@123>!');
+    expect(mockSend).toHaveBeenCalledWith({
+      content: 'Welcome, <@123>!',
+      allowedMentions: { parse: ['users'] },
+    });
   });
 
   it('should send dynamic message with highlight channels', async () => {
@@ -466,7 +472,7 @@ describe('sendWelcomeMessage', () => {
       },
     };
     await sendWelcomeMessage(member, client, config);
-    const msg = mockSend.mock.calls[0][0];
+    const msg = mockSend.mock.calls[0][0].content;
     expect(msg).toContain('milestone');
   });
 });

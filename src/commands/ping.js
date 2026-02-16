@@ -1,11 +1,12 @@
 import { SlashCommandBuilder } from 'discord.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ping')
   .setDescription('Check bot latency and responsiveness');
 
 export async function execute(interaction) {
-  const response = await interaction.reply({
+  const response = await safeReply(interaction, {
     content: 'Pinging...',
     withResponse: true,
   });
@@ -14,5 +15,5 @@ export async function execute(interaction) {
   const latency = sent.createdTimestamp - interaction.createdTimestamp;
   const apiLatency = Math.round(interaction.client.ws.ping);
 
-  await interaction.editReply(`🏓 Pong!\n📡 Latency: ${latency}ms\n💓 API: ${apiLatency}ms`);
+  await safeEditReply(interaction, `🏓 Pong!\n📡 Latency: ${latency}ms\n💓 API: ${apiLatency}ms`);
 }

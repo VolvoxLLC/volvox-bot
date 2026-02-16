@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/utils/safeSend.js', () => ({
+  safeSend: (ch, opts) => ch.send(opts),
+  safeReply: (t, opts) => t.reply(opts),
+  safeFollowUp: (t, opts) => t.followUp(opts),
+  safeEditReply: (t, opts) => t.editReply(opts),
+}));
 vi.mock('../../src/utils/duration.js', () => ({
   parseDuration: vi.fn(),
   formatDuration: vi.fn().mockImplementation((ms) => {

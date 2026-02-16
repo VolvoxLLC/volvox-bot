@@ -13,6 +13,7 @@ import {
   sendModLogEmbed,
   shouldSendDm,
 } from '../modules/moderation.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ban')
@@ -59,7 +60,7 @@ export async function execute(interaction) {
         interaction.guild.members.me,
       );
       if (hierarchyError) {
-        return await interaction.editReply(hierarchyError);
+        return await safeEditReply(interaction, hierarchyError);
       }
 
       if (shouldSendDm(config, 'ban')) {
@@ -84,13 +85,15 @@ export async function execute(interaction) {
     await sendModLogEmbed(interaction.client, config, caseData);
 
     info('User banned', { target: user.tag, moderator: interaction.user.tag });
-    await interaction.editReply(
+    await safeEditReply(
+      interaction,
       `✅ **${user.tag}** has been banned. (Case #${caseData.case_number})`,
     );
   } catch (err) {
     logError('Command error', { error: err.message, command: 'ban' });
-    await interaction
-      .editReply('❌ An error occurred. Please try again or contact an administrator.')
-      .catch(() => {});
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
   }
 }

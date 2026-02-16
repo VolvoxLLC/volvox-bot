@@ -7,6 +7,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { createCase, sendModLogEmbed } from '../modules/moderation.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('purge')
@@ -163,13 +164,15 @@ export async function execute(interaction) {
 
     await sendModLogEmbed(interaction.client, config, caseData);
 
-    await interaction.editReply(
+    await safeEditReply(
+      interaction,
       `Deleted **${deleted.size}** message(s) from **${fetched.size}** scanned message(s).`,
     );
   } catch (err) {
     logError('Purge command failed', { error: err.message, command: 'purge' });
-    await interaction
-      .editReply('❌ An error occurred. Please try again or contact an administrator.')
-      .catch(() => {});
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
   }
 }

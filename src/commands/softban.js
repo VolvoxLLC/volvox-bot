@@ -13,6 +13,7 @@ import {
   sendModLogEmbed,
   shouldSendDm,
 } from '../modules/moderation.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('softban')
@@ -43,14 +44,14 @@ export async function execute(interaction) {
     const config = getConfig();
     const target = interaction.options.getMember('user');
     if (!target) {
-      return await interaction.editReply('❌ User is not in this server.');
+      return await safeEditReply(interaction, '❌ User is not in this server.');
     }
     const reason = interaction.options.getString('reason');
     const deleteMessageDays = interaction.options.getInteger('delete_messages') ?? 7;
 
     const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
     if (hierarchyError) {
-      return await interaction.editReply(hierarchyError);
+      return await safeEditReply(interaction, hierarchyError);
     }
 
     if (shouldSendDm(config, 'softban')) {
@@ -96,18 +97,21 @@ export async function execute(interaction) {
     info('User softbanned', { target: target.user.tag, moderator: interaction.user.tag });
 
     if (unbanError) {
-      await interaction.editReply(
+      await safeEditReply(
+        interaction,
         `⚠️ **${target.user.tag}** was banned but the unban failed — they remain banned. Please manually unban. (Case #${caseData.case_number})`,
       );
     } else {
-      await interaction.editReply(
+      await safeEditReply(
+        interaction,
         `✅ **${target.user.tag}** has been soft-banned. (Case #${caseData.case_number})`,
       );
     }
   } catch (err) {
     logError('Command error', { error: err.message, command: 'softban' });
-    await interaction
-      .editReply('❌ An error occurred. Please try again or contact an administrator.')
-      .catch(() => {});
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
   }
 }

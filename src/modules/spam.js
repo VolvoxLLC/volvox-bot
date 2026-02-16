@@ -4,6 +4,7 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { safeSend } from '../utils/safeSend.js';
 
 // Spam patterns
 const SPAM_PATTERNS = [
@@ -52,7 +53,7 @@ export async function sendSpamAlert(message, client, config) {
     )
     .setTimestamp();
 
-  await alertChannel.send({ embeds: [embed] });
+  await safeSend(alertChannel, { embeds: [embed] });
 
   // Auto-delete if enabled
   if (config.moderation?.autoDelete) {

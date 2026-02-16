@@ -33,6 +33,7 @@ import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
+import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -165,7 +166,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // Permission check
     if (!hasPermission(member, commandName, config)) {
-      await interaction.reply({
+      await safeReply(interaction, {
         content: getPermissionError(commandName),
         ephemeral: true,
       });
@@ -176,7 +177,7 @@ client.on('interactionCreate', async (interaction) => {
     // Execute command from collection
     const command = client.commands.get(commandName);
     if (!command) {
-      await interaction.reply({
+      await safeReply(interaction, {
         content: '❌ Command not found.',
         ephemeral: true,
       });
@@ -194,9 +195,9 @@ client.on('interactionCreate', async (interaction) => {
     };
 
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorMessage).catch(() => {});
+      await safeFollowUp(interaction, errorMessage).catch(() => {});
     } else {
-      await interaction.reply(errorMessage).catch(() => {});
+      await safeReply(interaction, errorMessage).catch(() => {});
     }
   }
 });
