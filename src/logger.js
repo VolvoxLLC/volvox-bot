@@ -262,11 +262,13 @@ export function addPostgresTransport(pool, config = {}) {
 
 /**
  * Remove a PostgreSQL transport from the logger.
+ * Closes the transport (flushing remaining buffer) before removing.
  *
  * @param {PostgresTransport} transport - The transport to remove
  */
-export function removePostgresTransport(transport) {
+export async function removePostgresTransport(transport) {
   if (transport) {
+    await transport.close();
     logger.remove(transport);
   }
 }
