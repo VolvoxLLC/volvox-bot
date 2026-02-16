@@ -57,6 +57,34 @@ describe("proxy function", () => {
     );
   });
 
+  it("redirects to /login when token has RefreshTokenError", async () => {
+    const { getToken } = await import("next-auth/jwt");
+    vi.mocked(getToken).mockResolvedValue({
+      sub: "123",
+      accessToken: "expired-token",
+      id: "user-123",
+      name: "Test",
+      email: "test@test.com",
+      picture: null,
+      error: "RefreshTokenError",
+      iat: 0,
+      exp: 0,
+      jti: "",
+    });
+
+    const mockRequest = {
+      url: "http://localhost:3000/dashboard",
+      nextUrl: new URL("http://localhost:3000/dashboard"),
+    } as Parameters<typeof proxy>[0];
+
+    const response = await proxy(mockRequest);
+
+    expect(response.status).toBe(307);
+    const location = response.headers.get("location");
+    expect(location).toContain("/login");
+    expect(location).toContain("callbackUrl=");
+  });
+
   it("allows access when valid token exists", async () => {
     const { getToken } = await import("next-auth/jwt");
     vi.mocked(getToken).mockResolvedValue({
