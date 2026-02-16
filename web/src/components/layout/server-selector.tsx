@@ -13,20 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { MutualGuild } from "@/types/discord";
-import { getGuildIconUrl } from "@/lib/discord";
+import { getBotInviteUrl, getGuildIconUrl } from "@/lib/discord";
 
 interface ServerSelectorProps {
   className?: string;
 }
 
 const SELECTED_GUILD_KEY = "bills-bot-selected-guild";
-
-/** Build the bot invite URL, or return null when CLIENT_ID is not configured. */
-function getBotInviteUrl(): string | null {
-  const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-  if (!clientId) return null;
-  return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
-}
 
 export function ServerSelector({ className }: ServerSelectorProps) {
   const [guilds, setGuilds] = useState<MutualGuild[]>([]);

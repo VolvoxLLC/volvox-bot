@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getBotInviteUrl } from "@/lib/discord";
 
 const features = [
   {
@@ -54,13 +55,6 @@ const features = [
       "This dashboard — manage your bot settings, view mod logs, and configure your server from any device.",
   },
 ];
-
-/** Build the bot invite URL, or return null when CLIENT_ID is not configured. */
-function getBotInviteUrl(): string | null {
-  const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-  if (!clientId) return null;
-  return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
-}
 
 /** Render an "Add to Server" button — disabled/hidden when CLIENT_ID is unset. */
 function InviteButton({ size = "sm", className }: { size?: "sm" | "lg"; className?: string }) {
