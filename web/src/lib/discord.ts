@@ -2,13 +2,16 @@ const DISCORD_CDN = "https://cdn.discordapp.com";
 
 /**
  * Minimal permissions the bot needs:
- * - Kick Members (1 << 1)
- * - Ban Members (1 << 2)
- * - View Channels (1 << 10)
- * - Send Messages (1 << 11)
- * - Manage Messages (1 << 13)
- * - Read Message History (1 << 16)
- * - Moderate Members (1 << 40)
+ * - Kick Members      (1 << 1)  =            2
+ * - Ban Members       (1 << 2)  =            4
+ * - View Channels     (1 << 10) =        1,024
+ * - Send Messages     (1 << 11) =        2,048
+ * - Manage Messages   (1 << 13) =        8,192
+ * - Read Msg History  (1 << 16) =       65,536
+ * - Moderate Members  (1 << 40) = 1,099,511,627,776
+ *                          Total = 1,099,511,704,582
+ *
+ * Verified: (1n<<1n)|(1n<<2n)|(1n<<10n)|(1n<<11n)|(1n<<13n)|(1n<<16n)|(1n<<40n) === 1099511704582n
  */
 const BOT_PERMISSIONS = "1099511704582";
 

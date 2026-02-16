@@ -129,7 +129,9 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       // Only expose user ID to the client session.
-      // The access token stays in the server-side JWT — use getToken() in API routes.
+      // Intentionally NOT exposing token.accessToken or token.refreshToken to
+      // the client session — these stay in the server-side JWT. Use getToken()
+      // in API routes to access the Discord access token for server-side calls.
       if (session.user) {
         session.user.id = token.id as string;
       }
