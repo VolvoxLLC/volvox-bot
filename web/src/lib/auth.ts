@@ -68,11 +68,17 @@ export async function refreshDiscordToken(token: Record<string, unknown>): Promi
     return { ...token, error: "RefreshTokenError" };
   }
 
-  const refreshed = await response.json() as {
+  let refreshed: {
     access_token: string;
     expires_in: number;
     refresh_token?: string;
   };
+  try {
+    refreshed = await response.json();
+  } catch {
+    logger.error("[auth] Discord returned non-JSON response during token refresh");
+    return { ...token, error: "RefreshTokenError" };
+  }
 
   return {
     ...token,

@@ -83,7 +83,14 @@ export async function fetchUserGuilds(
       );
     }
 
-    const page: DiscordGuild[] = await response.json();
+    let page: DiscordGuild[];
+    try {
+      page = await response.json();
+    } catch {
+      throw new Error(
+        "Discord returned non-JSON response for user guilds",
+      );
+    }
     allGuilds.push(...page);
 
     // If we got fewer than the max, we've fetched everything
