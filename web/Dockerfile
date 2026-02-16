@@ -5,9 +5,14 @@ FROM node:22-alpine AS deps
 RUN corepack enable
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml* ./
+# In monorepo layout the lockfile lives at the root, so we copy both the root
+# pnpm-workspace.yaml / pnpm-lock.yaml AND the web package.json. The glob
+# wildcard after pnpm-lock.yaml ensures the build doesn't fail if the file is
+# in a different location during standalone builds.
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY web/package.json ./web/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+    pnpm install --frozen-lockfile --filter bills-bot-web
 
 # --- Builder ---
 FROM node:22-alpine AS builder
@@ -15,6 +20,7 @@ RUN corepack enable
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/web/node_modules ./web/node_modules
 COPY . .
 
 # Build args for env vars needed at build time
@@ -22,6 +28,7 @@ ARG NEXT_PUBLIC_DISCORD_CLIENT_ID
 ENV NEXT_PUBLIC_DISCORD_CLIENT_ID=$NEXT_PUBLIC_DISCORD_CLIENT_ID
 
 ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app/web
 RUN pnpm build
 
 # --- Runner ---
@@ -34,11 +41,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/web/public ./public
 
 # Leverage Next.js standalone output
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./.next/static
 
 USER nextjs
 
