@@ -77,7 +77,27 @@ describe("GET /api/guilds", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual(mockGuilds);
-    expect(mockGetMutualGuilds).toHaveBeenCalledWith("valid-discord-token");
+    expect(mockGetMutualGuilds).toHaveBeenCalledWith(
+      "valid-discord-token",
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("returns 401 when token has RefreshTokenError", async () => {
+    mockGetToken.mockResolvedValue({
+      sub: "123",
+      accessToken: "stale-token",
+      id: "discord-user-123",
+      error: "RefreshTokenError",
+    });
+
+    const { GET } = await import("@/app/api/guilds/route");
+    const response = await GET(createMockRequest());
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.error).toMatch(/sign in/i);
+    expect(mockGetMutualGuilds).not.toHaveBeenCalled();
   });
 
   it("returns 500 on discord API error", async () => {
@@ -95,6 +115,6 @@ describe("GET /api/guilds", () => {
 
     expect(response.status).toBe(500);
     const body = await response.json();
-    expect(body.error).toBe("Discord API error");
+    expect(body.error).toBe("Failed to fetch guilds");
   });
 });

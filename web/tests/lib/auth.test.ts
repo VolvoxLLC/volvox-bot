@@ -45,97 +45,94 @@ describe("authOptions", () => {
     const { authOptions } = await import("@/lib/auth");
     const jwtCallback = authOptions.callbacks?.jwt;
     expect(jwtCallback).toBeDefined();
+    if (!jwtCallback) return;
 
-    if (jwtCallback) {
-      const result = await jwtCallback({
-        token: { sub: "123" },
-        account: {
-          access_token: "discord-access-token",
-          refresh_token: "discord-refresh-token",
-          expires_at: 1700000000,
-          provider: "discord",
-          type: "oauth",
-          providerAccountId: "discord-user-123",
-          token_type: "Bearer",
-        },
-        user: { id: "123", name: "Test", email: "test@test.com" },
-        trigger: "signIn",
-      } as Parameters<NonNullable<typeof jwtCallback>>[0]);
+    const result = await jwtCallback({
+      token: { sub: "123" },
+      account: {
+        access_token: "discord-access-token",
+        refresh_token: "discord-refresh-token",
+        expires_at: 1700000000,
+        provider: "discord",
+        type: "oauth",
+        providerAccountId: "discord-user-123",
+        token_type: "Bearer",
+      },
+      user: { id: "123", name: "Test", email: "test@test.com" },
+      trigger: "signIn",
+    } as Parameters<NonNullable<typeof jwtCallback>>[0]);
 
-      expect(result.accessToken).toBe("discord-access-token");
-      expect(result.refreshToken).toBe("discord-refresh-token");
-      expect(result.id).toBe("discord-user-123");
-    }
+    expect(result.accessToken).toBe("discord-access-token");
+    expect(result.refreshToken).toBe("discord-refresh-token");
+    expect(result.id).toBe("discord-user-123");
   });
 
   it("jwt callback returns existing token when no account", async () => {
     const { authOptions } = await import("@/lib/auth");
     const jwtCallback = authOptions.callbacks?.jwt;
     expect(jwtCallback).toBeDefined();
+    if (!jwtCallback) return;
 
-    if (jwtCallback) {
-      const existingToken = {
-        sub: "123",
-        accessToken: "existing-token",
-        accessTokenExpires: Date.now() + 60_000, // not expired
-        id: "user-123",
-      };
+    const existingToken = {
+      sub: "123",
+      accessToken: "existing-token",
+      accessTokenExpires: Date.now() + 60_000, // not expired
+      id: "user-123",
+    };
 
-      const result = await jwtCallback({
-        token: existingToken,
-        user: { id: "123", name: "Test", email: "test@test.com" },
-        trigger: "update",
-      } as Parameters<NonNullable<typeof jwtCallback>>[0]);
+    const result = await jwtCallback({
+      token: existingToken,
+      user: { id: "123", name: "Test", email: "test@test.com" },
+      trigger: "update",
+    } as Parameters<NonNullable<typeof jwtCallback>>[0]);
 
-      expect(result.accessToken).toBe("existing-token");
-      expect(result.id).toBe("user-123");
-    }
+    expect(result.accessToken).toBe("existing-token");
+    expect(result.id).toBe("user-123");
   });
 
   it("session callback exposes user id but NOT access token", async () => {
     const { authOptions } = await import("@/lib/auth");
     const sessionCallback = authOptions.callbacks?.session;
     expect(sessionCallback).toBeDefined();
+    if (!sessionCallback) return;
 
-    if (sessionCallback) {
-      const result = await sessionCallback({
-        session: {
-          user: { name: "Test", email: "test@test.com", image: null },
-          expires: "2099-01-01",
-        },
-        token: {
-          sub: "123",
-          accessToken: "discord-access-token",
-          id: "discord-user-123",
-        },
-      } as Parameters<NonNullable<typeof sessionCallback>>[0]);
+    const result = await sessionCallback({
+      session: {
+        user: { name: "Test", email: "test@test.com", image: null },
+        expires: "2099-01-01",
+      },
+      token: {
+        sub: "123",
+        accessToken: "discord-access-token",
+        id: "discord-user-123",
+      },
+    } as Parameters<NonNullable<typeof sessionCallback>>[0]);
 
-      // Access token should NOT be exposed to client session
-      expect((result as unknown as Record<string, unknown>).accessToken).toBeUndefined();
-      // User id should be exposed
-      expect((result as unknown as { user: { id: string } }).user.id).toBe("discord-user-123");
-    }
+    // Access token should NOT be exposed to client session
+    expect((result as unknown as Record<string, unknown>).accessToken).toBeUndefined();
+    // User id should be exposed
+    expect((result as unknown as { user: { id: string } }).user.id).toBe("discord-user-123");
   });
 
   it("session callback propagates RefreshTokenError", async () => {
     const { authOptions } = await import("@/lib/auth");
     const sessionCallback = authOptions.callbacks?.session;
+    expect(sessionCallback).toBeDefined();
+    if (!sessionCallback) return;
 
-    if (sessionCallback) {
-      const result = await sessionCallback({
-        session: {
-          user: { name: "Test", email: "test@test.com", image: null },
-          expires: "2099-01-01",
-        },
-        token: {
-          sub: "123",
-          id: "discord-user-123",
-          error: "RefreshTokenError",
-        },
-      } as Parameters<NonNullable<typeof sessionCallback>>[0]);
+    const result = await sessionCallback({
+      session: {
+        user: { name: "Test", email: "test@test.com", image: null },
+        expires: "2099-01-01",
+      },
+      token: {
+        sub: "123",
+        id: "discord-user-123",
+        error: "RefreshTokenError",
+      },
+    } as Parameters<NonNullable<typeof sessionCallback>>[0]);
 
-      expect((result as unknown as Record<string, unknown>).error).toBe("RefreshTokenError");
-    }
+    expect((result as unknown as Record<string, unknown>).error).toBe("RefreshTokenError");
   });
 
   it("rejects default NEXTAUTH_SECRET placeholder", async () => {
@@ -262,27 +259,43 @@ describe("refreshDiscordToken", () => {
     expect(result.accessToken).toBe("old-token");
   });
 
+  it("returns RefreshTokenError when Discord returns non-JSON response", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.reject(new SyntaxError("Unexpected token <")),
+    } as unknown as Response);
+
+    const { refreshDiscordToken } = await import("@/lib/auth");
+    const result = await refreshDiscordToken({
+      accessToken: "old-token",
+      refreshToken: "old-refresh",
+    });
+
+    expect(result.error).toBe("RefreshTokenError");
+    expect(result.accessToken).toBe("old-token");
+  });
+
   it("jwt callback skips refresh when no refresh token exists", async () => {
     const { authOptions } = await import("@/lib/auth");
     const jwtCallback = authOptions.callbacks?.jwt;
+    expect(jwtCallback).toBeDefined();
+    if (!jwtCallback) return;
 
-    if (jwtCallback) {
-      const expiredToken = {
-        sub: "123",
-        accessToken: "expired-token",
-        accessTokenExpires: Date.now() - 60_000, // expired
-        id: "user-123",
-        // No refreshToken
-      };
+    const expiredToken = {
+      sub: "123",
+      accessToken: "expired-token",
+      accessTokenExpires: Date.now() - 60_000, // expired
+      id: "user-123",
+      // No refreshToken
+    };
 
-      const result = await jwtCallback({
-        token: expiredToken,
-        user: { id: "123", name: "Test", email: "test@test.com" },
-        trigger: "update",
-      } as Parameters<NonNullable<typeof jwtCallback>>[0]);
+    const result = await jwtCallback({
+      token: expiredToken,
+      user: { id: "123", name: "Test", email: "test@test.com" },
+      trigger: "update",
+    } as Parameters<NonNullable<typeof jwtCallback>>[0]);
 
-      // Should return the token as-is without attempting refresh
-      expect(result.accessToken).toBe("expired-token");
-    }
+    // Should return the token as-is without attempting refresh
+    expect(result.accessToken).toBe("expired-token");
   });
 });

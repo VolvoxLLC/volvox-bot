@@ -28,14 +28,17 @@ describe("ServerSelector", () => {
     expect(screen.getByText("Loading servers...")).toBeInTheDocument();
   });
 
-  it("shows no servers message when empty", async () => {
+  it("shows no mutual servers message when empty", async () => {
     fetchSpy.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([]),
     } as Response);
     render(<ServerSelector />);
     await waitFor(() => {
-      expect(screen.getByText("No servers found")).toBeInTheDocument();
+      expect(screen.getByText("No mutual servers")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Bill Bot isn't in any of your Discord servers/),
+      ).toBeInTheDocument();
     });
   });
 
