@@ -19,24 +19,52 @@ interface ServerSelectorProps {
   className?: string;
 }
 
+const SELECTED_GUILD_KEY = "bills-bot-selected-guild";
+
 export function ServerSelector({ className }: ServerSelectorProps) {
   const [guilds, setGuilds] = useState<MutualGuild[]>([]);
   const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Persist selected guild to localStorage
+  const selectGuild = (guild: MutualGuild) => {
+    setSelectedGuild(guild);
+    try {
+      localStorage.setItem(SELECTED_GUILD_KEY, guild.id);
+    } catch {
+      // localStorage may be unavailable (e.g. incognito)
+    }
+  };
 
   useEffect(() => {
     async function loadGuilds() {
       try {
         const response = await fetch("/api/guilds");
         if (response.ok) {
-          const data = await response.json();
+          const data: MutualGuild[] = await response.json();
           setGuilds(data);
-          if (data.length > 0) {
+
+          // Restore previously selected guild from localStorage
+          let restored = false;
+          try {
+            const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
+            if (savedId) {
+              const saved = data.find((g: MutualGuild) => g.id === savedId);
+              if (saved) {
+                setSelectedGuild(saved);
+                restored = true;
+              }
+            }
+          } catch {
+            // localStorage unavailable
+          }
+
+          if (!restored && data.length > 0) {
             setSelectedGuild(data[0]);
           }
         }
-      } catch {
-        // Silently fail — guilds will be empty
+      } catch (error) {
+        console.error("[server-selector] Failed to load guilds:", error);
       } finally {
         setLoading(false);
       }
@@ -94,7 +122,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         {guilds.map((guild) => (
           <DropdownMenuItem
             key={guild.id}
-            onClick={() => setSelectedGuild(guild)}
+            onClick={() => selectGuild(guild)}
             className="flex items-center gap-2"
           >
             {guild.icon ? (
