@@ -2,7 +2,9 @@
  * Memory Module
  * Integrates mem0 for persistent user memory across conversations.
  *
- * Uses the mem0 REST API to store/search/retrieve user facts.
+ * Uses the official mem0ai SDK with the hosted platform (api.mem0.ai)
+ * and graph memory enabled for entity relationship tracking.
+ *
  * All operations are scoped per-user (Discord ID) and namespaced
  * with app_id="bills-bot" to isolate from other consumers.
  *
@@ -10,11 +12,9 @@
  * safe defaults (empty arrays / false) so the AI pipeline continues.
  */
 
+import MemoryClient from 'mem0ai';
 import { debug, info, warn as logWarn } from '../logger.js';
 import { getConfig } from './config.js';
-
-/** Default mem0 API base URL */
-const DEFAULT_MEM0_URL = 'http://localhost:8080';
 
 /** App namespace — isolates memories from other mem0 consumers */
 const APP_ID = 'bills-bot';
@@ -22,19 +22,30 @@ const APP_ID = 'bills-bot';
 /** Default maximum memories to inject into context */
 const DEFAULT_MAX_CONTEXT_MEMORIES = 5;
 
-/** HTTP request timeout in ms */
-const REQUEST_TIMEOUT_MS = 5000;
-
 /** Tracks whether mem0 is reachable (set by health check, cleared on errors) */
 let mem0Available = false;
 
+/** Singleton MemoryClient instance */
+let client = null;
+
 /**
- * Get the mem0 base URL from environment
- * @returns {string} Base URL (no trailing slash)
+ * Get or create the mem0 client instance.
+ * Returns null if the API key is not configured.
+ * @returns {MemoryClient|null}
  */
-export function getMem0Url() {
-  const url = process.env.MEM0_API_URL || DEFAULT_MEM0_URL;
-  return url.replace(/\/+$/, '');
+function getClient() {
+  if (client) return client;
+
+  const apiKey = process.env.MEM0_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    client = new MemoryClient({ apiKey });
+    return client;
+  } catch (err) {
+    logWarn('Failed to create mem0 client', { error: err.message });
+    return null;
+  }
 }
 
 /**
@@ -78,58 +89,17 @@ export function _setMem0Available(available) {
 }
 
 /**
- * Internal fetch wrapper with timeout and error handling.
- * Returns null on failure instead of throwing.
- * @param {string} path - API path (e.g. "/v1/memories/")
- * @param {Object} options - Fetch options
- * @returns {Promise<Object|null>} Parsed JSON response or null
+ * Set the mem0 client instance (for testing)
+ * @param {object|null} newClient
  */
-async function mem0Fetch(path, options = {}) {
-  const baseUrl = getMem0Url();
-  const url = `${baseUrl}${path}`;
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      logWarn('mem0 API error', {
-        path,
-        status: response.status,
-        statusText: response.statusText,
-      });
-      return null;
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      logWarn('mem0 request timed out', { path });
-    } else {
-      debug('mem0 request failed', { path, error: err.message });
-    }
-    // Mark as unavailable on network errors so subsequent calls skip faster
-    mem0Available = false;
-    return null;
-  }
+export function _setClient(newClient) {
+  client = newClient;
 }
 
 /**
- * Run a health check against the mem0 API on startup.
- * Sets the availability flag accordingly.
- * @returns {Promise<boolean>} true if mem0 is reachable
+ * Run a health check against the mem0 platform on startup.
+ * Verifies the API key is configured and the SDK client can be created.
+ * @returns {Promise<boolean>} true if mem0 is ready
  */
 export async function checkMem0Health() {
   const memConfig = getMemoryConfig();
@@ -139,35 +109,25 @@ export async function checkMem0Health() {
     return false;
   }
 
-  const baseUrl = getMem0Url();
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    const response = await fetch(`${baseUrl}/v1/memories/`, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    clearTimeout(timeout);
-
-    if (response.ok || response.status === 404) {
-      // 404 is acceptable — some mem0 deployments return 404 on GET /v1/memories/ with no params
-      mem0Available = true;
-      info('mem0 health check passed', { url: baseUrl });
-      return true;
-    }
-
-    logWarn('mem0 health check failed', { status: response.status });
+  const apiKey = process.env.MEM0_API_KEY;
+  if (!apiKey) {
+    logWarn('MEM0_API_KEY not set — memory features disabled');
     mem0Available = false;
     return false;
+  }
+
+  try {
+    const c = getClient();
+    if (!c) {
+      mem0Available = false;
+      return false;
+    }
+
+    mem0Available = true;
+    info('mem0 health check passed (API key configured, SDK client initialized)');
+    return true;
   } catch (err) {
-    logWarn('mem0 unreachable — memory features disabled', {
-      url: baseUrl,
-      error: err.message,
-    });
+    logWarn('mem0 health check failed', { error: err.message });
     mem0Available = false;
     return false;
   }
@@ -175,6 +135,7 @@ export async function checkMem0Health() {
 
 /**
  * Add a memory for a user.
+ * Graph memory is enabled to automatically build entity relationships.
  * @param {string} userId - Discord user ID
  * @param {string} text - The memory text to store
  * @param {Object} [metadata] - Optional metadata
@@ -183,60 +144,67 @@ export async function checkMem0Health() {
 export async function addMemory(userId, text, metadata = {}) {
   if (!isMemoryAvailable()) return false;
 
-  const body = {
-    messages: [{ role: 'user', content: text }],
-    user_id: userId,
-    app_id: APP_ID,
-    metadata,
-  };
+  try {
+    const c = getClient();
+    if (!c) return false;
 
-  const result = await mem0Fetch('/v1/memories/', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+    const messages = [{ role: 'user', content: text }];
+    await c.add(messages, {
+      user_id: userId,
+      app_id: APP_ID,
+      metadata,
+      enable_graph: true,
+    });
 
-  if (result) {
     debug('Memory added', { userId, textPreview: text.substring(0, 100) });
     return true;
+  } catch (err) {
+    logWarn('Failed to add memory', { userId, error: err.message });
+    mem0Available = false;
+    return false;
   }
-
-  return false;
 }
 
 /**
  * Search memories relevant to a query for a given user.
+ * Returns both regular memory results and graph relations.
  * @param {string} userId - Discord user ID
  * @param {string} query - Search query
  * @param {number} [limit] - Max results (defaults to config maxContextMemories)
- * @returns {Promise<Array<{memory: string, score?: number}>>} Matching memories
+ * @returns {Promise<{memories: Array<{memory: string, score?: number}>, relations: Array}>}
  */
 export async function searchMemories(userId, query, limit) {
-  if (!isMemoryAvailable()) return [];
+  if (!isMemoryAvailable()) return { memories: [], relations: [] };
 
   const memConfig = getMemoryConfig();
   const maxResults = limit ?? memConfig.maxContextMemories;
 
-  const body = {
-    query,
-    user_id: userId,
-    app_id: APP_ID,
-    limit: maxResults,
-  };
+  try {
+    const c = getClient();
+    if (!c) return { memories: [], relations: [] };
 
-  const result = await mem0Fetch('/v1/memories/search/', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+    const result = await c.search(query, {
+      user_id: userId,
+      app_id: APP_ID,
+      limit: maxResults,
+      enable_graph: true,
+    });
 
-  if (!result) return [];
+    // SDK returns { results: [...], relations: [...] } with graph enabled
+    const rawMemories = Array.isArray(result) ? result : result?.results || [];
+    const relations = result?.relations || [];
 
-  // mem0 returns { results: [...] } or an array directly depending on version
-  const memories = Array.isArray(result) ? result : result.results || [];
+    const memories = rawMemories.map((m) => ({
+      memory: m.memory || m.text || m.content || '',
+      score: m.score ?? null,
+    }));
 
-  return memories.map((m) => ({
-    memory: m.memory || m.text || m.content || '',
-    score: m.score ?? null,
-  }));
+    return { memories, relations };
+  } catch (err) {
+    logWarn('Failed to search memories', { userId, error: err.message });
+    mem0Available = false;
+    return { memories: [], relations: [] };
+  }
 }
 
 /**
@@ -247,22 +215,27 @@ export async function searchMemories(userId, query, limit) {
 export async function getMemories(userId) {
   if (!isMemoryAvailable()) return [];
 
-  const result = await mem0Fetch(
-    `/v1/memories/?user_id=${encodeURIComponent(userId)}&app_id=${encodeURIComponent(APP_ID)}`,
-    {
-      method: 'GET',
-    },
-  );
+  try {
+    const c = getClient();
+    if (!c) return [];
 
-  if (!result) return [];
+    const result = await c.getAll({
+      user_id: userId,
+      app_id: APP_ID,
+      enable_graph: true,
+    });
 
-  // mem0 returns { results: [...] } or array
-  const memories = Array.isArray(result) ? result : result.results || [];
+    const memories = Array.isArray(result) ? result : result?.results || [];
 
-  return memories.map((m) => ({
-    id: m.id || '',
-    memory: m.memory || m.text || m.content || '',
-  }));
+    return memories.map((m) => ({
+      id: m.id || '',
+      memory: m.memory || m.text || m.content || '',
+    }));
+  } catch (err) {
+    logWarn('Failed to get memories', { userId, error: err.message });
+    mem0Available = false;
+    return [];
+  }
 }
 
 /**
@@ -273,19 +246,17 @@ export async function getMemories(userId) {
 export async function deleteAllMemories(userId) {
   if (!isMemoryAvailable()) return false;
 
-  const result = await mem0Fetch(
-    `/v1/memories/?user_id=${encodeURIComponent(userId)}&app_id=${encodeURIComponent(APP_ID)}`,
-    {
-      method: 'DELETE',
-    },
-  );
+  try {
+    const c = getClient();
+    if (!c) return false;
 
-  if (result !== null) {
+    await c.deleteAll({ user_id: userId, app_id: APP_ID });
     info('All memories deleted for user', { userId });
     return true;
+  } catch (err) {
+    logWarn('Failed to delete all memories', { userId, error: err.message });
+    return false;
   }
-
-  return false;
 }
 
 /**
@@ -296,20 +267,35 @@ export async function deleteAllMemories(userId) {
 export async function deleteMemory(memoryId) {
   if (!isMemoryAvailable()) return false;
 
-  const result = await mem0Fetch(`/v1/memories/${encodeURIComponent(memoryId)}/`, {
-    method: 'DELETE',
-  });
+  try {
+    const c = getClient();
+    if (!c) return false;
 
-  if (result !== null) {
+    await c.delete(memoryId);
     debug('Memory deleted', { memoryId });
     return true;
+  } catch (err) {
+    logWarn('Failed to delete memory', { memoryId, error: err.message });
+    return false;
   }
+}
 
-  return false;
+/**
+ * Format graph relations into a readable context string.
+ * @param {Array<{source: string, source_type: string, relationship: string, target: string, target_type: string}>} relations
+ * @returns {string} Formatted relations string or empty string
+ */
+export function formatRelations(relations) {
+  if (!relations || relations.length === 0) return '';
+
+  const lines = relations.map((r) => `- ${r.source} → ${r.relationship} → ${r.target}`);
+
+  return `\nRelationships:\n${lines.join('\n')}`;
 }
 
 /**
  * Build a context string from user memories to inject into the system prompt.
+ * Includes both regular memories and graph relations for richer context.
  * @param {string} userId - Discord user ID
  * @param {string} username - Display name
  * @param {string} query - The user's current message (for relevance search)
@@ -318,18 +304,29 @@ export async function deleteMemory(memoryId) {
 export async function buildMemoryContext(userId, username, query) {
   if (!isMemoryAvailable()) return '';
 
-  const memories = await searchMemories(userId, query);
+  const { memories, relations } = await searchMemories(userId, query);
 
-  if (memories.length === 0) return '';
+  if (memories.length === 0 && (!relations || relations.length === 0)) return '';
 
-  const memoryLines = memories.map((m) => `- ${m.memory}`).join('\n');
+  let context = '';
 
-  return `\n\nWhat you know about ${username}:\n${memoryLines}`;
+  if (memories.length > 0) {
+    const memoryLines = memories.map((m) => `- ${m.memory}`).join('\n');
+    context += `\n\nWhat you know about ${username}:\n${memoryLines}`;
+  }
+
+  const relationsContext = formatRelations(relations);
+  if (relationsContext) {
+    context += relationsContext;
+  }
+
+  return context;
 }
 
 /**
  * Analyze a conversation exchange and extract memorable facts to store.
- * Uses the AI to identify new personal info worth remembering.
+ * Uses mem0's AI to identify new personal info worth remembering.
+ * Graph memory is enabled to automatically build entity relationships.
  * @param {string} userId - Discord user ID
  * @param {string} username - Display name
  * @param {string} userMessage - What the user said
@@ -342,28 +339,30 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
   const memConfig = getMemoryConfig();
   if (!memConfig.autoExtract) return false;
 
-  const body = {
-    messages: [
+  try {
+    const c = getClient();
+    if (!c) return false;
+
+    const messages = [
       { role: 'user', content: `${username}: ${userMessage}` },
       { role: 'assistant', content: assistantReply },
-    ],
-    user_id: userId,
-    app_id: APP_ID,
-  };
+    ];
 
-  const result = await mem0Fetch('/v1/memories/', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+    await c.add(messages, {
+      user_id: userId,
+      app_id: APP_ID,
+      enable_graph: true,
+    });
 
-  if (result) {
     debug('Memory extraction completed', {
       userId,
       username,
       messagePreview: userMessage.substring(0, 80),
     });
     return true;
+  } catch (err) {
+    logWarn('Memory extraction failed', { userId, error: err.message });
+    mem0Available = false;
+    return false;
   }
-
-  return false;
 }
