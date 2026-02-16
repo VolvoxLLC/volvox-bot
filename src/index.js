@@ -28,7 +28,7 @@ import {
 } from './modules/ai.js';
 import { loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
-import { checkMem0Health } from './modules/memory.js';
+import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
 import { HealthMonitor } from './utils/health.js';
@@ -293,8 +293,26 @@ async function startup() {
   // Load opt-out preferences from DB before enabling memory features
   await loadOptOuts();
 
-  // Check mem0 availability for user memory features
-  await checkMem0Health();
+  // Check mem0 availability for user memory features (with timeout to avoid blocking startup).
+  // AbortController prevents a late-resolving health check from calling markAvailable()
+  // after the timeout has already called markUnavailable().
+  const healthAbort = new AbortController();
+  try {
+    await Promise.race([
+      checkMem0Health({ signal: healthAbort.signal }),
+      new Promise((_, reject) =>
+        setTimeout(() => {
+          healthAbort.abort();
+          reject(new Error('mem0 health check timed out'));
+        }, 10_000),
+      ),
+    ]);
+  } catch (err) {
+    markUnavailable();
+    warn('mem0 health check timed out or failed — continuing without memory features', {
+      error: err.message,
+    });
+  }
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);

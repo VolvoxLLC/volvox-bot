@@ -57,6 +57,11 @@ const mocks = vi.hoisted(() => ({
     getPermissionError: vi.fn(),
   },
 
+  memory: {
+    checkMem0Health: vi.fn().mockResolvedValue(false),
+    markUnavailable: vi.fn(),
+  },
+
   registerCommands: vi.fn(),
   dotenvConfig: vi.fn(),
 }));
@@ -143,7 +148,8 @@ vi.mock('../src/modules/events.js', () => ({
 }));
 
 vi.mock('../src/modules/memory.js', () => ({
-  checkMem0Health: vi.fn().mockResolvedValue(false),
+  checkMem0Health: mocks.memory.checkMem0Health,
+  markUnavailable: mocks.memory.markUnavailable,
 }));
 
 vi.mock('../src/modules/moderation.js', () => ({
@@ -184,6 +190,7 @@ async function importIndex({
   readdirFiles = [],
   loadConfigReject = null,
   throwOnExit = true,
+  checkMem0HealthImpl = null,
 } = {}) {
   vi.resetModules();
 
@@ -238,6 +245,13 @@ async function importIndex({
   mocks.health.getInstance.mockReset().mockReturnValue({});
   mocks.permissions.hasPermission.mockReset().mockReturnValue(true);
   mocks.permissions.getPermissionError.mockReset().mockReturnValue('nope');
+  mocks.memory.checkMem0Health.mockReset();
+  if (checkMem0HealthImpl) {
+    mocks.memory.checkMem0Health.mockImplementation(checkMem0HealthImpl);
+  } else {
+    mocks.memory.checkMem0Health.mockResolvedValue(false);
+  }
+  mocks.memory.markUnavailable.mockReset();
   mocks.registerCommands.mockReset().mockResolvedValue(undefined);
   mocks.dotenvConfig.mockReset();
 
@@ -305,6 +319,33 @@ describe('index.js', () => {
       'DATABASE_URL not set — using config.json only (no persistence)',
     );
     expect(mocks.moderation.startTempbanScheduler).not.toHaveBeenCalled();
+    expect(mocks.client.login).toHaveBeenCalledWith('abc');
+  });
+
+  it('should call markUnavailable when checkMem0Health rejects', async () => {
+    await importIndex({
+      token: 'abc',
+      databaseUrl: null,
+      checkMem0HealthImpl: () => Promise.reject(new Error('mem0 health check timed out')),
+    });
+
+    expect(mocks.memory.markUnavailable).toHaveBeenCalled();
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'mem0 health check timed out or failed — continuing without memory features',
+      { error: 'mem0 health check timed out' },
+    );
+    // Startup should still complete despite the failure
+    expect(mocks.client.login).toHaveBeenCalledWith('abc');
+  });
+
+  it('should not call markUnavailable when checkMem0Health succeeds', async () => {
+    await importIndex({
+      token: 'abc',
+      databaseUrl: null,
+      checkMem0HealthImpl: () => Promise.resolve(true),
+    });
+
+    expect(mocks.memory.markUnavailable).not.toHaveBeenCalled();
     expect(mocks.client.login).toHaveBeenCalledWith('abc');
   });
 

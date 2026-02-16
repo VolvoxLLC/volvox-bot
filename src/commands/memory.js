@@ -25,10 +25,10 @@ import {
 } from 'discord.js';
 import { info, warn } from '../logger.js';
 import {
+  checkAndRecoverMemory,
   deleteAllMemories,
   deleteMemory,
   getMemories,
-  isMemoryAvailable,
   searchMemories,
 } from '../modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../modules/optout.js';
@@ -113,7 +113,7 @@ export async function execute(interaction) {
     return;
   }
 
-  if (!isMemoryAvailable()) {
+  if (!checkAndRecoverMemory()) {
     await interaction.reply({
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',
@@ -261,26 +261,45 @@ async function handleForgetAll(interaction, userId, username) {
 async function handleForgetTopic(interaction, userId, username, topic) {
   await interaction.deferReply({ ephemeral: true });
 
-  // Search for memories matching the topic (results include IDs)
-  const { memories: matches } = await searchMemories(userId, topic, 10);
+  const BATCH_SIZE = 100;
+  const MAX_ITERATIONS = 10;
+  let totalDeleted = 0;
+  let totalFound = 0;
+  let iterations = 0;
 
-  if (matches.length === 0) {
+  // Loop to delete all matching memories (not just the first batch)
+  while (iterations < MAX_ITERATIONS) {
+    iterations++;
+    const { memories: matches } = await searchMemories(userId, topic, BATCH_SIZE);
+
+    if (matches.length === 0) break;
+    totalFound += matches.length;
+
+    const matchesWithIds = matches.filter(
+      (m) => m.id !== undefined && m.id !== null && m.id !== '',
+    );
+
+    if (matchesWithIds.length === 0) break;
+
+    const results = await Promise.allSettled(matchesWithIds.map((m) => deleteMemory(m.id)));
+    const batchDeleted = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+    totalDeleted += batchDeleted;
+
+    // If we got fewer results than the batch size, we've reached the end
+    if (matches.length < BATCH_SIZE) break;
+    // If nothing was deleted this round, stop to avoid infinite loop
+    if (batchDeleted === 0) break;
+  }
+
+  if (totalDeleted > 0) {
+    await interaction.editReply({
+      content: `🧹 Forgot ${totalDeleted} memor${totalDeleted === 1 ? 'y' : 'ies'} related to "${topic}".`,
+    });
+    info('Topic memories cleared', { userId, username, topic, count: totalDeleted });
+  } else if (totalFound === 0) {
     await interaction.editReply({
       content: `🔍 No memories found matching "${topic}".`,
     });
-    return;
-  }
-
-  // Use memory IDs directly from search results and delete in parallel
-  const matchesWithIds = matches.filter((m) => m.id);
-  const results = await Promise.allSettled(matchesWithIds.map((m) => deleteMemory(m.id)));
-  const deletedCount = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
-
-  if (deletedCount > 0) {
-    await interaction.editReply({
-      content: `🧹 Forgot ${deletedCount} memor${deletedCount === 1 ? 'y' : 'ies'} related to "${topic}".`,
-    });
-    info('Topic memories cleared', { userId, username, topic, count: deletedCount });
   } else {
     await interaction.editReply({
       content: `❌ Found memories about "${topic}" but couldn't delete them. Please try again.`,
@@ -309,7 +328,7 @@ async function handleAdmin(interaction, subcommand) {
     return;
   }
 
-  if (!isMemoryAvailable()) {
+  if (!checkAndRecoverMemory()) {
     await interaction.reply({
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',

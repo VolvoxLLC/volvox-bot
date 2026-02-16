@@ -400,15 +400,20 @@ You're witty, knowledgeable about programming and tech, and always eager to help
 Keep responses concise and Discord-friendly (under 2000 chars).
 You can use Discord markdown formatting.`;
 
-  // Pre-response: inject user memory context into system prompt
+  // Pre-response: inject user memory context into system prompt (with timeout)
   if (userId) {
     try {
-      const memoryContext = await buildMemoryContext(userId, username, userMessage);
+      const memoryContext = await Promise.race([
+        buildMemoryContext(userId, username, userMessage),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Memory context timeout')), 5000),
+        ),
+      ]);
       if (memoryContext) {
         systemPrompt += memoryContext;
       }
     } catch (err) {
-      // Memory lookup failed — continue without it
+      // Memory lookup failed or timed out — continue without it
       logWarn('Memory context lookup failed', { userId, error: err.message });
     }
   }
