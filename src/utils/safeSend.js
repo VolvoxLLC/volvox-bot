@@ -2,12 +2,15 @@
  * Safe Message Sending Wrappers
  * Defense-in-depth wrappers around Discord.js message methods.
  * Sanitizes content to strip @everyone/@here and enforces allowedMentions
- * on every outgoing message.
+ * on every outgoing message. Long messages (>2000 chars) are automatically
+ * split into multiple sends.
  *
  * @see https://github.com/BillChirico/bills-bot/issues/61
  */
 
+import { error as logError } from '../logger.js';
 import { sanitizeMessageOptions } from './sanitizeMentions.js';
+import { needsSplitting, splitMessage } from './splitMessage.js';
 
 /**
  * Default allowedMentions config that only permits user mentions.
@@ -45,49 +48,92 @@ function prepareOptions(options) {
 }
 
 /**
- * Safely send a message to a channel.
- * Sanitizes content and enforces allowedMentions.
+ * Send a single prepared options object, or split into multiple sends
+ * if the content exceeds Discord's 2000-char limit.
  *
- * @param {import('discord.js').TextBasedChannel} channel - The channel to send to
- * @param {string|object} options - Message content or options object
- * @returns {Promise<import('discord.js').Message>} The sent message
+ * @param {Function} sendFn - The underlying send/reply/followUp/editReply function
+ * @param {object} prepared - The sanitized options object
+ * @returns {Promise<import('discord.js').Message|import('discord.js').Message[]>}
  */
-export async function safeSend(channel, options) {
-  return channel.send(prepareOptions(options));
+async function sendOrSplit(sendFn, prepared) {
+  const content = prepared.content;
+  if (typeof content === 'string' && needsSplitting(content)) {
+    const chunks = splitMessage(content);
+    const results = [];
+    for (const chunk of chunks) {
+      results.push(await sendFn({ ...prepared, content: chunk }));
+    }
+    return results;
+  }
+  return sendFn(prepared);
 }
 
 /**
- * Safely reply to an interaction.
- * Sanitizes content and enforces allowedMentions.
+ * Safely send a message to a channel.
+ * Sanitizes content, enforces allowedMentions, and splits long messages.
  *
- * @param {import('discord.js').CommandInteraction} interaction - The interaction to reply to
- * @param {string|object} options - Reply content or options object
- * @returns {Promise<import('discord.js').Message|void>} The reply
+ * @param {import('discord.js').TextBasedChannel} channel - The channel to send to
+ * @param {string|object} options - Message content or options object
+ * @returns {Promise<import('discord.js').Message|import('discord.js').Message[]>} The sent message(s)
  */
-export async function safeReply(interaction, options) {
-  return interaction.reply(prepareOptions(options));
+export async function safeSend(channel, options) {
+  try {
+    return await sendOrSplit((opts) => channel.send(opts), prepareOptions(options));
+  } catch (err) {
+    logError('safeSend failed', { error: err.message });
+    throw err;
+  }
+}
+
+/**
+ * Safely reply to an interaction or message.
+ * Sanitizes content, enforces allowedMentions, and splits long messages.
+ * Works with both Interaction.reply() and Message.reply() — both accept
+ * the same options shape including allowedMentions.
+ *
+ * @param {import('discord.js').CommandInteraction|import('discord.js').Message} target - The interaction or message to reply to
+ * @param {string|object} options - Reply content or options object
+ * @returns {Promise<import('discord.js').Message|import('discord.js').Message[]|void>} The reply
+ */
+export async function safeReply(target, options) {
+  try {
+    return await sendOrSplit((opts) => target.reply(opts), prepareOptions(options));
+  } catch (err) {
+    logError('safeReply failed', { error: err.message });
+    throw err;
+  }
 }
 
 /**
  * Safely send a follow-up to an interaction.
- * Sanitizes content and enforces allowedMentions.
+ * Sanitizes content, enforces allowedMentions, and splits long messages.
  *
  * @param {import('discord.js').CommandInteraction} interaction - The interaction to follow up on
  * @param {string|object} options - Follow-up content or options object
- * @returns {Promise<import('discord.js').Message>} The follow-up message
+ * @returns {Promise<import('discord.js').Message|import('discord.js').Message[]>} The follow-up message(s)
  */
 export async function safeFollowUp(interaction, options) {
-  return interaction.followUp(prepareOptions(options));
+  try {
+    return await sendOrSplit((opts) => interaction.followUp(opts), prepareOptions(options));
+  } catch (err) {
+    logError('safeFollowUp failed', { error: err.message });
+    throw err;
+  }
 }
 
 /**
  * Safely edit an interaction reply.
- * Sanitizes content and enforces allowedMentions.
+ * Sanitizes content, enforces allowedMentions, and splits long messages.
  *
  * @param {import('discord.js').CommandInteraction} interaction - The interaction whose reply to edit
  * @param {string|object} options - Edit content or options object
- * @returns {Promise<import('discord.js').Message>} The edited message
+ * @returns {Promise<import('discord.js').Message|import('discord.js').Message[]>} The edited message(s)
  */
 export async function safeEditReply(interaction, options) {
-  return interaction.editReply(prepareOptions(options));
+  try {
+    return await sendOrSplit((opts) => interaction.editReply(opts), prepareOptions(options));
+  } catch (err) {
+    logError('safeEditReply failed', { error: err.message });
+    throw err;
+  }
 }
