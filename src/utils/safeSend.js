@@ -89,8 +89,12 @@ async function sendOrSplit(sendFn, prepared) {
   if (typeof content === 'string' && needsSplitting(content)) {
     const chunks = splitMessage(content);
     const results = [];
-    for (const chunk of chunks) {
-      results.push(await sendFn({ ...prepared, content: chunk }));
+    for (let i = 0; i < chunks.length; i++) {
+      const isLast = i === chunks.length - 1;
+      const chunkPayload = isLast
+        ? { ...prepared, content: chunks[i] }
+        : { content: chunks[i], allowedMentions: prepared.allowedMentions };
+      results.push(await sendFn(chunkPayload));
     }
     return results;
   }

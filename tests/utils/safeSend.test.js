@@ -219,6 +219,36 @@ describe('splitMessage integration (channel.send only)', () => {
     );
     expect(result).toHaveLength(2);
   });
+
+  it('should only include embeds/components on the last chunk', async () => {
+    needsSplitting.mockReturnValueOnce(true);
+    splitMessage.mockReturnValueOnce(['chunk1', 'chunk2', 'chunk3']);
+    const mockChannel = { send: vi.fn().mockResolvedValue({ id: 'msg' }) };
+
+    await safeSend(mockChannel, {
+      content: 'a'.repeat(5000),
+      embeds: [{ title: 'test' }],
+      components: [{ type: 1 }],
+    });
+
+    expect(mockChannel.send).toHaveBeenCalledTimes(3);
+
+    // First two chunks: content + allowedMentions only (no embeds, no components)
+    const call0 = mockChannel.send.mock.calls[0][0];
+    expect(call0).toEqual({ content: 'chunk1', allowedMentions: SAFE_ALLOWED_MENTIONS });
+
+    const call1 = mockChannel.send.mock.calls[1][0];
+    expect(call1).toEqual({ content: 'chunk2', allowedMentions: SAFE_ALLOWED_MENTIONS });
+
+    // Last chunk: full payload with embeds and components
+    const call2 = mockChannel.send.mock.calls[2][0];
+    expect(call2).toEqual({
+      content: 'chunk3',
+      embeds: [{ title: 'test' }],
+      components: [{ type: 1 }],
+      allowedMentions: SAFE_ALLOWED_MENTIONS,
+    });
+  });
 });
 
 describe('interaction truncation (reply/editReply/followUp)', () => {
