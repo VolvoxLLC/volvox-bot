@@ -105,13 +105,14 @@ describe('memory module', () => {
       expect(config.autoExtract).toBe(true);
     });
 
-    it('should return defaults when getConfig throws', () => {
+    it('should return safe disabled fallback when getConfig throws', () => {
       getConfig.mockImplementation(() => {
         throw new Error('not loaded');
       });
       const config = getMemoryConfig();
-      expect(config.enabled).toBe(true);
+      expect(config.enabled).toBe(false);
       expect(config.maxContextMemories).toBe(5);
+      expect(config.autoExtract).toBe(false);
     });
 
     it('should respect custom config values', () => {
