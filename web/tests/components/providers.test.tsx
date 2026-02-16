@@ -13,7 +13,7 @@ vi.mock("next-auth/react", () => ({
 import { Providers } from "@/components/providers";
 
 describe("Providers", () => {
-  it("wraps children in SessionProvider with SessionGuard", () => {
+  it("wraps children in SessionProvider", () => {
     render(
       <Providers>
         <div data-testid="child">Hello</div>

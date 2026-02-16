@@ -23,6 +23,8 @@ vi.mock("@/lib/discord.server", () => ({
   getMutualGuilds: (...args: unknown[]) => mockGetMutualGuilds(...args),
 }));
 
+import { GET } from "@/app/api/guilds/route";
+
 function createMockRequest(url = "http://localhost:3000/api/guilds"): NextRequest {
   return new NextRequest(new URL(url));
 }
@@ -36,7 +38,6 @@ describe("GET /api/guilds", () => {
   it("returns 401 when no token exists", async () => {
     mockGetToken.mockResolvedValue(null);
 
-    const { GET } = await import("@/app/api/guilds/route");
     const response = await GET(createMockRequest());
 
     expect(response.status).toBe(401);
@@ -51,7 +52,6 @@ describe("GET /api/guilds", () => {
       // No accessToken
     });
 
-    const { GET } = await import("@/app/api/guilds/route");
     const response = await GET(createMockRequest());
 
     expect(response.status).toBe(401);
@@ -71,7 +71,6 @@ describe("GET /api/guilds", () => {
     });
     mockGetMutualGuilds.mockResolvedValue(mockGuilds);
 
-    const { GET } = await import("@/app/api/guilds/route");
     const response = await GET(createMockRequest());
 
     expect(response.status).toBe(200);
@@ -91,7 +90,6 @@ describe("GET /api/guilds", () => {
       error: "RefreshTokenError",
     });
 
-    const { GET } = await import("@/app/api/guilds/route");
     const response = await GET(createMockRequest());
 
     expect(response.status).toBe(401);
@@ -110,7 +108,6 @@ describe("GET /api/guilds", () => {
     });
     mockGetMutualGuilds.mockRejectedValue(new Error("Discord API error"));
 
-    const { GET } = await import("@/app/api/guilds/route");
     const response = await GET(createMockRequest());
 
     expect(response.status).toBe(500);
