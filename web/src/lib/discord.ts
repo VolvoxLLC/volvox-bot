@@ -36,7 +36,12 @@ export function getGuildIconUrl(
   if (!iconHash) {
     // Return a default avatar derived from the guild ID for visual distinction.
     // Discord has 5 default avatar indices (0–4).
-    const index = Number(BigInt(guildId) % 5n);
+    let index = 0;
+    try {
+      index = Number(BigInt(guildId) % 5n);
+    } catch {
+      // Invalid guildId — fall back to default avatar 0
+    }
     return `${DISCORD_CDN}/embed/avatars/${index}.png`;
   }
   const ext = iconHash.startsWith("a_") ? "gif" : "webp";

@@ -91,7 +91,7 @@ export async function fetchUserGuilds(
       },
       signal,
       cache: "no-store",
-    } as RequestInit);
+    });
 
     if (!response.ok) {
       throw new Error(
@@ -160,7 +160,7 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
       },
       signal,
       cache: "no-store",
-    } as RequestInit);
+    });
 
     if (!response.ok) {
       logger.warn(

@@ -43,8 +43,8 @@ const DISCORD_SCOPES = "identify guilds";
  */
 export async function refreshDiscordToken(token: Record<string, unknown>): Promise<Record<string, unknown>> {
   const params = new URLSearchParams({
-    client_id: process.env.DISCORD_CLIENT_ID ?? "",
-    client_secret: process.env.DISCORD_CLIENT_SECRET ?? "",
+    client_id: process.env.DISCORD_CLIENT_ID!,
+    client_secret: process.env.DISCORD_CLIENT_SECRET!,
     grant_type: "refresh_token",
     refresh_token: token.refreshToken as string,
   });
@@ -102,8 +102,8 @@ export async function refreshDiscordToken(token: Record<string, unknown>): Promi
 export const authOptions: AuthOptions = {
   providers: [
     DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID ?? "",
-      clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
+      clientId: process.env.DISCORD_CLIENT_ID!,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
         params: {
           scope: DISCORD_SCOPES,
