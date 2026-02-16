@@ -134,7 +134,7 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
       return [];
     }
 
-    return response.json();
+    return await response.json();
   } catch (error) {
     logger.warn(
       "[discord] Bot API is unreachable — continuing without bot guild filtering.",
