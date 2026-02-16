@@ -17,7 +17,13 @@ function LoginForm() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const rawCallbackUrl = searchParams.get("callbackUrl");
+  // Validate callbackUrl is a safe relative path to prevent open redirects.
+  // Reject absolute URLs, protocol-relative URLs (//evil.com), and missing values.
+  const callbackUrl =
+    rawCallbackUrl && rawCallbackUrl.startsWith("/") && !rawCallbackUrl.startsWith("//")
+      ? rawCallbackUrl
+      : "/dashboard";
 
   useEffect(() => {
     if (session) {
