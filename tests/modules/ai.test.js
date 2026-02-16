@@ -10,6 +10,12 @@ vi.mock('../../src/modules/config.js', () => ({
   })),
 }));
 
+// Mock memory module
+vi.mock('../../src/modules/memory.js', () => ({
+  buildMemoryContext: vi.fn(() => Promise.resolve('')),
+  extractAndStoreMemories: vi.fn(() => Promise.resolve(false)),
+}));
+
 import {
   _setPoolGetter,
   addToHistory,
@@ -23,6 +29,7 @@ import {
   stopConversationCleanup,
 } from '../../src/modules/ai.js';
 import { getConfig } from '../../src/modules/config.js';
+import { buildMemoryContext, extractAndStoreMemories } from '../../src/modules/memory.js';
 
 // Mock logger
 vi.mock('../../src/logger.js', () => ({
@@ -223,6 +230,111 @@ describe('ai module', () => {
 
       const fetchCall = globalThis.fetch.mock.calls[0];
       expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
+    });
+
+    it('should inject memory context into system prompt when userId is provided', async () => {
+      buildMemoryContext.mockResolvedValue('\n\nWhat you know about testuser:\n- Loves Rust');
+
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'I know you love Rust!' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      const config = { ai: { systemPrompt: 'You are a bot.' } };
+      await generateResponse(
+        'ch1',
+        'What do you know about me?',
+        'testuser',
+        config,
+        null,
+        'user-123',
+      );
+
+      expect(buildMemoryContext).toHaveBeenCalledWith(
+        'user-123',
+        'testuser',
+        'What do you know about me?',
+      );
+
+      // Verify the system prompt includes memory context
+      const fetchCall = globalThis.fetch.mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.messages[0].content).toContain('What you know about testuser');
+      expect(body.messages[0].content).toContain('Loves Rust');
+    });
+
+    it('should not inject memory context when userId is null', async () => {
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'OK' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      const config = { ai: { systemPrompt: 'You are a bot.' } };
+      await generateResponse('ch1', 'Hi', 'user', config, null, null);
+
+      expect(buildMemoryContext).not.toHaveBeenCalled();
+    });
+
+    it('should fire memory extraction after response when userId is provided', async () => {
+      extractAndStoreMemories.mockResolvedValue(true);
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'Nice!' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      const config = { ai: {} };
+      await generateResponse('ch1', "I'm learning Rust", 'testuser', config, null, 'user-123');
+
+      // extractAndStoreMemories is fire-and-forget, wait for it
+      await vi.waitFor(() => {
+        expect(extractAndStoreMemories).toHaveBeenCalledWith(
+          'user-123',
+          'testuser',
+          "I'm learning Rust",
+          'Nice!',
+        );
+      });
+    });
+
+    it('should continue working when memory context lookup fails', async () => {
+      buildMemoryContext.mockRejectedValue(new Error('mem0 down'));
+
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'Still working!' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      const config = { ai: { systemPrompt: 'You are a bot.' } };
+      const reply = await generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
+
+      expect(reply).toBe('Still working!');
+    });
+
+    it('should not call memory extraction when userId is not provided', async () => {
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'OK' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      const config = { ai: {} };
+      await generateResponse('ch1', 'Hi', 'user', config);
+
+      expect(extractAndStoreMemories).not.toHaveBeenCalled();
     });
   });
 

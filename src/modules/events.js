@@ -130,6 +130,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
             message.author.username,
             config,
             healthMonitor,
+            message.author.id,
           );
 
           // Split long responses

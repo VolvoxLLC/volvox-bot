@@ -28,7 +28,9 @@ import {
 } from './modules/ai.js';
 import { loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
+import { checkMem0Health } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
+import { loadOptOuts } from './modules/optout.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
@@ -292,6 +294,12 @@ async function startup() {
 
   // Start periodic conversation cleanup
   startConversationCleanup();
+
+  // Load opt-out preferences from DB before enabling memory features
+  await loadOptOuts();
+
+  // Check mem0 availability for user memory features
+  await checkMem0Health();
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);

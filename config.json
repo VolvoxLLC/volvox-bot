@@ -63,6 +63,11 @@
       }
     }
   },
+  "memory": {
+    "enabled": true,
+    "maxContextMemories": 5,
+    "autoExtract": true
+  },
   "logging": {
     "level": "info",
     "fileOutput": true
@@ -73,6 +78,7 @@
     "usePermissions": true,
     "allowedCommands": {
       "ping": "everyone",
+      "memory": "everyone",
       "config": "admin",
       "warn": "admin",
       "kick": "admin",

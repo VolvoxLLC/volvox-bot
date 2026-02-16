@@ -404,7 +404,7 @@ describe('events module', () => {
       getOrCreateThread.mockResolvedValueOnce({ thread: mockThread, isNew: true });
 
       const message = {
-        author: { bot: false, username: 'user' },
+        author: { bot: false, id: 'author-123', username: 'user' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> hello from channel',
         channel: {
@@ -430,6 +430,7 @@ describe('events module', () => {
         'user',
         config,
         null,
+        'author-123',
       );
     });
 
