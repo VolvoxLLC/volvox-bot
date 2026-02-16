@@ -53,7 +53,12 @@ export function getUserAvatarUrl(
   size = 128,
 ): string {
   if (!avatarHash) {
-    const index = discriminator === "0" ? Number(BigInt(userId) >> 22n) % 6 : Number(discriminator) % 5;
+    let index = 0;
+    try {
+      index = discriminator === "0" ? Number(BigInt(userId) >> 22n) % 6 : Number(discriminator) % 5;
+    } catch {
+      // Invalid userId for BigInt conversion — fall back to default avatar
+    }
     return `${DISCORD_CDN}/embed/avatars/${index}.png`;
   }
   const ext = avatarHash.startsWith("a_") ? "gif" : "webp";

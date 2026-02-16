@@ -151,9 +151,10 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
  */
 export async function getMutualGuilds(
   accessToken: string,
+  signal?: AbortSignal,
 ): Promise<MutualGuild[]> {
   const [userGuilds, botGuilds] = await Promise.all([
-    fetchUserGuilds(accessToken),
+    fetchUserGuilds(accessToken, signal),
     fetchBotGuilds(),
   ]);
 
