@@ -2,7 +2,6 @@
 
 import { SessionProvider, useSession } from "next-auth/react";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
 
 /**
  * SessionGuard monitors session state for errors.
