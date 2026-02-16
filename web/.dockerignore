@@ -1,0 +1,9 @@
+node_modules
+.next
+.env
+.env.local
+.env.*.local
+coverage
+.git
+*.md
+!README.md
