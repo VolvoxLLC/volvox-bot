@@ -142,6 +142,10 @@ vi.mock('../src/modules/events.js', () => ({
   registerEventHandlers: mocks.events.registerEventHandlers,
 }));
 
+vi.mock('../src/modules/memory.js', () => ({
+  checkMem0Health: vi.fn().mockResolvedValue(false),
+}));
+
 vi.mock('../src/modules/moderation.js', () => ({
   startTempbanScheduler: mocks.moderation.startTempbanScheduler,
   stopTempbanScheduler: mocks.moderation.stopTempbanScheduler,
