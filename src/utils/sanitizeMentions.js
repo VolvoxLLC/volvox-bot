@@ -43,10 +43,105 @@ export function sanitizeMentions(text) {
 }
 
 /**
- * Sanitize the content field of a message options object.
+ * Sanitize a plain embed data object's string fields.
+ * Sanitizes title, description, footer.text, author.name,
+ * and all fields[].name / fields[].value.
+ *
+ * @param {object} data - A plain embed data object
+ * @returns {object} A new object with sanitized string fields
+ */
+function sanitizeEmbedData(data) {
+  const result = { ...data };
+
+  result.title = sanitizeMentions(result.title);
+  result.description = sanitizeMentions(result.description);
+
+  if (result.footer && typeof result.footer === 'object') {
+    result.footer = { ...result.footer, text: sanitizeMentions(result.footer.text) };
+  }
+
+  if (result.author && typeof result.author === 'object') {
+    result.author = { ...result.author, name: sanitizeMentions(result.author.name) };
+  }
+
+  if (Array.isArray(result.fields)) {
+    result.fields = result.fields.map((field) => ({
+      ...field,
+      name: sanitizeMentions(field.name),
+      value: sanitizeMentions(field.value),
+    }));
+  }
+
+  return result;
+}
+
+/**
+ * Sanitize a single embed object's string fields.
+ * Handles both plain embed objects and EmbedBuilder instances
+ * (preserving the class prototype so methods like .toJSON() still work).
+ *
+ * @param {object} embed - A Discord embed object or EmbedBuilder
+ * @returns {object} A new embed with sanitized string fields
+ */
+function sanitizeEmbed(embed) {
+  if (!embed || typeof embed !== 'object') {
+    return embed;
+  }
+
+  // EmbedBuilder instances store data in .data — sanitize that
+  // while preserving the prototype chain (e.g. .toJSON()).
+  if ('data' in embed && typeof embed.toJSON === 'function') {
+    const clone = Object.create(Object.getPrototypeOf(embed));
+    Object.assign(clone, embed);
+    clone.data = sanitizeEmbedData(clone.data);
+    return clone;
+  }
+
+  return sanitizeEmbedData(embed);
+}
+
+/**
+ * Sanitize a single component object (button, select menu, etc.).
+ * Handles ActionRow containers recursively.
+ *
+ * @param {object} component - A Discord message component
+ * @returns {object} A new component with sanitized string fields
+ */
+function sanitizeComponent(component) {
+  if (!component || typeof component !== 'object') {
+    return component;
+  }
+
+  const result = { ...component };
+
+  result.label = sanitizeMentions(result.label);
+  result.placeholder = sanitizeMentions(result.placeholder);
+
+  if (Array.isArray(result.options)) {
+    result.options = result.options.map((opt) => ({
+      ...opt,
+      label: sanitizeMentions(opt.label),
+      description: sanitizeMentions(opt.description),
+    }));
+  }
+
+  // ActionRow: recurse into nested components
+  if (Array.isArray(result.components)) {
+    result.components = result.components.map(sanitizeComponent);
+  }
+
+  return result;
+}
+
+/**
+ * Sanitize the content, embed, and component fields of a message options object.
  * If given a string, sanitizes it directly.
- * If given an object with a 'content' property, sanitizes that property.
+ * If given an object, sanitizes content, embeds, and components.
  * Returns other types unchanged.
+ *
+ * Defense-in-depth: sanitizes all user-visible text fields so raw
+ * @everyone/@here never appears, even though allowedMentions also
+ * prevents Discord from parsing them.
  *
  * @param {string|object|*} options - Message content or options object
  * @returns {string|object|*} Sanitized version
@@ -56,11 +151,22 @@ export function sanitizeMessageOptions(options) {
     return sanitizeMentions(options);
   }
 
-  if (options && typeof options === 'object' && 'content' in options) {
-    return {
-      ...options,
-      content: sanitizeMentions(options.content),
-    };
+  if (options && typeof options === 'object') {
+    const result = { ...options };
+
+    if ('content' in result) {
+      result.content = sanitizeMentions(result.content);
+    }
+
+    if (Array.isArray(result.embeds)) {
+      result.embeds = result.embeds.map(sanitizeEmbed);
+    }
+
+    if (Array.isArray(result.components)) {
+      result.components = result.components.map(sanitizeComponent);
+    }
+
+    return result;
   }
 
   return options;

@@ -144,6 +144,161 @@ describe('sanitizeMessageOptions', () => {
     expect(original.content).toBe('@everyone');
     expect(result.content).toBe(`@${ZWS}everyone`);
   });
+
+  it('should handle options without content field', () => {
+    const options = { embeds: [{ title: 'test' }] };
+    const result = sanitizeMessageOptions(options);
+    expect(result).toEqual({ embeds: [{ title: 'test' }] });
+  });
+
+  describe('embed sanitization', () => {
+    it('should sanitize embed title', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [{ title: '@everyone alert' }],
+      });
+      expect(result.embeds[0].title).toBe(`@${ZWS}everyone alert`);
+    });
+
+    it('should sanitize embed description', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [{ description: 'Hey @here check this' }],
+      });
+      expect(result.embeds[0].description).toBe(`Hey @${ZWS}here check this`);
+    });
+
+    it('should sanitize embed footer text', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [{ footer: { text: '@everyone was mentioned' } }],
+      });
+      expect(result.embeds[0].footer.text).toBe(`@${ZWS}everyone was mentioned`);
+    });
+
+    it('should preserve other footer properties', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [{ footer: { text: '@everyone', icon_url: 'https://example.com/icon.png' } }],
+      });
+      expect(result.embeds[0].footer.icon_url).toBe('https://example.com/icon.png');
+    });
+
+    it('should sanitize embed author name', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [{ author: { name: '@here bot' } }],
+      });
+      expect(result.embeds[0].author.name).toBe(`@${ZWS}here bot`);
+    });
+
+    it('should preserve other author properties', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [{ author: { name: '@here', url: 'https://example.com' } }],
+      });
+      expect(result.embeds[0].author.url).toBe('https://example.com');
+    });
+
+    it('should sanitize embed field names and values', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [
+          {
+            fields: [
+              { name: '@everyone field', value: '@here value', inline: true },
+              { name: 'safe name', value: 'safe value' },
+            ],
+          },
+        ],
+      });
+      expect(result.embeds[0].fields[0].name).toBe(`@${ZWS}everyone field`);
+      expect(result.embeds[0].fields[0].value).toBe(`@${ZWS}here value`);
+      expect(result.embeds[0].fields[0].inline).toBe(true);
+      expect(result.embeds[0].fields[1].name).toBe('safe name');
+      expect(result.embeds[0].fields[1].value).toBe('safe value');
+    });
+
+    it('should sanitize multiple embeds', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [
+          { title: '@everyone first' },
+          { description: '@here second' },
+        ],
+      });
+      expect(result.embeds[0].title).toBe(`@${ZWS}everyone first`);
+      expect(result.embeds[1].description).toBe(`@${ZWS}here second`);
+    });
+
+    it('should handle embed with no sanitizable fields', () => {
+      const result = sanitizeMessageOptions({
+        embeds: [{ color: 0xff0000, url: 'https://example.com' }],
+      });
+      expect(result.embeds[0]).toEqual({ color: 0xff0000, url: 'https://example.com' });
+    });
+
+    it('should not mutate the original embeds array', () => {
+      const original = {
+        embeds: [{ title: '@everyone', description: '@here' }],
+      };
+      sanitizeMessageOptions(original);
+      expect(original.embeds[0].title).toBe('@everyone');
+      expect(original.embeds[0].description).toBe('@here');
+    });
+  });
+
+  describe('component sanitization', () => {
+    it('should sanitize button labels', () => {
+      const result = sanitizeMessageOptions({
+        components: [
+          {
+            type: 1,
+            components: [{ type: 2, label: '@everyone click', style: 1 }],
+          },
+        ],
+      });
+      expect(result.components[0].components[0].label).toBe(`@${ZWS}everyone click`);
+    });
+
+    it('should sanitize select menu placeholders', () => {
+      const result = sanitizeMessageOptions({
+        components: [
+          {
+            type: 1,
+            components: [{ type: 3, placeholder: '@here select' }],
+          },
+        ],
+      });
+      expect(result.components[0].components[0].placeholder).toBe(`@${ZWS}here select`);
+    });
+
+    it('should sanitize select menu option labels and descriptions', () => {
+      const result = sanitizeMessageOptions({
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 3,
+                options: [
+                  { label: '@everyone opt', value: 'a', description: '@here desc' },
+                  { label: 'safe', value: 'b' },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      const opts = result.components[0].components[0].options;
+      expect(opts[0].label).toBe(`@${ZWS}everyone opt`);
+      expect(opts[0].description).toBe(`@${ZWS}here desc`);
+      expect(opts[0].value).toBe('a');
+      expect(opts[1].label).toBe('safe');
+    });
+
+    it('should not mutate the original components array', () => {
+      const original = {
+        components: [
+          { type: 1, components: [{ type: 2, label: '@everyone' }] },
+        ],
+      };
+      sanitizeMessageOptions(original);
+      expect(original.components[0].components[0].label).toBe('@everyone');
+    });
+  });
 });
 
 describe('sanitizeMentions edge cases', () => {
