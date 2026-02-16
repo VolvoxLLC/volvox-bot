@@ -99,7 +99,7 @@ let client = null;
  * After RECOVERY_COOLDOWN_MS, the next request will be allowed through
  * to check if the service has recovered.
  */
-function markUnavailable() {
+export function markUnavailable() {
   mem0Available = false;
   mem0UnavailableSince = Date.now();
 }

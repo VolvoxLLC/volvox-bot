@@ -47,6 +47,7 @@ import {
   getMemories,
   getMemoryConfig,
   isMemoryAvailable,
+  markUnavailable,
   searchMemories,
 } from '../../src/modules/memory.js';
 import { isOptedOut } from '../../src/modules/optout.js';
@@ -253,6 +254,49 @@ describe('memory module', () => {
       // But the next operation also fails
       await searchMemories('user123', 'test');
       expect(checkAndRecoverMemory()).toBe(false);
+    });
+  });
+
+  describe('markUnavailable', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should enable auto-recovery by setting unavailable timestamp', () => {
+      vi.useFakeTimers();
+      _setMem0Available(true);
+      expect(isMemoryAvailable()).toBe(true);
+
+      // Calling markUnavailable should disable memory and set the timestamp
+      markUnavailable();
+      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
+
+      // After cooldown expires, auto-recovery should kick in
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      expect(checkAndRecoverMemory()).toBe(true);
+    });
+
+    it('should allow auto-recovery even when called from initial state', () => {
+      // Simulates the health check timeout scenario: mem0Available starts false,
+      // mem0UnavailableSince starts at 0. Without markUnavailable(), auto-recovery
+      // can never trigger because checkAndRecoverMemory requires
+      // mem0UnavailableSince > 0.
+      vi.useFakeTimers();
+      _setMem0Available(false);
+      // At this point, _setMem0Available(false) hard-disables (sets timestamp to 0)
+      expect(checkAndRecoverMemory()).toBe(false);
+
+      // Now call markUnavailable to set the recovery timestamp
+      markUnavailable();
+      expect(isMemoryAvailable()).toBe(false);
+
+      // Still can't recover before cooldown
+      expect(checkAndRecoverMemory()).toBe(false);
+
+      // After cooldown, should auto-recover
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      expect(checkAndRecoverMemory()).toBe(true);
     });
   });
 

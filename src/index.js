@@ -28,7 +28,7 @@ import {
 } from './modules/ai.js';
 import { loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
-import { checkMem0Health } from './modules/memory.js';
+import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
 import { HealthMonitor } from './utils/health.js';
@@ -302,6 +302,7 @@ async function startup() {
       ),
     ]);
   } catch (err) {
+    markUnavailable();
     warn('mem0 health check timed out or failed — continuing without memory features', {
       error: err.message,
     });
