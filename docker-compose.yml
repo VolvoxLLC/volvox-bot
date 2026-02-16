@@ -31,8 +31,8 @@ services:
 
   web:
     build:
-      context: .
-      dockerfile: web/Dockerfile
+      context: ./web
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -44,6 +44,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/billsbot
       NEXTAUTH_URL: http://localhost:3000
+      BOT_API_URL: http://bot:3001
     profiles:
       - full
 
