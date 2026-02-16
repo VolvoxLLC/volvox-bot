@@ -5,7 +5,10 @@ vi.mock('../../src/db.js', () => ({
   getPool: vi.fn(),
 }));
 
+vi.mock('../../src/logger.js', () => ({ warn: vi.fn() }));
+
 import { getPool } from '../../src/db.js';
+import { warn } from '../../src/logger.js';
 import { queryLogs } from '../../src/utils/logQuery.js';
 
 describe('queryLogs', () => {
@@ -105,6 +108,30 @@ describe('queryLogs', () => {
     expect(mockPool.query.mock.calls[0][1]).toEqual(['%database%']);
   });
 
+  it('should escape ILIKE wildcards in search term', async () => {
+    mockPool.query
+      .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await queryLogs({ search: '100%_done\\' });
+
+    const params = mockPool.query.mock.calls[0][1];
+    expect(params).toEqual(['%100\\%\\_done\\\\%']);
+  });
+
+  it('should ignore invalid log level', async () => {
+    mockPool.query
+      .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await queryLogs({ level: 'CRITICAL' });
+
+    expect(result).toEqual({ rows: [], total: 0 });
+    // Level filter should NOT be applied
+    const countQuery = mockPool.query.mock.calls[0][0];
+    expect(countQuery).not.toContain('level = $1');
+  });
+
   it('should respect custom limit and offset', async () => {
     mockPool.query
       .mockResolvedValueOnce({ rows: [{ total: 50 }] })
@@ -180,6 +207,7 @@ describe('queryLogs', () => {
     const result = await queryLogs({ level: 'error' });
 
     expect(result).toEqual({ rows: [], total: 0 });
+    expect(warn).toHaveBeenCalledWith('Log query failed', { error: 'Database not initialized' });
   });
 
   it('should return empty results when query fails', async () => {
@@ -188,5 +216,6 @@ describe('queryLogs', () => {
     const result = await queryLogs();
 
     expect(result).toEqual({ rows: [], total: 0 });
+    expect(warn).toHaveBeenCalledWith('Log query failed', { error: 'Connection refused' });
   });
 });

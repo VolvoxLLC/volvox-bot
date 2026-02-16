@@ -6,6 +6,13 @@
  */
 
 import { getPool } from '../db.js';
+import { warn } from '../logger.js';
+
+const ALLOWED_LEVELS = ['error', 'warn', 'info', 'debug'];
+
+function escapeIlike(str) {
+  return str.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
 
 /**
  * Query log entries from the PostgreSQL logs table.
@@ -29,7 +36,7 @@ export async function queryLogs(options = {}) {
     let paramIndex = 1;
 
     // Level filter
-    if (options.level) {
+    if (options.level && ALLOWED_LEVELS.includes(options.level)) {
       conditions.push(`level = $${paramIndex}`);
       params.push(options.level);
       paramIndex++;
@@ -52,7 +59,7 @@ export async function queryLogs(options = {}) {
     // Search filter (ILIKE for case-insensitive pattern match)
     if (options.search) {
       conditions.push(`message ILIKE $${paramIndex}`);
-      params.push(`%${options.search}%`);
+      params.push(`%${escapeIlike(options.search)}%`);
       paramIndex++;
     }
 
@@ -76,8 +83,8 @@ export async function queryLogs(options = {}) {
       rows: dataResult.rows,
       total,
     };
-  } catch (_err) {
-    // Fail gracefully if DB is unavailable
+  } catch (err) {
+    warn('Log query failed', { error: err.message });
     return { rows: [], total: 0 };
   }
 }
