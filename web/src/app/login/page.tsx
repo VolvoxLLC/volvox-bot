@@ -1,9 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,15 +13,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function LoginPage() {
+function LoginForm() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
 
   useEffect(() => {
     if (session) {
-      router.push("/dashboard");
+      router.push(callbackUrl);
     }
-  }, [session, router]);
+  }, [session, router, callbackUrl]);
 
   if (status === "loading") {
     return (
@@ -48,7 +50,7 @@ export default function LoginPage() {
             variant="discord"
             size="lg"
             className="w-full gap-2"
-            onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
+            onClick={() => signIn("discord", { callbackUrl })}
           >
             <svg
               className="h-5 w-5"
@@ -66,5 +68,19 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

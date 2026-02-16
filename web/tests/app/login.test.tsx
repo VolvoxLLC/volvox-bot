@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 
 // Mock next-auth/react
 const mockSignIn = vi.fn();
@@ -9,33 +9,59 @@ vi.mock("next-auth/react", () => ({
 }));
 
 // Mock next/navigation
+let mockSearchParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 import LoginPage from "@/app/login/page";
 
 describe("LoginPage", () => {
-  it("renders the sign-in card", () => {
+  beforeEach(() => {
+    mockSearchParams = new URLSearchParams();
+    mockSignIn.mockClear();
+  });
+
+  it("renders the sign-in card", async () => {
     render(<LoginPage />);
-    expect(screen.getByText("Welcome to Bill Bot")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("Welcome to Bill Bot")).toBeDefined();
+    });
     expect(screen.getByText("Sign in with Discord")).toBeDefined();
   });
 
-  it("calls signIn when button is clicked", () => {
+  it("calls signIn with /dashboard when no callbackUrl param", async () => {
     render(<LoginPage />);
+    await waitFor(() => {
+      expect(screen.getByText("Sign in with Discord")).toBeDefined();
+    });
     screen.getByText("Sign in with Discord").click();
     expect(mockSignIn).toHaveBeenCalledWith("discord", {
       callbackUrl: "/dashboard",
     });
   });
 
-  it("shows privacy note", () => {
+  it("calls signIn with callbackUrl from search params", async () => {
+    mockSearchParams = new URLSearchParams("callbackUrl=/servers/123");
     render(<LoginPage />);
-    expect(
-      screen.getByText(
-        "We'll only access your Discord profile and server list.",
-      ),
-    ).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("Sign in with Discord")).toBeDefined();
+    });
+    screen.getByText("Sign in with Discord").click();
+    expect(mockSignIn).toHaveBeenCalledWith("discord", {
+      callbackUrl: "/servers/123",
+    });
+  });
+
+  it("shows privacy note", async () => {
+    render(<LoginPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "We'll only access your Discord profile and server list.",
+        ),
+      ).toBeDefined();
+    });
   });
 });
