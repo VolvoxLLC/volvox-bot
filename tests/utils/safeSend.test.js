@@ -203,7 +203,7 @@ describe('allowedMentions override enforcement', () => {
   });
 });
 
-describe('splitMessage integration', () => {
+describe('splitMessage integration (channel.send only)', () => {
   it('safeSend should split long content into multiple sends', async () => {
     needsSplitting.mockReturnValueOnce(true);
     splitMessage.mockReturnValueOnce(['chunk1', 'chunk2']);
@@ -219,35 +219,60 @@ describe('splitMessage integration', () => {
     );
     expect(result).toHaveLength(2);
   });
+});
 
-  it('safeReply should split long content into multiple sends', async () => {
-    needsSplitting.mockReturnValueOnce(true);
-    splitMessage.mockReturnValueOnce(['part1', 'part2', 'part3']);
+describe('interaction truncation (reply/editReply/followUp)', () => {
+  it('safeReply should truncate long content instead of splitting', async () => {
+    const longContent = 'x'.repeat(2500);
     const mockTarget = { reply: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
-    const result = await safeReply(mockTarget, 'b'.repeat(3000));
-    expect(mockTarget.reply).toHaveBeenCalledTimes(3);
-    expect(result).toHaveLength(3);
+    await safeReply(mockTarget, longContent);
+
+    expect(mockTarget.reply).toHaveBeenCalledTimes(1);
+    const sentContent = mockTarget.reply.mock.calls[0][0].content;
+    expect(sentContent).toHaveLength(2000);
+    expect(sentContent).toBe('x'.repeat(2000));
   });
 
-  it('safeFollowUp should split long content into multiple sends', async () => {
-    needsSplitting.mockReturnValueOnce(true);
-    splitMessage.mockReturnValueOnce(['f1', 'f2']);
+  it('safeFollowUp should truncate long content instead of splitting', async () => {
+    const longContent = 'y'.repeat(2500);
     const mockInteraction = { followUp: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
-    const result = await safeFollowUp(mockInteraction, 'c'.repeat(2500));
-    expect(mockInteraction.followUp).toHaveBeenCalledTimes(2);
-    expect(result).toHaveLength(2);
+    await safeFollowUp(mockInteraction, longContent);
+
+    expect(mockInteraction.followUp).toHaveBeenCalledTimes(1);
+    const sentContent = mockInteraction.followUp.mock.calls[0][0].content;
+    expect(sentContent).toHaveLength(2000);
   });
 
-  it('safeEditReply should split long content into multiple sends', async () => {
-    needsSplitting.mockReturnValueOnce(true);
-    splitMessage.mockReturnValueOnce(['e1', 'e2']);
+  it('safeEditReply should truncate long content instead of splitting', async () => {
+    const longContent = 'z'.repeat(2500);
     const mockInteraction = { editReply: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
-    const result = await safeEditReply(mockInteraction, 'd'.repeat(2500));
-    expect(mockInteraction.editReply).toHaveBeenCalledTimes(2);
-    expect(result).toHaveLength(2);
+    await safeEditReply(mockInteraction, longContent);
+
+    expect(mockInteraction.editReply).toHaveBeenCalledTimes(1);
+    const sentContent = mockInteraction.editReply.mock.calls[0][0].content;
+    expect(sentContent).toHaveLength(2000);
+  });
+
+  it('safeReply should not truncate content within limit', async () => {
+    const shortContent = 'hello world';
+    const mockTarget = { reply: vi.fn().mockResolvedValue({ id: 'msg' }) };
+
+    await safeReply(mockTarget, shortContent);
+
+    expect(mockTarget.reply.mock.calls[0][0].content).toBe('hello world');
+  });
+
+  it('safeReply should handle non-string content unchanged', async () => {
+    const mockTarget = { reply: vi.fn().mockResolvedValue({ id: 'msg' }) };
+
+    await safeReply(mockTarget, { embeds: [{ title: 'test' }] });
+
+    expect(mockTarget.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: [{ title: 'test' }] }),
+    );
   });
 });
 
