@@ -28,6 +28,7 @@ vi.mock('../../src/logger.js', () => ({
 
 import { getConfig } from '../../src/modules/config.js';
 import {
+  _getRecoveryCooldownMs,
   _setClient,
   _setMem0Available,
   addMemory,
@@ -140,6 +141,93 @@ describe('memory module', () => {
       _setMem0Available(true);
       getConfig.mockReturnValue({ memory: { enabled: false } });
       expect(isMemoryAvailable()).toBe(false);
+    });
+
+    it('should auto-recover after cooldown period expires', () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        add: vi.fn().mockRejectedValue(new Error('transient')),
+      });
+      _setClient(mockClient);
+
+      // Simulate a transient failure by calling addMemory (which will markUnavailable)
+      // Instead, manually trigger the unavailable state with a past timestamp
+      _setMem0Available(false);
+
+      // Immediately after marking unavailable, should still be false
+      expect(isMemoryAvailable()).toBe(false);
+
+      // Simulate the unavailable timestamp being in the past by using vi.useFakeTimers
+      vi.useFakeTimers();
+      _setMem0Available(true);
+
+      // Now mark unavailable again - this time we can control time
+      // We need to trigger markUnavailable through an API call
+      const failingClient = createMockClient({
+        add: vi.fn().mockRejectedValue(new Error('API error')),
+      });
+      _setClient(failingClient);
+      _setMem0Available(true);
+
+      // This will fail and call markUnavailable()
+      addMemory('user123', 'test').then(() => {
+        expect(isMemoryAvailable()).toBe(false);
+
+        // Advance time past the cooldown
+        vi.advanceTimersByTime(_getRecoveryCooldownMs());
+
+        // Should now auto-recover
+        expect(isMemoryAvailable()).toBe(true);
+
+        vi.useRealTimers();
+      });
+    });
+
+    it('should not auto-recover before cooldown expires', async () => {
+      vi.useFakeTimers();
+      _setMem0Available(true);
+      const failingClient = createMockClient({
+        add: vi.fn().mockRejectedValue(new Error('API error')),
+      });
+      _setClient(failingClient);
+
+      // Trigger a failure to markUnavailable
+      await addMemory('user123', 'test');
+      expect(isMemoryAvailable()).toBe(false);
+
+      // Advance time but not enough
+      vi.advanceTimersByTime(_getRecoveryCooldownMs() - 1000);
+      expect(isMemoryAvailable()).toBe(false);
+
+      // Now advance past the cooldown
+      vi.advanceTimersByTime(1000);
+      expect(isMemoryAvailable()).toBe(true);
+
+      vi.useRealTimers();
+    });
+
+    it('should re-disable if recovery attempt also fails', async () => {
+      vi.useFakeTimers();
+      _setMem0Available(true);
+      const failingClient = createMockClient({
+        add: vi.fn().mockRejectedValue(new Error('API error')),
+        search: vi.fn().mockRejectedValue(new Error('Still down')),
+      });
+      _setClient(failingClient);
+
+      // Trigger initial failure
+      await addMemory('user123', 'test');
+      expect(isMemoryAvailable()).toBe(false);
+
+      // Advance past cooldown - auto-recovery kicks in
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      expect(isMemoryAvailable()).toBe(true);
+
+      // But the next operation also fails
+      await searchMemories('user123', 'test');
+      expect(isMemoryAvailable()).toBe(false);
+
+      vi.useRealTimers();
     });
   });
 
