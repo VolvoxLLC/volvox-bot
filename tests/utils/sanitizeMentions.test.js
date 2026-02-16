@@ -214,10 +214,7 @@ describe('sanitizeMessageOptions', () => {
 
     it('should sanitize multiple embeds', () => {
       const result = sanitizeMessageOptions({
-        embeds: [
-          { title: '@everyone first' },
-          { description: '@here second' },
-        ],
+        embeds: [{ title: '@everyone first' }, { description: '@here second' }],
       });
       expect(result.embeds[0].title).toBe(`@${ZWS}everyone first`);
       expect(result.embeds[1].description).toBe(`@${ZWS}here second`);
@@ -291,9 +288,7 @@ describe('sanitizeMessageOptions', () => {
 
     it('should not mutate the original components array', () => {
       const original = {
-        components: [
-          { type: 1, components: [{ type: 2, label: '@everyone' }] },
-        ],
+        components: [{ type: 1, components: [{ type: 2, label: '@everyone' }] }],
       };
       sanitizeMessageOptions(original);
       expect(original.components[0].components[0].label).toBe('@everyone');
