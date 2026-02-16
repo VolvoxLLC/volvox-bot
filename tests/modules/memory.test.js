@@ -860,6 +860,40 @@ describe('memory module', () => {
       expect(result).not.toContain('What you know about');
     });
 
+    it('should truncate memory context when it exceeds 2000 characters', async () => {
+      _setMem0Available(true);
+      // Create memories that will exceed 2000 chars
+      const longMemories = Array.from({ length: 50 }, (_, i) => ({
+        memory: `This is a very long memory entry number ${i} with lots of detail about the user preferences and interests that takes up significant space in the context`,
+        score: 0.9,
+      }));
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({
+          results: longMemories,
+          relations: [],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await buildMemoryContext('user123', 'testuser', 'test');
+      expect(result.length).toBeLessThanOrEqual(2003); // 2000 + "..."
+      expect(result).toMatch(/\.\.\.$/);
+    });
+
+    it('should not truncate memory context within budget', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({
+          results: [{ memory: 'Short memory', score: 0.9 }],
+          relations: [],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await buildMemoryContext('user123', 'testuser', 'test');
+      expect(result).not.toMatch(/\.\.\.$/);
+    });
+
     it('should return context with only memories when no relations found', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({

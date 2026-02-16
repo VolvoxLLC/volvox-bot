@@ -459,9 +459,13 @@ export function formatRelations(relations) {
   return `\nRelationships:\n${lines.join('\n')}`;
 }
 
+/** Maximum characters for memory context injected into system prompt */
+const MAX_MEMORY_CONTEXT_CHARS = 2000;
+
 /**
  * Build a context string from user memories to inject into the system prompt.
  * Includes both regular memories and graph relations for richer context.
+ * Enforces a character budget to prevent oversized system prompts.
  * @param {string} userId - Discord user ID
  * @param {string} username - Display name
  * @param {string} query - The user's current message (for relevance search)
@@ -485,6 +489,11 @@ export async function buildMemoryContext(userId, username, query) {
   const relationsContext = formatRelations(relations);
   if (relationsContext) {
     context += relationsContext;
+  }
+
+  // Enforce character budget to prevent oversized system prompts
+  if (context.length > MAX_MEMORY_CONTEXT_CHARS) {
+    context = `${context.substring(0, MAX_MEMORY_CONTEXT_CHARS)}...`;
   }
 
   return context;
