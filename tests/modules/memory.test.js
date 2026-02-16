@@ -346,15 +346,19 @@ describe('memory module', () => {
       expect(isMemoryAvailable()).toBe(false);
     });
 
-    it('should fail health check when auto-created client cannot connect', async () => {
+    it('should fail health check when SDK connectivity check throws', async () => {
       process.env.MEM0_API_KEY = 'test-api-key';
-      // Don't set a client — getClient will auto-create from mocked constructor
-      // The auto-created client has no search method, so health check will fail
-      _setClient(null);
+      // Explicitly mock a client whose search method throws — simulates a client
+      // that was created successfully but cannot reach the mem0 platform
+      const brokenClient = createMockClient({
+        search: vi.fn().mockRejectedValue(new Error('ECONNREFUSED: connect failed')),
+      });
+      _setClient(brokenClient);
 
       const result = await checkMem0Health();
       expect(result).toBe(false);
       expect(isMemoryAvailable()).toBe(false);
+      expect(brokenClient.search).toHaveBeenCalled();
     });
 
     it('should mark as unavailable when SDK connectivity check fails', async () => {
