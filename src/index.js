@@ -293,8 +293,15 @@ async function startup() {
   // Load opt-out preferences from DB before enabling memory features
   await loadOptOuts();
 
-  // Check mem0 availability for user memory features
-  await checkMem0Health();
+  // Check mem0 availability for user memory features (with timeout to avoid blocking startup)
+  try {
+    await Promise.race([
+      checkMem0Health(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('mem0 health check timed out')), 10_000)),
+    ]);
+  } catch (err) {
+    warn('mem0 health check timed out or failed — continuing without memory features', { error: err.message });
+  }
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
