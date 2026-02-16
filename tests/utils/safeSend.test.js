@@ -28,6 +28,12 @@ import { needsSplitting, splitMessage } from '../../src/utils/splitMessage.js';
 const ZWS = '\u200B';
 const SAFE_ALLOWED_MENTIONS = { parse: ['users'] };
 
+// Clear all mocks between tests to prevent cross-test pollution
+// of module-level mock functions (mockLogError, mockLogWarn, splitMessage mocks)
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe('safeSend', () => {
   let mockChannel;
 
@@ -76,6 +82,18 @@ describe('safeSend', () => {
   it('should return the result from channel.send', async () => {
     const result = await safeSend(mockChannel, 'hello');
     expect(result).toEqual({ id: 'msg-1' });
+  });
+
+  it('should sanitize embed fields in addition to content', async () => {
+    await safeSend(mockChannel, {
+      content: 'test',
+      embeds: [{ title: '@everyone alert', description: '@here check' }],
+    });
+    expect(mockChannel.send).toHaveBeenCalledWith({
+      content: 'test',
+      embeds: [{ title: `@${ZWS}everyone alert`, description: `@${ZWS}here check` }],
+      allowedMentions: SAFE_ALLOWED_MENTIONS,
+    });
   });
 });
 
