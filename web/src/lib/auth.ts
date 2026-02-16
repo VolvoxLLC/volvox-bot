@@ -35,9 +35,8 @@ if (process.env.BOT_API_URL && !process.env.BOT_API_SECRET) {
  * Discord OAuth2 scopes needed for the dashboard.
  * - identify: basic user info (id, username, avatar)
  * - guilds: list of guilds the user is in
- * - email: user's email address
  */
-const DISCORD_SCOPES = "identify guilds email";
+const DISCORD_SCOPES = "identify guilds";
 
 /**
  * Refresh a Discord OAuth2 access token using the refresh token.
