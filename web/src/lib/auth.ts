@@ -68,11 +68,7 @@ export async function refreshDiscordToken(token: Record<string, unknown>): Promi
     return { ...token, error: "RefreshTokenError" };
   }
 
-  let refreshed: {
-    access_token: string;
-    expires_in: number;
-    refresh_token?: string;
-  };
+  let refreshed: unknown;
   try {
     refreshed = await response.json();
   } catch {
@@ -80,12 +76,25 @@ export async function refreshDiscordToken(token: Record<string, unknown>): Promi
     return { ...token, error: "RefreshTokenError" };
   }
 
+  // Validate response shape before using
+  const parsed = refreshed as Record<string, unknown>;
+  if (
+    typeof parsed?.access_token !== "string" ||
+    typeof parsed?.expires_in !== "number"
+  ) {
+    logger.error("[auth] Discord refresh response missing required fields (access_token, expires_in)");
+    return { ...token, error: "RefreshTokenError" };
+  }
+
   return {
     ...token,
-    accessToken: refreshed.access_token,
-    accessTokenExpires: Date.now() + refreshed.expires_in * 1000,
+    accessToken: parsed.access_token,
+    accessTokenExpires: Date.now() + parsed.expires_in * 1000,
     // Discord may rotate the refresh token
-    refreshToken: refreshed.refresh_token ?? token.refreshToken,
+    refreshToken:
+      typeof parsed.refresh_token === "string"
+        ? parsed.refresh_token
+        : token.refreshToken,
     error: undefined,
   };
 }
