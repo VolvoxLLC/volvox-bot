@@ -9,7 +9,7 @@ WORKDIR /app
 # pnpm-workspace.yaml / pnpm-lock.yaml AND the web package.json. The glob
 # wildcard after pnpm-lock.yaml ensures the build doesn't fail if the file is
 # in a different location during standalone builds.
-COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY web/package.json ./web/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter bills-bot-web
