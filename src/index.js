@@ -29,6 +29,7 @@ import {
 import { loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health } from './modules/memory.js';
+import { loadOptOuts } from './modules/optout.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
@@ -288,6 +289,9 @@ async function startup() {
 
   // Start periodic conversation cleanup
   startConversationCleanup();
+
+  // Load opt-out preferences from DB before enabling memory features
+  await loadOptOuts();
 
   // Check mem0 availability for user memory features
   await checkMem0Health();
