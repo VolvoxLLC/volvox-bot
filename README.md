@@ -99,11 +99,12 @@ pnpm dev
 | `OPENCLAW_API_KEY` | ✅ | OpenClaw gateway authentication token |
 | `DATABASE_URL` | ✅** | PostgreSQL connection string for persistent config/state |
 | `MEM0_API_KEY` | ❌ | Mem0 API key for long-term memory |
-| `BOT_API_SECRET` | ❌ | Shared secret for web dashboard API authentication |
+| `BOT_API_SECRET` | ✅*** | Shared secret for web dashboard API authentication |
 | `LOG_LEVEL` | ❌ | Logging level: `debug`, `info`, `warn`, `error` (default: `info`) |
 
 \* Legacy alias supported: `CLIENT_ID`  
-\** Bot can run without DB, but persistent config is strongly recommended in production.
+\** Bot can run without DB, but persistent config is strongly recommended in production.  
+\*** Required when running with the web dashboard. Can be omitted for bot-only deployments.
 
 Legacy OpenClaw aliases are also supported for backwards compatibility: `OPENCLAW_URL`, `OPENCLAW_TOKEN`.
 
@@ -261,7 +262,7 @@ Bill Bot runs on [Railway](https://railway.app) as a multi-service project with 
 
 | Service | Type | Config |
 |---------|------|--------|
-| **Bot** | Node.js (Nixpacks) | `railway.toml` |
+| **Bot** | Node.js (Dockerfile) | `railway.toml` |
 | **Postgres** | Railway Plugin | Added via dashboard |
 | **Web Dashboard** | Next.js (Dockerfile) | `web/railway.toml` |
 
@@ -319,13 +320,13 @@ Set these in the Railway dashboard for the Web Dashboard service:
 
 ### Private Networking
 
-Railway services within the same project can communicate over a private internal network without exposing public endpoints. The Bot service is reachable from the Web Dashboard at:
+Railway services within the same project can communicate over a private internal network. When the bot exposes an HTTP API (planned), the Web Dashboard will reach it at:
 
 ```text
 http://bot.railway.internal:<PORT>
 ```
 
-Set `BOT_API_URL` on the Web Dashboard to this internal address. Replace `<PORT>` with the port the bot's API server listens on.
+> **Note:** The bot does not currently expose an HTTP API server — it connects to Discord via WebSocket only. `BOT_API_URL` is used by the web dashboard to query bot state; this feature requires the bot API to be implemented first.
 
 ### Slash Command Registration
 
@@ -336,6 +337,71 @@ railway run node src/deploy-commands.js
 ```
 
 Or execute it from the Railway service shell. This only needs to be done once (and again if you add new commands).
+
+## 🐳 Local Development with Docker
+
+Run the entire stack locally with a single command using Docker Compose.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) (v2+)
+
+### Quick Start
+
+```bash
+# 1. Copy the env template and fill in your values
+cp .env.example .env
+
+# 2. Start the bot + database
+docker compose up
+
+# Or run detached (background)
+docker compose up -d
+```
+
+The bot connects to Discord via the token in your `.env` file. PostgreSQL is available at `localhost:5432`.
+
+### Full Stack (with Web Dashboard)
+
+The web dashboard requires `web/Dockerfile` from PR #60. Once merged, start all services:
+
+```bash
+# Start bot + db + web dashboard
+docker compose --profile full up
+```
+
+The web dashboard will be available at `http://localhost:3000`.
+
+### Managing the Stack
+
+```bash
+# View logs
+docker compose logs -f bot        # bot logs only
+docker compose logs -f db         # database logs only
+
+# Stop all services
+docker compose down
+
+# Stop and remove database volume (fresh start)
+docker compose down -v
+
+# Rebuild after code changes
+docker compose up --build
+```
+
+### Service Details
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **bot** | — (internal) | Discord bot, no HTTP server |
+| **db** | `localhost:5432` | PostgreSQL 17, user: `postgres`, password: `postgres`, database: `billsbot` |
+| **web** | `localhost:3000` | Next.js web dashboard (requires `--profile full`) |
+
+### Notes
+
+- The `DATABASE_URL` is automatically overridden in `docker-compose.yml` to point to the `db` service — no manual DB config needed.
+- The web service uses the `full` profile so `docker compose up` starts only the bot + database by default.
+- Data is persisted in a Docker volume (`pgdata`). Use `docker compose down -v` to reset.
 
 ## 🤝 Contributing
 
