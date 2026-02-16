@@ -6,6 +6,7 @@ vi.mock("next-auth/react", () => ({
   useSession: () => ({
     data: {
       user: {
+        id: "discord-user-123",
         name: "TestUser",
         email: "test@example.com",
         image: "https://cdn.discordapp.com/avatars/123/abc.png",
@@ -16,28 +17,30 @@ vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
 }));
 
+// Mock the MobileSidebar client component
+vi.mock("@/components/layout/mobile-sidebar", () => ({
+  MobileSidebar: () => (
+    <button data-testid="mobile-sidebar-toggle" aria-label="Toggle menu">
+      Menu
+    </button>
+  ),
+}));
+
 import { Header } from "@/components/layout/header";
 
 describe("Header", () => {
   it("renders the brand name", () => {
-    render(<Header onMenuClick={vi.fn()} />);
+    render(<Header />);
     expect(screen.getByText("Bill Bot Dashboard")).toBeDefined();
   });
 
-  it("renders the hamburger menu button", () => {
-    render(<Header onMenuClick={vi.fn()} />);
-    expect(screen.getByLabelText("Toggle menu")).toBeDefined();
-  });
-
-  it("calls onMenuClick when hamburger is clicked", () => {
-    const onMenuClick = vi.fn();
-    render(<Header onMenuClick={onMenuClick} />);
-    screen.getByLabelText("Toggle menu").click();
-    expect(onMenuClick).toHaveBeenCalled();
+  it("renders the mobile sidebar toggle", () => {
+    render(<Header />);
+    expect(screen.getByTestId("mobile-sidebar-toggle")).toBeDefined();
   });
 
   it("renders user fallback avatar when authenticated", () => {
-    render(<Header onMenuClick={vi.fn()} />);
+    render(<Header />);
     // Radix Avatar shows fallback initially in jsdom
     expect(screen.getByText("T")).toBeDefined();
   });

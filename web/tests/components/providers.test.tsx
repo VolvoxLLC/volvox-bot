@@ -6,12 +6,14 @@ vi.mock("next-auth/react", () => ({
   SessionProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="session-provider">{children}</div>
   ),
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+  signIn: vi.fn(),
 }));
 
 import { Providers } from "@/components/providers";
 
 describe("Providers", () => {
-  it("wraps children in SessionProvider", () => {
+  it("wraps children in SessionProvider with SessionGuard", () => {
     render(
       <Providers>
         <div data-testid="child">Hello</div>

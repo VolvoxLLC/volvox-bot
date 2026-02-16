@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import LandingPage from "@/app/page";
 
@@ -19,10 +19,22 @@ describe("LandingPage", () => {
     expect(screen.getByText("Web Dashboard")).toBeDefined();
   });
 
-  it("renders sign in and add to server buttons", () => {
+  it("renders sign in button", () => {
     render(<LandingPage />);
     expect(screen.getByText("Sign In")).toBeDefined();
+  });
+
+  it("hides Add to Server button when CLIENT_ID is not set", () => {
+    delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+    render(<LandingPage />);
+    expect(screen.queryByText("Add to Server")).toBeNull();
+  });
+
+  it("shows Add to Server buttons when CLIENT_ID is set", () => {
+    process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = "test-client-id";
+    render(<LandingPage />);
     expect(screen.getAllByText("Add to Server").length).toBeGreaterThan(0);
+    delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
   });
 
   it("renders footer with links", () => {

@@ -34,8 +34,10 @@ const DISCORD_SCOPES = "identify guilds email";
 /**
  * Refresh a Discord OAuth2 access token using the refresh token.
  * Returns updated token fields or the original token with an error flag.
+ *
+ * Exported for testing; not intended for direct use outside auth callbacks.
  */
-async function refreshDiscordToken(token: Record<string, unknown>): Promise<Record<string, unknown>> {
+export async function refreshDiscordToken(token: Record<string, unknown>): Promise<Record<string, unknown>> {
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID ?? "",
     client_secret: process.env.DISCORD_CLIENT_SECRET ?? "",

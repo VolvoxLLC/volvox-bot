@@ -54,11 +54,23 @@ describe("ServerSelector", () => {
     });
   });
 
-  it("handles fetch errors gracefully", async () => {
+  it("shows error state with retry button on fetch failure", async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
     render(<ServerSelector />);
     await waitFor(() => {
-      expect(screen.getByText("No servers found")).toBeDefined();
+      expect(screen.getByText("Failed to load servers")).toBeDefined();
+      expect(screen.getByText("Retry")).toBeDefined();
+    });
+  });
+
+  it("shows error state on non-OK response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+    render(<ServerSelector />);
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load servers")).toBeDefined();
     });
   });
 });
