@@ -7,11 +7,19 @@ import { logger } from "@/lib/logger";
 const secret = process.env.NEXTAUTH_SECRET ?? "";
 if (
   secret === "change-me-in-production" ||
+  secret === "CHANGE_ME_generate_with_openssl_rand_base64_32" ||
   secret.length < 32
 ) {
   throw new Error(
     "[auth] NEXTAUTH_SECRET must be at least 32 characters and not the default placeholder. " +
       "Generate one with: openssl rand -base64 48",
+  );
+}
+
+if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
+  throw new Error(
+    "[auth] DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET must be set. " +
+      "Create an OAuth2 application at https://discord.com/developers/applications",
   );
 }
 
@@ -94,7 +102,7 @@ export const authOptions: AuthOptions = {
         token.refreshToken = account.refresh_token;
         token.accessTokenExpires = account.expires_at
           ? account.expires_at * 1000
-          : undefined;
+          : Date.now() + 7 * 24 * 60 * 60 * 1000; // Default to 7 days if provider omits expires_at
         token.id = account.providerAccountId;
       }
 

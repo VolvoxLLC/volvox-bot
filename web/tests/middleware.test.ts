@@ -40,7 +40,7 @@ describe("proxy function", () => {
     expect(location).toContain("callbackUrl=");
   });
 
-  it("includes the original URL as callbackUrl in redirect", async () => {
+  it("includes the original pathname as callbackUrl in redirect", async () => {
     const { getToken } = await import("next-auth/jwt");
     vi.mocked(getToken).mockResolvedValue(null);
 
@@ -53,7 +53,7 @@ describe("proxy function", () => {
 
     const location = response.headers.get("location");
     expect(location).toContain(
-      encodeURIComponent("http://localhost:3000/dashboard/settings"),
+      encodeURIComponent("/dashboard/settings"),
     );
   });
 

@@ -149,6 +149,28 @@ describe("authOptions", () => {
     process.env.NEXTAUTH_SECRET = "too-short";
     await expect(import("@/lib/auth")).rejects.toThrow("NEXTAUTH_SECRET");
   });
+
+  it("rejects the new CHANGE_ME placeholder in NEXTAUTH_SECRET", async () => {
+    vi.resetModules();
+    process.env.NEXTAUTH_SECRET = "CHANGE_ME_generate_with_openssl_rand_base64_32";
+    await expect(import("@/lib/auth")).rejects.toThrow("NEXTAUTH_SECRET");
+  });
+
+  it("rejects missing DISCORD_CLIENT_ID", async () => {
+    vi.resetModules();
+    delete process.env.DISCORD_CLIENT_ID;
+    process.env.DISCORD_CLIENT_SECRET = "test-client-secret";
+    process.env.NEXTAUTH_SECRET = "a-valid-secret-that-is-at-least-32-characters-long";
+    await expect(import("@/lib/auth")).rejects.toThrow("DISCORD_CLIENT_ID");
+  });
+
+  it("rejects missing DISCORD_CLIENT_SECRET", async () => {
+    vi.resetModules();
+    process.env.DISCORD_CLIENT_ID = "test-client-id";
+    delete process.env.DISCORD_CLIENT_SECRET;
+    process.env.NEXTAUTH_SECRET = "a-valid-secret-that-is-at-least-32-characters-long";
+    await expect(import("@/lib/auth")).rejects.toThrow("DISCORD_CLIENT_SECRET");
+  });
 });
 
 describe("refreshDiscordToken", () => {
