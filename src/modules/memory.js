@@ -177,7 +177,20 @@ export function isMemoryAvailable() {
 }
 
 /**
- * Set the mem0 availability flag (for testing / health checks)
+ * Set the mem0 availability flag (for testing / health checks).
+ *
+ * **Asymmetric behavior by design:**
+ * - Setting `true` calls {@link markAvailable}, clearing any cooldown state.
+ * - Setting `false` performs a **hard disable** — sets mem0Available to false
+ *   and resets the cooldown timestamp to 0 — but does NOT trigger the recovery
+ *   cooldown (unlike {@link markUnavailable} which records a timestamp so
+ *   auto-recovery can kick in after RECOVERY_COOLDOWN_MS).
+ *
+ * This is intentional: _setMem0Available is a test/health-check helper that
+ * needs to instantly toggle state without side effects from cooldown timers.
+ * Production error paths use markUnavailable() instead, which enables the
+ * timed auto-recovery flow.
+ *
  * @param {boolean} available
  */
 export function _setMem0Available(available) {
