@@ -279,7 +279,7 @@ pnpm dev                       # Starts on http://localhost:3000
 | `pnpm build` | Production build |
 | `pnpm start` | Start production server |
 | `pnpm test` | Run tests with Vitest |
-| `pnpm lint` | Lint with Next.js ESLint config |
+| `pnpm typecheck` | Type-check with TypeScript compiler |
 
 ## 🛠️ Development
 
