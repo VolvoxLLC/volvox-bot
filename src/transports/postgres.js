@@ -42,7 +42,7 @@ export class PostgresTransport extends Transport {
 
     // Start periodic flush timer
     this.flushTimer = setInterval(() => {
-      this.flush();
+      this.flush().catch(() => {});
     }, this.flushIntervalMs);
 
     // Prevent the timer from keeping the process alive
@@ -72,7 +72,7 @@ export class PostgresTransport extends Transport {
 
     // Trigger flush if batch size is reached
     if (this.buffer.length >= this.batchSize) {
-      this.flush();
+      this.flush().catch(() => {});
     }
 
     // Always call callback immediately — non-blocking
@@ -180,6 +180,10 @@ export async function initLogsTable(pool) {
  * @returns {Promise<number>} Number of deleted rows
  */
 export async function pruneOldLogs(pool, retentionDays) {
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
+    return 0;
+  }
+
   const result = await pool.query(
     'DELETE FROM logs WHERE timestamp < NOW() - make_interval(days => $1)',
     [retentionDays],

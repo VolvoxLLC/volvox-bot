@@ -251,7 +251,7 @@ export function addPostgresTransport(pool, config = {}) {
     flushIntervalMs: config.flushIntervalMs || 5000,
     format: winston.format.combine(
       redactSensitiveData,
-      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      winston.format.timestamp(),
       winston.format.json(),
     ),
   });

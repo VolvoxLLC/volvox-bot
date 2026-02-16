@@ -366,4 +366,31 @@ describe('pruneOldLogs', () => {
 
     expect(deleted).toBe(0);
   });
+
+  it('should return 0 and skip query for zero retentionDays', async () => {
+    const mockPool = createMockPool();
+
+    const deleted = await pruneOldLogs(mockPool, 0);
+
+    expect(deleted).toBe(0);
+    expect(mockPool.query).not.toHaveBeenCalled();
+  });
+
+  it('should return 0 and skip query for negative retentionDays', async () => {
+    const mockPool = createMockPool();
+
+    const deleted = await pruneOldLogs(mockPool, -5);
+
+    expect(deleted).toBe(0);
+    expect(mockPool.query).not.toHaveBeenCalled();
+  });
+
+  it('should return 0 and skip query for non-numeric retentionDays', async () => {
+    const mockPool = createMockPool();
+
+    const deleted = await pruneOldLogs(mockPool, 'thirty');
+
+    expect(deleted).toBe(0);
+    expect(mockPool.query).not.toHaveBeenCalled();
+  });
 });
