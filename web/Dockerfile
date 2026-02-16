@@ -29,7 +29,10 @@ ENV NEXT_PUBLIC_DISCORD_CLIENT_ID=$NEXT_PUBLIC_DISCORD_CLIENT_ID
 
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/web
-RUN pnpm build
+RUN pnpm build && \
+    # Verify standalone output path — pnpm workspaces nest under the package dir
+    test -f .next/standalone/web/server.js || \
+      (echo "ERROR: Expected .next/standalone/web/server.js not found. Check Next.js standalone output." && exit 1)
 
 # --- Runner ---
 FROM node:22-alpine AS runner
