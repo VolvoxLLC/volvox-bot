@@ -5,13 +5,10 @@ import { logger } from "@/lib/logger";
 // --- Runtime validation ---
 
 const secret = process.env.NEXTAUTH_SECRET ?? "";
-if (
-  secret === "change-me-in-production" ||
-  secret === "CHANGE_ME_generate_with_openssl_rand_base64_32" ||
-  secret.length < 32
-) {
+const PLACEHOLDER_PATTERN = /change|placeholder|example|replace.?me/i;
+if (secret.length < 32 || PLACEHOLDER_PATTERN.test(secret)) {
   throw new Error(
-    "[auth] NEXTAUTH_SECRET must be at least 32 characters and not the default placeholder. " +
+    "[auth] NEXTAUTH_SECRET must be at least 32 characters and not a placeholder value. " +
       "Generate one with: openssl rand -base64 48",
   );
 }
