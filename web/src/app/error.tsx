@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorCard } from "@/components/error-card";
 import { logger } from "@/lib/logger";
 
-export default function GlobalError({
+export default function RootError({
   error,
   reset,
 }: {
