@@ -37,30 +37,3 @@ export function getGuildIconUrl(
   const ext = iconHash.startsWith("a_") ? "gif" : "webp";
   return `${DISCORD_CDN}/icons/${guildId}/${iconHash}.${ext}?size=${size}`;
 }
-
-/**
- * Get the URL for a user's avatar from raw Discord user data.
- *
- * Public utility exported for use in future dashboard pages that display
- * other users' avatars (e.g. member lists, user profiles, mod log entries).
- * The header component uses `session.user.image` from NextAuth directly;
- * this helper is for cases where you have a raw userId + avatarHash.
- */
-export function getUserAvatarUrl(
-  userId: string,
-  avatarHash: string | null,
-  discriminator = "0",
-  size = 128,
-): string {
-  if (!avatarHash) {
-    let index = 0;
-    try {
-      index = discriminator === "0" ? Number(BigInt(userId) >> 22n) % 6 : Number(discriminator) % 5;
-    } catch {
-      // Invalid userId for BigInt conversion — fall back to default avatar
-    }
-    return `${DISCORD_CDN}/embed/avatars/${index}.png`;
-  }
-  const ext = avatarHash.startsWith("a_") ? "gif" : "webp";
-  return `${DISCORD_CDN}/avatars/${userId}/${avatarHash}.${ext}?size=${size}`;
-}

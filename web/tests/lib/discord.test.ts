@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getGuildIconUrl, getUserAvatarUrl } from "@/lib/discord";
+import { getGuildIconUrl } from "@/lib/discord";
 import {
   fetchUserGuilds,
   fetchBotGuilds,
@@ -30,39 +30,6 @@ describe("getGuildIconUrl", () => {
   it("defaults to size 128", () => {
     const url = getGuildIconUrl("123", "abc123");
     expect(url).toContain("size=128");
-  });
-});
-
-describe("getUserAvatarUrl", () => {
-  it("returns default avatar when no avatar hash", () => {
-    const url = getUserAvatarUrl("123456789012345678", null);
-    expect(url).toMatch(
-      /https:\/\/cdn\.discordapp\.com\/embed\/avatars\/\d\.png/,
-    );
-  });
-
-  it("returns webp avatar for non-animated hash", () => {
-    const url = getUserAvatarUrl("123", "abc123", "0", 128);
-    expect(url).toBe(
-      "https://cdn.discordapp.com/avatars/123/abc123.webp?size=128",
-    );
-  });
-
-  it("returns gif avatar for animated hash", () => {
-    const url = getUserAvatarUrl("123", "a_abc123", "0", 64);
-    expect(url).toBe(
-      "https://cdn.discordapp.com/avatars/123/a_abc123.gif?size=64",
-    );
-  });
-
-  it("uses discriminator for default avatar when not 0", () => {
-    const url = getUserAvatarUrl("123", null, "1234");
-    expect(url).toBe("https://cdn.discordapp.com/embed/avatars/4.png");
-  });
-
-  it("defaults to avatar 0 on invalid userId for BigInt", () => {
-    const url = getUserAvatarUrl("not-a-number", null, "0");
-    expect(url).toBe("https://cdn.discordapp.com/embed/avatars/0.png");
   });
 });
 
