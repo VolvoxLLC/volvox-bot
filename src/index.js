@@ -52,6 +52,9 @@ dotenvConfig();
 let config = {};
 
 // Initialize Discord client with required intents
+// allowedMentions restricts which mention types Discord will parse.
+// Only 'users' is allowed — @everyone, @here, and role mentions are blocked globally.
+// See: https://github.com/BillChirico/bills-bot/issues/61
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -60,6 +63,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildVoiceStates,
   ],
+  allowedMentions: { parse: ['users'] },
 });
 
 // Initialize command collection
