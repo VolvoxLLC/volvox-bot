@@ -22,11 +22,35 @@ const APP_ID = 'bills-bot';
 /** Default maximum memories to inject into context */
 const DEFAULT_MAX_CONTEXT_MEMORIES = 5;
 
+/** Cooldown period before retrying after a transient failure (ms) */
+const RECOVERY_COOLDOWN_MS = 60_000;
+
 /** Tracks whether mem0 is reachable (set by health check, cleared on errors) */
 let mem0Available = false;
 
+/** Timestamp (ms) when mem0 was last marked unavailable (0 = never) */
+let mem0UnavailableSince = 0;
+
 /** Singleton MemoryClient instance */
 let client = null;
+
+/**
+ * Mark mem0 as unavailable with a cooldown for auto-recovery.
+ * After RECOVERY_COOLDOWN_MS, the next request will be allowed through
+ * to check if the service has recovered.
+ */
+function markUnavailable() {
+  mem0Available = false;
+  mem0UnavailableSince = Date.now();
+}
+
+/**
+ * Mark mem0 as available and clear the recovery cooldown.
+ */
+function markAvailable() {
+  mem0Available = true;
+  mem0UnavailableSince = 0;
+}
 
 /**
  * Get or create the mem0 client instance.
@@ -72,12 +96,29 @@ export function getMemoryConfig() {
 }
 
 /**
- * Check if memory feature is enabled and mem0 is available
+ * Check if memory feature is enabled and mem0 is available.
+ * Supports auto-recovery: if mem0 was marked unavailable due to a transient
+ * error and the cooldown period has elapsed, it will be tentatively re-enabled
+ * so the next request can check if the service has recovered.
  * @returns {boolean}
  */
 export function isMemoryAvailable() {
   const memConfig = getMemoryConfig();
-  return memConfig.enabled && mem0Available;
+  if (!memConfig.enabled) return false;
+
+  if (mem0Available) return true;
+
+  // Auto-recovery: if cooldown has elapsed, tentatively re-enable
+  if (
+    mem0UnavailableSince > 0 &&
+    Date.now() - mem0UnavailableSince >= RECOVERY_COOLDOWN_MS
+  ) {
+    info('mem0 cooldown expired, attempting auto-recovery');
+    markAvailable();
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -85,7 +126,20 @@ export function isMemoryAvailable() {
  * @param {boolean} available
  */
 export function _setMem0Available(available) {
-  mem0Available = available;
+  if (available) {
+    markAvailable();
+  } else {
+    mem0Available = false;
+    mem0UnavailableSince = 0;
+  }
+}
+
+/**
+ * Get the recovery cooldown duration in ms (exported for testing)
+ * @returns {number}
+ */
+export function _getRecoveryCooldownMs() {
+  return RECOVERY_COOLDOWN_MS;
 }
 
 /**
@@ -105,30 +159,30 @@ export async function checkMem0Health() {
   const memConfig = getMemoryConfig();
   if (!memConfig.enabled) {
     info('Memory module disabled via config');
-    mem0Available = false;
+    markUnavailable();
     return false;
   }
 
   const apiKey = process.env.MEM0_API_KEY;
   if (!apiKey) {
     logWarn('MEM0_API_KEY not set — memory features disabled');
-    mem0Available = false;
+    markUnavailable();
     return false;
   }
 
   try {
     const c = getClient();
     if (!c) {
-      mem0Available = false;
+      markUnavailable();
       return false;
     }
 
-    mem0Available = true;
+    markAvailable();
     info('mem0 health check passed (API key configured, SDK client initialized)');
     return true;
   } catch (err) {
     logWarn('mem0 health check failed', { error: err.message });
-    mem0Available = false;
+    markUnavailable();
     return false;
   }
 }
@@ -160,7 +214,7 @@ export async function addMemory(userId, text, metadata = {}) {
     return true;
   } catch (err) {
     logWarn('Failed to add memory', { userId, error: err.message });
-    mem0Available = false;
+    markUnavailable();
     return false;
   }
 }
@@ -203,7 +257,7 @@ export async function searchMemories(userId, query, limit) {
     return { memories, relations };
   } catch (err) {
     logWarn('Failed to search memories', { userId, error: err.message });
-    mem0Available = false;
+    markUnavailable();
     return { memories: [], relations: [] };
   }
 }
@@ -234,7 +288,7 @@ export async function getMemories(userId) {
     }));
   } catch (err) {
     logWarn('Failed to get memories', { userId, error: err.message });
-    mem0Available = false;
+    markUnavailable();
     return [];
   }
 }
@@ -363,7 +417,7 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
     return true;
   } catch (err) {
     logWarn('Memory extraction failed', { userId, error: err.message });
-    mem0Available = false;
+    markUnavailable();
     return false;
   }
 }
