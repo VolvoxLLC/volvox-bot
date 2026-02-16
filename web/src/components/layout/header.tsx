@@ -19,8 +19,10 @@ import { MobileSidebar } from "./mobile-sidebar";
 export function Header() {
   const { data: session, status } = useSession();
 
-  // Auto-sign-out when token refresh fails — session.error is set by the
-  // JWT callback when refreshDiscordToken returns RefreshTokenError.
+  // Single handler for RefreshTokenError — sign out and redirect to login.
+  // session.error is set by the JWT callback when refreshDiscordToken fails.
+  // Note: This is the ONLY RefreshTokenError handler in the app (providers.tsx
+  // delegates to this component to avoid race conditions).
   useEffect(() => {
     if (session?.error === "RefreshTokenError") {
       signOut({ callbackUrl: "/login" });
