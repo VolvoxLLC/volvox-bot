@@ -152,7 +152,9 @@ describe("getMutualGuilds", () => {
 
     process.env.BOT_API_URL = originalEnv;
 
-    // With no BOT_API_URL, fetchBotGuilds returns [] so no mutual guilds
-    expect(mutualGuilds).toHaveLength(0);
+    // With no BOT_API_URL, fetchBotGuilds returns [] so all user guilds
+    // are returned unfiltered with botPresent=false
+    expect(mutualGuilds).toHaveLength(1);
+    expect(mutualGuilds[0].botPresent).toBe(false);
   });
 });
