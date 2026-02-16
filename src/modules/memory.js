@@ -10,6 +10,13 @@
  *
  * Graceful fallback: if mem0 is unavailable, all operations return
  * safe defaults (empty arrays / false) so the AI pipeline continues.
+ *
+ * **Privacy Notice:**
+ * This module sends user messages to the mem0 hosted platform
+ * (api.mem0.ai) for memory extraction and storage. By interacting
+ * with the bot, users' messages may be processed and stored externally.
+ * Users can view and delete their stored memories via the /memory command.
+ * The /memory forget command allows users to clear all their data.
  */
 
 import MemoryClient from 'mem0ai';

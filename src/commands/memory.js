@@ -2,6 +2,10 @@
  * Memory Command
  * Allows users to view and manage what the bot remembers about them.
  *
+ * Memories are stored externally on the mem0 platform (api.mem0.ai).
+ * Users can view their data with /memory view and delete it with
+ * /memory forget at any time.
+ *
  * Subcommands:
  *   /memory view   — Show all memories the bot has about you
  *   /memory forget — Clear all your memories
@@ -21,7 +25,7 @@ import { splitMessage } from '../utils/splitMessage.js';
 
 export const data = new SlashCommandBuilder()
   .setName('memory')
-  .setDescription('Manage what the bot remembers about you')
+  .setDescription('Manage what the bot remembers about you (stored externally)')
   .addSubcommand((sub) =>
     sub.setName('view').setDescription('View what the bot remembers about you'),
   )
