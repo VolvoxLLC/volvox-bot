@@ -2,7 +2,8 @@ import type { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
-    accessToken?: string;
+    /** Propagated from JWT when token refresh fails */
+    error?: string;
     user: {
       id: string;
       name?: string | null;
@@ -18,5 +19,6 @@ declare module "next-auth/jwt" {
     refreshToken?: string;
     accessTokenExpires?: number;
     id?: string;
+    error?: string;
   }
 }

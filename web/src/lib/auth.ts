@@ -2,6 +2,27 @@ import type { AuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import { logger } from "@/lib/logger";
 
+// --- Runtime validation ---
+
+const secret = process.env.NEXTAUTH_SECRET ?? "";
+if (
+  secret === "change-me-in-production" ||
+  secret.length < 32
+) {
+  throw new Error(
+    "[auth] NEXTAUTH_SECRET must be at least 32 characters and not the default placeholder. " +
+      "Generate one with: openssl rand -base64 48",
+  );
+}
+
+if (process.env.BOT_API_URL && !process.env.BOT_API_SECRET) {
+  logger.warn(
+    "[auth] BOT_API_URL is set but BOT_API_SECRET is missing. " +
+      "Requests to the bot API will be unauthenticated. " +
+      "Set BOT_API_SECRET to secure bot API communication.",
+  );
+}
+
 /**
  * Discord OAuth2 scopes needed for the dashboard.
  * - identify: basic user info (id, username, avatar)
@@ -89,10 +110,14 @@ export const authOptions: AuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      // Expose the Discord access token and user ID to the client session
-      session.accessToken = token.accessToken as string | undefined;
+      // Only expose user ID to the client session.
+      // The access token stays in the server-side JWT — use getToken() in API routes.
       if (session.user) {
         session.user.id = token.id as string;
+      }
+      // Propagate token refresh errors so the client can redirect to sign-in
+      if (token.error) {
+        session.error = token.error as string;
       }
       return session;
     },

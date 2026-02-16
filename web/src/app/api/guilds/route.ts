@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { getMutualGuilds } from "@/lib/discord";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
+export async function GET(request: NextRequest) {
+  const token = await getToken({ req: request });
 
-  if (!session?.accessToken) {
+  if (!token?.accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const guilds = await getMutualGuilds(session.accessToken);
+    const guilds = await getMutualGuilds(token.accessToken);
     return NextResponse.json(guilds);
   } catch (error) {
     const message =
