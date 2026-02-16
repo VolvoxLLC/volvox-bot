@@ -59,105 +59,126 @@ describe("getUserAvatarUrl", () => {
     const url = getUserAvatarUrl("123", null, "1234");
     expect(url).toBe("https://cdn.discordapp.com/embed/avatars/4.png");
   });
+
+  it("defaults to avatar 0 on invalid userId for BigInt", () => {
+    const url = getUserAvatarUrl("not-a-number", null, "0");
+    expect(url).toBe("https://cdn.discordapp.com/embed/avatars/0.png");
+  });
 });
 
 describe("fetchWithRateLimit", () => {
-  const originalFetch = global.fetch;
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    fetchSpy = vi.spyOn(global, "fetch");
+  });
 
   afterEach(() => {
-    global.fetch = originalFetch;
-    vi.restoreAllMocks();
+    fetchSpy.mockRestore();
+    vi.useRealTimers();
   });
 
   it("returns response directly when not rate limited", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: true,
       status: 200,
       json: () => Promise.resolve({ data: "ok" }),
-    });
+    } as Response);
 
     const response = await fetchWithRateLimit("https://example.com/api");
     expect(response.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("retries on 429 with retry-after header", async () => {
     const headers = new Map([["retry-after", "0.01"]]);
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation(() => {
+    fetchSpy.mockImplementation(() => {
       callCount++;
       if (callCount === 1) {
         return Promise.resolve({
           status: 429,
           headers: { get: (key: string) => headers.get(key) ?? null },
-        });
+        } as unknown as Response);
       }
-      return Promise.resolve({ ok: true, status: 200 });
+      return Promise.resolve({ ok: true, status: 200 } as Response);
     });
 
-    const response = await fetchWithRateLimit("https://example.com/api");
+    const promise = fetchWithRateLimit("https://example.com/api");
+    // Advance timers to allow retries
+    await vi.advanceTimersByTimeAsync(100);
+    const response = await promise;
     expect(response.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it("parses retry-after header as seconds and waits", async () => {
     const headers = new Map([["retry-after", "0.001"]]); // 1ms
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation(() => {
+    fetchSpy.mockImplementation(() => {
       callCount++;
       if (callCount <= 2) {
         return Promise.resolve({
           status: 429,
           headers: { get: (key: string) => headers.get(key) ?? null },
-        });
+        } as unknown as Response);
       }
-      return Promise.resolve({ ok: true, status: 200 });
+      return Promise.resolve({ ok: true, status: 200 } as Response);
     });
 
-    const response = await fetchWithRateLimit("https://example.com/api");
+    const promise = fetchWithRateLimit("https://example.com/api");
+    await vi.advanceTimersByTimeAsync(100);
+    const response = await promise;
     expect(response.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 
   it("returns 429 after exhausting max retries", async () => {
     const headers = new Map([["retry-after", "0.001"]]);
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       status: 429,
       headers: { get: (key: string) => headers.get(key) ?? null },
-    });
+    } as unknown as Response);
 
-    const response = await fetchWithRateLimit("https://example.com/api");
+    const promise = fetchWithRateLimit("https://example.com/api");
+    await vi.advanceTimersByTimeAsync(100);
+    const response = await promise;
     expect(response.status).toBe(429);
     // 1 initial + 3 retries = 4 total calls
-    expect(global.fetch).toHaveBeenCalledTimes(4);
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
   });
 
   it("uses 1000ms default when no retry-after header", async () => {
-    // We can't easily test the exact timing, but we can verify the behavior
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation(() => {
+    fetchSpy.mockImplementation(() => {
       callCount++;
       if (callCount === 1) {
         return Promise.resolve({
           status: 429,
           headers: { get: () => null },
-        });
+        } as unknown as Response);
       }
-      return Promise.resolve({ ok: true, status: 200 });
+      return Promise.resolve({ ok: true, status: 200 } as Response);
     });
 
-    // This will wait 1s due to default, so we just verify it eventually resolves
-    const response = await fetchWithRateLimit("https://example.com/api");
+    const promise = fetchWithRateLimit("https://example.com/api");
+    // Advance past the 1s default wait
+    await vi.advanceTimersByTimeAsync(1100);
+    const response = await promise;
     expect(response.status).toBe(200);
   });
 });
 
 describe("fetchUserGuilds", () => {
-  const originalFetch = global.fetch;
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(global, "fetch");
+  });
 
   afterEach(() => {
-    global.fetch = originalFetch;
-    vi.restoreAllMocks();
+    fetchSpy.mockRestore();
   });
 
   it("fetches guilds with correct authorization header", async () => {
@@ -165,15 +186,15 @@ describe("fetchUserGuilds", () => {
       { id: "1", name: "Test Server", icon: null, owner: true, permissions: "8", features: [] },
     ];
 
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: true,
       status: 200,
       json: () => Promise.resolve(mockGuilds),
-    });
+    } as Response);
 
     const guilds = await fetchUserGuilds("test-token");
     expect(guilds).toEqual(mockGuilds);
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(fetchSpy).toHaveBeenCalledWith(
       expect.stringContaining("/users/@me/guilds"),
       expect.objectContaining({
         headers: {
@@ -184,11 +205,11 @@ describe("fetchUserGuilds", () => {
   });
 
   it("throws on non-OK response", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: false,
       status: 401,
       statusText: "Unauthorized",
-    });
+    } as Response);
 
     await expect(fetchUserGuilds("bad-token")).rejects.toThrow(
       "Failed to fetch user guilds",
@@ -210,137 +231,150 @@ describe("fetchUserGuilds", () => {
     ];
 
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation((url: string) => {
+    fetchSpy.mockImplementation((url: string | URL | Request) => {
       callCount++;
+      const urlStr = url.toString();
       if (callCount === 1) {
         // First call — no "after" param
-        expect(url).not.toContain("after=");
+        expect(urlStr).not.toContain("after=");
         return Promise.resolve({
           ok: true,
           status: 200,
           json: () => Promise.resolve(page1),
-        });
+        } as Response);
       }
       // Second call — should have "after=200"
-      expect(url).toContain("after=200");
+      expect(urlStr).toContain("after=200");
       return Promise.resolve({
         ok: true,
         status: 200,
         json: () => Promise.resolve(page2),
-      });
+      } as Response);
     });
 
     const guilds = await fetchUserGuilds("test-token");
     expect(guilds).toHaveLength(201);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it("supports AbortSignal", async () => {
     const controller = new AbortController();
     controller.abort();
 
-    global.fetch = vi.fn().mockRejectedValue(new DOMException("Aborted", "AbortError"));
+    fetchSpy.mockRejectedValue(new DOMException("Aborted", "AbortError"));
 
     await expect(fetchUserGuilds("test-token", controller.signal)).rejects.toThrow();
   });
 });
 
 describe("fetchBotGuilds", () => {
-  const originalFetch = global.fetch;
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let savedBotApiUrl: string | undefined;
+  let savedBotApiSecret: string | undefined;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(global, "fetch");
+    savedBotApiUrl = process.env.BOT_API_URL;
+    savedBotApiSecret = process.env.BOT_API_SECRET;
+  });
 
   afterEach(() => {
-    global.fetch = originalFetch;
-    vi.restoreAllMocks();
+    fetchSpy.mockRestore();
+    // Restore env vars to prevent pollution
+    if (savedBotApiUrl !== undefined) {
+      process.env.BOT_API_URL = savedBotApiUrl;
+    } else {
+      delete process.env.BOT_API_URL;
+    }
+    if (savedBotApiSecret !== undefined) {
+      process.env.BOT_API_SECRET = savedBotApiSecret;
+    } else {
+      delete process.env.BOT_API_SECRET;
+    }
   });
 
   it("returns empty array when BOT_API_URL is not set", async () => {
-    const originalEnv = process.env.BOT_API_URL;
     delete process.env.BOT_API_URL;
 
     const result = await fetchBotGuilds();
     expect(result).toEqual([]);
-
-    process.env.BOT_API_URL = originalEnv;
   });
 
   it("returns empty array when BOT_API_SECRET is missing", async () => {
-    const originalUrl = process.env.BOT_API_URL;
-    const originalSecret = process.env.BOT_API_SECRET;
     process.env.BOT_API_URL = "http://localhost:3001";
     delete process.env.BOT_API_SECRET;
 
     const result = await fetchBotGuilds();
     expect(result).toEqual([]);
-
-    process.env.BOT_API_URL = originalUrl;
-    process.env.BOT_API_SECRET = originalSecret;
   });
 
   it("returns empty array when bot API returns non-OK response", async () => {
-    const originalUrl = process.env.BOT_API_URL;
-    const originalSecret = process.env.BOT_API_SECRET;
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: false,
       status: 503,
       statusText: "Service Unavailable",
-    });
+    } as Response);
 
     const result = await fetchBotGuilds();
     expect(result).toEqual([]);
-
-    process.env.BOT_API_URL = originalUrl;
-    process.env.BOT_API_SECRET = originalSecret;
   });
 
   it("returns empty array when bot API is unreachable", async () => {
-    const originalUrl = process.env.BOT_API_URL;
-    const originalSecret = process.env.BOT_API_SECRET;
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
-    global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+    fetchSpy.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const result = await fetchBotGuilds();
     expect(result).toEqual([]);
-
-    process.env.BOT_API_URL = originalUrl;
-    process.env.BOT_API_SECRET = originalSecret;
   });
 
   it("sends Authorization header with BOT_API_SECRET", async () => {
-    const originalUrl = process.env.BOT_API_URL;
-    const originalSecret = process.env.BOT_API_SECRET;
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "my-secret";
 
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([]),
-    });
+    } as Response);
 
     await fetchBotGuilds();
 
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(fetchSpy).toHaveBeenCalledWith(
       "http://localhost:3001/api/guilds",
       expect.objectContaining({
         headers: { Authorization: "Bearer my-secret" },
       }),
     );
-
-    process.env.BOT_API_URL = originalUrl;
-    process.env.BOT_API_SECRET = originalSecret;
   });
 });
 
 describe("getMutualGuilds", () => {
-  const originalFetch = global.fetch;
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let savedBotApiUrl: string | undefined;
+  let savedBotApiSecret: string | undefined;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(global, "fetch");
+    savedBotApiUrl = process.env.BOT_API_URL;
+    savedBotApiSecret = process.env.BOT_API_SECRET;
+  });
 
   afterEach(() => {
-    global.fetch = originalFetch;
-    vi.restoreAllMocks();
+    fetchSpy.mockRestore();
+    if (savedBotApiUrl !== undefined) {
+      process.env.BOT_API_URL = savedBotApiUrl;
+    } else {
+      delete process.env.BOT_API_URL;
+    }
+    if (savedBotApiSecret !== undefined) {
+      process.env.BOT_API_SECRET = savedBotApiSecret;
+    } else {
+      delete process.env.BOT_API_SECRET;
+    }
   });
 
   it("returns only guilds where bot is present", async () => {
@@ -354,24 +388,19 @@ describe("getMutualGuilds", () => {
       { id: "3", name: "Server 3", icon: null },
     ];
 
-    const originalUrl = process.env.BOT_API_URL;
-    const originalSecret = process.env.BOT_API_SECRET;
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation(() => {
+    fetchSpy.mockImplementation(() => {
       callCount++;
       if (callCount === 1) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) });
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
       }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(botGuilds) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(botGuilds) } as unknown as Response);
     });
 
     const mutualGuilds = await getMutualGuilds("test-token");
-
-    process.env.BOT_API_URL = originalUrl;
-    process.env.BOT_API_SECRET = originalSecret;
 
     expect(mutualGuilds).toHaveLength(2);
     expect(mutualGuilds[0].id).toBe("1");
@@ -385,24 +414,19 @@ describe("getMutualGuilds", () => {
       { id: "2", name: "Server 2", icon: null, owner: false, permissions: "0", features: [] },
     ];
 
-    const originalUrl = process.env.BOT_API_URL;
-    const originalSecret = process.env.BOT_API_SECRET;
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation(() => {
+    fetchSpy.mockImplementation(() => {
       callCount++;
       if (callCount === 1) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) });
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
       }
-      return Promise.resolve({ ok: false, status: 500, statusText: "Internal Server Error" });
+      return Promise.resolve({ ok: false, status: 500, statusText: "Internal Server Error" } as Response);
     });
 
     const mutualGuilds = await getMutualGuilds("test-token");
-
-    process.env.BOT_API_URL = originalUrl;
-    process.env.BOT_API_SECRET = originalSecret;
 
     expect(mutualGuilds).toHaveLength(2);
     expect(mutualGuilds[0].botPresent).toBe(false);
@@ -414,18 +438,15 @@ describe("getMutualGuilds", () => {
       { id: "1", name: "Server 1", icon: null, owner: true, permissions: "8", features: [] },
     ];
 
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: true,
       status: 200,
       json: () => Promise.resolve(userGuilds),
-    });
+    } as Response);
 
-    const originalEnv = process.env.BOT_API_URL;
     delete process.env.BOT_API_URL;
 
     const mutualGuilds = await getMutualGuilds("test-token");
-
-    process.env.BOT_API_URL = originalEnv;
 
     expect(mutualGuilds).toHaveLength(1);
     expect(mutualGuilds[0].botPresent).toBe(false);

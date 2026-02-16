@@ -1,17 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Mock next-auth/react
 const mockSignIn = vi.fn();
+let mockSession: { data: unknown; status: string } = { data: null, status: "unauthenticated" };
 vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: null, status: "unauthenticated" }),
+  useSession: () => mockSession,
   signIn: (...args: unknown[]) => mockSignIn(...args),
 }));
 
 // Mock next/navigation
 let mockSearchParams = new URLSearchParams();
+const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: mockPush }),
   useSearchParams: () => mockSearchParams,
 }));
 
@@ -21,34 +24,38 @@ describe("LoginPage", () => {
   beforeEach(() => {
     mockSearchParams = new URLSearchParams();
     mockSignIn.mockClear();
+    mockPush.mockClear();
+    mockSession = { data: null, status: "unauthenticated" };
   });
 
   it("renders the sign-in card", async () => {
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Welcome to Bill Bot")).toBeDefined();
+      expect(screen.getByText("Welcome to Bill Bot")).toBeInTheDocument();
     });
-    expect(screen.getByText("Sign in with Discord")).toBeDefined();
+    expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
   });
 
   it("calls signIn with /dashboard when no callbackUrl param", async () => {
+    const user = userEvent.setup();
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Sign in with Discord")).toBeDefined();
+      expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
     });
-    screen.getByText("Sign in with Discord").click();
+    await user.click(screen.getByText("Sign in with Discord"));
     expect(mockSignIn).toHaveBeenCalledWith("discord", {
       callbackUrl: "/dashboard",
     });
   });
 
   it("calls signIn with callbackUrl from search params", async () => {
+    const user = userEvent.setup();
     mockSearchParams = new URLSearchParams("callbackUrl=/servers/123");
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Sign in with Discord")).toBeDefined();
+      expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
     });
-    screen.getByText("Sign in with Discord").click();
+    await user.click(screen.getByText("Sign in with Discord"));
     expect(mockSignIn).toHaveBeenCalledWith("discord", {
       callbackUrl: "/servers/123",
     });
@@ -61,7 +68,20 @@ describe("LoginPage", () => {
         screen.getByText(
           "We'll only access your Discord profile and server list.",
         ),
-      ).toBeDefined();
+      ).toBeInTheDocument();
     });
+  });
+
+  it("redirects authenticated users instead of showing login form", async () => {
+    mockSession = {
+      data: { user: { name: "Test", email: "test@test.com" } },
+      status: "authenticated",
+    };
+    render(<LoginPage />);
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
+    // Should show loading state, not the login form
+    expect(screen.queryByText("Welcome to Bill Bot")).not.toBeInTheDocument();
   });
 });

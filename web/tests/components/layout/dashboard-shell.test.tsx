@@ -23,9 +23,9 @@ describe("DashboardShell", () => {
         <div data-testid="content">Content</div>
       </DashboardShell>,
     );
-    expect(screen.getByTestId("header")).toBeDefined();
-    expect(screen.getByTestId("sidebar")).toBeDefined();
-    expect(screen.getByTestId("content")).toBeDefined();
+    expect(screen.getByTestId("header")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar")).toBeInTheDocument();
+    expect(screen.getByTestId("content")).toBeInTheDocument();
   });
 
   it("renders server selector in desktop sidebar", () => {
@@ -34,6 +34,6 @@ describe("DashboardShell", () => {
         <div>Content</div>
       </DashboardShell>,
     );
-    expect(screen.getByTestId("server-selector")).toBeDefined();
+    expect(screen.getByTestId("server-selector")).toBeInTheDocument();
   });
 });
