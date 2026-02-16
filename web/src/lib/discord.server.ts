@@ -155,7 +155,13 @@ export async function getMutualGuilds(
 ): Promise<MutualGuild[]> {
   const [userGuilds, botGuilds] = await Promise.all([
     fetchUserGuilds(accessToken, signal),
-    fetchBotGuilds(),
+    // Defensive catch: even though fetchBotGuilds handles errors internally,
+    // wrap at the Promise.all level so an unexpected throw can never break
+    // the entire guild fetch — gracefully degrade to showing all user guilds.
+    fetchBotGuilds().catch((err) => {
+      logger.warn("[discord] Unexpected error fetching bot guilds — degrading gracefully.", err);
+      return [] as BotGuild[];
+    }),
   ]);
 
   // If no bot guilds could be fetched, return all user guilds unfiltered
