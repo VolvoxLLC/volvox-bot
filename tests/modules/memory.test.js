@@ -38,6 +38,7 @@ import {
   _setMem0Available,
   addMemory,
   buildMemoryContext,
+  checkAndRecoverMemory,
   checkMem0Health,
   deleteAllMemories,
   deleteMemory,
@@ -46,6 +47,7 @@ import {
   getMemories,
   getMemoryConfig,
   isMemoryAvailable,
+  markUnavailable,
   searchMemories,
 } from '../../src/modules/memory.js';
 import { isOptedOut } from '../../src/modules/optout.js';
@@ -131,12 +133,7 @@ describe('memory module', () => {
     });
   });
 
-  describe('isMemoryAvailable', () => {
-    afterEach(() => {
-      // Ensure fake timers never leak into other tests, even if a test fails mid-way
-      vi.useRealTimers();
-    });
-
+  describe('isMemoryAvailable (pure — no side effects)', () => {
     it('should return false when mem0 is not available', () => {
       _setMem0Available(false);
       expect(isMemoryAvailable()).toBe(false);
@@ -153,7 +150,7 @@ describe('memory module', () => {
       expect(isMemoryAvailable()).toBe(false);
     });
 
-    it('should auto-recover after cooldown period expires', async () => {
+    it('should NOT auto-recover (no side effects)', async () => {
       vi.useFakeTimers();
       _setMem0Available(true);
 
@@ -166,11 +163,54 @@ describe('memory module', () => {
       await addMemory('user123', 'test');
       expect(isMemoryAvailable()).toBe(false);
 
+      // Advance time past the cooldown — pure check should still return false
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      expect(isMemoryAvailable()).toBe(false);
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe('checkAndRecoverMemory (with auto-recovery side effect)', () => {
+    afterEach(() => {
+      // Ensure fake timers never leak into other tests, even if a test fails mid-way
+      vi.useRealTimers();
+    });
+
+    it('should return false when mem0 is not available and cooldown not expired', () => {
+      _setMem0Available(false);
+      expect(checkAndRecoverMemory()).toBe(false);
+    });
+
+    it('should return true when enabled and available', () => {
+      _setMem0Available(true);
+      expect(checkAndRecoverMemory()).toBe(true);
+    });
+
+    it('should return false when disabled in config', () => {
+      _setMem0Available(true);
+      getConfig.mockReturnValue({ memory: { enabled: false } });
+      expect(checkAndRecoverMemory()).toBe(false);
+    });
+
+    it('should auto-recover after cooldown period expires', async () => {
+      vi.useFakeTimers();
+      _setMem0Available(true);
+
+      const failingClient = createMockClient({
+        add: vi.fn().mockRejectedValue(new Error('API error')),
+      });
+      _setClient(failingClient);
+
+      // This will fail and call markUnavailable()
+      await addMemory('user123', 'test');
+      expect(checkAndRecoverMemory()).toBe(false);
+
       // Advance time past the cooldown
       vi.advanceTimersByTime(_getRecoveryCooldownMs());
 
       // Should now auto-recover
-      expect(isMemoryAvailable()).toBe(true);
+      expect(checkAndRecoverMemory()).toBe(true);
     });
 
     it('should not auto-recover before cooldown expires', async () => {
@@ -183,15 +223,15 @@ describe('memory module', () => {
 
       // Trigger a failure to markUnavailable
       await addMemory('user123', 'test');
-      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
 
       // Advance time but not enough
       vi.advanceTimersByTime(_getRecoveryCooldownMs() - 1000);
-      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
 
       // Now advance past the cooldown
       vi.advanceTimersByTime(1000);
-      expect(isMemoryAvailable()).toBe(true);
+      expect(checkAndRecoverMemory()).toBe(true);
     });
 
     it('should re-disable if recovery attempt also fails', async () => {
@@ -205,15 +245,58 @@ describe('memory module', () => {
 
       // Trigger initial failure
       await addMemory('user123', 'test');
-      expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
 
       // Advance past cooldown - auto-recovery kicks in
       vi.advanceTimersByTime(_getRecoveryCooldownMs());
-      expect(isMemoryAvailable()).toBe(true);
+      expect(checkAndRecoverMemory()).toBe(true);
 
       // But the next operation also fails
       await searchMemories('user123', 'test');
+      expect(checkAndRecoverMemory()).toBe(false);
+    });
+  });
+
+  describe('markUnavailable', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should enable auto-recovery by setting unavailable timestamp', () => {
+      vi.useFakeTimers();
+      _setMem0Available(true);
+      expect(isMemoryAvailable()).toBe(true);
+
+      // Calling markUnavailable should disable memory and set the timestamp
+      markUnavailable();
       expect(isMemoryAvailable()).toBe(false);
+      expect(checkAndRecoverMemory()).toBe(false);
+
+      // After cooldown expires, auto-recovery should kick in
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      expect(checkAndRecoverMemory()).toBe(true);
+    });
+
+    it('should allow auto-recovery even when called from initial state', () => {
+      // Simulates the health check timeout scenario: mem0Available starts false,
+      // mem0UnavailableSince starts at 0. Without markUnavailable(), auto-recovery
+      // can never trigger because checkAndRecoverMemory requires
+      // mem0UnavailableSince > 0.
+      vi.useFakeTimers();
+      _setMem0Available(false);
+      // At this point, _setMem0Available(false) hard-disables (sets timestamp to 0)
+      expect(checkAndRecoverMemory()).toBe(false);
+
+      // Now call markUnavailable to set the recovery timestamp
+      markUnavailable();
+      expect(isMemoryAvailable()).toBe(false);
+
+      // Still can't recover before cooldown
+      expect(checkAndRecoverMemory()).toBe(false);
+
+      // After cooldown, should auto-recover
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      expect(checkAndRecoverMemory()).toBe(true);
     });
   });
 
@@ -369,6 +452,22 @@ describe('memory module', () => {
       _setClient(mockClient);
 
       const result = await checkMem0Health();
+      expect(result).toBe(false);
+      expect(isMemoryAvailable()).toBe(false);
+    });
+
+    it('should not call markAvailable when signal is already aborted', async () => {
+      process.env.MEM0_API_KEY = 'test-api-key';
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({ results: [], relations: [] }),
+      });
+      _setClient(mockClient);
+
+      // Simulate: startup timeout fired before health check resolved
+      const controller = new AbortController();
+      controller.abort();
+
+      const result = await checkMem0Health({ signal: controller.signal });
       expect(result).toBe(false);
       expect(isMemoryAvailable()).toBe(false);
     });
@@ -536,6 +635,28 @@ describe('memory module', () => {
       const result = await searchMemories('user123', 'test');
       expect(result).toEqual({ memories: [], relations: [] });
     });
+
+    it('should preserve falsy-but-valid IDs like 0', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({
+          results: [
+            { id: 0, memory: 'zero id memory', score: 0.9 },
+            { id: '', memory: 'empty string id memory', score: 0.8 },
+            { id: null, memory: 'null id memory', score: 0.7 },
+          ],
+          relations: [],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await searchMemories('user123', 'test');
+      expect(result.memories).toEqual([
+        { id: 0, memory: 'zero id memory', score: 0.9 },
+        { id: '', memory: 'empty string id memory', score: 0.8 },
+        { id: '', memory: 'null id memory', score: 0.7 },
+      ]);
+    });
   });
 
   describe('getMemories', () => {
@@ -598,6 +719,27 @@ describe('memory module', () => {
       _setClient(null);
       const result = await getMemories('user123');
       expect(result).toEqual([]);
+    });
+
+    it('should preserve falsy-but-valid IDs like 0', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        getAll: vi.fn().mockResolvedValue({
+          results: [
+            { id: 0, memory: 'zero id memory' },
+            { id: '', memory: 'empty string id memory' },
+            { id: null, memory: 'null id memory' },
+          ],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await getMemories('user123');
+      expect(result).toEqual([
+        { id: 0, memory: 'zero id memory' },
+        { id: '', memory: 'empty string id memory' },
+        { id: '', memory: 'null id memory' },
+      ]);
     });
   });
 
@@ -685,6 +827,33 @@ describe('memory module', () => {
       expect(formatRelations(null)).toBe('');
       expect(formatRelations(undefined)).toBe('');
       expect(formatRelations([])).toBe('');
+    });
+
+    it('should skip relations with missing source, relationship, or target', () => {
+      const relations = [
+        { source: 'Joe', relationship: 'likes', target: 'pizza' },
+        { source: undefined, relationship: 'works at', target: 'Google' },
+        { source: 'Joe', relationship: undefined, target: 'cats' },
+        { source: 'Joe', relationship: 'owns', target: undefined },
+        { source: null, relationship: null, target: null },
+        {},
+      ];
+
+      const result = formatRelations(relations);
+      expect(result).toContain('Joe → likes → pizza');
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+      // Only one valid line
+      expect(result.match(/^- /gm)).toHaveLength(1);
+    });
+
+    it('should return empty string when all relations have missing properties', () => {
+      const relations = [
+        { source: undefined, relationship: 'likes', target: 'pizza' },
+        { source: 'Joe', relationship: undefined, target: 'cats' },
+      ];
+
+      expect(formatRelations(relations)).toBe('');
     });
 
     it('should format relations as readable lines', () => {
@@ -794,6 +963,40 @@ describe('memory module', () => {
       expect(result).not.toContain('What you know about');
     });
 
+    it('should truncate memory context when it exceeds 2000 characters', async () => {
+      _setMem0Available(true);
+      // Create memories that will exceed 2000 chars
+      const longMemories = Array.from({ length: 50 }, (_, i) => ({
+        memory: `This is a very long memory entry number ${i} with lots of detail about the user preferences and interests that takes up significant space in the context`,
+        score: 0.9,
+      }));
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({
+          results: longMemories,
+          relations: [],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await buildMemoryContext('user123', 'testuser', 'test');
+      expect(result.length).toBeLessThanOrEqual(2003); // 2000 + "..."
+      expect(result).toMatch(/\.\.\.$/);
+    });
+
+    it('should not truncate memory context within budget', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({
+          results: [{ memory: 'Short memory', score: 0.9 }],
+          relations: [],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await buildMemoryContext('user123', 'testuser', 'test');
+      expect(result).not.toMatch(/\.\.\.$/);
+    });
+
     it('should return context with only memories when no relations found', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({
@@ -857,18 +1060,19 @@ describe('memory module', () => {
 
       expect(mockClient.add).toHaveBeenCalledWith(
         [
-          { role: 'user', content: "testuser: I'm learning Rust" },
+          { role: 'user', content: "I'm learning Rust" },
           { role: 'assistant', content: 'Rust is awesome! What project are you working on?' },
         ],
         {
           user_id: 'user123',
           app_id: 'bills-bot',
+          metadata: { username: 'testuser' },
           enable_graph: true,
         },
       );
     });
 
-    it('should return false on SDK failure and mark unavailable', async () => {
+    it('should return false on SDK failure but NOT mark unavailable (fire-and-forget safety)', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({
         add: vi.fn().mockRejectedValue(new Error('API error')),
@@ -877,7 +1081,8 @@ describe('memory module', () => {
 
       const result = await extractAndStoreMemories('user123', 'testuser', 'hi', 'hello');
       expect(result).toBe(false);
-      expect(isMemoryAvailable()).toBe(false);
+      // Should still be available — background failures must not disable the system
+      expect(isMemoryAvailable()).toBe(true);
     });
 
     it('should return false when client is null', async () => {

@@ -177,7 +177,7 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
 
 // Mock memory module
 vi.mock('../../src/modules/memory.js', () => ({
-  isMemoryAvailable: vi.fn(() => true),
+  checkAndRecoverMemory: vi.fn(() => true),
   getMemories: vi.fn(() => Promise.resolve([])),
   deleteAllMemories: vi.fn(() => Promise.resolve(true)),
   searchMemories: vi.fn(() => Promise.resolve({ memories: [], relations: [] })),
@@ -209,10 +209,10 @@ vi.mock('../../src/logger.js', () => ({
 import { PermissionFlagsBits } from 'discord.js';
 import { data, execute } from '../../src/commands/memory.js';
 import {
+  checkAndRecoverMemory,
   deleteAllMemories,
   deleteMemory,
   getMemories,
-  isMemoryAvailable,
   searchMemories,
 } from '../../src/modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../../src/modules/optout.js';
@@ -262,7 +262,7 @@ function createMockInteraction({
 describe('memory command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isMemoryAvailable.mockReturnValue(true);
+    checkAndRecoverMemory.mockReturnValue(true);
     getMemories.mockResolvedValue([]);
     deleteAllMemories.mockResolvedValue(true);
     searchMemories.mockResolvedValue({ memories: [], relations: [] });
@@ -280,7 +280,7 @@ describe('memory command', () => {
 
   describe('unavailable state', () => {
     it('should reply with unavailable message when memory is not available', async () => {
-      isMemoryAvailable.mockReturnValue(false);
+      checkAndRecoverMemory.mockReturnValue(false);
       const interaction = createMockInteraction();
 
       await execute(interaction);
@@ -378,7 +378,7 @@ describe('memory command', () => {
     });
 
     it('should work even when memory system is unavailable', async () => {
-      isMemoryAvailable.mockReturnValue(false);
+      checkAndRecoverMemory.mockReturnValue(false);
       toggleOptOut.mockReturnValue({ optedOut: true });
       const interaction = createMockInteraction({ subcommand: 'optout' });
 
@@ -522,7 +522,7 @@ describe('memory command', () => {
       await execute(interaction);
 
       expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
-      expect(searchMemories).toHaveBeenCalledWith('123456', 'Rust', 10);
+      expect(searchMemories).toHaveBeenCalledWith('123456', 'Rust', 100);
       expect(deleteMemory).toHaveBeenCalledWith('mem-1');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -566,6 +566,86 @@ describe('memory command', () => {
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining("couldn't delete"),
+        }),
+      );
+    });
+
+    it('should not drop memories with falsy but valid IDs (e.g. numeric 0)', async () => {
+      searchMemories.mockResolvedValue({
+        memories: [
+          { id: 0, memory: 'Memory with numeric zero ID', score: 0.9 },
+          { id: 'mem-2', memory: 'Normal ID memory', score: 0.8 },
+        ],
+        relations: [],
+      });
+      deleteMemory.mockResolvedValue(true);
+
+      const interaction = createMockInteraction({
+        subcommand: 'forget',
+        topic: 'test',
+      });
+
+      await execute(interaction);
+
+      expect(deleteMemory).toHaveBeenCalledTimes(2);
+      expect(deleteMemory).toHaveBeenCalledWith(0);
+      expect(deleteMemory).toHaveBeenCalledWith('mem-2');
+    });
+
+    it('should skip memories with empty string, null, or undefined IDs', async () => {
+      searchMemories.mockResolvedValue({
+        memories: [
+          { id: '', memory: 'Empty string ID', score: 0.9 },
+          { id: null, memory: 'Null ID', score: 0.8 },
+          { memory: 'No ID field', score: 0.7 },
+          { id: 'valid-id', memory: 'Valid ID', score: 0.6 },
+        ],
+        relations: [],
+      });
+      deleteMemory.mockResolvedValue(true);
+
+      const interaction = createMockInteraction({
+        subcommand: 'forget',
+        topic: 'test',
+      });
+
+      await execute(interaction);
+
+      expect(deleteMemory).toHaveBeenCalledTimes(1);
+      expect(deleteMemory).toHaveBeenCalledWith('valid-id');
+    });
+
+    it('should loop to delete all matching memories across multiple batches', async () => {
+      // First call returns a full batch (simulating more results exist)
+      searchMemories
+        .mockResolvedValueOnce({
+          memories: Array.from({ length: 100 }, (_, i) => ({
+            id: `mem-batch1-${i}`,
+            memory: `Batch 1 memory ${i}`,
+            score: 0.9,
+          })),
+          relations: [],
+        })
+        .mockResolvedValueOnce({
+          memories: [{ id: 'mem-batch2-0', memory: 'Batch 2 last one', score: 0.8 }],
+          relations: [],
+        });
+      deleteMemory.mockResolvedValue(true);
+
+      const interaction = createMockInteraction({
+        subcommand: 'forget',
+        topic: 'test',
+      });
+
+      await execute(interaction);
+
+      // Should have called search twice (second batch < 100 = done)
+      expect(searchMemories).toHaveBeenCalledTimes(2);
+      // 100 from batch 1 + 1 from batch 2
+      expect(deleteMemory).toHaveBeenCalledTimes(101);
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('101 memories'),
         }),
       );
     });
@@ -698,7 +778,7 @@ describe('memory command', () => {
     });
 
     it('should reply unavailable when memory system is down', async () => {
-      isMemoryAvailable.mockReturnValue(false);
+      checkAndRecoverMemory.mockReturnValue(false);
       const interaction = createMockInteraction({
         subcommand: 'view',
         subcommandGroup: 'admin',
@@ -896,7 +976,7 @@ describe('memory command', () => {
 
   describe('safeSend wrapper usage verification', () => {
     it('should use safeReply for memory unavailable response', async () => {
-      isMemoryAvailable.mockReturnValue(false);
+      checkAndRecoverMemory.mockReturnValue(false);
       const interaction = createMockInteraction();
 
       await execute(interaction);

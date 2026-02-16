@@ -13,7 +13,7 @@ jobs:
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: write
       id-token: write
@@ -66,6 +66,7 @@ jobs:
             - Permission checks (hierarchy, role checks) for moderation commands
             - No sensitive data in logs
             - SQL injection prevention (parameterized queries only)
+            - No exploiting and/or getting around the sanitizer
 
             ## Discord-Specific
             - 2000-char message limit handled (splitMessage utility)
@@ -96,8 +97,8 @@ jobs:
 
             VERDICT (MANDATORY — do this LAST):
             After reviewing, submit a GitHub review verdict:
-            - If there are ANY issues (🔴 Critical, 🟡 Warning, or 🔵 Nitpick): `gh pr review ${{ github.event.pull_request.number }} --request-changes -b "Summary of all issues that must be fixed"`
-            - If the PR is completely clean with zero issues: `gh pr review ${{ github.event.pull_request.number }} --approve -b "LGTM"`
+            - If there are ANY issues (🔴 Critical, 🟡 Warning, or 🔵 Nitpick): use inline comments for each issue AND `gh pr review ${{ github.event.pull_request.number }} --request-changes -b "Summary of all issues that must be fixed"`
+            - If the PR is completely clean with zero issues or all issues have been fixed: `gh pr review ${{ github.event.pull_request.number }} --approve -b "LGTM"`
             You MUST submit exactly one review verdict. Never skip this step. Only approve if there are ZERO findings.
 
           claude_args: '--model claude-opus-4-5-20251101 --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr review:*),Read,Bash(cat:*),Bash(grep:*),Bash(find:*)"'

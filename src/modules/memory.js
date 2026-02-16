@@ -99,7 +99,7 @@ let client = null;
  * After RECOVERY_COOLDOWN_MS, the next request will be allowed through
  * to check if the service has recovered.
  */
-function markUnavailable() {
+export function markUnavailable() {
   mem0Available = false;
   mem0UnavailableSince = Date.now();
 }
@@ -154,13 +154,28 @@ export function getMemoryConfig() {
 }
 
 /**
- * Check if memory feature is enabled and mem0 is available.
- * Supports auto-recovery: if mem0 was marked unavailable due to a transient
- * error and the cooldown period has elapsed, it will be tentatively re-enabled
- * so the next request can check if the service has recovered.
+ * Pure availability check — no side effects.
+ * Returns true only if memory is both enabled in config and currently marked available.
+ * Does NOT trigger auto-recovery. Use {@link checkAndRecoverMemory} when you want
+ * the cooldown-based recovery logic.
  * @returns {boolean}
  */
 export function isMemoryAvailable() {
+  const memConfig = getMemoryConfig();
+  if (!memConfig.enabled) return false;
+  return mem0Available;
+}
+
+/**
+ * Check if memory feature is enabled and mem0 is available, with auto-recovery.
+ * If mem0 was marked unavailable due to a transient error and the cooldown period
+ * has elapsed, this will tentatively re-enable it so the next request can check
+ * if the service has recovered.
+ *
+ * Use this instead of {@link isMemoryAvailable} when you want the recovery side effect.
+ * @returns {boolean}
+ */
+export function checkAndRecoverMemory() {
   const memConfig = getMemoryConfig();
   if (!memConfig.enabled) return false;
 
@@ -231,9 +246,12 @@ export function _setClient(newClient) {
  * Run a health check against the mem0 platform on startup.
  * Verifies the API key is configured and the SDK client can actually
  * communicate with the hosted platform by performing a lightweight search.
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal] - When aborted, prevents a late-resolving
+ *   check from calling {@link markAvailable} (guards against race with startup timeout).
  * @returns {Promise<boolean>} true if mem0 is ready
  */
-export async function checkMem0Health() {
+export async function checkMem0Health({ signal } = {}) {
   const memConfig = getMemoryConfig();
   if (!memConfig.enabled) {
     info('Memory module disabled via config');
@@ -262,6 +280,11 @@ export async function checkMem0Health() {
       limit: 1,
     });
 
+    // Guard against late resolution after a startup timeout has already
+    // called markUnavailable().  If the caller's AbortSignal has fired,
+    // the timeout won the race and we must not flip availability back on.
+    if (signal?.aborted) return false;
+
     markAvailable();
     info('mem0 health check passed (SDK connectivity verified)');
     return true;
@@ -286,7 +309,7 @@ export async function checkMem0Health() {
  * @returns {Promise<boolean>} true if stored successfully
  */
 export async function addMemory(userId, text, metadata = {}) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
 
   try {
     const c = getClient();
@@ -318,7 +341,7 @@ export async function addMemory(userId, text, metadata = {}) {
  * @returns {Promise<{memories: Array<{memory: string, score?: number}>, relations: Array}>}
  */
 export async function searchMemories(userId, query, limit) {
-  if (!isMemoryAvailable()) return { memories: [], relations: [] };
+  if (!checkAndRecoverMemory()) return { memories: [], relations: [] };
 
   const memConfig = getMemoryConfig();
   const maxResults = limit ?? memConfig.maxContextMemories;
@@ -339,7 +362,7 @@ export async function searchMemories(userId, query, limit) {
     const relations = result?.relations || [];
 
     const memories = rawMemories.map((m) => ({
-      id: m.id || '',
+      id: m.id ?? '',
       memory: m.memory || m.text || m.content || '',
       score: m.score ?? null,
     }));
@@ -358,7 +381,7 @@ export async function searchMemories(userId, query, limit) {
  * @returns {Promise<Array<{id: string, memory: string}>>} All user memories
  */
 export async function getMemories(userId) {
-  if (!isMemoryAvailable()) return [];
+  if (!checkAndRecoverMemory()) return [];
 
   try {
     const c = getClient();
@@ -373,7 +396,7 @@ export async function getMemories(userId) {
     const memories = Array.isArray(result) ? result : result?.results || [];
 
     return memories.map((m) => ({
-      id: m.id || '',
+      id: m.id ?? '',
       memory: m.memory || m.text || m.content || '',
     }));
   } catch (err) {
@@ -389,7 +412,7 @@ export async function getMemories(userId) {
  * @returns {Promise<boolean>} true if deleted successfully
  */
 export async function deleteAllMemories(userId) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
 
   try {
     const c = getClient();
@@ -411,7 +434,7 @@ export async function deleteAllMemories(userId) {
  * @returns {Promise<boolean>} true if deleted successfully
  */
 export async function deleteMemory(memoryId) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
 
   try {
     const c = getClient();
@@ -435,21 +458,29 @@ export async function deleteMemory(memoryId) {
 export function formatRelations(relations) {
   if (!relations || relations.length === 0) return '';
 
-  const lines = relations.map((r) => `- ${r.source} → ${r.relationship} → ${r.target}`);
+  const lines = relations
+    .filter((r) => r.source && r.relationship && r.target)
+    .map((r) => `- ${r.source} → ${r.relationship} → ${r.target}`);
+
+  if (lines.length === 0) return '';
 
   return `\nRelationships:\n${lines.join('\n')}`;
 }
 
+/** Maximum characters for memory context injected into system prompt */
+const MAX_MEMORY_CONTEXT_CHARS = 2000;
+
 /**
  * Build a context string from user memories to inject into the system prompt.
  * Includes both regular memories and graph relations for richer context.
+ * Enforces a character budget to prevent oversized system prompts.
  * @param {string} userId - Discord user ID
  * @param {string} username - Display name
  * @param {string} query - The user's current message (for relevance search)
  * @returns {Promise<string>} Context string or empty string
  */
 export async function buildMemoryContext(userId, username, query) {
-  if (!isMemoryAvailable()) return '';
+  if (!checkAndRecoverMemory()) return '';
   if (isOptedOut(userId)) return '';
 
   const { memories, relations } = await searchMemories(userId, query);
@@ -468,6 +499,11 @@ export async function buildMemoryContext(userId, username, query) {
     context += relationsContext;
   }
 
+  // Enforce character budget to prevent oversized system prompts
+  if (context.length > MAX_MEMORY_CONTEXT_CHARS) {
+    context = `${context.substring(0, MAX_MEMORY_CONTEXT_CHARS)}...`;
+  }
+
   return context;
 }
 
@@ -482,7 +518,7 @@ export async function buildMemoryContext(userId, username, query) {
  * @returns {Promise<boolean>} true if any memories were stored
  */
 export async function extractAndStoreMemories(userId, username, userMessage, assistantReply) {
-  if (!isMemoryAvailable()) return false;
+  if (!checkAndRecoverMemory()) return false;
   if (isOptedOut(userId)) return false;
 
   const memConfig = getMemoryConfig();
@@ -493,13 +529,14 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
     if (!c) return false;
 
     const messages = [
-      { role: 'user', content: `${username}: ${userMessage}` },
+      { role: 'user', content: userMessage },
       { role: 'assistant', content: assistantReply },
     ];
 
     await c.add(messages, {
       user_id: userId,
       app_id: APP_ID,
+      metadata: { username },
       enable_graph: true,
     });
 
@@ -510,8 +547,10 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
     });
     return true;
   } catch (err) {
+    // Only log — do NOT call markUnavailable() here.
+    // This runs fire-and-forget in the background; a failure for one user's
+    // extraction should not disable the memory system for all other users.
     logWarn('Memory extraction failed', { userId, error: err.message });
-    if (!isTransientError(err)) markUnavailable();
     return false;
   }
 }
