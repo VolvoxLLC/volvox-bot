@@ -957,7 +957,7 @@ describe('memory module', () => {
 
       expect(mockClient.add).toHaveBeenCalledWith(
         [
-          { role: 'user', content: "testuser: I'm learning Rust" },
+          { role: 'user', content: "I'm learning Rust" },
           { role: 'assistant', content: 'Rust is awesome! What project are you working on?' },
         ],
         {

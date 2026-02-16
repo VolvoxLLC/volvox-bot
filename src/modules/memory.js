@@ -521,7 +521,7 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
     if (!c) return false;
 
     const messages = [
-      { role: 'user', content: `${username}: ${userMessage}` },
+      { role: 'user', content: userMessage },
       { role: 'assistant', content: assistantReply },
     ];
 
