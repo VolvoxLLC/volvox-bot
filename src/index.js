@@ -18,7 +18,6 @@ import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { closeDb, initDb } from './db.js';
 import { addPostgresTransport, error, info, removePostgresTransport, warn } from './logger.js';
-import { initLogsTable, pruneOldLogs } from './transports/postgres.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -32,6 +31,7 @@ import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { initLogsTable, pruneOldLogs } from './transports/postgres.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
