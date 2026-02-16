@@ -72,6 +72,14 @@ vi.mock('discord.js', () => {
   return { SlashCommandBuilder: MockSlashCommandBuilder };
 });
 
+// Mock splitMessage utility
+vi.mock('../../src/utils/splitMessage.js', () => ({
+  splitMessage: vi.fn((text, maxLength) => {
+    if (!text || text.length <= (maxLength || 1990)) return text ? [text] : [];
+    return [text.slice(0, maxLength || 1990), text.slice(maxLength || 1990)];
+  }),
+}));
+
 // Mock memory module
 vi.mock('../../src/modules/memory.js', () => ({
   isMemoryAvailable: vi.fn(() => true),
@@ -213,6 +221,7 @@ describe('memory command', () => {
 
       await execute(interaction);
 
+      expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(deleteAllMemories).toHaveBeenCalledWith('123456');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -227,6 +236,7 @@ describe('memory command', () => {
 
       await execute(interaction);
 
+      expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Failed'),
@@ -236,15 +246,11 @@ describe('memory command', () => {
   });
 
   describe('/memory forget <topic>', () => {
-    it('should search and delete matching memories', async () => {
+    it('should search and delete matching memories using IDs from search results', async () => {
       searchMemories.mockResolvedValue({
-        memories: [{ memory: 'User is learning Rust', score: 0.95 }],
+        memories: [{ id: 'mem-1', memory: 'User is learning Rust', score: 0.95 }],
         relations: [],
       });
-      getMemories.mockResolvedValue([
-        { id: 'mem-1', memory: 'User is learning Rust' },
-        { id: 'mem-2', memory: 'User works at Google' },
-      ]);
       deleteMemory.mockResolvedValue(true);
 
       const interaction = createMockInteraction({
@@ -254,6 +260,7 @@ describe('memory command', () => {
 
       await execute(interaction);
 
+      expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(searchMemories).toHaveBeenCalledWith('123456', 'Rust', 10);
       expect(deleteMemory).toHaveBeenCalledWith('mem-1');
       expect(interaction.editReply).toHaveBeenCalledWith(
@@ -272,6 +279,7 @@ describe('memory command', () => {
 
       await execute(interaction);
 
+      expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('No memories found'),
@@ -281,10 +289,9 @@ describe('memory command', () => {
 
     it('should handle deletion failure for matched memories', async () => {
       searchMemories.mockResolvedValue({
-        memories: [{ memory: 'Test memory', score: 0.9 }],
+        memories: [{ id: 'mem-1', memory: 'Test memory', score: 0.9 }],
         relations: [],
       });
-      getMemories.mockResolvedValue([{ id: 'mem-1', memory: 'Test memory' }]);
       deleteMemory.mockResolvedValue(false);
 
       const interaction = createMockInteraction({
@@ -294,6 +301,7 @@ describe('memory command', () => {
 
       await execute(interaction);
 
+      expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining("couldn't delete"),
@@ -301,18 +309,14 @@ describe('memory command', () => {
       );
     });
 
-    it('should report correct count for multiple deletions', async () => {
+    it('should report correct count for multiple parallel deletions', async () => {
       searchMemories.mockResolvedValue({
         memories: [
-          { memory: 'Rust project A', score: 0.95 },
-          { memory: 'Rust project B', score: 0.9 },
+          { id: 'mem-1', memory: 'Rust project A', score: 0.95 },
+          { id: 'mem-2', memory: 'Rust project B', score: 0.9 },
         ],
         relations: [],
       });
-      getMemories.mockResolvedValue([
-        { id: 'mem-1', memory: 'Rust project A' },
-        { id: 'mem-2', memory: 'Rust project B' },
-      ]);
       deleteMemory.mockResolvedValue(true);
 
       const interaction = createMockInteraction({
@@ -322,7 +326,10 @@ describe('memory command', () => {
 
       await execute(interaction);
 
+      expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(deleteMemory).toHaveBeenCalledTimes(2);
+      expect(deleteMemory).toHaveBeenCalledWith('mem-1');
+      expect(deleteMemory).toHaveBeenCalledWith('mem-2');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('2 memories'),

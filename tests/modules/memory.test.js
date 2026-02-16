@@ -271,8 +271,8 @@ describe('memory module', () => {
 
       const result = await searchMemories('user123', 'What language?');
       expect(result.memories).toEqual([
-        { memory: 'User is learning Rust', score: 0.95 },
-        { memory: 'User works at Google', score: 0.8 },
+        { id: '', memory: 'User is learning Rust', score: 0.95 },
+        { id: '', memory: 'User works at Google', score: 0.8 },
       ]);
       expect(result.relations).toHaveLength(1);
       expect(result.relations[0].relationship).toBe('works at');
@@ -293,7 +293,7 @@ describe('memory module', () => {
       _setClient(mockClient);
 
       const result = await searchMemories('user123', 'languages');
-      expect(result.memories).toEqual([{ memory: 'User loves TypeScript', score: 0.9 }]);
+      expect(result.memories).toEqual([{ id: '', memory: 'User loves TypeScript', score: 0.9 }]);
       expect(result.relations).toEqual([]);
     });
 
@@ -335,9 +335,9 @@ describe('memory module', () => {
       _setClient(mockClient);
 
       const result = await searchMemories('user123', 'test');
-      expect(result.memories[0].memory).toBe('via text field');
-      expect(result.memories[1].memory).toBe('via content field');
-      expect(result.memories[2].memory).toBe('via memory field');
+      expect(result.memories[0]).toEqual({ id: '', memory: 'via text field', score: null });
+      expect(result.memories[1]).toEqual({ id: '', memory: 'via content field', score: null });
+      expect(result.memories[2]).toEqual({ id: '', memory: 'via memory field', score: null });
     });
 
     it('should return empty results when client is null', async () => {
