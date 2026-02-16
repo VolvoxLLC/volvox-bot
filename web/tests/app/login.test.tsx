@@ -75,17 +75,19 @@ describe("LoginPage", () => {
     });
   });
 
-  it("clears stale session and shows login form on RefreshTokenError", async () => {
+  it("shows login form without calling signOut on RefreshTokenError", async () => {
     mockSession = {
       data: { user: { name: "Test" }, error: "RefreshTokenError" },
       status: "authenticated",
     };
     render(<LoginPage />);
     await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalledWith({ redirect: false });
+      expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
     });
     // Should NOT redirect to dashboard
     expect(mockPush).not.toHaveBeenCalled();
+    // LoginForm no longer calls signOut — Header handles it centrally
+    expect(mockSignOut).not.toHaveBeenCalled();
     // Should show the login form (not the loading spinner)
     expect(screen.getByText("Welcome to Bill Bot")).toBeInTheDocument();
   });
