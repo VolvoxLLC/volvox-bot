@@ -152,7 +152,8 @@ export function _setClient(newClient) {
 
 /**
  * Run a health check against the mem0 platform on startup.
- * Verifies the API key is configured and the SDK client can be created.
+ * Verifies the API key is configured and the SDK client can actually
+ * communicate with the hosted platform by performing a lightweight search.
  * @returns {Promise<boolean>} true if mem0 is ready
  */
 export async function checkMem0Health() {
@@ -177,8 +178,15 @@ export async function checkMem0Health() {
       return false;
     }
 
+    // Verify SDK connectivity with a lightweight search against the platform
+    await c.search('health-check', {
+      user_id: '__health_check__',
+      app_id: APP_ID,
+      limit: 1,
+    });
+
     markAvailable();
-    info('mem0 health check passed (API key configured, SDK client initialized)');
+    info('mem0 health check passed (SDK connectivity verified)');
     return true;
   } catch (err) {
     logWarn('mem0 health check failed', { error: err.message });
