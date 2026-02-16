@@ -435,7 +435,11 @@ export async function deleteMemory(memoryId) {
 export function formatRelations(relations) {
   if (!relations || relations.length === 0) return '';
 
-  const lines = relations.map((r) => `- ${r.source} → ${r.relationship} → ${r.target}`);
+  const lines = relations
+    .filter((r) => r.source && r.relationship && r.target)
+    .map((r) => `- ${r.source} → ${r.relationship} → ${r.target}`);
+
+  if (lines.length === 0) return '';
 
   return `\nRelationships:\n${lines.join('\n')}`;
 }

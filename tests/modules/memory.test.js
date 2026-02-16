@@ -687,6 +687,33 @@ describe('memory module', () => {
       expect(formatRelations([])).toBe('');
     });
 
+    it('should skip relations with missing source, relationship, or target', () => {
+      const relations = [
+        { source: 'Joe', relationship: 'likes', target: 'pizza' },
+        { source: undefined, relationship: 'works at', target: 'Google' },
+        { source: 'Joe', relationship: undefined, target: 'cats' },
+        { source: 'Joe', relationship: 'owns', target: undefined },
+        { source: null, relationship: null, target: null },
+        {},
+      ];
+
+      const result = formatRelations(relations);
+      expect(result).toContain('Joe → likes → pizza');
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+      // Only one valid line
+      expect(result.match(/^- /gm)).toHaveLength(1);
+    });
+
+    it('should return empty string when all relations have missing properties', () => {
+      const relations = [
+        { source: undefined, relationship: 'likes', target: 'pizza' },
+        { source: 'Joe', relationship: undefined, target: 'cats' },
+      ];
+
+      expect(formatRelations(relations)).toBe('');
+    });
+
     it('should format relations as readable lines', () => {
       const relations = [
         {
