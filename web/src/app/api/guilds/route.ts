@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const guilds = await getMutualGuilds(token.accessToken);
+    const guilds = await getMutualGuilds(token.accessToken as string);
     return NextResponse.json(guilds);
   } catch (error) {
     const message =
