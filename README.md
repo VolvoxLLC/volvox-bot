@@ -255,13 +255,85 @@ All moderation commands require the admin role (configured via `permissions.admi
 
 ## 🚄 Deployment
 
-Bill Bot is deployed on [Railway](https://railway.app).
+Bill Bot runs on [Railway](https://railway.app) as a multi-service project with three components:
 
-1. Connect your GitHub repo to Railway
-2. Set all environment variables in Railway dashboard
-3. Railway auto-deploys on push to `main`
+| Service | Type | Config |
+|---------|------|--------|
+| **Bot** | Node.js (Nixpacks) | `railway.toml` |
+| **Postgres** | Railway Plugin | Added via dashboard |
+| **Web Dashboard** | Next.js (Dockerfile) | `web/railway.toml` |
 
-The bot uses the `start` script (`node src/index.js`) for production.
+> **Note:** The web dashboard is introduced in PR #60. The `web/` directory may not exist on `main` yet.
+
+### Project Setup
+
+1. Create a new project on [Railway](https://railway.app)
+2. Connect your GitHub repo — Railway will detect `railway.toml` and create the **Bot** service automatically
+3. Add a **Postgres** plugin from the Railway dashboard (New → Database → PostgreSQL)
+4. Add the **Web Dashboard** as a second service pointing to the `web/` directory (New → GitHub Repo → select this repo, set root directory to `web/`)
+5. Railway auto-deploys on push to `main`
+
+### Database
+
+Add the Railway Postgres plugin, then reference it in service variables using Railway's variable references:
+
+```
+DATABASE_URL = ${{Postgres.DATABASE_URL}}
+```
+
+This injects the connection string at runtime for both the Bot and Web Dashboard services.
+
+### Bot Service Environment Variables
+
+Set these in the Railway dashboard for the Bot service:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_TOKEN` | Yes | Discord bot token |
+| `DISCORD_CLIENT_ID` | Yes | Discord application/client ID |
+| `GUILD_ID` | No | Guild ID for faster dev command deployment (omit for global) |
+| `OPENCLAW_API_URL` | Yes | OpenClaw chat completions endpoint |
+| `OPENCLAW_API_KEY` | Yes | OpenClaw gateway authentication token |
+| `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
+| `MEM0_API_KEY` | No | Mem0 API key for long-term memory |
+| `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` (default: `info`) |
+| `BOT_API_SECRET` | Yes | Shared secret for web dashboard API auth |
+
+### Web Dashboard Environment Variables
+
+Set these in the Railway dashboard for the Web Dashboard service:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_CLIENT_ID` | Yes | Discord application/client ID (same as bot) |
+| `DISCORD_CLIENT_SECRET` | Yes | Discord OAuth2 client secret |
+| `NEXTAUTH_SECRET` | Yes | Random secret for NextAuth.js session encryption |
+| `NEXTAUTH_URL` | Yes | Public URL — use `https://${{RAILWAY_PUBLIC_DOMAIN}}` |
+| `BOT_API_URL` | Yes | Bot internal URL (see private networking below) |
+| `BOT_API_SECRET` | Yes | Shared secret (must match bot's `BOT_API_SECRET`) |
+| `NEXT_PUBLIC_DISCORD_CLIENT_ID` | Yes | Discord client ID (public, exposed to browser) |
+| `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
+| `PORT` | No | Set to `3000` if not automatically detected |
+
+### Private Networking
+
+Railway services within the same project can communicate over a private internal network without exposing public endpoints. The Bot service is reachable from the Web Dashboard at:
+
+```
+http://bot.railway.internal:<PORT>
+```
+
+Set `BOT_API_URL` on the Web Dashboard to this internal address. Replace `<PORT>` with the port the bot's API server listens on.
+
+### Slash Command Registration
+
+After your first deploy, register slash commands with Discord by running:
+
+```bash
+railway run node src/deploy-commands.js
+```
+
+Or execute it from the Railway service shell. This only needs to be done once (and again if you add new commands).
 
 ## 🤝 Contributing
 
