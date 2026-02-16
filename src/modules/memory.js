@@ -90,14 +90,12 @@ export function getMemoryConfig() {
       enabled: config?.memory?.enabled ?? true,
       maxContextMemories: config?.memory?.maxContextMemories ?? DEFAULT_MAX_CONTEXT_MEMORIES,
       autoExtract: config?.memory?.autoExtract ?? true,
-      extractModel: config?.memory?.extractModel ?? null,
     };
   } catch {
     return {
       enabled: true,
       maxContextMemories: DEFAULT_MAX_CONTEXT_MEMORIES,
       autoExtract: true,
-      extractModel: null,
     };
   }
 }
@@ -205,6 +203,11 @@ export async function checkMem0Health() {
 /**
  * Add a memory for a user.
  * Graph memory is enabled to automatically build entity relationships.
+ *
+ * Part of the public API — used by extractAndStoreMemories internally and
+ * exported for direct use by other modules/plugins that need to store
+ * specific memories programmatically.
+ *
  * @param {string} userId - Discord user ID
  * @param {string} text - The memory text to store
  * @param {Object} [metadata] - Optional metadata

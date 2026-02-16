@@ -13,7 +13,6 @@ vi.mock('../../src/modules/config.js', () => ({
       enabled: true,
       maxContextMemories: 5,
       autoExtract: true,
-      extractModel: null,
     },
   })),
 }));
@@ -71,7 +70,6 @@ describe('memory module', () => {
         enabled: true,
         maxContextMemories: 5,
         autoExtract: true,
-        extractModel: null,
       },
     });
     // Set up env for tests
@@ -89,7 +87,6 @@ describe('memory module', () => {
       expect(config.enabled).toBe(true);
       expect(config.maxContextMemories).toBe(5);
       expect(config.autoExtract).toBe(true);
-      expect(config.extractModel).toBeNull();
     });
 
     it('should return defaults when config is missing', () => {
@@ -115,14 +112,12 @@ describe('memory module', () => {
           enabled: false,
           maxContextMemories: 10,
           autoExtract: false,
-          extractModel: 'custom-model',
         },
       });
       const config = getMemoryConfig();
       expect(config.enabled).toBe(false);
       expect(config.maxContextMemories).toBe(10);
       expect(config.autoExtract).toBe(false);
-      expect(config.extractModel).toBe('custom-model');
     });
   });
 

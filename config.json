@@ -66,8 +66,7 @@
   "memory": {
     "enabled": true,
     "maxContextMemories": 5,
-    "autoExtract": true,
-    "extractModel": null
+    "autoExtract": true
   },
   "logging": {
     "level": "info",
