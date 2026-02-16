@@ -174,21 +174,22 @@ describe("authOptions", () => {
 });
 
 describe("refreshDiscordToken", () => {
-  const originalFetch = global.fetch;
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.resetModules();
     process.env.DISCORD_CLIENT_ID = "test-client-id";
     process.env.DISCORD_CLIENT_SECRET = "test-client-secret";
     process.env.NEXTAUTH_SECRET = "a-valid-secret-that-is-at-least-32-characters-long";
+    fetchSpy = vi.spyOn(global, "fetch");
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    fetchSpy.mockRestore();
   });
 
   it("returns refreshed token on success", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -196,7 +197,7 @@ describe("refreshDiscordToken", () => {
           expires_in: 604800,
           refresh_token: "new-refresh-token",
         }),
-    });
+    } as Response);
 
     const { refreshDiscordToken } = await import("@/lib/auth");
     const result = await refreshDiscordToken({
@@ -211,11 +212,11 @@ describe("refreshDiscordToken", () => {
   });
 
   it("returns RefreshTokenError on failure", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: false,
       status: 401,
       statusText: "Unauthorized",
-    });
+    } as Response);
 
     const { refreshDiscordToken } = await import("@/lib/auth");
     const result = await refreshDiscordToken({
@@ -228,7 +229,7 @@ describe("refreshDiscordToken", () => {
   });
 
   it("handles token rotation — keeps original refresh token if not rotated", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    fetchSpy.mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -236,7 +237,7 @@ describe("refreshDiscordToken", () => {
           expires_in: 604800,
           // No refresh_token in response — Discord didn't rotate
         }),
-    });
+    } as Response);
 
     const { refreshDiscordToken } = await import("@/lib/auth");
     const result = await refreshDiscordToken({
@@ -246,6 +247,19 @@ describe("refreshDiscordToken", () => {
 
     expect(result.accessToken).toBe("new-access-token");
     expect(result.refreshToken).toBe("original-refresh-token");
+  });
+
+  it("returns RefreshTokenError on network failure", async () => {
+    fetchSpy.mockRejectedValue(new TypeError("fetch failed"));
+
+    const { refreshDiscordToken } = await import("@/lib/auth");
+    const result = await refreshDiscordToken({
+      accessToken: "old-token",
+      refreshToken: "old-refresh",
+    });
+
+    expect(result.error).toBe("RefreshTokenError");
+    expect(result.accessToken).toBe("old-token");
   });
 
   it("jwt callback skips refresh when no refresh token exists", async () => {

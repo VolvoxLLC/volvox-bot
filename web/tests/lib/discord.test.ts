@@ -293,22 +293,22 @@ describe("fetchBotGuilds", () => {
     }
   });
 
-  it("returns empty array when BOT_API_URL is not set", async () => {
+  it("returns unavailable result when BOT_API_URL is not set", async () => {
     delete process.env.BOT_API_URL;
 
     const result = await fetchBotGuilds();
-    expect(result).toEqual([]);
+    expect(result).toEqual({ available: false, guilds: [] });
   });
 
-  it("returns empty array when BOT_API_SECRET is missing", async () => {
+  it("returns unavailable result when BOT_API_SECRET is missing", async () => {
     process.env.BOT_API_URL = "http://localhost:3001";
     delete process.env.BOT_API_SECRET;
 
     const result = await fetchBotGuilds();
-    expect(result).toEqual([]);
+    expect(result).toEqual({ available: false, guilds: [] });
   });
 
-  it("returns empty array when bot API returns non-OK response", async () => {
+  it("returns unavailable result when bot API returns non-OK response", async () => {
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
@@ -319,17 +319,17 @@ describe("fetchBotGuilds", () => {
     } as Response);
 
     const result = await fetchBotGuilds();
-    expect(result).toEqual([]);
+    expect(result).toEqual({ available: false, guilds: [] });
   });
 
-  it("returns empty array when bot API is unreachable", async () => {
+  it("returns unavailable result when bot API is unreachable", async () => {
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
     fetchSpy.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const result = await fetchBotGuilds();
-    expect(result).toEqual([]);
+    expect(result).toEqual({ available: false, guilds: [] });
   });
 
   it("sends Authorization header with BOT_API_SECRET", async () => {
@@ -341,7 +341,8 @@ describe("fetchBotGuilds", () => {
       json: () => Promise.resolve([]),
     } as Response);
 
-    await fetchBotGuilds();
+    const result = await fetchBotGuilds();
+    expect(result).toEqual({ available: true, guilds: [] });
 
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://localhost:3001/api/guilds",
@@ -391,13 +392,15 @@ describe("getMutualGuilds", () => {
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
+    fetchSpy.mockImplementation((url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/users/@me/guilds")) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
       }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(botGuilds) } as unknown as Response);
+      if (urlStr.includes("/api/guilds")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(botGuilds) } as Response);
+      }
+      return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
     });
 
     const mutualGuilds = await getMutualGuilds("test-token");
@@ -417,13 +420,15 @@ describe("getMutualGuilds", () => {
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
+    fetchSpy.mockImplementation((url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/users/@me/guilds")) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
       }
-      return Promise.resolve({ ok: false, status: 500, statusText: "Internal Server Error" } as Response);
+      if (urlStr.includes("/api/guilds")) {
+        return Promise.resolve({ ok: false, status: 500, statusText: "Internal Server Error" } as Response);
+      }
+      return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
     });
 
     const mutualGuilds = await getMutualGuilds("test-token");

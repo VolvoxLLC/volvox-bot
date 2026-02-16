@@ -31,17 +31,17 @@ import { Header } from "@/components/layout/header";
 describe("Header", () => {
   it("renders the brand name", () => {
     render(<Header />);
-    expect(screen.getByText("Bill Bot Dashboard")).toBeDefined();
+    expect(screen.getByText("Bill Bot Dashboard")).toBeInTheDocument();
   });
 
   it("renders the mobile sidebar toggle", () => {
     render(<Header />);
-    expect(screen.getByTestId("mobile-sidebar-toggle")).toBeDefined();
+    expect(screen.getByTestId("mobile-sidebar-toggle")).toBeInTheDocument();
   });
 
   it("renders user fallback avatar when authenticated", () => {
     render(<Header />);
     // Radix Avatar shows fallback initially in jsdom
-    expect(screen.getByText("T")).toBeDefined();
+    expect(screen.getByText("T")).toBeInTheDocument();
   });
 });

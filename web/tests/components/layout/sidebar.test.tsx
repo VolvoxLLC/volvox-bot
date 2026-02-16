@@ -23,6 +23,7 @@ describe("Sidebar", () => {
   it("highlights active route", () => {
     render(<Sidebar />);
     const overviewLink = screen.getByText("Overview").closest("a");
+    expect(overviewLink).not.toBeNull();
     expect(overviewLink?.className).toContain("bg-accent");
   });
 
