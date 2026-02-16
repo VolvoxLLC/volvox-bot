@@ -35,6 +35,7 @@ import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
+import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -53,7 +54,19 @@ dotenvConfig();
 // setConfigValue() propagate here automatically without re-assignment.
 let config = {};
 
-// Initialize Discord client with required intents
+// Initialize Discord client with required intents.
+//
+// INTENTIONAL DESIGN: allowedMentions restricts which mention types Discord
+// will parse. Only 'users' is allowed — @everyone, @here, and role mentions
+// are ALL blocked globally at the Client level. This is a defense-in-depth
+// measure to prevent the bot from ever mass-pinging, even if AI-generated
+// or user-supplied content contains @everyone/@here or <@&roleId>.
+//
+// To opt-in to role mentions in the future, add 'roles' to the parse array
+// below (e.g. { parse: ['users', 'roles'] }). You would also need to update
+// SAFE_ALLOWED_MENTIONS in src/utils/safeSend.js to match.
+//
+// See: https://github.com/BillChirico/bills-bot/issues/61
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -62,6 +75,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildVoiceStates,
   ],
+  allowedMentions: { parse: ['users'] },
 });
 
 // Initialize command collection
@@ -163,7 +177,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // Permission check
     if (!hasPermission(member, commandName, config)) {
-      await interaction.reply({
+      await safeReply(interaction, {
         content: getPermissionError(commandName),
         ephemeral: true,
       });
@@ -174,7 +188,7 @@ client.on('interactionCreate', async (interaction) => {
     // Execute command from collection
     const command = client.commands.get(commandName);
     if (!command) {
-      await interaction.reply({
+      await safeReply(interaction, {
         content: '❌ Command not found.',
         ephemeral: true,
       });
@@ -192,9 +206,9 @@ client.on('interactionCreate', async (interaction) => {
     };
 
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorMessage).catch(() => {});
+      await safeFollowUp(interaction, errorMessage).catch(() => {});
     } else {
-      await interaction.reply(errorMessage).catch(() => {});
+      await safeReply(interaction, errorMessage).catch(() => {});
     }
   }
 });

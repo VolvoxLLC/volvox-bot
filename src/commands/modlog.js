@@ -15,6 +15,7 @@ import {
 } from 'discord.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig, setConfigValue } from '../modules/config.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('modlog')
@@ -44,9 +45,9 @@ export async function execute(interaction) {
       break;
     default:
       logError('Unknown modlog subcommand', { subcommand, command: 'modlog' });
-      await interaction
-        .reply({ content: '❌ Unknown subcommand.', ephemeral: true })
-        .catch(() => {});
+      await safeReply(interaction, { content: '❌ Unknown subcommand.', ephemeral: true }).catch(
+        () => {},
+      );
   }
 }
 
@@ -83,7 +84,7 @@ async function handleSetup(interaction) {
     .setDescription('Select an event category to configure its log channel.')
     .setTimestamp();
 
-  const reply = await interaction.reply({
+  const reply = await safeReply(interaction, {
     embeds: [embed],
     components: [row, doneRow],
     ephemeral: true,
@@ -142,20 +143,19 @@ async function handleSetup(interaction) {
         customId: i.customId,
         command: 'modlog',
       });
-      await i
-        .reply({
-          content: '❌ Failed to update modlog configuration. Please try again.',
-          ephemeral: true,
-        })
-        .catch(() => {});
+      await safeReply(i, {
+        content: '❌ Failed to update modlog configuration. Please try again.',
+        ephemeral: true,
+      }).catch(() => {});
     }
   });
 
   collector.on('end', async (_, reason) => {
     if (reason === 'time') {
-      await interaction
-        .editReply({ components: [], embeds: [embed.setDescription('⏰ Setup timed out.')] })
-        .catch(() => {});
+      await safeEditReply(interaction, {
+        components: [],
+        embeds: [embed.setDescription('⏰ Setup timed out.')],
+      }).catch(() => {});
     }
   });
 }
@@ -179,12 +179,13 @@ async function handleView(interaction) {
     );
     embed.setDescription(lines.join('\n') || 'No channels configured.');
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await safeReply(interaction, { embeds: [embed], ephemeral: true });
   } catch (err) {
     logError('Modlog view failed', { error: err.message, command: 'modlog' });
-    await interaction
-      .reply({ content: '❌ Failed to load mod log configuration.', ephemeral: true })
-      .catch(() => {});
+    await safeReply(interaction, {
+      content: '❌ Failed to load mod log configuration.',
+      ephemeral: true,
+    }).catch(() => {});
   }
 }
 
@@ -202,11 +203,12 @@ async function handleDisable(interaction) {
     }
 
     info('Mod logging disabled', { moderator: interaction.user.tag });
-    await interaction.editReply(
+    await safeEditReply(
+      interaction,
       '✅ Mod logging has been disabled. All log channels have been cleared.',
     );
   } catch (err) {
     logError('Modlog disable failed', { error: err.message, command: 'modlog' });
-    await interaction.editReply('❌ Failed to disable mod logging.').catch(() => {});
+    await safeEditReply(interaction, '❌ Failed to disable mod logging.').catch(() => {});
   }
 }

@@ -15,6 +15,7 @@ import {
   shouldSendDm,
 } from '../modules/moderation.js';
 import { formatDuration, parseDuration } from '../utils/duration.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('tempban')
@@ -53,7 +54,7 @@ export async function execute(interaction) {
 
     const durationMs = parseDuration(durationStr);
     if (!durationMs) {
-      return await interaction.editReply('❌ Invalid duration format. Use e.g. 1d, 7d, 2w.');
+      return await safeEditReply(interaction, '❌ Invalid duration format. Use e.g. 1d, 7d, 2w.');
     }
 
     let member = null;
@@ -70,7 +71,7 @@ export async function execute(interaction) {
         interaction.guild.members.me,
       );
       if (hierarchyError) {
-        return await interaction.editReply(hierarchyError);
+        return await safeEditReply(interaction, hierarchyError);
       }
 
       if (shouldSendDm(config, 'ban')) {
@@ -105,13 +106,15 @@ export async function execute(interaction) {
       moderator: interaction.user.tag,
       duration: durationStr,
     });
-    await interaction.editReply(
+    await safeEditReply(
+      interaction,
       `✅ **${user.tag}** has been temporarily banned. (Case #${caseData.case_number})`,
     );
   } catch (err) {
     logError('Command error', { error: err.message, command: 'tempban' });
-    await interaction
-      .editReply('❌ An error occurred. Please try again or contact an administrator.')
-      .catch(() => {});
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
   }
 }

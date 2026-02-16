@@ -10,6 +10,7 @@
  */
 
 import { info, error as logError, warn } from '../logger.js';
+import { safeSend } from '../utils/safeSend.js';
 import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { OPENCLAW_TOKEN, OPENCLAW_URL } from './ai.js';
 
@@ -262,10 +263,10 @@ export async function accumulate(message, config) {
         if (needsSplitting(response)) {
           const chunks = splitMessage(response);
           for (const chunk of chunks) {
-            await message.channel.send(chunk);
+            await safeSend(message.channel, chunk);
           }
         } else {
-          await message.channel.send(response);
+          await safeSend(message.channel, response);
         }
       }
 

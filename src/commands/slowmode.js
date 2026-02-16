@@ -8,6 +8,7 @@ import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { createCase, sendModLogEmbed } from '../modules/moderation.js';
 import { formatDuration, parseDuration } from '../utils/duration.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('slowmode')
@@ -48,13 +49,14 @@ export async function execute(interaction) {
     if (durationStr !== '0') {
       const ms = parseDuration(durationStr);
       if (!ms) {
-        return await interaction.editReply(
+        return await safeEditReply(
+          interaction,
           '❌ Invalid duration format. Use formats like: 5s, 1m, 1h',
         );
       }
 
       if (ms > 6 * 60 * 60 * 1000) {
-        return await interaction.editReply('❌ Duration cannot exceed 6 hours.');
+        return await safeEditReply(interaction, '❌ Duration cannot exceed 6 hours.');
       }
 
       seconds = Math.floor(ms / 1000);
@@ -79,19 +81,22 @@ export async function execute(interaction) {
 
     if (seconds === 0) {
       info('Slowmode disabled', { channelId: channel.id, moderator: interaction.user.tag });
-      await interaction.editReply(
+      await safeEditReply(
+        interaction,
         `✅ Slowmode disabled in ${channel}. (Case #${caseData.case_number})`,
       );
     } else {
       info('Slowmode set', { channelId: channel.id, seconds, moderator: interaction.user.tag });
-      await interaction.editReply(
+      await safeEditReply(
+        interaction,
         `✅ Slowmode set to **${formatDuration(seconds * 1000)}** in ${channel}. (Case #${caseData.case_number})`,
       );
     }
   } catch (err) {
     logError('Slowmode command failed', { error: err.message, command: 'slowmode' });
-    await interaction
-      .editReply('❌ An error occurred. Please try again or contact an administrator.')
-      .catch(() => {});
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
   }
 }

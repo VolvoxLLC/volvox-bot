@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../src/utils/safeSend.js', () => ({
+  safeSend: (ch, opts) => ch.send(opts),
+  safeReply: (t, opts) => t.reply(opts),
+  safeFollowUp: (t, opts) => t.followUp(opts),
+  safeEditReply: (t, opts) => t.editReply(opts),
+}));
 const mocks = vi.hoisted(() => ({
   client: null,
+  clientOptions: null,
   onHandlers: {},
   onceHandlers: {},
   processHandlers: {},
@@ -76,7 +83,7 @@ vi.mock('node:fs', () => ({
 
 vi.mock('discord.js', () => {
   class Client {
-    constructor() {
+    constructor(options) {
       this.user = { id: 'bot-user-id', tag: 'Bot#0001' };
       this.guilds = { cache: { size: 2 } };
       this.ws = { ping: 12 };
@@ -84,6 +91,7 @@ vi.mock('discord.js', () => {
       this.login = vi.fn().mockResolvedValue('logged-in');
       this.destroy = vi.fn();
       mocks.client = this;
+      mocks.clientOptions = options;
     }
 
     once(event, cb) {
@@ -294,6 +302,12 @@ describe('index.js', () => {
     vi.restoreAllMocks();
     delete process.env.DISCORD_TOKEN;
     delete process.env.DATABASE_URL;
+  });
+
+  it('should configure allowedMentions to only parse users (Issue #61)', async () => {
+    await importIndex({ token: 'abc', databaseUrl: null });
+    expect(mocks.clientOptions).toBeDefined();
+    expect(mocks.clientOptions.allowedMentions).toEqual({ parse: ['users'] });
   });
 
   it('should exit when DISCORD_TOKEN is missing', async () => {

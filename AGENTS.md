@@ -36,6 +36,8 @@
 | `src/utils/health.js` | Health monitoring singleton |
 | `src/utils/permissions.js` | Permission checking for commands |
 | `src/utils/retry.js` | Retry utility for flaky operations |
+| `src/utils/safeSend.js` | Safe message-sending wrappers — sanitizes mentions and enforces allowedMentions on every outgoing message |
+| `src/utils/sanitizeMentions.js` | Mention sanitization — strips @everyone/@here from outgoing text via zero-width space insertion |
 | `src/utils/registerCommands.js` | Discord REST API command registration |
 | `src/utils/splitMessage.js` | Message splitting for Discord's 2000-char limit |
 | `src/utils/duration.js` | Duration parsing — "1h", "7d" ↔ ms with human-readable formatting |

@@ -32,6 +32,7 @@ import {
   searchMemories,
 } from '../modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../modules/optout.js';
+import { safeEditReply, safeReply, safeUpdate } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 
 /**
@@ -114,7 +115,7 @@ export async function execute(interaction) {
   }
 
   if (!checkAndRecoverMemory()) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',
       ephemeral: true,
@@ -143,13 +144,13 @@ async function handleOptOut(interaction, userId) {
   const { optedOut } = await toggleOptOut(userId);
 
   if (optedOut) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content:
         '🚫 You have **opted out** of memory collection. The bot will no longer remember things about you. Your existing memories are unchanged — use `/memory forget` to delete them.',
       ephemeral: true,
     });
   } else {
-    await interaction.reply({
+    await safeReply(interaction, {
       content:
         '✅ You have **opted back in** to memory collection. The bot will start remembering things about you again.',
       ephemeral: true,
@@ -171,7 +172,7 @@ async function handleView(interaction, userId, username) {
   const memories = await getMemories(userId);
 
   if (memories.length === 0) {
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content:
         "🧠 I don't have any memories about you yet. Chat with me and I'll start remembering!",
     });
@@ -182,7 +183,7 @@ async function handleView(interaction, userId, username) {
   const header = `🧠 **What I remember about ${username}:**\n\n`;
   const content = formatMemoryList(memoryList, header);
 
-  await interaction.editReply({ content });
+  await safeEditReply(interaction, { content });
 
   info('Memory view command', { userId, username, count: memories.length });
 }
@@ -206,7 +207,7 @@ async function handleForgetAll(interaction, userId, username) {
 
   const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
 
-  const response = await interaction.reply({
+  const response = await safeReply(interaction, {
     content:
       '⚠️ **Are you sure?** This will delete **ALL** your memories permanently. This cannot be undone.',
     components: [row],
@@ -224,27 +225,27 @@ async function handleForgetAll(interaction, userId, username) {
       const success = await deleteAllMemories(userId);
 
       if (success) {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: '🧹 Done! All your memories have been cleared. Fresh start!',
           components: [],
         });
         info('All memories cleared', { userId, username });
       } else {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: '❌ Failed to clear memories. Please try again later.',
           components: [],
         });
         warn('Failed to clear memories', { userId, username });
       }
     } else {
-      await buttonInteraction.update({
+      await safeUpdate(buttonInteraction, {
         content: '↩️ Memory deletion cancelled.',
         components: [],
       });
     }
   } catch {
     // Timeout — no interaction received within 30 seconds
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: '⏰ Confirmation timed out. No memories were deleted.',
       components: [],
     });
@@ -292,16 +293,16 @@ async function handleForgetTopic(interaction, userId, username, topic) {
   }
 
   if (totalDeleted > 0) {
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `🧹 Forgot ${totalDeleted} memor${totalDeleted === 1 ? 'y' : 'ies'} related to "${topic}".`,
     });
     info('Topic memories cleared', { userId, username, topic, count: totalDeleted });
   } else if (totalFound === 0) {
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `🔍 No memories found matching "${topic}".`,
     });
   } else {
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `❌ Found memories about "${topic}" but couldn't delete them. Please try again.`,
     });
   }
@@ -320,7 +321,7 @@ async function handleAdmin(interaction, subcommand) {
       interaction.memberPermissions.has(PermissionFlagsBits.Administrator));
 
   if (!hasPermission) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content:
         '❌ You need **Manage Server** or **Administrator** permission to use admin commands.',
       ephemeral: true,
@@ -329,7 +330,7 @@ async function handleAdmin(interaction, subcommand) {
   }
 
   if (!checkAndRecoverMemory()) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',
       ephemeral: true,
@@ -361,7 +362,7 @@ async function handleAdminView(interaction, targetId, targetUsername) {
   const optedOutStatus = isOptedOut(targetId) ? ' *(opted out)*' : '';
 
   if (memories.length === 0) {
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `🧠 No memories found for **${targetUsername}**${optedOutStatus}.`,
     });
     return;
@@ -371,7 +372,7 @@ async function handleAdminView(interaction, targetId, targetUsername) {
   const header = `🧠 **Memories for ${targetUsername}${optedOutStatus}:**\n\n`;
   const content = formatMemoryList(memoryList, header);
 
-  await interaction.editReply({ content });
+  await safeEditReply(interaction, { content });
 
   info('Admin memory view', {
     adminId: interaction.user.id,
@@ -402,7 +403,7 @@ async function handleAdminClear(interaction, targetId, targetUsername) {
 
   const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
 
-  const response = await interaction.reply({
+  const response = await safeReply(interaction, {
     content: `⚠️ **Are you sure?** This will delete **ALL** memories for **${targetUsername}** permanently. This cannot be undone.`,
     components: [row],
     ephemeral: true,
@@ -419,27 +420,27 @@ async function handleAdminClear(interaction, targetId, targetUsername) {
       const success = await deleteAllMemories(targetId);
 
       if (success) {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: `🧹 Done! All memories for **${targetUsername}** have been cleared.`,
           components: [],
         });
         info('Admin cleared all memories', { adminId, targetId, targetUsername });
       } else {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: `❌ Failed to clear memories for **${targetUsername}**. Please try again later.`,
           components: [],
         });
         warn('Admin failed to clear memories', { adminId, targetId, targetUsername });
       }
     } else {
-      await buttonInteraction.update({
+      await safeUpdate(buttonInteraction, {
         content: '↩️ Memory deletion cancelled.',
         components: [],
       });
     }
   } catch {
     // Timeout — no interaction received within 30 seconds
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: '⏰ Confirmation timed out. No memories were deleted.',
       components: [],
     });

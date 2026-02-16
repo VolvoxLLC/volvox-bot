@@ -5,6 +5,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getConfig, resetConfig, setConfigValue } from '../modules/config.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 /**
  * Escape backticks in user-provided strings to prevent breaking Discord inline code formatting.
@@ -169,7 +170,7 @@ export async function execute(interaction) {
       await handleReset(interaction);
       break;
     default:
-      await interaction.reply({
+      await safeReply(interaction, {
         content: `❌ Unknown subcommand: \`${subcommand}\``,
         ephemeral: true,
       });
@@ -200,7 +201,7 @@ async function handleView(interaction) {
       const sectionData = config[section];
       if (!sectionData) {
         const safeSection = escapeInlineCode(section);
-        return await interaction.reply({
+        return await safeReply(interaction, {
           content: `❌ Section \`${safeSection}\` not found in config`,
           ephemeral: true,
         });
@@ -254,11 +255,11 @@ async function handleView(interaction) {
       }
     }
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await safeReply(interaction, { embeds: [embed], ephemeral: true });
   } catch (err) {
     const safeMessage =
       process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
-    await interaction.reply({
+    await safeReply(interaction, {
       content: `❌ Failed to load config: ${safeMessage}`,
       ephemeral: true,
     });
@@ -277,7 +278,7 @@ async function handleSet(interaction) {
   const validSections = Object.keys(getConfig());
   if (!validSections.includes(section)) {
     const safeSection = escapeInlineCode(section);
-    return await interaction.reply({
+    return await safeReply(interaction, {
       content: `❌ Invalid section \`${safeSection}\`. Valid sections: ${validSections.join(', ')}`,
       ephemeral: true,
     });
@@ -308,15 +309,15 @@ async function handleSet(interaction) {
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
     const safeMessage =
       process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
     const content = `❌ Failed to set config: ${safeMessage}`;
     if (interaction.deferred) {
-      await interaction.editReply({ content });
+      await safeEditReply(interaction, { content });
     } else {
-      await interaction.reply({ content, ephemeral: true });
+      await safeReply(interaction, { content, ephemeral: true });
     }
   }
 }
@@ -343,15 +344,15 @@ async function handleReset(interaction) {
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
     const safeMessage =
       process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
     const content = `❌ Failed to reset config: ${safeMessage}`;
     if (interaction.deferred) {
-      await interaction.editReply({ content });
+      await safeEditReply(interaction, { content });
     } else {
-      await interaction.reply({ content, ephemeral: true });
+      await safeReply(interaction, { content, ephemeral: true });
     }
   }
 }

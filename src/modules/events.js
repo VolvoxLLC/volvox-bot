@@ -6,6 +6,10 @@
 import { Client, Events } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
+// safeReply works with both Interactions (.reply()) and Messages (.reply()).
+// Both accept the same options shape including allowedMentions, so the
+// safe wrapper applies identically to either target type.
+import { safeReply, safeSend } from '../utils/safeSend.js';
 import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
@@ -102,7 +106,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
 
         try {
           if (!cleanContent) {
-            await message.reply("Hey! What's up?");
+            await safeReply(message, "Hey! What's up?");
             return;
           }
 
@@ -136,14 +140,14 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
           if (needsSplitting(response)) {
             const chunks = splitMessage(response);
             for (const chunk of chunks) {
-              await targetChannel.send(chunk);
+              await safeSend(targetChannel, chunk);
             }
           } else if (targetChannel === message.channel) {
             // Inline reply — use message.reply for the reference
-            await message.reply(response);
+            await safeReply(message, response);
           } else {
             // Thread reply — send directly to the thread
-            await targetChannel.send(response);
+            await safeSend(targetChannel, response);
           }
         } catch (sendErr) {
           logError('Failed to send AI response', {
@@ -152,7 +156,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
           });
           // Best-effort fallback — if the channel is still reachable, let the user know
           try {
-            await message.reply(getUserFriendlyMessage(sendErr));
+            await safeReply(message, getUserFriendlyMessage(sendErr));
           } catch {
             // Channel is unreachable — nothing more we can do
           }

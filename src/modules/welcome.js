@@ -4,6 +4,7 @@
  */
 
 import { info, error as logError } from '../logger.js';
+import { safeSend } from '../utils/safeSend.js';
 
 const guildActivity = new Map();
 const DEFAULT_ACTIVITY_WINDOW_MINUTES = 45;
@@ -145,7 +146,7 @@ export async function sendWelcomeMessage(member, client, config) {
           { name: member.guild.name, memberCount: member.guild.memberCount },
         );
 
-    await channel.send(message);
+    await safeSend(channel, message);
     info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });
   } catch (err) {
     logError('Welcome error', { error: err.message, stack: err.stack });

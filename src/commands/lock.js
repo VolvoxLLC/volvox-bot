@@ -7,6 +7,7 @@ import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { createCase, sendModLogEmbed } from '../modules/moderation.js';
+import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('lock')
@@ -36,7 +37,7 @@ export async function execute(interaction) {
     const reason = interaction.options.getString('reason');
 
     if (channel.type !== ChannelType.GuildText) {
-      return await interaction.editReply('❌ Lock can only be used in text channels.');
+      return await safeEditReply(interaction, '❌ Lock can only be used in text channels.');
     }
 
     await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
@@ -49,7 +50,7 @@ export async function execute(interaction) {
         `🔒 This channel has been locked by ${interaction.user}${reason ? `\n**Reason:** ${reason}` : ''}`,
       )
       .setTimestamp();
-    await channel.send({ embeds: [notifyEmbed] });
+    await safeSend(channel, { embeds: [notifyEmbed] });
 
     const config = getConfig();
     const caseData = await createCase(interaction.guild.id, {
@@ -63,11 +64,12 @@ export async function execute(interaction) {
     await sendModLogEmbed(interaction.client, config, caseData);
 
     info('Channel locked', { channelId: channel.id, moderator: interaction.user.tag });
-    await interaction.editReply(`✅ ${channel} has been locked.`);
+    await safeEditReply(interaction, `✅ ${channel} has been locked.`);
   } catch (err) {
     logError('Lock command failed', { error: err.message, command: 'lock' });
-    await interaction
-      .editReply('❌ An error occurred. Please try again or contact an administrator.')
-      .catch(() => {});
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
   }
 }
