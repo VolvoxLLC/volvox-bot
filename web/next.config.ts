@@ -17,6 +17,11 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
+  {
+    key: "Content-Security-Policy",
+    value:
+      "default-src 'self'; script-src 'self'; connect-src 'self' https://cdn.discordapp.com; img-src 'self' https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'",
+  },
 ];
 
 const nextConfig: NextConfig = {

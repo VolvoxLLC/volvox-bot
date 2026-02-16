@@ -20,18 +20,18 @@ export default function RootError({
   }, [error]);
 
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
       <body>
-        <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", padding: "1rem", fontFamily: "system-ui, sans-serif" }}>
+        <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", padding: "1rem", fontFamily: "system-ui, sans-serif", color: "#f3f4f6", background: "#111827" }}>
           <div style={{ maxWidth: "28rem", textAlign: "center" }}>
             <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
               Something went wrong
             </h2>
-            <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
+            <p style={{ color: "#9ca3af", marginBottom: "1rem" }}>
               A critical error occurred. Please try again.
             </p>
             {error.digest && (
-              <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: "1rem" }}>
+              <p style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "1rem" }}>
                 Error ID: {error.digest}
               </p>
             )}
@@ -41,8 +41,9 @@ export default function RootError({
               style={{
                 padding: "0.5rem 1rem",
                 borderRadius: "0.375rem",
-                border: "1px solid #d1d5db",
-                background: "#fff",
+                border: "1px solid #4b5563",
+                background: "#1f2937",
+                color: "#f3f4f6",
                 cursor: "pointer",
               }}
             >
