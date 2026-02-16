@@ -273,7 +273,7 @@ describe('PostgresTransport', () => {
       await expect(transport.flush()).resolves.toBeUndefined();
     });
 
-    it('should clear buffer even on failure', async () => {
+    it('should restore buffer entries on failure', async () => {
       const failPool = createMockPool();
       failPool.query.mockRejectedValue(new Error('Connection refused'));
 
@@ -288,8 +288,9 @@ describe('PostgresTransport', () => {
 
       await transport.flush();
 
-      // Buffer should be cleared (entries were spliced out before the query)
-      expect(transport.buffer).toHaveLength(0);
+      // Buffer should have entries restored after failed INSERT
+      expect(transport.buffer).toHaveLength(1);
+      expect(transport.buffer[0].message).toBe('important log');
     });
   });
 

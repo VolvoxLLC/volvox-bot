@@ -37,6 +37,9 @@ export class PostgresTransport extends Transport {
     /** @type {boolean} */
     this.flushing = false;
 
+    /** @type {Promise<void>|null} In-flight flush promise for close() to await */
+    this.flushPromise = null;
+
     // Start periodic flush timer
     this.flushTimer = setInterval(() => {
       this.flush();
@@ -93,30 +96,36 @@ export class PostgresTransport extends Transport {
     // Grab current buffer and reset
     const entries = this.buffer.splice(0);
 
-    try {
-      // Build parameterized multi-row INSERT
-      const values = [];
-      const placeholders = [];
+    const doFlush = async () => {
+      try {
+        // Build parameterized multi-row INSERT
+        const values = [];
+        const placeholders = [];
 
-      for (let i = 0; i < entries.length; i++) {
-        const offset = i * 4;
-        placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
-        values.push(
-          entries[i].level,
-          entries[i].message,
-          JSON.stringify(entries[i].metadata),
-          entries[i].timestamp,
-        );
+        for (let i = 0; i < entries.length; i++) {
+          const offset = i * 4;
+          placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
+          values.push(
+            entries[i].level,
+            entries[i].message,
+            JSON.stringify(entries[i].metadata),
+            entries[i].timestamp,
+          );
+        }
+
+        const query = `INSERT INTO logs (level, message, metadata, timestamp) VALUES ${placeholders.join(', ')}`;
+        await this.pool.query(query, values);
+      } catch (_err) {
+        // Restore entries to the front of the buffer so they can be retried
+        this.buffer.unshift(...entries);
+      } finally {
+        this.flushing = false;
+        this.flushPromise = null;
       }
+    };
 
-      const query = `INSERT INTO logs (level, message, metadata, timestamp) VALUES ${placeholders.join(', ')}`;
-      await this.pool.query(query, values);
-    } catch (_err) {
-      // Fail gracefully — don't block logging if DB is unavailable
-      // Logs are still written to console and file transports
-    } finally {
-      this.flushing = false;
-    }
+    this.flushPromise = doFlush();
+    await this.flushPromise;
   }
 
   /**
@@ -128,6 +137,11 @@ export class PostgresTransport extends Transport {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = null;
+    }
+
+    // Wait for any in-flight flush to complete before doing the final flush
+    if (this.flushPromise) {
+      await this.flushPromise;
     }
 
     // Flush any remaining entries
