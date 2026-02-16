@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorCard } from "@/components/error-card";
+import { logger } from "@/lib/logger";
 
 export default function DashboardError({
   error,
@@ -12,7 +13,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[dashboard-error-boundary]", error);
+    logger.error("[dashboard-error-boundary]", error);
   }, [error]);
 
   return (

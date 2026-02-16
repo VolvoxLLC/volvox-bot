@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorCard } from "@/components/error-card";
+import { logger } from "@/lib/logger";
 
 export default function GlobalError({
   error,
@@ -12,8 +13,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log to an error reporting service in production
-    console.error("[error-boundary]", error);
+    logger.error("[error-boundary]", error);
   }, [error]);
 
   return (
