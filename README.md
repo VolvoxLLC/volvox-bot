@@ -98,6 +98,8 @@ pnpm dev
 | `OPENCLAW_API_URL` | ✅ | OpenClaw chat completions endpoint |
 | `OPENCLAW_API_KEY` | ✅ | OpenClaw gateway authentication token |
 | `DATABASE_URL` | ✅** | PostgreSQL connection string for persistent config/state |
+| `MEM0_API_KEY` | ❌ | Mem0 API key for long-term memory |
+| `BOT_API_SECRET` | ❌ | Shared secret for web dashboard API authentication |
 | `LOG_LEVEL` | ❌ | Logging level: `debug`, `info`, `warn`, `error` (default: `info`) |
 
 \* Legacy alias supported: `CLIENT_ID`  
@@ -277,7 +279,7 @@ Bill Bot runs on [Railway](https://railway.app) as a multi-service project with 
 
 Add the Railway Postgres plugin, then reference it in service variables using Railway's variable references:
 
-```
+```text
 DATABASE_URL = ${{Postgres.DATABASE_URL}}
 ```
 
@@ -319,7 +321,7 @@ Set these in the Railway dashboard for the Web Dashboard service:
 
 Railway services within the same project can communicate over a private internal network without exposing public endpoints. The Bot service is reachable from the Web Dashboard at:
 
-```
+```text
 http://bot.railway.internal:<PORT>
 ```
 
