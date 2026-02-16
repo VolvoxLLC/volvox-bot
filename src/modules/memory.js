@@ -354,7 +354,7 @@ export async function searchMemories(userId, query, limit) {
     const relations = result?.relations || [];
 
     const memories = rawMemories.map((m) => ({
-      id: m.id || '',
+      id: m.id ?? '',
       memory: m.memory || m.text || m.content || '',
       score: m.score ?? null,
     }));
@@ -388,7 +388,7 @@ export async function getMemories(userId) {
     const memories = Array.isArray(result) ? result : result?.results || [];
 
     return memories.map((m) => ({
-      id: m.id || '',
+      id: m.id ?? '',
       memory: m.memory || m.text || m.content || '',
     }));
   } catch (err) {

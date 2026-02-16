@@ -575,6 +575,28 @@ describe('memory module', () => {
       const result = await searchMemories('user123', 'test');
       expect(result).toEqual({ memories: [], relations: [] });
     });
+
+    it('should preserve falsy-but-valid IDs like 0', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({
+          results: [
+            { id: 0, memory: 'zero id memory', score: 0.9 },
+            { id: '', memory: 'empty string id memory', score: 0.8 },
+            { id: null, memory: 'null id memory', score: 0.7 },
+          ],
+          relations: [],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await searchMemories('user123', 'test');
+      expect(result.memories).toEqual([
+        { id: 0, memory: 'zero id memory', score: 0.9 },
+        { id: '', memory: 'empty string id memory', score: 0.8 },
+        { id: '', memory: 'null id memory', score: 0.7 },
+      ]);
+    });
   });
 
   describe('getMemories', () => {
@@ -637,6 +659,27 @@ describe('memory module', () => {
       _setClient(null);
       const result = await getMemories('user123');
       expect(result).toEqual([]);
+    });
+
+    it('should preserve falsy-but-valid IDs like 0', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        getAll: vi.fn().mockResolvedValue({
+          results: [
+            { id: 0, memory: 'zero id memory' },
+            { id: '', memory: 'empty string id memory' },
+            { id: null, memory: 'null id memory' },
+          ],
+        }),
+      });
+      _setClient(mockClient);
+
+      const result = await getMemories('user123');
+      expect(result).toEqual([
+        { id: 0, memory: 'zero id memory' },
+        { id: '', memory: 'empty string id memory' },
+        { id: '', memory: 'null id memory' },
+      ]);
     });
   });
 
