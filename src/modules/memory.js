@@ -326,6 +326,7 @@ export async function deleteAllMemories(userId) {
     return true;
   } catch (err) {
     logWarn('Failed to delete all memories', { userId, error: err.message });
+    markUnavailable();
     return false;
   }
 }
@@ -347,6 +348,7 @@ export async function deleteMemory(memoryId) {
     return true;
   } catch (err) {
     logWarn('Failed to delete memory', { memoryId, error: err.message });
+    markUnavailable();
     return false;
   }
 }
