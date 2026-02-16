@@ -29,8 +29,8 @@ import {
 import { loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health } from './modules/memory.js';
-import { loadOptOuts } from './modules/optout.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
+import { loadOptOuts } from './modules/optout.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';

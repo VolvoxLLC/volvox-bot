@@ -147,44 +147,26 @@ describe('memory module', () => {
       expect(isMemoryAvailable()).toBe(false);
     });
 
-    it('should auto-recover after cooldown period expires', () => {
-      _setMem0Available(true);
-      const mockClient = createMockClient({
-        add: vi.fn().mockRejectedValue(new Error('transient')),
-      });
-      _setClient(mockClient);
-
-      // Simulate a transient failure by calling addMemory (which will markUnavailable)
-      // Instead, manually trigger the unavailable state with a past timestamp
-      _setMem0Available(false);
-
-      // Immediately after marking unavailable, should still be false
-      expect(isMemoryAvailable()).toBe(false);
-
-      // Simulate the unavailable timestamp being in the past by using vi.useFakeTimers
+    it('should auto-recover after cooldown period expires', async () => {
       vi.useFakeTimers();
       _setMem0Available(true);
 
-      // Now mark unavailable again - this time we can control time
-      // We need to trigger markUnavailable through an API call
       const failingClient = createMockClient({
         add: vi.fn().mockRejectedValue(new Error('API error')),
       });
       _setClient(failingClient);
-      _setMem0Available(true);
 
       // This will fail and call markUnavailable()
-      addMemory('user123', 'test').then(() => {
-        expect(isMemoryAvailable()).toBe(false);
+      await addMemory('user123', 'test');
+      expect(isMemoryAvailable()).toBe(false);
 
-        // Advance time past the cooldown
-        vi.advanceTimersByTime(_getRecoveryCooldownMs());
+      // Advance time past the cooldown
+      vi.advanceTimersByTime(_getRecoveryCooldownMs());
 
-        // Should now auto-recover
-        expect(isMemoryAvailable()).toBe(true);
+      // Should now auto-recover
+      expect(isMemoryAvailable()).toBe(true);
 
-        vi.useRealTimers();
-      });
+      vi.useRealTimers();
     });
 
     it('should not auto-recover before cooldown expires', async () => {
@@ -541,7 +523,7 @@ describe('memory module', () => {
       });
     });
 
-    it('should return false on SDK error', async () => {
+    it('should return false on SDK error and mark unavailable', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({
         deleteAll: vi.fn().mockRejectedValue(new Error('API error')),
@@ -550,6 +532,7 @@ describe('memory module', () => {
 
       const result = await deleteAllMemories('user123');
       expect(result).toBe(false);
+      expect(isMemoryAvailable()).toBe(false);
     });
 
     it('should return false when client is null', async () => {
@@ -578,7 +561,7 @@ describe('memory module', () => {
       expect(mockClient.delete).toHaveBeenCalledWith('mem-42');
     });
 
-    it('should return false on SDK error', async () => {
+    it('should return false on SDK error and mark unavailable', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({
         delete: vi.fn().mockRejectedValue(new Error('Not found')),
@@ -587,6 +570,7 @@ describe('memory module', () => {
 
       const result = await deleteMemory('nonexistent');
       expect(result).toBe(false);
+      expect(isMemoryAvailable()).toBe(false);
     });
 
     it('should return false when client is null', async () => {
