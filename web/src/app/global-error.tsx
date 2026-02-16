@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 /**
  * Root-level error boundary for Next.js App Router.
@@ -15,7 +16,7 @@ export default function RootError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[global-error-boundary]", error);
+    logger.error("[global-error-boundary]", error);
   }, [error]);
 
   return (
