@@ -272,7 +272,7 @@ async function handleForgetTopic(interaction, userId, username, topic) {
   }
 
   // Use memory IDs directly from search results and delete in parallel
-  const matchesWithIds = matches.filter((m) => m.id);
+  const matchesWithIds = matches.filter((m) => m.id !== undefined && m.id !== null && m.id !== '');
   const results = await Promise.allSettled(matchesWithIds.map((m) => deleteMemory(m.id)));
   const deletedCount = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
 

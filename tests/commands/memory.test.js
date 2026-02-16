@@ -561,6 +561,51 @@ describe('memory command', () => {
       );
     });
 
+    it('should not drop memories with falsy but valid IDs (e.g. numeric 0)', async () => {
+      searchMemories.mockResolvedValue({
+        memories: [
+          { id: 0, memory: 'Memory with numeric zero ID', score: 0.9 },
+          { id: 'mem-2', memory: 'Normal ID memory', score: 0.8 },
+        ],
+        relations: [],
+      });
+      deleteMemory.mockResolvedValue(true);
+
+      const interaction = createMockInteraction({
+        subcommand: 'forget',
+        topic: 'test',
+      });
+
+      await execute(interaction);
+
+      expect(deleteMemory).toHaveBeenCalledTimes(2);
+      expect(deleteMemory).toHaveBeenCalledWith(0);
+      expect(deleteMemory).toHaveBeenCalledWith('mem-2');
+    });
+
+    it('should skip memories with empty string, null, or undefined IDs', async () => {
+      searchMemories.mockResolvedValue({
+        memories: [
+          { id: '', memory: 'Empty string ID', score: 0.9 },
+          { id: null, memory: 'Null ID', score: 0.8 },
+          { memory: 'No ID field', score: 0.7 },
+          { id: 'valid-id', memory: 'Valid ID', score: 0.6 },
+        ],
+        relations: [],
+      });
+      deleteMemory.mockResolvedValue(true);
+
+      const interaction = createMockInteraction({
+        subcommand: 'forget',
+        topic: 'test',
+      });
+
+      await execute(interaction);
+
+      expect(deleteMemory).toHaveBeenCalledTimes(1);
+      expect(deleteMemory).toHaveBeenCalledWith('valid-id');
+    });
+
     it('should report correct count for multiple parallel deletions', async () => {
       searchMemories.mockResolvedValue({
         memories: [
