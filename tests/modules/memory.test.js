@@ -455,6 +455,22 @@ describe('memory module', () => {
       expect(result).toBe(false);
       expect(isMemoryAvailable()).toBe(false);
     });
+
+    it('should not call markAvailable when signal is already aborted', async () => {
+      process.env.MEM0_API_KEY = 'test-api-key';
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({ results: [], relations: [] }),
+      });
+      _setClient(mockClient);
+
+      // Simulate: startup timeout fired before health check resolved
+      const controller = new AbortController();
+      controller.abort();
+
+      const result = await checkMem0Health({ signal: controller.signal });
+      expect(result).toBe(false);
+      expect(isMemoryAvailable()).toBe(false);
+    });
   });
 
   describe('addMemory', () => {

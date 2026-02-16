@@ -293,12 +293,18 @@ async function startup() {
   // Load opt-out preferences from DB before enabling memory features
   await loadOptOuts();
 
-  // Check mem0 availability for user memory features (with timeout to avoid blocking startup)
+  // Check mem0 availability for user memory features (with timeout to avoid blocking startup).
+  // AbortController prevents a late-resolving health check from calling markAvailable()
+  // after the timeout has already called markUnavailable().
+  const healthAbort = new AbortController();
   try {
     await Promise.race([
-      checkMem0Health(),
+      checkMem0Health({ signal: healthAbort.signal }),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('mem0 health check timed out')), 10_000),
+        setTimeout(() => {
+          healthAbort.abort();
+          reject(new Error('mem0 health check timed out'));
+        }, 10_000),
       ),
     ]);
   } catch (err) {

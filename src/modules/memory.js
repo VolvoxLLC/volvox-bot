@@ -246,9 +246,12 @@ export function _setClient(newClient) {
  * Run a health check against the mem0 platform on startup.
  * Verifies the API key is configured and the SDK client can actually
  * communicate with the hosted platform by performing a lightweight search.
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal] - When aborted, prevents a late-resolving
+ *   check from calling {@link markAvailable} (guards against race with startup timeout).
  * @returns {Promise<boolean>} true if mem0 is ready
  */
-export async function checkMem0Health() {
+export async function checkMem0Health({ signal } = {}) {
   const memConfig = getMemoryConfig();
   if (!memConfig.enabled) {
     info('Memory module disabled via config');
@@ -276,6 +279,11 @@ export async function checkMem0Health() {
       app_id: APP_ID,
       limit: 1,
     });
+
+    // Guard against late resolution after a startup timeout has already
+    // called markUnavailable().  If the caller's AbortSignal has fired,
+    // the timeout won the race and we must not flip availability back on.
+    if (signal?.aborted) return false;
 
     markAvailable();
     info('mem0 health check passed (SDK connectivity verified)');
