@@ -4,10 +4,12 @@ import userEvent from "@testing-library/user-event";
 
 // Mock next-auth/react
 const mockSignIn = vi.fn();
+const mockSignOut = vi.fn();
 let mockSession: { data: unknown; status: string } = { data: null, status: "unauthenticated" };
 vi.mock("next-auth/react", () => ({
   useSession: () => mockSession,
   signIn: (...args: unknown[]) => mockSignIn(...args),
+  signOut: (...args: unknown[]) => mockSignOut(...args),
 }));
 
 // Mock next/navigation
@@ -24,6 +26,7 @@ describe("LoginPage", () => {
   beforeEach(() => {
     mockSearchParams = new URLSearchParams();
     mockSignIn.mockClear();
+    mockSignOut.mockClear();
     mockPush.mockClear();
     mockSession = { data: null, status: "unauthenticated" };
   });
@@ -70,6 +73,21 @@ describe("LoginPage", () => {
         ),
       ).toBeInTheDocument();
     });
+  });
+
+  it("clears stale session and shows login form on RefreshTokenError", async () => {
+    mockSession = {
+      data: { user: { name: "Test" }, error: "RefreshTokenError" },
+      status: "authenticated",
+    };
+    render(<LoginPage />);
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalledWith({ redirect: false });
+    });
+    // Should NOT redirect to dashboard
+    expect(mockPush).not.toHaveBeenCalled();
+    // Should show the login form (not the loading spinner)
+    expect(screen.getByText("Welcome to Bill Bot")).toBeInTheDocument();
   });
 
   it("redirects authenticated users instead of showing login form", async () => {

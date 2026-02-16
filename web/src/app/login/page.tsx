@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,12 +26,19 @@ function LoginForm() {
 
   useEffect(() => {
     if (session) {
+      if (session.error === "RefreshTokenError") {
+        // Token refresh failed — clear the stale session so the user can
+        // sign in fresh instead of bouncing between /login and /dashboard.
+        signOut({ redirect: false });
+        return;
+      }
       router.push(callbackUrl);
     }
   }, [session, router, callbackUrl]);
 
-  // Show spinner while session is loading or user is already authenticated (redirecting)
-  if (status === "loading" || session) {
+  // Show spinner while session is loading or user is already authenticated (redirecting).
+  // Don't show spinner if the session has a token refresh error — show the login form instead.
+  if (status === "loading" || (session && !session.error)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
