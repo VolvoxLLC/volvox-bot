@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,11 @@ export function Header() {
       <div className="ml-auto flex items-center gap-4">
         {status === "loading" && (
           <Skeleton className="h-8 w-8 rounded-full" />
+        )}
+        {status === "unauthenticated" && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/login">Sign in</Link>
+          </Button>
         )}
         {session?.user && (
           <DropdownMenu>

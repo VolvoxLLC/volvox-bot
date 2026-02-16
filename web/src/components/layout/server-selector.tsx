@@ -51,6 +51,11 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     setError(false);
     try {
       const response = await fetch("/api/guilds", { signal: controller.signal });
+      if (response.status === 401) {
+        // Auth failure — redirect to login instead of showing a misleading retry
+        window.location.href = "/login";
+        return;
+      }
       if (!response.ok) throw new Error("Failed to fetch");
       const data: unknown = await response.json();
       if (!Array.isArray(data)) throw new Error("Invalid response: expected array");
