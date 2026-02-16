@@ -8,9 +8,20 @@ import {
 } from "@/lib/discord.server";
 
 describe("getGuildIconUrl", () => {
-  it("returns default icon when no icon hash", () => {
+  it("returns default icon derived from guild ID when no icon hash", () => {
+    // 123 % 5 = 3
     const url = getGuildIconUrl("123", null);
-    expect(url).toBe("https://cdn.discordapp.com/embed/avatars/0.png");
+    expect(url).toBe("https://cdn.discordapp.com/embed/avatars/3.png");
+  });
+
+  it("returns different default icons for different guild IDs", () => {
+    // Verify guild identity affects the fallback icon
+    const url0 = getGuildIconUrl("0", null);   // 0 % 5 = 0
+    const url1 = getGuildIconUrl("1", null);   // 1 % 5 = 1
+    const url4 = getGuildIconUrl("4", null);   // 4 % 5 = 4
+    expect(url0).toContain("/embed/avatars/0.png");
+    expect(url1).toContain("/embed/avatars/1.png");
+    expect(url4).toContain("/embed/avatars/4.png");
   });
 
   it("returns webp icon for non-animated hash", () => {

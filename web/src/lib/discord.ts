@@ -34,8 +34,10 @@ export function getGuildIconUrl(
   size = 128,
 ): string {
   if (!iconHash) {
-    // Return a default icon based on guild name initial
-    return `${DISCORD_CDN}/embed/avatars/0.png`;
+    // Return a default avatar derived from the guild ID for visual distinction.
+    // Discord has 5 default avatar indices (0–4).
+    const index = Number(BigInt(guildId) % 5n);
+    return `${DISCORD_CDN}/embed/avatars/${index}.png`;
   }
   const ext = iconHash.startsWith("a_") ? "gif" : "webp";
   return `${DISCORD_CDN}/icons/${guildId}/${iconHash}.${ext}?size=${size}`;

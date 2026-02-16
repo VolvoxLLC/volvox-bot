@@ -20,7 +20,7 @@ export default function RootError({
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body>
         <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", padding: "1rem", fontFamily: "system-ui, sans-serif" }}>
           <div style={{ maxWidth: "28rem", textAlign: "center" }}>
