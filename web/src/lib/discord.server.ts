@@ -64,12 +64,16 @@ export async function fetchUserGuilds(
       url.searchParams.set("after", after);
     }
 
+    // Note: Next.js skips the Data Cache for requests with Authorization
+    // headers when there's an uncached request above in the component tree,
+    // so `next: { revalidate }` is unreliable here. Use cache: 'no-store'
+    // to be explicit about always fetching fresh data.
     const response = await fetchWithRateLimit(url.toString(), {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
       signal,
-      next: { revalidate: 60 },
+      cache: "no-store",
     } as RequestInit);
 
     if (!response.ok) {
@@ -98,7 +102,14 @@ export async function fetchUserGuilds(
  * This calls our own bot API to get the list of guilds.
  * Requires BOT_API_SECRET env var for authentication.
  */
-export async function fetchBotGuilds(): Promise<BotGuild[]> {
+/** Result of fetchBotGuilds — discriminates API-unavailable from genuinely empty. */
+export interface BotGuildResult {
+  /** Whether the bot API was reachable and returned a valid response. */
+  available: boolean;
+  guilds: BotGuild[];
+}
+
+export async function fetchBotGuilds(): Promise<BotGuildResult> {
   const botApiUrl = process.env.BOT_API_URL;
 
   if (!botApiUrl) {
@@ -106,7 +117,7 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
       "[discord] BOT_API_URL is not set — cannot filter guilds by bot presence. " +
         "Set BOT_API_URL to enable mutual guild filtering.",
     );
-    return [];
+    return { available: false, guilds: [] };
   }
 
   const botApiSecret = process.env.BOT_API_SECRET;
@@ -115,7 +126,7 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
       "[discord] BOT_API_SECRET is missing while BOT_API_URL is set. " +
         "Skipping bot guild fetch — refusing to send unauthenticated request.",
     );
-    return [];
+    return { available: false, guilds: [] };
   }
 
   try {
@@ -123,7 +134,7 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
       headers: {
         Authorization: `Bearer ${botApiSecret}`,
       },
-      next: { revalidate: 60 },
+      cache: "no-store",
     } as RequestInit);
 
     if (!response.ok) {
@@ -131,16 +142,24 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
         `[discord] Bot API returned ${response.status} ${response.statusText} — ` +
           "continuing without bot guild filtering.",
       );
-      return [];
+      return { available: false, guilds: [] };
     }
 
-    return await response.json();
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) {
+      logger.warn(
+        "[discord] Bot API returned unexpected response shape (expected array) — " +
+          "continuing without bot guild filtering.",
+      );
+      return { available: false, guilds: [] as BotGuild[] };
+    }
+    return { available: true, guilds: data as BotGuild[] };
   } catch (error) {
     logger.warn(
       "[discord] Bot API is unreachable — continuing without bot guild filtering.",
       error,
     );
-    return [];
+    return { available: false, guilds: [] as BotGuild[] };
   }
 }
 
@@ -153,26 +172,28 @@ export async function getMutualGuilds(
   accessToken: string,
   signal?: AbortSignal,
 ): Promise<MutualGuild[]> {
-  const [userGuilds, botGuilds] = await Promise.all([
+  const [userGuilds, botResult] = await Promise.all([
     fetchUserGuilds(accessToken, signal),
     // Defensive catch: even though fetchBotGuilds handles errors internally,
     // wrap at the Promise.all level so an unexpected throw can never break
     // the entire guild fetch — gracefully degrade to showing all user guilds.
     fetchBotGuilds().catch((err) => {
       logger.warn("[discord] Unexpected error fetching bot guilds — degrading gracefully.", err);
-      return [] as BotGuild[];
+      return { available: false, guilds: [] } as BotGuildResult;
     }),
   ]);
 
-  // If no bot guilds could be fetched, return all user guilds unfiltered
-  if (botGuilds.length === 0) {
+  // If the bot API was unavailable, return all user guilds unfiltered so
+  // the UI can still be useful. If the API was available but the bot is
+  // genuinely in zero guilds, return an empty list.
+  if (!botResult.available) {
     return userGuilds.map((guild) => ({
       ...guild,
       botPresent: false as const,
     }));
   }
 
-  const botGuildIds = new Set(botGuilds.map((g) => g.id));
+  const botGuildIds = new Set(botResult.guilds.map((g) => g.id));
 
   return userGuilds
     .filter((guild) => botGuildIds.has(guild.id))
