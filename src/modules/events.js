@@ -6,6 +6,9 @@
 import { Client, Events } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
+// safeReply works with both Interactions (.reply()) and Messages (.reply()).
+// Both accept the same options shape including allowedMentions, so the
+// safe wrapper applies identically to either target type.
 import { safeReply, safeSend } from '../utils/safeSend.js';
 import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { generateResponse } from './ai.js';
