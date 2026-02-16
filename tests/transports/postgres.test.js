@@ -5,8 +5,14 @@ import { initLogsTable, PostgresTransport, pruneOldLogs } from '../../src/transp
  * Create a mock pg Pool
  */
 function createMockPool(queryResult = { rows: [], rowCount: 0 }) {
+  const mockClient = {
+    query: vi.fn().mockResolvedValue(queryResult),
+    release: vi.fn(),
+  };
   return {
     query: vi.fn().mockResolvedValue(queryResult),
+    connect: vi.fn().mockResolvedValue(mockClient),
+    _mockClient: mockClient,
   };
 }
 
@@ -323,15 +329,20 @@ describe('PostgresTransport', () => {
 });
 
 describe('initLogsTable', () => {
-  it('should create the logs table and indexes', async () => {
+  it('should create the logs table and indexes in a transaction', async () => {
     const mockPool = createMockPool();
+    const client = mockPool._mockClient;
 
     await initLogsTable(mockPool);
 
-    expect(mockPool.query).toHaveBeenCalledTimes(3);
+    expect(mockPool.connect).toHaveBeenCalledTimes(1);
+    expect(client.query).toHaveBeenCalledTimes(5);
 
-    // Check table creation
-    const tableQuery = mockPool.query.mock.calls[0][0];
+    // BEGIN
+    expect(client.query.mock.calls[0][0]).toBe('BEGIN');
+
+    // CREATE TABLE
+    const tableQuery = client.query.mock.calls[1][0];
     expect(tableQuery).toContain('CREATE TABLE IF NOT EXISTS logs');
     expect(tableQuery).toContain('id SERIAL PRIMARY KEY');
     expect(tableQuery).toContain('level VARCHAR(10)');
@@ -339,9 +350,34 @@ describe('initLogsTable', () => {
     expect(tableQuery).toContain('metadata JSONB');
     expect(tableQuery).toContain('TIMESTAMPTZ');
 
-    // Check index creation
-    expect(mockPool.query.mock.calls[1][0]).toContain('idx_logs_timestamp');
-    expect(mockPool.query.mock.calls[2][0]).toContain('idx_logs_level');
+    // CREATE INDEX x2
+    expect(client.query.mock.calls[2][0]).toContain('idx_logs_timestamp');
+    expect(client.query.mock.calls[3][0]).toContain('idx_logs_level');
+
+    // COMMIT
+    expect(client.query.mock.calls[4][0]).toBe('COMMIT');
+
+    // Client released
+    expect(client.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('should rollback on error and release client', async () => {
+    const mockPool = createMockPool();
+    const client = mockPool._mockClient;
+
+    // Fail on CREATE TABLE (second call after BEGIN)
+    client.query
+      .mockResolvedValueOnce() // BEGIN
+      .mockRejectedValueOnce(new Error('table creation failed'));
+
+    await expect(initLogsTable(mockPool)).rejects.toThrow('table creation failed');
+
+    // Should have called ROLLBACK
+    const calls = client.query.mock.calls.map((c) => c[0]);
+    expect(calls).toContain('ROLLBACK');
+
+    // Client released
+    expect(client.release).toHaveBeenCalledTimes(1);
   });
 });
 

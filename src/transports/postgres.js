@@ -157,19 +157,31 @@ export class PostgresTransport extends Transport {
  * @returns {Promise<void>}
  */
 export async function initLogsTable(pool) {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS logs (
-      id SERIAL PRIMARY KEY,
-      level VARCHAR(10) NOT NULL,
-      message TEXT NOT NULL,
-      metadata JSONB DEFAULT '{}',
-      timestamp TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp)');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS logs (
+        id SERIAL PRIMARY KEY,
+        level VARCHAR(10) NOT NULL,
+        message TEXT NOT NULL,
+        metadata JSONB DEFAULT '{}',
+        timestamp TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
 
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp)');
+
+    await client.query('CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)');
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
