@@ -513,7 +513,7 @@ describe('memory command', () => {
       await execute(interaction);
 
       expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
-      expect(searchMemories).toHaveBeenCalledWith('123456', 'Rust', 10);
+      expect(searchMemories).toHaveBeenCalledWith('123456', 'Rust', 100);
       expect(deleteMemory).toHaveBeenCalledWith('mem-1');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -604,6 +604,41 @@ describe('memory command', () => {
 
       expect(deleteMemory).toHaveBeenCalledTimes(1);
       expect(deleteMemory).toHaveBeenCalledWith('valid-id');
+    });
+
+    it('should loop to delete all matching memories across multiple batches', async () => {
+      // First call returns a full batch (simulating more results exist)
+      searchMemories
+        .mockResolvedValueOnce({
+          memories: Array.from({ length: 100 }, (_, i) => ({
+            id: `mem-batch1-${i}`,
+            memory: `Batch 1 memory ${i}`,
+            score: 0.9,
+          })),
+          relations: [],
+        })
+        .mockResolvedValueOnce({
+          memories: [{ id: 'mem-batch2-0', memory: 'Batch 2 last one', score: 0.8 }],
+          relations: [],
+        });
+      deleteMemory.mockResolvedValue(true);
+
+      const interaction = createMockInteraction({
+        subcommand: 'forget',
+        topic: 'test',
+      });
+
+      await execute(interaction);
+
+      // Should have called search twice (second batch < 100 = done)
+      expect(searchMemories).toHaveBeenCalledTimes(2);
+      // 100 from batch 1 + 1 from batch 2
+      expect(deleteMemory).toHaveBeenCalledTimes(101);
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('101 memories'),
+        }),
+      );
     });
 
     it('should report correct count for multiple parallel deletions', async () => {
