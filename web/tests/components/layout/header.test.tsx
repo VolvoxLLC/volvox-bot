@@ -60,10 +60,25 @@ describe("Header", () => {
   describe("loading state", () => {
     it("renders a loading skeleton when session is loading", () => {
       mockUseSession.mockReturnValue({ data: null, status: "loading" });
-      render(<Header />);
-      // Skeleton renders as a div with the skeleton class — no user dropdown should appear
+      const { container } = render(<Header />);
+      // Skeleton renders as a div with the skeleton class
+      const skeleton = container.querySelector(".animate-pulse");
+      expect(skeleton).toBeInTheDocument();
+      // No user dropdown should appear
       expect(screen.queryByText("T")).not.toBeInTheDocument();
       expect(screen.queryByText("TestUser")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("unauthenticated state", () => {
+    it("renders a sign-in link when unauthenticated", () => {
+      mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
+      render(<Header />);
+      const signInLink = screen.getByRole("link", { name: "Sign in" });
+      expect(signInLink).toBeInTheDocument();
+      expect(signInLink).toHaveAttribute("href", "/login");
+      // User-specific elements should not be present
+      expect(screen.queryByText("T")).not.toBeInTheDocument();
     });
   });
 

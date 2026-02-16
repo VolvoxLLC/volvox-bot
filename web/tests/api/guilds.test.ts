@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // Mock next-auth/providers/discord
@@ -30,9 +30,19 @@ function createMockRequest(url = "http://localhost:3000/api/guilds"): NextReques
 }
 
 describe("GET /api/guilds", () => {
+  const originalSecret = process.env.NEXTAUTH_SECRET;
+
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NEXTAUTH_SECRET = "a-valid-secret-that-is-at-least-32-characters-long";
+  });
+
+  afterEach(() => {
+    if (originalSecret === undefined) {
+      delete process.env.NEXTAUTH_SECRET;
+    } else {
+      process.env.NEXTAUTH_SECRET = originalSecret;
+    }
   });
 
   it("returns 401 when no token exists", async () => {
