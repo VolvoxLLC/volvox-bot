@@ -60,10 +60,8 @@ describe("Header", () => {
   describe("loading state", () => {
     it("renders a loading skeleton when session is loading", () => {
       mockUseSession.mockReturnValue({ data: null, status: "loading" });
-      const { container } = render(<Header />);
-      // Skeleton renders as a div with the skeleton class
-      const skeleton = container.querySelector(".animate-pulse");
-      expect(skeleton).toBeInTheDocument();
+      render(<Header />);
+      expect(screen.getByTestId("header-skeleton")).toBeInTheDocument();
       // No user dropdown should appear
       expect(screen.queryByText("T")).not.toBeInTheDocument();
       expect(screen.queryByText("TestUser")).not.toBeInTheDocument();

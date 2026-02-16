@@ -49,7 +49,7 @@ export function Header() {
 
       <div className="ml-auto flex items-center gap-4">
         {status === "loading" && (
-          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-full" data-testid="header-skeleton" />
         )}
         {status === "unauthenticated" && (
           <Button variant="outline" size="sm" asChild>
