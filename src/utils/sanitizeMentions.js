@@ -15,13 +15,14 @@ const ZWS = '\u200B';
 
 /**
  * Pattern matching @everyone and @here mentions.
- * Uses word boundary to avoid false positives in email addresses etc.
+ * Uses a negative lookbehind for word characters to avoid false positives
+ * in email addresses (e.g. user@everyone.com should NOT be mutated).
  *
  * Discord treats @everyone and @here as case-sensitive — only exact
  * lowercase forms trigger mass pings. @Everyone, @HERE, etc. are NOT
  * parsed as mentions by Discord, so we intentionally omit the /i flag.
  */
-const MENTION_PATTERN = /@(everyone|here)\b/g;
+const MENTION_PATTERN = /(?<!\w)@(everyone|here)\b/g;
 
 /**
  * Sanitize a message string by escaping @everyone and @here mentions.

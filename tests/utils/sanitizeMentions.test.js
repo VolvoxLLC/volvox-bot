@@ -70,9 +70,15 @@ describe('sanitizeMentions', () => {
     });
 
     it('should not modify email-like text', () => {
-      // @everyone/@here only match at word boundary, but email addresses
-      // don't typically contain "everyone" or "here" after @
       expect(sanitizeMentions('user@example.com')).toBe('user@example.com');
+    });
+
+    it('should not modify email addresses containing @everyone', () => {
+      expect(sanitizeMentions('user@everyone.com')).toBe('user@everyone.com');
+    });
+
+    it('should not modify email addresses containing @here', () => {
+      expect(sanitizeMentions('admin@here.org')).toBe('admin@here.org');
     });
   });
 
@@ -137,5 +143,70 @@ describe('sanitizeMessageOptions', () => {
     const result = sanitizeMessageOptions(original);
     expect(original.content).toBe('@everyone');
     expect(result.content).toBe(`@${ZWS}everyone`);
+  });
+});
+
+describe('sanitizeMentions edge cases', () => {
+  describe('email address false positives', () => {
+    it('should not mutate user@everyone.com', () => {
+      expect(sanitizeMentions('Contact user@everyone.com for help')).toBe(
+        'Contact user@everyone.com for help',
+      );
+    });
+
+    it('should not mutate admin@here.org', () => {
+      expect(sanitizeMentions('Email admin@here.org')).toBe('Email admin@here.org');
+    });
+
+    it('should still escape standalone @everyone alongside an email', () => {
+      expect(sanitizeMentions('user@everyone.com said @everyone look')).toBe(
+        `user@everyone.com said @${ZWS}everyone look`,
+      );
+    });
+  });
+
+  describe('mentions inside code blocks', () => {
+    it('should escape @everyone inside inline code (no markdown awareness)', () => {
+      // sanitizeMentions operates on raw text — it doesn't parse markdown.
+      // Code blocks are rendered by Discord, not by our sanitizer.
+      expect(sanitizeMentions('`@everyone`')).toBe(`\`@${ZWS}everyone\``);
+    });
+
+    it('should escape @here inside a fenced code block', () => {
+      const input = '```\n@here\n```';
+      expect(sanitizeMentions(input)).toBe(`\`\`\`\n@${ZWS}here\n\`\`\``);
+    });
+  });
+
+  describe('double-sanitization idempotency', () => {
+    it('should be idempotent — sanitizing twice produces the same result', () => {
+      const once = sanitizeMentions('@everyone and @here');
+      const twice = sanitizeMentions(once);
+      expect(twice).toBe(once);
+    });
+
+    it('should be idempotent for sanitizeMessageOptions', () => {
+      const once = sanitizeMessageOptions({ content: '@everyone test' });
+      const twice = sanitizeMessageOptions(once);
+      expect(twice).toEqual(once);
+    });
+  });
+
+  describe('multiple consecutive mentions', () => {
+    it('should escape back-to-back @everyone @here', () => {
+      expect(sanitizeMentions('@everyone @here')).toBe(`@${ZWS}everyone @${ZWS}here`);
+    });
+
+    it('should escape three consecutive @everyone mentions', () => {
+      expect(sanitizeMentions('@everyone @everyone @everyone')).toBe(
+        `@${ZWS}everyone @${ZWS}everyone @${ZWS}everyone`,
+      );
+    });
+
+    it('should escape mentions on separate lines', () => {
+      expect(sanitizeMentions('@everyone\n@here\n@everyone')).toBe(
+        `@${ZWS}everyone\n@${ZWS}here\n@${ZWS}everyone`,
+      );
+    });
   });
 });
