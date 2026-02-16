@@ -125,7 +125,7 @@ export async function execute(interaction) {
  * @param {string} userId
  */
 async function handleOptOut(interaction, userId) {
-  const { optedOut } = toggleOptOut(userId);
+  const { optedOut } = await toggleOptOut(userId);
 
   if (optedOut) {
     await interaction.reply({

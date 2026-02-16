@@ -159,6 +159,14 @@ export async function initDb() {
         ON mod_scheduled_actions (executed, execute_at)
       `);
 
+      // Memory opt-out table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS memory_optouts (
+          user_id TEXT PRIMARY KEY,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+
       info('Database schema initialized');
     } catch (err) {
       // Clean up the pool so getPool() doesn't return an unusable instance
