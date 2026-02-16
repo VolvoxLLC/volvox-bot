@@ -123,7 +123,10 @@ export const authOptions: AuthOptions = {
         token.id = account.providerAccountId;
       }
 
-      // If the access token has not expired, return it as-is
+      // If the access token has not expired, return it as-is.
+      // When expiresAt is undefined (e.g. JWT corruption or token migration),
+      // we intentionally fall through to refresh the token on every request
+      // rather than serving stale credentials — this is a safe default.
       const expiresAt = token.accessTokenExpires as number | undefined;
       if (expiresAt && Date.now() < expiresAt) {
         return token;
