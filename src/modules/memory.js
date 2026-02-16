@@ -22,6 +22,7 @@
 import MemoryClient from 'mem0ai';
 import { debug, info, warn as logWarn } from '../logger.js';
 import { getConfig } from './config.js';
+import { isOptedOut } from './optout.js';
 
 /** App namespace — isolates memories from other mem0 consumers */
 const APP_ID = 'bills-bot';
@@ -373,6 +374,7 @@ export function formatRelations(relations) {
  */
 export async function buildMemoryContext(userId, username, query) {
   if (!isMemoryAvailable()) return '';
+  if (isOptedOut(userId)) return '';
 
   const { memories, relations } = await searchMemories(userId, query);
 
@@ -405,6 +407,7 @@ export async function buildMemoryContext(userId, username, query) {
  */
 export async function extractAndStoreMemories(userId, username, userMessage, assistantReply) {
   if (!isMemoryAvailable()) return false;
+  if (isOptedOut(userId)) return false;
 
   const memConfig = getMemoryConfig();
   if (!memConfig.autoExtract) return false;
