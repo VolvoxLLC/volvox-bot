@@ -6,7 +6,7 @@
 /**
  * Discord's maximum message length.
  */
-const DISCORD_MAX_LENGTH = 2000;
+export const DISCORD_MAX_LENGTH = 2000;
 
 /**
  * Safe chunk size leaving room for potential overhead.

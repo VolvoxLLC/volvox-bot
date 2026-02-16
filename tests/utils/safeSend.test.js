@@ -10,10 +10,12 @@ vi.mock('../../src/logger.js', () => ({
 
 // Mock splitMessage — default to no splitting; individual tests override
 vi.mock('../../src/utils/splitMessage.js', () => ({
+  DISCORD_MAX_LENGTH: 2000,
   needsSplitting: vi.fn().mockReturnValue(false),
   splitMessage: vi.fn().mockReturnValue([]),
 }));
 
+import { error as mockLogError, warn as mockLogWarn } from '../../src/logger.js';
 import {
   safeEditReply,
   safeFollowUp,
@@ -301,7 +303,9 @@ describe('splitMessage integration (channel.send only)', () => {
 });
 
 describe('interaction truncation (reply/editReply/followUp)', () => {
-  it('safeReply should truncate long content instead of splitting', async () => {
+  const TRUNCATION_SUFFIX = '… [truncated]';
+
+  it('safeReply should truncate long content with indicator instead of splitting', async () => {
     const longContent = 'x'.repeat(2500);
     const mockTarget = { reply: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
@@ -310,10 +314,22 @@ describe('interaction truncation (reply/editReply/followUp)', () => {
     expect(mockTarget.reply).toHaveBeenCalledTimes(1);
     const sentContent = mockTarget.reply.mock.calls[0][0].content;
     expect(sentContent).toHaveLength(2000);
-    expect(sentContent).toBe('x'.repeat(2000));
+    expect(sentContent.endsWith(TRUNCATION_SUFFIX)).toBe(true);
   });
 
-  it('safeFollowUp should truncate long content instead of splitting', async () => {
+  it('safeReply should log a warning when truncating', async () => {
+    const longContent = 'x'.repeat(2500);
+    const mockTarget = { reply: vi.fn().mockResolvedValue({ id: 'msg' }) };
+
+    await safeReply(mockTarget, longContent);
+
+    expect(mockLogWarn).toHaveBeenCalledWith('Interaction content truncated', {
+      originalLength: 2500,
+      maxLength: 2000,
+    });
+  });
+
+  it('safeFollowUp should truncate long content with indicator instead of splitting', async () => {
     const longContent = 'y'.repeat(2500);
     const mockInteraction = { followUp: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
@@ -322,9 +338,10 @@ describe('interaction truncation (reply/editReply/followUp)', () => {
     expect(mockInteraction.followUp).toHaveBeenCalledTimes(1);
     const sentContent = mockInteraction.followUp.mock.calls[0][0].content;
     expect(sentContent).toHaveLength(2000);
+    expect(sentContent.endsWith(TRUNCATION_SUFFIX)).toBe(true);
   });
 
-  it('safeEditReply should truncate long content instead of splitting', async () => {
+  it('safeEditReply should truncate long content with indicator instead of splitting', async () => {
     const longContent = 'z'.repeat(2500);
     const mockInteraction = { editReply: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
@@ -333,6 +350,7 @@ describe('interaction truncation (reply/editReply/followUp)', () => {
     expect(mockInteraction.editReply).toHaveBeenCalledTimes(1);
     const sentContent = mockInteraction.editReply.mock.calls[0][0].content;
     expect(sentContent).toHaveLength(2000);
+    expect(sentContent.endsWith(TRUNCATION_SUFFIX)).toBe(true);
   });
 
   it('safeReply should not truncate content within limit', async () => {
@@ -344,7 +362,7 @@ describe('interaction truncation (reply/editReply/followUp)', () => {
     expect(mockTarget.reply.mock.calls[0][0].content).toBe('hello world');
   });
 
-  it('safeUpdate should truncate long content instead of splitting', async () => {
+  it('safeUpdate should truncate long content with indicator instead of splitting', async () => {
     const longContent = 'w'.repeat(2500);
     const mockInteraction = { update: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
@@ -353,6 +371,7 @@ describe('interaction truncation (reply/editReply/followUp)', () => {
     expect(mockInteraction.update).toHaveBeenCalledTimes(1);
     const sentContent = mockInteraction.update.mock.calls[0][0].content;
     expect(sentContent).toHaveLength(2000);
+    expect(sentContent.endsWith(TRUNCATION_SUFFIX)).toBe(true);
   });
 
   it('safeReply should handle non-string content unchanged', async () => {
@@ -367,55 +386,58 @@ describe('interaction truncation (reply/editReply/followUp)', () => {
 });
 
 describe('Winston error logging', () => {
-  it('safeSend should log and rethrow on error', async () => {
-    const { error: mockLogError } = await import('../../src/logger.js');
-    const mockChannel = { send: vi.fn().mockRejectedValue(new Error('send failed')) };
+  it('safeSend should log error with stack trace and rethrow', async () => {
+    const err = new Error('send failed');
+    const mockChannel = { send: vi.fn().mockRejectedValue(err) };
 
     await expect(safeSend(mockChannel, 'test')).rejects.toThrow('send failed');
-    expect(mockLogError).toHaveBeenCalledWith('safeSend failed', { error: 'send failed' });
+    expect(mockLogError).toHaveBeenCalledWith('safeSend failed', {
+      error: 'send failed',
+      stack: err.stack,
+    });
   });
 
-  it('safeReply should log and rethrow on error', async () => {
-    const { error: mockLogError } = await import('../../src/logger.js');
-    const mockTarget = { reply: vi.fn().mockRejectedValue(new Error('reply failed')) };
+  it('safeReply should log error with stack trace and rethrow', async () => {
+    const err = new Error('reply failed');
+    const mockTarget = { reply: vi.fn().mockRejectedValue(err) };
 
     await expect(safeReply(mockTarget, 'test')).rejects.toThrow('reply failed');
-    expect(mockLogError).toHaveBeenCalledWith('safeReply failed', { error: 'reply failed' });
+    expect(mockLogError).toHaveBeenCalledWith('safeReply failed', {
+      error: 'reply failed',
+      stack: err.stack,
+    });
   });
 
-  it('safeFollowUp should log and rethrow on error', async () => {
-    const { error: mockLogError } = await import('../../src/logger.js');
-    const mockInteraction = {
-      followUp: vi.fn().mockRejectedValue(new Error('followUp failed')),
-    };
+  it('safeFollowUp should log error with stack trace and rethrow', async () => {
+    const err = new Error('followUp failed');
+    const mockInteraction = { followUp: vi.fn().mockRejectedValue(err) };
 
     await expect(safeFollowUp(mockInteraction, 'test')).rejects.toThrow('followUp failed');
     expect(mockLogError).toHaveBeenCalledWith('safeFollowUp failed', {
       error: 'followUp failed',
+      stack: err.stack,
     });
   });
 
-  it('safeEditReply should log and rethrow on error', async () => {
-    const { error: mockLogError } = await import('../../src/logger.js');
-    const mockInteraction = {
-      editReply: vi.fn().mockRejectedValue(new Error('editReply failed')),
-    };
+  it('safeEditReply should log error with stack trace and rethrow', async () => {
+    const err = new Error('editReply failed');
+    const mockInteraction = { editReply: vi.fn().mockRejectedValue(err) };
 
     await expect(safeEditReply(mockInteraction, 'test')).rejects.toThrow('editReply failed');
     expect(mockLogError).toHaveBeenCalledWith('safeEditReply failed', {
       error: 'editReply failed',
+      stack: err.stack,
     });
   });
 
-  it('safeUpdate should log and rethrow on error', async () => {
-    const { error: mockLogError } = await import('../../src/logger.js');
-    const mockInteraction = {
-      update: vi.fn().mockRejectedValue(new Error('update failed')),
-    };
+  it('safeUpdate should log error with stack trace and rethrow', async () => {
+    const err = new Error('update failed');
+    const mockInteraction = { update: vi.fn().mockRejectedValue(err) };
 
     await expect(safeUpdate(mockInteraction, 'test')).rejects.toThrow('update failed');
     expect(mockLogError).toHaveBeenCalledWith('safeUpdate failed', {
       error: 'update failed',
+      stack: err.stack,
     });
   });
 });

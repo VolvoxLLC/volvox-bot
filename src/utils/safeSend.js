@@ -10,14 +10,12 @@
  * @see https://github.com/BillChirico/bills-bot/issues/61
  */
 
-import { error as logError } from '../logger.js';
+import { error as logError, warn as logWarn } from '../logger.js';
 import { sanitizeMessageOptions } from './sanitizeMentions.js';
-import { needsSplitting, splitMessage } from './splitMessage.js';
+import { DISCORD_MAX_LENGTH, needsSplitting, splitMessage } from './splitMessage.js';
 
-/**
- * Discord's maximum message length.
- */
-const DISCORD_MAX_LENGTH = 2000;
+/** Suffix appended when interaction content is truncated. */
+const TRUNCATION_INDICATOR = '… [truncated]';
 
 /**
  * Default allowedMentions config that only permits user mentions.
@@ -71,7 +69,13 @@ function prepareOptions(options) {
 function truncateForInteraction(prepared) {
   const content = prepared.content;
   if (typeof content === 'string' && content.length > DISCORD_MAX_LENGTH) {
-    return { ...prepared, content: content.slice(0, DISCORD_MAX_LENGTH) };
+    const truncatedContent =
+      content.slice(0, DISCORD_MAX_LENGTH - TRUNCATION_INDICATOR.length) + TRUNCATION_INDICATOR;
+    logWarn('Interaction content truncated', {
+      originalLength: content.length,
+      maxLength: DISCORD_MAX_LENGTH,
+    });
+    return { ...prepared, content: truncatedContent };
   }
   return prepared;
 }
@@ -113,7 +117,7 @@ export async function safeSend(channel, options) {
   try {
     return await sendOrSplit((opts) => channel.send(opts), prepareOptions(options));
   } catch (err) {
-    logError('safeSend failed', { error: err.message });
+    logError('safeSend failed', { error: err.message, stack: err.stack });
     throw err;
   }
 }
@@ -135,7 +139,7 @@ export async function safeReply(target, options) {
   try {
     return await target.reply(truncateForInteraction(prepareOptions(options)));
   } catch (err) {
-    logError('safeReply failed', { error: err.message });
+    logError('safeReply failed', { error: err.message, stack: err.stack });
     throw err;
   }
 }
@@ -155,7 +159,7 @@ export async function safeFollowUp(interaction, options) {
   try {
     return await interaction.followUp(truncateForInteraction(prepareOptions(options)));
   } catch (err) {
-    logError('safeFollowUp failed', { error: err.message });
+    logError('safeFollowUp failed', { error: err.message, stack: err.stack });
     throw err;
   }
 }
@@ -175,7 +179,7 @@ export async function safeEditReply(interaction, options) {
   try {
     return await interaction.editReply(truncateForInteraction(prepareOptions(options)));
   } catch (err) {
-    logError('safeEditReply failed', { error: err.message });
+    logError('safeEditReply failed', { error: err.message, stack: err.stack });
     throw err;
   }
 }
@@ -198,7 +202,7 @@ export async function safeUpdate(interaction, options) {
   try {
     return await interaction.update(truncateForInteraction(prepareOptions(options)));
   } catch (err) {
-    logError('safeUpdate failed', { error: err.message });
+    logError('safeUpdate failed', { error: err.message, stack: err.stack });
     throw err;
   }
 }
