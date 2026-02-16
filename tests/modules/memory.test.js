@@ -232,14 +232,23 @@ describe('memory module', () => {
   });
 
   describe('checkMem0Health', () => {
-    it('should mark as available when API key is set and client can be created', async () => {
+    it('should mark as available when API key is set and SDK connectivity verified', async () => {
       process.env.MEM0_API_KEY = 'test-api-key';
-      const mockClient = createMockClient();
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({ results: [], relations: [] }),
+      });
       _setClient(mockClient);
 
       const result = await checkMem0Health();
       expect(result).toBe(true);
       expect(isMemoryAvailable()).toBe(true);
+
+      // Verify it performed a lightweight search to check connectivity
+      expect(mockClient.search).toHaveBeenCalledWith('health-check', {
+        user_id: '__health_check__',
+        app_id: 'bills-bot',
+        limit: 1,
+      });
     });
 
     it('should mark as unavailable when API key is not set', async () => {
@@ -256,19 +265,27 @@ describe('memory module', () => {
       expect(isMemoryAvailable()).toBe(false);
     });
 
-    it('should mark as unavailable when client creation fails', async () => {
+    it('should fail health check when auto-created client cannot connect', async () => {
       process.env.MEM0_API_KEY = 'test-api-key';
-      // Don't set a client — getClient will try to create one
-      // Since the MemoryClient constructor is mocked (noop), it won't throw,
-      // but we can test the error path by ensuring getClient returns null
+      // Don't set a client — getClient will auto-create from mocked constructor
+      // The auto-created client has no search method, so health check will fail
       _setClient(null);
 
-      // The mocked MemoryClient constructor returns undefined (vi.fn()),
-      // so getClient() will return the mocked instance. Let's test that path.
       const result = await checkMem0Health();
-      // The mocked constructor returns an object (vi.fn() return value),
-      // so this should succeed
-      expect(result).toBe(true);
+      expect(result).toBe(false);
+      expect(isMemoryAvailable()).toBe(false);
+    });
+
+    it('should mark as unavailable when SDK connectivity check fails', async () => {
+      process.env.MEM0_API_KEY = 'test-api-key';
+      const mockClient = createMockClient({
+        search: vi.fn().mockRejectedValue(new Error('Connection refused')),
+      });
+      _setClient(mockClient);
+
+      const result = await checkMem0Health();
+      expect(result).toBe(false);
+      expect(isMemoryAvailable()).toBe(false);
     });
   });
 
