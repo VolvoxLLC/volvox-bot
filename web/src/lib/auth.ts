@@ -1,5 +1,6 @@
 import type { AuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
+import { logger } from "@/lib/logger";
 
 /**
  * Discord OAuth2 scopes needed for the dashboard.
@@ -28,7 +29,7 @@ async function refreshDiscordToken(token: Record<string, unknown>): Promise<Reco
   });
 
   if (!response.ok) {
-    console.error(
+    logger.error(
       `[auth] Failed to refresh Discord token: ${response.status} ${response.statusText}`,
     );
     return { ...token, error: "RefreshTokenError" };

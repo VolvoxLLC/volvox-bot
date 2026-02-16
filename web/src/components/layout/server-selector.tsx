@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MutualGuild } from "@/types/discord";
 import { getGuildIconUrl } from "@/lib/discord";
+import { logger } from "@/lib/logger";
 
 interface ServerSelectorProps {
   className?: string;
@@ -64,7 +65,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           }
         }
       } catch (error) {
-        console.error("[server-selector] Failed to load guilds:", error);
+        logger.error("[server-selector] Failed to load guilds:", error);
       } finally {
         setLoading(false);
       }

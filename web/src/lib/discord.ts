@@ -1,4 +1,5 @@
 import type { BotGuild, DiscordGuild, MutualGuild } from "@/types/discord";
+import { logger } from "@/lib/logger";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_CDN = "https://cdn.discordapp.com";
@@ -30,7 +31,7 @@ async function fetchWithRateLimit(
       return response; // Out of retries, return the 429 as-is
     }
 
-    console.warn(
+    logger.warn(
       `[discord] Rate limited on ${url}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
     );
     await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -74,7 +75,7 @@ export async function fetchBotGuilds(): Promise<BotGuild[]> {
   const botApiUrl = process.env.BOT_API_URL;
 
   if (!botApiUrl) {
-    console.warn(
+    logger.warn(
       "[discord] BOT_API_URL is not set — cannot filter guilds by bot presence. " +
         "Set BOT_API_URL to enable mutual guild filtering.",
     );
