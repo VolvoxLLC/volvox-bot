@@ -190,6 +190,13 @@ vi.mock('../../src/modules/optout.js', () => ({
   toggleOptOut: vi.fn(() => ({ optedOut: true })),
 }));
 
+// Mock safeSend wrappers — spies that delegate to the interaction methods
+vi.mock('../../src/utils/safeSend.js', () => ({
+  safeReply: vi.fn((target, options) => target.reply(options)),
+  safeEditReply: vi.fn((interaction, options) => interaction.editReply(options)),
+  safeFollowUp: vi.fn((interaction, options) => interaction.followUp(options)),
+}));
+
 // Mock logger
 vi.mock('../../src/logger.js', () => ({
   info: vi.fn(),
@@ -208,6 +215,7 @@ import {
   searchMemories,
 } from '../../src/modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../../src/modules/optout.js';
+import { safeEditReply, safeReply } from '../../src/utils/safeSend.js';
 
 /**
  * Create a mock interaction for memory command tests.
@@ -880,6 +888,126 @@ describe('memory command', () => {
         expect.objectContaining({
           content: expect.stringContaining('Manage Server'),
           ephemeral: true,
+        }),
+      );
+    });
+  });
+
+  describe('safeSend wrapper usage verification', () => {
+    it('should use safeReply for memory unavailable response', async () => {
+      isMemoryAvailable.mockReturnValue(false);
+      const interaction = createMockInteraction();
+
+      await execute(interaction);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('unavailable'),
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('should use safeReply for optout response', async () => {
+      toggleOptOut.mockReturnValue({ optedOut: true });
+      const interaction = createMockInteraction({ subcommand: 'optout' });
+
+      await execute(interaction);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('opted out'),
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('should use safeEditReply for /memory view response', async () => {
+      getMemories.mockResolvedValue([{ id: 'mem-1', memory: 'Likes pizza' }]);
+      const interaction = createMockInteraction({ subcommand: 'view' });
+
+      await execute(interaction);
+
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('Likes pizza'),
+        }),
+      );
+    });
+
+    it('should use safeReply for forget confirmation prompt', async () => {
+      const interaction = createMockInteraction({ subcommand: 'forget' });
+      interaction._mockResponse.awaitMessageComponent.mockResolvedValue({
+        customId: 'memory_forget_cancel',
+        update: vi.fn(),
+      });
+
+      await execute(interaction);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('Are you sure'),
+          components: expect.any(Array),
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('should use safeEditReply for forget topic response', async () => {
+      searchMemories.mockResolvedValue({
+        memories: [{ id: 'mem-1', memory: 'Test', score: 0.9 }],
+        relations: [],
+      });
+      deleteMemory.mockResolvedValue(true);
+      const interaction = createMockInteraction({ subcommand: 'forget', topic: 'test' });
+
+      await execute(interaction);
+
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('1 memory'),
+        }),
+      );
+    });
+
+    it('should use safeReply for admin permission denial', async () => {
+      const interaction = createMockInteraction({
+        subcommand: 'view',
+        subcommandGroup: 'admin',
+        targetUser: { id: '999', username: 'targetuser' },
+      });
+
+      await execute(interaction);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('Manage Server'),
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('should use safeEditReply for admin view response', async () => {
+      getMemories.mockResolvedValue([{ id: 'mem-1', memory: 'Admin test' }]);
+      const interaction = createMockInteraction({
+        subcommand: 'view',
+        subcommandGroup: 'admin',
+        targetUser: { id: '999', username: 'targetuser' },
+        hasManageGuild: true,
+      });
+
+      await execute(interaction);
+
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('Admin test'),
         }),
       );
     });
