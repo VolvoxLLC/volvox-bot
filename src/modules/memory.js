@@ -33,6 +33,58 @@ const DEFAULT_MAX_CONTEXT_MEMORIES = 5;
 /** Cooldown period before retrying after a transient failure (ms) */
 const RECOVERY_COOLDOWN_MS = 60_000;
 
+/** HTTP status codes and error patterns for transient (retryable) errors */
+const TRANSIENT_ERROR_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+]);
+
+/**
+ * Determine whether an error is transient (temporary network/server issue)
+ * or permanent (auth failure, bad request, etc.).
+ *
+ * Transient errors should NOT disable the memory system — they are expected
+ * to resolve on their own (network blips, server restarts, 5xx errors).
+ *
+ * Permanent errors (401, 403, 422, other 4xx) indicate configuration issues
+ * that won't self-resolve, so the system should be marked unavailable.
+ *
+ * @param {Error} err - The caught error
+ * @returns {boolean} true if the error is transient and retryable
+ */
+function isTransientError(err) {
+  // Network-level errors (no HTTP response)
+  if (err.code && TRANSIENT_ERROR_CODES.has(err.code)) return true;
+
+  // HTTP status-based classification
+  const status = err.status || err.statusCode || err.response?.status;
+  if (status) {
+    // 5xx = server error (transient), 429 = rate limited (transient)
+    if (status >= 500 || status === 429) return true;
+    // 4xx = client error (permanent) — auth failures, bad requests
+    if (status >= 400 && status < 500) return false;
+  }
+
+  // Common transient error message patterns
+  const msg = (err.message || '').toLowerCase();
+  if (
+    msg.includes('timeout') ||
+    msg.includes('econnrefused') ||
+    msg.includes('econnreset') ||
+    msg.includes('network') ||
+    msg.includes('socket hang up') ||
+    msg.includes('fetch failed')
+  ) {
+    return true;
+  }
+
+  // Default: treat unknown errors as permanent (safer — triggers markUnavailable)
+  return false;
+}
+
 /** Tracks whether mem0 is reachable (set by health check, cleared on errors) */
 let mem0Available = false;
 
@@ -146,6 +198,15 @@ export function _getRecoveryCooldownMs() {
 }
 
 /**
+ * Expose isTransientError for testing (prefixed with _ to indicate internal)
+ * @param {Error} err
+ * @returns {boolean}
+ */
+export function _isTransientError(err) {
+  return isTransientError(err);
+}
+
+/**
  * Set the mem0 client instance (for testing)
  * @param {object|null} newClient
  */
@@ -230,7 +291,7 @@ export async function addMemory(userId, text, metadata = {}) {
     return true;
   } catch (err) {
     logWarn('Failed to add memory', { userId, error: err.message });
-    markUnavailable();
+    if (!isTransientError(err)) markUnavailable();
     return false;
   }
 }
@@ -273,7 +334,7 @@ export async function searchMemories(userId, query, limit) {
     return { memories, relations };
   } catch (err) {
     logWarn('Failed to search memories', { userId, error: err.message });
-    markUnavailable();
+    if (!isTransientError(err)) markUnavailable();
     return { memories: [], relations: [] };
   }
 }
@@ -304,7 +365,7 @@ export async function getMemories(userId) {
     }));
   } catch (err) {
     logWarn('Failed to get memories', { userId, error: err.message });
-    markUnavailable();
+    if (!isTransientError(err)) markUnavailable();
     return [];
   }
 }
@@ -326,7 +387,7 @@ export async function deleteAllMemories(userId) {
     return true;
   } catch (err) {
     logWarn('Failed to delete all memories', { userId, error: err.message });
-    markUnavailable();
+    if (!isTransientError(err)) markUnavailable();
     return false;
   }
 }
@@ -348,7 +409,7 @@ export async function deleteMemory(memoryId) {
     return true;
   } catch (err) {
     logWarn('Failed to delete memory', { memoryId, error: err.message });
-    markUnavailable();
+    if (!isTransientError(err)) markUnavailable();
     return false;
   }
 }
@@ -437,7 +498,7 @@ export async function extractAndStoreMemories(userId, username, userMessage, ass
     return true;
   } catch (err) {
     logWarn('Memory extraction failed', { userId, error: err.message });
-    markUnavailable();
+    if (!isTransientError(err)) markUnavailable();
     return false;
   }
 }
