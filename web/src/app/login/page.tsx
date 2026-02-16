@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,9 +27,9 @@ function LoginForm() {
   useEffect(() => {
     if (session) {
       if (session.error === "RefreshTokenError") {
-        // Token refresh failed — clear the stale session so the user can
-        // sign in fresh instead of bouncing between /login and /dashboard.
-        signOut({ redirect: false });
+        // RefreshTokenError is handled centrally by the Header component
+        // (which has a signingOut guard ref to prevent duplicates).
+        // Do NOT call signOut here to avoid a race condition.
         return;
       }
       router.push(callbackUrl);
