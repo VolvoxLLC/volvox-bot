@@ -34,6 +34,21 @@ import {
 import { isOptedOut, toggleOptOut } from '../modules/optout.js';
 import { splitMessage } from '../utils/splitMessage.js';
 
+/**
+ * Truncate a memory list to fit within Discord's 2000-char limit.
+ * @param {string} memoryList - Numbered memory lines joined by newlines
+ * @param {string} header - Header text prepended to the output
+ * @returns {string} Final message content, truncated if necessary
+ */
+function formatMemoryList(memoryList, header) {
+  const truncationNotice = '\n\n*(...and more)*';
+  const maxBodyLength = 2000 - header.length - truncationNotice.length;
+
+  const chunks = splitMessage(memoryList, maxBodyLength);
+  const isTruncated = chunks.length > 1;
+  return isTruncated ? `${header}${chunks[0]}${truncationNotice}` : `${header}${memoryList}`;
+}
+
 export const data = new SlashCommandBuilder()
   .setName('memory')
   .setDescription('Manage what the bot remembers about you (stored externally)')
@@ -164,17 +179,8 @@ async function handleView(interaction, userId, username) {
   }
 
   const memoryList = memories.map((m, i) => `${i + 1}. ${m.memory}`).join('\n');
-
   const header = `🧠 **What I remember about ${username}:**\n\n`;
-  const truncationNotice = '\n\n*(...and more)*';
-  const maxBodyLength = 2000 - header.length - truncationNotice.length;
-
-  // Use splitMessage to safely split on word boundaries (handles multi-byte chars)
-  const chunks = splitMessage(memoryList, maxBodyLength);
-  const isTruncated = chunks.length > 1;
-  const content = isTruncated
-    ? `${header}${chunks[0]}${truncationNotice}`
-    : `${header}${memoryList}`;
+  const content = formatMemoryList(memoryList, header);
 
   await interaction.editReply({ content });
 
@@ -343,16 +349,8 @@ async function handleAdminView(interaction, targetId, targetUsername) {
   }
 
   const memoryList = memories.map((m, i) => `${i + 1}. ${m.memory}`).join('\n');
-
   const header = `🧠 **Memories for ${targetUsername}${optedOutStatus}:**\n\n`;
-  const truncationNotice = '\n\n*(...and more)*';
-  const maxBodyLength = 2000 - header.length - truncationNotice.length;
-
-  const chunks = splitMessage(memoryList, maxBodyLength);
-  const isTruncated = chunks.length > 1;
-  const content = isTruncated
-    ? `${header}${chunks[0]}${truncationNotice}`
-    : `${header}${memoryList}`;
+  const content = formatMemoryList(memoryList, header);
 
   await interaction.editReply({ content });
 
