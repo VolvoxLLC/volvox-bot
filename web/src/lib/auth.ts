@@ -42,6 +42,11 @@ const DISCORD_SCOPES = "identify guilds";
  * Exported for testing; not intended for direct use outside auth callbacks.
  */
 export async function refreshDiscordToken(token: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (!token.refreshToken || typeof token.refreshToken !== "string") {
+    logger.warn("[auth] Cannot refresh Discord token: refreshToken is missing or invalid");
+    return { ...token, error: "RefreshTokenError" };
+  }
+
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID!,
     client_secret: process.env.DISCORD_CLIENT_SECRET!,
@@ -113,6 +118,13 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account }) {
+      // Security note: accessToken and refreshToken are stored in the JWT but
+      // are NOT exposed to client-side JavaScript because (1) the session
+      // callback below intentionally omits them — only user.id and error are
+      // forwarded, (2) NextAuth stores the JWT in an httpOnly, encrypted cookie
+      // that cannot be read by client JS. Server-side code can access these
+      // tokens via getToken() in API routes.
+
       // On initial sign-in, persist the Discord access token
       if (account) {
         token.accessToken = account.access_token;
@@ -137,7 +149,8 @@ export const authOptions: AuthOptions = {
         return refreshDiscordToken(token as Record<string, unknown>);
       }
 
-      return token;
+      // No refresh token available — cannot recover; flag as error
+      return { ...token, error: "RefreshTokenError" };
     },
     async session({ session, token }) {
       // Only expose user ID to the client session.
