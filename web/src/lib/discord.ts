@@ -160,7 +160,12 @@ export function getGuildIconUrl(
 }
 
 /**
- * Get the URL for a user's avatar.
+ * Get the URL for a user's avatar from raw Discord user data.
+ *
+ * Public utility exported for use in future dashboard pages that display
+ * other users' avatars (e.g. member lists, user profiles, mod log entries).
+ * The header component uses `session.user.image` from NextAuth directly;
+ * this helper is for cases where you have a raw userId + avatarHash.
  */
 export function getUserAvatarUrl(
   userId: string,
