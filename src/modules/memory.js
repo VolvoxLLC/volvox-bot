@@ -195,6 +195,7 @@ export async function searchMemories(userId, query, limit) {
     const relations = result?.relations || [];
 
     const memories = rawMemories.map((m) => ({
+      id: m.id || '',
       memory: m.memory || m.text || m.content || '',
       score: m.score ?? null,
     }));

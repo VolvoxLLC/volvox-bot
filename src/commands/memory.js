@@ -17,6 +17,7 @@ import {
   isMemoryAvailable,
   searchMemories,
 } from '../modules/memory.js';
+import { splitMessage } from '../utils/splitMessage.js';
 
 export const data = new SlashCommandBuilder()
   .setName('memory')
@@ -87,17 +88,18 @@ async function handleView(interaction, userId, username) {
 
   const memoryList = memories.map((m, i) => `${i + 1}. ${m.memory}`).join('\n');
 
-  // Truncate for Discord's 2000 char limit
   const header = `🧠 **What I remember about ${username}:**\n\n`;
-  const maxContent = 2000 - header.length - 50; // padding
-  const truncated =
-    memoryList.length > maxContent
-      ? `${memoryList.substring(0, maxContent)}...\n\n*(...and more)*`
-      : memoryList;
+  const truncationNotice = '\n\n*(...and more)*';
+  const maxBodyLength = 2000 - header.length - truncationNotice.length;
 
-  await interaction.editReply({
-    content: `${header}${truncated}`,
-  });
+  // Use splitMessage to safely split on word boundaries (handles multi-byte chars)
+  const chunks = splitMessage(memoryList, maxBodyLength);
+  const isTruncated = chunks.length > 1;
+  const content = isTruncated
+    ? `${header}${chunks[0]}${truncationNotice}`
+    : `${header}${memoryList}`;
+
+  await interaction.editReply({ content });
 
   info('Memory view command', { userId, username, count: memories.length });
 }
@@ -136,7 +138,7 @@ async function handleForgetAll(interaction, userId, username) {
 async function handleForgetTopic(interaction, userId, username, topic) {
   await interaction.deferReply({ ephemeral: true });
 
-  // Search for memories matching the topic
+  // Search for memories matching the topic (results include IDs)
   const { memories: matches } = await searchMemories(userId, topic, 10);
 
   if (matches.length === 0) {
@@ -146,18 +148,10 @@ async function handleForgetTopic(interaction, userId, username, topic) {
     return;
   }
 
-  // Get full memories with IDs so we can delete them
-  const allMemories = await getMemories(userId);
-
-  // Find memories whose text matches the search results
-  let deletedCount = 0;
-  for (const match of matches) {
-    const found = allMemories.find((m) => m.memory === match.memory && m.id);
-    if (found) {
-      const deleted = await deleteMemory(found.id);
-      if (deleted) deletedCount++;
-    }
-  }
+  // Use memory IDs directly from search results and delete in parallel
+  const matchesWithIds = matches.filter((m) => m.id);
+  const results = await Promise.allSettled(matchesWithIds.map((m) => deleteMemory(m.id)));
+  const deletedCount = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
 
   if (deletedCount > 0) {
     await interaction.editReply({
