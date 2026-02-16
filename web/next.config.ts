@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "cdn.discordapp.com",
-        pathname: "/**",
+        pathname: "/{avatars,icons,embed}/**",
       },
     ],
   },

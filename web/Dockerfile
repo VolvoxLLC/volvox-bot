@@ -5,10 +5,9 @@ FROM node:22-alpine AS deps
 RUN corepack enable
 WORKDIR /app
 
-# In monorepo layout the lockfile lives at the root, so we copy both the root
-# pnpm-workspace.yaml / pnpm-lock.yaml AND the web package.json. The glob
-# wildcard after pnpm-lock.yaml ensures the build doesn't fail if the file is
-# in a different location during standalone builds.
+# Build context: Must be the monorepo root (not web/). The Dockerfile expects
+# pnpm-workspace.yaml, pnpm-lock.yaml, and package.json at the root level,
+# plus web/package.json for the dashboard package.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY web/package.json ./web/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
