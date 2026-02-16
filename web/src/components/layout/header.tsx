@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,14 @@ import { MobileSidebar } from "./mobile-sidebar";
 
 export function Header() {
   const { data: session, status } = useSession();
+
+  // Auto-sign-out when token refresh fails — session.error is set by the
+  // JWT callback when refreshDiscordToken returns RefreshTokenError.
+  useEffect(() => {
+    if (session?.error === "RefreshTokenError") {
+      signOut({ callbackUrl: "/login" });
+    }
+  }, [session?.error]);
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">

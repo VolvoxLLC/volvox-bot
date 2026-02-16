@@ -53,11 +53,17 @@ export async function refreshDiscordToken(token: Record<string, unknown>): Promi
     refresh_token: token.refreshToken as string,
   });
 
-  const response = await fetch("https://discord.com/api/v10/oauth2/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
+  let response: Response;
+  try {
+    response = await fetch("https://discord.com/api/v10/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+  } catch (error) {
+    logger.error("[auth] Network error refreshing Discord token:", error);
+    return { ...token, error: "RefreshTokenError" };
+  }
 
   if (!response.ok) {
     logger.error(
