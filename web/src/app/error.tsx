@@ -2,13 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { ErrorCard } from "@/components/error-card";
 
 export default function GlobalError({
   error,
@@ -24,22 +18,12 @@ export default function GlobalError({
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Something went wrong</CardTitle>
-          <CardDescription>
-            An unexpected error occurred. Please try again.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          {error.digest && (
-            <p className="text-xs text-muted-foreground">
-              Error ID: {error.digest}
-            </p>
-          )}
-          <Button onClick={reset}>Try Again</Button>
-        </CardContent>
-      </Card>
+      <ErrorCard
+        title="Something went wrong"
+        description="An unexpected error occurred. Please try again."
+        digest={error.digest}
+        actions={<Button onClick={reset}>Try Again</Button>}
+      />
     </div>
   );
 }

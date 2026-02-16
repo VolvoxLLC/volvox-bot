@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { ChevronsUpDown, Server, RefreshCw, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MutualGuild } from "@/types/discord";
 import { getBotInviteUrl, getGuildIconUrl } from "@/lib/discord";
+import { cn } from "@/lib/utils";
 
 interface ServerSelectorProps {
   className?: string;
@@ -26,6 +27,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Persist selected guild to localStorage
   const selectGuild = (guild: MutualGuild) => {
@@ -38,10 +40,16 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   };
 
   const loadGuilds = useCallback(async (signal?: AbortSignal) => {
+    // Abort any previous in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const effectiveSignal = signal ?? controller.signal;
+
     setLoading(true);
     setError(false);
     try {
-      const response = await fetch("/api/guilds", { signal });
+      const response = await fetch("/api/guilds", { signal: effectiveSignal });
       if (!response.ok) throw new Error("Failed to fetch");
       const data: MutualGuild[] = await response.json();
       setGuilds(data);
@@ -134,7 +142,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className={`w-full justify-between ${className ?? ""}`}
+          className={cn("w-full justify-between", className)}
         >
           <div className="flex items-center gap-2 truncate">
             {selectedGuild?.icon ? (

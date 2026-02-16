@@ -12,10 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MobileSidebar } from "./mobile-sidebar";
 
 export function Header() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
@@ -31,6 +32,9 @@ export function Header() {
       </div>
 
       <div className="ml-auto flex items-center gap-4">
+        {status === "loading" && (
+          <Skeleton className="h-8 w-8 rounded-full" />
+        )}
         {session?.user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -62,13 +66,13 @@ export function Header() {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a
-                  href="https://discord.com/developers/applications"
+                  href="https://github.com/BillChirico/bills-bot"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center"
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />
-                  Discord Developer Portal
+                  Documentation
                 </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

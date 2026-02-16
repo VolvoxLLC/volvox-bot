@@ -1,9 +1,8 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,7 +30,8 @@ function LoginForm() {
     }
   }, [session, router, callbackUrl]);
 
-  if (status === "loading") {
+  // Show spinner while session is loading or user is already authenticated (redirecting)
+  if (status === "loading" || session) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>

@@ -2,7 +2,7 @@
 
 import { SessionProvider, useSession, signIn } from "next-auth/react";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Watches for session-level errors (e.g. RefreshTokenError) and
@@ -10,9 +10,11 @@ import { useEffect } from "react";
  */
 function SessionGuard({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
+  const signingIn = useRef(false);
 
   useEffect(() => {
-    if (session?.error === "RefreshTokenError") {
+    if (session?.error === "RefreshTokenError" && !signingIn.current) {
+      signingIn.current = true;
       // Token refresh failed — force re-authentication
       signIn("discord");
     }

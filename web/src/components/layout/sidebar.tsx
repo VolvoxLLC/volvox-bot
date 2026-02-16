@@ -66,7 +66,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
             const isActive =
               pathname === item.href ||
               (item.href !== "/dashboard" &&
-                pathname.startsWith(item.href));
+                pathname.startsWith(`${item.href}/`));
 
             return (
               <Link

@@ -61,12 +61,12 @@ function InviteButton({ size = "sm", className }: { size?: "sm" | "lg"; classNam
   const url = getBotInviteUrl();
   if (!url) return null;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer">
-      <Button variant="discord" size={size} className={className}>
+    <Button variant="discord" size={size} className={className} asChild>
+      <a href={url} target="_blank" rel="noopener noreferrer">
         {size === "lg" && <Bot className="mr-2 h-5 w-5" />}
         Add to Server
-      </Button>
-    </a>
+      </a>
+    </Button>
   );
 }
 
