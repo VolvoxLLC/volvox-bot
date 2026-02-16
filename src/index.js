@@ -18,7 +18,7 @@ import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { closeDb, initDb } from './db.js';
 import { addPostgresTransport, error, info, removePostgresTransport, warn } from './logger.js';
-import { pruneOldLogs } from './transports/postgres.js';
+import { initLogsTable, pruneOldLogs } from './transports/postgres.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -306,20 +306,15 @@ async function startup() {
 
     // Wire up PostgreSQL logging transport if enabled in config
     if (config.logging?.database?.enabled) {
+      await initLogsTable(dbPool);
       pgTransport = addPostgresTransport(dbPool, config.logging.database);
       info('PostgreSQL logging transport enabled');
 
-      // Prune old logs on startup if retentionDays is configured
-      const retentionDays = config.logging.database.retentionDays;
-      if (retentionDays && retentionDays > 0) {
-        try {
-          const pruned = await pruneOldLogs(dbPool, retentionDays);
-          if (pruned > 0) {
-            info('Pruned old log entries', { pruned, retentionDays });
-          }
-        } catch (err) {
-          warn('Failed to prune old logs', { error: err.message });
-        }
+      // Prune old logs on startup
+      const retentionDays = config.logging.database.retentionDays || 30;
+      const pruned = await pruneOldLogs(dbPool, retentionDays);
+      if (pruned > 0) {
+        info('Pruned old log entries', { pruned, retentionDays });
       }
     }
   }
