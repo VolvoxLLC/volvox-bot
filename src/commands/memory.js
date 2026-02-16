@@ -137,7 +137,7 @@ async function handleForgetTopic(interaction, userId, username, topic) {
   await interaction.deferReply({ ephemeral: true });
 
   // Search for memories matching the topic
-  const matches = await searchMemories(userId, topic, 10);
+  const { memories: matches } = await searchMemories(userId, topic, 10);
 
   if (matches.length === 0) {
     await interaction.editReply({

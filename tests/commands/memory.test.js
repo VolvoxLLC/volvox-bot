@@ -77,7 +77,7 @@ vi.mock('../../src/modules/memory.js', () => ({
   isMemoryAvailable: vi.fn(() => true),
   getMemories: vi.fn(() => Promise.resolve([])),
   deleteAllMemories: vi.fn(() => Promise.resolve(true)),
-  searchMemories: vi.fn(() => Promise.resolve([])),
+  searchMemories: vi.fn(() => Promise.resolve({ memories: [], relations: [] })),
   deleteMemory: vi.fn(() => Promise.resolve(true)),
 }));
 
@@ -127,7 +127,7 @@ describe('memory command', () => {
     isMemoryAvailable.mockReturnValue(true);
     getMemories.mockResolvedValue([]);
     deleteAllMemories.mockResolvedValue(true);
-    searchMemories.mockResolvedValue([]);
+    searchMemories.mockResolvedValue({ memories: [], relations: [] });
     deleteMemory.mockResolvedValue(true);
   });
 
@@ -237,7 +237,10 @@ describe('memory command', () => {
 
   describe('/memory forget <topic>', () => {
     it('should search and delete matching memories', async () => {
-      searchMemories.mockResolvedValue([{ memory: 'User is learning Rust', score: 0.95 }]);
+      searchMemories.mockResolvedValue({
+        memories: [{ memory: 'User is learning Rust', score: 0.95 }],
+        relations: [],
+      });
       getMemories.mockResolvedValue([
         { id: 'mem-1', memory: 'User is learning Rust' },
         { id: 'mem-2', memory: 'User works at Google' },
@@ -261,7 +264,7 @@ describe('memory command', () => {
     });
 
     it('should handle no matching memories', async () => {
-      searchMemories.mockResolvedValue([]);
+      searchMemories.mockResolvedValue({ memories: [], relations: [] });
       const interaction = createMockInteraction({
         subcommand: 'forget',
         topic: 'nonexistent',
@@ -277,7 +280,10 @@ describe('memory command', () => {
     });
 
     it('should handle deletion failure for matched memories', async () => {
-      searchMemories.mockResolvedValue([{ memory: 'Test memory', score: 0.9 }]);
+      searchMemories.mockResolvedValue({
+        memories: [{ memory: 'Test memory', score: 0.9 }],
+        relations: [],
+      });
       getMemories.mockResolvedValue([{ id: 'mem-1', memory: 'Test memory' }]);
       deleteMemory.mockResolvedValue(false);
 
@@ -296,10 +302,13 @@ describe('memory command', () => {
     });
 
     it('should report correct count for multiple deletions', async () => {
-      searchMemories.mockResolvedValue([
-        { memory: 'Rust project A', score: 0.95 },
-        { memory: 'Rust project B', score: 0.9 },
-      ]);
+      searchMemories.mockResolvedValue({
+        memories: [
+          { memory: 'Rust project A', score: 0.95 },
+          { memory: 'Rust project B', score: 0.9 },
+        ],
+        relations: [],
+      });
       getMemories.mockResolvedValue([
         { id: 'mem-1', memory: 'Rust project A' },
         { id: 'mem-2', memory: 'Rust project B' },
