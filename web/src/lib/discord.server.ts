@@ -29,7 +29,8 @@ export async function fetchWithRateLimit(
 
     // Rate limited — parse retry-after header (seconds)
     const retryAfter = response.headers.get("retry-after");
-    const waitMs = retryAfter ? Number.parseFloat(retryAfter) * 1000 : 1000;
+    const parsed = retryAfter ? Number.parseFloat(retryAfter) : NaN;
+    const waitMs = Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : 1000;
 
     if (attempt === MAX_RETRIES) {
       return response; // Out of retries, return the 429 as-is
