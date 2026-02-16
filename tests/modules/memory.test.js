@@ -33,6 +33,7 @@ vi.mock('../../src/logger.js', () => ({
 import { getConfig } from '../../src/modules/config.js';
 import {
   _getRecoveryCooldownMs,
+  _isTransientError,
   _setClient,
   _setMem0Available,
   addMemory,
@@ -214,6 +215,101 @@ describe('memory module', () => {
       expect(isMemoryAvailable()).toBe(false);
 
       vi.useRealTimers();
+    });
+  });
+
+  describe('error classification', () => {
+    it('should treat network errors as transient', () => {
+      const econnrefused = new Error('connect ECONNREFUSED');
+      econnrefused.code = 'ECONNREFUSED';
+      expect(_isTransientError(econnrefused)).toBe(true);
+
+      const etimedout = new Error('connect ETIMEDOUT');
+      etimedout.code = 'ETIMEDOUT';
+      expect(_isTransientError(etimedout)).toBe(true);
+
+      const econnreset = new Error('socket hang up');
+      econnreset.code = 'ECONNRESET';
+      expect(_isTransientError(econnreset)).toBe(true);
+    });
+
+    it('should treat 5xx status codes as transient', () => {
+      const err500 = new Error('Internal Server Error');
+      err500.status = 500;
+      expect(_isTransientError(err500)).toBe(true);
+
+      const err503 = new Error('Service Unavailable');
+      err503.status = 503;
+      expect(_isTransientError(err503)).toBe(true);
+    });
+
+    it('should treat 429 rate-limit errors as transient', () => {
+      const err429 = new Error('Too Many Requests');
+      err429.status = 429;
+      expect(_isTransientError(err429)).toBe(true);
+    });
+
+    it('should treat 4xx auth/client errors as permanent', () => {
+      const err401 = new Error('Unauthorized');
+      err401.status = 401;
+      expect(_isTransientError(err401)).toBe(false);
+
+      const err403 = new Error('Forbidden');
+      err403.status = 403;
+      expect(_isTransientError(err403)).toBe(false);
+
+      const err422 = new Error('Unprocessable Entity');
+      err422.status = 422;
+      expect(_isTransientError(err422)).toBe(false);
+    });
+
+    it('should treat timeout message patterns as transient', () => {
+      expect(_isTransientError(new Error('request timeout'))).toBe(true);
+      expect(_isTransientError(new Error('fetch failed'))).toBe(true);
+      expect(_isTransientError(new Error('network error'))).toBe(true);
+    });
+
+    it('should treat unknown errors as permanent', () => {
+      expect(_isTransientError(new Error('API error'))).toBe(false);
+      expect(_isTransientError(new Error('something unexpected'))).toBe(false);
+    });
+
+    it('should not mark unavailable on transient errors', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        add: vi.fn().mockRejectedValue(
+          (() => {
+            const e = new Error('Service Unavailable');
+            e.status = 503;
+            return e;
+          })(),
+        ),
+      });
+      _setClient(mockClient);
+
+      const result = await addMemory('user123', 'test');
+      expect(result).toBe(false);
+      // Should still be available — transient error
+      expect(isMemoryAvailable()).toBe(true);
+    });
+
+    it('should mark unavailable on permanent errors', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        add: vi.fn().mockRejectedValue(
+          (() => {
+            const e = new Error('Unauthorized');
+            e.status = 401;
+            return e;
+          })(),
+        ),
+      });
+      _setClient(mockClient);
+
+      const result = await addMemory('user123', 'test');
+      expect(result).toBe(false);
+      // Should be unavailable — auth error
+      expect(isMemoryAvailable()).toBe(false);
     });
   });
 
