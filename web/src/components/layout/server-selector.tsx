@@ -39,17 +39,18 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     }
   };
 
-  const loadGuilds = useCallback(async (signal?: AbortSignal) => {
-    // Abort any previous in-flight request
+  const loadGuilds = useCallback(async () => {
+    // Abort any previous in-flight request before starting a new one.
+    // Always uses the ref-based controller so both the initial mount
+    // and retry button share a single cancellation path.
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    const effectiveSignal = signal ?? controller.signal;
 
     setLoading(true);
     setError(false);
     try {
-      const response = await fetch("/api/guilds", { signal: effectiveSignal });
+      const response = await fetch("/api/guilds", { signal: controller.signal });
       if (!response.ok) throw new Error("Failed to fetch");
       const data: MutualGuild[] = await response.json();
       setGuilds(data);
@@ -82,9 +83,8 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    loadGuilds(controller.signal);
-    return () => controller.abort();
+    loadGuilds();
+    return () => abortControllerRef.current?.abort();
   }, [loadGuilds]);
 
   if (loading) {
