@@ -132,6 +132,11 @@ describe('memory module', () => {
   });
 
   describe('isMemoryAvailable', () => {
+    afterEach(() => {
+      // Ensure fake timers never leak into other tests, even if a test fails mid-way
+      vi.useRealTimers();
+    });
+
     it('should return false when mem0 is not available', () => {
       _setMem0Available(false);
       expect(isMemoryAvailable()).toBe(false);
@@ -166,8 +171,6 @@ describe('memory module', () => {
 
       // Should now auto-recover
       expect(isMemoryAvailable()).toBe(true);
-
-      vi.useRealTimers();
     });
 
     it('should not auto-recover before cooldown expires', async () => {
@@ -189,8 +192,6 @@ describe('memory module', () => {
       // Now advance past the cooldown
       vi.advanceTimersByTime(1000);
       expect(isMemoryAvailable()).toBe(true);
-
-      vi.useRealTimers();
     });
 
     it('should re-disable if recovery attempt also fails', async () => {
@@ -213,8 +214,6 @@ describe('memory module', () => {
       // But the next operation also fails
       await searchMemories('user123', 'test');
       expect(isMemoryAvailable()).toBe(false);
-
-      vi.useRealTimers();
     });
   });
 
