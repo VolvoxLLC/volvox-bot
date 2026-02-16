@@ -44,5 +44,7 @@ logs
 data/*
 !data/.gitkeep
 
-# Web dashboard (separate build context)
+# Web dashboard — excluded from bot image (root-context builds only).
+# The web service in docker-compose uses context: ./web, so it reads
+# web/.dockerignore instead of this file and is unaffected.
 web

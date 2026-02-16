@@ -28,6 +28,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/billsbot
+      DATABASE_SSL: "false"
 
   web:
     build:
@@ -43,8 +44,9 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/billsbot
+      DATABASE_SSL: "false"
       NEXTAUTH_URL: http://localhost:3000
-      BOT_API_URL: http://bot:3001
+      # BOT_API_URL: http://bot:3001  # Uncomment when bot HTTP API is implemented (Issue #29)
     profiles:
       - full
 
