@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { getMutualGuilds } from "@/lib/discord.server";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,10 @@ export async function GET(request: NextRequest) {
     const guilds = await getMutualGuilds(token.accessToken as string);
     return NextResponse.json(guilds);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch guilds";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("[api/guilds] Failed to fetch guilds:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch guilds" },
+      { status: 500 },
+    );
   }
 }
