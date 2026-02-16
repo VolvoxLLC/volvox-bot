@@ -1,0 +1,48 @@
+node_modules
+.git
+*.md
+!README.md
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test & coverage
+tests
+coverage
+vitest.config.js
+
+# CI / tooling
+.github
+.editorconfig
+biome.json
+
+# Auto Claude / OpenClaw
+.auto-claude/
+.auto-claude-*
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
+.worktrees/
+.security-key
+CLAUDE.md
+AGENTS.md
+
+# Logs
+logs
+*.log
+
+# Data directory contents (keep structure)
+data/*
+!data/.gitkeep
+
+# Web dashboard (separate build context)
+web
