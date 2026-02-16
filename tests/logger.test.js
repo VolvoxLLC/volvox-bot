@@ -15,6 +15,15 @@ vi.mock('winston-daily-rotate-file', () => ({
   })),
 }));
 
+// Mock PostgresTransport (imported by logger.js but only used when explicitly added)
+vi.mock('../src/transports/postgres.js', () => ({
+  PostgresTransport: vi.fn().mockImplementation(() => ({
+    on: vi.fn(),
+    log: vi.fn(),
+    close: vi.fn(),
+  })),
+}));
+
 // NOTE: Logger module is cached after first import. Tests that need fresh
 // module state use vi.resetModules() before re-importing. Tests sharing
 // the same import get the same winston logger instance.
@@ -107,6 +116,13 @@ describe('logger module', () => {
         on: vi.fn(),
       })),
     }));
+    vi.mock('../src/transports/postgres.js', () => ({
+      PostgresTransport: vi.fn().mockImplementation(() => ({
+        on: vi.fn(),
+        log: vi.fn(),
+        close: vi.fn(),
+      })),
+    }));
 
     const logger = await import('../src/logger.js');
     expect(typeof logger.info).toBe('function');
@@ -124,8 +140,21 @@ describe('logger module', () => {
         on: vi.fn(),
       })),
     }));
+    vi.mock('../src/transports/postgres.js', () => ({
+      PostgresTransport: vi.fn().mockImplementation(() => ({
+        on: vi.fn(),
+        log: vi.fn(),
+        close: vi.fn(),
+      })),
+    }));
 
     const logger = await import('../src/logger.js');
     expect(typeof logger.info).toBe('function');
+  });
+
+  it('should export addPostgresTransport and removePostgresTransport functions', async () => {
+    const logger = await import('../src/logger.js');
+    expect(typeof logger.addPostgresTransport).toBe('function');
+    expect(typeof logger.removePostgresTransport).toBe('function');
   });
 });

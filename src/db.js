@@ -5,6 +5,7 @@
 
 import pg from 'pg';
 import { info, error as logError } from './logger.js';
+import { initLogsTable } from './transports/postgres.js';
 
 const { Pool } = pg;
 
@@ -166,6 +167,13 @@ export async function initDb() {
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
+
+      // Logs table for persistent logging transport
+      try {
+        await initLogsTable(pool);
+      } catch (err) {
+        logError('Failed to initialize logs table', { error: err.message });
+      }
 
       info('Database schema initialized');
     } catch (err) {
