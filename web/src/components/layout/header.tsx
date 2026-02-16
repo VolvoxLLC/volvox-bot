@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,17 @@ import { MobileSidebar } from "./mobile-sidebar";
 
 export function Header() {
   const { data: session, status } = useSession();
+  const signingOut = useRef(false);
 
   // Single handler for RefreshTokenError — sign out and redirect to login.
   // session.error is set by the JWT callback when refreshDiscordToken fails.
   // Note: This is the ONLY RefreshTokenError handler in the app (providers.tsx
   // delegates to this component to avoid race conditions).
+  // The signingOut guard prevents duplicate sign-out attempts when the session
+  // refetches and re-triggers this effect.
   useEffect(() => {
-    if (session?.error === "RefreshTokenError") {
+    if (session?.error === "RefreshTokenError" && !signingOut.current) {
+      signingOut.current = true;
       signOut({ callbackUrl: "/login" });
     }
   }, [session?.error]);
