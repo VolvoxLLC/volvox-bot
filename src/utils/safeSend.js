@@ -179,3 +179,26 @@ export async function safeEditReply(interaction, options) {
     throw err;
   }
 }
+
+/**
+ * Safely update a message component interaction (button/select menu).
+ * Sanitizes content, enforces allowedMentions, and truncates long messages.
+ *
+ * Used for ButtonInteraction.update() and similar component interactions
+ * where the bot edits the original message in response to a button click.
+ *
+ * Unlike safeSend, this does NOT split — component updates only support
+ * a single message, so content is truncated to 2000 chars instead.
+ *
+ * @param {import('discord.js').MessageComponentInteraction} interaction - The component interaction to update
+ * @param {string|object} options - Update content or options object
+ * @returns {Promise<import('discord.js').Message>} The updated message
+ */
+export async function safeUpdate(interaction, options) {
+  try {
+    return await interaction.update(truncateForInteraction(prepareOptions(options)));
+  } catch (err) {
+    logError('safeUpdate failed', { error: err.message });
+    throw err;
+  }
+}

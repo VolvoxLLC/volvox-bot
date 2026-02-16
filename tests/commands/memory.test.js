@@ -195,6 +195,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeReply: vi.fn((target, options) => target.reply(options)),
   safeEditReply: vi.fn((interaction, options) => interaction.editReply(options)),
   safeFollowUp: vi.fn((interaction, options) => interaction.followUp(options)),
+  safeUpdate: vi.fn((interaction, options) => interaction.update(options)),
 }));
 
 // Mock logger
@@ -215,7 +216,7 @@ import {
   searchMemories,
 } from '../../src/modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../../src/modules/optout.js';
-import { safeEditReply, safeReply } from '../../src/utils/safeSend.js';
+import { safeEditReply, safeReply, safeUpdate } from '../../src/utils/safeSend.js';
 
 /**
  * Create a mock interaction for memory command tests.
@@ -971,6 +972,98 @@ describe('memory command', () => {
         interaction,
         expect.objectContaining({
           content: expect.stringContaining('1 memory'),
+        }),
+      );
+    });
+
+    it('should use safeUpdate for forget confirm button interaction', async () => {
+      deleteAllMemories.mockResolvedValue(true);
+      const mockUpdate = vi.fn();
+      const interaction = createMockInteraction({ subcommand: 'forget' });
+      const buttonInteraction = {
+        customId: 'memory_forget_confirm',
+        update: mockUpdate,
+      };
+      interaction._mockResponse.awaitMessageComponent.mockResolvedValue(buttonInteraction);
+
+      await execute(interaction);
+
+      expect(safeUpdate).toHaveBeenCalledWith(
+        buttonInteraction,
+        expect.objectContaining({
+          content: expect.stringContaining('cleared'),
+          components: [],
+        }),
+      );
+    });
+
+    it('should use safeUpdate for forget cancel button interaction', async () => {
+      const mockUpdate = vi.fn();
+      const interaction = createMockInteraction({ subcommand: 'forget' });
+      const buttonInteraction = {
+        customId: 'memory_forget_cancel',
+        update: mockUpdate,
+      };
+      interaction._mockResponse.awaitMessageComponent.mockResolvedValue(buttonInteraction);
+
+      await execute(interaction);
+
+      expect(safeUpdate).toHaveBeenCalledWith(
+        buttonInteraction,
+        expect.objectContaining({
+          content: expect.stringContaining('cancelled'),
+          components: [],
+        }),
+      );
+    });
+
+    it('should use safeUpdate for admin clear confirm button interaction', async () => {
+      deleteAllMemories.mockResolvedValue(true);
+      const mockUpdate = vi.fn();
+      const interaction = createMockInteraction({
+        subcommand: 'clear',
+        subcommandGroup: 'admin',
+        targetUser: { id: '999', username: 'targetuser' },
+        hasManageGuild: true,
+      });
+      const buttonInteraction = {
+        customId: 'memory_admin_clear_confirm',
+        update: mockUpdate,
+      };
+      interaction._mockResponse.awaitMessageComponent.mockResolvedValue(buttonInteraction);
+
+      await execute(interaction);
+
+      expect(safeUpdate).toHaveBeenCalledWith(
+        buttonInteraction,
+        expect.objectContaining({
+          content: expect.stringContaining('targetuser'),
+          components: [],
+        }),
+      );
+    });
+
+    it('should use safeUpdate for admin clear cancel button interaction', async () => {
+      const mockUpdate = vi.fn();
+      const interaction = createMockInteraction({
+        subcommand: 'clear',
+        subcommandGroup: 'admin',
+        targetUser: { id: '999', username: 'targetuser' },
+        hasManageGuild: true,
+      });
+      const buttonInteraction = {
+        customId: 'memory_admin_clear_cancel',
+        update: mockUpdate,
+      };
+      interaction._mockResponse.awaitMessageComponent.mockResolvedValue(buttonInteraction);
+
+      await execute(interaction);
+
+      expect(safeUpdate).toHaveBeenCalledWith(
+        buttonInteraction,
+        expect.objectContaining({
+          content: expect.stringContaining('cancelled'),
+          components: [],
         }),
       );
     });

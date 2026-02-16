@@ -32,7 +32,7 @@ import {
   searchMemories,
 } from '../modules/memory.js';
 import { isOptedOut, toggleOptOut } from '../modules/optout.js';
-import { safeEditReply, safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply, safeUpdate } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 
 /**
@@ -225,20 +225,20 @@ async function handleForgetAll(interaction, userId, username) {
       const success = await deleteAllMemories(userId);
 
       if (success) {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: '🧹 Done! All your memories have been cleared. Fresh start!',
           components: [],
         });
         info('All memories cleared', { userId, username });
       } else {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: '❌ Failed to clear memories. Please try again later.',
           components: [],
         });
         warn('Failed to clear memories', { userId, username });
       }
     } else {
-      await buttonInteraction.update({
+      await safeUpdate(buttonInteraction, {
         content: '↩️ Memory deletion cancelled.',
         components: [],
       });
@@ -401,20 +401,20 @@ async function handleAdminClear(interaction, targetId, targetUsername) {
       const success = await deleteAllMemories(targetId);
 
       if (success) {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: `🧹 Done! All memories for **${targetUsername}** have been cleared.`,
           components: [],
         });
         info('Admin cleared all memories', { adminId, targetId, targetUsername });
       } else {
-        await buttonInteraction.update({
+        await safeUpdate(buttonInteraction, {
           content: `❌ Failed to clear memories for **${targetUsername}**. Please try again later.`,
           components: [],
         });
         warn('Admin failed to clear memories', { adminId, targetId, targetUsername });
       }
     } else {
-      await buttonInteraction.update({
+      await safeUpdate(buttonInteraction, {
         content: '↩️ Memory deletion cancelled.',
         components: [],
       });

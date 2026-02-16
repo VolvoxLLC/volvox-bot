@@ -14,7 +14,7 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
   splitMessage: vi.fn().mockReturnValue([]),
 }));
 
-import { safeEditReply, safeFollowUp, safeReply, safeSend } from '../../src/utils/safeSend.js';
+import { safeEditReply, safeFollowUp, safeReply, safeSend, safeUpdate } from '../../src/utils/safeSend.js';
 import { needsSplitting, splitMessage } from '../../src/utils/splitMessage.js';
 
 const ZWS = '\u200B';
@@ -168,6 +168,38 @@ describe('safeEditReply', () => {
   });
 });
 
+describe('safeUpdate', () => {
+  let mockInteraction;
+
+  beforeEach(() => {
+    mockInteraction = {
+      update: vi.fn().mockResolvedValue({ id: 'msg-6' }),
+    };
+  });
+
+  it('should sanitize content and add allowedMentions for string input', async () => {
+    await safeUpdate(mockInteraction, '@everyone updated');
+    expect(mockInteraction.update).toHaveBeenCalledWith({
+      content: `@${ZWS}everyone updated`,
+      allowedMentions: SAFE_ALLOWED_MENTIONS,
+    });
+  });
+
+  it('should sanitize content in object input', async () => {
+    await safeUpdate(mockInteraction, { content: '@here clicked', components: [] });
+    expect(mockInteraction.update).toHaveBeenCalledWith({
+      content: `@${ZWS}here clicked`,
+      components: [],
+      allowedMentions: SAFE_ALLOWED_MENTIONS,
+    });
+  });
+
+  it('should return the result from interaction.update', async () => {
+    const result = await safeUpdate(mockInteraction, 'hello');
+    expect(result).toEqual({ id: 'msg-6' });
+  });
+});
+
 describe('allowedMentions override enforcement', () => {
   it('safeReply should override caller-supplied allowedMentions', async () => {
     const mockTarget = { reply: vi.fn().mockResolvedValue(undefined) };
@@ -198,6 +230,17 @@ describe('allowedMentions override enforcement', () => {
       allowedMentions: { parse: ['everyone', 'roles'] },
     });
     expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ allowedMentions: SAFE_ALLOWED_MENTIONS }),
+    );
+  });
+
+  it('safeUpdate should override caller-supplied allowedMentions', async () => {
+    const mockInteraction = { update: vi.fn().mockResolvedValue({ id: 'msg-6' }) };
+    await safeUpdate(mockInteraction, {
+      content: 'test',
+      allowedMentions: { parse: ['everyone', 'roles'] },
+    });
+    expect(mockInteraction.update).toHaveBeenCalledWith(
       expect.objectContaining({ allowedMentions: SAFE_ALLOWED_MENTIONS }),
     );
   });
@@ -295,6 +338,17 @@ describe('interaction truncation (reply/editReply/followUp)', () => {
     expect(mockTarget.reply.mock.calls[0][0].content).toBe('hello world');
   });
 
+  it('safeUpdate should truncate long content instead of splitting', async () => {
+    const longContent = 'w'.repeat(2500);
+    const mockInteraction = { update: vi.fn().mockResolvedValue({ id: 'msg' }) };
+
+    await safeUpdate(mockInteraction, longContent);
+
+    expect(mockInteraction.update).toHaveBeenCalledTimes(1);
+    const sentContent = mockInteraction.update.mock.calls[0][0].content;
+    expect(sentContent).toHaveLength(2000);
+  });
+
   it('safeReply should handle non-string content unchanged', async () => {
     const mockTarget = { reply: vi.fn().mockResolvedValue({ id: 'msg' }) };
 
@@ -344,6 +398,18 @@ describe('Winston error logging', () => {
     await expect(safeEditReply(mockInteraction, 'test')).rejects.toThrow('editReply failed');
     expect(mockLogError).toHaveBeenCalledWith('safeEditReply failed', {
       error: 'editReply failed',
+    });
+  });
+
+  it('safeUpdate should log and rethrow on error', async () => {
+    const { error: mockLogError } = await import('../../src/logger.js');
+    const mockInteraction = {
+      update: vi.fn().mockRejectedValue(new Error('update failed')),
+    };
+
+    await expect(safeUpdate(mockInteraction, 'test')).rejects.toThrow('update failed');
+    expect(mockLogError).toHaveBeenCalledWith('safeUpdate failed', {
+      error: 'update failed',
     });
   });
 });
