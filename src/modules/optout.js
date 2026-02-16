@@ -8,38 +8,28 @@
  * long-term memory features.
  *
  * State is stored in an in-memory Set for fast lookups and persisted
- * to PostgreSQL (memory_optouts table) for durability across restarts.
+ * to data/optout.json for durability across restarts.
  */
 
-import { getPool } from '../db.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { info, warn as logWarn } from '../logger.js';
+
+/** Default path for the opt-out persistence file */
+const DEFAULT_OPTOUT_PATH = resolve('data/optout.json');
 
 /** In-memory set of opted-out user IDs */
 let optedOutUsers = new Set();
 
-/** Database pool — defaults to getPool(), can be overridden for testing */
-let pool = null;
+/** Current file path (can be overridden for testing) */
+let optoutFilePath = DEFAULT_OPTOUT_PATH;
 
 /**
- * Get the active database pool.
- * Uses injected pool if set, otherwise falls back to getPool().
- * @returns {import('pg').Pool | null}
+ * Set the file path for opt-out persistence (for testing).
+ * @param {string} filePath
  */
-function resolvePool() {
-  if (pool) return pool;
-  try {
-    return getPool();
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Set the database pool (for testing).
- * @param {import('pg').Pool | null} mockPool
- */
-export function _setPool(mockPool) {
-  pool = mockPool;
+export function _setOptoutPath(filePath) {
+  optoutFilePath = filePath;
 }
 
 /**
@@ -47,7 +37,7 @@ export function _setPool(mockPool) {
  */
 export function _resetOptouts() {
   optedOutUsers = new Set();
-  pool = null;
+  optoutFilePath = DEFAULT_OPTOUT_PATH;
 }
 
 /**
@@ -62,63 +52,64 @@ export function isOptedOut(userId) {
 /**
  * Toggle the opt-out state for a user.
  * If opted out, opts them back in. If opted in, opts them out.
- * Persists the change to the database (best-effort).
+ * Persists the change to disk.
  * @param {string} userId - Discord user ID
- * @returns {Promise<{ optedOut: boolean }>} The new opt-out state
+ * @returns {{ optedOut: boolean }} The new opt-out state
  */
-export async function toggleOptOut(userId) {
-  const db = resolvePool();
-
+export function toggleOptOut(userId) {
   if (optedOutUsers.has(userId)) {
     optedOutUsers.delete(userId);
     info('User opted back in to memory', { userId });
-
-    if (db) {
-      try {
-        await db.query('DELETE FROM memory_optouts WHERE user_id = $1', [userId]);
-      } catch (err) {
-        logWarn('Failed to delete opt-out from database', { userId, error: err.message });
-      }
-    }
-
+    saveOptOuts();
     return { optedOut: false };
   }
 
   optedOutUsers.add(userId);
   info('User opted out of memory', { userId });
-
-  if (db) {
-    try {
-      await db.query(
-        'INSERT INTO memory_optouts (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING',
-        [userId],
-      );
-    } catch (err) {
-      logWarn('Failed to persist opt-out to database', { userId, error: err.message });
-    }
-  }
-
+  saveOptOuts();
   return { optedOut: true };
 }
 
 /**
- * Load opt-out state from the database.
- * Handles unavailable database gracefully.
+ * Load opt-out state from the persistence file.
+ * Handles missing or corrupt files gracefully.
  */
-export async function loadOptOuts() {
-  const db = resolvePool();
-
-  if (!db) {
-    logWarn('Database not available, starting with empty opt-out set');
-    return;
-  }
-
+export function loadOptOuts() {
   try {
-    const result = await db.query('SELECT user_id FROM memory_optouts');
-    optedOutUsers = new Set(result.rows.map((row) => row.user_id));
-    info('Loaded opt-out list from database', { count: optedOutUsers.size });
+    if (!existsSync(optoutFilePath)) {
+      info('No opt-out file found, starting with empty set', { path: optoutFilePath });
+      return;
+    }
+
+    const raw = readFileSync(optoutFilePath, 'utf-8');
+    const data = JSON.parse(raw);
+
+    if (Array.isArray(data)) {
+      optedOutUsers = new Set(data);
+      info('Loaded opt-out list', { count: optedOutUsers.size, path: optoutFilePath });
+    } else {
+      logWarn('Invalid opt-out file format, expected array', { path: optoutFilePath });
+      optedOutUsers = new Set();
+    }
   } catch (err) {
-    logWarn('Failed to load opt-outs from database', { error: err.message });
+    logWarn('Failed to load opt-out file', { path: optoutFilePath, error: err.message });
     optedOutUsers = new Set();
+  }
+}
+
+/**
+ * Save the current opt-out state to the persistence file.
+ */
+export function saveOptOuts() {
+  try {
+    const dir = dirname(optoutFilePath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    const data = JSON.stringify([...optedOutUsers], null, 2);
+    writeFileSync(optoutFilePath, data, 'utf-8');
+  } catch (err) {
+    logWarn('Failed to save opt-out file', { path: optoutFilePath, error: err.message });
   }
 }

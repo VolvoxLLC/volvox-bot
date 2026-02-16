@@ -17,6 +17,11 @@ vi.mock('../../src/modules/config.js', () => ({
   })),
 }));
 
+// Mock optout module
+vi.mock('../../src/modules/optout.js', () => ({
+  isOptedOut: vi.fn(() => false),
+}));
+
 // Mock logger
 vi.mock('../../src/logger.js', () => ({
   info: vi.fn(),
@@ -42,6 +47,7 @@ import {
   isMemoryAvailable,
   searchMemories,
 } from '../../src/modules/memory.js';
+import { isOptedOut } from '../../src/modules/optout.js';
 
 /**
  * Create a mock mem0 client with all SDK methods stubbed.
@@ -72,6 +78,8 @@ describe('memory module', () => {
         autoExtract: true,
       },
     });
+    // Reset optout mock
+    isOptedOut.mockReturnValue(false);
     // Set up env for tests
     delete process.env.MEM0_API_KEY;
   });
@@ -627,6 +635,17 @@ describe('memory module', () => {
       expect(result).toBe('');
     });
 
+    it('should return empty string when user has opted out', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient();
+      _setClient(mockClient);
+      isOptedOut.mockReturnValue(true);
+
+      const result = await buildMemoryContext('user123', 'testuser', 'hello');
+      expect(result).toBe('');
+      expect(mockClient.search).not.toHaveBeenCalled();
+    });
+
     it('should return formatted context string with memories and relations', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({
@@ -713,6 +732,17 @@ describe('memory module', () => {
       _setMem0Available(false);
       const result = await extractAndStoreMemories('user123', 'testuser', 'hello', 'hi');
       expect(result).toBe(false);
+    });
+
+    it('should return false when user has opted out', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient();
+      _setClient(mockClient);
+      isOptedOut.mockReturnValue(true);
+
+      const result = await extractAndStoreMemories('user123', 'testuser', 'hello', 'hi');
+      expect(result).toBe(false);
+      expect(mockClient.add).not.toHaveBeenCalled();
     });
 
     it('should return false when autoExtract is disabled', async () => {
