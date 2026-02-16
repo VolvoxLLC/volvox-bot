@@ -54,9 +54,18 @@ dotenvConfig();
 // setConfigValue() propagate here automatically without re-assignment.
 let config = {};
 
-// Initialize Discord client with required intents
-// allowedMentions restricts which mention types Discord will parse.
-// Only 'users' is allowed — @everyone, @here, and role mentions are blocked globally.
+// Initialize Discord client with required intents.
+//
+// INTENTIONAL DESIGN: allowedMentions restricts which mention types Discord
+// will parse. Only 'users' is allowed — @everyone, @here, and role mentions
+// are ALL blocked globally at the Client level. This is a defense-in-depth
+// measure to prevent the bot from ever mass-pinging, even if AI-generated
+// or user-supplied content contains @everyone/@here or <@&roleId>.
+//
+// To opt-in to role mentions in the future, add 'roles' to the parse array
+// below (e.g. { parse: ['users', 'roles'] }). You would also need to update
+// SAFE_ALLOWED_MENTIONS in src/utils/safeSend.js to match.
+//
 // See: https://github.com/BillChirico/bills-bot/issues/61
 const client = new Client({
   intents: [
