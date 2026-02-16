@@ -94,9 +94,9 @@ export function getMemoryConfig() {
     };
   } catch {
     return {
-      enabled: true,
+      enabled: false,
       maxContextMemories: DEFAULT_MAX_CONTEXT_MEMORIES,
-      autoExtract: true,
+      autoExtract: false,
     };
   }
 }
