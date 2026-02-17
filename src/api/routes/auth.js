@@ -199,6 +199,13 @@ router.get('/discord/callback', async (req, res) => {
 
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
+    if (typeof accessToken !== 'string' || accessToken.trim().length === 0) {
+      error('Discord token exchange returned invalid payload', {
+        hasAccessToken: Object.hasOwn(tokenData, 'access_token'),
+        accessTokenType: typeof accessToken,
+      });
+      return res.status(502).json({ error: 'Invalid response from Discord' });
+    }
 
     // Fetch user info
     const userResponse = await fetch(`${DISCORD_API}/users/@me`, {
@@ -212,6 +219,13 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     const user = await userResponse.json();
+    if (typeof user?.id !== 'string' || user.id.trim().length === 0) {
+      error('Discord user fetch returned invalid payload', {
+        hasUserId: Object.hasOwn(user ?? {}, 'id'),
+        userIdType: typeof user?.id,
+      });
+      return res.status(502).json({ error: 'Invalid response from Discord' });
+    }
 
     // Store access token server-side (never in the JWT)
     sessionStore.set(user.id, accessToken);
