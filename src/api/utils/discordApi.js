@@ -6,7 +6,7 @@
 /** Guild cache: userId → { guilds, expiresAt } */
 export const guildCache = new Map();
 const GUILD_CACHE_TTL_MS = 90_000; // 90 seconds
-const DISCORD_API = 'https://discord.com/api/v10';
+export const DISCORD_API = 'https://discord.com/api/v10';
 
 function cleanExpiredGuildCache() {
   const now = Date.now();
