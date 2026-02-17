@@ -22,7 +22,7 @@ const features = [
     icon: MessageSquare,
     title: "AI Chat",
     description:
-      "Powered by Claude via OpenClaw — natural conversations, context-aware responses, and organic chat participation.",
+      "Powered by Claude via the Anthropic Agent SDK — natural conversations, context-aware responses, and intelligent triage-based model selection.",
   },
   {
     icon: Shield,

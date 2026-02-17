@@ -31,6 +31,7 @@ import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { startTriage, stopTriage } from './modules/triage.js';
 import { initLogsTable, pruneOldLogs } from './transports/postgres.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
@@ -222,7 +223,8 @@ client.on('interactionCreate', async (interaction) => {
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });
 
-  // 1. Stop conversation cleanup timer and tempban scheduler
+  // 1. Stop triage, conversation cleanup timer, and tempban scheduler
+  stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
 
@@ -360,6 +362,9 @@ async function startup() {
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
+
+  // Start triage module (per-channel message classification)
+  startTriage(client, config, healthMonitor);
 
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {

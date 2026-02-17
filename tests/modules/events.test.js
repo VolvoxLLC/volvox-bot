@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// Mock safeSend wrappers — passthrough to underlying methods for unit isolation
+// ── Mocks (must be before imports) ──────────────────────────────────────────
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
   safeReply: (t, opts) => t.reply(opts),
@@ -13,49 +13,22 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
   debug: vi.fn(),
 }));
-
-// Mock ai module
-vi.mock('../../src/modules/ai.js', () => ({
-  generateResponse: vi.fn().mockResolvedValue('AI response'),
+vi.mock('../../src/modules/triage.js', () => ({
+  accumulateMessage: vi.fn(),
+  evaluateNow: vi.fn().mockResolvedValue(undefined),
 }));
-
-// Mock chimeIn module
-vi.mock('../../src/modules/chimeIn.js', () => ({
-  accumulate: vi.fn().mockResolvedValue(undefined),
-  resetCounter: vi.fn(),
-}));
-
-// Mock spam module
 vi.mock('../../src/modules/spam.js', () => ({
   isSpam: vi.fn().mockReturnValue(false),
   sendSpamAlert: vi.fn().mockResolvedValue(undefined),
 }));
-
-// Mock welcome module
 vi.mock('../../src/modules/welcome.js', () => ({
   sendWelcomeMessage: vi.fn().mockResolvedValue(undefined),
   recordCommunityActivity: vi.fn(),
 }));
-
-// Mock errors utility
 vi.mock('../../src/utils/errors.js', () => ({
   getUserFriendlyMessage: vi.fn().mockReturnValue('Something went wrong. Try again!'),
 }));
 
-// Mock splitMessage
-vi.mock('../../src/utils/splitMessage.js', () => ({
-  needsSplitting: vi.fn().mockReturnValue(false),
-  splitMessage: vi.fn().mockReturnValue(['chunk1', 'chunk2']),
-}));
-
-// Mock threading module
-vi.mock('../../src/modules/threading.js', () => ({
-  shouldUseThread: vi.fn().mockReturnValue(false),
-  getOrCreateThread: vi.fn().mockResolvedValue({ thread: null, isNew: false }),
-}));
-
-import { generateResponse } from '../../src/modules/ai.js';
-import { accumulate, resetCounter } from '../../src/modules/chimeIn.js';
 import {
   registerErrorHandlers,
   registerEventHandlers,
@@ -64,15 +37,18 @@ import {
   registerReadyHandler,
 } from '../../src/modules/events.js';
 import { isSpam, sendSpamAlert } from '../../src/modules/spam.js';
-import { getOrCreateThread, shouldUseThread } from '../../src/modules/threading.js';
+import { accumulateMessage, evaluateNow } from '../../src/modules/triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from '../../src/modules/welcome.js';
 import { getUserFriendlyMessage } from '../../src/utils/errors.js';
-import { needsSplitting, splitMessage } from '../../src/utils/splitMessage.js';
+
+// ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('events module', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
+
+  // ── registerReadyHandler ──────────────────────────────────────────────
 
   describe('registerReadyHandler', () => {
     it('should register clientReady event', () => {
@@ -114,6 +90,8 @@ describe('events module', () => {
     });
   });
 
+  // ── registerGuildMemberAddHandler ─────────────────────────────────────
+
   describe('registerGuildMemberAddHandler', () => {
     it('should register guildMemberAdd handler', () => {
       const on = vi.fn();
@@ -138,6 +116,8 @@ describe('events module', () => {
     });
   });
 
+  // ── registerMessageCreateHandler ──────────────────────────────────────
+
   describe('registerMessageCreateHandler', () => {
     let onCallbacks;
     let client;
@@ -160,6 +140,8 @@ describe('events module', () => {
       registerMessageCreateHandler(client, config, null);
     }
 
+    // ── Bot/DM filtering ──────────────────────────────────────────────
+
     it('should ignore bot messages', async () => {
       setup();
       const message = { author: { bot: true }, guild: { id: 'g1' } };
@@ -174,71 +156,95 @@ describe('events module', () => {
       expect(isSpam).not.toHaveBeenCalled();
     });
 
-    it('should detect and alert spam', async () => {
+    // ── Spam detection ────────────────────────────────────────────────
+
+    it('should detect and alert spam before triage', async () => {
       setup();
       isSpam.mockReturnValueOnce(true);
       const message = {
-        author: { bot: false, tag: 'spammer#1234' },
+        author: { bot: false, id: 'spammer-id', tag: 'spammer#1234' },
         guild: { id: 'g1' },
         content: 'spam content',
         channel: { id: 'c1' },
       };
       await onCallbacks.messageCreate(message);
       expect(sendSpamAlert).toHaveBeenCalledWith(message, client, config);
+      expect(accumulateMessage).not.toHaveBeenCalled();
     });
 
-    it('should respond when bot is mentioned', async () => {
+    // ── Community activity ────────────────────────────────────────────
+
+    it('should record community activity for all non-bot non-spam messages', async () => {
       setup();
-      const mockReply = vi.fn().mockResolvedValue(undefined);
-      const mockSendTyping = vi.fn().mockResolvedValue(undefined);
       const message = {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
-        content: `<@bot-user-id> hello`,
+        content: 'regular message',
+        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(recordCommunityActivity).toHaveBeenCalledWith(message, config);
+    });
+
+    // ── @mention routing ──────────────────────────────────────────────
+
+    it('should call accumulateMessage then evaluateNow on @mention', async () => {
+      setup();
+      const message = {
+        author: { bot: false, username: 'user', id: 'author-1' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> hello',
         channel: {
           id: 'c1',
-          sendTyping: mockSendTyping,
+          sendTyping: vi.fn().mockResolvedValue(undefined),
           send: vi.fn(),
           isThread: vi.fn().mockReturnValue(false),
         },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
-        reply: mockReply,
+        reply: vi.fn().mockResolvedValue(undefined),
       };
       await onCallbacks.messageCreate(message);
-      expect(resetCounter).toHaveBeenCalledWith('c1');
-      expect(mockReply).toHaveBeenCalledWith('AI response');
+
+      expect(accumulateMessage).toHaveBeenCalledWith(message, config);
+      expect(evaluateNow).toHaveBeenCalledWith('c1', config, client, null);
     });
 
-    it('should respond to replies to bot', async () => {
+    // ── Reply to bot ──────────────────────────────────────────────────
+
+    it('should call accumulateMessage then evaluateNow on reply to bot', async () => {
       setup();
-      const mockReply = vi.fn().mockResolvedValue(undefined);
-      const mockSendTyping = vi.fn().mockResolvedValue(undefined);
       const message = {
-        author: { bot: false, username: 'user' },
+        author: { bot: false, username: 'user', id: 'author-1' },
         guild: { id: 'g1' },
         content: 'follow up',
         channel: {
           id: 'c1',
-          sendTyping: mockSendTyping,
+          sendTyping: vi.fn().mockResolvedValue(undefined),
           send: vi.fn(),
           isThread: vi.fn().mockReturnValue(false),
         },
         mentions: { has: vi.fn().mockReturnValue(false), repliedUser: { id: 'bot-user-id' } },
         reference: { messageId: 'ref-123' },
-        reply: mockReply,
+        reply: vi.fn().mockResolvedValue(undefined),
       };
       await onCallbacks.messageCreate(message);
-      expect(mockReply).toHaveBeenCalled();
+
+      expect(accumulateMessage).toHaveBeenCalledWith(message, config);
+      expect(evaluateNow).toHaveBeenCalledWith('c1', config, client, null);
     });
 
-    it('should handle empty mention content', async () => {
+    // ── Empty mention ─────────────────────────────────────────────────
+
+    it('should return "Hey! What\'s up?" for empty mention', async () => {
       setup();
       const mockReply = vi.fn().mockResolvedValue(undefined);
       const message = {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
-        content: `<@bot-user-id>`,
+        content: '<@bot-user-id>',
         channel: {
           id: 'c1',
           sendTyping: vi.fn(),
@@ -251,81 +257,13 @@ describe('events module', () => {
       };
       await onCallbacks.messageCreate(message);
       expect(mockReply).toHaveBeenCalledWith("Hey! What's up?");
+      expect(evaluateNow).not.toHaveBeenCalled();
     });
 
-    it('should split long AI responses', async () => {
-      setup();
-      needsSplitting.mockReturnValueOnce(true);
-      splitMessage.mockReturnValueOnce(['chunk1', 'chunk2']);
-      const mockSend = vi.fn().mockResolvedValue(undefined);
-      const message = {
-        author: { bot: false, username: 'user' },
-        guild: { id: 'g1' },
-        content: `<@bot-user-id> tell me a story`,
-        channel: {
-          id: 'c1',
-          sendTyping: vi.fn(),
-          send: mockSend,
-          isThread: vi.fn().mockReturnValue(false),
-        },
-        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
-        reference: null,
-        reply: vi.fn(),
-      };
-      await onCallbacks.messageCreate(message);
-      expect(mockSend).toHaveBeenCalledWith('chunk1');
-      expect(mockSend).toHaveBeenCalledWith('chunk2');
-    });
+    // ── Allowed channels ──────────────────────────────────────────────
 
-    it('should handle message.reply() failure gracefully', async () => {
-      setup();
-      const mockReply = vi.fn().mockRejectedValue(new Error('Missing Permissions'));
-      const message = {
-        author: { bot: false, username: 'user' },
-        guild: { id: 'g1' },
-        content: `<@bot-user-id> hello`,
-        channel: {
-          id: 'c1',
-          sendTyping: vi.fn().mockResolvedValue(undefined),
-          send: vi.fn(),
-          isThread: vi.fn().mockReturnValue(false),
-        },
-        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
-        reference: null,
-        reply: mockReply,
-      };
-      await onCallbacks.messageCreate(message);
-      // Should not throw — error is caught and logged
-      expect(getUserFriendlyMessage).toHaveBeenCalled();
-    });
-
-    it('should handle message.channel.send() failure during split gracefully', async () => {
-      setup();
-      needsSplitting.mockReturnValueOnce(true);
-      splitMessage.mockReturnValueOnce(['chunk1', 'chunk2']);
-      const mockSend = vi.fn().mockRejectedValue(new Error('Unknown Channel'));
-      const mockReply = vi.fn().mockRejectedValue(new Error('Unknown Channel'));
-      const message = {
-        author: { bot: false, username: 'user' },
-        guild: { id: 'g1' },
-        content: `<@bot-user-id> tell me a story`,
-        channel: {
-          id: 'c1',
-          sendTyping: vi.fn().mockResolvedValue(undefined),
-          send: mockSend,
-          isThread: vi.fn().mockReturnValue(false),
-        },
-        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
-        reference: null,
-        reply: mockReply,
-      };
-      await onCallbacks.messageCreate(message);
-      // Should not throw — error is caught and logged
-    });
-
-    it('should respect allowed channels', async () => {
+    it('should respect channel allowlist', async () => {
       setup({ ai: { enabled: true, channels: ['allowed-ch'] } });
-      const mockReply = vi.fn();
       const message = {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
@@ -338,41 +276,38 @@ describe('events module', () => {
         },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
-        reply: mockReply,
+        reply: vi.fn(),
       };
       await onCallbacks.messageCreate(message);
-      // Should NOT respond (channel not in allowed list)
-      expect(generateResponse).not.toHaveBeenCalled();
+      expect(evaluateNow).not.toHaveBeenCalled();
     });
 
-    it('should allow thread messages when parent channel is in the allowlist', async () => {
+    // ── Thread parent allowlist ───────────────────────────────────────
+
+    it('should allow thread messages when parent channel is in allowlist', async () => {
       setup({ ai: { enabled: true, channels: ['allowed-ch'] } });
-      const mockReply = vi.fn().mockResolvedValue(undefined);
-      const mockSendTyping = vi.fn().mockResolvedValue(undefined);
       const message = {
-        author: { bot: false, username: 'user' },
+        author: { bot: false, username: 'user', id: 'author-1' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> hello from thread',
         channel: {
           id: 'thread-id-999',
           parentId: 'allowed-ch',
-          sendTyping: mockSendTyping,
+          sendTyping: vi.fn().mockResolvedValue(undefined),
           send: vi.fn(),
           isThread: vi.fn().mockReturnValue(true),
         },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
-        reply: mockReply,
+        reply: vi.fn().mockResolvedValue(undefined),
       };
       await onCallbacks.messageCreate(message);
-      // Should respond because parent channel is in the allowlist
-      expect(generateResponse).toHaveBeenCalled();
-      expect(mockReply).toHaveBeenCalledWith('AI response');
+      expect(accumulateMessage).toHaveBeenCalledWith(message, config);
+      expect(evaluateNow).toHaveBeenCalledWith('thread-id-999', config, client, null);
     });
 
-    it('should block thread messages when parent channel is NOT in the allowlist', async () => {
+    it('should block thread messages when parent channel is NOT in allowlist', async () => {
       setup({ ai: { enabled: true, channels: ['allowed-ch'] } });
-      const mockReply = vi.fn();
       const message = {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
@@ -386,68 +321,42 @@ describe('events module', () => {
         },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
-        reply: mockReply,
-      };
-      await onCallbacks.messageCreate(message);
-      // Should NOT respond (parent channel not in allowed list)
-      expect(generateResponse).not.toHaveBeenCalled();
-    });
-
-    it('should use threading when shouldUseThread returns true', async () => {
-      setup();
-      shouldUseThread.mockReturnValueOnce(true);
-      const mockThread = {
-        id: 'thread-123',
-        sendTyping: vi.fn().mockResolvedValue(undefined),
-        send: vi.fn().mockResolvedValue(undefined),
-      };
-      getOrCreateThread.mockResolvedValueOnce({ thread: mockThread, isNew: true });
-
-      const message = {
-        author: { bot: false, id: 'author-123', username: 'user' },
-        guild: { id: 'g1' },
-        content: '<@bot-user-id> hello from channel',
-        channel: {
-          id: 'c1',
-          sendTyping: vi.fn(),
-          send: vi.fn(),
-          isThread: vi.fn().mockReturnValue(false),
-        },
-        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
-        reference: null,
         reply: vi.fn(),
       };
       await onCallbacks.messageCreate(message);
-
-      expect(shouldUseThread).toHaveBeenCalledWith(message);
-      expect(getOrCreateThread).toHaveBeenCalledWith(message, 'hello from channel');
-      expect(mockThread.sendTyping).toHaveBeenCalled();
-      expect(mockThread.send).toHaveBeenCalledWith('AI response');
-      // generateResponse should use thread ID for history
-      expect(generateResponse).toHaveBeenCalledWith(
-        'thread-123',
-        'hello from channel',
-        'user',
-        config,
-        null,
-        'author-123',
-      );
+      expect(evaluateNow).not.toHaveBeenCalled();
     });
 
-    it('should fall back to inline reply when thread creation fails', async () => {
-      setup();
-      shouldUseThread.mockReturnValueOnce(true);
-      getOrCreateThread.mockResolvedValueOnce({ thread: null, isNew: false });
+    // ── Non-mention ───────────────────────────────────────────────────
 
-      const mockReply = vi.fn().mockResolvedValue(undefined);
-      const mockSendTyping = vi.fn().mockResolvedValue(undefined);
+    it('should call accumulateMessage only (not evaluateNow) for non-mention', async () => {
+      setup();
       const message = {
         author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: 'regular message',
+        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(accumulateMessage).toHaveBeenCalledWith(message, config);
+      expect(evaluateNow).not.toHaveBeenCalled();
+    });
+
+    // ── Error handling ────────────────────────────────────────────────
+
+    it('should send fallback error message when evaluateNow fails', async () => {
+      setup();
+      evaluateNow.mockRejectedValueOnce(new Error('triage failed'));
+      const mockReply = vi.fn().mockResolvedValue(undefined);
+      const message = {
+        author: { bot: false, username: 'user', id: 'author-1' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> hello',
         channel: {
           id: 'c1',
-          sendTyping: mockSendTyping,
+          sendTyping: vi.fn().mockResolvedValue(undefined),
           send: vi.fn(),
           isThread: vi.fn().mockReturnValue(false),
         },
@@ -457,45 +366,15 @@ describe('events module', () => {
       };
       await onCallbacks.messageCreate(message);
 
-      // Should fall back to inline reply
-      expect(mockSendTyping).toHaveBeenCalled();
-      expect(mockReply).toHaveBeenCalledWith('AI response');
+      expect(getUserFriendlyMessage).toHaveBeenCalled();
+      expect(mockReply).toHaveBeenCalledWith('Something went wrong. Try again!');
     });
 
-    it('should split long responses in threads', async () => {
+    it('should handle accumulateMessage error gracefully for non-mention', async () => {
       setup();
-      shouldUseThread.mockReturnValueOnce(true);
-      needsSplitting.mockReturnValueOnce(true);
-      splitMessage.mockReturnValueOnce(['chunk1', 'chunk2']);
-      const mockThread = {
-        id: 'thread-456',
-        sendTyping: vi.fn().mockResolvedValue(undefined),
-        send: vi.fn().mockResolvedValue(undefined),
-      };
-      getOrCreateThread.mockResolvedValueOnce({ thread: mockThread, isNew: true });
-
-      const message = {
-        author: { bot: false, username: 'user' },
-        guild: { id: 'g1' },
-        content: '<@bot-user-id> tell me a long story',
-        channel: {
-          id: 'c1',
-          sendTyping: vi.fn(),
-          send: vi.fn(),
-          isThread: vi.fn().mockReturnValue(false),
-        },
-        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
-        reference: null,
-        reply: vi.fn(),
-      };
-      await onCallbacks.messageCreate(message);
-
-      expect(mockThread.send).toHaveBeenCalledWith('chunk1');
-      expect(mockThread.send).toHaveBeenCalledWith('chunk2');
-    });
-
-    it('should accumulate messages for chimeIn', async () => {
-      setup({ ai: { enabled: false } });
+      accumulateMessage.mockImplementationOnce(() => {
+        throw new Error('accumulate failed');
+      });
       const message = {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
@@ -504,24 +383,12 @@ describe('events module', () => {
         mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
         reference: null,
       };
+      // Should not throw
       await onCallbacks.messageCreate(message);
-      expect(accumulate).toHaveBeenCalledWith(message, config);
-    });
-
-    it('should record community activity', async () => {
-      setup();
-      const message = {
-        author: { bot: false, username: 'user' },
-        guild: { id: 'g1' },
-        content: 'regular message',
-        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
-        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
-        reference: null,
-      };
-      await onCallbacks.messageCreate(message);
-      expect(recordCommunityActivity).toHaveBeenCalledWith(message, config);
     });
   });
+
+  // ── registerErrorHandlers ─────────────────────────────────────────────
 
   describe('registerErrorHandlers', () => {
     it('should register error and unhandledRejection handlers', () => {
@@ -547,6 +414,8 @@ describe('events module', () => {
       processOnSpy.mockRestore();
     });
   });
+
+  // ── registerEventHandlers ─────────────────────────────────────────────
 
   describe('registerEventHandlers', () => {
     it('should register all handlers', () => {

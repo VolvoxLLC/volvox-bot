@@ -22,10 +22,20 @@ describe('config.json', () => {
   it('should have an ai section', () => {
     expect(config.ai).toBeDefined();
     expect(typeof config.ai.enabled).toBe('boolean');
-    expect(typeof config.ai.model).toBe('string');
-    expect(typeof config.ai.maxTokens).toBe('number');
     expect(typeof config.ai.systemPrompt).toBe('string');
     expect(Array.isArray(config.ai.channels)).toBe(true);
+  });
+
+  it('should have a triage section', () => {
+    expect(config.triage).toBeDefined();
+    expect(typeof config.triage.enabled).toBe('boolean');
+    expect(typeof config.triage.defaultInterval).toBe('number');
+    expect(typeof config.triage.maxBufferSize).toBe('number');
+    expect(config.triage.models).toBeDefined();
+    expect(typeof config.triage.models.triage).toBe('string');
+    expect(typeof config.triage.models.default).toBe('string');
+    expect(config.triage.budget).toBeDefined();
+    expect(config.triage.timeouts).toBeDefined();
   });
 
   it('should have a welcome section', () => {
