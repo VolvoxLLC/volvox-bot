@@ -13,11 +13,17 @@ import { info, error as logError, warn as logWarn } from '../logger.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', '..', 'config.json');
 
+/** Maximum number of guild entries (excluding 'global') kept in configCache */
+const MAX_GUILD_CACHE_SIZE = 500;
+
 /** @type {Array<{path: string, callback: Function}>} Registered change listeners */
 const listeners = [];
 
 /** @type {Map<string, Object>} In-memory config cache keyed by guild_id ('global' for defaults) */
 let configCache = new Map();
+
+/** @type {Map<string, Object>} Cached merged (global + guild override) config per guild */
+let mergedConfigCache = new Map();
 
 /** @type {Object|null} Cached config.json contents (loaded once, never invalidated) */
 let fileConfigCache = null;
@@ -182,14 +188,47 @@ export function getConfig(guildId) {
     return configCache.get('global') || {};
   }
 
+  // Return cached merged result if available
+  const cached = mergedConfigCache.get(guildId);
+  if (cached) {
+    // Refresh access order for LRU tracking (Maps preserve insertion order)
+    mergedConfigCache.delete(guildId);
+    mergedConfigCache.set(guildId, cached);
+    return cached;
+  }
+
   const globalConfig = configCache.get('global') || {};
   const guildOverrides = configCache.get(guildId);
 
   if (!guildOverrides) {
-    return structuredClone(globalConfig);
+    const cloned = structuredClone(globalConfig);
+    cacheMergedResult(guildId, cloned);
+    return cloned;
   }
 
-  return deepMerge(structuredClone(globalConfig), guildOverrides);
+  const merged = deepMerge(structuredClone(globalConfig), guildOverrides);
+  cacheMergedResult(guildId, merged);
+  return merged;
+}
+
+/**
+ * Store a merged config result and enforce the LRU guild cache cap.
+ * Evicts the least-recently-used guild entries when the cap is exceeded.
+ * @param {string} guildId - Guild ID
+ * @param {Object} merged - Merged config object
+ */
+function cacheMergedResult(guildId, merged) {
+  mergedConfigCache.set(guildId, merged);
+
+  // Evict least-recently-used guild entries when cap is exceeded
+  if (mergedConfigCache.size > MAX_GUILD_CACHE_SIZE) {
+    const firstKey = mergedConfigCache.keys().next().value;
+    mergedConfigCache.delete(firstKey);
+    // Also evict from the override cache to bound total memory
+    if (firstKey !== 'global') {
+      configCache.delete(firstKey);
+    }
+  }
 }
 
 /**
@@ -375,6 +414,9 @@ export async function setConfigValue(path, value, guildId = 'global') {
   }
   setNestedValue(cacheEntry[section], nestedParts, parsedVal);
 
+  // Invalidate merged config cache for this guild (will be rebuilt on next getConfig)
+  mergedConfigCache.delete(guildId);
+
   info('Config updated', { path, value: parsedVal, guildId, persisted: dbPersisted });
   await emitConfigChangeEvents(path, parsedVal, oldValue, guildId);
   return cacheEntry[section];
@@ -425,6 +467,9 @@ export async function resetConfig(section, guildId = 'global') {
         configCache.delete(guildId);
       }
     }
+
+    // Invalidate merged config cache for this guild
+    mergedConfigCache.delete(guildId);
 
     info('Guild config reset', { guildId, section: section || 'all' });
     return section ? configCache.get(guildId) || {} : {};
