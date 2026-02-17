@@ -2,30 +2,37 @@ import type { AuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import { logger } from "@/lib/logger";
 
-// --- Runtime validation ---
+// --- Runtime validation (deferred to request time, not module load / build) ---
 
-const secret = process.env.NEXTAUTH_SECRET ?? "";
 const PLACEHOLDER_PATTERN = /change|placeholder|example|replace.?me/i;
-if (secret.length < 32 || PLACEHOLDER_PATTERN.test(secret)) {
-  throw new Error(
-    "[auth] NEXTAUTH_SECRET must be at least 32 characters and not a placeholder value. " +
-      "Generate one with: openssl rand -base64 48",
-  );
-}
+let envValidated = false;
 
-if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
-  throw new Error(
-    "[auth] DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET must be set. " +
-      "Create an OAuth2 application at https://discord.com/developers/applications",
-  );
-}
+function validateEnv(): void {
+  if (envValidated) return;
+  envValidated = true;
 
-if (process.env.BOT_API_URL && !process.env.BOT_API_SECRET) {
-  logger.warn(
-    "[auth] BOT_API_URL is set but BOT_API_SECRET is missing. " +
-      "Requests to the bot API will be unauthenticated. " +
-      "Set BOT_API_SECRET to secure bot API communication.",
-  );
+  const secret = process.env.NEXTAUTH_SECRET ?? "";
+  if (secret.length < 32 || PLACEHOLDER_PATTERN.test(secret)) {
+    throw new Error(
+      "[auth] NEXTAUTH_SECRET must be at least 32 characters and not a placeholder value. " +
+        "Generate one with: openssl rand -base64 48",
+    );
+  }
+
+  if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
+    throw new Error(
+      "[auth] DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET must be set. " +
+        "Create an OAuth2 application at https://discord.com/developers/applications",
+    );
+  }
+
+  if (process.env.BOT_API_URL && !process.env.BOT_API_SECRET) {
+    logger.warn(
+      "[auth] BOT_API_URL is set but BOT_API_SECRET is missing. " +
+        "Requests to the bot API will be unauthenticated. " +
+        "Set BOT_API_SECRET to secure bot API communication.",
+    );
+  }
 }
 
 /**
@@ -104,75 +111,89 @@ export async function refreshDiscordToken(token: Record<string, unknown>): Promi
   };
 }
 
-export const authOptions: AuthOptions = {
-  providers: [
-    DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID!,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          scope: DISCORD_SCOPES,
+let _authOptions: AuthOptions | undefined;
+
+export function getAuthOptions(): AuthOptions {
+  if (_authOptions) return _authOptions;
+  validateEnv();
+  _authOptions = {
+    providers: [
+      DiscordProvider({
+        clientId: process.env.DISCORD_CLIENT_ID!,
+        clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+        authorization: {
+          params: {
+            scope: DISCORD_SCOPES,
+          },
         },
+      }),
+    ],
+    callbacks: {
+      async jwt({ token, account }) {
+        // Security note: accessToken and refreshToken are stored in the JWT but
+        // are NOT exposed to client-side JavaScript because (1) the session
+        // callback below intentionally omits them — only user.id and error are
+        // forwarded, (2) NextAuth stores the JWT in an httpOnly, encrypted cookie
+        // that cannot be read by client JS. Server-side code can access these
+        // tokens via getToken() in API routes.
+
+        // On initial sign-in, persist the Discord access token
+        if (account) {
+          token.accessToken = account.access_token;
+          token.refreshToken = account.refresh_token;
+          token.accessTokenExpires = account.expires_at
+            ? account.expires_at * 1000
+            : Date.now() + 7 * 24 * 60 * 60 * 1000; // Default to 7 days if provider omits expires_at
+          token.id = account.providerAccountId;
+        }
+
+        // If the access token has not expired, return it as-is.
+        // When expiresAt is undefined (e.g. JWT corruption or token migration),
+        // we intentionally fall through to refresh the token on every request
+        // rather than serving stale credentials — this is a safe default.
+        const expiresAt = token.accessTokenExpires as number | undefined;
+        if (expiresAt && Date.now() < expiresAt) {
+          return token;
+        }
+
+        // Access token has expired — attempt refresh
+        if (token.refreshToken) {
+          return refreshDiscordToken(token as Record<string, unknown>);
+        }
+
+        // No refresh token available — cannot recover; flag as error
+        return { ...token, error: "RefreshTokenError" };
       },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, account }) {
-      // Security note: accessToken and refreshToken are stored in the JWT but
-      // are NOT exposed to client-side JavaScript because (1) the session
-      // callback below intentionally omits them — only user.id and error are
-      // forwarded, (2) NextAuth stores the JWT in an httpOnly, encrypted cookie
-      // that cannot be read by client JS. Server-side code can access these
-      // tokens via getToken() in API routes.
-
-      // On initial sign-in, persist the Discord access token
-      if (account) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.accessTokenExpires = account.expires_at
-          ? account.expires_at * 1000
-          : Date.now() + 7 * 24 * 60 * 60 * 1000; // Default to 7 days if provider omits expires_at
-        token.id = account.providerAccountId;
-      }
-
-      // If the access token has not expired, return it as-is.
-      // When expiresAt is undefined (e.g. JWT corruption or token migration),
-      // we intentionally fall through to refresh the token on every request
-      // rather than serving stale credentials — this is a safe default.
-      const expiresAt = token.accessTokenExpires as number | undefined;
-      if (expiresAt && Date.now() < expiresAt) {
-        return token;
-      }
-
-      // Access token has expired — attempt refresh
-      if (token.refreshToken) {
-        return refreshDiscordToken(token as Record<string, unknown>);
-      }
-
-      // No refresh token available — cannot recover; flag as error
-      return { ...token, error: "RefreshTokenError" };
+      async session({ session, token }) {
+        // Only expose user ID to the client session.
+        // Intentionally NOT exposing token.accessToken or token.refreshToken to
+        // the client session — these stay in the server-side JWT. Use getToken()
+        // in API routes to access the Discord access token for server-side calls.
+        if (session.user) {
+          session.user.id = token.id as string;
+        }
+        // Propagate token refresh errors so the client can redirect to sign-in
+        if (token.error) {
+          session.error = token.error as string;
+        }
+        return session;
+      },
     },
-    async session({ session, token }) {
-      // Only expose user ID to the client session.
-      // Intentionally NOT exposing token.accessToken or token.refreshToken to
-      // the client session — these stay in the server-side JWT. Use getToken()
-      // in API routes to access the Discord access token for server-side calls.
-      if (session.user) {
-        session.user.id = token.id as string;
-      }
-      // Propagate token refresh errors so the client can redirect to sign-in
-      if (token.error) {
-        session.error = token.error as string;
-      }
-      return session;
+    pages: {
+      signIn: "/login",
     },
+    session: {
+      strategy: "jwt",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+    },
+    secret: process.env.NEXTAUTH_SECRET,
+  };
+  return _authOptions;
+}
+
+/** @deprecated Use getAuthOptions() instead — kept for backward compatibility. */
+export const authOptions: AuthOptions = new Proxy({} as AuthOptions, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getAuthOptions(), prop, receiver);
   },
-  pages: {
-    signIn: "/login",
-  },
-  session: {
-    strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-};
+});

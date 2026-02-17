@@ -166,7 +166,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           <div className="flex items-center gap-2 truncate">
             {selectedGuild?.icon ? (
               <Image
-                src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 64)}
+                src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 64)!}
                 alt={selectedGuild.name}
                 width={20}
                 height={20}
@@ -193,7 +193,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           >
             {guild.icon ? (
               <Image
-                src={getGuildIconUrl(guild.id, guild.icon, 64)}
+                src={getGuildIconUrl(guild.id, guild.icon, 64)!}
                 alt={guild.name}
                 width={20}
                 height={20}
