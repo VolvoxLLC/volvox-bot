@@ -170,7 +170,7 @@ router.get('/', async (req, res) => {
 /**
  * GET /:id — Guild info
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', requireGuildAdmin, (req, res) => {
   const guild = req.guild;
   const MAX_CHANNELS = 500;
   const channels = [];

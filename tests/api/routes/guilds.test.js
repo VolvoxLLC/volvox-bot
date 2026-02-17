@@ -137,6 +137,7 @@ describe('guilds routes', () => {
     it('should authenticate with valid JWT Bearer token', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
       const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: String(0x8) }]);
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1')
