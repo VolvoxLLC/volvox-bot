@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
-import { sessionStore } from './auth.js';
+import { getSessionToken } from './auth.js';
 
 const router = Router();
 
@@ -67,15 +67,18 @@ const GUILD_CACHE_TTL_MS = 90_000; // 90 seconds
  */
 async function fetchUserGuilds(userId, accessToken) {
   const cached = guildCache.get(userId);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.guilds;
+  if (cached) {
+    if (Date.now() < cached.expiresAt) {
+      return cached.guilds;
+    }
+    guildCache.delete(userId);
   }
 
   const response = await fetch(`${DISCORD_API}/users/@me/guilds`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(`Discord API error: ${response.status}`);
   const guilds = await response.json();
 
   guildCache.set(userId, { guilds, expiresAt: Date.now() + GUILD_CACHE_TTL_MS });
@@ -91,16 +94,12 @@ async function fetchUserGuilds(userId, accessToken) {
  * @returns {Promise<boolean>} True if user has ADMINISTRATOR permission
  */
 async function isOAuthGuildAdmin(user, guildId) {
-  const accessToken = sessionStore.get(user?.userId);
+  const accessToken = getSessionToken(user?.userId);
   if (!accessToken) return false;
-  try {
-    const guilds = await fetchUserGuilds(user.userId, accessToken);
-    const guild = guilds.find((g) => g.id === guildId);
-    if (!guild) return false;
-    return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
-  } catch {
-    return false;
-  }
+  const guilds = await fetchUserGuilds(user.userId, accessToken);
+  const guild = guilds.find((g) => g.id === guildId);
+  if (!guild) return false;
+  return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
 }
 
 /**
@@ -111,10 +110,15 @@ async function requireGuildAdmin(req, res, next) {
   if (req.authMethod === 'api-secret') return next();
 
   if (req.authMethod === 'oauth') {
-    if (!(await isOAuthGuildAdmin(req.user, req.params.id))) {
-      return res.status(403).json({ error: 'You do not have admin access to this guild' });
+    try {
+      if (!(await isOAuthGuildAdmin(req.user, req.params.id))) {
+        return res.status(403).json({ error: 'You do not have admin access to this guild' });
+      }
+      return next();
+    } catch (err) {
+      error('Failed to verify guild admin status', { error: err.message, guild: req.params.id });
+      return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
     }
-    return next();
   }
 
   return res.status(401).json({ error: 'Unauthorized' });
@@ -149,7 +153,7 @@ router.get('/', async (req, res) => {
   const botGuilds = client.guilds.cache;
 
   if (req.authMethod === 'oauth') {
-    const accessToken = sessionStore.get(req.user?.userId);
+    const accessToken = getSessionToken(req.user?.userId);
     if (!accessToken) {
       return res.status(401).json({ error: 'Missing access token' });
     }
@@ -287,7 +291,7 @@ router.patch('/:id/config', requireGuildAdmin, async (req, res) => {
 /**
  * GET /:id/stats — Guild statistics
  */
-router.get('/:id/stats', async (req, res) => {
+router.get('/:id/stats', requireGuildAdmin, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -327,7 +331,7 @@ router.get('/:id/stats', async (req, res) => {
  * Query params: ?limit=25&after=<userId> (max 100)
  * Uses Discord's cursor-based pagination via guild.members.list().
  */
-router.get('/:id/members', async (req, res) => {
+router.get('/:id/members', requireGuildAdmin, async (req, res) => {
   let limit = Number.parseInt(req.query.limit, 10) || 25;
   if (limit < 1) limit = 1;
   if (limit > 100) limit = 100;
@@ -362,7 +366,7 @@ router.get('/:id/members', async (req, res) => {
  * GET /:id/moderation — Paginated moderation cases
  * Query params: ?page=1&limit=25 (max 100)
  */
-router.get('/:id/moderation', async (req, res) => {
+router.get('/:id/moderation', requireGuildAdmin, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {

@@ -168,14 +168,52 @@ describe('auth routes', () => {
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Session not configured');
     });
+
+    it('should return 401 when session has been revoked', async () => {
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      // Sign a valid JWT but do NOT populate sessionStore
+      const token = jwt.sign(
+        {
+          userId: '456',
+          username: 'revokeduser',
+          discriminator: '0002',
+          avatar: 'def456',
+        },
+        'test-session-secret',
+      );
+
+      const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Session expired or revoked');
+    });
   });
 
   describe('POST /api/v1/auth/logout', () => {
-    it('should return success message', async () => {
-      const res = await request(app).post('/api/v1/auth/logout');
+    it('should delete session and return success when authenticated', async () => {
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      sessionStore.set('123', 'discord-access-token');
+      const token = jwt.sign(
+        { userId: '123', username: 'testuser' },
+        'test-session-secret',
+      );
+
+      const res = await request(app)
+        .post('/api/v1/auth/logout')
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Logged out successfully');
+      expect(sessionStore.has('123')).toBe(false);
+    });
+
+    it('should return 401 when no token provided', async () => {
+      const res = await request(app).post('/api/v1/auth/logout');
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('No token provided');
     });
   });
 });

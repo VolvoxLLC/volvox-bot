@@ -13,8 +13,40 @@ const router = Router();
 
 const DISCORD_API = 'https://discord.com/api/v10';
 
-/** Server-side session store: userId → accessToken */
-export const sessionStore = new Map();
+/** Session TTL matches JWT expiry */
+const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * TTL-based session store: userId → { accessToken, expiresAt }
+ * Extends Map to transparently handle expiry on get/has/delete.
+ */
+class SessionStore extends Map {
+  set(userId, accessToken) {
+    return super.set(userId, { accessToken, expiresAt: Date.now() + SESSION_TTL_MS });
+  }
+
+  get(userId) {
+    const entry = super.get(userId);
+    if (!entry) return undefined;
+    if (Date.now() >= entry.expiresAt) {
+      super.delete(userId);
+      return undefined;
+    }
+    return entry.accessToken;
+  }
+
+  has(userId) {
+    const entry = super.get(userId);
+    if (!entry) return false;
+    if (Date.now() >= entry.expiresAt) {
+      super.delete(userId);
+      return false;
+    }
+    return true;
+  }
+}
+
+export const sessionStore = new SessionStore();
 
 /** CSRF state store: state → expiry timestamp */
 const oauthStates = new Map();
@@ -32,16 +64,49 @@ function cleanExpiredStates() {
   }
 }
 
+/**
+ * Remove expired session entries from the store
+ */
+function cleanExpiredSessions() {
+  const now = Date.now();
+  for (const [key, entry] of sessionStore.entries()) {
+    if (now >= entry.expiresAt) sessionStore.delete(key);
+  }
+}
+
 /** Periodic cleanup interval for expired OAuth states */
-const cleanupInterval = setInterval(cleanExpiredStates, CLEANUP_INTERVAL_MS);
-cleanupInterval.unref();
+const stateCleanupInterval = setInterval(cleanExpiredStates, CLEANUP_INTERVAL_MS);
+stateCleanupInterval.unref();
+
+/** Periodic cleanup interval for expired sessions */
+const sessionCleanupInterval = setInterval(cleanExpiredSessions, CLEANUP_INTERVAL_MS);
+sessionCleanupInterval.unref();
 
 /**
- * Stop the periodic OAuth state cleanup interval.
+ * Stop the periodic cleanup intervals.
  * Should be called during server shutdown.
  */
 export function stopAuthCleanup() {
-  clearInterval(cleanupInterval);
+  clearInterval(stateCleanupInterval);
+}
+
+/**
+ * Stop the periodic session cleanup interval.
+ * Should be called during server shutdown.
+ */
+export function stopSessionCleanup() {
+  clearInterval(sessionCleanupInterval);
+}
+
+/**
+ * Get the access token for a user from the session store.
+ * Returns undefined if the session has expired or does not exist.
+ *
+ * @param {string} userId - Discord user ID
+ * @returns {string|undefined} The access token, or undefined
+ */
+export function getSessionToken(userId) {
+  return sessionStore.get(userId);
 }
 
 /**
@@ -153,7 +218,7 @@ router.get('/discord/callback', async (req, res) => {
         avatar: user.avatar,
       },
       sessionSecret,
-      { expiresIn: '1h' },
+      { algorithm: 'HS256', expiresIn: '1h' },
     );
 
     info('User authenticated via OAuth2', { userId: user.id, username: user.username });
@@ -198,9 +263,10 @@ router.get('/me', requireOAuth(), async (req, res) => {
 });
 
 /**
- * POST /logout — Placeholder for logout (JWT is stateless, client discards token)
+ * POST /logout — Invalidate the user's server-side session
  */
-router.post('/logout', (_req, res) => {
+router.post('/logout', requireOAuth(), (req, res) => {
+  sessionStore.delete(req.user.userId);
   res.json({ message: 'Logged out successfully' });
 });
 

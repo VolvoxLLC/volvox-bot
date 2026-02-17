@@ -6,6 +6,7 @@
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { warn } from '../../logger.js';
+import { getSessionToken } from '../routes/auth.js';
 
 /**
  * Performs a constant-time comparison of the given secret against BOT_API_SECRET.
@@ -59,11 +60,18 @@ export function requireAuth() {
       const sessionSecret = process.env.SESSION_SECRET;
 
       if (!sessionSecret) {
-        return res.status(401).json({ error: 'Session not configured' });
+        warn('SESSION_SECRET not configured — cannot verify OAuth token', {
+          ip: req.ip,
+          path: req.path,
+        });
+        return res.status(500).json({ error: 'Session not configured' });
       }
 
       try {
         const decoded = jwt.verify(token, sessionSecret, { algorithms: ['HS256'] });
+        if (!getSessionToken(decoded.userId)) {
+          return res.status(401).json({ error: 'Session expired or revoked' });
+        }
         req.authMethod = 'oauth';
         req.user = decoded;
         return next();

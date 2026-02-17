@@ -1,7 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../../src/logger.js', () => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
 import { requireOAuth } from '../../../src/api/middleware/oauth.js';
+import { sessionStore } from '../../../src/api/routes/auth.js';
 
 describe('requireOAuth middleware', () => {
   let req;
@@ -18,6 +25,7 @@ describe('requireOAuth middleware', () => {
   });
 
   afterEach(() => {
+    sessionStore.clear();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
   });
@@ -66,6 +74,7 @@ describe('requireOAuth middleware', () => {
 
   it('should attach decoded user and call next() for valid JWT', () => {
     vi.stubEnv('SESSION_SECRET', 'test-secret');
+    sessionStore.set('123', 'discord-access-token');
     const token = jwt.sign({ userId: '123', username: 'testuser' }, 'test-secret');
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireOAuth();
