@@ -54,8 +54,14 @@ vi.mock('../../src/modules/threading.js', () => ({
   getOrCreateThread: vi.fn().mockResolvedValue({ thread: null, isNew: false }),
 }));
 
+// Mock config module — getConfig returns per-guild config
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({}),
+}));
+
 import { generateResponse } from '../../src/modules/ai.js';
 import { accumulate, resetCounter } from '../../src/modules/chimeIn.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   registerErrorHandlers,
   registerEventHandlers,
@@ -156,6 +162,9 @@ describe('events module', () => {
         moderation: { enabled: true },
         ...configOverrides,
       };
+
+      // Wire getConfig mock to return the test config for any guild
+      getConfig.mockReturnValue(config);
 
       registerMessageCreateHandler(client, config, null);
     }

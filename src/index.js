@@ -376,14 +376,14 @@ async function startup() {
 
   // AI, spam, and moderation modules call getConfig(guildId) per-request, so config
   // changes take effect automatically. Listeners provide observability only.
-  onConfigChange('ai.*', (newValue, _oldValue, path) => {
-    info('AI config updated', { path, newValue });
+  onConfigChange('ai.*', (newValue, _oldValue, path, guildId) => {
+    info('AI config updated', { path, newValue, guildId });
   });
-  onConfigChange('spam.*', (newValue, _oldValue, path) => {
-    info('Spam config updated', { path, newValue });
+  onConfigChange('spam.*', (newValue, _oldValue, path, guildId) => {
+    info('Spam config updated', { path, newValue, guildId });
   });
-  onConfigChange('moderation.*', (newValue, _oldValue, path) => {
-    info('Moderation config updated', { path, newValue });
+  onConfigChange('moderation.*', (newValue, _oldValue, path, guildId) => {
+    info('Moderation config updated', { path, newValue, guildId });
   });
 
   // Set up AI module's DB pool reference
