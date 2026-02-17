@@ -124,7 +124,7 @@ describe('auth middleware', () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('should authenticate with valid JWT Bearer token', async () => {
+  it('should authenticate with valid JWT Bearer token', () => {
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     sessionStore.set('123', 'discord-access-token');
     const token = jwt.sign({ userId: '123', username: 'testuser' }, 'jwt-test-secret', {
@@ -162,7 +162,7 @@ describe('auth middleware', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Session not configured' });
   });
 
-  it('should reject when x-api-secret is invalid even if valid JWT is present', async () => {
+  it('should reject when x-api-secret is invalid even if valid JWT is present', () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     req.headers['x-api-secret'] = 'wrong-secret';
