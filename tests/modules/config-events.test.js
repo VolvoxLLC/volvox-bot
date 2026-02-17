@@ -210,4 +210,46 @@ describe('config change events', () => {
 
     expect(cb).toHaveBeenCalledWith('value', undefined, 'ai.deep.nested.key');
   });
+
+  it('should not skip listeners when one calls offConfigChange during callback', async () => {
+    const cb1 = vi.fn();
+    const cb2 = vi.fn();
+    const cb3 = vi.fn();
+
+    configModule.onConfigChange('ai.model', cb1);
+    configModule.onConfigChange('ai.model', cb2);
+    configModule.onConfigChange('ai.model', cb3);
+
+    // Second listener unsubscribes itself during iteration
+    cb2.mockImplementation(() => {
+      configModule.offConfigChange('ai.model', cb2);
+    });
+
+    await configModule.setConfigValue('ai.model', 'new-model');
+
+    expect(cb1).toHaveBeenCalledOnce();
+    expect(cb2).toHaveBeenCalledOnce();
+    expect(cb3).toHaveBeenCalledOnce();
+  });
+
+  it('should not skip listeners when one calls clearConfigListeners during callback', async () => {
+    const cb1 = vi.fn();
+    const cb2 = vi.fn();
+    const cb3 = vi.fn();
+
+    configModule.onConfigChange('ai.model', cb1);
+    configModule.onConfigChange('ai.model', cb2);
+    configModule.onConfigChange('ai.model', cb3);
+
+    // First listener clears all listeners during iteration
+    cb1.mockImplementation(() => {
+      configModule.clearConfigListeners();
+    });
+
+    await configModule.setConfigValue('ai.model', 'new-model');
+
+    expect(cb1).toHaveBeenCalledOnce();
+    expect(cb2).toHaveBeenCalledOnce();
+    expect(cb3).toHaveBeenCalledOnce();
+  });
 });
