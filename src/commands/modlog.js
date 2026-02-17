@@ -210,7 +210,7 @@ async function handleDisable(interaction) {
       await setConfigValue(`moderation.logging.channels.${key}`, null, interaction.guildId);
     }
 
-    info('Mod logging disabled', { moderator: interaction.user.tag });
+    info('Mod logging disabled', { moderator: interaction.user.tag, guildId: interaction.guildId });
     await safeEditReply(
       interaction,
       '✅ Mod logging has been disabled. All log channels have been cleared.',
