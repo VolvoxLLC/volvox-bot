@@ -197,7 +197,7 @@ describe('guilds routes', () => {
   });
 
   describe('GET /:id/stats', () => {
-    it('should return stats', async () => {
+    it('should return stats scoped to guild channels', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ count: 42 }] })
         .mockResolvedValueOnce({ rows: [{ count: 5 }] });
@@ -209,6 +209,11 @@ describe('guilds routes', () => {
       expect(res.body.moderationCases).toBe(5);
       expect(res.body.memberCount).toBe(100);
       expect(res.body.uptime).toBeTypeOf('number');
+      // Conversations query should be scoped to guild channel IDs
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE channel_id = ANY($1)'),
+        [['ch1', 'ch2']],
+      );
     });
 
     it('should return 503 when database is not available', async () => {
