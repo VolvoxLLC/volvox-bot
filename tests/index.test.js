@@ -678,6 +678,7 @@ describe('index.js', () => {
         loadConfigResult: loggingConfig,
       });
 
+      loggingConfig.logging.database.enabled = true;
       await invokeConfigCallback('logging.database.enabled', true);
 
       expect(mocks.postgres.initLogsTable).toHaveBeenCalled();
@@ -706,6 +707,7 @@ describe('index.js', () => {
       // pgTransport should now be set from startup
       expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
 
+      loggingConfig.logging.database.enabled = false;
       await invokeConfigCallback('logging.database.enabled', false);
 
       expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
@@ -738,7 +740,7 @@ describe('index.js', () => {
       expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
       expect(mocks.logger.info).toHaveBeenCalledWith(
         'PostgreSQL logging transport recreated after config change',
-        { path: 'logging.database.batchSize', newValue: 20 },
+        { path: 'logging.database.batchSize' },
       );
     });
 
@@ -819,10 +821,11 @@ describe('index.js', () => {
         throw new Error('transport init failed');
       });
 
+      loggingConfig.logging.database.enabled = true;
       await invokeConfigCallback('logging.database.enabled', true);
 
       expect(mocks.logger.error).toHaveBeenCalledWith(
-        'Failed to toggle PostgreSQL logging transport',
+        'Failed to update PostgreSQL logging transport',
         { path: 'logging.database.enabled', error: 'transport init failed' },
       );
     });
@@ -846,7 +849,7 @@ describe('index.js', () => {
       await invokeConfigCallback('logging.database.batchSize', 50);
 
       expect(mocks.logger.error).toHaveBeenCalledWith(
-        'Failed to recreate PostgreSQL logging transport',
+        'Failed to update PostgreSQL logging transport',
         { path: 'logging.database.batchSize', error: 'remove failed' },
       );
     });

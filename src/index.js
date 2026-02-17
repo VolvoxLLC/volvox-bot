@@ -55,7 +55,12 @@ dotenvConfig();
 // setConfigValue() propagate here automatically without re-assignment.
 let config = {};
 let pgTransport = null;
-let transportRecreating = false;
+// Promise-chain mutex that serializes all transport operations (enable/disable
+// and parameter-change recreates). Each handler appends to the chain so
+// concurrent config updates run sequentially instead of interleaving at await
+// points. This prevents double-remove, duplicate transports, and stale-settings
+// races between the `logging.database.enabled` and `logging.database.*` listeners.
+let transportLock = Promise.resolve();
 
 // Initialize Discord client with required intents.
 //
@@ -233,9 +238,14 @@ async function gracefulShutdown(signal) {
 
   // 3. Remove PostgreSQL logging transport (flushes remaining buffer)
   if (pgTransport) {
+    transportLock = transportLock.then(async () => {
+      if (pgTransport) {
+        await removePostgresTransport(pgTransport);
+        pgTransport = null;
+      }
+    });
     try {
-      await removePostgresTransport(pgTransport);
-      pgTransport = null;
+      await transportLock;
     } catch (err) {
       error('Failed to close PostgreSQL logging transport', { error: err.message });
     }
@@ -305,55 +315,53 @@ async function startup() {
   //
   // Logging transport: stateful — requires reactive wiring to add/remove/recreate
   // the PostgreSQL transport when config changes at runtime.
-  onConfigChange('logging.database.enabled', async (newValue, _oldValue, path) => {
+  //
+  // All logging.database.* listeners funnel through a single helper serialized
+  // by transportLock. This eliminates races between enable/disable and param
+  // changes: only one transport operation runs at a time, and it always reads
+  // the latest config state.
+  async function updateLoggingTransport(changePath) {
     if (!dbPool) return;
-    try {
-      // Defensive removal: we intentionally remove the existing transport BEFORE
-      // re-initializing the logs table. If initLogsTable throws after the old
-      // transport was removed, pgTransport remains null (no transport active)
-      // until the next successful enable. This is by design — we prefer to
-      // cleanly remove a possibly faulty transport rather than leave it running
-      // during re-init. A subsequent successful enable will restore it.
-      if (newValue) {
-        if (pgTransport) {
-          await removePostgresTransport(pgTransport);
-          pgTransport = null;
-        }
-        await initLogsTable(dbPool);
-        pgTransport = addPostgresTransport(dbPool, config.logging.database);
-        info('PostgreSQL logging transport enabled via config change', { path });
-      } else {
-        if (pgTransport) {
-          await removePostgresTransport(pgTransport);
-          pgTransport = null;
-          info('PostgreSQL logging transport disabled via config change', { path });
-        }
-      }
-    } catch (err) {
-      error('Failed to toggle PostgreSQL logging transport', { path, error: err.message });
+    const dbConfig = config.logging?.database;
+    const enabled = dbConfig?.enabled;
+
+    if (enabled && !pgTransport) {
+      // Create: enabled + no transport
+      await initLogsTable(dbPool);
+      pgTransport = addPostgresTransport(dbPool, dbConfig);
+      info('PostgreSQL logging transport enabled via config change', { path: changePath });
+    } else if (enabled && pgTransport) {
+      // Recreate: enabled + transport exists (param change)
+      const oldTransport = pgTransport;
+      pgTransport = null;
+      await removePostgresTransport(oldTransport);
+      // Re-check enabled after the async removal — a concurrent disable may
+      // have changed the config while we were awaiting.
+      if (!config.logging?.database?.enabled) return;
+      pgTransport = addPostgresTransport(dbPool, dbConfig);
+      info('PostgreSQL logging transport recreated after config change', { path: changePath });
+    } else if (!enabled && pgTransport) {
+      // Remove: disabled + transport exists
+      await removePostgresTransport(pgTransport);
+      pgTransport = null;
+      info('PostgreSQL logging transport disabled via config change', { path: changePath });
     }
-  });
+    // else: disabled + no transport — no-op
+  }
 
   for (const key of [
+    'logging.database.enabled',
     'logging.database.batchSize',
     'logging.database.flushIntervalMs',
     'logging.database.minLevel',
   ]) {
-    onConfigChange(key, async (newValue, _oldValue, path) => {
-      if (!dbPool || !config.logging?.database?.enabled || !pgTransport) return;
-      if (transportRecreating) return;
-      transportRecreating = true;
-      try {
-        const oldTransport = pgTransport;
-        pgTransport = null;
-        await removePostgresTransport(oldTransport);
-        pgTransport = addPostgresTransport(dbPool, config.logging.database);
-        info('PostgreSQL logging transport recreated after config change', { path, newValue });
-      } catch (err) {
-        error('Failed to recreate PostgreSQL logging transport', { path, error: err.message });
-      } finally {
-        transportRecreating = false;
-      }
+    onConfigChange(key, async (_newValue, _oldValue, path) => {
+      transportLock = transportLock
+        .then(() => updateLoggingTransport(path))
+        .catch((err) =>
+          error('Failed to update PostgreSQL logging transport', { path, error: err.message }),
+        );
+      await transportLock;
     });
   }
 
