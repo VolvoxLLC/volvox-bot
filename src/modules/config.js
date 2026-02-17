@@ -135,6 +135,20 @@ export async function loadConfig() {
         info('Config seeded to database');
         configCache = new Map();
         configCache.set('global', structuredClone(fileConfig));
+
+        // Load any preexisting guild overrides that were already in the DB.
+        // Without this, guild rows fetched above would be silently dropped.
+        for (const row of guildRows) {
+          if (!configCache.has(row.guild_id)) {
+            configCache.set(row.guild_id, {});
+          }
+          configCache.get(row.guild_id)[row.key] = row.value;
+        }
+        if (guildRows.length > 0) {
+          info('Loaded guild overrides during seed', {
+            guildCount: new Set(guildRows.map((r) => r.guild_id)).size,
+          });
+        }
       } catch (txErr) {
         try {
           await client.query('ROLLBACK');

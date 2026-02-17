@@ -140,6 +140,33 @@ describe('modules/config', () => {
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
     });
 
+    it('should load guild overrides during fallback seeding', async () => {
+      const mockClient = {
+        query: vi.fn().mockResolvedValue({}),
+        release: vi.fn(),
+      };
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({
+          rows: [
+            // No global rows — triggers seeding from config.json
+            // But guild overrides already exist in DB
+            { guild_id: 'guild-99', key: 'ai', value: { model: 'guild-override-model' } },
+          ],
+        }),
+        connect: vi.fn().mockResolvedValue(mockClient),
+      };
+      const { getPool: mockGetPool } = await import('../../src/db.js');
+      mockGetPool.mockReturnValue(mockPool);
+
+      await configModule.loadConfig();
+
+      // Guild override should be loaded, not dropped
+      const guildConfig = configModule.getConfig('guild-99');
+      expect(guildConfig.ai.model).toBe('guild-override-model');
+      // Other keys should still come from global (seeded from file)
+      expect(guildConfig.ai.enabled).toBe(true);
+    });
+
     it('should load config from DB when rows exist', async () => {
       const mockPool = {
         query: vi.fn().mockResolvedValue({
