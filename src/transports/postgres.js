@@ -122,9 +122,7 @@ export class PostgresTransport extends Transport {
         // Cap buffer to prevent unbounded growth on persistent DB failures
         const MAX_BUFFER = 10000;
         if (this.buffer.length > MAX_BUFFER) {
-          const dropped = this.buffer.length - MAX_BUFFER;
           this.buffer = this.buffer.slice(-MAX_BUFFER);
-          console.warn(`PostgresTransport: buffer cap exceeded, dropped ${dropped} oldest entries`);
         }
       } finally {
         this.flushing = false;

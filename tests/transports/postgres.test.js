@@ -291,7 +291,12 @@ describe('PostgresTransport', () => {
 
         // Make query hang so flush stays 'in progress'
         let resolveQuery;
-        mockPool.query.mockImplementation(() => new Promise(r => { resolveQuery = r; }));
+        mockPool.query.mockImplementation(
+          () =>
+            new Promise((r) => {
+              resolveQuery = r;
+            }),
+        );
 
         transport.buffer.push({
           level: 'info',
