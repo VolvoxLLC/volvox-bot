@@ -256,16 +256,17 @@ export function getConfig(guildId) {
   const guildOverrides = configCache.get(guildId);
 
   if (!guildOverrides) {
-    const cloned = structuredClone(globalConfig);
-    cacheMergedResult(guildId, cloned);
-    // Guild path: returns deep clone (see JSDoc above)
-    return structuredClone(cloned);
+    cacheMergedResult(guildId, structuredClone(globalConfig));
+    const cachedMerged = mergedConfigCache.get(guildId).data;
+    // Guild path: returns deep clone from cache for consistency with cache-hit path
+    return structuredClone(cachedMerged);
   }
 
   const merged = deepMerge(structuredClone(globalConfig), guildOverrides);
   cacheMergedResult(guildId, merged);
-  // Guild path: returns deep clone (see JSDoc above)
-  return structuredClone(merged);
+  const cachedMerged = mergedConfigCache.get(guildId).data;
+  // Guild path: returns deep clone from cache for consistency with cache-hit path
+  return structuredClone(cachedMerged);
 }
 
 /**
