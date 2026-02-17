@@ -227,6 +227,10 @@ router.get('/:id/moderation', async (req, res) => {
  * Body: { action: "sendMessage", channelId: "...", content: "..." }
  */
 router.post('/:id/actions', async (req, res) => {
+  if (!req.body) {
+    return res.status(400).json({ error: 'Missing request body' });
+  }
+
   const { action, channelId, content } = req.body;
 
   if (!action) {
