@@ -115,6 +115,10 @@ export async function initDb() {
         await pool.query(`
           ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT
         `);
+        await pool.query(`
+          CREATE INDEX IF NOT EXISTS idx_conversations_guild_id
+          ON conversations (guild_id)
+        `);
       } catch (err) {
         warn('Failed to backfill guild_id column (requires PG 9.6+)', { error: err.message });
       }
@@ -127,11 +131,6 @@ export async function initDb() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_conversations_created_at
         ON conversations (created_at)
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_conversations_guild_id
-        ON conversations (guild_id)
       `);
 
       // Moderation tables
