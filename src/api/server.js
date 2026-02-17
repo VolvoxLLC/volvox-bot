@@ -8,6 +8,7 @@ import { error, info, warn } from '../logger.js';
 import apiRouter from './index.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { stopAuthCleanup } from './routes/auth.js';
+import { stopGuildCacheCleanup } from './utils/discordApi.js';
 
 /** @type {import('node:http').Server | null} */
 let server = null;
@@ -124,6 +125,7 @@ export async function startServer(client, dbPool) {
  */
 export async function stopServer() {
   stopAuthCleanup();
+  stopGuildCacheCleanup();
 
   if (rateLimiter) {
     rateLimiter.destroy();

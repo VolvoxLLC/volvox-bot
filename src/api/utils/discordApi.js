@@ -1,3 +1,8 @@
+/**
+ * Discord API Utilities
+ * Shared helpers for fetching data from the Discord REST API with caching
+ */
+
 /** Guild cache: userId → { guilds, expiresAt } */
 export const guildCache = new Map();
 const GUILD_CACHE_TTL_MS = 90_000; // 90 seconds
