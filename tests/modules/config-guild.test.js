@@ -97,6 +97,35 @@ describe('per-guild configuration', () => {
     });
   });
 
+  describe('merged cache generation tracking', () => {
+    it('should invalidate guild merged cache when global config changes via setConfigValue', async () => {
+      // Populate merged cache for guild-x
+      const before = configModule.getConfig('guild-x');
+      expect(before.ai.model).toBe('claude-3');
+
+      // Change global config through the proper API
+      await configModule.setConfigValue('ai.model', 'claude-4');
+
+      // Guild merged cache should reflect the new global value
+      const after = configModule.getConfig('guild-x');
+      expect(after.ai.model).toBe('claude-4');
+    });
+
+    it('should invalidate guild merged cache when global config is reset', async () => {
+      await configModule.setConfigValue('ai.model', 'temporary-model');
+      // Populate merged cache
+      const before = configModule.getConfig('guild-y');
+      expect(before.ai.model).toBe('temporary-model');
+
+      // Reset global to defaults
+      await configModule.resetConfig('ai');
+
+      // Guild should see the reset value
+      const after = configModule.getConfig('guild-y');
+      expect(after.ai.model).toBe('claude-3');
+    });
+  });
+
   describe('guild isolation', () => {
     it('should isolate changes between guilds', async () => {
       await configModule.setConfigValue('ai.model', 'guild-a-model', 'guild-a');

@@ -22,8 +22,22 @@ const listeners = [];
 /** @type {Map<string, Object>} In-memory config cache keyed by guild_id ('global' for defaults) */
 let configCache = new Map();
 
-/** @type {Map<string, Object>} Cached merged (global + guild override) config per guild */
+/** @type {Map<string, {generation: number, data: Object}>} Cached merged (global + guild override) config per guild */
 const mergedConfigCache = new Map();
+
+/**
+ * Monotonically increasing counter bumped every time global config changes
+ * through setConfigValue, resetConfig, or loadConfig. Used to detect stale
+ * merged cache entries — if a cached entry's generation doesn't match, it
+ * is treated as a cache miss and rebuilt from the current global config.
+ *
+ * ⚠️ This does NOT detect in-place mutations to the live global config
+ * reference returned by getConfig() (no args). Such mutations are DEPRECATED
+ * and should use setConfigValue() instead, which properly increments this
+ * counter and invalidates the merged cache.
+ * @type {number}
+ */
+let globalConfigGeneration = 0;
 
 /** @type {Object|null} Cached config.json contents (loaded once, never invalidated) */
 let fileConfigCache = null;
@@ -77,6 +91,7 @@ export async function loadConfig() {
   // Clear stale merged cache — configCache is about to be rebuilt, so any
   // previously merged guild snapshots are invalid.
   mergedConfigCache.clear();
+  globalConfigGeneration++;
 
   // Try loading config.json — DB may have valid config even if file is missing
   let fileConfig;
@@ -208,6 +223,14 @@ export async function loadConfig() {
  *   + guild overrides. Each call returns a fresh object; mutations do NOT affect the cache.
  *   This prevents cross-guild contamination.
  *
+ * **⚠️ IMPORTANT: In-place mutation caveat:**
+ * Direct mutation of the global config object (e.g. `getConfig().ai.model = "new"`) does
+ * NOT invalidate `mergedConfigCache` or bump `globalConfigGeneration`. Guild-specific calls
+ * to `getConfig(guildId)` may return stale merged data that still reflects the old global
+ * defaults until the merged cache entry expires or is rebuilt. Use `setConfigValue()` for
+ * proper cache invalidation. This asymmetry is intentional for backward compatibility with
+ * legacy code that relies on mutating the returned global reference.
+ *
  * @param {string} [guildId] - Guild ID, or omit / 'global' for global defaults
  * @returns {Object} Configuration object (live reference for global, cloned copy for guild)
  */
@@ -217,14 +240,16 @@ export function getConfig(guildId) {
     return configCache.get('global') || {};
   }
 
-  // Return clone from cached merged result if available (avoids re-merging)
+  // Return clone from cached merged result if available and still valid.
+  // Entries are stamped with the globalConfigGeneration at merge time —
+  // if global config changed since then, the entry is stale and must be rebuilt.
   const cached = mergedConfigCache.get(guildId);
-  if (cached) {
+  if (cached && cached.generation === globalConfigGeneration) {
     // Refresh access order for LRU tracking (Maps preserve insertion order)
     mergedConfigCache.delete(guildId);
     mergedConfigCache.set(guildId, cached);
     // Guild path: returns deep clone to prevent cross-guild contamination (see JSDoc above)
-    return structuredClone(cached);
+    return structuredClone(cached.data);
   }
 
   const globalConfig = configCache.get('global') || {};
@@ -250,7 +275,7 @@ export function getConfig(guildId) {
  * @param {Object} merged - Merged config object
  */
 function cacheMergedResult(guildId, merged) {
-  mergedConfigCache.set(guildId, merged);
+  mergedConfigCache.set(guildId, { generation: globalConfigGeneration, data: merged });
 
   // Evict least-recently-used guild entries when cap is exceeded
   if (mergedConfigCache.size > MAX_GUILD_CACHE_SIZE) {
@@ -448,6 +473,7 @@ export async function setConfigValue(path, value, guildId = 'global') {
   // When global config changes, ALL merged entries are stale (they depend on global)
   if (guildId === 'global') {
     mergedConfigCache.clear();
+    globalConfigGeneration++;
   } else {
     mergedConfigCache.delete(guildId);
   }
@@ -626,6 +652,7 @@ export async function resetConfig(section, guildId = 'global') {
 
   // Global config changed — all guild merged entries are stale
   mergedConfigCache.clear();
+  globalConfigGeneration++;
 
   return globalConfig;
 }
