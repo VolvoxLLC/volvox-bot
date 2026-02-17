@@ -9,7 +9,6 @@ vi.mock('discord.js', () => ({
 }));
 
 import {
-  BOT_OWNER_ID,
   getPermissionError,
   hasPermission,
   isAdmin,
@@ -17,11 +16,7 @@ import {
   isModerator,
 } from '../../src/utils/permissions.js';
 
-describe('BOT_OWNER_ID', () => {
-  it('should be the expected bot owner ID', () => {
-    expect(BOT_OWNER_ID).toBe('191633014441115648');
-  });
-});
+const BOT_OWNER_ID = '191633014441115648';
 
 describe('isAdmin', () => {
   it('should return false for null member or config', () => {
@@ -47,6 +42,17 @@ describe('isAdmin', () => {
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
     expect(isAdmin(member, {})).toBe(true);
+  });
+
+  it('should return true for bot owner from config.permissions.botOwners', () => {
+    const customOwnerId = '999999999999999999';
+    const member = {
+      id: customOwnerId,
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    const config = { permissions: { botOwners: [customOwnerId] } };
+    expect(isAdmin(member, config)).toBe(true);
   });
 
   it('should return true for members with Administrator permission', () => {
@@ -239,6 +245,14 @@ describe('isGuildAdmin', () => {
     };
     expect(isGuildAdmin(member, {})).toBe(false);
   });
+
+  it('should return false with null config without throwing', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    expect(isGuildAdmin(member, null)).toBe(false);
+  });
 });
 
 describe('isModerator', () => {
@@ -281,6 +295,14 @@ describe('isModerator', () => {
     };
     expect(isModerator(member, {})).toBe(false);
   });
+
+  it('should return false with null config without throwing', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    expect(isModerator(member, null)).toBe(false);
+  });
 });
 
 describe('getPermissionError', () => {
@@ -289,5 +311,11 @@ describe('getPermissionError', () => {
     expect(msg).toContain('/config');
     expect(msg).toContain('permission');
     expect(msg).toContain('administrator');
+  });
+
+  it('should accept a custom permission level', () => {
+    const msg = getPermissionError('modlog', 'moderator');
+    expect(msg).toContain('/modlog');
+    expect(msg).toContain('moderator');
   });
 });

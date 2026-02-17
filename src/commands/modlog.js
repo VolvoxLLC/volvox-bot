@@ -35,7 +35,7 @@ export async function execute(interaction) {
   const config = getConfig();
   if (!isModerator(interaction.member, config)) {
     return await safeReply(interaction, {
-      content: getPermissionError('modlog'),
+      content: getPermissionError('modlog', 'moderator'),
       ephemeral: true,
     });
   }

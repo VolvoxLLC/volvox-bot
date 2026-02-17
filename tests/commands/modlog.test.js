@@ -36,6 +36,7 @@ vi.mock('../../src/utils/permissions.js', () => ({
 
 import { adminOnly, data, execute } from '../../src/commands/modlog.js';
 import { getConfig, setConfigValue } from '../../src/modules/config.js';
+import { isModerator } from '../../src/utils/permissions.js';
 
 function createInteraction(subcommand) {
   const collectHandlers = {};
@@ -70,6 +71,20 @@ describe('modlog command', () => {
 
   it('should export adminOnly flag', () => {
     expect(adminOnly).toBe(true);
+  });
+
+  it('should deny permission for non-moderators', async () => {
+    isModerator.mockReturnValueOnce(false);
+
+    const interaction = createInteraction('view');
+    await execute(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("don't have permission"),
+        ephemeral: true,
+      }),
+    );
   });
 
   it('should reply for unknown subcommand', async () => {

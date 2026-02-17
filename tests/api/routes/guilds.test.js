@@ -91,7 +91,29 @@ describe('guilds routes', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
+
+  /**
+   * Helper: create a JWT with accessToken and mock fetch to return given guilds
+   */
+  function createOAuthToken(secret = 'jwt-test-secret') {
+    return jwt.sign(
+      {
+        userId: '123',
+        username: 'testuser',
+        accessToken: 'discord-access-token',
+      },
+      secret,
+    );
+  }
+
+  function mockFetchGuilds(guilds) {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => guilds,
+    });
+  }
 
   describe('authentication', () => {
     it('should return 401 without x-api-secret header', async () => {
@@ -109,14 +131,7 @@ describe('guilds routes', () => {
 
     it('should authenticate with valid JWT Bearer token', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = jwt.sign(
-        {
-          userId: '123',
-          username: 'testuser',
-          guilds: [{ id: 'guild1', name: 'Test Server', permissions: '8' }],
-        },
-        'jwt-test-secret',
-      );
+      const token = createOAuthToken();
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1')
@@ -149,17 +164,11 @@ describe('guilds routes', () => {
 
     it('should return only admin guilds for OAuth user', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = jwt.sign(
-        {
-          userId: '123',
-          username: 'testuser',
-          guilds: [
-            { id: 'guild1', name: 'Test Server', permissions: '8' },
-            { id: 'guild-not-in-bot', name: 'Other Server', permissions: '8' },
-          ],
-        },
-        'jwt-test-secret',
-      );
+      const token = createOAuthToken();
+      mockFetchGuilds([
+        { id: 'guild1', name: 'Test Server', permissions: '8' },
+        { id: 'guild-not-in-bot', name: 'Other Server', permissions: '8' },
+      ]);
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
@@ -171,14 +180,8 @@ describe('guilds routes', () => {
 
     it('should exclude guilds where OAuth user is not admin', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = jwt.sign(
-        {
-          userId: '123',
-          username: 'testuser',
-          guilds: [{ id: 'guild1', name: 'Test Server', permissions: '0' }],
-        },
-        'jwt-test-secret',
-      );
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: '0' }]);
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
@@ -212,13 +215,8 @@ describe('guilds routes', () => {
 
     it('should allow OAuth users with admin permission on guild', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = jwt.sign(
-        {
-          userId: '123',
-          guilds: [{ id: 'guild1', name: 'Test', permissions: '8' }],
-        },
-        'jwt-test-secret',
-      );
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '8' }]);
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/config')
@@ -229,13 +227,8 @@ describe('guilds routes', () => {
 
     it('should deny OAuth users without admin permission on guild', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = jwt.sign(
-        {
-          userId: '123',
-          guilds: [{ id: 'guild1', name: 'Test', permissions: '0' }],
-        },
-        'jwt-test-secret',
-      );
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '0' }]);
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/config')
@@ -247,13 +240,8 @@ describe('guilds routes', () => {
 
     it('should deny OAuth users not in the guild', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = jwt.sign(
-        {
-          userId: '123',
-          guilds: [{ id: 'other-guild', name: 'Other', permissions: '8' }],
-        },
-        'jwt-test-secret',
-      );
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'other-guild', name: 'Other', permissions: '8' }]);
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/config')

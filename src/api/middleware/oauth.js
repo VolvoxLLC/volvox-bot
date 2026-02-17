@@ -4,6 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+import { error } from '../../logger.js';
 
 /**
  * Creates middleware that verifies a JWT Bearer token from the Authorization header.
@@ -23,11 +24,12 @@ export function requireOAuth() {
     const sessionSecret = process.env.SESSION_SECRET;
 
     if (!sessionSecret) {
+      error('SESSION_SECRET not configured — cannot verify OAuth token');
       return res.status(500).json({ error: 'Session not configured' });
     }
 
     try {
-      const decoded = jwt.verify(token, sessionSecret);
+      const decoded = jwt.verify(token, sessionSecret, { algorithms: ['HS256'] });
       req.user = decoded;
       next();
     } catch {
