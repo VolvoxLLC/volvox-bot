@@ -100,6 +100,18 @@ describe('auth middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it('should return Unauthorized when Authorization header is not Bearer and no API secret succeeds', () => {
+    vi.stubEnv('BOT_API_SECRET', '');
+    req.headers.authorization = 'Basic abc123';
+    const middleware = requireAuth();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('should return 401 with specific error when x-api-secret does not match', () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     req.headers['x-api-secret'] = 'wrong-secret';

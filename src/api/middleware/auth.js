@@ -4,8 +4,8 @@
  */
 
 import crypto from 'node:crypto';
-import { error, warn } from '../../logger.js';
-import { verifyJwtToken } from './verifyJwt.js';
+import { warn } from '../../logger.js';
+import { handleOAuthJwt } from './oauthJwt.js';
 
 /**
  * Performs a constant-time comparison of the given secret against BOT_API_SECRET.
@@ -59,22 +59,8 @@ export function requireAuth() {
     }
 
     // Try OAuth2 JWT
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
-      const result = verifyJwtToken(token);
-      if (result.error) {
-        if (result.status === 500) {
-          error('SESSION_SECRET not configured — cannot verify OAuth token', {
-            ip: req.ip,
-            path: req.path,
-          });
-        }
-        return res.status(result.status).json({ error: result.error });
-      }
-      req.authMethod = 'oauth';
-      req.user = result.user;
-      return next();
+    if (handleOAuthJwt(req, res, next)) {
+      return;
     }
 
     // Neither auth method provided or valid
