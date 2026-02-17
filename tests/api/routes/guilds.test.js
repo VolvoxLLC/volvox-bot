@@ -65,7 +65,7 @@ describe('guilds routes', () => {
     memberCount: 100,
     channels: { cache: channelCache },
     members: {
-      fetch: vi.fn().mockResolvedValue(new Map([['user1', mockMember]])),
+      list: vi.fn().mockResolvedValue(new Map([['user1', mockMember]])),
     },
   };
 
@@ -236,29 +236,30 @@ describe('guilds routes', () => {
   });
 
   describe('GET /:id/members', () => {
-    it('should return paginated members', async () => {
+    it('should return cursor-paginated members', async () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/members')
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
-      expect(res.body.page).toBe(1);
       expect(res.body.limit).toBe(25);
-      expect(res.body.total).toBe(100);
+      expect(res.body.after).toBeNull();
+      expect(res.body.nextAfter).toBe('user1');
       expect(res.body.members).toHaveLength(1);
       expect(res.body.members[0].username).toBe('testuser');
       expect(res.body.members[0].roles).toEqual([{ id: 'role1', name: 'Admin' }]);
+      expect(mockGuild.members.list).toHaveBeenCalledWith({ limit: 25, after: undefined });
     });
 
-    it('should respect custom pagination params', async () => {
+    it('should pass after cursor and custom limit to guild.members.list', async () => {
       const res = await request(app)
-        .get('/api/v1/guilds/guild1/members?page=2&limit=10')
+        .get('/api/v1/guilds/guild1/members?limit=10&after=user0')
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
-      expect(res.body.page).toBe(2);
       expect(res.body.limit).toBe(10);
-      expect(mockGuild.members.fetch).toHaveBeenCalledWith({ limit: 10 });
+      expect(res.body.after).toBe('user0');
+      expect(mockGuild.members.list).toHaveBeenCalledWith({ limit: 10, after: 'user0' });
     });
 
     it('should cap limit at 100', async () => {
@@ -270,8 +271,20 @@ describe('guilds routes', () => {
       expect(res.body.limit).toBe(100);
     });
 
+    it('should return null nextAfter when no members returned', async () => {
+      mockGuild.members.list.mockResolvedValueOnce(new Map());
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/members')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.nextAfter).toBeNull();
+      expect(res.body.members).toHaveLength(0);
+    });
+
     it('should return 500 on fetch error', async () => {
-      mockGuild.members.fetch.mockRejectedValueOnce(new Error('Discord error'));
+      mockGuild.members.list.mockRejectedValueOnce(new Error('Discord error'));
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/members')

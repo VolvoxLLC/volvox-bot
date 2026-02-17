@@ -150,14 +150,18 @@ router.get('/:id/stats', async (req, res) => {
 });
 
 /**
- * GET /:id/members — Paginated member list with roles
- * Query params: ?page=1&limit=25 (max 100)
+ * GET /:id/members — Cursor-based paginated member list with roles
+ * Query params: ?limit=25&after=<userId> (max 100)
+ * Uses Discord's cursor-based pagination via guild.members.list().
  */
 router.get('/:id/members', async (req, res) => {
-  const { page, limit } = parsePagination(req.query);
+  let limit = Number.parseInt(req.query.limit, 10) || 25;
+  if (limit < 1) limit = 1;
+  if (limit > 100) limit = 100;
+  const after = req.query.after || undefined;
 
   try {
-    const members = await req.guild.members.fetch({ limit });
+    const members = await req.guild.members.list({ limit, after });
 
     const memberList = Array.from(members.values()).map((m) => ({
       id: m.id,
@@ -167,10 +171,12 @@ router.get('/:id/members', async (req, res) => {
       joinedAt: m.joinedAt,
     }));
 
+    const lastMember = memberList[memberList.length - 1];
+
     res.json({
-      page,
       limit,
-      total: req.guild.memberCount,
+      after: after || null,
+      nextAfter: lastMember ? lastMember.id : null,
       members: memberList,
     });
   } catch (err) {
