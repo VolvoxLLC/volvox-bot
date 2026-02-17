@@ -36,6 +36,7 @@ export class PostgresTransport extends Transport {
 
     /** @type {boolean} */
     this.flushing = false;
+    this.dbFailureCount = 0;
 
     /** @type {Promise<void>|null} In-flight flush promise for close() to await */
     this.flushPromise = null;
@@ -122,6 +123,9 @@ export class PostgresTransport extends Transport {
         const query = `INSERT INTO logs (level, message, metadata, timestamp) VALUES ${placeholders.join(', ')}`;
         await this.pool.query(query, values);
       } catch (_err) {
+        this.dbFailureCount++;
+        this.emit('warn', _err);
+
         // Restore entries to the front of the buffer so they can be retried
         this.buffer.unshift(...entries);
 
