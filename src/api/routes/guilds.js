@@ -282,6 +282,10 @@ router.post('/:id/actions', async (req, res) => {
       return res.status(400).json({ error: 'Missing "channelId" or "content" for sendMessage' });
     }
 
+    if (typeof content !== 'string') {
+      return res.status(400).json({ error: 'content must be a string' });
+    }
+
     if (content.length > MAX_CONTENT_LENGTH) {
       return res
         .status(400)
