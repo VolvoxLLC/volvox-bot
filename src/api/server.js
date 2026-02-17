@@ -72,7 +72,8 @@ export async function startServer(client, dbPool) {
 
   const app = createApp(client, dbPool);
   const portEnv = process.env.BOT_API_PORT;
-  const port = portEnv != null ? Number.parseInt(portEnv, 10) : 3001;
+  const parsed = portEnv != null ? Number.parseInt(portEnv, 10) : 3001;
+  const port = Number.isNaN(parsed) ? 3001 : parsed;
 
   return new Promise((resolve, reject) => {
     server = app.listen(port, () => {
@@ -99,12 +100,12 @@ export async function stopServer() {
 
   return new Promise((resolve, reject) => {
     server.close((err) => {
+      server = null;
       if (err) {
         error('Error closing API server', { error: err.message });
         reject(err);
       } else {
         info('API server stopped');
-        server = null;
         resolve();
       }
     });
