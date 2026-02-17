@@ -195,10 +195,7 @@ describe('auth routes', () => {
       vi.stubEnv('SESSION_SECRET', 'test-session-secret');
 
       sessionStore.set('123', 'discord-access-token');
-      const token = jwt.sign(
-        { userId: '123', username: 'testuser' },
-        'test-session-secret',
-      );
+      const token = jwt.sign({ userId: '123', username: 'testuser' }, 'test-session-secret');
 
       const res = await request(app)
         .post('/api/v1/auth/logout')
