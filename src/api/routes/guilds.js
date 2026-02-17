@@ -54,19 +54,32 @@ function parsePagination(query) {
   return { page, limit, offset };
 }
 
+/** Guild cache: userId → { guilds, expiresAt } */
+export const guildCache = new Map();
+const GUILD_CACHE_TTL_MS = 90_000; // 90 seconds
+
 /**
- * Fetch fresh guilds from Discord using the user's access token.
+ * Fetch guilds from Discord using the user's access token, with a short-lived cache.
  *
+ * @param {string} userId - User ID (cache key)
  * @param {string} accessToken - Discord OAuth2 access token
  * @returns {Promise<Array>} Array of guild objects
  */
-async function fetchUserGuilds(accessToken) {
+async function fetchUserGuilds(userId, accessToken) {
+  const cached = guildCache.get(userId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.guilds;
+  }
+
   const response = await fetch(`${DISCORD_API}/users/@me/guilds`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) return [];
-  return response.json();
+  const guilds = await response.json();
+
+  guildCache.set(userId, { guilds, expiresAt: Date.now() + GUILD_CACHE_TTL_MS });
+  return guilds;
 }
 
 /**
@@ -81,7 +94,7 @@ async function isOAuthGuildAdmin(user, guildId) {
   const accessToken = sessionStore.get(user?.userId);
   if (!accessToken) return false;
   try {
-    const guilds = await fetchUserGuilds(accessToken);
+    const guilds = await fetchUserGuilds(user.userId, accessToken);
     const guild = guilds.find((g) => g.id === guildId);
     if (!guild) return false;
     return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
@@ -142,7 +155,7 @@ router.get('/', async (req, res) => {
     }
 
     try {
-      const userGuilds = await fetchUserGuilds(accessToken);
+      const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
       const filtered = userGuilds
         .filter((ug) => {
           // User must have admin permission on the guild
