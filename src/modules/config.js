@@ -167,6 +167,14 @@ export async function loadConfig() {
         // Load any preexisting guild overrides that were already in the DB.
         // Without this, guild rows fetched above would be silently dropped.
         for (const row of guildRows) {
+          if (DANGEROUS_KEYS.has(row.key)) {
+            logWarn('Skipping dangerous config key from database', {
+              key: row.key,
+              guildId: row.guild_id,
+            });
+            continue;
+          }
+
           if (!configCache.has(row.guild_id)) {
             configCache.set(row.guild_id, {});
           }
@@ -194,12 +202,28 @@ export async function loadConfig() {
       // Build global config
       const globalConfig = {};
       for (const row of globalRows) {
+        if (DANGEROUS_KEYS.has(row.key)) {
+          logWarn('Skipping dangerous config key from database', {
+            key: row.key,
+            guildId: row.guild_id,
+          });
+          continue;
+        }
+
         globalConfig[row.key] = row.value;
       }
       configCache.set('global', globalConfig);
 
       // Build per-guild configs (overrides only)
       for (const row of guildRows) {
+        if (DANGEROUS_KEYS.has(row.key)) {
+          logWarn('Skipping dangerous config key from database', {
+            key: row.key,
+            guildId: row.guild_id,
+          });
+          continue;
+        }
+
         if (!configCache.has(row.guild_id)) {
           configCache.set(row.guild_id, {});
         }

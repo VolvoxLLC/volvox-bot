@@ -157,7 +157,7 @@ describe('ai module', () => {
       expect(history[0].content).toBe('message 5');
     });
 
-    it('should pass guildId to getHistoryLength when provided', () => {
+    it('should pass guildId to getHistoryLength when provided', async () => {
       getConfig.mockReturnValue({ ai: { historyLength: 3, historyTTLDays: 30 } });
 
       for (let i = 0; i < 5; i++) {
@@ -166,6 +166,11 @@ describe('ai module', () => {
 
       // getConfig should have been called with guildId
       expect(getConfig).toHaveBeenCalledWith('guild-123');
+
+      // Verify history was actually trimmed to the configured length of 3
+      const history = await getHistoryAsync('ch-guild');
+      expect(history.length).toBe(3);
+      expect(history[0].content).toBe('msg 2');
     });
 
     it('should write to DB when pool is available', () => {
@@ -397,7 +402,7 @@ describe('ai module', () => {
       });
     });
 
-    it('should pass guildId to getHistoryAsync', async () => {
+    it('should call getConfig(guildId) for history-length lookup in generateResponse', async () => {
       const mockResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
