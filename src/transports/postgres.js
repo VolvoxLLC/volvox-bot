@@ -28,8 +28,8 @@ export class PostgresTransport extends Transport {
     }
 
     this.pool = pool;
-    this.batchSize = batchSize || 10;
-    this.flushIntervalMs = flushIntervalMs || 5000;
+    this.batchSize = Math.max(1, batchSize ?? 10);
+    this.flushIntervalMs = Math.max(100, flushIntervalMs ?? 5000);
 
     /** @type {Array<{level: string, message: string, metadata: object, timestamp: string}>} */
     this.buffer = [];

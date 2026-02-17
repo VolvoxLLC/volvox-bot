@@ -312,7 +312,7 @@ async function startup() {
         info('PostgreSQL logging transport enabled');
 
         // Prune old logs on startup
-        const retentionDays = config.logging.database.retentionDays || 30;
+        const retentionDays = config.logging.database.retentionDays ?? 30;
         const pruned = await pruneOldLogs(dbPool, retentionDays);
         if (pruned > 0) {
           info('Pruned old log entries', { pruned, retentionDays });
