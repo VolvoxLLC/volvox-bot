@@ -77,7 +77,7 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 function cleanExpiredStates() {
   const now = Date.now();
   for (const [key, expiry] of oauthStates) {
-    if (now > expiry) oauthStates.delete(key);
+    if (now >= expiry) oauthStates.delete(key);
   }
 }
 
@@ -164,7 +164,7 @@ router.get('/discord/callback', async (req, res) => {
   const stateExpiry = oauthStates.get(state);
   oauthStates.delete(state);
 
-  if (Date.now() > stateExpiry) {
+  if (!stateExpiry || Date.now() >= stateExpiry) {
     return res.status(403).json({ error: 'Invalid or expired OAuth state' });
   }
 
