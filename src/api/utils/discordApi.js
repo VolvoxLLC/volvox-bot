@@ -50,6 +50,7 @@ export async function fetchUserGuilds(userId, accessToken) {
     throw new Error('Discord API error');
   }
   const guilds = await response.json();
+  if (!Array.isArray(guilds)) throw new Error('Discord API returned non-array guild data');
 
   guildCache.set(userId, { guilds, expiresAt: Date.now() + GUILD_CACHE_TTL_MS });
   return guilds;
