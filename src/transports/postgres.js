@@ -127,7 +127,7 @@ export class PostgresTransport extends Transport {
         this.emit('warn', _err);
 
         // Restore entries to the front of the buffer so they can be retried
-        this.buffer.unshift(...entries);
+        this.buffer = entries.concat(this.buffer);
 
         // Cap buffer to prevent unbounded growth on persistent DB failures
         const MAX_BUFFER = 10000;
