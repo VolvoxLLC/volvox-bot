@@ -76,6 +76,18 @@ async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
 }
 
 /**
+ * Check whether the authenticated OAuth2 user is a configured bot owner.
+ * Bot owners bypass API guild-level permission checks.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @returns {boolean} True if JWT userId is in config.permissions.botOwners
+ */
+function isOAuthBotOwner(user) {
+  const botOwners = getConfig()?.permissions?.botOwners;
+  return Array.isArray(botOwners) && botOwners.includes(user?.userId);
+}
+
+/**
  * Check if an OAuth2 user has admin permissions on a guild.
  * Admin = ADMINISTRATOR only, aligning with the slash-command isAdmin check.
  *
@@ -101,7 +113,7 @@ function isOAuthGuildModerator(user, guildId) {
 
 /**
  * Create middleware that verifies OAuth2 users have the required guild permission.
- * API-secret users are trusted and pass through.
+ * API-secret users and configured bot owners are trusted and pass through.
  *
  * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Permission check function
  * @param {string} errorMessage - Error message for 403 responses
@@ -112,6 +124,8 @@ function requireGuildPermission(permissionCheck, errorMessage) {
     if (req.authMethod === 'api-secret') return next();
 
     if (req.authMethod === 'oauth') {
+      if (isOAuthBotOwner(req.user)) return next();
+
       try {
         if (!(await permissionCheck(req.user, req.params.id))) {
           return res.status(403).json({ error: errorMessage });
@@ -165,7 +179,10 @@ function validateGuild(req, res, next) {
 
 /**
  * GET / — List guilds
- * For OAuth2 users: fetches fresh guilds from Discord, returns only those where user has admin AND bot is present
+ * For OAuth2 users:
+ * - bot owners: return all guilds where the bot is present (access = "bot-owner")
+ * - non-owners: fetch fresh guilds from Discord and return only guilds where user has
+ *   ADMINISTRATOR (access = "admin") or MANAGE_GUILD (access = "moderator"), and bot is present
  * For api-secret users: returns all bot guilds
  */
 router.get('/', async (req, res) => {
@@ -173,6 +190,17 @@ router.get('/', async (req, res) => {
   const botGuilds = client.guilds.cache;
 
   if (req.authMethod === 'oauth') {
+    if (isOAuthBotOwner(req.user)) {
+      const ownerGuilds = Array.from(botGuilds.values()).map((g) => ({
+        id: g.id,
+        name: g.name,
+        icon: g.iconURL(),
+        memberCount: g.memberCount,
+        access: 'bot-owner',
+      }));
+      return res.json(ownerGuilds);
+    }
+
     const accessToken = getSessionToken(req.user?.userId);
     if (!accessToken) {
       return res.status(401).json({ error: 'Missing access token' });
@@ -180,10 +208,13 @@ router.get('/', async (req, res) => {
 
     try {
       const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
-      const adminFlags = ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG;
       const filtered = userGuilds.reduce((acc, ug) => {
-        // User must have admin-level permission (ADMINISTRATOR or MANAGE_GUILD).
-        if ((Number(ug.permissions) & adminFlags) === 0) return acc;
+        const permissions = Number(ug.permissions);
+        const hasAdmin = (permissions & ADMINISTRATOR_FLAG) !== 0;
+        const hasManageGuild = (permissions & MANAGE_GUILD_FLAG) !== 0;
+        const access = hasAdmin ? 'admin' : hasManageGuild ? 'moderator' : null;
+        if (!access) return acc;
+
         // Single lookup avoids has/get TOCTOU.
         const botGuild = botGuilds.get(ug.id);
         if (!botGuild) return acc;
@@ -192,6 +223,7 @@ router.get('/', async (req, res) => {
           name: botGuild.name,
           icon: botGuild.iconURL(),
           memberCount: botGuild.memberCount,
+          access,
         });
         return acc;
       }, []);
