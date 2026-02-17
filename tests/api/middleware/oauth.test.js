@@ -52,6 +52,17 @@ describe('requireOAuth middleware', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'No token provided' });
   });
 
+  it('should still return No token provided even if x-api-secret header is present', () => {
+    req.headers['x-api-secret'] = 'test-secret';
+    const middleware = requireOAuth();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'No token provided' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('should return 500 when SESSION_SECRET is not set', () => {
     vi.stubEnv('SESSION_SECRET', '');
     req.headers.authorization = 'Bearer some-token';
