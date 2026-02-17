@@ -237,18 +237,16 @@ async function gracefulShutdown(signal) {
   saveState();
 
   // 3. Remove PostgreSQL logging transport (flushes remaining buffer)
-  if (pgTransport) {
-    transportLock = transportLock.then(async () => {
-      if (pgTransport) {
-        await removePostgresTransport(pgTransport);
-        pgTransport = null;
-      }
-    });
-    try {
-      await transportLock;
-    } catch (err) {
-      error('Failed to close PostgreSQL logging transport', { error: err.message });
+  transportLock = transportLock.then(async () => {
+    if (pgTransport) {
+      await removePostgresTransport(pgTransport);
+      pgTransport = null;
     }
+  });
+  try {
+    await transportLock;
+  } catch (err) {
+    error('Failed to close PostgreSQL logging transport', { error: err.message });
   }
 
   // 4. Close database pool
