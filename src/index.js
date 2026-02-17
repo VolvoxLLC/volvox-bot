@@ -348,6 +348,7 @@ async function startup() {
   }
 
   for (const key of [
+    'logging.database',
     'logging.database.enabled',
     'logging.database.batchSize',
     'logging.database.flushIntervalMs',
