@@ -20,6 +20,8 @@ export const sessionStore = new Map();
 const oauthStates = new Map();
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Remove expired state entries from the store
  */
@@ -28,6 +30,18 @@ function cleanExpiredStates() {
   for (const [key, expiry] of oauthStates) {
     if (now > expiry) oauthStates.delete(key);
   }
+}
+
+/** Periodic cleanup interval for expired OAuth states */
+const cleanupInterval = setInterval(cleanExpiredStates, CLEANUP_INTERVAL_MS);
+cleanupInterval.unref();
+
+/**
+ * Stop the periodic OAuth state cleanup interval.
+ * Should be called during server shutdown.
+ */
+export function stopAuthCleanup() {
+  clearInterval(cleanupInterval);
 }
 
 /**
@@ -62,6 +76,8 @@ router.get('/discord', (_req, res) => {
  * Exchanges code for token, fetches user info, creates JWT
  */
 router.get('/discord/callback', async (req, res) => {
+  cleanExpiredStates();
+
   const { code, state } = req.query;
 
   if (!code) {
