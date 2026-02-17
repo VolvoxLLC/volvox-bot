@@ -122,10 +122,8 @@ export async function initDb() {
         END $$
       `);
 
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_config_guild_id
-        ON config (guild_id)
-      `);
+      // Note: No standalone guild_id index needed — the composite PK (guild_id, key)
+      // already covers guild_id-only queries via leftmost prefix.
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS conversations (
