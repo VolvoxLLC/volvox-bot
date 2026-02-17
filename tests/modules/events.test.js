@@ -431,6 +431,7 @@ describe('events module', () => {
         config,
         null,
         'author-123',
+        'g1',
       );
     });
 

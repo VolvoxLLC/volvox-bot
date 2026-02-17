@@ -134,6 +134,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
             config,
             healthMonitor,
             message.author.id,
+            message.guild?.id,
           );
 
           // Split long responses

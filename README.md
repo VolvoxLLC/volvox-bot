@@ -371,13 +371,13 @@ Set these in the Railway dashboard for the Web Dashboard service:
 
 ### Private Networking
 
-Railway services within the same project can communicate over a private internal network. When the bot exposes an HTTP API (planned), the Web Dashboard will reach it at:
+Railway services within the same project can communicate over a private internal network. The bot exposes a REST API server, and the Web Dashboard reaches it at:
 
 ```text
 http://bot.railway.internal:<PORT>
 ```
 
-> **Note:** The bot does not currently expose an HTTP API server — it connects to Discord via WebSocket only. `BOT_API_URL` is used by the web dashboard to query bot state; this feature requires the bot API to be implemented first.
+> **Note:** The bot exposes a REST API server on `BOT_API_PORT` (default `3001`) alongside its Discord WebSocket connection. `BOT_API_URL` is used by the web dashboard to query bot state.
 
 ### Slash Command Registration
 
@@ -444,7 +444,7 @@ docker compose up --build
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **bot** | — (internal) | Discord bot, no HTTP server |
+| **bot** | `localhost:3001` | Discord bot with REST API server (`BOT_API_PORT`) |
 | **db** | `localhost:5432` | PostgreSQL 17, user: `postgres`, password: `postgres`, database: `billsbot` |
 | **web** | `localhost:3000` | Next.js web dashboard (requires `--profile full`) |
 

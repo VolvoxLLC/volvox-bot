@@ -4,7 +4,7 @@
  */
 
 import pg from 'pg';
-import { info, error as logError } from './logger.js';
+import { info, error as logError, warn } from './logger.js';
 import { initLogsTable } from './transports/postgres.js';
 
 const { Pool } = pg;
@@ -101,12 +101,33 @@ export async function initDb() {
         CREATE TABLE IF NOT EXISTS conversations (
           id SERIAL PRIMARY KEY,
           channel_id TEXT NOT NULL,
+          guild_id TEXT,
           role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
           content TEXT NOT NULL,
           username TEXT,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
+
+      // Backfill guild_id for databases created before this column existed.
+      // ADD COLUMN IF NOT EXISTS requires PostgreSQL 9.6+.
+      try {
+        await pool.query(`
+          ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT
+        `);
+      } catch (err) {
+        warn('Failed to add guild_id column (requires PG 9.6+)', { error: err.message });
+      }
+
+      // Create index - wrap in try/catch in case ALTER TABLE failed (e.g., PG < 9.6)
+      try {
+        await pool.query(`
+          CREATE INDEX IF NOT EXISTS idx_conversations_guild_id
+          ON conversations (guild_id)
+        `);
+      } catch (err) {
+        warn('Failed to create guild_id index (column may not exist)', { error: err.message });
+      }
 
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_conversations_channel_created

@@ -112,6 +112,7 @@ describe('db module', () => {
       );
       expect(queries.some((q) => q.includes('idx_conversations_channel_created'))).toBe(true);
       expect(queries.some((q) => q.includes('idx_conversations_created_at'))).toBe(true);
+      expect(queries.some((q) => q.includes('idx_conversations_guild_id'))).toBe(true);
 
       // Moderation tables
       expect(queries.some((q) => q.includes('CREATE TABLE IF NOT EXISTS mod_cases'))).toBe(true);

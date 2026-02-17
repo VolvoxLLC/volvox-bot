@@ -162,6 +162,22 @@ describe('ai module', () => {
       const mockPool = { query: mockQuery };
       setPool(mockPool);
 
+      addToHistory('ch1', 'user', 'hello', 'testuser', 'guild1');
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO conversations'), [
+        'ch1',
+        'user',
+        'hello',
+        'testuser',
+        'guild1',
+      ]);
+    });
+
+    it('should write null guild_id when not provided', () => {
+      const mockQuery = vi.fn().mockResolvedValue({});
+      const mockPool = { query: mockQuery };
+      setPool(mockPool);
+
       addToHistory('ch1', 'user', 'hello', 'testuser');
 
       expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO conversations'), [
@@ -169,6 +185,7 @@ describe('ai module', () => {
         'user',
         'hello',
         'testuser',
+        null,
       ]);
     });
   });
