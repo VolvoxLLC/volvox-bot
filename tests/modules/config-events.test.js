@@ -253,4 +253,22 @@ describe('config change events', () => {
     expect(cb2).toHaveBeenCalledOnce();
     expect(cb3).toHaveBeenCalledOnce();
   });
+
+  it('should catch async listener rejections without unhandled promise rejection', async () => {
+    const asyncBadCb = vi.fn().mockRejectedValue(new Error('async boom'));
+    const goodCb = vi.fn();
+    configModule.onConfigChange('ai.model', asyncBadCb);
+    configModule.onConfigChange('ai.model', goodCb);
+
+    await configModule.setConfigValue('ai.model', 'new-model');
+
+    expect(asyncBadCb).toHaveBeenCalledOnce();
+    expect(goodCb).toHaveBeenCalledOnce();
+
+    const { warn: mockWarn } = await import('../../src/logger.js');
+    expect(mockWarn).toHaveBeenCalledWith('Async config change listener error', {
+      path: 'ai.model',
+      error: 'async boom',
+    });
+  });
 });
