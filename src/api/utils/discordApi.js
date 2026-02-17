@@ -64,7 +64,7 @@ export async function fetchUserGuilds(userId, accessToken) {
 
   guildCache.set(userId, { guilds, expiresAt: Date.now() + GUILD_CACHE_TTL_MS });
   // Cap cache size to prevent unbounded memory growth
-  if (guildCache.size > MAX_GUILD_CACHE_SIZE) {
+  while (guildCache.size > MAX_GUILD_CACHE_SIZE) {
     const oldest = guildCache.keys().next().value;
     guildCache.delete(oldest);
   }
