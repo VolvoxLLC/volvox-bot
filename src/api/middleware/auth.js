@@ -15,8 +15,12 @@ import { warn } from '../../logger.js';
 export function isValidSecret(secret) {
   const expected = process.env.BOT_API_SECRET;
   if (!expected || !secret) return false;
-  if (secret.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected));
+  // Compare byte lengths, not character lengths, to prevent timingSafeEqual from throwing
+  // on multi-byte UTF-8 characters (e.g., 'é' is 1 char but 2 bytes)
+  const secretBuffer = Buffer.from(secret);
+  const expectedBuffer = Buffer.from(expected);
+  if (secretBuffer.length !== expectedBuffer.length) return false;
+  return crypto.timingSafeEqual(secretBuffer, expectedBuffer);
 }
 
 /**
