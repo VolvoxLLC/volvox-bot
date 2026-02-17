@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
+import { sanitizeMentions } from '../../utils/sanitizeMentions.js';
 
 const router = Router();
 
@@ -283,7 +284,8 @@ router.post('/:id/actions', async (req, res) => {
     }
 
     try {
-      const message = await safeSend(channel, content);
+      const sanitized = sanitizeMentions(content);
+      const message = await safeSend(channel, sanitized);
       info('Message sent via API', { guild: req.params.id, channel: channelId });
       const sent = Array.isArray(message) ? message[0] : message;
       res.status(201).json({ id: sent.id, channelId, content: sent.content });
