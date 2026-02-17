@@ -12,8 +12,13 @@ vi.mock('../../../src/modules/config.js', () => ({
   setConfigValue: vi.fn().mockResolvedValue({ model: 'claude-4' }),
 }));
 
+vi.mock('../../../src/utils/safeSend.js', () => ({
+  safeSend: vi.fn().mockResolvedValue({ id: 'msg1' }),
+}));
+
 import { createApp } from '../../../src/api/server.js';
 import { getConfig, setConfigValue } from '../../../src/modules/config.js';
+import { safeSend } from '../../../src/utils/safeSend.js';
 
 describe('guilds routes', () => {
   let app;
@@ -313,7 +318,7 @@ describe('guilds routes', () => {
   });
 
   describe('POST /:id/actions', () => {
-    it('should send a message to a channel', async () => {
+    it('should send a message to a channel using safeSend', async () => {
       const res = await request(app)
         .post('/api/v1/guilds/guild1/actions')
         .set('x-api-secret', SECRET)
@@ -321,7 +326,18 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.id).toBe('msg1');
-      expect(mockChannel.send).toHaveBeenCalledWith('Hello!');
+      expect(safeSend).toHaveBeenCalledWith(mockChannel, 'Hello!');
+    });
+
+    it('should return 400 when content exceeds 2000 characters', async () => {
+      const longContent = 'a'.repeat(2001);
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/actions')
+        .set('x-api-secret', SECRET)
+        .send({ action: 'sendMessage', channelId: 'ch1', content: longContent });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('2000');
     });
 
     it('should return 400 when action is missing', async () => {
@@ -374,7 +390,7 @@ describe('guilds routes', () => {
     });
 
     it('should return 500 when send fails', async () => {
-      mockChannel.send.mockRejectedValueOnce(new Error('Discord error'));
+      safeSend.mockRejectedValueOnce(new Error('Discord error'));
 
       const res = await request(app)
         .post('/api/v1/guilds/guild1/actions')

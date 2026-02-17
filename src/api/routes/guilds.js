@@ -6,6 +6,8 @@
 import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { safeSend } from '../../utils/safeSend.js';
+import { DISCORD_MAX_LENGTH } from '../../utils/splitMessage.js';
 
 const router = Router();
 
@@ -208,6 +210,12 @@ router.post('/:id/actions', async (req, res) => {
       return res.status(400).json({ error: 'Missing "channelId" or "content" for sendMessage' });
     }
 
+    if (typeof content !== 'string' || content.length > DISCORD_MAX_LENGTH) {
+      return res.status(400).json({
+        error: `Content must be a string of at most ${DISCORD_MAX_LENGTH} characters`,
+      });
+    }
+
     // Validate channel belongs to guild
     const channel = req.guild.channels.cache.get(channelId);
     if (!channel) {
@@ -219,9 +227,10 @@ router.post('/:id/actions', async (req, res) => {
     }
 
     try {
-      const message = await channel.send(content);
+      const message = await safeSend(channel, content);
       info('Message sent via API', { guild: req.params.id, channel: channelId });
-      res.status(201).json({ id: message.id, channelId, content });
+      const sent = Array.isArray(message) ? message[0] : message;
+      res.status(201).json({ id: sent.id, channelId, content });
     } catch (err) {
       error('Failed to send message via API', { error: err.message, guild: req.params.id });
       res.status(500).json({ error: 'Failed to send message' });
