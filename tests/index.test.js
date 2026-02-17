@@ -656,12 +656,12 @@ describe('index.js', () => {
 
   describe('config change listeners', () => {
     /** Helper to invoke a captured onConfigChange callback */
-    function invokeConfigCallback(path, newValue, oldValue = undefined) {
+    function invokeConfigCallback(path, newValue, oldValue = undefined, fullPath = path) {
       const cbs = mocks.config.onConfigChangeCallbacks[path];
       if (!cbs || cbs.length === 0) {
         throw new Error(`No onConfigChange callback registered for "${path}"`);
       }
-      return Promise.all(cbs.map((cb) => cb(newValue, oldValue, path)));
+      return Promise.all(cbs.map((cb) => cb(newValue, oldValue, fullPath)));
     }
 
     it('should enable postgres transport when logging.database.enabled toggled to true', async () => {
@@ -854,21 +854,21 @@ describe('index.js', () => {
     it('should log observability for ai/spam/moderation config changes', async () => {
       await importIndex({ token: 'abc', databaseUrl: null });
 
-      await invokeConfigCallback('ai.*', 'gpt-4', undefined);
+      await invokeConfigCallback('ai.*', 'gpt-4', undefined, 'ai.model');
       expect(mocks.logger.info).toHaveBeenCalledWith('AI config updated', {
-        path: 'ai.*',
+        path: 'ai.model',
         newValue: 'gpt-4',
       });
 
-      await invokeConfigCallback('spam.*', true, undefined);
+      await invokeConfigCallback('spam.*', true, undefined, 'spam.enabled');
       expect(mocks.logger.info).toHaveBeenCalledWith('Spam config updated', {
-        path: 'spam.*',
+        path: 'spam.enabled',
         newValue: true,
       });
 
-      await invokeConfigCallback('moderation.*', false, undefined);
+      await invokeConfigCallback('moderation.*', false, undefined, 'moderation.automod');
       expect(mocks.logger.info).toHaveBeenCalledWith('Moderation config updated', {
-        path: 'moderation.*',
+        path: 'moderation.automod',
         newValue: false,
       });
     });
