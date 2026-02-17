@@ -8,7 +8,12 @@ vi.mock('../../../src/logger.js', () => ({
 }));
 
 vi.mock('../../../src/modules/config.js', () => ({
-  getConfig: vi.fn().mockReturnValue({ ai: { model: 'claude-3' } }),
+  getConfig: vi.fn().mockReturnValue({
+    ai: { model: 'claude-3' },
+    welcome: { enabled: true },
+    database: { host: 'secret-host' },
+    token: 'secret-token',
+  }),
   setConfigValue: vi.fn().mockResolvedValue({ model: 'claude-4' }),
 }));
 
@@ -124,13 +129,16 @@ describe('guilds routes', () => {
   });
 
   describe('GET /:id/config', () => {
-    it('should return config', async () => {
+    it('should return only safe config keys', async () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ ai: { model: 'claude-3' } });
+      expect(res.body.ai).toEqual({ model: 'claude-3' });
+      expect(res.body.welcome).toEqual({ enabled: true });
+      expect(res.body.database).toBeUndefined();
+      expect(res.body.token).toBeUndefined();
       expect(getConfig).toHaveBeenCalled();
     });
   });
@@ -154,6 +162,16 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('path');
+    });
+
+    it('should return 403 when path targets a disallowed config key', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'database.host', value: 'evil-host' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('not allowed');
     });
 
     it('should return 400 when value is missing', async () => {

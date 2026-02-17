@@ -12,6 +12,12 @@ import { DISCORD_MAX_LENGTH } from '../../utils/splitMessage.js';
 const router = Router();
 
 /**
+ * Config keys that are safe to expose via the API.
+ * Everything else (database credentials, API tokens, etc.) is filtered out.
+ */
+const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'logging'];
+
+/**
  * Parse pagination query params with defaults and capping.
  * @param {Object} query - Express req.query
  * @returns {{ page: number, limit: number, offset: number }}
@@ -65,16 +71,26 @@ router.get('/:id', (req, res) => {
 });
 
 /**
- * GET /:id/config — Read guild config
+ * GET /:id/config — Read guild config (safe keys only)
+ * Note: Config is global, not per-guild. The guild ID is accepted for
+ * API consistency but does not scope the returned config.
  */
 router.get('/:id/config', (_req, res) => {
   const config = getConfig();
-  res.json(config);
+  const safeConfig = {};
+  for (const key of SAFE_CONFIG_KEYS) {
+    if (key in config) {
+      safeConfig[key] = config[key];
+    }
+  }
+  res.json(safeConfig);
 });
 
 /**
- * PATCH /:id/config — Update a config value
+ * PATCH /:id/config — Update a config value (safe keys only)
  * Body: { path: "ai.model", value: "claude-3" }
+ * Note: Config is global, not per-guild. The guild ID is accepted for
+ * API consistency but does not scope the update.
  */
 router.patch('/:id/config', async (req, res) => {
   const { path, value } = req.body;
@@ -85,6 +101,11 @@ router.patch('/:id/config', async (req, res) => {
 
   if (value === undefined) {
     return res.status(400).json({ error: 'Missing "value" in request body' });
+  }
+
+  const topLevelKey = path.split('.')[0];
+  if (!SAFE_CONFIG_KEYS.includes(topLevelKey)) {
+    return res.status(403).json({ error: 'Modifying this config key is not allowed' });
   }
 
   try {
