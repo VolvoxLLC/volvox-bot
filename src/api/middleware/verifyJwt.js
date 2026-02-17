@@ -4,7 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-import { getSessionToken } from '../routes/auth.js';
+import { getSessionToken } from '../utils/sessionStore.js';
 
 /**
  * Verify a JWT token and validate the associated server-side session.

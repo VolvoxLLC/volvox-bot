@@ -9,44 +9,11 @@ import jwt from 'jsonwebtoken';
 import { error, info } from '../../logger.js';
 import { requireOAuth } from '../middleware/oauth.js';
 import { DISCORD_API, fetchUserGuilds } from '../utils/discordApi.js';
+import { sessionStore } from '../utils/sessionStore.js';
 
 const router = Router();
 
-/** Session TTL matches JWT expiry */
-const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-/**
- * TTL-based session store: userId → { accessToken, expiresAt }
- * Extends Map to transparently handle expiry on get/has/delete.
- */
-class SessionStore extends Map {
-  set(userId, accessToken) {
-    return super.set(userId, { accessToken, expiresAt: Date.now() + SESSION_TTL_MS });
-  }
-
-  get(userId) {
-    const entry = super.get(userId);
-    if (!entry) return undefined;
-    if (Date.now() >= entry.expiresAt) {
-      super.delete(userId);
-      return undefined;
-    }
-    return entry.accessToken;
-  }
-
-  has(userId) {
-    return this.get(userId) !== undefined;
-  }
-
-  cleanup() {
-    const now = Date.now();
-    for (const [key, entry] of super.entries()) {
-      if (now >= entry.expiresAt) super.delete(key);
-    }
-  }
-}
-
-export const sessionStore = new SessionStore();
+export { sessionStore };
 
 /** CSRF state store: state → expiry timestamp */
 const oauthStates = new Map();
@@ -100,17 +67,6 @@ export function stopAuthCleanup() {
 }
 
 /**
- * Get the access token for a user from the session store.
- * Returns undefined if the session has expired or does not exist.
- *
- * @param {string} userId - Discord user ID
- * @returns {string|undefined} The access token, or undefined
- */
-export function getSessionToken(userId) {
-  return sessionStore.get(userId);
-}
-
-/**
  * GET /discord — Redirect to Discord OAuth2 authorization
  */
 router.get('/discord', (_req, res) => {
@@ -118,6 +74,10 @@ router.get('/discord', (_req, res) => {
   const redirectUri = process.env.DISCORD_REDIRECT_URI;
 
   if (!clientId || !redirectUri) {
+    error('OAuth2 not configured for /discord', {
+      hasClientId: Boolean(clientId),
+      hasRedirectUri: Boolean(redirectUri),
+    });
     return res.status(500).json({ error: 'OAuth2 not configured' });
   }
 
@@ -168,6 +128,12 @@ router.get('/discord/callback', async (req, res) => {
   const sessionSecret = process.env.SESSION_SECRET;
 
   if (!clientId || !clientSecret || !redirectUri || !sessionSecret) {
+    error('OAuth2 not configured for /discord/callback', {
+      hasClientId: Boolean(clientId),
+      hasClientSecret: Boolean(clientSecret),
+      hasRedirectUri: Boolean(redirectUri),
+      hasSessionSecret: Boolean(sessionSecret),
+    });
     return res.status(500).json({ error: 'OAuth2 not configured' });
   }
 
@@ -229,7 +195,6 @@ router.get('/discord/callback', async (req, res) => {
       {
         userId: user.id,
         username: user.username,
-        discriminator: user.discriminator,
         avatar: user.avatar,
       },
       sessionSecret,
@@ -252,7 +217,7 @@ router.get('/discord/callback', async (req, res) => {
  * Fetches fresh guilds from Discord using the stored access token
  */
 router.get('/me', requireOAuth(), async (req, res) => {
-  const { userId, username, discriminator, avatar } = req.user;
+  const { userId, username, avatar } = req.user;
   const accessToken = sessionStore.get(userId);
 
   let guilds = [];
@@ -269,7 +234,7 @@ router.get('/me', requireOAuth(), async (req, res) => {
     }
   }
 
-  res.json({ userId, username, discriminator, avatar, guilds });
+  res.json({ userId, username, avatar, guilds });
 });
 
 /**

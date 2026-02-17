@@ -25,8 +25,8 @@ vi.mock('../../../src/utils/safeSend.js', () => ({
 }));
 
 import { sessionStore } from '../../../src/api/routes/auth.js';
-import { guildCache } from '../../../src/api/routes/guilds.js';
 import { createApp } from '../../../src/api/server.js';
+import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { getConfig, setConfigValue } from '../../../src/modules/config.js';
 import { safeSend } from '../../../src/utils/safeSend.js';
 
