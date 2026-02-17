@@ -253,7 +253,7 @@ router.post('/:id/actions', async (req, res) => {
       const message = await safeSend(channel, content);
       info('Message sent via API', { guild: req.params.id, channel: channelId });
       const sent = Array.isArray(message) ? message[0] : message;
-      res.status(201).json({ id: sent.id, channelId, content });
+      res.status(201).json({ id: sent.id, channelId, content: sent.content });
     } catch (err) {
       error('Failed to send message via API', { error: err.message, guild: req.params.id });
       res.status(500).json({ error: 'Failed to send message' });

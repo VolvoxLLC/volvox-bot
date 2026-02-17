@@ -18,7 +18,7 @@ vi.mock('../../../src/modules/config.js', () => ({
 }));
 
 vi.mock('../../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn().mockResolvedValue({ id: 'msg1' }),
+  safeSend: vi.fn().mockResolvedValue({ id: 'msg1', content: 'Hello!' }),
 }));
 
 import { createApp } from '../../../src/api/server.js';
@@ -362,6 +362,7 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.id).toBe('msg1');
+      expect(res.body.content).toBe('Hello!');
       expect(safeSend).toHaveBeenCalledWith(mockChannel, 'Hello!');
     });
 
