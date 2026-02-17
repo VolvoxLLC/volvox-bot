@@ -14,7 +14,7 @@ const router = Router();
  * Config keys that are safe to expose via the API.
  * Everything else (database credentials, API tokens, etc.) is filtered out.
  */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'logging'];
+const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation'];
 
 /**
  * Parse pagination query params with defaults and capping.
