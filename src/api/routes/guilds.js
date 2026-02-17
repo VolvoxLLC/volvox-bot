@@ -91,6 +91,7 @@ router.get('/:id', (req, res) => {
  * GET /:id/config — Read guild config (safe keys only)
  * Note: Config is global, not per-guild. The guild ID is accepted for
  * API consistency but does not scope the returned config.
+ * Per-guild config is tracked in Issue #71.
  */
 router.get('/:id/config', (_req, res) => {
   const config = getConfig();
@@ -100,7 +101,11 @@ router.get('/:id/config', (_req, res) => {
       safeConfig[key] = config[key];
     }
   }
-  res.json(safeConfig);
+  res.json({
+    scope: 'global',
+    note: 'Config is global, not per-guild. Per-guild config is tracked in Issue #71.',
+    ...safeConfig,
+  });
 });
 
 /**
@@ -108,6 +113,7 @@ router.get('/:id/config', (_req, res) => {
  * Body: { path: "ai.model", value: "claude-3" }
  * Note: Config is global, not per-guild. The guild ID is accepted for
  * API consistency but does not scope the update.
+ * Per-guild config is tracked in Issue #71.
  */
 router.patch('/:id/config', async (req, res) => {
   if (!req.body) {
