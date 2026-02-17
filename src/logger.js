@@ -247,8 +247,8 @@ export function addPostgresTransport(pool, config = {}) {
   const transport = new PostgresTransport({
     pool,
     level: config.minLevel || 'info',
-    batchSize: config.batchSize || 10,
-    flushIntervalMs: config.flushIntervalMs || 5000,
+    batchSize: config.batchSize ?? 10,
+    flushIntervalMs: config.flushIntervalMs ?? 5000,
     format: winston.format.combine(
       redactSensitiveData,
       winston.format.timestamp(),
