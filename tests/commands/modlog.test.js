@@ -30,13 +30,13 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
 }));
 vi.mock('../../src/utils/permissions.js', () => ({
-  isModerator: vi.fn().mockReturnValue(true),
+  hasPermission: vi.fn().mockReturnValue(true),
   getPermissionError: vi.fn().mockReturnValue("❌ You don't have permission to use `/modlog`."),
 }));
 
 import { adminOnly, data, execute } from '../../src/commands/modlog.js';
 import { getConfig, setConfigValue } from '../../src/modules/config.js';
-import { isModerator } from '../../src/utils/permissions.js';
+import { hasPermission } from '../../src/utils/permissions.js';
 
 function createInteraction(subcommand) {
   const collectHandlers = {};
@@ -73,17 +73,56 @@ describe('modlog command', () => {
     expect(adminOnly).toBe(true);
   });
 
-  it('should deny permission for non-moderators', async () => {
-    isModerator.mockReturnValueOnce(false);
+  it('should deny permission when hasPermission fails', async () => {
+    hasPermission.mockReturnValueOnce(false);
 
     const interaction = createInteraction('view');
     await execute(interaction);
 
+    expect(hasPermission).toHaveBeenCalledWith(
+      interaction.member,
+      'modlog',
+      expect.objectContaining({ moderation: expect.any(Object) }),
+    );
     expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining("don't have permission"),
         ephemeral: true,
       }),
+    );
+  });
+
+  it('should allow command when permissions.enabled is false', async () => {
+    getConfig.mockReturnValueOnce({
+      moderation: { logging: { channels: {} } },
+      permissions: { enabled: false, usePermissions: true },
+    });
+    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
+      return !config.permissions?.enabled || !config.permissions?.usePermissions;
+    });
+
+    const interaction = createInteraction('view');
+    await execute(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: expect.any(Array), ephemeral: true }),
+    );
+  });
+
+  it('should allow command when permissions.usePermissions is false', async () => {
+    getConfig.mockReturnValueOnce({
+      moderation: { logging: { channels: {} } },
+      permissions: { enabled: true, usePermissions: false },
+    });
+    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
+      return !config.permissions?.enabled || !config.permissions?.usePermissions;
+    });
+
+    const interaction = createInteraction('view');
+    await execute(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: expect.any(Array), ephemeral: true }),
     );
   });
 

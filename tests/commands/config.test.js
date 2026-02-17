@@ -13,13 +13,13 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 vi.mock('../../src/utils/permissions.js', () => ({
-  isGuildAdmin: vi.fn().mockReturnValue(true),
+  hasPermission: vi.fn().mockReturnValue(true),
   getPermissionError: vi.fn().mockReturnValue("❌ You don't have permission to use `/config`."),
 }));
 
 import { autocomplete, data, execute } from '../../src/commands/config.js';
 import { getConfig, resetConfig, setConfigValue } from '../../src/modules/config.js';
-import { isGuildAdmin } from '../../src/utils/permissions.js';
+import { hasPermission } from '../../src/utils/permissions.js';
 
 describe('config command', () => {
   afterEach(() => {
@@ -35,8 +35,8 @@ describe('config command', () => {
     expect(mod.adminOnly).toBe(true);
   });
 
-  it('should deny permission for non-guild-admins', async () => {
-    isGuildAdmin.mockReturnValueOnce(false);
+  it('should deny permission when hasPermission fails', async () => {
+    hasPermission.mockReturnValueOnce(false);
 
     const mockReply = vi.fn();
     const interaction = {
@@ -49,11 +49,64 @@ describe('config command', () => {
     };
 
     await execute(interaction);
+    expect(hasPermission).toHaveBeenCalledWith(
+      interaction.member,
+      'config',
+      expect.objectContaining({ permissions: expect.any(Object) }),
+    );
     expect(mockReply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining("don't have permission"),
         ephemeral: true,
       }),
+    );
+  });
+
+  it('should allow command when permissions.enabled is false', async () => {
+    getConfig.mockReturnValueOnce({
+      ai: { enabled: true },
+      permissions: { enabled: false, usePermissions: true },
+    });
+    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
+      return !config.permissions?.enabled || !config.permissions?.usePermissions;
+    });
+
+    const interaction = {
+      member: {},
+      options: {
+        getSubcommand: vi.fn().mockReturnValue('view'),
+        getString: vi.fn().mockReturnValue(null),
+      },
+      reply: vi.fn(),
+    };
+
+    await execute(interaction);
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: expect.any(Array), ephemeral: true }),
+    );
+  });
+
+  it('should allow command when permissions.usePermissions is false', async () => {
+    getConfig.mockReturnValueOnce({
+      ai: { enabled: true },
+      permissions: { enabled: true, usePermissions: false },
+    });
+    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
+      return !config.permissions?.enabled || !config.permissions?.usePermissions;
+    });
+
+    const interaction = {
+      member: {},
+      options: {
+        getSubcommand: vi.fn().mockReturnValue('view'),
+        getString: vi.fn().mockReturnValue(null),
+      },
+      reply: vi.fn(),
+    };
+
+    await execute(interaction);
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: expect.any(Array), ephemeral: true }),
     );
   });
 
