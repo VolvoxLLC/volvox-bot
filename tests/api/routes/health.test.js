@@ -23,7 +23,7 @@ describe('health route', () => {
     return createApp(client, null);
   }
 
-  it('should return health status with discord info', async () => {
+  it('should return basic health status without memory by default', async () => {
     const app = buildApp();
 
     const res = await request(app).get('/api/v1/health');
@@ -31,13 +31,39 @@ describe('health route', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
     expect(res.body.uptime).toBeTypeOf('number');
-    expect(res.body.memory).toBeDefined();
-    expect(res.body.memory.heapUsed).toBeTypeOf('number');
+    expect(res.body.memory).toBeUndefined();
     expect(res.body.discord).toEqual({
       status: 0,
       ping: 42,
       guilds: 1,
     });
+  });
+
+  it('should include memory when valid x-api-secret is provided', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    const app = buildApp();
+
+    const res = await request(app)
+      .get('/api/v1/health')
+      .set('x-api-secret', 'test-secret');
+
+    expect(res.status).toBe(200);
+    expect(res.body.memory).toBeDefined();
+    expect(res.body.memory.heapUsed).toBeTypeOf('number');
+    vi.unstubAllEnvs();
+  });
+
+  it('should not include memory with invalid secret', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    const app = buildApp();
+
+    const res = await request(app)
+      .get('/api/v1/health')
+      .set('x-api-secret', 'wrong-secret');
+
+    expect(res.status).toBe(200);
+    expect(res.body.memory).toBeUndefined();
+    vi.unstubAllEnvs();
   });
 
   it('should not require authentication', async () => {
