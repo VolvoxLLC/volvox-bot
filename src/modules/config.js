@@ -303,7 +303,7 @@ export async function setConfigValue(path, value) {
   setNestedValue(configCache[section], nestedParts, parsedVal);
 
   info('Config updated', { path, value: parsedVal, persisted: dbPersisted });
-  emitConfigChangeEvents(path, parsedVal, oldValue);
+  await emitConfigChangeEvents(path, parsedVal, oldValue);
   return configCache[section];
 }
 
