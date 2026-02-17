@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -105,6 +106,25 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(401);
     });
+
+    it('should authenticate with valid JWT Bearer token', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = jwt.sign(
+        {
+          userId: '123',
+          username: 'testuser',
+          guilds: [{ id: 'guild1', name: 'Test Server', permissions: '8' }],
+        },
+        'jwt-test-secret',
+      );
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe('guild1');
+    });
   });
 
   describe('guild validation', () => {
@@ -113,6 +133,57 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(404);
       expect(res.body.error).toBe('Guild not found');
+    });
+  });
+
+  describe('GET /', () => {
+    it('should return all guilds for api-secret auth', async () => {
+      const res = await request(app).get('/api/v1/guilds').set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].id).toBe('guild1');
+      expect(res.body[0].name).toBe('Test Server');
+      expect(res.body[0].memberCount).toBe(100);
+    });
+
+    it('should return only admin guilds for OAuth user', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = jwt.sign(
+        {
+          userId: '123',
+          username: 'testuser',
+          guilds: [
+            { id: 'guild1', name: 'Test Server', permissions: '8' },
+            { id: 'guild-not-in-bot', name: 'Other Server', permissions: '8' },
+          ],
+        },
+        'jwt-test-secret',
+      );
+
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      // Only guild1 (bot is in it AND user has admin), not guild-not-in-bot
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].id).toBe('guild1');
+    });
+
+    it('should exclude guilds where OAuth user is not admin', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = jwt.sign(
+        {
+          userId: '123',
+          username: 'testuser',
+          guilds: [{ id: 'guild1', name: 'Test Server', permissions: '0' }],
+        },
+        'jwt-test-secret',
+      );
+
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(0);
     });
   });
 
@@ -127,6 +198,69 @@ describe('guilds routes', () => {
       expect(res.body.memberCount).toBe(100);
       expect(res.body.channels).toBeInstanceOf(Array);
       expect(res.body.channels).toHaveLength(2);
+    });
+  });
+
+  describe('guild admin verification (OAuth)', () => {
+    it('should allow api-secret users to access admin endpoints', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+    });
+
+    it('should allow OAuth users with admin permission on guild', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = jwt.sign(
+        {
+          userId: '123',
+          guilds: [{ id: 'guild1', name: 'Test', permissions: '8' }],
+        },
+        'jwt-test-secret',
+      );
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it('should deny OAuth users without admin permission on guild', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = jwt.sign(
+        {
+          userId: '123',
+          guilds: [{ id: 'guild1', name: 'Test', permissions: '0' }],
+        },
+        'jwt-test-secret',
+      );
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
+    });
+
+    it('should deny OAuth users not in the guild', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = jwt.sign(
+        {
+          userId: '123',
+          guilds: [{ id: 'other-guild', name: 'Other', permissions: '8' }],
+        },
+        'jwt-test-secret',
+      );
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
     });
   });
 

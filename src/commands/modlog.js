@@ -15,6 +15,7 @@ import {
 } from 'discord.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig, setConfigValue } from '../modules/config.js';
+import { getPermissionError, isModerator } from '../utils/permissions.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
@@ -31,6 +32,14 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
+  const config = getConfig();
+  if (!isModerator(interaction.member, config)) {
+    return await safeReply(interaction, {
+      content: getPermissionError('modlog'),
+      ephemeral: true,
+    });
+  }
+
   const subcommand = interaction.options.getSubcommand();
 
   switch (subcommand) {

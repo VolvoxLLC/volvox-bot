@@ -10,6 +10,9 @@ import { safeSend } from '../../utils/safeSend.js';
 
 const router = Router();
 
+/** Discord ADMINISTRATOR permission flag */
+const ADMINISTRATOR_FLAG = 0x8;
+
 /**
  * Config keys that are safe to write via the PATCH endpoint.
  * 'moderation' is intentionally excluded to prevent API callers from
@@ -49,6 +52,38 @@ function parsePagination(query) {
 }
 
 /**
+ * Check if an OAuth2 user has admin permissions on a guild.
+ * Uses the guilds list from the JWT to check permissions.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @param {string} guildId - Guild ID to check
+ * @returns {boolean} True if user has ADMINISTRATOR permission
+ */
+function isOAuthGuildAdmin(user, guildId) {
+  if (!user?.guilds) return false;
+  const guild = user.guilds.find((g) => g.id === guildId);
+  if (!guild) return false;
+  return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
+}
+
+/**
+ * Middleware: verify OAuth2 users are guild admins.
+ * API-secret users are trusted and pass through.
+ */
+function requireGuildAdmin(req, res, next) {
+  if (req.authMethod === 'api-secret') return next();
+
+  if (req.authMethod === 'oauth') {
+    if (!isOAuthGuildAdmin(req.user, req.params.id)) {
+      return res.status(403).json({ error: 'You do not have admin access to this guild' });
+    }
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Unauthorized' });
+}
+
+/**
  * Middleware: validate guild ID param and attach guild to req.
  * Returns 404 if the bot is not in the requested guild.
  */
@@ -66,6 +101,48 @@ function validateGuild(req, res, next) {
 
 // Apply guild validation to all routes with :id param
 router.param('id', validateGuild);
+
+/**
+ * GET / — List guilds
+ * For OAuth2 users: returns only guilds where user has admin AND bot is present
+ * For api-secret users: returns all bot guilds
+ */
+router.get('/', (req, res) => {
+  const { client } = req.app.locals;
+  const botGuilds = client.guilds.cache;
+
+  if (req.authMethod === 'oauth') {
+    const userGuilds = req.user?.guilds || [];
+    const filtered = userGuilds
+      .filter((ug) => {
+        // User must have admin permission on the guild
+        if ((Number(ug.permissions) & ADMINISTRATOR_FLAG) !== ADMINISTRATOR_FLAG) return false;
+        // Bot must be present in the guild
+        return botGuilds.has(ug.id);
+      })
+      .map((ug) => {
+        const botGuild = botGuilds.get(ug.id);
+        return {
+          id: ug.id,
+          name: botGuild.name,
+          icon: botGuild.iconURL(),
+          memberCount: botGuild.memberCount,
+        };
+      });
+
+    return res.json(filtered);
+  }
+
+  // api-secret: return all bot guilds
+  const guilds = Array.from(botGuilds.values()).map((g) => ({
+    id: g.id,
+    name: g.name,
+    icon: g.iconURL(),
+    memberCount: g.memberCount,
+  }));
+
+  res.json(guilds);
+});
 
 /**
  * GET /:id — Guild info
@@ -97,7 +174,7 @@ router.get('/:id', (req, res) => {
  * API consistency but does not scope the returned config.
  * Per-guild config is tracked in Issue #71.
  */
-router.get('/:id/config', (req, res) => {
+router.get('/:id/config', requireGuildAdmin, (_req, res) => {
   const config = getConfig();
   const safeConfig = {};
   for (const key of READABLE_CONFIG_KEYS) {
@@ -119,7 +196,7 @@ router.get('/:id/config', (req, res) => {
  * API consistency but does not scope the update.
  * Per-guild config is tracked in Issue #71.
  */
-router.patch('/:id/config', async (req, res) => {
+router.patch('/:id/config', requireGuildAdmin, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Request body is required' });
   }
@@ -280,7 +357,7 @@ router.get('/:id/moderation', async (req, res) => {
  * POST /:id/actions — Execute bot actions
  * Body: { action: "sendMessage", channelId: "...", content: "..." }
  */
-router.post('/:id/actions', async (req, res) => {
+router.post('/:id/actions', requireGuildAdmin, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body' });
   }

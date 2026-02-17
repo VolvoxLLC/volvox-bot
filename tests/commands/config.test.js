@@ -6,9 +6,15 @@ vi.mock('../../src/modules/config.js', () => ({
     ai: { enabled: true, model: 'test-model', maxTokens: 1024 },
     welcome: { enabled: false, channelId: '' },
     moderation: { enabled: false },
+    permissions: { enabled: true, adminRoleId: null, usePermissions: true },
   }),
   setConfigValue: vi.fn().mockResolvedValue({ enabled: true, model: 'new-model' }),
   resetConfig: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('../../src/utils/permissions.js', () => ({
+  isGuildAdmin: vi.fn().mockReturnValue(true),
+  getPermissionError: vi.fn().mockReturnValue("❌ You don't have permission to use `/config`."),
 }));
 
 import { autocomplete, data, execute } from '../../src/commands/config.js';
@@ -119,7 +125,7 @@ describe('config command', () => {
         // Each section generates ~1023 chars in the embed (JSON truncated to 1000 + field name)
         // Need 6+ sections to push past the 5800-char truncation threshold
         const largeValue = 'x'.repeat(1500);
-        getConfig.mockReturnValueOnce({
+        const largeConfig = {
           section1: { data: largeValue },
           section2: { data: largeValue },
           section3: { data: largeValue },
@@ -127,7 +133,9 @@ describe('config command', () => {
           section5: { data: largeValue },
           section6: { data: largeValue },
           section7: { data: largeValue },
-        });
+        };
+        // First getConfig call is in execute() for permission check; second is in handleView()
+        getConfig.mockReturnValueOnce({}).mockReturnValueOnce(largeConfig);
         const mockReply = vi.fn();
         const interaction = {
           options: {
@@ -149,7 +157,8 @@ describe('config command', () => {
       });
 
       it('should handle getConfig throwing an error', async () => {
-        getConfig.mockImplementationOnce(() => {
+        // First getConfig call is in execute() for permission check; second throws in handleView()
+        getConfig.mockReturnValueOnce({}).mockImplementationOnce(() => {
           throw new Error('config error');
         });
         const mockReply = vi.fn();
@@ -175,7 +184,8 @@ describe('config command', () => {
         delete process.env.NODE_ENV;
 
         try {
-          getConfig.mockImplementationOnce(() => {
+          // First getConfig call is in execute() for permission check; second throws in handleView()
+          getConfig.mockReturnValueOnce({}).mockImplementationOnce(() => {
             throw new Error('pg: connection refused at 10.0.0.5:5432');
           });
           const mockReply = vi.fn();

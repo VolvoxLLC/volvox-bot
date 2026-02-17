@@ -56,6 +56,7 @@ describe('auth middleware', () => {
 
   it('should return 401 when BOT_API_SECRET is not configured', () => {
     vi.stubEnv('BOT_API_SECRET', '');
+    req.headers['x-api-secret'] = 'some-secret';
     const middleware = requireAuth();
 
     middleware(req, res, next);
@@ -96,6 +97,58 @@ describe('auth middleware', () => {
     middleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('api-secret');
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('should authenticate with valid JWT Bearer token', async () => {
+    const jwt = await import('jsonwebtoken');
+    vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+    const token = jwt.default.sign({ userId: '123', username: 'testuser' }, 'jwt-test-secret');
+    req.headers.authorization = `Bearer ${token}`;
+    const middleware = requireAuth();
+
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('oauth');
+    expect(req.user.userId).toBe('123');
+  });
+
+  it('should return 401 for invalid JWT Bearer token', () => {
+    vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+    req.headers.authorization = 'Bearer invalid-token';
+    const middleware = requireAuth();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid or expired token' });
+  });
+
+  it('should return 401 when SESSION_SECRET is not set for JWT auth', () => {
+    vi.stubEnv('SESSION_SECRET', '');
+    req.headers.authorization = 'Bearer some-token';
+    const middleware = requireAuth();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Session not configured' });
+  });
+
+  it('should try JWT auth when x-api-secret is invalid', async () => {
+    const jwt = await import('jsonwebtoken');
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+    req.headers['x-api-secret'] = 'wrong-secret';
+    const token = jwt.default.sign({ userId: '456' }, 'jwt-test-secret');
+    req.headers.authorization = `Bearer ${token}`;
+    const middleware = requireAuth();
+
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('oauth');
   });
 });

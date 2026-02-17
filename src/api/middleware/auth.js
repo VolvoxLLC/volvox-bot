@@ -1,9 +1,10 @@
 /**
  * Authentication Middleware
- * Validates requests using a shared API secret
+ * Supports both shared API secret and OAuth2 JWT authentication
  */
 
 import crypto from 'node:crypto';
+import jwt from 'jsonwebtoken';
 import { warn } from '../../logger.js';
 
 /**
@@ -24,23 +25,58 @@ export function isValidSecret(secret) {
 }
 
 /**
- * Creates middleware that validates the x-api-secret header against BOT_API_SECRET.
- * Returns 401 JSON error if the header is missing or does not match.
+ * Creates middleware that validates either:
+ * - x-api-secret header (shared secret) — sets req.authMethod = 'api-secret'
+ * - Authorization: Bearer <jwt> header (OAuth2) — sets req.authMethod = 'oauth', req.user = decoded JWT
+ *
+ * Returns 401 JSON error if neither is valid.
  *
  * @returns {import('express').RequestHandler} Express middleware function
  */
 export function requireAuth() {
   return (req, res, next) => {
-    if (!process.env.BOT_API_SECRET) {
-      warn('BOT_API_SECRET not configured — rejecting API request');
-      return res.status(401).json({ error: 'API authentication not configured' });
+    // Try API secret first
+    const apiSecret = req.headers['x-api-secret'];
+    if (apiSecret) {
+      if (!process.env.BOT_API_SECRET) {
+        warn('BOT_API_SECRET not configured — rejecting API request');
+        return res.status(401).json({ error: 'API authentication not configured' });
+      }
+
+      if (isValidSecret(apiSecret)) {
+        req.authMethod = 'api-secret';
+        return next();
+      }
     }
 
-    if (!isValidSecret(req.headers['x-api-secret'])) {
+    // Try OAuth2 JWT
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const sessionSecret = process.env.SESSION_SECRET;
+
+      if (!sessionSecret) {
+        return res.status(401).json({ error: 'Session not configured' });
+      }
+
+      try {
+        const decoded = jwt.verify(token, sessionSecret);
+        req.authMethod = 'oauth';
+        req.user = decoded;
+        return next();
+      } catch {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+    }
+
+    // Neither auth method provided or valid
+    if (!apiSecret && !authHeader) {
       warn('Unauthorized API request', { ip: req.ip, path: req.path });
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    next();
+    // Had a secret but it didn't match
+    warn('Unauthorized API request', { ip: req.ip, path: req.path });
+    return res.status(401).json({ error: 'Unauthorized' });
   };
 }
