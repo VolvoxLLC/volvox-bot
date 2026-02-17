@@ -97,9 +97,7 @@ describe('modlog command', () => {
       moderation: { logging: { channels: {} } },
       permissions: { enabled: false, usePermissions: true },
     });
-    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
-      return !config.permissions?.enabled || !config.permissions?.usePermissions;
-    });
+    hasPermission.mockReturnValueOnce(true);
 
     const interaction = createInteraction('view');
     await execute(interaction);
@@ -114,9 +112,7 @@ describe('modlog command', () => {
       moderation: { logging: { channels: {} } },
       permissions: { enabled: true, usePermissions: false },
     });
-    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
-      return !config.permissions?.enabled || !config.permissions?.usePermissions;
-    });
+    hasPermission.mockReturnValueOnce(true);
 
     const interaction = createInteraction('view');
     await execute(interaction);
@@ -149,7 +145,12 @@ describe('modlog command', () => {
     });
 
     it('should handle missing logging config', async () => {
-      getConfig.mockReturnValueOnce({ moderation: {} });
+      getConfig
+        .mockReturnValueOnce({
+          moderation: {},
+          permissions: { enabled: true, usePermissions: true },
+        })
+        .mockReturnValueOnce({ moderation: {} });
       const interaction = createInteraction('view');
       await execute(interaction);
 
