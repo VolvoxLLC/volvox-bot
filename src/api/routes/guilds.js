@@ -56,16 +56,15 @@ function parsePagination(query) {
 }
 
 /**
- * Check if an OAuth2 user has admin permissions on a guild.
- * Intentionally checks ADMINISTRATOR only; this is stricter than slash-command
- * moderation checks (isModerator), which also accept MANAGE_GUILD.
+ * Check if an OAuth2 user has the specified permission flags on a guild.
  * Fetches fresh guild list from Discord using the access token from the session store.
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
- * @returns {Promise<boolean>} True if user has ADMINISTRATOR permission
+ * @param {number} requiredFlags - Bitmask of required permission flags (any match = true)
+ * @returns {Promise<boolean>} True if user has any of the required flags
  */
-async function isOAuthGuildAdmin(user, guildId) {
+async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
   const accessToken = getSessionToken(user?.userId);
   if (!accessToken) return false;
   const guilds = await fetchUserGuilds(user.userId, accessToken);
@@ -73,85 +72,64 @@ async function isOAuthGuildAdmin(user, guildId) {
   if (!guild) return false;
   const permissions = Number(guild.permissions);
   if (Number.isNaN(permissions)) return false;
-  return (permissions & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
+  return (permissions & requiredFlags) !== 0;
 }
 
 /**
- * Check if an OAuth2 user has moderator permissions on a guild.
- * Accepts either ADMINISTRATOR or MANAGE_GUILD.
+ * Check if an OAuth2 user has admin permissions on a guild.
+ * Admin = ADMINISTRATOR or MANAGE_GUILD, aligning with the Discord slash command permission model.
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
- * @returns {Promise<boolean>} True if user has ADMINISTRATOR or MANAGE_GUILD permission
+ * @returns {Promise<boolean>} True if user has admin-level permission
  */
-async function isOAuthGuildModerator(user, guildId) {
-  const accessToken = getSessionToken(user?.userId);
-  if (!accessToken) return false;
-  const guilds = await fetchUserGuilds(user.userId, accessToken);
-  const guild = guilds.find((g) => g.id === guildId);
-  if (!guild) return false;
-  const permissions = Number(guild.permissions);
-  if (Number.isNaN(permissions)) return false;
-  return (
-    (permissions & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG ||
-    (permissions & MANAGE_GUILD_FLAG) === MANAGE_GUILD_FLAG
-  );
+function isOAuthGuildAdmin(user, guildId) {
+  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG);
 }
 
 /**
- * Middleware: verify OAuth2 users are guild admins.
+ * Create middleware that verifies OAuth2 users have the required guild permission.
  * API-secret users are trusted and pass through.
+ *
+ * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Permission check function
+ * @param {string} errorMessage - Error message for 403 responses
+ * @returns {import('express').RequestHandler}
  */
-async function requireGuildAdmin(req, res, next) {
-  if (req.authMethod === 'api-secret') return next();
+function requireGuildPermission(permissionCheck, errorMessage) {
+  return async (req, res, next) => {
+    if (req.authMethod === 'api-secret') return next();
 
-  if (req.authMethod === 'oauth') {
-    try {
-      if (!(await isOAuthGuildAdmin(req.user, req.params.id))) {
-        return res.status(403).json({ error: 'You do not have admin access to this guild' });
+    if (req.authMethod === 'oauth') {
+      try {
+        if (!(await permissionCheck(req.user, req.params.id))) {
+          return res.status(403).json({ error: errorMessage });
+        }
+        return next();
+      } catch (err) {
+        error('Failed to verify guild permission', { error: err.message, guild: req.params.id });
+        return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
       }
-      return next();
-    } catch (err) {
-      error('Failed to verify guild admin status', { error: err.message, guild: req.params.id });
-      return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
     }
-  }
 
-  warn('Unknown authMethod in requireGuildAdmin', {
-    authMethod: req.authMethod,
-    guild: req.params.id,
-  });
-  return res.status(401).json({ error: 'Unauthorized' });
+    warn('Unknown authMethod in guild permission check', {
+      authMethod: req.authMethod,
+      path: req.path,
+    });
+    return res.status(401).json({ error: 'Unauthorized' });
+  };
 }
 
-/**
- * Middleware: verify OAuth2 users are guild moderators.
- * API-secret users are trusted and pass through.
- */
-async function requireGuildModerator(req, res, next) {
-  if (req.authMethod === 'api-secret') return next();
+/** Middleware: verify OAuth2 users are guild admins. API-secret users pass through. */
+const requireGuildAdmin = requireGuildPermission(
+  isOAuthGuildAdmin,
+  'You do not have admin access to this guild',
+);
 
-  if (req.authMethod === 'oauth') {
-    try {
-      if (!(await isOAuthGuildModerator(req.user, req.params.id))) {
-        return res.status(403).json({ error: 'You do not have moderator access to this guild' });
-      }
-      return next();
-    } catch (err) {
-      error('Failed to verify guild moderator status', {
-        error: err.message,
-        guild: req.params.id,
-      });
-      return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
-    }
-  }
-
-  warn('Unknown authMethod in requireGuildModerator', {
-    authMethod: req.authMethod,
-    guild: req.params.id,
-  });
-  return res.status(401).json({ error: 'Unauthorized' });
-}
+/** Middleware: verify OAuth2 users are guild moderators. API-secret users pass through. */
+const requireGuildModerator = requireGuildPermission(
+  isOAuthGuildAdmin,
+  'You do not have moderator access to this guild',
+);
 
 /**
  * Middleware: validate guild ID param and attach guild to req.
@@ -186,9 +164,10 @@ router.get('/', async (req, res) => {
 
     try {
       const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
+      const adminFlags = ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG;
       const filtered = userGuilds.reduce((acc, ug) => {
-        // User must have admin permission on the guild.
-        if ((Number(ug.permissions) & ADMINISTRATOR_FLAG) !== ADMINISTRATOR_FLAG) return acc;
+        // User must have admin-level permission (ADMINISTRATOR or MANAGE_GUILD).
+        if ((Number(ug.permissions) & adminFlags) === 0) return acc;
         // Single lookup avoids has/get TOCTOU.
         const botGuild = botGuilds.get(ug.id);
         if (!botGuild) return acc;
@@ -211,15 +190,19 @@ router.get('/', async (req, res) => {
     }
   }
 
-  // api-secret: return all bot guilds
-  const guilds = Array.from(botGuilds.values()).map((g) => ({
-    id: g.id,
-    name: g.name,
-    icon: g.iconURL(),
-    memberCount: g.memberCount,
-  }));
+  if (req.authMethod === 'api-secret') {
+    const guilds = Array.from(botGuilds.values()).map((g) => ({
+      id: g.id,
+      name: g.name,
+      icon: g.iconURL(),
+      memberCount: g.memberCount,
+    }));
+    return res.json(guilds);
+  }
 
-  res.json(guilds);
+  // Unknown auth method — reject
+  warn('Unknown authMethod in guild list', { authMethod: req.authMethod, path: req.path });
+  return res.status(401).json({ error: 'Unauthorized' });
 });
 
 /**

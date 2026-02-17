@@ -33,6 +33,6 @@ export function requireOAuth() {
     }
     req.authMethod = 'oauth';
     req.user = result.user;
-    next();
+    return next();
   };
 }

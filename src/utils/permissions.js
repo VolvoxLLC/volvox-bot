@@ -84,6 +84,10 @@ export function hasPermission(member, commandName, config) {
     return true;
   }
 
+  if (permissionLevel === 'moderator') {
+    return isModerator(member, config);
+  }
+
   if (permissionLevel === 'admin') {
     return isAdmin(member, config);
   }
@@ -93,16 +97,19 @@ export function hasPermission(member, commandName, config) {
 }
 
 /**
- * Check if a member is a guild admin (has ADMINISTRATOR permission or bot admin role)
+ * Check if a member is a guild admin (has ADMINISTRATOR permission or bot admin role).
+ *
+ * Currently delegates to {@link isAdmin}. This is an intentional alias to establish
+ * a separate semantic entry-point for per-guild admin checks. When per-guild config
+ * lands (Issue #71), this function will diverge to check guild-scoped admin roles
+ * instead of the global bot admin role.
  *
  * @param {GuildMember} member - Discord guild member
  * @param {Object} config - Bot configuration
  * @returns {boolean} True if member is a guild admin
  */
 export function isGuildAdmin(member, config) {
-  // TODO: Currently delegates to isAdmin. Exists as a separate function to allow
-  // future differentiation (e.g., per-guild permission overrides, guild-specific
-  // admin roles). See Issue #71.
+  // TODO(#71): check guild-scoped admin roles once per-guild config is implemented
   return isAdmin(member, config);
 }
 
@@ -120,6 +127,11 @@ export function isModerator(member, config) {
   if (isBotOwner(member, config)) return true;
 
   if (!config) return false;
+
+  // Administrator is strictly higher privilege — always implies moderator
+  if (member.permissions.has(PermissionFlagsBits.Administrator)) {
+    return true;
+  }
 
   // Check Discord Manage Guild permission
   if (member.permissions.has(PermissionFlagsBits.ManageGuild)) {

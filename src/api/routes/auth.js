@@ -13,7 +13,8 @@ import { sessionStore } from '../utils/sessionStore.js';
 
 const router = Router();
 
-export { sessionStore };
+// Note: sessionStore canonical home is '../utils/sessionStore.js'.
+// Import directly from there, not from this file.
 
 /** CSRF state store: state → expiry timestamp */
 const oauthStates = new Map();
@@ -32,16 +33,27 @@ export function _seedOAuthState(state) {
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
+/** Allowed dashboard URL hostnames for HTTP redirect validation */
+const ALLOWED_REDIRECT_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+
 /**
  * Validate dashboard redirect target from environment config.
- * Accepts HTTPS URLs for production and localhost HTTP for local development.
+ * Accepts HTTPS URLs for production and HTTP only for localhost/loopback.
+ * Uses URL parsing to prevent prefix-matching attacks (e.g., http://localhost.evil.com).
  *
  * @param {string|undefined} value - DASHBOARD_URL from environment
  * @returns {boolean} True if URL is allowed
  */
 function isValidDashboardUrl(value) {
   if (typeof value !== 'string' || value.trim().length === 0) return false;
-  return value.startsWith('https://') || value.startsWith('http://localhost');
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol === 'https:') return true;
+    if (parsed.protocol === 'http:' && ALLOWED_REDIRECT_HOSTS.has(parsed.hostname)) return true;
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 /**
