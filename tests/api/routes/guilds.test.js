@@ -9,7 +9,7 @@ vi.mock('../../../src/logger.js', () => ({
 
 vi.mock('../../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({
-    ai: { model: 'claude-3' },
+    ai: { enabled: true, model: 'claude-3', historyLength: 20 },
     welcome: { enabled: true },
     spam: { enabled: true },
     moderation: { enabled: true },
@@ -137,7 +137,7 @@ describe('guilds routes', () => {
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
-      expect(res.body.ai).toEqual({ model: 'claude-3' });
+      expect(res.body.ai).toEqual({ enabled: true, model: 'claude-3', historyLength: 20 });
       expect(res.body.welcome).toEqual({ enabled: true });
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
@@ -156,13 +156,19 @@ describe('guilds routes', () => {
 
   describe('PATCH /:id/config', () => {
     it('should update config value', async () => {
+      getConfig.mockReturnValueOnce({
+        ai: { enabled: true, model: 'claude-4', historyLength: 20 },
+      });
+
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
         .send({ path: 'ai.model', value: 'claude-4' });
 
       expect(res.status).toBe(200);
+      expect(res.body).toEqual({ enabled: true, model: 'claude-4', historyLength: 20 });
       expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'claude-4', 'guild1');
+      expect(getConfig).toHaveBeenCalledWith('guild1');
     });
 
     it('should return 400 when request body is missing', async () => {

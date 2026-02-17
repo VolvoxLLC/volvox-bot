@@ -7,6 +7,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
 
@@ -402,6 +403,73 @@ async function emitConfigChangeEvents(fullPath, newValue, oldValue, guildId) {
 }
 
 /**
+ * Clone a value for safe event payload emission.
+ * @param {*} value - Value to clone when object-like
+ * @returns {*}
+ */
+function cloneForEvent(value) {
+  return value !== null && typeof value === 'object' ? structuredClone(value) : value;
+}
+
+/**
+ * Collect leaf values from an object into a dot-notation map.
+ * Plain-object leaves are flattened; arrays and primitives are treated as terminal values.
+ * @param {*} value - Root value
+ * @param {string} prefix - Current dot-notation prefix
+ * @param {Map<string, *>} out - Output map
+ */
+function collectLeafValues(value, prefix, out) {
+  if (isPlainObject(value)) {
+    for (const key of Object.keys(value)) {
+      if (DANGEROUS_KEYS.has(key)) continue;
+      const path = prefix ? `${prefix}.${key}` : key;
+      collectLeafValues(value[key], path, out);
+    }
+    return;
+  }
+
+  if (prefix) {
+    out.set(prefix, cloneForEvent(value));
+  }
+}
+
+/**
+ * Build path-level changed leaf events for a reset scope.
+ * @param {Object} beforeConfig - Effective config before reset
+ * @param {Object} afterConfig - Effective config after reset
+ * @param {string|undefined} scopePath - Optional section path scope
+ * @returns {Array<{path: string, newValue: *, oldValue: *}>}
+ */
+function getChangedLeafEvents(beforeConfig, afterConfig, scopePath) {
+  const scopeParts = scopePath ? scopePath.split('.') : [];
+  const beforeScoped = scopePath ? getNestedValue(beforeConfig, scopeParts) : beforeConfig;
+  const afterScoped = scopePath ? getNestedValue(afterConfig, scopeParts) : afterConfig;
+
+  const beforeLeaves = new Map();
+  const afterLeaves = new Map();
+
+  if (beforeScoped !== undefined) {
+    collectLeafValues(beforeScoped, scopePath || '', beforeLeaves);
+  }
+  if (afterScoped !== undefined) {
+    collectLeafValues(afterScoped, scopePath || '', afterLeaves);
+  }
+
+  const allPaths = new Set([...beforeLeaves.keys(), ...afterLeaves.keys()]);
+  const changed = [];
+
+  for (const path of allPaths) {
+    const oldValue = beforeLeaves.has(path) ? beforeLeaves.get(path) : undefined;
+    const newValue = afterLeaves.has(path) ? afterLeaves.get(path) : undefined;
+    if (!isDeepStrictEqual(oldValue, newValue)) {
+      changed.push({ path, newValue, oldValue });
+    }
+  }
+
+  return changed;
+}
+
+/**
  * Set a config value using dot notation (e.g., "ai.model" or "welcome.enabled")
  * Persists to database and updates in-memory cache
  * @param {string} path - Dot-notation path (e.g., "ai.model")
@@ -532,6 +600,8 @@ export async function setConfigValue(path, value, guildId = 'global') {
 export async function resetConfig(section, guildId = 'global') {
   // Guild reset — just delete overrides
   if (guildId !== 'global') {
+    const beforeEffective = getConfig(guildId);
+
     let pool = null;
     try {
       pool = getPool();
@@ -569,6 +639,12 @@ export async function resetConfig(section, guildId = 'global') {
 
     mergedConfigCache.delete(guildId);
 
+    const afterEffective = getConfig(guildId);
+    const changedEvents = getChangedLeafEvents(beforeEffective, afterEffective, section);
+    for (const { path, newValue, oldValue } of changedEvents) {
+      await emitConfigChangeEvents(path, newValue, oldValue, guildId);
+    }
+
     info('Guild config reset', { guildId, section: section || 'all' });
     return section ? configCache.get(guildId) || {} : {};
   }
@@ -592,6 +668,7 @@ export async function resetConfig(section, guildId = 'global') {
   }
 
   const globalConfig = configCache.get('global') || {};
+  const beforeGlobal = structuredClone(globalConfig);
 
   if (section) {
     if (!fileConfig[section]) {
@@ -691,6 +768,11 @@ export async function resetConfig(section, guildId = 'global') {
   // Global config changed — all guild merged entries are stale
   mergedConfigCache.clear();
   globalConfigGeneration++;
+
+  const changedEvents = getChangedLeafEvents(beforeGlobal, globalConfig, section);
+  for (const { path, newValue, oldValue } of changedEvents) {
+    await emitConfigChangeEvents(path, newValue, oldValue, 'global');
+  }
 
   return globalConfig;
 }

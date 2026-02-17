@@ -167,6 +167,44 @@ describe('modules/config', () => {
       expect(guildConfig.ai.enabled).toBe(true);
     });
 
+    it('should filter dangerous nested keys during recursive deepMerge of guild overrides', async () => {
+      delete Object.prototype.polluted;
+      try {
+        const guildAiOverride = {
+          model: 'guild-model',
+        };
+        Object.defineProperty(guildAiOverride, '__proto__', {
+          value: { polluted: 'yes' },
+          enumerable: true,
+        });
+        guildAiOverride.constructor = { polluted: true };
+        guildAiOverride.prototype = { polluted: true };
+
+        const mockPool = {
+          query: vi.fn().mockResolvedValue({
+            rows: [
+              { guild_id: 'global', key: 'ai', value: { enabled: true, model: 'global-model' } },
+              { guild_id: 'guild-danger', key: 'ai', value: guildAiOverride },
+            ],
+          }),
+        };
+        const { getPool: mockGetPool } = await import('../../src/db.js');
+        mockGetPool.mockReturnValue(mockPool);
+
+        await configModule.loadConfig();
+        const guildConfig = configModule.getConfig('guild-danger');
+
+        expect(guildConfig.ai.model).toBe('guild-model');
+        expect(guildConfig.ai.enabled).toBe(true);
+        expect(guildConfig.ai.constructor).toBe(Object);
+        expect(guildConfig.ai.prototype).toBeUndefined();
+        expect(guildConfig.ai.polluted).toBeUndefined();
+        expect(Object.prototype.polluted).toBeUndefined();
+      } finally {
+        delete Object.prototype.polluted;
+      }
+    });
+
     it('should load config from DB when rows exist', async () => {
       const mockPool = {
         query: vi.fn().mockResolvedValue({

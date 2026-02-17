@@ -146,9 +146,11 @@ router.patch('/:id/config', async (req, res) => {
   }
 
   try {
-    const updated = await setConfigValue(path, value, req.params.id);
+    await setConfigValue(path, value, req.params.id);
+    const effectiveConfig = getConfig(req.params.id);
+    const effectiveSection = effectiveConfig[topLevelKey] || {};
     info('Config updated via API', { path, value, guild: req.params.id });
-    res.json(updated);
+    res.json(effectiveSection);
   } catch (err) {
     error('Failed to update config via API', { path, error: err.message });
     res.status(500).json({ error: 'Failed to update config' });

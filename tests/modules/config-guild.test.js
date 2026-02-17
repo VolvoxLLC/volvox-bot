@@ -29,19 +29,6 @@ describe('per-guild configuration', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    vi.mock('../../src/logger.js', () => ({
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-    }));
-    vi.mock('../../src/db.js', () => ({
-      getPool: vi.fn(),
-    }));
-    vi.mock('node:fs', () => ({
-      existsSync: vi.fn(),
-      readFileSync: vi.fn(),
-    }));
 
     const { existsSync: mockExists, readFileSync: mockRead } = await import('node:fs');
     mockExists.mockReturnValue(true);
@@ -235,6 +222,39 @@ describe('per-guild configuration', () => {
         await configModule.resetConfig('ai', guildId);
       }
     });
+
+    it('should filter dangerous nested keys in recursive deepMerge branches', async () => {
+      const guildId = 'guild-recursive-pollution';
+      delete Object.prototype.polluted;
+
+      try {
+        await configModule.setConfigValue(
+          'ai.threadMode',
+          '{"nested":{"baseline":"global","safeGlobal":true}}',
+        );
+        await configModule.setConfigValue(
+          'ai.threadMode',
+          '{"nested":{"safeGuild":true,"__proto__":{"polluted":"yes"},"constructor":{"prototype":{"polluted":"yes"}},"prototype":{"polluted":true}}}',
+          guildId,
+        );
+
+        const config = configModule.getConfig(guildId);
+        const nested = config.ai.threadMode.nested;
+
+        expect(nested.baseline).toBe('global');
+        expect(nested.safeGlobal).toBe(true);
+        expect(nested.safeGuild).toBe(true);
+
+        expect(Object.prototype.hasOwnProperty.call(nested, '__proto__')).toBe(false);
+        expect(nested.constructor).toBe(Object);
+        expect(nested.prototype).toBeUndefined();
+        expect(Object.prototype.polluted).toBeUndefined();
+      } finally {
+        await configModule.resetConfig('ai', guildId);
+        await configModule.resetConfig('ai');
+        delete Object.prototype.polluted;
+      }
+    });
   });
 
   describe('fallback to global defaults', () => {
@@ -332,6 +352,37 @@ describe('per-guild configuration', () => {
 
       const config = configModule.getConfig();
       expect(config.ai.model).toBe('claude-3');
+    });
+
+    it('should emit path-level events for guild section reset', async () => {
+      await configModule.setConfigValue('ai.model', 'guild-model', 'guild-a');
+      await configModule.setConfigValue('ai.historyLength', '30', 'guild-a');
+
+      const exactCb = vi.fn();
+      const prefixCb = vi.fn();
+      configModule.onConfigChange('ai.model', exactCb);
+      configModule.onConfigChange('ai.*', prefixCb);
+
+      await configModule.resetConfig('ai', 'guild-a');
+
+      expect(exactCb).toHaveBeenCalledWith('claude-3', 'guild-model', 'ai.model', 'guild-a');
+      expect(prefixCb).toHaveBeenCalledWith('claude-3', 'guild-model', 'ai.model', 'guild-a');
+      expect(prefixCb).toHaveBeenCalledWith(20, 30, 'ai.historyLength', 'guild-a');
+    });
+
+    it('should emit path-level events for global full reset', async () => {
+      await configModule.setConfigValue('ai.model', 'modified-model');
+      await configModule.setConfigValue('spam.threshold', '99');
+
+      const aiCb = vi.fn();
+      const spamCb = vi.fn();
+      configModule.onConfigChange('ai.*', aiCb);
+      configModule.onConfigChange('spam.threshold', spamCb);
+
+      await configModule.resetConfig();
+
+      expect(aiCb).toHaveBeenCalledWith('claude-3', 'modified-model', 'ai.model', 'global');
+      expect(spamCb).toHaveBeenCalledWith(5, 99, 'spam.threshold', 'global');
     });
   });
 
