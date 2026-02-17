@@ -366,15 +366,16 @@ describe('guilds routes', () => {
       expect(safeSend).toHaveBeenCalledWith(mockChannel, 'Hello!');
     });
 
-    it('should accept long content and delegate to safeSend', async () => {
+    it('should reject content exceeding 2000 characters', async () => {
       const longContent = 'a'.repeat(2001);
       const res = await request(app)
         .post('/api/v1/guilds/guild1/actions')
         .set('x-api-secret', SECRET)
         .send({ action: 'sendMessage', channelId: 'ch1', content: longContent });
 
-      expect(res.status).toBe(201);
-      expect(safeSend).toHaveBeenCalledWith(mockChannel, longContent);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/2000/);
+      expect(safeSend).not.toHaveBeenCalled();
     });
 
     it('should return 400 when action is missing', async () => {
