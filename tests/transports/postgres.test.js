@@ -186,6 +186,89 @@ describe('PostgresTransport', () => {
       expect(mockPool.query).not.toHaveBeenCalled();
     });
 
+    it('should skip flush when already flushing (concurrent guard)', async () => {
+      // Use a deferred promise to keep the first flush in-flight
+      let resolveQuery;
+      const slowQuery = new Promise((resolve) => {
+        resolveQuery = resolve;
+      });
+      const slowPool = createMockPool();
+      slowPool.query.mockReturnValue(slowQuery);
+
+      transport = new PostgresTransport({ pool: slowPool, batchSize: 100 });
+
+      transport.buffer.push({
+        level: 'info',
+        message: 'msg1',
+        metadata: {},
+        timestamp: '2026-01-01T00:00:00Z',
+      });
+
+      // Start first flush — it will be in-flight (awaiting slowQuery)
+      const flush1 = transport.flush();
+
+      // pool.query should have been called once
+      expect(slowPool.query).toHaveBeenCalledTimes(1);
+
+      // Add another entry and try a second concurrent flush
+      transport.buffer.push({
+        level: 'info',
+        message: 'msg2',
+        metadata: {},
+        timestamp: '2026-01-01T00:00:01Z',
+      });
+      const flush2 = transport.flush();
+
+      // pool.query should still only have been called once — second flush was skipped
+      expect(slowPool.query).toHaveBeenCalledTimes(1);
+
+      // Resolve the deferred query and clean up
+      resolveQuery({ rows: [], rowCount: 1 });
+      await flush1;
+      await flush2;
+    });
+
+    it('should skip flush if another flush is in progress', async () => {
+      let resolveQuery;
+      const slowQuery = new Promise((resolve) => {
+        resolveQuery = resolve;
+      });
+      const slowPool = createMockPool();
+      slowPool.query.mockReturnValue(slowQuery);
+
+      transport = new PostgresTransport({ pool: slowPool, batchSize: 100 });
+
+      // Push first entry and start flush
+      transport.buffer.push({
+        level: 'info',
+        message: 'first',
+        metadata: {},
+        timestamp: '2026-01-01T00:00:00Z',
+      });
+      const flush1 = transport.flush();
+
+      // Push second entry and attempt concurrent flush
+      transport.buffer.push({
+        level: 'info',
+        message: 'second',
+        metadata: {},
+        timestamp: '2026-01-01T00:00:01Z',
+      });
+      const flush2 = transport.flush();
+
+      // Only one query should have been made
+      expect(slowPool.query).toHaveBeenCalledTimes(1);
+
+      // Second entry should still be in the buffer (skipped flush didn't drain it)
+      expect(transport.buffer).toHaveLength(1);
+      expect(transport.buffer[0].message).toBe('second');
+
+      // Resolve the in-flight query and clean up
+      resolveQuery({ rows: [], rowCount: 1 });
+      await flush1;
+      await flush2;
+    });
+
     it('should serialize metadata as JSON string', async () => {
       transport = new PostgresTransport({ pool: mockPool, batchSize: 100 });
 
@@ -200,6 +283,47 @@ describe('PostgresTransport', () => {
 
       const params = mockPool.query.mock.calls[0][1];
       expect(params[2]).toBe('{"key":"value","nested":{"deep":true}}');
+    });
+
+    describe('concurrent flush guard', () => {
+      it('should skip flush if another flush is in progress', async () => {
+        transport = new PostgresTransport({ pool: mockPool, batchSize: 100 });
+
+        // Make query hang so flush stays 'in progress'
+        let resolveQuery;
+        mockPool.query.mockImplementation(() => new Promise(r => { resolveQuery = r; }));
+
+        transport.buffer.push({
+          level: 'info',
+          message: 'msg1',
+          metadata: {},
+          timestamp: '2026-01-01T00:00:00Z',
+        });
+
+        const firstFlush = transport.flush();
+
+        // Second flush should be a no-op since flushing is true
+        transport.buffer.push({
+          level: 'info',
+          message: 'msg2',
+          metadata: {},
+          timestamp: '2026-01-01T00:00:01Z',
+        });
+        await transport.flush(); // should return immediately
+
+        // Now resolve the first query
+        resolveQuery({ rows: [], rowCount: 1 });
+        await firstFlush;
+
+        // Only one query call from the first flush
+        expect(mockPool.query).toHaveBeenCalledTimes(1);
+        // msg2 should still be in the buffer (not flushed)
+        expect(transport.buffer).toHaveLength(1);
+        expect(transport.buffer[0].message).toBe('msg2');
+
+        // Reset mock so afterEach close() can complete
+        mockPool.query.mockResolvedValue({ rows: [], rowCount: 0 });
+      });
     });
   });
 
