@@ -3,6 +3,7 @@ node_modules/
 *.log
 logs/
 coverage/
+.next/
 
 # Auto Claude data directory and files
 .auto-claude/
