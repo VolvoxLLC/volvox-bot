@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
-import { fetchUserGuilds, guildCache, stopGuildCacheCleanup } from '../utils/discordApi.js';
+import { fetchUserGuilds, guildCache } from '../utils/discordApi.js';
 import { getSessionToken } from './auth.js';
 
 const router = Router();
@@ -53,7 +53,7 @@ function parsePagination(query) {
   return { page, limit, offset };
 }
 
-export { guildCache, stopGuildCacheCleanup };
+export { guildCache };
 
 /**
  * Check if an OAuth2 user has admin permissions on a guild.
