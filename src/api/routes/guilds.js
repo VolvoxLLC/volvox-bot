@@ -61,8 +61,8 @@ function parsePagination(query) {
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
- * @param {number} requiredFlags - Bitmask of required permission flags (any match = true)
- * @returns {Promise<boolean>} True if user has any of the required flags
+ * @param {number} requiredFlags - Bitmask of required permission flags (bitwise OR match)
+ * @returns {Promise<boolean>} True if user has ANY of the required flags (bitwise OR match)
  */
 async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
   const accessToken = getSessionToken(user?.userId);
@@ -77,13 +77,25 @@ async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
 
 /**
  * Check if an OAuth2 user has admin permissions on a guild.
- * Admin = ADMINISTRATOR or MANAGE_GUILD, aligning with the Discord slash command permission model.
+ * Admin = ADMINISTRATOR only, aligning with the slash-command isAdmin check.
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
  * @returns {Promise<boolean>} True if user has admin-level permission
  */
 function isOAuthGuildAdmin(user, guildId) {
+  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG);
+}
+
+/**
+ * Check if an OAuth2 user has moderator permissions on a guild.
+ * Moderator = ADMINISTRATOR or MANAGE_GUILD, aligning with the slash-command isModerator check.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @param {string} guildId - Guild ID to check
+ * @returns {Promise<boolean>} True if user has moderator-level permission
+ */
+function isOAuthGuildModerator(user, guildId) {
   return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG);
 }
 
@@ -127,7 +139,7 @@ const requireGuildAdmin = requireGuildPermission(
 
 /** Middleware: verify OAuth2 users are guild moderators. API-secret users pass through. */
 const requireGuildModerator = requireGuildPermission(
-  isOAuthGuildAdmin,
+  isOAuthGuildModerator,
   'You do not have moderator access to this guild',
 );
 

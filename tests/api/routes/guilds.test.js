@@ -24,6 +24,7 @@ vi.mock('../../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue({ id: 'msg1', content: 'Hello!' }),
 }));
 
+import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
@@ -93,6 +94,7 @@ describe('guilds routes', () => {
   afterEach(() => {
     sessionStore.clear();
     guildCache.clear();
+    _resetSecretCache();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
@@ -260,17 +262,18 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should allow OAuth users with MANAGE_GUILD permission on guild', async () => {
+    it('should deny OAuth users with only MANAGE_GUILD on admin endpoints', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
       const token = createOAuthToken();
-      // 0x20 = MANAGE_GUILD
+      // 0x20 = MANAGE_GUILD but not ADMINISTRATOR — admin requires ADMINISTRATOR only
       mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '32' }]);
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/config')
         .set('Authorization', `Bearer ${token}`);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
     });
 
     it('should deny OAuth users without admin or manage-guild permission', async () => {

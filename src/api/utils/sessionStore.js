@@ -3,7 +3,10 @@
  * Shared OAuth session token storage and helpers
  */
 
-/** Session TTL matches JWT expiry */
+/**
+ * Session TTL — must match the JWT `expiresIn` value in auth.js (currently "1h").
+ * If you change one, update the other to keep session and token lifetimes aligned.
+ */
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
@@ -49,10 +52,6 @@ class SessionStore extends Map {
 
   has(userId) {
     return this.get(userId) !== undefined;
-  }
-
-  delete(userId) {
-    return super.delete(userId);
   }
 
   cleanup() {

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../../src/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
 import { isValidSecret, requireAuth } from '../../../src/api/middleware/auth.js';
+import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 
 describe('isValidSecret', () => {
@@ -53,6 +54,7 @@ describe('auth middleware', () => {
 
   afterEach(() => {
     sessionStore.clear();
+    _resetSecretCache();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
   });

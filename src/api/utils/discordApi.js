@@ -5,9 +5,25 @@
 
 import { error } from '../../logger.js';
 
+/**
+ * Custom error for Discord API failures, carrying the HTTP status code.
+ */
+export class DiscordApiError extends Error {
+  /**
+   * @param {string} message - Human-readable error description
+   * @param {number} status - HTTP status code from Discord
+   */
+  constructor(message, status) {
+    super(message);
+    this.name = 'DiscordApiError';
+    this.status = status;
+  }
+}
+
 /** Guild cache: userId → { guilds, expiresAt } */
 export const guildCache = new Map();
 const GUILD_CACHE_TTL_MS = 90_000; // 90 seconds
+const MAX_GUILD_CACHE_SIZE = 10_000;
 export const DISCORD_API = 'https://discord.com/api/v10';
 
 function cleanExpiredGuildCache() {
@@ -55,11 +71,16 @@ export async function fetchUserGuilds(userId, accessToken) {
   if (!response.ok) {
     const status = response.status;
     error('Discord guild fetch failed', { userId, status });
-    throw new Error('Discord API error');
+    throw new DiscordApiError('Discord API error', status);
   }
   const guilds = await response.json();
   if (!Array.isArray(guilds)) throw new Error('Discord API returned non-array guild data');
 
   guildCache.set(userId, { guilds, expiresAt: Date.now() + GUILD_CACHE_TTL_MS });
+  // Cap cache size to prevent unbounded memory growth
+  if (guildCache.size > MAX_GUILD_CACHE_SIZE) {
+    const oldest = guildCache.keys().next().value;
+    guildCache.delete(oldest);
+  }
   return guilds;
 }

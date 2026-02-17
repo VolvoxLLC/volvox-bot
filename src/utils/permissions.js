@@ -143,6 +143,10 @@ export function isModerator(member, config) {
     return member.roles.cache.has(config.permissions.adminRoleId);
   }
 
+  if (config.permissions?.moderatorRoleId) {
+    return member.roles.cache.has(config.permissions.moderatorRoleId);
+  }
+
   return false;
 }
 
