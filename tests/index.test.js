@@ -651,7 +651,10 @@ describe('index.js', () => {
     // Make removePostgresTransport slow to simulate an in-flight lock chain
     let resolveRemove;
     mocks.logger.removePostgresTransport.mockImplementation(
-      () => new Promise((resolve) => { resolveRemove = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveRemove = resolve;
+        }),
     );
 
     const sigintHandler = mocks.processHandlers.SIGINT;
