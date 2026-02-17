@@ -203,7 +203,10 @@ async function emitConfigChangeEvents(fullPath, newValue, oldValue) {
           });
         }
       } catch (err) {
-        logError('Config change listener error', { path: fullPath, error: String(err?.message || err) });
+        logError('Config change listener error', {
+          path: fullPath,
+          error: String(err?.message || err),
+        });
       }
     }
   }
