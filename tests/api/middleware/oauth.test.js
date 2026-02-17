@@ -89,6 +89,7 @@ describe('requireOAuth middleware', () => {
     expect(req.user).toBeDefined();
     expect(req.user.userId).toBe('123');
     expect(req.user.username).toBe('testuser');
+    expect(req.authMethod).toBe('oauth');
   });
 
   it('should return 401 when JWT is valid but server-side session is missing', () => {
