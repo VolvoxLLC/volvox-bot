@@ -3,6 +3,7 @@
  * Validates requests using a shared API secret
  */
 
+import crypto from 'node:crypto';
 import { warn } from '../../logger.js';
 
 /**
@@ -21,7 +22,11 @@ export function requireAuth() {
       return res.status(401).json({ error: 'API authentication not configured' });
     }
 
-    if (!secret || secret !== expected) {
+    if (
+      !secret ||
+      secret.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected))
+    ) {
       warn('Unauthorized API request', { ip: req.ip, path: req.path });
       return res.status(401).json({ error: 'Unauthorized' });
     }
