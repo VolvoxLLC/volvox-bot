@@ -26,24 +26,16 @@ export function getBotInviteUrl(): string | null {
 }
 
 /**
- * Get the URL for a guild's icon.
+ * Get the URL for a guild's icon, or null if the guild has no custom icon.
+ * Discord doesn't provide default guild icons via CDN — callers should
+ * show the guild's initials or a placeholder icon when this returns null.
  */
 export function getGuildIconUrl(
   guildId: string,
   iconHash: string | null,
   size = 128,
-): string {
-  if (!iconHash) {
-    // Return a default avatar derived from the guild ID for visual distinction.
-    // Discord has 5 default avatar indices (0–4).
-    let index = 0;
-    try {
-      index = Number(BigInt(guildId) % 5n);
-    } catch {
-      // Invalid guildId — fall back to default avatar 0
-    }
-    return `${DISCORD_CDN}/embed/avatars/${index}.png`;
-  }
+): string | null {
+  if (!iconHash) return null;
   const ext = iconHash.startsWith("a_") ? "gif" : "webp";
   return `${DISCORD_CDN}/icons/${guildId}/${iconHash}.${ext}?size=${size}`;
 }

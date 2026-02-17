@@ -8,20 +8,18 @@ import {
 } from "@/lib/discord.server";
 
 describe("getGuildIconUrl", () => {
-  it("returns default icon derived from guild ID when no icon hash", () => {
-    // 123 % 5 = 3
+  it("returns null when no icon hash is provided", () => {
     const url = getGuildIconUrl("123", null);
-    expect(url).toBe("https://cdn.discordapp.com/embed/avatars/3.png");
+    expect(url).toBeNull();
   });
 
-  it("returns different default icons for different guild IDs", () => {
-    // Verify guild identity affects the fallback icon
-    const url0 = getGuildIconUrl("0", null);   // 0 % 5 = 0
-    const url1 = getGuildIconUrl("1", null);   // 1 % 5 = 1
-    const url4 = getGuildIconUrl("4", null);   // 4 % 5 = 4
-    expect(url0).toContain("/embed/avatars/0.png");
-    expect(url1).toContain("/embed/avatars/1.png");
-    expect(url4).toContain("/embed/avatars/4.png");
+  it("returns null for all guilds without an icon hash", () => {
+    const url0 = getGuildIconUrl("0", null);
+    const url1 = getGuildIconUrl("1", null);
+    const url4 = getGuildIconUrl("4", null);
+    expect(url0).toBeNull();
+    expect(url1).toBeNull();
+    expect(url4).toBeNull();
   });
 
   it("returns webp icon for non-animated hash", () => {

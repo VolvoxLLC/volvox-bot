@@ -59,8 +59,8 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       if (!response.ok) throw new Error("Failed to fetch");
       const data: unknown = await response.json();
       if (!Array.isArray(data)) throw new Error("Invalid response: expected array");
-      const guilds = data as MutualGuild[];
-      setGuilds(guilds);
+      const fetchedGuilds = data as MutualGuild[];
+      setGuilds(fetchedGuilds);
 
       // Restore previously selected guild from localStorage
       let restored = false;
