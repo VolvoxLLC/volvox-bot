@@ -112,9 +112,6 @@ function validateGuild(req, res, next) {
   next();
 }
 
-// Apply guild validation to all routes with :id param
-router.param('id', validateGuild);
-
 /**
  * GET / — List guilds
  * For OAuth2 users: fetches fresh guilds from Discord, returns only those where user has admin AND bot is present
@@ -170,7 +167,7 @@ router.get('/', async (req, res) => {
 /**
  * GET /:id — Guild info
  */
-router.get('/:id', requireGuildAdmin, (req, res) => {
+router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
   const guild = req.guild;
   const MAX_CHANNELS = 500;
   const channels = [];
@@ -197,7 +194,7 @@ router.get('/:id', requireGuildAdmin, (req, res) => {
  * API consistency but does not scope the returned config.
  * Per-guild config is tracked in Issue #71.
  */
-router.get('/:id/config', requireGuildAdmin, (_req, res) => {
+router.get('/:id/config', requireGuildAdmin, validateGuild, (_req, res) => {
   const config = getConfig();
   const safeConfig = {};
   for (const key of READABLE_CONFIG_KEYS) {
@@ -219,7 +216,7 @@ router.get('/:id/config', requireGuildAdmin, (_req, res) => {
  * API consistency but does not scope the update.
  * Per-guild config is tracked in Issue #71.
  */
-router.patch('/:id/config', requireGuildAdmin, async (req, res) => {
+router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Request body is required' });
   }
@@ -263,7 +260,7 @@ router.patch('/:id/config', requireGuildAdmin, async (req, res) => {
 /**
  * GET /:id/stats — Guild statistics
  */
-router.get('/:id/stats', requireGuildAdmin, async (req, res) => {
+router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -303,7 +300,7 @@ router.get('/:id/stats', requireGuildAdmin, async (req, res) => {
  * Query params: ?limit=25&after=<userId> (max 100)
  * Uses Discord's cursor-based pagination via guild.members.list().
  */
-router.get('/:id/members', requireGuildAdmin, async (req, res) => {
+router.get('/:id/members', requireGuildAdmin, validateGuild, async (req, res) => {
   let limit = Number.parseInt(req.query.limit, 10) || 25;
   if (limit < 1) limit = 1;
   if (limit > 100) limit = 100;
@@ -338,7 +335,7 @@ router.get('/:id/members', requireGuildAdmin, async (req, res) => {
  * GET /:id/moderation — Paginated moderation cases
  * Query params: ?page=1&limit=25 (max 100)
  */
-router.get('/:id/moderation', requireGuildAdmin, async (req, res) => {
+router.get('/:id/moderation', requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -380,7 +377,7 @@ router.get('/:id/moderation', requireGuildAdmin, async (req, res) => {
  * POST /:id/actions — Execute bot actions
  * Body: { action: "sendMessage", channelId: "...", content: "..." }
  */
-router.post('/:id/actions', requireGuildAdmin, async (req, res) => {
+router.post('/:id/actions', requireGuildAdmin, validateGuild, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body' });
   }
