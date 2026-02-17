@@ -4,21 +4,7 @@
  */
 
 import { error } from '../../logger.js';
-
-/**
- * Custom error for Discord API failures, carrying the HTTP status code.
- */
-export class DiscordApiError extends Error {
-  /**
-   * @param {string} message - Human-readable error description
-   * @param {number} status - HTTP status code from Discord
-   */
-  constructor(message, status) {
-    super(message);
-    this.name = 'DiscordApiError';
-    this.status = status;
-  }
-}
+import { DiscordApiError } from '../../utils/errors.js';
 
 /** Guild cache: userId → { guilds, expiresAt } */
 export const guildCache = new Map();

@@ -34,6 +34,21 @@ export const ErrorType = {
 };
 
 /**
+ * Custom error for Discord API failures, carrying the HTTP status code.
+ */
+export class DiscordApiError extends Error {
+  /**
+   * @param {string} message - Human-readable error description
+   * @param {number} status - HTTP status code from Discord
+   */
+  constructor(message, status) {
+    super(message);
+    this.name = 'DiscordApiError';
+    this.status = status;
+  }
+}
+
+/**
  * Classify an error into a specific error type
  *
  * @param {Error} error - The error to classify
