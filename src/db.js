@@ -4,7 +4,7 @@
  */
 
 import pg from 'pg';
-import { info, error as logError } from './logger.js';
+import { info, warn, error as logError } from './logger.js';
 import { initLogsTable } from './transports/postgres.js';
 
 const { Pool } = pg;
@@ -109,10 +109,15 @@ export async function initDb() {
         )
       `);
 
-      // Backfill guild_id for databases created before this column existed
-      await pool.query(`
-        ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT
-      `);
+      // Backfill guild_id for databases created before this column existed.
+      // ADD COLUMN IF NOT EXISTS requires PostgreSQL 9.6+.
+      try {
+        await pool.query(`
+          ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT
+        `);
+      } catch (err) {
+        warn('Failed to backfill guild_id column (requires PG 9.6+)', { error: err.message });
+      }
 
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_conversations_channel_created
