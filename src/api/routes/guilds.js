@@ -7,8 +7,8 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
-import { fetchUserGuilds, guildCache } from '../utils/discordApi.js';
-import { getSessionToken } from './auth.js';
+import { fetchUserGuilds } from '../utils/discordApi.js';
+import { getSessionToken } from '../utils/sessionStore.js';
 
 const router = Router();
 
@@ -52,8 +52,6 @@ function parsePagination(query) {
   const offset = (page - 1) * limit;
   return { page, limit, offset };
 }
-
-export { guildCache };
 
 /**
  * Check if an OAuth2 user has admin permissions on a guild.
@@ -129,26 +127,27 @@ router.get('/', async (req, res) => {
 
     try {
       const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
-      const filtered = userGuilds
-        .filter((ug) => {
-          // User must have admin permission on the guild
-          if ((Number(ug.permissions) & ADMINISTRATOR_FLAG) !== ADMINISTRATOR_FLAG) return false;
-          // Bot must be present in the guild
-          return botGuilds.has(ug.id);
-        })
-        .map((ug) => {
-          const botGuild = botGuilds.get(ug.id);
-          return {
-            id: ug.id,
-            name: botGuild.name,
-            icon: botGuild.iconURL(),
-            memberCount: botGuild.memberCount,
-          };
+      const filtered = userGuilds.reduce((acc, ug) => {
+        // User must have admin permission on the guild.
+        if ((Number(ug.permissions) & ADMINISTRATOR_FLAG) !== ADMINISTRATOR_FLAG) return acc;
+        // Single lookup avoids has/get TOCTOU.
+        const botGuild = botGuilds.get(ug.id);
+        if (!botGuild) return acc;
+        acc.push({
+          id: ug.id,
+          name: botGuild.name,
+          icon: botGuild.iconURL(),
+          memberCount: botGuild.memberCount,
         });
+        return acc;
+      }, []);
 
       return res.json(filtered);
     } catch (err) {
-      error('Failed to fetch user guilds from Discord', { error: err.message });
+      error('Failed to fetch user guilds from Discord', {
+        error: err.message,
+        userId: req.user?.userId,
+      });
       return res.status(502).json({ error: 'Failed to fetch guilds from Discord' });
     }
   }

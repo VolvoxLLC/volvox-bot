@@ -11,6 +11,7 @@ vi.mock('../../../src/logger.js', () => ({
 import { _seedOAuthState, sessionStore } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
+import { error as logError } from '../../../src/logger.js';
 
 describe('auth routes', () => {
   let app;
@@ -57,6 +58,10 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('OAuth2 not configured');
+      expect(logError).toHaveBeenCalledWith('OAuth2 not configured for /discord', {
+        hasClientId: false,
+        hasRedirectUri: true,
+      });
     });
 
     it('should return 500 when DISCORD_REDIRECT_URI is not set', async () => {
@@ -67,6 +72,10 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('OAuth2 not configured');
+      expect(logError).toHaveBeenCalledWith('OAuth2 not configured for /discord', {
+        hasClientId: true,
+        hasRedirectUri: false,
+      });
     });
   });
 
@@ -107,7 +116,6 @@ describe('auth routes', () => {
           json: async () => ({
             id: '999',
             username: 'newuser',
-            discriminator: '0001',
             avatar: 'avatar123',
           }),
         });
@@ -226,6 +234,29 @@ describe('auth routes', () => {
       expect(res.status).toBe(502);
       expect(res.body.error).toBe('Invalid response from Discord');
     });
+
+    it('should return 500 and log when OAuth callback config is missing', async () => {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'client-id-123');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', '');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      const state = 'test-state-missing-config';
+      _seedOAuthState(state);
+
+      const res = await request(app).get(
+        `/api/v1/auth/discord/callback?code=valid-code&state=${state}`,
+      );
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe('OAuth2 not configured');
+      expect(logError).toHaveBeenCalledWith('OAuth2 not configured for /discord/callback', {
+        hasClientId: true,
+        hasClientSecret: false,
+        hasRedirectUri: true,
+        hasSessionSecret: true,
+      });
+    });
   });
 
   describe('GET /api/v1/auth/me', () => {
@@ -245,7 +276,6 @@ describe('auth routes', () => {
         {
           userId: '123',
           username: 'testuser',
-          discriminator: '0001',
           avatar: 'abc123',
         },
         'test-session-secret',
@@ -257,6 +287,7 @@ describe('auth routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.userId).toBe('123');
       expect(res.body.username).toBe('testuser');
+      expect(res.body.discriminator).toBeUndefined();
       expect(res.body.guilds).toHaveLength(1);
     });
 
@@ -272,7 +303,6 @@ describe('auth routes', () => {
         {
           userId: '123',
           username: 'testuser',
-          discriminator: '0001',
           avatar: 'abc123',
         },
         'test-session-secret',
@@ -323,7 +353,6 @@ describe('auth routes', () => {
         {
           userId: '456',
           username: 'revokeduser',
-          discriminator: '0002',
           avatar: 'def456',
         },
         'test-session-secret',

@@ -32,6 +32,14 @@ export function stopGuildCacheCleanup() {
  * @returns {Promise<Array>} Array of guild objects
  */
 export async function fetchUserGuilds(userId, accessToken) {
+  if (typeof accessToken !== 'string' || accessToken.trim().length === 0) {
+    error('Invalid access token for guild fetch', {
+      userId,
+      accessTokenType: typeof accessToken,
+    });
+    throw new Error('Invalid access token');
+  }
+
   const cached = guildCache.get(userId);
   if (cached) {
     if (Date.now() < cached.expiresAt) {
