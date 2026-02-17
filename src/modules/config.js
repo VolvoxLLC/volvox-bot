@@ -185,7 +185,7 @@ export function clearConfigListeners() {
  * @param {*} oldValue - The previous value
  */
 function emitConfigChangeEvents(fullPath, newValue, oldValue) {
-  for (const listener of listeners) {
+  for (const listener of [...listeners]) {
     const isExact = listener.path === fullPath;
     const isPrefix =
       !isExact &&
