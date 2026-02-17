@@ -24,6 +24,12 @@ const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam'];
 const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'moderation'];
 
 /**
+ * Upper bound on content length for abuse prevention.
+ * safeSend handles the actual Discord 2000-char message splitting.
+ */
+const MAX_CONTENT_LENGTH = 10000;
+
+/**
  * Parse pagination query params with defaults and capping.
  *
  * Currently used only by the moderation endpoint; the members endpoint
@@ -262,8 +268,8 @@ router.post('/:id/actions', async (req, res) => {
       return res.status(400).json({ error: 'Missing "channelId" or "content" for sendMessage' });
     }
 
-    if (content.length > 10000) {
-      return res.status(400).json({ error: 'Content exceeds 10000 character limit' });
+    if (content.length > MAX_CONTENT_LENGTH) {
+      return res.status(400).json({ error: `Content exceeds ${MAX_CONTENT_LENGTH} character limit` });
     }
 
     // Validate channel belongs to guild
