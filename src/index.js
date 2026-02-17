@@ -300,12 +300,57 @@ async function startup() {
   config = await loadConfig();
   info('Configuration loaded', { sections: Object.keys(config) });
 
-  // Register config change listeners for hot-reload observability
-  for (const prefix of ['logging.*', 'ai.*', 'spam.*', 'moderation.*']) {
-    onConfigChange(prefix, (newValue, _oldValue, path) => {
-      info('Config changed', { path, newValue });
+  // Register config change listeners for hot-reload
+  //
+  // Logging transport: stateful — requires reactive wiring to add/remove/recreate
+  // the PostgreSQL transport when config changes at runtime.
+  onConfigChange('logging.database.enabled', async (newValue, _oldValue, path) => {
+    if (!dbPool) return;
+    try {
+      if (newValue) {
+        await initLogsTable(dbPool);
+        pgTransport = addPostgresTransport(dbPool, config.logging.database);
+        info('PostgreSQL logging transport enabled via config change', { path });
+      } else {
+        if (pgTransport) {
+          await removePostgresTransport(pgTransport);
+          pgTransport = null;
+          info('PostgreSQL logging transport disabled via config change', { path });
+        }
+      }
+    } catch (err) {
+      error('Failed to toggle PostgreSQL logging transport', { path, error: err.message });
+    }
+  });
+
+  for (const key of [
+    'logging.database.batchSize',
+    'logging.database.flushIntervalMs',
+    'logging.database.minLevel',
+  ]) {
+    onConfigChange(key, async (newValue, _oldValue, path) => {
+      if (!dbPool || !config.logging?.database?.enabled || !pgTransport) return;
+      try {
+        await removePostgresTransport(pgTransport);
+        pgTransport = addPostgresTransport(dbPool, config.logging.database);
+        info('PostgreSQL logging transport recreated after config change', { path, newValue });
+      } catch (err) {
+        error('Failed to recreate PostgreSQL logging transport', { path, error: err.message });
+      }
     });
   }
+
+  // AI, spam, and moderation modules call getConfig() per-request, so config
+  // changes take effect automatically. Listeners provide observability only.
+  onConfigChange('ai.*', (newValue, _oldValue, path) => {
+    info('AI config updated', { path, newValue });
+  });
+  onConfigChange('spam.*', (newValue, _oldValue, path) => {
+    info('Spam config updated', { path, newValue });
+  });
+  onConfigChange('moderation.*', (newValue, _oldValue, path) => {
+    info('Moderation config updated', { path, newValue });
+  });
 
   // Set up AI module's DB pool reference
   if (dbPool) {
