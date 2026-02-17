@@ -4,7 +4,7 @@
  */
 
 import pg from 'pg';
-import { info, warn, error as logError } from './logger.js';
+import { info, error as logError, warn } from './logger.js';
 import { initLogsTable } from './transports/postgres.js';
 
 const { Pool } = pg;

@@ -136,7 +136,9 @@ router.patch('/:id/config', async (req, res) => {
   }
 
   if (!path.includes('.')) {
-    return res.status(400).json({ error: 'Config path must include at least one dot separator (e.g., "ai.model")' });
+    return res
+      .status(400)
+      .json({ error: 'Config path must include at least one dot separator (e.g., "ai.model")' });
   }
 
   try {
@@ -280,7 +282,9 @@ router.post('/:id/actions', async (req, res) => {
     }
 
     if (content.length > MAX_CONTENT_LENGTH) {
-      return res.status(400).json({ error: `Content exceeds ${MAX_CONTENT_LENGTH} character limit` });
+      return res
+        .status(400)
+        .json({ error: `Content exceeds ${MAX_CONTENT_LENGTH} character limit` });
     }
 
     // Validate channel belongs to guild
