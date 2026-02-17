@@ -305,6 +305,7 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.limit).toBe(100);
+      expect(mockGuild.members.list).toHaveBeenCalledWith({ limit: 100, after: undefined });
     });
 
     it('should return null nextAfter when no members returned', async () => {
