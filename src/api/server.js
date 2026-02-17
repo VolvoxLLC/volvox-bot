@@ -124,8 +124,19 @@ export async function stopServer() {
     return;
   }
 
+  const SHUTDOWN_TIMEOUT_MS = 5_000;
+  const closing = server;
+
   return new Promise((resolve, reject) => {
-    server.close((err) => {
+    const timeout = setTimeout(() => {
+      warn('API server close timed out, forcing connections closed');
+      if (typeof closing.closeAllConnections === 'function') {
+        closing.closeAllConnections();
+      }
+    }, SHUTDOWN_TIMEOUT_MS);
+
+    closing.close((err) => {
+      clearTimeout(timeout);
       server = null;
       if (err) {
         error('Error closing API server', { error: err.message });
