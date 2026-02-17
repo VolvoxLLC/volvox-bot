@@ -86,6 +86,15 @@ describe('per-guild configuration', () => {
       const config = configModule.getConfig(undefined);
       expect(config.ai.model).toBe('claude-3');
     });
+
+    it('should return mutable cache reference for global path (intentional)', () => {
+      const config1 = configModule.getConfig();
+      config1.ai.model = 'mutated-model';
+
+      const config2 = configModule.getConfig();
+      // Global returns live reference — mutations are visible (documented contract)
+      expect(config2.ai.model).toBe('mutated-model');
+    });
   });
 
   describe('guild isolation', () => {
