@@ -31,8 +31,11 @@ describe('config.json', () => {
     expect(typeof config.triage.enabled).toBe('boolean');
     expect(typeof config.triage.defaultInterval).toBe('number');
     expect(typeof config.triage.maxBufferSize).toBe('number');
-    expect(typeof config.triage.model).toBe('string');
-    expect(typeof config.triage.budget).toBe('number');
+    expect(typeof config.triage.classifyModel).toBe('string');
+    expect(typeof config.triage.classifyBudget).toBe('number');
+    expect(typeof config.triage.respondModel).toBe('string');
+    expect(typeof config.triage.respondBudget).toBe('number');
+    expect(typeof config.triage.tokenRecycleLimit).toBe('number');
     expect(typeof config.triage.timeout).toBe('number');
     expect(typeof config.triage.moderationResponse).toBe('boolean');
     expect(Array.isArray(config.triage.triggerWords)).toBe(true);

@@ -456,8 +456,8 @@ async function startup() {
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
 
-  // Start triage module (per-channel message classification)
-  startTriage(client, config, healthMonitor);
+  // Start triage module (per-channel message classification + response)
+  await startTriage(client, config, healthMonitor);
 
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {

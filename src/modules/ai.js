@@ -508,15 +508,19 @@ export async function generateResponse(
   // Log incoming AI request
   info('AI request', { channelId, username, message: userMessage });
 
-  // Resolve config values with legacy nested-format fallback.
-  // The DB may still have old format: models: {default}, budget: {response}, timeouts: {response}
+  // Resolve config values with 3-layer legacy fallback:
+  // 1. New split format: respondModel / respondBudget
+  // 2. PR #68 flat format: model / budget / timeout
+  // 3. Original nested format: models.default / budget.response / timeouts.response
   const triageCfg = guildConfig.triage || {};
   const cfgModel =
-    typeof triageCfg.model === 'string'
+    triageCfg.respondModel ??
+    (typeof triageCfg.model === 'string'
       ? triageCfg.model
-      : (triageCfg.models?.default ?? 'claude-sonnet-4-5');
+      : (triageCfg.models?.default ?? 'claude-sonnet-4-5'));
   const cfgBudget =
-    typeof triageCfg.budget === 'number' ? triageCfg.budget : (triageCfg.budget?.response ?? 0.5);
+    triageCfg.respondBudget ??
+    (typeof triageCfg.budget === 'number' ? triageCfg.budget : (triageCfg.budget?.response ?? 0.20));
   const cfgTimeout =
     typeof triageCfg.timeout === 'number'
       ? triageCfg.timeout

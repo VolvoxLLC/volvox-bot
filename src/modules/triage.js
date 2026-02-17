@@ -1,16 +1,17 @@
 /**
  * Triage Module
- * Per-channel message triage with dynamic intervals and unified SDK evaluation.
+ * Per-channel message triage with split Haiku classifier + Sonnet responder.
  *
- * A single SDK call classifies the conversation AND generates per-user responses
- * via structured output. This eliminates the overhead of multiple subprocess
- * spawns (classify → verify → respond) that previously caused ~11s latency.
+ * Two long-lived SDKProcess instances handle classification (cheap, fast) and
+ * response generation (expensive, only when needed).  ~80% of evaluations are
+ * "ignore" — handled by Haiku alone at ~10x lower cost than Sonnet.
  */
 
-import { AbortError, query } from '@anthropic-ai/claude-agent-sdk';
+import { AbortError } from '@anthropic-ai/claude-agent-sdk';
 import { info, error as logError, warn } from '../logger.js';
 import { loadPrompt } from '../prompts/index.js';
 import { safeSend } from '../utils/safeSend.js';
+import { SDKProcess } from './sdk-process.js';
 import { isSpam } from './spam.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ function parseSDKResult(raw, channelId, label) {
     const recovered = {
       classification: classMatch[1],
       reasoning: reasonMatch ? reasonMatch[1] : 'Recovered from truncated response',
-      responses: [],
+      targetMessageIds: [],
     };
     info(`${label}: recovered classification from truncated JSON`, { channelId, ...recovered });
     return recovered;
@@ -97,6 +98,11 @@ let _config = null;
 /** @type {Object|null} */
 let _healthMonitor = null;
 
+/** @type {SDKProcess|null} */
+let classifierProcess = null;
+/** @type {SDKProcess|null} */
+let responderProcess = null;
+
 // ── Per-channel state ────────────────────────────────────────────────────────
 /**
  * @typedef {Object} ChannelState
@@ -115,9 +121,9 @@ const channelBuffers = new Map();
 const MAX_TRACKED_CHANNELS = 100;
 const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
 
-// ── Unified JSON schema for SDK structured output ────────────────────────────
+// ── JSON schemas for SDK structured output ──────────────────────────────────
 
-const UNIFIED_SCHEMA = {
+const CLASSIFY_SCHEMA = {
   type: 'object',
   properties: {
     classification: {
@@ -125,6 +131,18 @@ const UNIFIED_SCHEMA = {
       enum: ['ignore', 'respond', 'chime-in', 'moderate'],
     },
     reasoning: { type: 'string' },
+    targetMessageIds: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Message IDs from the conversation that should receive responses',
+    },
+  },
+  required: ['classification', 'reasoning', 'targetMessageIds'],
+};
+
+const RESPOND_SCHEMA = {
+  type: 'object',
+  properties: {
     responses: {
       type: 'array',
       items: {
@@ -138,8 +156,50 @@ const UNIFIED_SCHEMA = {
       },
     },
   },
-  required: ['classification', 'reasoning', 'responses'],
+  required: ['responses'],
 };
+
+// ── Config resolution ───────────────────────────────────────────────────────
+
+/**
+ * Resolve triage config with 3-layer legacy fallback:
+ * 1. New split format: classifyModel / respondModel / classifyBudget / respondBudget
+ * 2. PR #68 flat format: model / budget / timeout
+ * 3. Original nested format: models.default / budget.response / timeouts.response
+ */
+function resolveTriageConfig(triageConfig) {
+  const classifyModel =
+    triageConfig.classifyModel ??
+    (typeof triageConfig.model === 'string'
+      ? 'claude-haiku-4-5'
+      : triageConfig.models?.default
+        ? 'claude-haiku-4-5'
+        : 'claude-haiku-4-5');
+
+  const respondModel =
+    triageConfig.respondModel ??
+    (typeof triageConfig.model === 'string'
+      ? triageConfig.model
+      : (triageConfig.models?.default ?? 'claude-sonnet-4-5'));
+
+  const classifyBudget =
+    triageConfig.classifyBudget ?? (typeof triageConfig.budget === 'number' ? 0.05 : 0.05);
+
+  const respondBudget =
+    triageConfig.respondBudget ??
+    (typeof triageConfig.budget === 'number'
+      ? triageConfig.budget
+      : (triageConfig.budget?.response ?? 0.2));
+
+  const timeout =
+    typeof triageConfig.timeout === 'number'
+      ? triageConfig.timeout
+      : (triageConfig.timeouts?.response ?? 30000);
+
+  const tokenRecycleLimit = triageConfig.tokenRecycleLimit ?? 20000;
+
+  return { classifyModel, respondModel, classifyBudget, respondBudget, timeout, tokenRecycleLimit };
+}
 
 // ── Dynamic interval thresholds ──────────────────────────────────────────────
 
@@ -290,11 +350,11 @@ function checkTriggerWords(content, config) {
   return false;
 }
 
-// ── Unified SDK evaluation ───────────────────────────────────────────────────
+// ── Prompt builders ─────────────────────────────────────────────────────────
 
 /**
- * Build conversation text with message IDs for the unified prompt.
- * Format: [msg-XXX] username (time ago): content
+ * Build conversation text with message IDs for prompts.
+ * Format: [msg-XXX] username: content
  * @param {Array<{author: string, content: string, userId: string, messageId: string}>} buffer - Buffered messages
  * @returns {string} Formatted conversation text
  */
@@ -303,56 +363,171 @@ function buildConversationText(buffer) {
 }
 
 /**
- * Evaluate buffered messages using a single unified SDK call.
- * Classifies the conversation AND generates per-user responses in one call.
+ * Build the classifier prompt from the template.
+ * @param {Array} snapshot - Buffer snapshot
+ * @param {Object} config - Bot configuration
+ * @returns {string} Interpolated classify prompt
+ */
+function buildClassifyPrompt(snapshot) {
+  const conversationText = buildConversationText(snapshot);
+  const communityRules = loadPrompt('community-rules');
+  return loadPrompt('triage-classify', { conversationText, communityRules });
+}
+
+/**
+ * Build the responder prompt from the template.
+ * @param {Array} snapshot - Buffer snapshot
+ * @param {Object} classification - Parsed classifier output
+ * @param {Object} config - Bot configuration
+ * @returns {string} Interpolated respond prompt
+ */
+function buildRespondPrompt(snapshot, classification, config) {
+  const conversationText = buildConversationText(snapshot);
+  const communityRules = loadPrompt('community-rules');
+  const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
+
+  return loadPrompt('triage-respond', {
+    systemPrompt,
+    communityRules,
+    conversationText,
+    classification: classification.classification,
+    reasoning: classification.reasoning,
+    targetMessageIds: JSON.stringify(classification.targetMessageIds),
+  });
+}
+
+// ── Result parsers ──────────────────────────────────────────────────────────
+
+/**
+ * Parse the classifier's structured output.
+ * @param {Object} sdkMessage - Raw SDK result message
+ * @param {string} channelId - For logging
+ * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds } or null
+ */
+function parseClassifyResult(sdkMessage, channelId) {
+  let parsed;
+  if (sdkMessage.structured_output && typeof sdkMessage.structured_output === 'object') {
+    parsed = sdkMessage.structured_output;
+  } else {
+    parsed = parseSDKResult(sdkMessage.result, channelId, 'Classifier');
+  }
+
+  if (!parsed || !parsed.classification) {
+    warn('Classifier result unparseable', { channelId });
+    return null;
+  }
+
+  return parsed;
+}
+
+/**
+ * Parse the responder's structured output.
+ * @param {Object} sdkMessage - Raw SDK result message
+ * @param {string} channelId - For logging
+ * @returns {Object|null} Parsed { responses: [...] } or null
+ */
+function parseRespondResult(sdkMessage, channelId) {
+  let parsed;
+  if (sdkMessage.structured_output && typeof sdkMessage.structured_output === 'object') {
+    parsed = sdkMessage.structured_output;
+  } else {
+    parsed = parseSDKResult(sdkMessage.result, channelId, 'Responder');
+  }
+
+  if (!parsed) {
+    warn('Responder result unparseable', { channelId });
+    return null;
+  }
+
+  return parsed;
+}
+
+// ── Response sending ────────────────────────────────────────────────────────
+
+/**
+ * Send parsed responses to Discord.
+ * Extracted from the old evaluateAndRespond for reuse.
+ */
+async function sendResponses(channelId, parsed, classification, snapshot, config, client) {
+  const triageConfig = config.triage || {};
+  const type = classification.classification;
+  const responses = parsed.responses || [];
+
+  if (type === 'moderate') {
+    warn('Moderation flagged', { channelId, reasoning: classification.reasoning });
+
+    if (triageConfig.moderationResponse !== false && responses.length > 0) {
+      const channel = await client.channels.fetch(channelId).catch(() => null);
+      if (channel) {
+        for (const r of responses) {
+          if (r.response?.trim()) {
+            const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
+            if (replyRef) {
+              await safeSend(channel, {
+                content: r.response,
+                reply: { messageReference: replyRef },
+              });
+            }
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  // respond or chime-in
+  if (responses.length === 0) {
+    warn('Triage generated no responses for classification', { channelId, classification: type });
+    return;
+  }
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  if (!channel) {
+    warn('Could not fetch channel for triage response', { channelId });
+    return;
+  }
+
+  await channel.sendTyping();
+
+  for (const r of responses) {
+    if (!r.response?.trim()) {
+      warn('Triage generated empty response for user', { channelId, targetUser: r.targetUser });
+      continue;
+    }
+
+    const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
+    if (replyRef) {
+      await safeSend(channel, {
+        content: r.response,
+        reply: { messageReference: replyRef },
+      });
+    } else {
+      await safeSend(channel, r.response);
+    }
+
+    info('Triage response sent', {
+      channelId,
+      classification: type,
+      targetUser: r.targetUser,
+      targetMessageId: r.targetMessageId,
+    });
+  }
+}
+
+// ── Two-step SDK evaluation ─────────────────────────────────────────────────
+
+/**
+ * Evaluate buffered messages using a two-step flow:
+ * 1. Classify with Haiku (cheap, fast)
+ * 2. Respond with Sonnet (only when classification is non-ignore)
+ *
  * @param {string} channelId - The channel being evaluated
  * @param {Array<{author: string, content: string, userId: string, messageId: string}>} snapshot - Buffer snapshot
  * @param {Object} config - Bot configuration
  * @param {import('discord.js').Client} client - Discord client
  * @param {AbortController} [parentController] - Parent abort controller from evaluateNow
  */
-async function evaluateAndRespond(channelId, snapshot, config, client, parentController) {
-  const triageConfig = config.triage || {};
-  const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
-
-  // Resolve config values with legacy nested-format fallback.
-  // The DB may still have old format: models: {default}, budget: {response}, timeouts: {response}
-  const resolvedModel =
-    typeof triageConfig.model === 'string'
-      ? triageConfig.model
-      : (triageConfig.models?.default ?? 'claude-sonnet-4-5');
-  const resolvedBudget =
-    typeof triageConfig.budget === 'number'
-      ? triageConfig.budget
-      : (triageConfig.budget?.response ?? 0.5);
-  const resolvedTimeout =
-    typeof triageConfig.timeout === 'number'
-      ? triageConfig.timeout
-      : (triageConfig.timeouts?.response ?? 30000);
-
-  const conversationText = buildConversationText(snapshot);
-  const communityRules = loadPrompt('community-rules');
-
-  const unifiedPrompt = loadPrompt('triage-unified', {
-    systemPrompt,
-    conversationText,
-    communityRules,
-  });
-
-  const timeoutMs = resolvedTimeout;
-  const localController = new AbortController();
-  const timeout = setTimeout(() => localController.abort(), timeoutMs);
-
-  // Propagate parent abort to local controller
-  const parentSignal = parentController?.signal;
-  if (parentSignal) {
-    if (parentSignal.aborted) {
-      localController.abort();
-    } else {
-      parentSignal.addEventListener('abort', () => localController.abort(), { once: true });
-    }
-  }
-
+async function evaluateAndRespond(channelId, snapshot, config, client) {
   // Remove only the messages that were part of this evaluation's snapshot.
   // Messages accumulated during evaluation are preserved for re-evaluation.
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
@@ -364,146 +539,49 @@ async function evaluateAndRespond(channelId, snapshot, config, client, parentCon
   };
 
   try {
-    const generator = query({
-      prompt: unifiedPrompt,
-      options: {
-        model: resolvedModel,
-        systemPrompt: loadPrompt('triage-unified-system'),
-        maxBudgetUsd: resolvedBudget,
-        maxThinkingTokens: 0,
-        abortController: localController,
-        stderr: (data) => warn('SDK stderr (triage)', { channelId, data }),
-        // bypassPermissions is required for headless SDK usage (no interactive
-        // permission prompts). Safety is enforced by the structured JSON output
-        // schema — the SDK can only return classification + response data.
-        permissionMode: 'bypassPermissions',
-        // Structured output: the SDK passes the schema to the CLI via --json-schema
-        outputFormat: { type: 'json_schema', schema: UNIFIED_SCHEMA },
-      },
-    });
+    // Step 1: Classify with Haiku
+    const classifyPrompt = buildClassifyPrompt(snapshot);
+    const classifyMessage = await classifierProcess.send(classifyPrompt);
+    const classification = parseClassifyResult(classifyMessage, channelId);
 
-    let result = null;
-    for await (const message of generator) {
-      if (message.type === 'result') {
-        result = message;
-      }
-    }
-
-    if (!result) {
-      warn('Unified evaluation returned no result', { channelId });
+    if (!classification) {
       clearBuffer();
       return;
     }
 
-    // Check for SDK error result (e.g. budget exceeded, execution error)
-    if (result.is_error) {
-      warn('SDK returned error result', {
-        channelId,
-        subtype: result.subtype,
-        errors: result.errors,
-      });
-      clearBuffer();
-      return;
-    }
-
-    // With outputFormat: { type: 'json_schema', schema }, the SDK passes --json-schema
-    // to the CLI. The result may be in structured_output (object) or result (string).
-    let parsed;
-    if (result.structured_output && typeof result.structured_output === 'object') {
-      parsed = result.structured_output;
-    } else {
-      parsed = parseSDKResult(result.result, channelId, 'Unified evaluation');
-    }
-
-    if (!parsed || !parsed.classification) {
-      warn('Unified evaluation unparseable', { channelId });
-      clearBuffer();
-      return;
-    }
-
-    info('Triage evaluation', {
+    info('Triage classification', {
       channelId,
-      classification: parsed.classification,
-      reasoning: parsed.reasoning,
-      responseCount: parsed.responses?.length ?? 0,
-      totalCostUsd: result.total_cost_usd,
-      durationMs: result.duration_ms,
+      classification: classification.classification,
+      reasoning: classification.reasoning,
+      targetCount: classification.targetMessageIds.length,
+      totalCostUsd: classifyMessage.total_cost_usd,
     });
 
-    // Handle by classification type
-    const type = parsed.classification;
-    const responses = parsed.responses || [];
-
-    if (type === 'ignore') {
-      info('Triage: ignoring channel', { channelId, reasoning: parsed.reasoning });
+    if (classification.classification === 'ignore') {
+      info('Triage: ignoring channel', { channelId, reasoning: classification.reasoning });
       clearBuffer();
       return;
     }
 
-    if (type === 'moderate') {
-      warn('Moderation flagged', { channelId, reasoning: parsed.reasoning });
+    // Step 2: Respond with Sonnet (only when needed)
+    const respondPrompt = buildRespondPrompt(snapshot, classification, config);
+    const respondMessage = await responderProcess.send(respondPrompt);
+    const parsed = parseRespondResult(respondMessage, channelId);
 
-      if (triageConfig.moderationResponse !== false && responses.length > 0) {
-        const channel = await client.channels.fetch(channelId).catch(() => null);
-        if (channel) {
-          for (const r of responses) {
-            if (r.response?.trim()) {
-              const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
-              if (replyRef) {
-                await safeSend(channel, {
-                  content: r.response,
-                  reply: { messageReference: replyRef },
-                });
-              }
-            }
-          }
-        }
-      }
-
+    if (!parsed || !parsed.responses?.length) {
+      warn('Responder returned no responses', { channelId });
       clearBuffer();
       return;
     }
 
-    // respond or chime-in — send each response
-    if (responses.length === 0) {
-      warn('Triage generated no responses for classification', { channelId, classification: type });
-      clearBuffer();
-      return;
-    }
+    info('Triage response generated', {
+      channelId,
+      responseCount: parsed.responses.length,
+      totalCostUsd: respondMessage.total_cost_usd,
+    });
 
-    const channel = await client.channels.fetch(channelId).catch(() => null);
-    if (!channel) {
-      warn('Could not fetch channel for triage response', { channelId });
-      clearBuffer();
-      return;
-    }
-
-    await channel.sendTyping();
-
-    for (const r of responses) {
-      if (!r.response?.trim()) {
-        warn('Triage generated empty response for user', { channelId, targetUser: r.targetUser });
-        continue;
-      }
-
-      const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
-      if (replyRef) {
-        await safeSend(channel, {
-          content: r.response,
-          reply: { messageReference: replyRef },
-        });
-      } else {
-        await safeSend(channel, r.response);
-      }
-
-      info('Triage response sent', {
-        channelId,
-        classification: type,
-        targetUser: r.targetUser,
-        targetMessageId: r.targetMessageId,
-      });
-    }
-
+    // Step 3: Send to Discord
+    await sendResponses(channelId, parsed, classification, snapshot, config, client);
     clearBuffer();
   } catch (err) {
     if (err instanceof AbortError) {
@@ -525,8 +603,6 @@ async function evaluateAndRespond(channelId, snapshot, config, client, parentCon
     } catch {
       // Nothing more we can do
     }
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -541,7 +617,7 @@ async function evaluateAndRespond(channelId, snapshot, config, client, parentCon
  * cleared and replaced. No action is taken if the channel has no buffer.
  *
  * @param {string} channelId - The channel ID.
- * @param {Object} config - Bot configuration; `triage.defaultInterval` is used as the base interval (defaults to 10000 ms if unset).
+ * @param {Object} config - Bot configuration; `triage.defaultInterval` is used as the base interval (defaults to 5000 ms if unset).
  */
 function scheduleEvaluation(channelId, config) {
   const buf = channelBuffers.get(channelId);
@@ -553,7 +629,7 @@ function scheduleEvaluation(channelId, config) {
     buf.timer = null;
   }
 
-  const baseInterval = config.triage?.defaultInterval ?? 5000;
+  const baseInterval = config.triage?.defaultInterval ?? 0;
   const interval = getDynamicInterval(buf.messages.length, baseInterval);
 
   buf.timer = setTimeout(async () => {
@@ -570,39 +646,67 @@ function scheduleEvaluation(channelId, config) {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Configure the triage module by storing the Discord client, configuration, and health monitor references.
+ * Start the triage module: create and boot classifier + responder SDK processes.
  *
- * Sets module-level references used by the triage subsystem and logs that the module has started.
+ * @param {import('discord.js').Client} client - Discord client
+ * @param {Object} config - Bot configuration
+ * @param {Object} [healthMonitor] - Health monitor instance
  */
-export function startTriage(client, config, healthMonitor) {
+export async function startTriage(client, config, healthMonitor) {
   _client = client;
   _config = config;
   _healthMonitor = healthMonitor;
+
   const triageConfig = config.triage || {};
-  // Resolve with legacy nested-format fallback for startup log
-  const logModel =
-    typeof triageConfig.model === 'string'
-      ? triageConfig.model
-      : (triageConfig.models?.default ?? 'claude-sonnet-4-5');
-  const logBudget =
-    typeof triageConfig.budget === 'number'
-      ? triageConfig.budget
-      : (triageConfig.budget?.response ?? 0.5);
-  const logTimeout =
-    typeof triageConfig.timeout === 'number'
-      ? triageConfig.timeout
-      : (triageConfig.timeouts?.response ?? 30000);
-  info('Triage module started', {
-    timeoutMs: logTimeout,
-    model: logModel,
-    budgetUsd: logBudget,
+  const resolved = resolveTriageConfig(triageConfig);
+
+  // Create SDK processes with streaming keep-alive to avoid subprocess
+  // spawn overhead.  Token-based recycling bounds context growth.
+  classifierProcess = new SDKProcess(
+    'classifier',
+    {
+      model: resolved.classifyModel,
+      systemPrompt: loadPrompt('triage-classify-system'),
+      outputFormat: { type: 'json_schema', schema: CLASSIFY_SCHEMA },
+      maxBudgetUsd: resolved.classifyBudget,
+      thinking: { type: 'disabled' },
+      permissionMode: 'bypassPermissions',
+    },
+    { tokenLimit: resolved.tokenRecycleLimit },
+  );
+
+  responderProcess = new SDKProcess(
+    'responder',
+    {
+      model: resolved.respondModel,
+      systemPrompt: config.ai?.systemPrompt || loadPrompt('triage-respond-system'),
+      outputFormat: { type: 'json_schema', schema: RESPOND_SCHEMA },
+      maxBudgetUsd: resolved.respondBudget,
+      thinking: { type: 'enabled', budgetTokens: 1024 },
+      permissionMode: 'bypassPermissions',
+    },
+    { tokenLimit: resolved.tokenRecycleLimit },
+  );
+
+  await Promise.all([classifierProcess.start(), responderProcess.start()]);
+
+  info('Triage processes started', {
+    classifyModel: resolved.classifyModel,
+    respondModel: resolved.respondModel,
+    tokenRecycleLimit: resolved.tokenRecycleLimit,
+    intervalMs: triageConfig.defaultInterval ?? 0,
   });
 }
 
 /**
- * Clear all timers, abort in-flight evaluations, and reset state.
+ * Clear all timers, abort in-flight evaluations, close SDK processes, and reset state.
  */
 export function stopTriage() {
+  classifierProcess?.close();
+  responderProcess?.close();
+  classifierProcess = null;
+  responderProcess = null;
+
   for (const [, buf] of channelBuffers) {
     if (buf.timer) {
       clearTimeout(buf.timer);
@@ -673,12 +777,15 @@ export function accumulateMessage(message, config) {
 /**
  * Trigger an immediate triage evaluation for the given channel.
  *
- * If the channel has buffered messages, runs classification (and escalation verification when required)
- * and dispatches the resulting action. Cancels any in-flight classification; if an evaluation is already
- * running, marks a pending re-evaluation to run after the current evaluation completes.
+ * If the channel has buffered messages, runs classification (and response generation when
+ * non-ignore) and dispatches the resulting action. Cancels any in-flight classification;
+ * if an evaluation is already running, marks a pending re-evaluation to run after the
+ * current evaluation completes.
  *
  * @param {string} channelId - The ID of the channel to evaluate.
  * @param {Object} config - Bot configuration.
+ * @param {import('discord.js').Client} client - Discord client.
+ * @param {Object} [healthMonitor] - Health monitor.
  */
 export async function evaluateNow(channelId, config, client, healthMonitor) {
   const buf = channelBuffers.get(channelId);
@@ -720,7 +827,7 @@ export async function evaluateNow(channelId, config, client, healthMonitor) {
       return;
     }
 
-    await evaluateAndRespond(channelId, snapshot, config, client || _client, abortController);
+    await evaluateAndRespond(channelId, snapshot, config, client || _client);
   } catch (err) {
     if (err instanceof AbortError) {
       info('Triage evaluation aborted', { channelId });

@@ -78,8 +78,10 @@ function makeConfig(overrides = {}) {
   return {
     ai: { systemPrompt: 'You are a bot.', enabled: true, ...(overrides.ai || {}) },
     triage: {
-      model: 'claude-sonnet-4-5',
-      budget: 0.5,
+      classifyModel: 'claude-haiku-4-5',
+      classifyBudget: 0.05,
+      respondModel: 'claude-sonnet-4-5',
+      respondBudget: 0.20,
       timeout: 30000,
       ...(overrides.triage || {}),
     },
@@ -303,7 +305,7 @@ describe('ai module', () => {
             model: 'claude-sonnet-4-5',
             systemPrompt: 'You are a bot.',
             allowedTools: ['WebSearch'],
-            maxBudgetUsd: 0.5,
+            maxBudgetUsd: 0.2,
             maxThinkingTokens: 1024,
             permissionMode: 'bypassPermissions',
           }),

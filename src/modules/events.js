@@ -43,11 +43,13 @@ export function registerReadyHandler(client, config, healthMonitor) {
     }
     if (config.ai?.enabled) {
       const triageCfg = config.triage || {};
-      const triageModel =
-        typeof triageCfg.model === 'string'
+      const classifyModel = triageCfg.classifyModel ?? 'claude-haiku-4-5';
+      const respondModel =
+        triageCfg.respondModel ??
+        (typeof triageCfg.model === 'string'
           ? triageCfg.model
-          : (triageCfg.models?.default ?? 'claude-sonnet-4-5');
-      info('AI chat enabled', { model: triageModel });
+          : (triageCfg.models?.default ?? 'claude-sonnet-4-5'));
+      info('AI chat enabled', { classifyModel, respondModel });
     }
     if (config.moderation?.enabled) {
       info('Moderation enabled');
