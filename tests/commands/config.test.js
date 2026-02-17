@@ -158,7 +158,9 @@ describe('config command', () => {
           section7: { data: largeValue },
         };
         // First getConfig call is in execute() for permission check; second is in handleView()
-        getConfig.mockReturnValueOnce({}).mockReturnValueOnce(largeConfig);
+        getConfig
+          .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
+          .mockReturnValueOnce(largeConfig);
         const mockReply = vi.fn();
         const interaction = {
           options: {
@@ -181,7 +183,9 @@ describe('config command', () => {
 
       it('should handle getConfig throwing an error', async () => {
         // First getConfig call is in execute() for permission check; second throws in handleView()
-        getConfig.mockReturnValueOnce({}).mockImplementationOnce(() => {
+        getConfig
+          .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
+          .mockImplementationOnce(() => {
           throw new Error('config error');
         });
         const mockReply = vi.fn();
@@ -208,7 +212,9 @@ describe('config command', () => {
 
         try {
           // First getConfig call is in execute() for permission check; second throws in handleView()
-          getConfig.mockReturnValueOnce({}).mockImplementationOnce(() => {
+          getConfig
+            .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
+            .mockImplementationOnce(() => {
             throw new Error('pg: connection refused at 10.0.0.5:5432');
           });
           const mockReply = vi.fn();

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../../src/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
 import { isValidSecret, requireAuth } from '../../../src/api/middleware/auth.js';
+import { sessionStore } from '../../../src/api/routes/auth.js';
 
 describe('isValidSecret', () => {
   afterEach(() => {
@@ -50,6 +51,7 @@ describe('auth middleware', () => {
   });
 
   afterEach(() => {
+    sessionStore.clear();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
   });
@@ -104,6 +106,7 @@ describe('auth middleware', () => {
   it('should authenticate with valid JWT Bearer token', async () => {
     const jwt = await import('jsonwebtoken');
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+    sessionStore.set('123', 'discord-access-token');
     const token = jwt.default.sign({ userId: '123', username: 'testuser' }, 'jwt-test-secret');
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireAuth();
@@ -126,14 +129,14 @@ describe('auth middleware', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Invalid or expired token' });
   });
 
-  it('should return 401 when SESSION_SECRET is not set for JWT auth', () => {
+  it('should return 500 when SESSION_SECRET is not set for JWT auth', () => {
     vi.stubEnv('SESSION_SECRET', '');
     req.headers.authorization = 'Bearer some-token';
     const middleware = requireAuth();
 
     middleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'Session not configured' });
   });
 
@@ -142,6 +145,7 @@ describe('auth middleware', () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     req.headers['x-api-secret'] = 'wrong-secret';
+    sessionStore.set('456', 'discord-access-token');
     const token = jwt.default.sign({ userId: '456' }, 'jwt-test-secret');
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireAuth();

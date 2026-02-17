@@ -59,10 +59,12 @@ export function isAdmin(member, config) {
  * @returns {boolean} True if member has permission
  */
 export function hasPermission(member, commandName, config) {
-  if (!member || !commandName || !config) return false;
+  if (!member || !commandName) return false;
 
   // Bot owner always bypasses permission checks
   if (isBotOwner(member, config)) return true;
+
+  if (!config) return false;
 
   // If permissions are disabled, allow everything
   if (!config.permissions?.enabled || !config.permissions?.usePermissions) {

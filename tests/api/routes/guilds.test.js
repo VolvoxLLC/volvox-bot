@@ -113,7 +113,7 @@ describe('guilds routes', () => {
   }
 
   function mockFetchGuilds(guilds) {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
       json: async () => guilds,
     });
@@ -143,6 +143,22 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.id).toBe('guild1');
+    });
+
+    it('should return 401 when session has been revoked', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      // Sign a valid JWT but do NOT populate sessionStore
+      const token = jwt.sign(
+        { userId: '789', username: 'revokeduser' },
+        'jwt-test-secret',
+      );
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Session expired or revoked');
     });
   });
 
