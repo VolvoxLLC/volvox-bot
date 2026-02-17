@@ -18,6 +18,7 @@ describe('rateLimit middleware', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -82,8 +83,6 @@ describe('rateLimit middleware', () => {
     const next3 = vi.fn();
     middleware(req, res, next3);
     expect(next3).toHaveBeenCalled();
-
-    vi.useRealTimers();
   });
 
   it('should use default values when no options provided', () => {
