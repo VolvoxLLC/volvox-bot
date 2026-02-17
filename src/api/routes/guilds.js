@@ -242,8 +242,8 @@ router.post('/:id/actions', async (req, res) => {
       return res.status(400).json({ error: 'Missing "channelId" or "content" for sendMessage' });
     }
 
-    if (content.length > 2000) {
-      return res.status(400).json({ error: 'Content exceeds Discord 2000 character limit' });
+    if (content.length > 10000) {
+      return res.status(400).json({ error: 'Content exceeds 10000 character limit' });
     }
 
     // Validate channel belongs to guild

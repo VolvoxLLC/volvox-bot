@@ -354,6 +354,16 @@ describe('guilds routes', () => {
   });
 
   describe('POST /:id/actions', () => {
+    it('should return 400 when request body is missing', async () => {
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/actions')
+        .set('x-api-secret', SECRET)
+        .set('Content-Type', 'text/plain')
+        .send('not json');
+
+      expect(res.status).toBe(400);
+    });
+
     it('should send a message to a channel using safeSend', async () => {
       const res = await request(app)
         .post('/api/v1/guilds/guild1/actions')
@@ -366,15 +376,26 @@ describe('guilds routes', () => {
       expect(safeSend).toHaveBeenCalledWith(mockChannel, 'Hello!');
     });
 
-    it('should reject content exceeding 2000 characters', async () => {
-      const longContent = 'a'.repeat(2001);
+    it('should allow content over 2000 chars (safeSend handles splitting)', async () => {
+      const longContent = 'a'.repeat(3000);
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/actions')
+        .set('x-api-secret', SECRET)
+        .send({ action: 'sendMessage', channelId: 'ch1', content: longContent });
+
+      expect(res.status).toBe(201);
+      expect(safeSend).toHaveBeenCalledWith(mockChannel, longContent);
+    });
+
+    it('should reject content exceeding 10000 characters', async () => {
+      const longContent = 'a'.repeat(10001);
       const res = await request(app)
         .post('/api/v1/guilds/guild1/actions')
         .set('x-api-secret', SECRET)
         .send({ action: 'sendMessage', channelId: 'ch1', content: longContent });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/2000/);
+      expect(res.body.error).toMatch(/10000/);
       expect(safeSend).not.toHaveBeenCalled();
     });
 
