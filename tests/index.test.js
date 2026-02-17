@@ -633,6 +633,42 @@ describe('index.js', () => {
     expect(process.exit).toHaveBeenCalledWith(0);
   });
 
+  it('should await transportLock during shutdown even when pgTransport is temporarily null', async () => {
+    await importIndex({
+      token: 'abc',
+      databaseUrl: 'postgres://db',
+      loadConfigResult: {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      },
+    });
+
+    // pgTransport was set during startup; clear the mock to isolate shutdown behavior
+    mocks.logger.removePostgresTransport.mockClear();
+
+    // Make removePostgresTransport slow to simulate an in-flight lock chain
+    let resolveRemove;
+    mocks.logger.removePostgresTransport.mockImplementation(
+      () => new Promise((resolve) => { resolveRemove = resolve; }),
+    );
+
+    const sigintHandler = mocks.processHandlers.SIGINT;
+    const shutdownPromise = sigintHandler().catch(() => {});
+
+    // Let the lock chain's microtask queue progress
+    await vi.waitFor(() => {
+      expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+    });
+
+    // Resolve the slow remove so shutdown can complete
+    resolveRemove();
+    await shutdownPromise;
+
+    expect(process.exit).toHaveBeenCalledWith(0);
+  });
+
   it('should log load-state failure for invalid JSON', async () => {
     await importIndex({
       token: 'abc',
