@@ -3,13 +3,29 @@
  * Discord OAuth2 authentication endpoints
  */
 
+import crypto from 'node:crypto';
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { error, info } from '../../logger.js';
+import { requireOAuth } from '../middleware/oauth.js';
 
 const router = Router();
 
 const DISCORD_API = 'https://discord.com/api/v10';
+
+/** CSRF state store: state → expiry timestamp */
+const oauthStates = new Map();
+const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Remove expired state entries from the store
+ */
+function cleanExpiredStates() {
+  const now = Date.now();
+  for (const [key, expiry] of oauthStates) {
+    if (now > expiry) oauthStates.delete(key);
+  }
+}
 
 /**
  * GET /discord — Redirect to Discord OAuth2 authorization
@@ -22,11 +38,17 @@ router.get('/discord', (_req, res) => {
     return res.status(500).json({ error: 'OAuth2 not configured' });
   }
 
+  cleanExpiredStates();
+
+  const state = crypto.randomUUID();
+  oauthStates.set(state, Date.now() + STATE_TTL_MS);
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'identify guilds',
+    state,
   });
 
   res.redirect(`https://discord.com/oauth2/authorize?${params}`);
@@ -37,10 +59,22 @@ router.get('/discord', (_req, res) => {
  * Exchanges code for token, fetches user info, creates JWT
  */
 router.get('/discord/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
 
   if (!code) {
     return res.status(400).json({ error: 'Missing authorization code' });
+  }
+
+  // Validate CSRF state parameter
+  if (!state || !oauthStates.has(state)) {
+    return res.status(403).json({ error: 'Invalid or expired OAuth state' });
+  }
+
+  const stateExpiry = oauthStates.get(state);
+  oauthStates.delete(state);
+
+  if (Date.now() > stateExpiry) {
+    return res.status(403).json({ error: 'Invalid or expired OAuth state' });
   }
 
   const clientId = process.env.DISCORD_CLIENT_ID;
@@ -64,6 +98,7 @@ router.get('/discord/callback', async (req, res) => {
         code,
         redirect_uri: redirectUri,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!tokenResponse.ok) {
@@ -77,6 +112,7 @@ router.get('/discord/callback', async (req, res) => {
     // Fetch user info
     const userResponse = await fetch(`${DISCORD_API}/users/@me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!userResponse.ok) {
@@ -86,40 +122,24 @@ router.get('/discord/callback', async (req, res) => {
 
     const user = await userResponse.json();
 
-    // Fetch user guilds
-    const guildsResponse = await fetch(`${DISCORD_API}/users/@me/guilds`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    if (!guildsResponse.ok) {
-      error('Discord guilds fetch failed', { status: guildsResponse.status });
-      return res.status(401).json({ error: 'Failed to fetch user guilds' });
-    }
-
-    const guilds = await guildsResponse.json();
-
-    // Create JWT
+    // Create JWT with user info and access token (no guilds — fetched fresh at request time)
     const token = jwt.sign(
       {
         userId: user.id,
         username: user.username,
         discriminator: user.discriminator,
         avatar: user.avatar,
-        guilds: guilds.map((g) => ({
-          id: g.id,
-          name: g.name,
-          permissions: g.permissions,
-        })),
+        accessToken,
       },
       sessionSecret,
-      { expiresIn: '7d' },
+      { expiresIn: '1h' },
     );
 
     info('User authenticated via OAuth2', { userId: user.id, username: user.username });
 
-    // Redirect with token as query parameter
+    // Redirect with token as fragment to avoid server-side logging
     const dashboardUrl = process.env.DASHBOARD_URL || '/';
-    res.redirect(`${dashboardUrl}?token=${token}`);
+    res.redirect(`${dashboardUrl}#token=${token}`);
   } catch (err) {
     error('OAuth2 callback error', { error: err.message });
     res.status(500).json({ error: 'Authentication failed' });
@@ -128,33 +148,31 @@ router.get('/discord/callback', async (req, res) => {
 
 /**
  * GET /me — Return current authenticated user info from JWT
+ * Fetches fresh guilds from Discord using the stored access token
  */
-router.get('/me', (req, res) => {
-  const authHeader = req.headers.authorization;
+router.get('/me', requireOAuth(), async (req, res) => {
+  const { userId, username, discriminator, avatar, accessToken } = req.user;
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
+  let guilds = [];
+  if (accessToken) {
+    try {
+      const response = await fetch(`${DISCORD_API}/users/@me/guilds`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (response.ok) {
+        guilds = (await response.json()).map((g) => ({
+          id: g.id,
+          name: g.name,
+          permissions: g.permissions,
+        }));
+      }
+    } catch {
+      // Guilds fetch failed, return user info without guilds
+    }
   }
 
-  const token = authHeader.slice(7);
-  const sessionSecret = process.env.SESSION_SECRET;
-
-  if (!sessionSecret) {
-    return res.status(500).json({ error: 'Session not configured' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, sessionSecret);
-    res.json({
-      userId: decoded.userId,
-      username: decoded.username,
-      discriminator: decoded.discriminator,
-      avatar: decoded.avatar,
-      guilds: decoded.guilds,
-    });
-  } catch {
-    res.status(401).json({ error: 'Invalid or expired token' });
-  }
+  res.json({ userId, username, discriminator, avatar, guilds });
 });
 
 /**

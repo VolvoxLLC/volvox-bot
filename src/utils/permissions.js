@@ -6,17 +6,20 @@
 
 import { PermissionFlagsBits } from 'discord.js';
 
-/** Bot owner ID — always bypasses all permission checks */
-export const BOT_OWNER_ID = '191633014441115648';
+/** Fallback bot owner IDs when config.permissions.botOwners is not set */
+const DEFAULT_BOT_OWNERS = ['191633014441115648'];
 
 /**
- * Check if a member is the bot owner
+ * Check if a member is a bot owner
  *
  * @param {GuildMember} member - Discord guild member
- * @returns {boolean} True if member is the bot owner
+ * @param {Object} config - Bot configuration
+ * @returns {boolean} True if member is a bot owner
  */
-function isBotOwner(member) {
-  return member?.id === BOT_OWNER_ID || member?.user?.id === BOT_OWNER_ID;
+function isBotOwner(member, config) {
+  const owners = config?.permissions?.botOwners || DEFAULT_BOT_OWNERS;
+  const userId = member?.id || member?.user?.id;
+  return userId != null && owners.includes(userId);
 }
 
 /**
@@ -27,10 +30,12 @@ function isBotOwner(member) {
  * @returns {boolean} True if member is admin
  */
 export function isAdmin(member, config) {
-  if (!member || !config) return false;
+  if (!member) return false;
 
   // Bot owner always bypasses permission checks
-  if (isBotOwner(member)) return true;
+  if (isBotOwner(member, config)) return true;
+
+  if (!config) return false;
 
   // Check if member has Discord Administrator permission
   if (member.permissions.has(PermissionFlagsBits.Administrator)) {
@@ -57,7 +62,7 @@ export function hasPermission(member, commandName, config) {
   if (!member || !commandName || !config) return false;
 
   // Bot owner always bypasses permission checks
-  if (isBotOwner(member)) return true;
+  if (isBotOwner(member, config)) return true;
 
   // If permissions are disabled, allow everything
   if (!config.permissions?.enabled || !config.permissions?.usePermissions) {
@@ -93,22 +98,7 @@ export function hasPermission(member, commandName, config) {
  * @returns {boolean} True if member is a guild admin
  */
 export function isGuildAdmin(member, config) {
-  if (!member) return false;
-
-  // Bot owner always returns true
-  if (isBotOwner(member)) return true;
-
-  // Check Discord Administrator permission
-  if (member.permissions.has(PermissionFlagsBits.Administrator)) {
-    return true;
-  }
-
-  // Check bot admin role from config
-  if (config?.permissions?.adminRoleId) {
-    return member.roles.cache.has(config.permissions.adminRoleId);
-  }
-
-  return false;
+  return isAdmin(member, config);
 }
 
 /**
@@ -122,7 +112,9 @@ export function isModerator(member, config) {
   if (!member) return false;
 
   // Bot owner always returns true
-  if (isBotOwner(member)) return true;
+  if (isBotOwner(member, config)) return true;
+
+  if (!config) return false;
 
   // Check Discord Manage Guild permission
   if (member.permissions.has(PermissionFlagsBits.ManageGuild)) {
@@ -130,7 +122,7 @@ export function isModerator(member, config) {
   }
 
   // Check bot admin role from config
-  if (config?.permissions?.adminRoleId) {
+  if (config.permissions?.adminRoleId) {
     return member.roles.cache.has(config.permissions.adminRoleId);
   }
 
@@ -141,8 +133,9 @@ export function isModerator(member, config) {
  * Get a helpful error message for permission denied
  *
  * @param {string} commandName - Name of the command
+ * @param {string} [level='administrator'] - Required permission level
  * @returns {string} User-friendly error message
  */
-export function getPermissionError(commandName) {
-  return `❌ You don't have permission to use \`/${commandName}\`.\n\nThis command requires administrator access.`;
+export function getPermissionError(commandName, level = 'administrator') {
+  return `❌ You don't have permission to use \`/${commandName}\`.\n\nThis command requires ${level} access.`;
 }

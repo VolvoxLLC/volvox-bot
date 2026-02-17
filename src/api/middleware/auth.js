@@ -39,7 +39,10 @@ export function requireAuth() {
     const apiSecret = req.headers['x-api-secret'];
     if (apiSecret) {
       if (!process.env.BOT_API_SECRET) {
-        warn('BOT_API_SECRET not configured — rejecting API request');
+        warn('BOT_API_SECRET not configured — rejecting API request', {
+          ip: req.ip,
+          path: req.path,
+        });
         return res.status(401).json({ error: 'API authentication not configured' });
       }
 
@@ -60,7 +63,7 @@ export function requireAuth() {
       }
 
       try {
-        const decoded = jwt.verify(token, sessionSecret);
+        const decoded = jwt.verify(token, sessionSecret, { algorithms: ['HS256'] });
         req.authMethod = 'oauth';
         req.user = decoded;
         return next();
@@ -70,12 +73,6 @@ export function requireAuth() {
     }
 
     // Neither auth method provided or valid
-    if (!apiSecret && !authHeader) {
-      warn('Unauthorized API request', { ip: req.ip, path: req.path });
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Had a secret but it didn't match
     warn('Unauthorized API request', { ip: req.ip, path: req.path });
     return res.status(401).json({ error: 'Unauthorized' });
   };

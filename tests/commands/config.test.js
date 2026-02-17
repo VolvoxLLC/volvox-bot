@@ -19,6 +19,7 @@ vi.mock('../../src/utils/permissions.js', () => ({
 
 import { autocomplete, data, execute } from '../../src/commands/config.js';
 import { getConfig, resetConfig, setConfigValue } from '../../src/modules/config.js';
+import { isGuildAdmin } from '../../src/utils/permissions.js';
 
 describe('config command', () => {
   afterEach(() => {
@@ -32,6 +33,28 @@ describe('config command', () => {
   it('should export adminOnly flag', async () => {
     const mod = await import('../../src/commands/config.js');
     expect(mod.adminOnly).toBe(true);
+  });
+
+  it('should deny permission for non-guild-admins', async () => {
+    isGuildAdmin.mockReturnValueOnce(false);
+
+    const mockReply = vi.fn();
+    const interaction = {
+      member: {},
+      options: {
+        getSubcommand: vi.fn().mockReturnValue('view'),
+        getString: vi.fn().mockReturnValue(null),
+      },
+      reply: mockReply,
+    };
+
+    await execute(interaction);
+    expect(mockReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("don't have permission"),
+        ephemeral: true,
+      }),
+    );
   });
 
   describe('autocomplete', () => {

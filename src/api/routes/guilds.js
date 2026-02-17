@@ -10,6 +10,8 @@ import { safeSend } from '../../utils/safeSend.js';
 
 const router = Router();
 
+const DISCORD_API = 'https://discord.com/api/v10';
+
 /** Discord ADMINISTRATOR permission flag */
 const ADMINISTRATOR_FLAG = 0x8;
 
@@ -52,29 +54,49 @@ function parsePagination(query) {
 }
 
 /**
+ * Fetch fresh guilds from Discord using the user's access token.
+ *
+ * @param {string} accessToken - Discord OAuth2 access token
+ * @returns {Promise<Array>} Array of guild objects
+ */
+async function fetchUserGuilds(accessToken) {
+  const response = await fetch(`${DISCORD_API}/users/@me/guilds`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) return [];
+  return response.json();
+}
+
+/**
  * Check if an OAuth2 user has admin permissions on a guild.
- * Uses the guilds list from the JWT to check permissions.
+ * Fetches fresh guild list from Discord using the access token in the JWT.
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
- * @returns {boolean} True if user has ADMINISTRATOR permission
+ * @returns {Promise<boolean>} True if user has ADMINISTRATOR permission
  */
-function isOAuthGuildAdmin(user, guildId) {
-  if (!user?.guilds) return false;
-  const guild = user.guilds.find((g) => g.id === guildId);
-  if (!guild) return false;
-  return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
+async function isOAuthGuildAdmin(user, guildId) {
+  if (!user?.accessToken) return false;
+  try {
+    const guilds = await fetchUserGuilds(user.accessToken);
+    const guild = guilds.find((g) => g.id === guildId);
+    if (!guild) return false;
+    return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Middleware: verify OAuth2 users are guild admins.
  * API-secret users are trusted and pass through.
  */
-function requireGuildAdmin(req, res, next) {
+async function requireGuildAdmin(req, res, next) {
   if (req.authMethod === 'api-secret') return next();
 
   if (req.authMethod === 'oauth') {
-    if (!isOAuthGuildAdmin(req.user, req.params.id)) {
+    if (!(await isOAuthGuildAdmin(req.user, req.params.id))) {
       return res.status(403).json({ error: 'You do not have admin access to this guild' });
     }
     return next();
@@ -104,33 +126,42 @@ router.param('id', validateGuild);
 
 /**
  * GET / — List guilds
- * For OAuth2 users: returns only guilds where user has admin AND bot is present
+ * For OAuth2 users: fetches fresh guilds from Discord, returns only those where user has admin AND bot is present
  * For api-secret users: returns all bot guilds
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { client } = req.app.locals;
   const botGuilds = client.guilds.cache;
 
   if (req.authMethod === 'oauth') {
-    const userGuilds = req.user?.guilds || [];
-    const filtered = userGuilds
-      .filter((ug) => {
-        // User must have admin permission on the guild
-        if ((Number(ug.permissions) & ADMINISTRATOR_FLAG) !== ADMINISTRATOR_FLAG) return false;
-        // Bot must be present in the guild
-        return botGuilds.has(ug.id);
-      })
-      .map((ug) => {
-        const botGuild = botGuilds.get(ug.id);
-        return {
-          id: ug.id,
-          name: botGuild.name,
-          icon: botGuild.iconURL(),
-          memberCount: botGuild.memberCount,
-        };
-      });
+    if (!req.user?.accessToken) {
+      return res.status(401).json({ error: 'Missing access token' });
+    }
 
-    return res.json(filtered);
+    try {
+      const userGuilds = await fetchUserGuilds(req.user.accessToken);
+      const filtered = userGuilds
+        .filter((ug) => {
+          // User must have admin permission on the guild
+          if ((Number(ug.permissions) & ADMINISTRATOR_FLAG) !== ADMINISTRATOR_FLAG) return false;
+          // Bot must be present in the guild
+          return botGuilds.has(ug.id);
+        })
+        .map((ug) => {
+          const botGuild = botGuilds.get(ug.id);
+          return {
+            id: ug.id,
+            name: botGuild.name,
+            icon: botGuild.iconURL(),
+            memberCount: botGuild.memberCount,
+          };
+        });
+
+      return res.json(filtered);
+    } catch (err) {
+      error('Failed to fetch user guilds from Discord', { error: err.message });
+      return res.status(502).json({ error: 'Failed to fetch guilds from Discord' });
+    }
   }
 
   // api-secret: return all bot guilds

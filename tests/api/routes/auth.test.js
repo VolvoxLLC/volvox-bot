@@ -28,6 +28,7 @@ describe('auth routes', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   describe('GET /api/v1/auth/discord', () => {
@@ -41,6 +42,7 @@ describe('auth routes', () => {
       expect(res.headers.location).toContain('discord.com/oauth2/authorize');
       expect(res.headers.location).toContain('client_id=client-id-123');
       expect(res.headers.location).toContain('scope=identify+guilds');
+      expect(res.headers.location).toContain('state=');
     });
 
     it('should return 500 when DISCORD_CLIENT_ID is not set', async () => {
@@ -72,13 +74,11 @@ describe('auth routes', () => {
       expect(res.body.error).toBe('Missing authorization code');
     });
 
-    it('should return 500 when OAuth2 env vars are not configured', async () => {
-      vi.stubEnv('DISCORD_CLIENT_ID', '');
-
+    it('should return 403 when state is missing or invalid', async () => {
       const res = await request(app).get('/api/v1/auth/discord/callback?code=test-code');
 
-      expect(res.status).toBe(500);
-      expect(res.body.error).toBe('OAuth2 not configured');
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('Invalid or expired OAuth state');
     });
   });
 
@@ -86,13 +86,19 @@ describe('auth routes', () => {
     it('should return user info from valid JWT', async () => {
       vi.stubEnv('SESSION_SECRET', 'test-session-secret');
 
+      const mockGuilds = [{ id: 'g1', name: 'Test Guild', permissions: '8' }];
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockGuilds,
+      });
+
       const token = jwt.sign(
         {
           userId: '123',
           username: 'testuser',
           discriminator: '0001',
           avatar: 'abc123',
-          guilds: [{ id: 'g1', name: 'Test Guild', permissions: '8' }],
+          accessToken: 'discord-access-token',
         },
         'test-session-secret',
       );
@@ -103,6 +109,29 @@ describe('auth routes', () => {
       expect(res.body.userId).toBe('123');
       expect(res.body.username).toBe('testuser');
       expect(res.body.guilds).toHaveLength(1);
+    });
+
+    it('should return user info without guilds when fetch fails', async () => {
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
+
+      const token = jwt.sign(
+        {
+          userId: '123',
+          username: 'testuser',
+          discriminator: '0001',
+          avatar: 'abc123',
+          accessToken: 'discord-access-token',
+        },
+        'test-session-secret',
+      );
+
+      const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.userId).toBe('123');
+      expect(res.body.guilds).toHaveLength(0);
     });
 
     it('should return 401 when no token provided', async () => {
