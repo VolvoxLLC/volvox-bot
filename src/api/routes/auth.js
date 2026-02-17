@@ -83,18 +83,11 @@ const sessionCleanupInterval = setInterval(cleanExpiredSessions, CLEANUP_INTERVA
 sessionCleanupInterval.unref();
 
 /**
- * Stop the periodic cleanup intervals.
+ * Stop all periodic cleanup intervals (state + session).
  * Should be called during server shutdown.
  */
 export function stopAuthCleanup() {
   clearInterval(stateCleanupInterval);
-}
-
-/**
- * Stop the periodic session cleanup interval.
- * Should be called during server shutdown.
- */
-export function stopSessionCleanup() {
   clearInterval(sessionCleanupInterval);
 }
 

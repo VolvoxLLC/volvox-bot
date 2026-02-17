@@ -186,8 +186,8 @@ describe('config command', () => {
         getConfig
           .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
           .mockImplementationOnce(() => {
-          throw new Error('config error');
-        });
+            throw new Error('config error');
+          });
         const mockReply = vi.fn();
         const interaction = {
           options: {
@@ -215,8 +215,8 @@ describe('config command', () => {
           getConfig
             .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
             .mockImplementationOnce(() => {
-            throw new Error('pg: connection refused at 10.0.0.5:5432');
-          });
+              throw new Error('pg: connection refused at 10.0.0.5:5432');
+            });
           const mockReply = vi.fn();
           const interaction = {
             options: {
