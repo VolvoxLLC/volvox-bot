@@ -23,7 +23,7 @@ const listeners = [];
 let configCache = new Map();
 
 /** @type {Map<string, Object>} Cached merged (global + guild override) config per guild */
-let mergedConfigCache = new Map();
+const mergedConfigCache = new Map();
 
 /** @type {Object|null} Cached config.json contents (loaded once, never invalidated) */
 let fileConfigCache = null;
