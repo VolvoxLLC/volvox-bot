@@ -381,14 +381,16 @@ describe('guilds routes', () => {
       expect(res.body.error).toContain('action');
     });
 
-    it('should return 400 for unknown action', async () => {
+    it('should return 400 for unknown action without reflecting input', async () => {
+      const maliciousAction = '<script>alert("xss")</script>';
       const res = await request(app)
         .post('/api/v1/guilds/guild1/actions')
         .set('x-api-secret', SECRET)
-        .send({ action: 'unknown' });
+        .send({ action: maliciousAction });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('Unknown action');
+      expect(res.body.error).not.toContain(maliciousAction);
     });
 
     it('should return 400 when channelId or content is missing for sendMessage', async () => {
