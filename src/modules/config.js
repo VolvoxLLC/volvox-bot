@@ -100,7 +100,9 @@ export async function loadConfig() {
       return configCache.get('global');
     }
 
-    // Fetch ALL config rows (all guilds)
+    // NOTE: This fetches all config rows (all guilds) into memory at startup.
+    // For large deployments with many guilds, consider lazy-loading guild configs
+    // on first access or paginating this query. Currently acceptable for <1000 guilds.
     const { rows } = await pool.query('SELECT guild_id, key, value FROM config');
 
     // Separate global rows from guild-specific rows.
