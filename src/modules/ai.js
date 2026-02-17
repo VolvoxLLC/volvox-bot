@@ -117,6 +117,11 @@ export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCL
 /**
  * Hydrate conversation history for a channel from DB.
  * Dedupes concurrent hydrations and merges DB rows with in-flight in-memory writes.
+ *
+ * Note: Uses global config defaults for history length intentionally — this operates
+ * at the channel level across all guilds and guildId is not available in this context.
+ * The guild-aware config path is through generateResponse(), which passes guildId.
+ *
  * @param {string} channelId - Channel ID
  * @returns {Promise<Array>} Conversation history
  */
@@ -246,8 +251,13 @@ export function addToHistory(channelId, role, content, username, guildId) {
 }
 
 /**
- * Initialize conversation history from DB on startup
- * Loads last N messages per active channel
+ * Initialize conversation history from DB on startup.
+ * Loads last N messages per active channel.
+ *
+ * Note: Uses global config defaults for history length and TTL intentionally —
+ * this runs at startup across all channels/guilds and guildId is not available.
+ * The guild-aware config path is through generateResponse(), which passes guildId.
+ *
  * @returns {Promise<void>}
  */
 export async function initConversationHistory() {
@@ -345,7 +355,12 @@ export function stopConversationCleanup() {
 }
 
 /**
- * Run a single cleanup pass
+ * Run a single cleanup pass.
+ *
+ * Note: Uses global config default for TTL intentionally — cleanup runs
+ * across all guilds/channels and guildId is not available in this context.
+ * The guild-aware config path is through generateResponse(), which passes guildId.
+ *
  * @returns {Promise<void>}
  */
 async function runCleanup() {
