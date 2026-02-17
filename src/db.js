@@ -99,16 +99,24 @@ export async function initDb() {
         )
       `);
 
-      // Migrate existing config table: add guild_id column and composite PK
+      // Migrate existing config table: add guild_id column and composite PK.
+      // Looks up the actual PK constraint name from pg_constraint instead of
+      // assuming 'config_pkey', which may differ across environments.
       await pool.query(`
         DO $$
+        DECLARE
+          pk_name TEXT;
         BEGIN
           IF NOT EXISTS (
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'config' AND column_name = 'guild_id'
           ) THEN
             ALTER TABLE config ADD COLUMN guild_id TEXT NOT NULL DEFAULT 'global';
-            ALTER TABLE config DROP CONSTRAINT config_pkey;
+            SELECT conname INTO pk_name FROM pg_constraint
+            WHERE conrelid = 'config'::regclass AND contype = 'p';
+            IF pk_name IS NOT NULL THEN
+              EXECUTE format('ALTER TABLE config DROP CONSTRAINT %I', pk_name);
+            END IF;
             ALTER TABLE config ADD PRIMARY KEY (guild_id, key);
           END IF;
         END $$
