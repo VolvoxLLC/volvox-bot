@@ -7,11 +7,30 @@
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
- * TTL-based session store: userId -> { accessToken, expiresAt }
- * Extends Map to transparently handle expiry on get/has/delete.
- * NOTE: This is an in-memory store that does not persist across restarts and does not
- * scale across multiple processes. For multi-process deployments, replace with Redis
- * or another shared session store.
+ * TTL-based in-memory session store: userId → { accessToken, expiresAt }.
+ * Extends Map to transparently handle expiry on get/has.
+ *
+ * ### Scaling Limitations
+ *
+ * This store is **in-memory and single-process only**:
+ * - Sessions are lost on server restart.
+ * - Cannot be shared across multiple Node.js processes or containers.
+ * - Memory grows linearly with active sessions (mitigated by TTL + cleanup).
+ *
+ * ### Future Migration
+ *
+ * For multi-instance deployments, replace with a shared store (e.g., Redis):
+ * 1. Swap this class for a Redis-backed adapter with the same get/set/has/delete interface.
+ * 2. Use Redis TTL (`SETEX`) instead of manual expiry tracking.
+ * 3. Update `cleanup()` to rely on Redis key expiration.
+ *
+ * ### Map Override Coverage
+ *
+ * Only `get`, `set`, `has`, and `delete` are overridden to handle TTL.
+ * Inherited methods like `size`, `forEach`, `entries`, `keys`, `values`
+ * operate on the raw Map entries (including expired ones between cleanup cycles).
+ * The periodic `cleanup()` call purges expired entries to keep these reasonable.
+ * For most use cases (auth lookups by userId), the overridden methods suffice.
  */
 class SessionStore extends Map {
   set(userId, accessToken) {
@@ -30,6 +49,10 @@ class SessionStore extends Map {
 
   has(userId) {
     return this.get(userId) !== undefined;
+  }
+
+  delete(userId) {
+    return super.delete(userId);
   }
 
   cleanup() {

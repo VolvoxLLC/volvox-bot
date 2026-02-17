@@ -8,9 +8,10 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-import { _seedOAuthState, sessionStore } from '../../../src/api/routes/auth.js';
+import { _seedOAuthState } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
+import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 import { error as logError } from '../../../src/logger.js';
 
 describe('auth routes', () => {

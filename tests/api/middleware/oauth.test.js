@@ -8,7 +8,7 @@ vi.mock('../../../src/logger.js', () => ({
 }));
 
 import { requireOAuth } from '../../../src/api/middleware/oauth.js';
-import { sessionStore } from '../../../src/api/routes/auth.js';
+import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 
 describe('requireOAuth middleware', () => {
   let req;

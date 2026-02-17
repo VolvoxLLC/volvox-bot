@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../../src/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
 import { isValidSecret, requireAuth } from '../../../src/api/middleware/auth.js';
-import { sessionStore } from '../../../src/api/routes/auth.js';
+import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 
 describe('isValidSecret', () => {
   afterEach(() => {
@@ -98,7 +98,7 @@ describe('auth middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should return 401 when x-api-secret header does not match', () => {
+  it('should return 401 with specific error when x-api-secret does not match', () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     req.headers['x-api-secret'] = 'wrong-secret';
     const middleware = requireAuth();
@@ -106,7 +106,7 @@ describe('auth middleware', () => {
     middleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid API secret' });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -160,7 +160,7 @@ describe('auth middleware', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Session not configured' });
   });
 
-  it('should try JWT auth when x-api-secret is invalid', async () => {
+  it('should reject when x-api-secret is invalid even if valid JWT is present', async () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     req.headers['x-api-secret'] = 'wrong-secret';
@@ -171,7 +171,9 @@ describe('auth middleware', () => {
 
     middleware(req, res, next);
 
-    expect(next).toHaveBeenCalled();
-    expect(req.authMethod).toBe('oauth');
+    // Wrong API secret should reject immediately — no JWT fallback
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid API secret' });
+    expect(next).not.toHaveBeenCalled();
   });
 });

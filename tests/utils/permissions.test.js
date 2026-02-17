@@ -190,6 +190,40 @@ describe('hasPermission', () => {
     expect(hasPermission(member, 'ping', config)).toBe(true);
   });
 
+  it('should check moderator for "moderator" permission level', () => {
+    const modMember = {
+      permissions: {
+        has: vi.fn().mockImplementation((perm) => {
+          return perm === PermissionFlagsBits.ManageGuild;
+        }),
+      },
+      roles: { cache: { has: vi.fn() } },
+    };
+    const config = {
+      permissions: {
+        enabled: true,
+        usePermissions: true,
+        allowedCommands: { modlog: 'moderator' },
+      },
+    };
+    expect(hasPermission(modMember, 'modlog', config)).toBe(true);
+  });
+
+  it('should deny non-moderator for "moderator" permission level', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    const config = {
+      permissions: {
+        enabled: true,
+        usePermissions: true,
+        allowedCommands: { modlog: 'moderator' },
+      },
+    };
+    expect(hasPermission(member, 'modlog', config)).toBe(false);
+  });
+
   it('should check admin for "admin" permission level', () => {
     const adminMember = {
       permissions: { has: vi.fn().mockReturnValue(true) },
@@ -321,6 +355,18 @@ describe('isModerator', () => {
     const member = { id: BOT_OWNER_ID };
     const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
     expect(isModerator(member, config)).toBe(true);
+  });
+
+  it('should return true for members with Administrator permission', () => {
+    const member = {
+      permissions: {
+        has: vi.fn().mockImplementation((perm) => {
+          return perm === PermissionFlagsBits.Administrator;
+        }),
+      },
+      roles: { cache: { has: vi.fn() } },
+    };
+    expect(isModerator(member, {})).toBe(true);
   });
 
   it('should return true for members with ManageGuild permission', () => {

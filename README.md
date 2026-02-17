@@ -187,7 +187,10 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 |-----|------|-------------|
 | `enabled` | boolean | Enable permission checks |
 | `adminRoleId` | string | Role ID for admin commands |
-| `allowedCommands` | object | Per-command permission levels |
+| `botOwners` | string[] | Discord user IDs that bypass all permission checks |
+| `allowedCommands` | object | Per-command permission levels (`everyone`, `moderator`, `admin`) |
+
+> **⚠️ For forks/deployers:** The default `config.json` ships with the upstream maintainer's Discord user ID in `permissions.botOwners`. Update this array with your own Discord user ID(s) before deploying. Bot owners bypass all permission checks.
 
 ## ⚔️ Moderation Commands
 

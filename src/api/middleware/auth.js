@@ -39,13 +39,22 @@ export function requireAuth() {
     const apiSecret = req.headers['x-api-secret'];
     if (apiSecret) {
       if (!process.env.BOT_API_SECRET) {
-        warn('BOT_API_SECRET not configured — skipping API-secret auth and trying JWT', {
+        // API secret auth is not configured — ignore the header and fall through to JWT.
+        // This allows clients that always send x-api-secret to still authenticate via JWT
+        // when the deployer hasn't configured BOT_API_SECRET.
+        warn('BOT_API_SECRET not configured — ignoring x-api-secret header, trying JWT', {
           ip: req.ip,
           path: req.path,
         });
       } else if (isValidSecret(apiSecret)) {
         req.authMethod = 'api-secret';
         return next();
+      } else {
+        // BOT_API_SECRET is configured but the provided secret doesn't match.
+        // Reject immediately — an explicit API-secret auth attempt that fails
+        // should not silently fall through to JWT.
+        warn('Invalid API secret provided', { ip: req.ip, path: req.path });
+        return res.status(401).json({ error: 'Invalid API secret' });
       }
     }
 
