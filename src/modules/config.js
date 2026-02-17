@@ -199,13 +199,14 @@ export function getConfig(guildId) {
     return configCache.get('global') || {};
   }
 
-  // Return cached merged result if available
+  // Return clone from cached merged result if available (avoids re-merging)
   const cached = mergedConfigCache.get(guildId);
   if (cached) {
     // Refresh access order for LRU tracking (Maps preserve insertion order)
     mergedConfigCache.delete(guildId);
     mergedConfigCache.set(guildId, cached);
-    return cached;
+    // Guild path: returns deep clone to prevent cross-guild contamination (see JSDoc above)
+    return structuredClone(cached);
   }
 
   const globalConfig = configCache.get('global') || {};
@@ -214,12 +215,14 @@ export function getConfig(guildId) {
   if (!guildOverrides) {
     const cloned = structuredClone(globalConfig);
     cacheMergedResult(guildId, cloned);
-    return cloned;
+    // Guild path: returns deep clone (see JSDoc above)
+    return structuredClone(cloned);
   }
 
   const merged = deepMerge(structuredClone(globalConfig), guildOverrides);
   cacheMergedResult(guildId, merged);
-  return merged;
+  // Guild path: returns deep clone (see JSDoc above)
+  return structuredClone(merged);
 }
 
 /**
@@ -563,7 +566,7 @@ export async function resetConfig(section, guildId = 'global') {
             'SELECT DISTINCT guild_id, key FROM config WHERE guild_id != $1 AND key != ALL($2::text[])',
             ['global', fileKeys],
           );
-          if (orphanResult.rows.length > 0) {
+          if (orphanResult.rows?.length > 0) {
             const orphanSummary = orphanResult.rows.map((r) => `${r.guild_id}:${r.key}`).join(', ');
             logWarn('Orphaned per-guild config rows reference keys no longer in global defaults', {
               orphanedEntries: orphanSummary,
