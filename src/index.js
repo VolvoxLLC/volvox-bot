@@ -55,6 +55,7 @@ dotenvConfig();
 // setConfigValue() propagate here automatically without re-assignment.
 let config = {};
 let pgTransport = null;
+let transportRecreating = false;
 
 // Initialize Discord client with required intents.
 //
@@ -334,12 +335,16 @@ async function startup() {
   ]) {
     onConfigChange(key, async (newValue, _oldValue, path) => {
       if (!dbPool || !config.logging?.database?.enabled || !pgTransport) return;
+      if (transportRecreating) return;
+      transportRecreating = true;
       try {
         await removePostgresTransport(pgTransport);
         pgTransport = addPostgresTransport(dbPool, config.logging.database);
         info('PostgreSQL logging transport recreated after config change', { path, newValue });
       } catch (err) {
         error('Failed to recreate PostgreSQL logging transport', { path, error: err.message });
+      } finally {
+        transportRecreating = false;
       }
     });
   }
