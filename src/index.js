@@ -226,8 +226,8 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 /**
- * Graceful shutdown handler
- * @param {string} signal - Signal that triggered shutdown
+ * Perform an orderly shutdown: stop background services, persist in-memory state, remove logging transport, close the database pool, disconnect the Discord client, and exit the process.
+ * @param {string} signal - The signal name that initiated shutdown (e.g., "SIGINT", "SIGTERM").
  */
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });
@@ -299,13 +299,7 @@ if (!token) {
 }
 
 /**
- * Main startup sequence
- * 1. Initialize database
- * 2. Load config from DB (seeds from config.json if empty)
- * 3. Load previous conversation state
- * 4. Register event handlers with live config
- * 5. Load commands
- * 6. Login to Discord
+ * Perform full application startup: initialize the database and optional PostgreSQL logging, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
  */
 async function startup() {
   // Initialize database

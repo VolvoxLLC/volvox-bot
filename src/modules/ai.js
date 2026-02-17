@@ -100,8 +100,10 @@ export function getConversationHistory() {
 }
 
 /**
- * Set the conversation history map (for state restoration)
- * @param {Map} history - Conversation history map to restore
+ * Replace the in-memory conversation history with the provided map.
+ *
+ * Also clears any pending hydration promises to avoid stale in-flight hydrations.
+ * @param {Map} history - Map from channelId (string) to an array of message objects representing each channel's history.
  */
 export function setConversationHistory(history) {
   conversationHistory = history;
@@ -412,12 +414,13 @@ export function stopConversationCleanup() {
 }
 
 /**
- * Run a single cleanup pass.
+ * Delete conversation records older than the configured history TTL from the database.
  *
  * Note: Uses global config default for TTL intentionally — cleanup runs
  * across all guilds/channels and guildId is not available in this context.
  * The guild-aware config path is through generateResponse(), which passes guildId.
  *
+ * If no database pool is configured this is a no-op; failures are logged but not thrown.
  * @returns {Promise<void>}
  */
 async function runCleanup() {
@@ -444,22 +447,20 @@ async function runCleanup() {
 }
 
 /**
- * Generate AI response using the Claude Agent SDK.
+ * Generate an AI reply for a channel message using the Claude Agent SDK, integrating short-term history and optional user memory.
  *
- * Memory integration:
- * - Pre-response: searches mem0 for relevant user memories and appends them to the system prompt.
- * - Post-response: fires off memory extraction (non-blocking) so new facts get persisted.
+ * Pre-response: may append a short, relevant memory context scoped to `userId` to the system prompt. Post-response: triggers asynchronous extraction and storage of memorable facts.
  *
- * @param {string} channelId - Channel ID
- * @param {string} userMessage - User's message
- * @param {string} username - Username
- * @param {Object} healthMonitor - Health monitor instance (optional)
- * @param {string} [userId] - Discord user ID for memory scoping
- * @param {string} [guildId] - Discord guild ID for conversation scoping
- * @param {Object} [options] - SDK options
- * @param {string} [options.model] - Model override
- * @param {number} [options.maxThinkingTokens] - Max thinking tokens override
- * @returns {Promise<string>} AI response
+ * @param {string} channelId - Conversation channel identifier.
+ * @param {string} userMessage - The user's message text.
+ * @param {string} username - Display name to attribute user messages in history.
+ * @param {Object} [healthMonitor] - Optional health monitor; if provided, request/result status and counts will be recorded.
+ * @param {string} [userId] - Optional user identifier used to scope memory lookups and post-response memory extraction.
+ * @param {string} [guildId] - Discord guild ID for per-guild config and conversation scoping.
+ * @param {Object} [options] - Optional SDK overrides.
+ * @param {string} [options.model] - Model identifier to override the configured default.
+ * @param {number} [options.maxThinkingTokens] - Override for the SDK's thinking-token budget.
+ * @returns {Promise<string>} The assistant's reply text.
  */
 export async function generateResponse(
   channelId,

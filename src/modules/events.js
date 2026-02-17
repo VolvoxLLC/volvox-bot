@@ -19,10 +19,15 @@ import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 let processHandlersRegistered = false;
 
 /**
- * Register bot ready event handler
- * @param {Client} client - Discord client
- * @param {Object} config - Startup/global bot configuration used only for one-time feature-gate logging (not per-guild)
- * @param {Object} healthMonitor - Health monitor instance
+ * Register a one-time handler that runs when the Discord client becomes ready.
+ *
+ * When fired, the handler logs the bot's online status and server count, records
+ * start time with the provided health monitor (if any), and logs which features
+ * are enabled (welcome messages with channel ID, AI triage model selection, and moderation).
+ *
+ * @param {Client} client - The Discord client instance.
+ * @param {Object} config - Startup/global bot configuration used only for one-time feature-gate logging (not per-guild).
+ * @param {Object} [healthMonitor] - Optional health monitor with a `recordStart` method to mark service start time.
  */
 export function registerReadyHandler(client, config, healthMonitor) {
   client.once(Events.ClientReady, () => {
@@ -47,8 +52,8 @@ export function registerReadyHandler(client, config, healthMonitor) {
 }
 
 /**
- * Register guild member add event handler
- * @param {Client} client - Discord client
+ * Register a handler that sends the configured welcome message when a user joins a guild.
+ * @param {Client} client - Discord client instance to attach the event listener to.
  * @param {Object} _config - Unused (kept for API compatibility); handler resolves per-guild config via getConfig().
  */
 export function registerGuildMemberAddHandler(client, _config) {

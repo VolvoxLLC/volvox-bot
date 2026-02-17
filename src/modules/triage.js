@@ -46,12 +46,10 @@ const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
 // ── Dynamic interval thresholds ──────────────────────────────────────────────
 
 /**
- * Calculate the evaluation interval based on queue size.
- * More messages in the buffer means faster evaluation cycles.
- * Uses config.triage.defaultInterval as the base (longest) interval.
- * @param {number} queueSize - Number of messages in the channel buffer
- * @param {number} [baseInterval=10000] - Base interval from config.triage.defaultInterval
- * @returns {number} Interval in milliseconds
+ * Compute the evaluation interval (milliseconds) based on the number of buffered messages.
+ * @param {number} queueSize - Number of messages currently in the channel buffer.
+ * @param {number} [baseInterval=10000] - Base (longest) interval in milliseconds.
+ * @returns {number} Interval in milliseconds; returns `baseInterval` when `queueSize` is 0–1, `baseInterval/2` when `queueSize` is 2–4, and `baseInterval/5` when `queueSize` is 5 or more.
  */
 function getDynamicInterval(queueSize, baseInterval = 10000) {
   if (queueSize <= 1) return baseInterval;
@@ -62,10 +60,12 @@ function getDynamicInterval(queueSize, baseInterval = 10000) {
 // ── Channel eligibility ──────────────────────────────────────────────────────
 
 /**
- * Check whether a channel is eligible for triage evaluation.
- * @param {string} channelId - The channel ID to check
- * @param {Object} triageConfig - The triage configuration object
- * @returns {boolean} True if the channel is eligible
+ * Determine whether a channel should be considered for triage.
+ * @param {string} channelId - ID of the channel to evaluate.
+ * @param {Object} triageConfig - Triage configuration containing include/exclude lists.
+ * @param {string[]} [triageConfig.channels] - Whitelisted channel IDs; an empty array means all channels are allowed.
+ * @param {string[]} [triageConfig.excludeChannels] - Blacklisted channel IDs; exclusions take precedence over the whitelist.
+ * @returns {boolean} `true` if the channel is eligible, `false` otherwise.
  */
 function isChannelEligible(channelId, triageConfig) {
   const { channels = [], excludeChannels = [] } = triageConfig;
@@ -82,7 +82,11 @@ function isChannelEligible(channelId, triageConfig) {
 // ── LRU eviction ─────────────────────────────────────────────────────────────
 
 /**
- * Evict inactive channels from the buffer to prevent unbounded memory growth.
+ * Remove stale channel states and trim the channel buffer map to the allowed capacity.
+ *
+ * Iterates tracked channels and clears any whose last activity is older than CHANNEL_INACTIVE_MS.
+ * If the total tracked channels still exceeds MAX_TRACKED_CHANNELS, evicts the oldest channels
+ * by lastActivity until the count is at or below the limit.
  */
 function evictInactiveChannels() {
   const now = Date.now();
@@ -107,8 +111,9 @@ function evictInactiveChannels() {
 // ── Channel state management ─────────────────────────────────────────────────
 
 /**
- * Remove buffer and timer for a channel.
- * @param {string} channelId - The channel ID to clear
+ * Clear triage state for a channel and stop any scheduled or in-flight evaluation.
+ * Cancels the channel's timer, aborts any active evaluation, and removes its buffer from tracking.
+ * @param {string} channelId - ID of the channel whose triage state will be cleared.
  */
 function clearChannelState(channelId) {
   const buf = channelBuffers.get(channelId);
@@ -148,10 +153,10 @@ function getBuffer(channelId) {
 // ── Trigger word detection ───────────────────────────────────────────────────
 
 /**
- * Check if content matches any moderation keywords (spam patterns + config keywords).
- * @param {string} content - Message content to check
- * @param {Object} config - Bot configuration
- * @returns {boolean} True if moderation keyword detected
+ * Detects whether text matches spam heuristics or any configured moderation keywords.
+ * @param {string} content - Message text to inspect.
+ * @param {Object} config - Bot configuration; uses `config.triage.moderationKeywords` if present.
+ * @returns {boolean} `true` if the content matches spam patterns or contains a configured moderation keyword, `false` otherwise.
  */
 function isModerationKeyword(content, config) {
   if (isSpam(content)) return true;
@@ -164,11 +169,10 @@ function isModerationKeyword(content, config) {
 }
 
 /**
- * Check if content contains any trigger words that should cause instant evaluation.
- * Matches against bot name, configured trigger words, and moderation keywords.
- * @param {string} content - Message content to check
- * @param {Object} config - Bot configuration
- * @returns {boolean} True if a trigger word is found
+ * Determine whether the message content contains any configured trigger or moderation keywords.
+ * @param {string} content - Message text to examine.
+ * @param {Object} config - Bot configuration containing triage.triggerWords and moderation keywords.
+ * @returns {boolean} `true` if any configured trigger word or moderation keyword is present, `false` otherwise.
  */
 function checkTriggerWords(content, config) {
   const triageConfig = config.triage || {};
@@ -189,12 +193,19 @@ function checkTriggerWords(content, config) {
 // ── SDK classification ───────────────────────────────────────────────────────
 
 /**
- * Classify buffered messages using the SDK with structured JSON output.
- * @param {string} channelId - The channel being evaluated
- * @param {Array<{author: string, content: string, userId: string}>} buffer - Buffered messages
- * @param {Object} config - Bot configuration
- * @param {AbortController} [parentController] - Parent abort controller from evaluateNow
- * @returns {Promise<Object>} Classification result with classification, reasoning, and model fields
+ * Classify a buffered channel conversation into a triage category.
+ *
+ * Sends the conversation for structured classification and returns the parsed
+ * classification result describing how the bot should respond.
+ *
+ * @param {string} channelId - ID of the channel whose buffer is being classified.
+ * @param {Array<{author: string, content: string, userId: string}>} buffer - Buffered messages (author and content order reflects conversation).
+ * @param {Object} config - Bot configuration object (used to obtain triage settings).
+ * @param {AbortController} [parentController] - Optional parent AbortController to combine with the call's timeout for cancellation.
+ * @returns {Promise<{classification: string, reasoning?: string, model?: string}>} An object with:
+ *  - `classification`: one of `"ignore"`, `"respond-haiku"`, `"respond-sonnet"`, `"respond-opus"`, `"chime-in"`, or `"moderate"`.
+ *  - `reasoning`: optional human-readable explanation of the classification.
+ *  - `model`: optional suggested target model (e.g., `"claude-haiku-4-5"`).
  */
 async function classifyMessages(channelId, buffer, config, parentController) {
   const triageConfig = config.triage || {};
@@ -304,14 +315,14 @@ async function classifyMessages(channelId, buffer, config, parentController) {
 // ── Escalation verification ──────────────────────────────────────────────────
 
 /**
- * When triage suggests Sonnet or Opus, ask the target model to re-evaluate.
- * The target model may downgrade if a simpler model suffices.
- * @param {string} channelId - The channel being evaluated
- * @param {Object} classification - The triage classification result
- * @param {Array<{author: string, content: string, userId: string}>} buffer - Buffered messages
- * @param {Object} config - Bot configuration
- * @param {AbortController} [parentController] - Parent abort controller from evaluateNow
- * @returns {Promise<Object>} Final classification (possibly downgraded)
+ * Ask the target model to re-evaluate a Sonnet/Opus triage result and return a final classification which may be downgraded.
+ * @param {string} channelId - Channel identifier for logging/context.
+ * @param {Object} classification - Original triage result (expects fields like `classification`, `reasoning`, and optional `model`).
+ * @param {Array<{author: string, content: string, userId: string}>} buffer - Snapshot of buffered messages to include in the verification prompt.
+ * @param {Object} config - Bot configuration (used for triage timeouts and budget).
+ * @param {AbortController} [parentController] - Optional parent abort controller to combine with the verification request.
+ * @returns {Promise<Object>} Final classification object; may contain updated `classification`, `model`, and `reasoning` if downgraded.
+ * @throws {AbortError} If the verification request is aborted.
  */
 async function verifyEscalation(channelId, classification, buffer, config, parentController) {
   const triageConfig = config.triage || {};
@@ -419,13 +430,16 @@ const TIER_CONFIG = {
 };
 
 /**
- * Route the classification to the appropriate action.
- * @param {string} channelId - The channel ID
- * @param {Object} classification - The classification result
- * @param {Array<{author: string, content: string, userId: string}>} buffer - Buffered messages
- * @param {Object} config - Bot configuration
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} healthMonitor - Health monitor instance
+ * Route a triage classification to the appropriate action for a channel.
+ *
+ * Performs the action indicated by `classification.classification` (ignore, moderate, respond-*)
+ * — sending a generated response for respond-* and chime-in, logging moderation/ignore decisions,
+ * and clearing the channel's buffer when the evaluation completes.
+ *
+ * @param {string} channelId - Discord channel ID to act on.
+ * @param {Object} classification - Classification result with at least `classification` (string) and `reasoning` (string).
+ * @param {Array<{author: string, content: string, userId: string}>} buffer - Ordered snapshot of buffered messages used as conversation context for generation.
+ * @param {Object} config - Bot configuration used to drive response generation and routing.
  */
 async function handleClassification(
   channelId,
@@ -537,9 +551,15 @@ async function handleClassification(
 // ── Timer scheduling ─────────────────────────────────────────────────────────
 
 /**
- * Set or reset the evaluation timer for a channel with a dynamic interval.
- * @param {string} channelId - The channel ID
- * @param {Object} config - Bot configuration
+ * Schedule or reset a dynamic evaluation timer for the specified channel.
+ *
+ * Computes an interval based on the channel's buffered message count (using
+ * `config.triage.defaultInterval` as the base) and starts a timer that will
+ * invoke a triage evaluation when it fires. If a timer already exists it is
+ * cleared and replaced. No action is taken if the channel has no buffer.
+ *
+ * @param {string} channelId - The channel ID.
+ * @param {Object} config - Bot configuration; `triage.defaultInterval` is used as the base interval (defaults to 10000 ms if unset).
  */
 function scheduleEvaluation(channelId, config) {
   const buf = channelBuffers.get(channelId);
@@ -564,10 +584,9 @@ function scheduleEvaluation(channelId, config) {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Initialize per-channel timers and store references for shutdown.
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} config - Bot configuration
- * @param {Object} healthMonitor - Health monitor instance
+ * Configure the triage module by storing the Discord client, configuration, and health monitor references.
+ *
+ * Sets module-level references used by the triage subsystem and logs that the module has started.
  */
 export function startTriage(client, config, healthMonitor) {
   _client = client;
@@ -597,9 +616,15 @@ export function stopTriage() {
 }
 
 /**
- * Add a message to the channel ring buffer and check for instant evaluation triggers.
- * @param {Object} message - Discord.js Message object
- * @param {Object} config - Bot configuration
+ * Append a Discord message to the channel's triage buffer and trigger evaluation when necessary.
+ *
+ * If triage is disabled or the channel is excluded, the message is ignored. Empty or attachment-only
+ * messages are ignored. The function appends the message to the per-channel ring buffer, trims the
+ * buffer to the configured maximum, forces an immediate evaluation when trigger words are detected,
+ * and otherwise schedules a dynamic delayed evaluation.
+ *
+ * @param {import('discord.js').Message} message - The Discord message to accumulate.
+ * @param {Object} config - Bot configuration containing the `triage` settings.
  */
 export function accumulateMessage(message, config) {
   const triageConfig = config.triage;
@@ -640,12 +665,14 @@ export function accumulateMessage(message, config) {
 }
 
 /**
- * Force immediate triage evaluation for a channel.
- * Used for @mentions and trigger words.
- * @param {string} channelId - The channel ID to evaluate
- * @param {Object} config - Bot configuration
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} healthMonitor - Health monitor instance
+ * Trigger an immediate triage evaluation for the given channel.
+ *
+ * If the channel has buffered messages, runs classification (and escalation verification when required)
+ * and dispatches the resulting action. Cancels any in-flight classification; if an evaluation is already
+ * running, marks a pending re-evaluation to run after the current evaluation completes.
+ *
+ * @param {string} channelId - The ID of the channel to evaluate.
+ * @param {Object} config - Bot configuration.
  */
 export async function evaluateNow(channelId, config, client, healthMonitor) {
   const buf = channelBuffers.get(channelId);
