@@ -72,13 +72,15 @@ router.param('id', validateGuild);
  */
 router.get('/:id', (req, res) => {
   const guild = req.guild;
+  const allChannels = Array.from(guild.channels.cache.values());
 
   res.json({
     id: guild.id,
     name: guild.name,
     icon: guild.iconURL(),
     memberCount: guild.memberCount,
-    channels: Array.from(guild.channels.cache.values()).map((ch) => ({
+    channelCount: allChannels.length,
+    channels: allChannels.slice(0, 500).map((ch) => ({
       id: ch.id,
       name: ch.name,
       type: ch.type,
