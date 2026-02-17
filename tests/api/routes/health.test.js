@@ -32,11 +32,7 @@ describe('health route', () => {
     expect(res.body.status).toBe('ok');
     expect(res.body.uptime).toBeTypeOf('number');
     expect(res.body.memory).toBeUndefined();
-    expect(res.body.discord).toEqual({
-      status: 0,
-      ping: 42,
-      guilds: 1,
-    });
+    expect(res.body.discord).toBeUndefined();
   });
 
   it('should include memory when valid x-api-secret is provided', async () => {
@@ -48,9 +44,9 @@ describe('health route', () => {
       .set('x-api-secret', 'test-secret');
 
     expect(res.status).toBe(200);
+    expect(res.body.discord).toEqual({ status: 0, ping: 42, guilds: 1 });
     expect(res.body.memory).toBeDefined();
     expect(res.body.memory.heapUsed).toBeTypeOf('number');
-    vi.unstubAllEnvs();
   });
 
   it('should not include memory with invalid secret', async () => {
@@ -62,8 +58,8 @@ describe('health route', () => {
       .set('x-api-secret', 'wrong-secret');
 
     expect(res.status).toBe(200);
+    expect(res.body.discord).toBeUndefined();
     expect(res.body.memory).toBeUndefined();
-    vi.unstubAllEnvs();
   });
 
   it('should not require authentication', async () => {

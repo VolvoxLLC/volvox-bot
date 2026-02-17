@@ -20,11 +20,6 @@ router.get('/', (req, res) => {
   const body = {
     status: 'ok',
     uptime: process.uptime(),
-    discord: {
-      status: client.ws.status,
-      ping: client.ws.ping,
-      guilds: client.guilds.cache.size,
-    },
   };
 
   const secret = req.headers['x-api-secret'];
@@ -35,6 +30,11 @@ router.get('/', (req, res) => {
     secret.length === expected.length &&
     crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected))
   ) {
+    body.discord = {
+      status: client.ws.status,
+      ping: client.ws.ping,
+      guilds: client.guilds.cache.size,
+    };
     body.memory = process.memoryUsage();
   }
 
