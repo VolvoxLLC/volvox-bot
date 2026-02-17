@@ -187,6 +187,7 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 |-----|------|-------------|
 | `enabled` | boolean | Enable permission checks |
 | `adminRoleId` | string | Role ID for admin commands |
+| `moderatorRoleId` | string | Role ID for moderator commands |
 | `botOwners` | string[] | Discord user IDs that bypass all permission checks |
 | `allowedCommands` | object | Per-command permission levels (`everyone`, `moderator`, `admin`) |
 
