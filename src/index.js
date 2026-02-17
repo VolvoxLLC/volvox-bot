@@ -306,15 +306,19 @@ async function startup() {
 
     // Wire up PostgreSQL logging transport if enabled in config
     if (config.logging?.database?.enabled) {
-      await initLogsTable(dbPool);
-      pgTransport = addPostgresTransport(dbPool, config.logging.database);
-      info('PostgreSQL logging transport enabled');
+      try {
+        await initLogsTable(dbPool);
+        pgTransport = addPostgresTransport(dbPool, config.logging.database);
+        info('PostgreSQL logging transport enabled');
 
-      // Prune old logs on startup
-      const retentionDays = config.logging.database.retentionDays || 30;
-      const pruned = await pruneOldLogs(dbPool, retentionDays);
-      if (pruned > 0) {
-        info('Pruned old log entries', { pruned, retentionDays });
+        // Prune old logs on startup
+        const retentionDays = config.logging.database.retentionDays || 30;
+        const pruned = await pruneOldLogs(dbPool, retentionDays);
+        if (pruned > 0) {
+          info('Pruned old log entries', { pruned, retentionDays });
+        }
+      } catch (err) {
+        error('Failed to initialize PostgreSQL logging transport', { error: err.message });
       }
     }
   }
