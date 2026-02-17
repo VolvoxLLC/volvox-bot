@@ -25,6 +25,10 @@ const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'moderation'];
 
 /**
  * Parse pagination query params with defaults and capping.
+ *
+ * Currently used only by the moderation endpoint; the members endpoint
+ * uses cursor-based pagination instead.
+ *
  * @param {Object} query - Express req.query
  * @returns {{ page: number, limit: number, offset: number }}
  */
