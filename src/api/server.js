@@ -24,6 +24,9 @@ let rateLimiter = null;
 export function createApp(client, dbPool) {
   const app = express();
 
+  // Trust one proxy hop (e.g. Railway, Docker) so req.ip reflects the real client IP
+  app.set('trust proxy', 1);
+
   // Store references for route handlers
   app.locals.client = client;
   app.locals.dbPool = dbPool;

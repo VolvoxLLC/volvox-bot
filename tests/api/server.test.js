@@ -40,6 +40,12 @@ describe('API server', () => {
       expect(app.locals.dbPool).toBe(mockPool);
     });
 
+    it('should enable trust proxy for correct client IP behind reverse proxies', () => {
+      const app = createApp(client, null);
+
+      expect(app.get('trust proxy')).toBe(1);
+    });
+
     it('should parse JSON request bodies', async () => {
       vi.stubEnv('BOT_API_SECRET', 'secret');
       client.guilds.cache.set('g1', {
