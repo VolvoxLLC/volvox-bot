@@ -143,6 +143,11 @@ router.get('/:id/stats', async (req, res) => {
   }
 
   try {
+    /**
+     * Note: Pre-existing conversation rows (from before guild tracking was added)
+     * may have NULL guild_id and won't be counted here. These will self-correct
+     * as new conversations are created with the guild_id populated.
+     */
     const [conversationResult, caseResult] = await Promise.all([
       dbPool.query('SELECT COUNT(*)::int AS count FROM conversations WHERE guild_id = $1', [
         req.params.id,
