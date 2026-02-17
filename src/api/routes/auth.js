@@ -13,6 +13,9 @@ const router = Router();
 
 const DISCORD_API = 'https://discord.com/api/v10';
 
+/** Server-side session store: userId → accessToken */
+export const sessionStore = new Map();
+
 /** CSRF state store: state → expiry timestamp */
 const oauthStates = new Map();
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -122,14 +125,16 @@ router.get('/discord/callback', async (req, res) => {
 
     const user = await userResponse.json();
 
-    // Create JWT with user info and access token (no guilds — fetched fresh at request time)
+    // Store access token server-side (never in the JWT)
+    sessionStore.set(user.id, accessToken);
+
+    // Create JWT with user info only (no access token — stored server-side)
     const token = jwt.sign(
       {
         userId: user.id,
         username: user.username,
         discriminator: user.discriminator,
         avatar: user.avatar,
-        accessToken,
       },
       sessionSecret,
       { expiresIn: '1h' },
@@ -151,7 +156,8 @@ router.get('/discord/callback', async (req, res) => {
  * Fetches fresh guilds from Discord using the stored access token
  */
 router.get('/me', requireOAuth(), async (req, res) => {
-  const { userId, username, discriminator, avatar, accessToken } = req.user;
+  const { userId, username, discriminator, avatar } = req.user;
+  const accessToken = sessionStore.get(userId);
 
   let guilds = [];
   if (accessToken) {

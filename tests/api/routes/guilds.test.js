@@ -24,6 +24,7 @@ vi.mock('../../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue({ id: 'msg1', content: 'Hello!' }),
 }));
 
+import { sessionStore } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
 import { getConfig, setConfigValue } from '../../../src/modules/config.js';
 import { safeSend } from '../../../src/utils/safeSend.js';
@@ -89,20 +90,21 @@ describe('guilds routes', () => {
   });
 
   afterEach(() => {
+    sessionStore.clear();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
   /**
-   * Helper: create a JWT with accessToken and mock fetch to return given guilds
+   * Helper: create a JWT and populate the server-side session store
    */
   function createOAuthToken(secret = 'jwt-test-secret') {
+    sessionStore.set('123', 'discord-access-token');
     return jwt.sign(
       {
         userId: '123',
         username: 'testuser',
-        accessToken: 'discord-access-token',
       },
       secret,
     );

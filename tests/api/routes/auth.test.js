@@ -8,6 +8,7 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+import { sessionStore } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
 
 describe('auth routes', () => {
@@ -26,6 +27,7 @@ describe('auth routes', () => {
   });
 
   afterEach(() => {
+    sessionStore.clear();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
@@ -92,13 +94,15 @@ describe('auth routes', () => {
         json: async () => mockGuilds,
       });
 
+      // Store access token server-side (no longer in JWT)
+      sessionStore.set('123', 'discord-access-token');
+
       const token = jwt.sign(
         {
           userId: '123',
           username: 'testuser',
           discriminator: '0001',
           avatar: 'abc123',
-          accessToken: 'discord-access-token',
         },
         'test-session-secret',
       );
@@ -116,13 +120,15 @@ describe('auth routes', () => {
 
       vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
 
+      // Store access token server-side (no longer in JWT)
+      sessionStore.set('123', 'discord-access-token');
+
       const token = jwt.sign(
         {
           userId: '123',
           username: 'testuser',
           discriminator: '0001',
           avatar: 'abc123',
-          accessToken: 'discord-access-token',
         },
         'test-session-secret',
       );
