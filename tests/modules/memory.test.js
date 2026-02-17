@@ -118,6 +118,11 @@ describe('memory module', () => {
       expect(config.autoExtract).toBe(false);
     });
 
+    it('should pass guildId to getConfig', () => {
+      getMemoryConfig('guild-123');
+      expect(getConfig).toHaveBeenCalledWith('guild-123');
+    });
+
     it('should respect custom config values', () => {
       getConfig.mockReturnValue({
         memory: {
@@ -148,6 +153,12 @@ describe('memory module', () => {
       _setMem0Available(true);
       getConfig.mockReturnValue({ memory: { enabled: false } });
       expect(isMemoryAvailable()).toBe(false);
+    });
+
+    it('should pass guildId to getMemoryConfig', () => {
+      _setMem0Available(true);
+      isMemoryAvailable('guild-123');
+      expect(getConfig).toHaveBeenCalledWith('guild-123');
     });
 
     it('should NOT auto-recover (no side effects)', async () => {
@@ -191,6 +202,12 @@ describe('memory module', () => {
       _setMem0Available(true);
       getConfig.mockReturnValue({ memory: { enabled: false } });
       expect(checkAndRecoverMemory()).toBe(false);
+    });
+
+    it('should pass guildId to getMemoryConfig', () => {
+      _setMem0Available(true);
+      checkAndRecoverMemory('guild-456');
+      expect(getConfig).toHaveBeenCalledWith('guild-456');
     });
 
     it('should auto-recover after cooldown period expires', async () => {
@@ -584,6 +601,17 @@ describe('memory module', () => {
       const result = await searchMemories('user123', 'languages');
       expect(result.memories).toEqual([{ id: '', memory: 'User loves TypeScript', score: 0.9 }]);
       expect(result.relations).toEqual([]);
+    });
+
+    it('should pass guildId to getMemoryConfig and checkAndRecoverMemory', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({ results: [], relations: [] }),
+      });
+      _setClient(mockClient);
+
+      await searchMemories('user123', 'test', undefined, 'guild-789');
+      expect(getConfig).toHaveBeenCalledWith('guild-789');
     });
 
     it('should respect custom limit parameter', async () => {
@@ -997,6 +1025,17 @@ describe('memory module', () => {
       expect(result).not.toMatch(/\.\.\.$/);
     });
 
+    it('should pass guildId through to searchMemories and config', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient({
+        search: vi.fn().mockResolvedValue({ results: [], relations: [] }),
+      });
+      _setClient(mockClient);
+
+      await buildMemoryContext('user123', 'testuser', 'hello', 'guild-abc');
+      expect(getConfig).toHaveBeenCalledWith('guild-abc');
+    });
+
     it('should return context with only memories when no relations found', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient({
@@ -1070,6 +1109,15 @@ describe('memory module', () => {
           enable_graph: true,
         },
       );
+    });
+
+    it('should pass guildId through to config lookups', async () => {
+      _setMem0Available(true);
+      const mockClient = createMockClient();
+      _setClient(mockClient);
+
+      await extractAndStoreMemories('user123', 'testuser', 'hi', 'hello', 'guild-xyz');
+      expect(getConfig).toHaveBeenCalledWith('guild-xyz');
     });
 
     it('should return false on SDK failure but NOT mark unavailable (fire-and-forget safety)', async () => {

@@ -362,7 +362,9 @@ async function startup() {
     'logging.database.flushIntervalMs',
     'logging.database.minLevel',
   ]) {
-    onConfigChange(key, async (_newValue, _oldValue, path) => {
+    onConfigChange(key, async (_newValue, _oldValue, path, guildId) => {
+      // Per-guild config changes should not affect the global logging transport
+      if (guildId && guildId !== 'global') return;
       transportLock = transportLock
         .then(() => updateLoggingTransport(path))
         .catch((err) =>

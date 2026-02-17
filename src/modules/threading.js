@@ -12,7 +12,7 @@ import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from './config.js';
 
 /**
- * Active thread tracker: Map<`${userId}:${channelId}`, { threadId, lastActive, threadName }>
+ * Active thread tracker: Map<`${userId}:${channelId}`, { threadId, lastActive, threadName, guildId }>
  * Tracks which thread to reuse for a given user+channel combination.
  * Entries are evicted by a periodic sweep and a max-size cap.
  */
@@ -240,8 +240,9 @@ export async function findExistingThread(message) {
       }
     }
 
-    // Update last active time
+    // Update last active time and ensure guildId is stored
     entry.lastActive = now;
+    entry.guildId = message.guild?.id ?? entry.guildId ?? null;
     return thread;
   } catch (_err) {
     // Thread not found or inaccessible
@@ -274,6 +275,7 @@ export async function createThread(message, cleanContent) {
     threadId: thread.id,
     lastActive: Date.now(),
     threadName,
+    guildId: message.guild?.id ?? null,
   });
 
   info('Created conversation thread', {
@@ -358,15 +360,15 @@ async function _getOrCreateThreadInner(message, cleanContent) {
 
 /**
  * Sweep expired entries from the activeThreads cache.
- * Removes entries older than the configured reuse window and
+ * Removes entries older than the guild-specific configured reuse window and
  * enforces the MAX_CACHE_SIZE cap by evicting oldest entries.
  */
 export function sweepExpiredThreads() {
-  const config = getThreadConfig();
   const now = Date.now();
 
-  // Remove expired entries
+  // Remove expired entries using per-guild config
   for (const [key, entry] of activeThreads) {
+    const config = getThreadConfig(entry.guildId);
     if (now - entry.lastActive > config.reuseWindowMs) {
       activeThreads.delete(key);
     }

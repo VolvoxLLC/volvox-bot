@@ -254,6 +254,34 @@ describe('config change events', () => {
     expect(cb3).toHaveBeenCalledOnce();
   });
 
+  describe('guild-scoped config changes', () => {
+    it('should pass guildId to listener callbacks for per-guild changes', async () => {
+      const cb = vi.fn();
+      configModule.onConfigChange('logging.database.enabled', cb);
+
+      await configModule.setConfigValue('logging.database.enabled', 'true', 'guild-123');
+
+      expect(cb).toHaveBeenCalledWith(true, undefined, 'logging.database.enabled', 'guild-123');
+    });
+
+    it('should allow listeners to filter by guildId for global-only operations', async () => {
+      // Simulates what index.js does: skip per-guild config changes for the logging transport
+      const transportUpdater = vi.fn();
+      configModule.onConfigChange('logging.database.enabled', (_newValue, _oldValue, _path, guildId) => {
+        if (guildId && guildId !== 'global') return;
+        transportUpdater();
+      });
+
+      // Per-guild change should NOT trigger the transport update
+      await configModule.setConfigValue('logging.database.enabled', 'true', 'guild-456');
+      expect(transportUpdater).not.toHaveBeenCalled();
+
+      // Global change should trigger the transport update
+      await configModule.setConfigValue('logging.database.enabled', 'true', 'global');
+      expect(transportUpdater).toHaveBeenCalledOnce();
+    });
+  });
+
   it('should catch async listener rejections without unhandled promise rejection', async () => {
     const asyncBadCb = vi.fn().mockRejectedValue(new Error('async boom'));
     const goodCb = vi.fn();

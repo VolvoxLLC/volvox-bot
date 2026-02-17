@@ -118,14 +118,11 @@ export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCL
  * Hydrate conversation history for a channel from DB.
  * Dedupes concurrent hydrations and merges DB rows with in-flight in-memory writes.
  *
- * Note: Uses global config defaults for history length intentionally — this operates
- * at the channel level across all guilds and guildId is not available in this context.
- * The guild-aware config path is through generateResponse(), which passes guildId.
- *
  * @param {string} channelId - Channel ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-function hydrateHistory(channelId) {
+function hydrateHistory(channelId, guildId) {
   const pending = pendingHydrations.get(channelId);
   if (pending) {
     return pending;
@@ -141,7 +138,7 @@ function hydrateHistory(channelId) {
     return Promise.resolve(historyRef);
   }
 
-  const limit = getHistoryLength();
+  const limit = getHistoryLength(guildId);
   const hydrationPromise = pool
     .query(
       `SELECT role, content FROM conversations
@@ -193,9 +190,10 @@ function hydrateHistory(channelId) {
 /**
  * Async version of history retrieval that waits for in-flight hydration.
  * @param {string} channelId - Channel ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-export async function getHistoryAsync(channelId) {
+export async function getHistoryAsync(channelId, guildId) {
   if (conversationHistory.has(channelId)) {
     const pending = pendingHydrations.get(channelId);
     if (pending) {
@@ -204,7 +202,7 @@ export async function getHistoryAsync(channelId) {
     return conversationHistory.get(channelId);
   }
 
-  return hydrateHistory(channelId);
+  return hydrateHistory(channelId, guildId);
 }
 
 /**
@@ -223,7 +221,7 @@ export function addToHistory(channelId, role, content, username, guildId) {
   const history = conversationHistory.get(channelId);
   history.push({ role, content });
 
-  const maxHistory = getHistoryLength();
+  const maxHistory = getHistoryLength(guildId);
 
   // Trim old messages from in-memory cache
   while (history.length > maxHistory) {
@@ -411,7 +409,7 @@ export async function generateResponse(
   userId = null,
   guildId = null,
 ) {
-  const history = await getHistoryAsync(channelId);
+  const history = await getHistoryAsync(channelId, guildId);
 
   let systemPrompt =
     config.ai?.systemPrompt ||
@@ -424,7 +422,7 @@ You can use Discord markdown formatting.`;
   if (userId) {
     try {
       const memoryContext = await Promise.race([
-        buildMemoryContext(userId, username, userMessage),
+        buildMemoryContext(userId, username, userMessage, guildId),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Memory context timeout')), 5000),
         ),
@@ -487,7 +485,7 @@ You can use Discord markdown formatting.`;
 
     // Post-response: extract and store memorable facts (fire-and-forget)
     if (userId) {
-      extractAndStoreMemories(userId, username, userMessage, reply).catch((err) => {
+      extractAndStoreMemories(userId, username, userMessage, reply, guildId).catch((err) => {
         logWarn('Memory extraction failed', { userId, error: err.message });
       });
     }
