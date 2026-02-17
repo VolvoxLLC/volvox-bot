@@ -59,8 +59,10 @@ export function createApp(client, dbPool) {
   app.use((err, _req, res, _next) => {
     error('Unhandled API error', { error: err.message, stack: err.stack });
     // Pass through status code from body-parser or other middleware (e.g., 400 for malformed JSON)
-    // Use 500 only for server errors when no status is set
-    const status = err.status || 500;
+    // Only use err.status/err.statusCode if it's a valid 4xx client error code
+    // Otherwise default to 500 for server errors
+    const statusCode = err.status ?? err.statusCode;
+    const status = statusCode >= 400 && statusCode < 500 ? statusCode : 500;
     res.status(status).json({ error: status < 500 ? err.message : 'Internal server error' });
   });
 
