@@ -57,7 +57,25 @@ describe('auth middleware', () => {
     vi.unstubAllEnvs();
   });
 
-  it('should return 401 when BOT_API_SECRET is not configured', () => {
+  it('should fall back to JWT auth when BOT_API_SECRET is not configured', () => {
+    vi.stubEnv('BOT_API_SECRET', '');
+    vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+    req.headers['x-api-secret'] = 'some-secret';
+    sessionStore.set('999', 'discord-access-token');
+    const token = jwt.sign({ userId: '999', username: 'testuser' }, 'jwt-test-secret', {
+      algorithm: 'HS256',
+    });
+    req.headers.authorization = `Bearer ${token}`;
+    const middleware = requireAuth();
+
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('oauth');
+    expect(req.user.userId).toBe('999');
+  });
+
+  it('should return 401 when BOT_API_SECRET is not configured and no Bearer token is provided', () => {
     vi.stubEnv('BOT_API_SECRET', '');
     req.headers['x-api-secret'] = 'some-secret';
     const middleware = requireAuth();
@@ -65,7 +83,7 @@ describe('auth middleware', () => {
     middleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'API authentication not configured' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
     expect(next).not.toHaveBeenCalled();
   });
 

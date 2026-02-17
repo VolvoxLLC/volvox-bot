@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { error, info } from '../../logger.js';
+import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
@@ -14,6 +14,8 @@ const router = Router();
 
 /** Discord ADMINISTRATOR permission flag */
 const ADMINISTRATOR_FLAG = 0x8;
+/** Discord MANAGE_GUILD permission flag */
+const MANAGE_GUILD_FLAG = 0x20;
 
 /**
  * Config keys that are safe to write via the PATCH endpoint.
@@ -55,6 +57,8 @@ function parsePagination(query) {
 
 /**
  * Check if an OAuth2 user has admin permissions on a guild.
+ * Intentionally checks ADMINISTRATOR only; this is stricter than slash-command
+ * moderation checks (isModerator), which also accept MANAGE_GUILD.
  * Fetches fresh guild list from Discord using the access token from the session store.
  *
  * @param {Object} user - Decoded JWT user payload
@@ -70,6 +74,28 @@ async function isOAuthGuildAdmin(user, guildId) {
   const permissions = Number(guild.permissions);
   if (Number.isNaN(permissions)) return false;
   return (permissions & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
+}
+
+/**
+ * Check if an OAuth2 user has moderator permissions on a guild.
+ * Accepts either ADMINISTRATOR or MANAGE_GUILD.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @param {string} guildId - Guild ID to check
+ * @returns {Promise<boolean>} True if user has ADMINISTRATOR or MANAGE_GUILD permission
+ */
+async function isOAuthGuildModerator(user, guildId) {
+  const accessToken = getSessionToken(user?.userId);
+  if (!accessToken) return false;
+  const guilds = await fetchUserGuilds(user.userId, accessToken);
+  const guild = guilds.find((g) => g.id === guildId);
+  if (!guild) return false;
+  const permissions = Number(guild.permissions);
+  if (Number.isNaN(permissions)) return false;
+  return (
+    (permissions & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG ||
+    (permissions & MANAGE_GUILD_FLAG) === MANAGE_GUILD_FLAG
+  );
 }
 
 /**
@@ -91,6 +117,39 @@ async function requireGuildAdmin(req, res, next) {
     }
   }
 
+  warn('Unknown authMethod in requireGuildAdmin', {
+    authMethod: req.authMethod,
+    guild: req.params.id,
+  });
+  return res.status(401).json({ error: 'Unauthorized' });
+}
+
+/**
+ * Middleware: verify OAuth2 users are guild moderators.
+ * API-secret users are trusted and pass through.
+ */
+async function requireGuildModerator(req, res, next) {
+  if (req.authMethod === 'api-secret') return next();
+
+  if (req.authMethod === 'oauth') {
+    try {
+      if (!(await isOAuthGuildModerator(req.user, req.params.id))) {
+        return res.status(403).json({ error: 'You do not have moderator access to this guild' });
+      }
+      return next();
+    } catch (err) {
+      error('Failed to verify guild moderator status', {
+        error: err.message,
+        guild: req.params.id,
+      });
+      return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
+    }
+  }
+
+  warn('Unknown authMethod in requireGuildModerator', {
+    authMethod: req.authMethod,
+    guild: req.params.id,
+  });
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
@@ -334,7 +393,7 @@ router.get('/:id/members', requireGuildAdmin, validateGuild, async (req, res) =>
  * GET /:id/moderation — Paginated moderation cases
  * Query params: ?page=1&limit=25 (max 100)
  */
-router.get('/:id/moderation', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
