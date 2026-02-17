@@ -35,9 +35,9 @@ export function createApp(client, dbPool) {
       res.set('Access-Control-Allow-Origin', dashboardUrl);
       res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
       res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret');
-    }
-    if (req.method === 'OPTIONS') {
-      return res.status(204).end();
+      if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+      }
     }
     next();
   });

@@ -70,6 +70,15 @@ describe('API server', () => {
       vi.unstubAllEnvs();
     });
 
+    it('should not return 204 for OPTIONS when DASHBOARD_URL is not set', async () => {
+      delete process.env.DASHBOARD_URL;
+      const app = createApp(client, null);
+
+      const res = await request(app).options('/api/v1/health');
+
+      expect(res.status).not.toBe(204);
+    });
+
     it('should return 404 for unknown routes', async () => {
       const app = createApp(client, null);
 
