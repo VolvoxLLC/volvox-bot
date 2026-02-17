@@ -159,11 +159,11 @@ export function getUserFriendlyMessage(error, context = {}) {
 }
 
 /**
- * Get suggested next steps for an error
+ * Provide actionable next-step guidance for a classified error.
  *
- * @param {Error} error - The error object
- * @param {Object} context - Optional context
- * @returns {string|null} Suggested next steps or null if none
+ * @param {Error} error - The error to analyze.
+ * @param {Object} [context] - Optional additional context (e.g., `status`, `code`, `isApiError`) to aid classification.
+ * @returns {string|null} A suggested next step for the detected error type, or `null` if no suggestion is available.
  */
 export function getSuggestedNextSteps(error, context = {}) {
   const errorType = classifyError(error, context);
