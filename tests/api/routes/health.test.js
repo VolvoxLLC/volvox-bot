@@ -40,9 +40,7 @@ describe('health route', () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     const app = buildApp();
 
-    const res = await request(app)
-      .get('/api/v1/health')
-      .set('x-api-secret', 'test-secret');
+    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
 
     expect(res.status).toBe(200);
     expect(res.body.discord).toEqual({ status: 0, ping: 42, guilds: 1 });
@@ -54,9 +52,7 @@ describe('health route', () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     const app = buildApp();
 
-    const res = await request(app)
-      .get('/api/v1/health')
-      .set('x-api-secret', 'wrong-secret');
+    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'wrong-secret');
 
     expect(res.status).toBe(200);
     expect(res.body.discord).toBeUndefined();
