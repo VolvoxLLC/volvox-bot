@@ -16,6 +16,7 @@ AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community.
 - **⚙️ Config Management** — All settings stored in PostgreSQL with live `/config` slash command for runtime changes.
 - **📊 Health Monitoring** — Built-in health checks and `/status` command for uptime, memory, and latency stats.
 - **🎤 Voice Activity Tracking** — Tracks voice channel activity for community insights.
+- **🌐 Web Dashboard** — Next.js-based admin dashboard with Discord OAuth2 login, server selector, and guild management UI.
 
 ## 🏗️ Architecture
 
@@ -107,6 +108,18 @@ pnpm dev
 \*** Required when running with the web dashboard. Can be omitted for bot-only deployments.
 
 Legacy OpenClaw aliases are also supported for backwards compatibility: `OPENCLAW_URL`, `OPENCLAW_TOKEN`.
+
+### Web Dashboard
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXTAUTH_URL` | ✅ | Canonical URL of the dashboard (e.g. `http://localhost:3000`) |
+| `NEXTAUTH_SECRET` | ✅ | Random secret for NextAuth.js JWT encryption (min 32 chars). Generate with `openssl rand -base64 48` |
+| `DISCORD_CLIENT_ID` | ✅ | Discord OAuth2 application client ID |
+| `DISCORD_CLIENT_SECRET` | ✅ | Discord OAuth2 application client secret |
+| `NEXT_PUBLIC_DISCORD_CLIENT_ID` | ❌ | Public client ID for bot invite links in the UI |
+| `BOT_API_URL` | ❌ | URL of the bot's REST API for mutual guild filtering |
+| `BOT_API_SECRET` | ❌ | Shared secret for authenticating requests to the bot API |
 
 ## ⚙️ Configuration
 
@@ -229,6 +242,44 @@ All moderation commands require the admin role (configured via `permissions.admi
 | `/modlog setup` | Interactive channel routing with select menus |
 | `/modlog view` | View current log routing config |
 | `/modlog disable` | Disable all mod logging |
+
+## 🌐 Web Dashboard
+
+The `web/` directory contains a Next.js admin dashboard for managing Bill Bot through a browser.
+
+### Features
+
+- **Discord OAuth2 Login** — Sign in with your Discord account via NextAuth.js
+- **Server Selector** — Choose from mutual guilds (servers where both you and the bot are present)
+- **Token Refresh** — Automatic Discord token refresh with graceful error handling
+- **Responsive UI** — Mobile-friendly layout with sidebar navigation and dark mode support
+
+### Setup
+
+```bash
+cd web
+cp .env.example .env.local    # Fill in Discord OAuth2 credentials
+pnpm install --legacy-peer-deps
+pnpm dev                       # Starts on http://localhost:3000
+```
+
+> **Note:** `--legacy-peer-deps` is required due to NextAuth v4 + Next.js 16 peer dependency constraints.
+
+### Discord OAuth2 Configuration
+
+1. Go to your [Discord application](https://discord.com/developers/applications) → **OAuth2**
+2. Add a redirect URL: `http://localhost:3000/api/auth/callback/discord` (adjust for production)
+3. Copy the **Client ID** and **Client Secret** into your `.env.local`
+
+### Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server with hot reload |
+| `pnpm build` | Production build |
+| `pnpm start` | Start production server |
+| `pnpm test` | Run tests with Vitest |
+| `pnpm typecheck` | Type-check with TypeScript compiler |
 
 ## 🛠️ Development
 

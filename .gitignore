@@ -28,3 +28,9 @@ coverage/
 verify-*.js
 VERIFICATION_GUIDE.md
 
+# Web dashboard
+web/.next/
+web/.env.local
+web/.env.*.local
+web/tsconfig.tsbuildinfo
+
