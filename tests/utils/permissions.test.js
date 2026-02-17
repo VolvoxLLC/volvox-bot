@@ -391,6 +391,16 @@ describe('isModerator', () => {
     expect(member.roles.cache.has).toHaveBeenCalledWith('123456');
   });
 
+  it('should return true for members with moderator role', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(true) } },
+    };
+    const config = { permissions: { moderatorRoleId: '654321' } };
+    expect(isModerator(member, config)).toBe(true);
+    expect(member.roles.cache.has).toHaveBeenCalledWith('654321');
+  });
+
   it('should return false for regular members', () => {
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },

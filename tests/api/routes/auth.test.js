@@ -8,6 +8,7 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { _seedOAuthState } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
@@ -32,6 +33,7 @@ describe('auth routes', () => {
   afterEach(() => {
     sessionStore.clear();
     guildCache.clear();
+    _resetSecretCache();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();

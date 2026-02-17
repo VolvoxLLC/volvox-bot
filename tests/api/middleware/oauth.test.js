@@ -8,6 +8,7 @@ vi.mock('../../../src/logger.js', () => ({
 }));
 
 import { requireOAuth } from '../../../src/api/middleware/oauth.js';
+import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 
 describe('requireOAuth middleware', () => {
@@ -26,6 +27,7 @@ describe('requireOAuth middleware', () => {
 
   afterEach(() => {
     sessionStore.clear();
+    _resetSecretCache();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
   });
@@ -87,6 +89,22 @@ describe('requireOAuth middleware', () => {
     expect(req.user).toBeDefined();
     expect(req.user.userId).toBe('123');
     expect(req.user.username).toBe('testuser');
+  });
+
+  it('should return 401 when JWT is valid but server-side session is missing', () => {
+    vi.stubEnv('SESSION_SECRET', 'test-secret');
+    // Sign a valid JWT but do NOT populate sessionStore
+    const token = jwt.sign({ userId: '999', username: 'nosession' }, 'test-secret', {
+      algorithm: 'HS256',
+    });
+    req.headers.authorization = `Bearer ${token}`;
+    const middleware = requireOAuth();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Session expired or revoked' });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('should return 401 for expired JWT', () => {

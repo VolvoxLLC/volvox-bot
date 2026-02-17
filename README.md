@@ -354,6 +354,9 @@ Set these in the Railway dashboard for the Bot service:
 | `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
 | `MEM0_API_KEY` | No | Mem0 API key for long-term memory |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` (default: `info`) |
+| `SESSION_SECRET` | Yes | JWT signing secret for OAuth2 sessions. Generate with `openssl rand -base64 32` |
+| `DISCORD_CLIENT_SECRET` | Yes | Discord OAuth2 client secret (required for dashboard auth) |
+| `DISCORD_REDIRECT_URI` | Yes | OAuth2 callback URL (e.g. `https://your-bot/api/v1/auth/discord/callback`) |
 | `BOT_API_SECRET` | Yes | Shared secret for web dashboard API auth |
 
 ### Web Dashboard Environment Variables

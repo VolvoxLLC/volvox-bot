@@ -19,6 +19,7 @@ const router = Router();
 /** CSRF state store: state → expiry timestamp */
 const oauthStates = new Map();
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_OAUTH_STATES = 10_000;
 
 /**
  * Seed an OAuth state for testing purposes.
@@ -28,6 +29,9 @@ const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
  * @param {string} state - The state value to seed
  */
 export function _seedOAuthState(state) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('_seedOAuthState is not available in production');
+  }
   oauthStates.set(state, Date.now() + STATE_TTL_MS);
 }
 
@@ -109,6 +113,11 @@ router.get('/discord', (_req, res) => {
 
   const state = crypto.randomUUID();
   oauthStates.set(state, Date.now() + STATE_TTL_MS);
+  // Cap state store size to prevent unbounded memory growth
+  if (oauthStates.size > MAX_OAUTH_STATES) {
+    const oldest = oauthStates.keys().next().value;
+    oauthStates.delete(oldest);
+  }
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -225,7 +234,7 @@ router.get('/discord/callback', async (req, res) => {
       { algorithm: 'HS256', expiresIn: '1h' },
     );
 
-    info('User authenticated via OAuth2', { userId: user.id, username: user.username });
+    info('User authenticated via OAuth2', { userId: user.id });
 
     // DASHBOARD_URL is admin-configured environment input, not user-controlled request data.
     // Redirect with token as fragment to avoid server-side logging.
@@ -237,7 +246,9 @@ router.get('/discord/callback', async (req, res) => {
         dashboardUrl: process.env.DASHBOARD_URL,
       });
     }
-    res.redirect(`${dashboardUrl}#token=${token}`);
+    // Strip existing fragment to avoid collision, then append token
+    const redirectBase = dashboardUrl.includes('#') ? dashboardUrl.split('#')[0] : dashboardUrl;
+    res.redirect(`${redirectBase}#token=${token}`);
   } catch (err) {
     error('OAuth2 callback error', { error: err.message });
     res.status(500).json({ error: 'Authentication failed' });
