@@ -28,6 +28,7 @@ jobs:
         uses: anthropics/claude-code-action@23ed4cb53d6eacddbc22ec16652c98bcc54e0476 # v1.0.48
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: '*'
           timeout_minutes: 15
           track_progress: true
           use_sticky_comment: true
