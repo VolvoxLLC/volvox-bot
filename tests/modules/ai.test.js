@@ -397,12 +397,7 @@ describe('ai module', () => {
       const config = { ai: {} };
       await generateResponse('ch1', 'Hi', 'testuser', config, null, 'user-123', 'guild-456');
 
-      expect(buildMemoryContext).toHaveBeenCalledWith(
-        'user-123',
-        'testuser',
-        'Hi',
-        'guild-456',
-      );
+      expect(buildMemoryContext).toHaveBeenCalledWith('user-123', 'testuser', 'Hi', 'guild-456');
 
       await vi.waitFor(() => {
         expect(extractAndStoreMemories).toHaveBeenCalledWith(

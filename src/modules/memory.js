@@ -523,7 +523,13 @@ export async function buildMemoryContext(userId, username, query, guildId) {
  * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if any memories were stored
  */
-export async function extractAndStoreMemories(userId, username, userMessage, assistantReply, guildId) {
+export async function extractAndStoreMemories(
+  userId,
+  username,
+  userMessage,
+  assistantReply,
+  guildId,
+) {
   if (!checkAndRecoverMemory(guildId)) return false;
   if (isOptedOut(userId)) return false;
 

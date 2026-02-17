@@ -485,12 +485,7 @@ export async function resetConfig(section, guildId = 'global') {
       }
     }
 
-    // When global config changes, ALL merged entries are stale (they depend on global)
-    if (guildId === 'global') {
-      mergedConfigCache.clear();
-    } else {
-      mergedConfigCache.delete(guildId);
-    }
+    mergedConfigCache.delete(guildId);
 
     info('Guild config reset', { guildId, section: section || 'all' });
     return section ? configCache.get(guildId) || {} : {};
@@ -610,6 +605,9 @@ export async function resetConfig(section, guildId = 'global') {
     }
     info('All config reset to defaults');
   }
+
+  // Global config changed — all guild merged entries are stale
+  mergedConfigCache.clear();
 
   return globalConfig;
 }

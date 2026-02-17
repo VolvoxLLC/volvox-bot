@@ -267,10 +267,13 @@ describe('config change events', () => {
     it('should allow listeners to filter by guildId for global-only operations', async () => {
       // Simulates what index.js does: skip per-guild config changes for the logging transport
       const transportUpdater = vi.fn();
-      configModule.onConfigChange('logging.database.enabled', (_newValue, _oldValue, _path, guildId) => {
-        if (guildId && guildId !== 'global') return;
-        transportUpdater();
-      });
+      configModule.onConfigChange(
+        'logging.database.enabled',
+        (_newValue, _oldValue, _path, guildId) => {
+          if (guildId && guildId !== 'global') return;
+          transportUpdater();
+        },
+      );
 
       // Per-guild change should NOT trigger the transport update
       await configModule.setConfigValue('logging.database.enabled', 'true', 'guild-456');
