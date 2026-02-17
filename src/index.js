@@ -344,7 +344,9 @@ async function startup() {
       if (transportRecreating) return;
       transportRecreating = true;
       try {
-        await removePostgresTransport(pgTransport);
+        const oldTransport = pgTransport;
+        pgTransport = null;
+        await removePostgresTransport(oldTransport);
         pgTransport = addPostgresTransport(dbPool, config.logging.database);
         info('PostgreSQL logging transport recreated after config change', { path, newValue });
       } catch (err) {
