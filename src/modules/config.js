@@ -411,7 +411,9 @@ export async function setConfigValue(path, value, guildId = 'global') {
   }
   const cacheEntry = configCache.get(guildId);
 
-  // Capture old value before mutating cache (deep clone objects to preserve snapshot)
+  // Note: oldValue is captured from the guild's override cache, not the effective (merged) value.
+  // This means listeners see the previous override value (or undefined if no prior override existed),
+  // not the previous merged value that getConfig(guildId) would have returned.
   const rawOld = getNestedValue(cacheEntry[section], nestedParts);
   const oldValue = rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
 
