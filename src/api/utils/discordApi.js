@@ -3,6 +3,8 @@
  * Shared helpers for fetching data from the Discord REST API with caching
  */
 
+import { error } from '../../logger.js';
+
 /** Guild cache: userId → { guilds, expiresAt } */
 export const guildCache = new Map();
 const GUILD_CACHE_TTL_MS = 90_000; // 90 seconds
@@ -42,7 +44,11 @@ export async function fetchUserGuilds(userId, accessToken) {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) throw new Error(`Discord API error: ${response.status}`);
+  if (!response.ok) {
+    const status = response.status;
+    error('Discord guild fetch failed', { userId, status });
+    throw new Error('Discord API error');
+  }
   const guilds = await response.json();
 
   guildCache.set(userId, { guilds, expiresAt: Date.now() + GUILD_CACHE_TTL_MS });
