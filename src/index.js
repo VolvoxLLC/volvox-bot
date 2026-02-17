@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { closeDb, initDb } from './db.js';
-import { error, info, warn } from './logger.js';
+import { addPostgresTransport, error, info, removePostgresTransport, warn } from './logger.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -31,6 +31,7 @@ import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { initLogsTable, pruneOldLogs } from './transports/postgres.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
@@ -53,6 +54,7 @@ dotenvConfig();
 // configCache inside modules/config.js, so in-place mutations from
 // setConfigValue() propagate here automatically without re-assignment.
 let config = {};
+let pgTransport = null;
 
 // Initialize Discord client with required intents.
 //
@@ -228,7 +230,17 @@ async function gracefulShutdown(signal) {
   info('Saving conversation state');
   saveState();
 
-  // 3. Close database pool
+  // 3. Remove PostgreSQL logging transport (flushes remaining buffer)
+  if (pgTransport) {
+    try {
+      await removePostgresTransport(pgTransport);
+      pgTransport = null;
+    } catch (err) {
+      error('Failed to close PostgreSQL logging transport', { error: err.message });
+    }
+  }
+
+  // 4. Close database pool
   info('Closing database connection');
   try {
     await closeDb();
@@ -236,11 +248,11 @@ async function gracefulShutdown(signal) {
     error('Failed to close database pool', { error: err.message });
   }
 
-  // 4. Destroy Discord client
+  // 5. Destroy Discord client
   info('Disconnecting from Discord');
   client.destroy();
 
-  // 5. Log clean exit
+  // 6. Log clean exit
   info('Shutdown complete');
   process.exit(0);
 }
@@ -298,6 +310,24 @@ async function startup() {
   // Set up AI module's DB pool reference
   if (dbPool) {
     setPool(dbPool);
+
+    // Wire up PostgreSQL logging transport if enabled in config
+    if (config.logging?.database?.enabled) {
+      try {
+        await initLogsTable(dbPool);
+        pgTransport = addPostgresTransport(dbPool, config.logging.database);
+        info('PostgreSQL logging transport enabled');
+
+        // Prune old logs on startup
+        const retentionDays = config.logging.database.retentionDays ?? 30;
+        const pruned = await pruneOldLogs(dbPool, retentionDays);
+        if (pruned > 0) {
+          info('Pruned old log entries', { pruned, retentionDays });
+        }
+      } catch (err) {
+        error('Failed to initialize PostgreSQL logging transport', { error: err.message });
+      }
+    }
   }
 
   // TODO: loadState() is migration-only for file->DB persistence transition.
