@@ -2,7 +2,38 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
-import { requireAuth } from '../../../src/api/middleware/auth.js';
+import { isValidSecret, requireAuth } from '../../../src/api/middleware/auth.js';
+
+describe('isValidSecret', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('should return true when secret matches BOT_API_SECRET', () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    expect(isValidSecret('test-secret')).toBe(true);
+  });
+
+  it('should return false when secret does not match', () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    expect(isValidSecret('wrong-secret')).toBe(false);
+  });
+
+  it('should return false when secret is undefined', () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    expect(isValidSecret(undefined)).toBe(false);
+  });
+
+  it('should return false when BOT_API_SECRET is not set', () => {
+    vi.stubEnv('BOT_API_SECRET', '');
+    expect(isValidSecret('any-secret')).toBe(false);
+  });
+
+  it('should return false when both are undefined', () => {
+    vi.stubEnv('BOT_API_SECRET', '');
+    expect(isValidSecret(undefined)).toBe(false);
+  });
+});
 
 describe('auth middleware', () => {
   let req;
