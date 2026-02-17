@@ -32,6 +32,11 @@
 | `src/modules/moderation.js` | Moderation — case creation, DM notifications, mod log embeds, escalation, tempban scheduler |
 | `src/modules/config.js` | Config loading/saving (DB + file), runtime updates |
 | `src/modules/events.js` | Event handler registration (wires modules to Discord events) |
+| `src/api/server.js` | Express API server setup (createApp, startServer, stopServer) |
+| `src/api/index.js` | API route mounting |
+| `src/api/routes/guilds.js` | Guild REST API endpoints (info, config, stats, members, moderation, actions) |
+| `src/api/middleware/auth.js` | API authentication middleware |
+| `src/api/middleware/rateLimit.js` | Rate limiting middleware |
 | `src/utils/errors.js` | Error classes and handling utilities |
 | `src/utils/health.js` | Health monitoring singleton |
 | `src/utils/permissions.js` | Permission checking for commands |
