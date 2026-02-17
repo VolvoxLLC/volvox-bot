@@ -44,6 +44,13 @@ class SessionStore extends Map {
     }
     return true;
   }
+
+  cleanup() {
+    const now = Date.now();
+    for (const [key, entry] of super.entries()) {
+      if (now >= entry.expiresAt) super.delete(key);
+    }
+  }
 }
 
 export const sessionStore = new SessionStore();
@@ -68,10 +75,7 @@ function cleanExpiredStates() {
  * Remove expired session entries from the store
  */
 function cleanExpiredSessions() {
-  const now = Date.now();
-  for (const [key, entry] of sessionStore.entries()) {
-    if (now >= entry.expiresAt) sessionStore.delete(key);
-  }
+  sessionStore.cleanup();
 }
 
 /** Periodic cleanup interval for expired OAuth states */
