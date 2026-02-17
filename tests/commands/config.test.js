@@ -67,9 +67,7 @@ describe('config command', () => {
       ai: { enabled: true },
       permissions: { enabled: false, usePermissions: true },
     });
-    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
-      return !config.permissions?.enabled || !config.permissions?.usePermissions;
-    });
+    hasPermission.mockReturnValueOnce(true);
 
     const interaction = {
       member: {},
@@ -91,9 +89,7 @@ describe('config command', () => {
       ai: { enabled: true },
       permissions: { enabled: true, usePermissions: false },
     });
-    hasPermission.mockImplementationOnce((_member, _commandName, config) => {
-      return !config.permissions?.enabled || !config.permissions?.usePermissions;
-    });
+    hasPermission.mockReturnValueOnce(true);
 
     const interaction = {
       member: {},
