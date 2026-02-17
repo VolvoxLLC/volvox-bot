@@ -6,9 +6,6 @@
 
 import { PermissionFlagsBits } from 'discord.js';
 
-/** Fallback bot owner IDs when config.permissions.botOwners is not set */
-const DEFAULT_BOT_OWNERS = ['191633014441115648'];
-
 /**
  * Check if a member is a bot owner
  *
@@ -17,7 +14,10 @@ const DEFAULT_BOT_OWNERS = ['191633014441115648'];
  * @returns {boolean} True if member is a bot owner
  */
 function isBotOwner(member, config) {
-  const owners = config?.permissions?.botOwners ?? DEFAULT_BOT_OWNERS;
+  const owners = config?.permissions?.botOwners;
+  if (!Array.isArray(owners) || owners.length === 0) {
+    return false;
+  }
   const userId = member?.id || member?.user?.id;
   return userId != null && owners.includes(userId);
 }
