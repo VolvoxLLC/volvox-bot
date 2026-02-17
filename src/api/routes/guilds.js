@@ -58,6 +58,20 @@ function parsePagination(query) {
 export const guildCache = new Map();
 const GUILD_CACHE_TTL_MS = 90_000; // 90 seconds
 
+function cleanExpiredGuildCache() {
+  const now = Date.now();
+  for (const [key, entry] of guildCache.entries()) {
+    if (now >= entry.expiresAt) guildCache.delete(key);
+  }
+}
+
+const guildCacheCleanupInterval = setInterval(cleanExpiredGuildCache, 60_000);
+guildCacheCleanupInterval.unref();
+
+export function stopGuildCacheCleanup() {
+  clearInterval(guildCacheCleanupInterval);
+}
+
 /**
  * Fetch guilds from Discord using the user's access token, with a short-lived cache.
  *
