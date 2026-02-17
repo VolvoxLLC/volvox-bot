@@ -31,9 +31,8 @@ export function createApp(client, dbPool) {
   // CORS
   const dashboardUrl = process.env.DASHBOARD_URL;
   app.use((req, res, next) => {
-    if (dashboardUrl) {
-      res.set('Access-Control-Allow-Origin', dashboardUrl);
-    }
+    if (!dashboardUrl) return next();
+    res.set('Access-Control-Allow-Origin', dashboardUrl);
     if (req.method === 'OPTIONS') {
       res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
       res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret');
