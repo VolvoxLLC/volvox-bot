@@ -10,6 +10,7 @@ vi.mock('../../../src/logger.js', () => ({
 
 import { sessionStore } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
+import { guildCache } from '../../../src/api/utils/discordApi.js';
 
 describe('auth routes', () => {
   let app;
@@ -28,6 +29,7 @@ describe('auth routes', () => {
 
   afterEach(() => {
     sessionStore.clear();
+    guildCache.clear();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
