@@ -25,7 +25,7 @@ vitest.config.js
 .editorconfig
 biome.json
 
-# Auto Claude / OpenClaw
+# Auto Claude
 .auto-claude/
 .auto-claude-*
 .auto-claude-security.json

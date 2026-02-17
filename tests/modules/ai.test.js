@@ -1,21 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock config module
-vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn(() => ({
-    ai: {
-      historyLength: 20,
-      historyTTLDays: 30,
-    },
-  })),
+// ── Mocks (must be before imports) ──────────────────────────────────────────
+vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
+  query: vi.fn(),
 }));
-
-// Mock memory module
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn(() => ({ ai: { historyLength: 20, historyTTLDays: 30 } })),
+}));
 vi.mock('../../src/modules/memory.js', () => ({
   buildMemoryContext: vi.fn(() => Promise.resolve('')),
   extractAndStoreMemories: vi.fn(() => Promise.resolve(false)),
 }));
+vi.mock('../../src/logger.js', () => ({
+  info: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+  debug: vi.fn(),
+}));
 
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { info, warn } from '../../src/logger.js';
 import {
   _resetWarnedUnknownModels,
@@ -33,13 +36,63 @@ import {
 import { getConfig } from '../../src/modules/config.js';
 import { buildMemoryContext, extractAndStoreMemories } from '../../src/modules/memory.js';
 
-// Mock logger
-vi.mock('../../src/logger.js', () => ({
-  info: vi.fn(),
-  error: vi.fn(),
-  warn: vi.fn(),
-  debug: vi.fn(),
-}));
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function mockQueryResult(text, extra = {}) {
+  query.mockReturnValue(
+    (async function* () {
+      yield {
+        type: 'result',
+        subtype: 'success',
+        result: text,
+        text: text,
+        is_error: false,
+        total_cost_usd: 0.002,
+        duration_ms: 150,
+        errors: [],
+        ...extra,
+      };
+    })(),
+  );
+}
+
+function mockQueryError(errorMsg) {
+  query.mockReturnValue(
+    (async function* () {
+      yield {
+        type: 'result',
+        subtype: 'error_during_execution',
+        result: null,
+        text: null,
+        is_error: true,
+        errors: [{ message: errorMsg }],
+        total_cost_usd: 0,
+        duration_ms: 50,
+      };
+    })(),
+  );
+}
+
+function makeConfig(overrides = {}) {
+  return {
+    ai: { systemPrompt: 'You are a bot.', enabled: true, ...(overrides.ai || {}) },
+    triage: {
+      models: { default: 'claude-sonnet-4-5' },
+      budget: { response: 0.5 },
+      timeouts: { response: 30000 },
+      ...(overrides.triage || {}),
+    },
+  };
+}
+
+function makeHealthMonitor() {
+  return {
+    recordAIRequest: vi.fn(),
+    setAPIStatus: vi.fn(),
+  };
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('ai module', () => {
   beforeEach(() => {
@@ -48,9 +101,10 @@ describe('ai module', () => {
     _setPoolGetter(null);
     _resetWarnedUnknownModels();
     vi.clearAllMocks();
-    // Reset config mock to defaults
     getConfig.mockReturnValue({ ai: { historyLength: 20, historyTTLDays: 30 } });
   });
+
+  // ── getHistoryAsync ───────────────────────────────────────────────────
 
   describe('getHistoryAsync', () => {
     it('should create empty history for new channel', async () => {
@@ -78,17 +132,13 @@ describe('ai module', () => {
       const mockPool = { query: mockQuery };
       setPool(mockPool);
 
-      // Start hydration by calling getHistoryAsync (but don't await yet)
       const asyncHistoryPromise = getHistoryAsync('race-channel');
 
-      // We know it's pending, so we can check the in-memory state via getConversationHistory
       const historyRef = getConversationHistory().get('race-channel');
       expect(historyRef).toEqual([]);
 
-      // Add a message while DB hydration is still pending
       addToHistory('race-channel', 'user', 'concurrent message');
 
-      // DB returns newest-first; hydrateHistory() reverses into chronological order
       resolveHydration({
         rows: [
           { role: 'assistant', content: 'db reply' },
@@ -110,7 +160,6 @@ describe('ai module', () => {
     });
 
     it('should load from DB on cache miss', async () => {
-      // DB returns newest-first (ORDER BY created_at DESC)
       const mockQuery = vi.fn().mockResolvedValue({
         rows: [
           { role: 'assistant', content: 'response' },
@@ -122,7 +171,6 @@ describe('ai module', () => {
 
       const history = await getHistoryAsync('ch-new');
       expect(history.length).toBe(2);
-      // After reversing, oldest comes first
       expect(history[0].content).toBe('from db');
       expect(history[1].content).toBe('response');
       expect(mockQuery).toHaveBeenCalledWith(
@@ -131,6 +179,8 @@ describe('ai module', () => {
       );
     });
   });
+
+  // ── addToHistory ──────────────────────────────────────────────────────
 
   describe('addToHistory', () => {
     it('should add messages to channel history', async () => {
@@ -209,9 +259,10 @@ describe('ai module', () => {
     });
   });
 
+  // ── initConversationHistory ───────────────────────────────────────────
+
   describe('initConversationHistory', () => {
     it('should load messages from DB for all channels', async () => {
-      // Single ROW_NUMBER() query returns rows per-channel in chronological order
       const mockQuery = vi.fn().mockResolvedValueOnce({
         rows: [
           { channel_id: 'ch1', role: 'user', content: 'msg1' },
@@ -235,190 +286,173 @@ describe('ai module', () => {
     });
   });
 
+  // ── generateResponse (SDK integration) ────────────────────────────────
+
   describe('generateResponse', () => {
-    it('should return AI response on success', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'Hello there!' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+    it('should call SDK query with correct parameters', async () => {
+      mockQueryResult('Hello there!');
+      getConfig.mockReturnValue(makeConfig());
 
-      const reply = await generateResponse('ch1', 'Hi', 'user1');
+      await generateResponse('ch1', 'Hi', 'user1');
 
-      expect(reply).toBe('Hello there!');
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
-
-    it('should log structured AI usage metadata for analytics', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          model: 'claude-sonnet-4-20250514',
-          usage: {
-            prompt_tokens: 200,
-            completion_tokens: 100,
-            total_tokens: 300,
-          },
-          choices: [{ message: { content: 'Usage logged' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
-
-      await generateResponse('ch1', 'Hi', 'user1', null, null, 'guild-analytics');
-
-      expect(info).toHaveBeenCalledWith(
-        'AI usage',
+      expect(query).toHaveBeenCalledWith(
         expect.objectContaining({
-          guildId: 'guild-analytics',
-          channelId: 'ch1',
-          model: 'claude-sonnet-4-20250514',
-          promptTokens: 200,
-          completionTokens: 100,
-          totalTokens: 300,
-          estimatedCostUsd: expect.any(Number),
-        }),
-      );
-    });
-
-    it.each([
-      {
-        model: 'claude-haiku-4-5-20251001',
-        expectedCostUsd: 0.0007,
-      },
-      {
-        model: 'claude-3-5-haiku-20241022',
-        expectedCostUsd: 0.00056,
-      },
-    ])('should use explicit pricing for $model in AI usage cost estimation', async ({
-      model,
-      expectedCostUsd,
-    }) => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          model,
-          usage: {
-            prompt_tokens: 200,
-            completion_tokens: 100,
-            total_tokens: 300,
-          },
-          choices: [{ message: { content: 'Usage logged' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
-
-      await generateResponse('ch1', 'Hi', 'user1', null, null, 'guild-analytics');
-
-      expect(info).toHaveBeenCalledWith(
-        'AI usage',
-        expect.objectContaining({
-          model,
-          estimatedCostUsd: expectedCostUsd,
-        }),
-      );
-      expect(warn).not.toHaveBeenCalledWith(
-        'Unknown model for cost estimation, returning $0',
-        expect.objectContaining({ model }),
-      );
-    });
-
-    it('should warn only once for repeated unknown model cost estimation', async () => {
-      vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
-        Promise.resolve({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            model: 'claude-custom-unknown-1',
-            usage: {
-              prompt_tokens: 200,
-              completion_tokens: 100,
-              total_tokens: 300,
-            },
-            choices: [{ message: { content: 'Unknown model response' } }],
+          prompt: expect.stringContaining('user1: Hi'),
+          options: expect.objectContaining({
+            model: 'claude-sonnet-4-5',
+            systemPrompt: 'You are a bot.',
+            allowedTools: ['WebSearch'],
+            maxBudgetUsd: 0.5,
+            maxThinkingTokens: 1024,
+            permissionMode: 'bypassPermissions',
           }),
         }),
       );
+    });
+
+    it('should use model override when provided', async () => {
+      mockQueryResult('Haiku response');
+      getConfig.mockReturnValue(makeConfig());
+
+      await generateResponse('ch1', 'Hi', 'user1', null, null, null, {
+        model: 'claude-haiku-4-5',
+      });
+
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            model: 'claude-haiku-4-5',
+          }),
+        }),
+      );
+    });
+
+    it('should use maxThinkingTokens override when provided', async () => {
+      mockQueryResult('Thinking response');
+      getConfig.mockReturnValue(makeConfig());
+
+      await generateResponse('ch1', 'Hi', 'user1', null, null, null, {
+        maxThinkingTokens: 4096,
+      });
+
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            maxThinkingTokens: 4096,
+          }),
+        }),
+      );
+    });
+
+    it('should extract response from async generator result', async () => {
+      mockQueryResult('Hello there!');
+      getConfig.mockReturnValue(makeConfig());
+
+      const reply = await generateResponse('ch1', 'Hi', 'user1');
+      expect(reply).toBe('Hello there!');
+    });
+
+    it('should log cost information on success', async () => {
+      mockQueryResult('OK', { total_cost_usd: 0.005, duration_ms: 200 });
+      getConfig.mockReturnValue(makeConfig());
 
       await generateResponse('ch1', 'Hi', 'user1');
-      await generateResponse('ch1', 'Hi again', 'user1');
 
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn).toHaveBeenCalledWith(
-        'Unknown model for cost estimation, returning $0',
-        expect.objectContaining({ model: 'claude-custom-unknown-1' }),
+      expect(info).toHaveBeenCalledWith(
+        'AI response',
+        expect.objectContaining({
+          total_cost_usd: 0.005,
+          duration_ms: 200,
+        }),
       );
     });
 
-    it('should include correct headers in fetch request', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'OK' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+    it('should return fallback message on SDK error result', async () => {
+      mockQueryError('Model overloaded');
+      getConfig.mockReturnValue(makeConfig());
 
-      await generateResponse('ch1', 'Hi', 'user');
-
-      const fetchCall = globalThis.fetch.mock.calls[0];
-      expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
+      const reply = await generateResponse('ch1', 'Hi', 'user1');
+      expect(reply).toBe("Sorry, I'm having trouble thinking right now. Try again in a moment!");
     });
 
-    it('should inject memory context into system prompt when userId is provided', async () => {
-      buildMemoryContext.mockResolvedValue('\n\nWhat you know about testuser:\n- Loves Rust');
+    it('should return fallback message when SDK throws', async () => {
+      query.mockImplementation(() => {
+        throw new Error('Network error');
+      });
+      getConfig.mockReturnValue(makeConfig());
 
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'I know you love Rust!' } }],
+      const reply = await generateResponse('ch1', 'Hi', 'user1');
+      expect(reply).toBe("Sorry, I'm having trouble thinking right now. Try again in a moment!");
+    });
+
+    it('should call recordAIRequest on success', async () => {
+      mockQueryResult('OK');
+      getConfig.mockReturnValue(makeConfig());
+      const hm = makeHealthMonitor();
+
+      await generateResponse('ch1', 'Hi', 'user1', hm);
+
+      expect(hm.recordAIRequest).toHaveBeenCalled();
+      expect(hm.setAPIStatus).toHaveBeenCalledWith('ok');
+    });
+
+    it('should call setAPIStatus error on SDK error', async () => {
+      mockQueryError('Failed');
+      getConfig.mockReturnValue(makeConfig());
+      const hm = makeHealthMonitor();
+
+      await generateResponse('ch1', 'Hi', 'user1', hm);
+
+      expect(hm.setAPIStatus).toHaveBeenCalledWith('error');
+    });
+
+    it('should call setAPIStatus error when SDK throws', async () => {
+      query.mockImplementation(() => {
+        throw new Error('Network error');
+      });
+      getConfig.mockReturnValue(makeConfig());
+      const hm = makeHealthMonitor();
+
+      await generateResponse('ch1', 'Hi', 'user1', hm);
+
+      expect(hm.setAPIStatus).toHaveBeenCalledWith('error');
+    });
+
+    it('should call buildMemoryContext with 5s timeout when userId provided', async () => {
+      buildMemoryContext.mockResolvedValue('\n\nMemory: likes Rust');
+      mockQueryResult('I know you like Rust!');
+      getConfig.mockReturnValue(makeConfig());
+
+      await generateResponse('ch1', 'What do you know?', 'testuser', null, 'user-123');
+
+      expect(buildMemoryContext).toHaveBeenCalledWith('user-123', 'testuser', 'What do you know?');
+
+      // System prompt should include memory context
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            systemPrompt: expect.stringContaining('Memory: likes Rust'),
+          }),
         }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
-
-      await generateResponse('ch1', 'What do you know about me?', 'testuser', null, 'user-123');
-
-      expect(buildMemoryContext).toHaveBeenCalledWith(
-        'user-123',
-        'testuser',
-        'What do you know about me?',
-        null,
       );
-
-      // Verify the system prompt includes memory context
-      const fetchCall = globalThis.fetch.mock.calls[0];
-      const body = JSON.parse(fetchCall[1].body);
-      expect(body.messages[0].content).toContain('What you know about testuser');
-      expect(body.messages[0].content).toContain('Loves Rust');
     });
 
-    it('should not inject memory context when userId is null', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'OK' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+    it('should not call buildMemoryContext when userId is null', async () => {
+      mockQueryResult('OK');
+      getConfig.mockReturnValue(makeConfig());
 
       await generateResponse('ch1', 'Hi', 'user', null, null);
 
       expect(buildMemoryContext).not.toHaveBeenCalled();
     });
 
-    it('should fire memory extraction after response when userId is provided', async () => {
+    it('should fire extractAndStoreMemories after response when userId provided', async () => {
       extractAndStoreMemories.mockResolvedValue(true);
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'Nice!' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+      mockQueryResult('Nice!');
+      getConfig.mockReturnValue(makeConfig());
 
       await generateResponse('ch1', "I'm learning Rust", 'testuser', null, 'user-123');
 
-      // extractAndStoreMemories is fire-and-forget, wait for it
       await vi.waitFor(() => {
         expect(extractAndStoreMemories).toHaveBeenCalledWith(
           'user-123',
@@ -430,109 +464,105 @@ describe('ai module', () => {
       });
     });
 
-    it('should timeout memory context lookup after 5 seconds', async () => {
-      vi.useFakeTimers();
-
-      // buildMemoryContext never resolves
-      buildMemoryContext.mockImplementation(() => new Promise(() => {}));
-
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'Still working without memory!' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
-
-      // generateResponse reads AI settings from getConfig(guildId)
-      getConfig.mockReturnValue({ ai: { systemPrompt: 'You are a bot.' } });
-      const replyPromise = generateResponse('ch1', 'Hi', 'user', null, 'user-123');
-
-      // Advance past the 5s timeout
-      await vi.advanceTimersByTimeAsync(5000);
-
-      const reply = await replyPromise;
-      expect(reply).toBe('Still working without memory!');
-
-      // System prompt should NOT contain memory context
-      const fetchCall = globalThis.fetch.mock.calls[0];
-      const body = JSON.parse(fetchCall[1].body);
-      expect(body.messages[0].content).toBe('You are a bot.');
-
-      vi.useRealTimers();
-    });
-
-    it('should continue working when memory context lookup fails', async () => {
-      buildMemoryContext.mockRejectedValue(new Error('mem0 down'));
-
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'Still working!' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
-
-      const reply = await generateResponse('ch1', 'Hi', 'user', null, 'user-123');
-
-      expect(reply).toBe('Still working!');
-    });
-
-    it('should pass guildId to buildMemoryContext and extractAndStoreMemories', async () => {
-      buildMemoryContext.mockResolvedValue('');
-      extractAndStoreMemories.mockResolvedValue(true);
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'Reply!' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
-
-      await generateResponse('ch1', 'Hi', 'testuser', null, 'user-123', 'guild-456');
-
-      expect(buildMemoryContext).toHaveBeenCalledWith('user-123', 'testuser', 'Hi', 'guild-456');
-
-      await vi.waitFor(() => {
-        expect(extractAndStoreMemories).toHaveBeenCalledWith(
-          'user-123',
-          'testuser',
-          'Hi',
-          'Reply!',
-          'guild-456',
-        );
-      });
-    });
-
-    it('should call getConfig(guildId) for history-length lookup in generateResponse', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'OK' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
-
-      await generateResponse('ch1', 'Hi', 'user', null, null, 'guild-789');
-
-      // getConfig should have been called with guildId for history length lookup
-      expect(getConfig).toHaveBeenCalledWith('guild-789');
-    });
-
-    it('should not call memory extraction when userId is not provided', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          choices: [{ message: { content: 'OK' } }],
-        }),
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+    it('should not call extractAndStoreMemories when userId is not provided', async () => {
+      mockQueryResult('OK');
+      getConfig.mockReturnValue(makeConfig());
 
       await generateResponse('ch1', 'Hi', 'user');
 
       expect(extractAndStoreMemories).not.toHaveBeenCalled();
     });
+
+    it('should continue when buildMemoryContext fails', async () => {
+      buildMemoryContext.mockRejectedValue(new Error('mem0 down'));
+      mockQueryResult('Still working!');
+      getConfig.mockReturnValue(makeConfig());
+
+      const reply = await generateResponse('ch1', 'Hi', 'user', null, 'user-123');
+      expect(reply).toBe('Still working!');
+    });
+
+    it('should timeout memory context lookup after 5 seconds', async () => {
+      vi.useFakeTimers();
+      buildMemoryContext.mockImplementation(() => new Promise(() => {}));
+      mockQueryResult('Working without memory!');
+      getConfig.mockReturnValue(makeConfig());
+
+      const replyPromise = generateResponse('ch1', 'Hi', 'user', null, 'user-123');
+      await vi.advanceTimersByTimeAsync(5000);
+      const reply = await replyPromise;
+
+      expect(reply).toBe('Working without memory!');
+      // System prompt should not contain memory context
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            systemPrompt: 'You are a bot.',
+          }),
+        }),
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('should update conversation history after successful response', async () => {
+      mockQueryResult('Hello!');
+      getConfig.mockReturnValue(makeConfig());
+
+      await generateResponse('ch1', 'Hi', 'testuser');
+
+      const history = await getHistoryAsync('ch1');
+      expect(history.length).toBe(2);
+      expect(history[0]).toEqual({ role: 'user', content: 'testuser: Hi' });
+      expect(history[1]).toEqual({ role: 'assistant', content: 'Hello!' });
+    });
+
+    it('should ignore intermediate SDK events and use only result', async () => {
+      query.mockReturnValue(
+        (async function* () {
+          yield { type: 'progress', data: 'thinking...' };
+          yield { type: 'thinking', content: 'processing' };
+          yield {
+            type: 'result',
+            subtype: 'success',
+            result: 'Final answer!',
+            text: 'Final answer!',
+            is_error: false,
+            total_cost_usd: 0.003,
+            duration_ms: 200,
+            errors: [],
+          };
+        })(),
+      );
+      getConfig.mockReturnValue(makeConfig());
+
+      const reply = await generateResponse('ch1', 'Hi', 'user');
+      expect(reply).toBe('Final answer!');
+    });
+
+    it('should return fallback text when result.result is empty', async () => {
+      query.mockReturnValue(
+        (async function* () {
+          yield {
+            type: 'result',
+            subtype: 'success',
+            result: '',
+            text: '',
+            is_error: false,
+            total_cost_usd: 0.001,
+            duration_ms: 50,
+            errors: [],
+          };
+        })(),
+      );
+      getConfig.mockReturnValue(makeConfig());
+
+      const reply = await generateResponse('ch1', 'Hi', 'user');
+      expect(reply).toBe('I got nothing. Try again?');
+    });
   });
+
+  // ── cleanup scheduler ─────────────────────────────────────────────────
 
   describe('cleanup scheduler', () => {
     it('should run cleanup query on start', async () => {

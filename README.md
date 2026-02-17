@@ -4,12 +4,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22-green.svg)](https://nodejs.org)
 
-AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community. Built with discord.js v14 and powered by Claude via [OpenClaw](https://openclaw.com).
+AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community. Built with discord.js v14 and powered by Claude via the [Anthropic Agent SDK](https://github.com/anthropics/claude-agent-sdk).
 
 ## ✨ Features
 
 - **🧠 AI Chat** — Mention the bot to chat with Claude. Maintains per-channel conversation history with intelligent context management.
-- **🎯 Chime-In** — Bot can organically join conversations when it has something relevant to add (configurable per-channel).
+- **🎯 Smart Triage** — Intelligent message triage system that classifies conversations, selects the right model tier (Haiku/Sonnet/Opus), and responds naturally — including organic chime-ins when the bot has something valuable to add.
 - **👋 Dynamic Welcome Messages** — Contextual onboarding with time-of-day greetings, community activity snapshots, member milestones, and highlight channels.
 - **🛡️ Spam Detection** — Pattern-based scam/spam detection with mod alerts and optional auto-delete.
 - **⚔️ Moderation Suite** — Full-featured mod toolkit: warn, kick, ban, tempban, softban, timeout, purge, lock/unlock, slowmode. Includes case management, mod log routing, DM notifications, auto-escalation, and tempban scheduling.
@@ -25,8 +25,8 @@ Discord User
      │
      ▼
 ┌─────────────┐     ┌──────────────┐     ┌─────────┐
-│  Bill Bot    │────▶│  OpenClaw    │────▶│  Claude  │
-│  (Node.js)  │◀────│  Gateway    │◀────│  (AI)    │
+│  Bill Bot    │────▶│  Anthropic   │────▶│  Claude  │
+│  (Node.js)  │◀────│  Agent SDK  │◀────│  (AI)    │
 └──────┬──────┘     └──────────────┘     └─────────┘
        │
        ▼
@@ -40,7 +40,7 @@ Discord User
 - [Node.js](https://nodejs.org) 22+
 - [pnpm](https://pnpm.io) (`npm install -g pnpm`)
 - [PostgreSQL](https://www.postgresql.org/) database
-- [OpenClaw](https://openclaw.com) gateway (for AI chat features)
+- An [Anthropic API key](https://console.anthropic.com) (for AI chat features)
 - A [Discord application](https://discord.com/developers/applications) with bot token
 
 ## 🚀 Setup
@@ -96,8 +96,7 @@ pnpm dev
 | `DISCORD_TOKEN` | ✅ | Discord bot token |
 | `DISCORD_CLIENT_ID` | ✅* | Discord application/client ID for slash-command deployment (`pnpm deploy`) |
 | `GUILD_ID` | ❌ | Guild ID for faster dev command deployment (omit for global) |
-| `OPENCLAW_API_URL` | ✅ | OpenClaw chat completions endpoint |
-| `OPENCLAW_API_KEY` | ✅ | OpenClaw gateway authentication token |
+| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key for Claude Agent SDK |
 | `DATABASE_URL` | ✅** | PostgreSQL connection string for persistent config/state |
 | `MEM0_API_KEY` | ❌ | Mem0 API key for long-term memory |
 | `BOT_API_SECRET` | ✅*** | Shared secret for web dashboard API authentication |
@@ -107,7 +106,6 @@ pnpm dev
 \** Bot can run without DB, but persistent config is strongly recommended in production.  
 \*** Required when running with the web dashboard. Can be omitted for bot-only deployments.
 
-Legacy OpenClaw aliases are also supported for backwards compatibility: `OPENCLAW_URL`, `OPENCLAW_TOKEN`.
 
 ### Web Dashboard
 
@@ -130,20 +128,31 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | Key | Type | Description |
 |-----|------|-------------|
 | `enabled` | boolean | Enable/disable AI responses |
-| `model` | string | Claude model to use (e.g. `claude-sonnet-4-20250514`) |
-| `maxTokens` | number | Max tokens per AI response |
 | `systemPrompt` | string | System prompt defining bot personality |
 | `channels` | string[] | Channel IDs to respond in (empty = all channels) |
+| `historyLength` | number | Max conversation history entries per channel (default: 20) |
+| `historyTTLDays` | number | Days before old history is cleaned up (default: 30) |
+| `threadMode.enabled` | boolean | Enable threaded responses |
+| `threadMode.autoArchiveMinutes` | number | Thread auto-archive timeout |
+| `threadMode.reuseWindowMinutes` | number | Window for reusing existing threads |
 
-### Chime-In (`chimeIn`)
+### Triage (`triage`)
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `enabled` | boolean | Enable organic conversation joining |
-| `evaluateEvery` | number | Evaluate every N messages |
-| `model` | string | Model for evaluation (e.g. `claude-haiku-4-5`) |
+| `enabled` | boolean | Enable triage-based message classification |
+| `defaultInterval` | number | Base evaluation interval in ms (default: 10000) |
+| `maxBufferSize` | number | Max messages per channel buffer (default: 30) |
+| `triggerWords` | string[] | Words that force instant evaluation |
+| `moderationKeywords` | string[] | Words that flag for moderation |
+| `models.triage` | string | Model for classification (default: `claude-haiku-4-5`) |
+| `models.default` | string | Default response model (default: `claude-sonnet-4-5`) |
+| `budget.triage` | number | Max USD per triage classification (default: 0.05) |
+| `budget.response` | number | Max USD per response generation (default: 0.50) |
+| `timeouts.triage` | number | Classification timeout in ms (default: 10000) |
+| `timeouts.response` | number | Response generation timeout in ms (default: 30000) |
 | `channels` | string[] | Channels to monitor (empty = all) |
-| `excludeChannels` | string[] | Channels to never chime into |
+| `excludeChannels` | string[] | Channels to never triage |
 
 ### Welcome Messages (`welcome`)
 
@@ -351,8 +360,7 @@ Set these in the Railway dashboard for the Bot service:
 | `DISCORD_TOKEN` | Yes | Discord bot token |
 | `DISCORD_CLIENT_ID` | Yes | Discord application/client ID |
 | `GUILD_ID` | No | Guild ID for faster dev command deployment (omit for global) |
-| `OPENCLAW_API_URL` | Yes | OpenClaw chat completions endpoint |
-| `OPENCLAW_API_KEY` | Yes | OpenClaw gateway authentication token |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude Agent SDK |
 | `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
 | `MEM0_API_KEY` | No | Mem0 API key for long-term memory |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` (default: `info`) |

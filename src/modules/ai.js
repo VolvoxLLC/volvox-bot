@@ -1,9 +1,10 @@
 /**
  * AI Module
- * Handles AI chat functionality powered by Claude via OpenClaw
+ * Handles AI chat functionality powered by Claude Agent SDK
  * Conversation history is persisted to PostgreSQL with in-memory cache
  */
 
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { info, error as logError, warn as logWarn } from '../logger.js';
 import { getConfig } from './config.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
@@ -106,13 +107,6 @@ export function setConversationHistory(history) {
   conversationHistory = history;
   pendingHydrations.clear();
 }
-
-// OpenClaw API endpoint/token (exported for shared use by other modules)
-export const OPENCLAW_URL =
-  process.env.OPENCLAW_API_URL ||
-  process.env.OPENCLAW_URL ||
-  'http://localhost:18789/v1/chat/completions';
-export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_TOKEN || '';
 
 /**
  * Approximate model pricing (USD per 1M tokens).
@@ -450,7 +444,7 @@ async function runCleanup() {
 }
 
 /**
- * Generate AI response using OpenClaw's chat completions endpoint.
+ * Generate AI response using the Claude Agent SDK.
  *
  * Memory integration:
  * - Pre-response: searches mem0 for relevant user memories and appends them to the system prompt.
@@ -462,6 +456,9 @@ async function runCleanup() {
  * @param {Object} healthMonitor - Health monitor instance (optional)
  * @param {string} [userId] - Discord user ID for memory scoping
  * @param {string} [guildId] - Discord guild ID for conversation scoping
+ * @param {Object} [options] - SDK options
+ * @param {string} [options.model] - Model override
+ * @param {number} [options.maxThinkingTokens] - Max thinking tokens override
  * @returns {Promise<string>} AI response
  */
 export async function generateResponse(
@@ -471,6 +468,7 @@ export async function generateResponse(
   healthMonitor = null,
   userId = null,
   guildId = null,
+  { model, maxThinkingTokens } = {},
 ) {
   // Use guild-aware config for AI settings (systemPrompt, model, maxTokens)
   // so per-guild overrides via /config are respected.
@@ -502,65 +500,66 @@ You can use Discord markdown formatting.`;
     }
   }
 
-  // Build messages array for OpenAI-compatible API
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...history,
-    { role: 'user', content: `${username}: ${userMessage}` },
-  ];
+  // Build conversation context from history
+  const historyText = history
+    .map((msg) => (msg.role === 'user' ? msg.content : `Assistant: ${msg.content}`))
+    .join('\n');
+  const formattedPrompt = historyText
+    ? `${historyText}\n${username}: ${userMessage}`
+    : `${username}: ${userMessage}`;
 
   // Log incoming AI request
   info('AI request', { channelId, username, message: userMessage });
 
   try {
-    const response = await fetch(OPENCLAW_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(OPENCLAW_TOKEN && { Authorization: `Bearer ${OPENCLAW_TOKEN}` }),
+    const controller = new AbortController();
+    const responseTimeout = guildConfig.triage?.timeouts?.response ?? 30000;
+    const timeout = setTimeout(() => controller.abort(), responseTimeout);
+
+    const generator = query({
+      prompt: formattedPrompt,
+      options: {
+        model: model ?? guildConfig.triage?.models?.default ?? 'claude-sonnet-4-5',
+        systemPrompt: systemPrompt,
+        allowedTools: ['WebSearch'],
+        maxBudgetUsd: guildConfig.triage?.budget?.response ?? 0.5,
+        maxThinkingTokens: maxThinkingTokens ?? 1024,
+        abortController: controller,
+        // bypassPermissions is required for headless SDK usage (no interactive
+        // permission prompts). Safety is enforced by the tightly scoped
+        // allowedTools list above — only WebSearch is permitted.
+        permissionMode: 'bypassPermissions',
       },
-      body: JSON.stringify({
-        model: guildConfig.ai?.model || 'claude-sonnet-4-20250514',
-        max_tokens: guildConfig.ai?.maxTokens || 1024,
-        messages: messages,
-      }),
     });
 
-    if (!response.ok) {
+    let result = null;
+    for await (const message of generator) {
+      if (message.type === 'result') {
+        result = message;
+      }
+    }
+    clearTimeout(timeout);
+
+    if (!result || result.is_error) {
+      const errorMsg = result?.errors?.map((e) => e.message || e).join('; ') || 'Unknown SDK error';
+      logError('SDK query error', { channelId, error: errorMsg });
       if (healthMonitor) {
         healthMonitor.setAPIStatus('error');
       }
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+      return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
     }
 
-    const data = await response.json();
-    const reply = data?.choices?.[0]?.message?.content || 'I got nothing. Try again?';
+    const reply = result.result || 'I got nothing. Try again?';
 
-    const modelUsed =
-      typeof data?.model === 'string' && data.model.trim().length > 0
-        ? data.model
-        : guildConfig.ai?.model || 'claude-sonnet-4-20250514';
-
-    const promptTokens = toNonNegativeNumber(data?.usage?.prompt_tokens);
-    const completionTokens = toNonNegativeNumber(data?.usage?.completion_tokens);
-    // Derive totalTokens from prompt + completion as a fallback for proxies that don't return it
-    const totalTokens =
-      toNonNegativeNumber(data?.usage?.total_tokens) || promptTokens + completionTokens;
-    const estimatedCostUsd = estimateAiCostUsd(modelUsed, promptTokens, completionTokens);
-
-    // Structured usage log powers analytics aggregation in /api/v1/guilds/:id/analytics.
-    info('AI usage', {
-      guildId: guildId || null,
+    // Log AI response with cost
+    info('AI response', {
       channelId,
-      model: modelUsed,
-      promptTokens,
-      completionTokens,
-      totalTokens,
-      estimatedCostUsd,
+      username,
+      model: model ?? guildConfig.triage?.models?.default ?? 'claude-sonnet-4-5',
+      total_cost_usd: result.total_cost_usd,
+      duration_ms: result.duration_ms,
+      response: reply.substring(0, 500),
     });
-
-    // Log AI response
-    info('AI response', { channelId, username, response: reply.substring(0, 500) });
 
     // Record successful AI request
     if (healthMonitor) {
@@ -581,7 +580,7 @@ You can use Discord markdown formatting.`;
 
     return reply;
   } catch (err) {
-    logError('OpenClaw API error', { error: err.message });
+    logError('SDK query error', { error: err.message });
     if (healthMonitor) {
       healthMonitor.setAPIStatus('error');
     }

@@ -184,17 +184,16 @@ export function getSuggestedNextSteps(error, context = {}) {
   const errorType = classifyError(error, context);
 
   const suggestions = {
-    [ErrorType.NETWORK]: 'Make sure the AI service (OpenClaw) is running and accessible.',
+    [ErrorType.NETWORK]: 'Make sure the Anthropic API is reachable.',
 
     [ErrorType.TIMEOUT]: 'Try a shorter message or wait a moment before retrying.',
 
     [ErrorType.API_RATE_LIMIT]: 'Wait 60 seconds before trying again.',
 
     [ErrorType.API_UNAUTHORIZED]:
-      'Check the OPENCLAW_API_KEY environment variable (or legacy OPENCLAW_TOKEN) and API credentials.',
+      'Check the ANTHROPIC_API_KEY environment variable and API credentials.',
 
-    [ErrorType.API_NOT_FOUND]:
-      'Verify OPENCLAW_API_URL (or legacy OPENCLAW_URL) points to the correct endpoint.',
+    [ErrorType.API_NOT_FOUND]: 'Verify the Anthropic API endpoint is reachable.',
 
     [ErrorType.API_SERVER_ERROR]:
       'The service should recover automatically. If it persists, restart the AI service.',

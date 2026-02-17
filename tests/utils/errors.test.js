@@ -217,7 +217,7 @@ describe('getSuggestedNextSteps', () => {
   it('should return suggestion for NETWORK errors', () => {
     const err = new Error('fetch failed');
     const steps = getSuggestedNextSteps(err);
-    expect(steps).toContain('AI service');
+    expect(steps).toContain('Anthropic API');
   });
 
   it('should return suggestion for TIMEOUT errors', () => {
@@ -235,13 +235,13 @@ describe('getSuggestedNextSteps', () => {
   it('should return suggestion for API_UNAUTHORIZED errors', () => {
     const err = new Error('unauth');
     const steps = getSuggestedNextSteps(err, { status: 401 });
-    expect(steps).toContain('OPENCLAW_API_KEY');
+    expect(steps).toContain('ANTHROPIC_API_KEY');
   });
 
   it('should return suggestion for API_NOT_FOUND errors', () => {
     const err = new Error('not found');
     const steps = getSuggestedNextSteps(err, { status: 404 });
-    expect(steps).toContain('OPENCLAW_API_URL');
+    expect(steps).toContain('Anthropic API');
   });
 
   it('should return suggestion for API_SERVER_ERROR', () => {

@@ -5,7 +5,7 @@
  * - Uptime (time since bot started)
  * - Memory usage
  * - Last AI request timestamp
- * - OpenClaw API connectivity status
+ * - Anthropic API connectivity status
  */
 
 /**
