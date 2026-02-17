@@ -27,6 +27,7 @@ describe('API server', () => {
 
   afterEach(async () => {
     await stopServer();
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
 
@@ -55,7 +56,6 @@ describe('API server', () => {
 
       // Should parse body (not 400 from missing body)
       expect(res.status).not.toBe(415);
-      vi.unstubAllEnvs();
     });
 
     it('should handle CORS preflight when DASHBOARD_URL is set', async () => {
@@ -67,7 +67,6 @@ describe('API server', () => {
       expect(res.status).toBe(204);
       expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
       expect(res.headers['access-control-allow-headers']).toContain('x-api-secret');
-      vi.unstubAllEnvs();
     });
 
     it('should not return 204 for OPTIONS when DASHBOARD_URL is not set', async () => {
@@ -98,7 +97,6 @@ describe('API server', () => {
 
       await stopServer();
       expect(server.listening).toBe(false);
-      vi.unstubAllEnvs();
     });
 
     it('should handle stopServer when no server is running', async () => {
