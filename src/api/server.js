@@ -65,6 +65,11 @@ export function createApp(client, dbPool) {
  * @returns {Promise<import('node:http').Server>} The HTTP server instance
  */
 export async function startServer(client, dbPool) {
+  if (server) {
+    warn('startServer called while a server is already running — closing orphaned server');
+    await stopServer();
+  }
+
   const app = createApp(client, dbPool);
   const portEnv = process.env.BOT_API_PORT;
   const port = portEnv != null ? Number.parseInt(portEnv, 10) : 3001;
