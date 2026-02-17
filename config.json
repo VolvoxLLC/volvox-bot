@@ -70,7 +70,14 @@
   },
   "logging": {
     "level": "info",
-    "fileOutput": true
+    "fileOutput": true,
+    "database": {
+      "enabled": false,
+      "minLevel": "info",
+      "retentionDays": 30,
+      "batchSize": 10,
+      "flushIntervalMs": 5000
+    }
   },
   "permissions": {
     "enabled": true,

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { initLogsTable } from '../src/transports/postgres.js';
 
 const pgMocks = vi.hoisted(() => ({
   poolConfig: null,
@@ -8,6 +9,11 @@ const pgMocks = vi.hoisted(() => ({
   poolEnd: vi.fn(),
   clientQuery: vi.fn(),
   clientRelease: vi.fn(),
+}));
+
+// Mock the postgres transport (imported by db.js for initLogsTable)
+vi.mock('../src/transports/postgres.js', () => ({
+  initLogsTable: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('pg', () => {
@@ -114,6 +120,17 @@ describe('db module', () => {
       ).toBe(true);
       expect(queries.some((q) => q.includes('idx_mod_cases_guild_target'))).toBe(true);
       expect(queries.some((q) => q.includes('idx_mod_scheduled_actions_pending'))).toBe(true);
+    });
+
+    it('should initialize the logs table during schema setup', async () => {
+      await dbModule.initDb();
+      expect(initLogsTable).toHaveBeenCalled();
+    });
+
+    it('should not fail startup if logs table initialization fails', async () => {
+      initLogsTable.mockRejectedValueOnce(new Error('logs table failed'));
+      const pool = await dbModule.initDb();
+      expect(pool).toBeDefined();
     });
 
     it('should return existing pool on second call', async () => {
