@@ -333,15 +333,13 @@ async function handleReset(interaction) {
 
     await resetConfig(section || undefined, interaction.guildId);
 
-    const defaultsSource = interaction.guildId ? 'global defaults' : 'defaults from config.json';
-
     const embed = new EmbedBuilder()
       .setColor(0xfee75c)
       .setTitle('🔄 Config Reset')
       .setDescription(
         section
-          ? `Section **${escapeInlineCode(section)}** has been reset to ${defaultsSource}.`
-          : `All configuration has been reset to ${defaultsSource}.`,
+          ? `Guild overrides for section **${escapeInlineCode(section)}** have been cleared; global defaults will apply.`
+          : 'All guild overrides have been cleared; global defaults will apply.',
       )
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();

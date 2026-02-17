@@ -19,7 +19,14 @@ const MAX_GUILD_CACHE_SIZE = 500;
 /** @type {Array<{path: string, callback: Function}>} Registered change listeners */
 const listeners = [];
 
-/** @type {Map<string, Object>} In-memory config cache keyed by guild_id ('global' for defaults) */
+/**
+ * Authoritative per-guild/global overrides loaded from the database.
+ * Intentionally unbounded: entries here are source-of-truth snapshots that are
+ * not cheap to rebuild without re-querying PostgreSQL.
+ * Hot-path memory/performance pressure is handled separately by mergedConfigCache,
+ * which stores computed global+guild views with LRU eviction.
+ * @type {Map<string, Object>}
+ */
 let configCache = new Map();
 
 /** @type {Map<string, {generation: number, data: Object}>} Cached merged (global + guild override) config per guild */
@@ -264,9 +271,7 @@ export function getConfig(guildId) {
 
   const merged = deepMerge(structuredClone(globalConfig), guildOverrides);
   cacheMergedResult(guildId, merged);
-  const cachedMerged = mergedConfigCache.get(guildId).data;
-  // Guild path: returns deep clone from cache for consistency with cache-hit path
-  return structuredClone(cachedMerged);
+  return structuredClone(merged);
 }
 
 /**
