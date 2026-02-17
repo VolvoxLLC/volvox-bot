@@ -264,8 +264,8 @@ router.get('/me', requireOAuth(), async (req, res) => {
         name: g.name,
         permissions: g.permissions,
       }));
-    } catch {
-      // Guilds fetch failed, return user info without guilds
+    } catch (fetchErr) {
+      error('Failed to fetch guilds for /me', { error: fetchErr.message, userId });
     }
   }
 
