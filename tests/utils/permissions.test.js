@@ -8,6 +8,7 @@ vi.mock('discord.js', () => ({
   },
 }));
 
+import { PermissionFlagsBits } from 'discord.js';
 import {
   getPermissionError,
   hasPermission,
@@ -326,8 +327,7 @@ describe('isModerator', () => {
     const member = {
       permissions: {
         has: vi.fn().mockImplementation((perm) => {
-          // ManageGuild = 1n << 5n
-          return perm === 1n << 5n;
+          return perm === PermissionFlagsBits.ManageGuild;
         }),
       },
       roles: { cache: { has: vi.fn() } },
