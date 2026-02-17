@@ -118,7 +118,11 @@ function requireGuildPermission(permissionCheck, errorMessage) {
         }
         return next();
       } catch (err) {
-        error('Failed to verify guild permission', { error: err.message, guild: req.params.id });
+        error('Failed to verify guild permission', {
+          error: err.message,
+          guild: req.params.id,
+          userId: req.user?.userId,
+        });
         return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
       }
     }
