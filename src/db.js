@@ -101,6 +101,7 @@ export async function initDb() {
         CREATE TABLE IF NOT EXISTS conversations (
           id SERIAL PRIMARY KEY,
           channel_id TEXT NOT NULL,
+          guild_id TEXT,
           role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
           content TEXT NOT NULL,
           username TEXT,
@@ -116,6 +117,11 @@ export async function initDb() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_conversations_created_at
         ON conversations (created_at)
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_conversations_guild_id
+        ON conversations (guild_id)
       `);
 
       // Moderation tables

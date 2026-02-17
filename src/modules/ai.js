@@ -207,8 +207,9 @@ export async function getHistoryAsync(channelId) {
  * @param {string} role - Message role (user/assistant)
  * @param {string} content - Message content
  * @param {string} [username] - Optional username
+ * @param {string} [guildId] - Optional guild ID for scoping
  */
-export function addToHistory(channelId, role, content, username) {
+export function addToHistory(channelId, role, content, username, guildId) {
   if (!conversationHistory.has(channelId)) {
     conversationHistory.set(channelId, []);
   }
@@ -227,9 +228,9 @@ export function addToHistory(channelId, role, content, username) {
   if (pool) {
     pool
       .query(
-        `INSERT INTO conversations (channel_id, role, content, username)
-       VALUES ($1, $2, $3, $4)`,
-        [channelId, role, content, username || null],
+        `INSERT INTO conversations (channel_id, role, content, username, guild_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+        [channelId, role, content, username || null, guildId || null],
       )
       .catch((err) => {
         logError('Failed to persist message to DB', {
@@ -381,6 +382,7 @@ async function runCleanup() {
  * @param {Object} config - Bot configuration
  * @param {Object} healthMonitor - Health monitor instance (optional)
  * @param {string} [userId] - Discord user ID for memory scoping
+ * @param {string} [guildId] - Discord guild ID for conversation scoping
  * @returns {Promise<string>} AI response
  */
 export async function generateResponse(
@@ -390,6 +392,7 @@ export async function generateResponse(
   config,
   healthMonitor = null,
   userId = null,
+  guildId = null,
 ) {
   const history = await getHistoryAsync(channelId);
 
@@ -462,8 +465,8 @@ You can use Discord markdown formatting.`;
     }
 
     // Update history with username for DB persistence
-    addToHistory(channelId, 'user', `${username}: ${userMessage}`, username);
-    addToHistory(channelId, 'assistant', reply);
+    addToHistory(channelId, 'user', `${username}: ${userMessage}`, username, guildId);
+    addToHistory(channelId, 'assistant', reply, undefined, guildId);
 
     // Post-response: extract and store memorable facts (fire-and-forget)
     if (userId) {

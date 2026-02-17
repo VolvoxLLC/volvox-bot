@@ -128,10 +128,9 @@ router.get('/:id/stats', async (req, res) => {
   }
 
   try {
-    const channelIds = Array.from(req.guild.channels.cache.keys());
     const [conversationResult, caseResult] = await Promise.all([
-      dbPool.query('SELECT COUNT(*)::int AS count FROM conversations WHERE channel_id = ANY($1)', [
-        channelIds,
+      dbPool.query('SELECT COUNT(*)::int AS count FROM conversations WHERE guild_id = $1', [
+        req.params.id,
       ]),
       dbPool.query('SELECT COUNT(*)::int AS count FROM mod_cases WHERE guild_id = $1', [
         req.params.id,
