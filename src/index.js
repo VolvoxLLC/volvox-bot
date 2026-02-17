@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
+import { startServer, stopServer } from './api/server.js';
 import { closeDb, initDb } from './db.js';
 import { addPostgresTransport, error, info, removePostgresTransport, warn } from './logger.js';
 import {
@@ -232,6 +233,13 @@ async function gracefulShutdown(signal) {
   stopConversationCleanup();
   stopTempbanScheduler();
 
+  // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
+  try {
+    await stopServer();
+  } catch (err) {
+    error('Failed to stop API server', { error: err.message });
+  }
+
   // 2. Save state
   info('Saving conversation state');
   saveState();
@@ -445,6 +453,9 @@ async function startup() {
   // Load commands and login
   await loadCommands();
   await client.login(token);
+
+  // Start REST API server
+  await startServer(client, dbPool);
 }
 
 startup().catch((err) => {
