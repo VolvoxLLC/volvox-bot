@@ -11,10 +11,17 @@ import { safeSend } from '../../utils/safeSend.js';
 const router = Router();
 
 /**
- * Config keys that are safe to expose via the API.
- * Everything else (database credentials, API tokens, etc.) is filtered out.
+ * Config keys that are safe to write via the PATCH endpoint.
+ * 'moderation' is intentionally excluded to prevent API callers from
+ * weakening or disabling moderation settings.
  */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation'];
+const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam'];
+
+/**
+ * Config keys that are safe to read via the GET endpoint.
+ * Includes everything in SAFE_CONFIG_KEYS plus read-only keys.
+ */
+const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'moderation'];
 
 /**
  * Parse pagination query params with defaults and capping.
@@ -77,7 +84,7 @@ router.get('/:id', (req, res) => {
 router.get('/:id/config', (_req, res) => {
   const config = getConfig();
   const safeConfig = {};
-  for (const key of SAFE_CONFIG_KEYS) {
+  for (const key of READABLE_CONFIG_KEYS) {
     if (key in config) {
       safeConfig[key] = config[key];
     }

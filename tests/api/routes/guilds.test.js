@@ -11,6 +11,8 @@ vi.mock('../../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({
     ai: { model: 'claude-3' },
     welcome: { enabled: true },
+    spam: { enabled: true },
+    moderation: { enabled: true },
     database: { host: 'secret-host' },
     token: 'secret-token',
   }),
@@ -141,6 +143,15 @@ describe('guilds routes', () => {
       expect(res.body.token).toBeUndefined();
       expect(getConfig).toHaveBeenCalled();
     });
+
+    it('should return moderation config as readable', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.moderation).toEqual({ enabled: true });
+    });
   });
 
   describe('PATCH /:id/config', () => {
@@ -169,6 +180,16 @@ describe('guilds routes', () => {
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
         .send({ path: 'database.host', value: 'evil-host' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('not allowed');
+    });
+
+    it('should return 403 when path targets moderation config', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'moderation.enabled', value: false });
 
       expect(res.status).toBe(403);
       expect(res.body.error).toContain('not allowed');
