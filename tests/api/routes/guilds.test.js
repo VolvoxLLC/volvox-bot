@@ -165,6 +165,16 @@ describe('guilds routes', () => {
       expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'claude-4');
     });
 
+    it('should return 400 when request body is missing', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .set('Content-Type', 'text/plain')
+        .send('not json');
+
+      expect(res.status).toBe(400);
+    });
+
     it('should return 400 when path is missing', async () => {
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')

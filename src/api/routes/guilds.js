@@ -99,6 +99,10 @@ router.get('/:id/config', (_req, res) => {
  * API consistency but does not scope the update.
  */
 router.patch('/:id/config', async (req, res) => {
+  if (!req.body) {
+    return res.status(400).json({ error: 'Request body is required' });
+  }
+
   const { path, value } = req.body;
 
   if (!path || typeof path !== 'string') {
