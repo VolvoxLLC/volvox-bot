@@ -428,7 +428,6 @@ describe('events module', () => {
         'thread-123',
         'hello from channel',
         'user',
-        config,
         null,
         'author-123',
         'g1',

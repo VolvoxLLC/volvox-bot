@@ -237,8 +237,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { model: 'test-model' } };
-      const reply = await generateResponse('ch1', 'Hi', 'user1', config);
+      const reply = await generateResponse('ch1', 'Hi', 'user1');
 
       expect(reply).toBe('Hello there!');
       expect(globalThis.fetch).toHaveBeenCalled();
@@ -253,8 +252,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', 'Hi', 'user', config);
+      await generateResponse('ch1', 'Hi', 'user');
 
       const fetchCall = globalThis.fetch.mock.calls[0];
       expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
@@ -271,15 +269,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      await generateResponse(
-        'ch1',
-        'What do you know about me?',
-        'testuser',
-        config,
-        null,
-        'user-123',
-      );
+      await generateResponse('ch1', 'What do you know about me?', 'testuser', null, 'user-123');
 
       expect(buildMemoryContext).toHaveBeenCalledWith(
         'user-123',
@@ -304,8 +294,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      await generateResponse('ch1', 'Hi', 'user', config, null, null);
+      await generateResponse('ch1', 'Hi', 'user', null, null);
 
       expect(buildMemoryContext).not.toHaveBeenCalled();
     });
@@ -320,8 +309,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', "I'm learning Rust", 'testuser', config, null, 'user-123');
+      await generateResponse('ch1', "I'm learning Rust", 'testuser', null, 'user-123');
 
       // extractAndStoreMemories is fire-and-forget, wait for it
       await vi.waitFor(() => {
@@ -349,10 +337,9 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      // generateResponse reads AI settings from getConfig(guildId), not the config param
+      // generateResponse reads AI settings from getConfig(guildId)
       getConfig.mockReturnValue({ ai: { systemPrompt: 'You are a bot.' } });
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      const replyPromise = generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
+      const replyPromise = generateResponse('ch1', 'Hi', 'user', null, 'user-123');
 
       // Advance past the 5s timeout
       await vi.advanceTimersByTimeAsync(5000);
@@ -379,8 +366,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      const reply = await generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
+      const reply = await generateResponse('ch1', 'Hi', 'user', null, 'user-123');
 
       expect(reply).toBe('Still working!');
     });
@@ -396,8 +382,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', 'Hi', 'testuser', config, null, 'user-123', 'guild-456');
+      await generateResponse('ch1', 'Hi', 'testuser', null, 'user-123', 'guild-456');
 
       expect(buildMemoryContext).toHaveBeenCalledWith('user-123', 'testuser', 'Hi', 'guild-456');
 
@@ -421,8 +406,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', 'Hi', 'user', config, null, null, 'guild-789');
+      await generateResponse('ch1', 'Hi', 'user', null, null, 'guild-789');
 
       // getConfig should have been called with guildId for history length lookup
       expect(getConfig).toHaveBeenCalledWith('guild-789');
@@ -437,8 +421,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', 'Hi', 'user', config);
+      await generateResponse('ch1', 'Hi', 'user');
 
       expect(extractAndStoreMemories).not.toHaveBeenCalled();
     });

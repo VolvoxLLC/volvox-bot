@@ -131,7 +131,6 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
             historyId,
             cleanContent,
             message.author.username,
-            config,
             healthMonitor,
             message.author.id,
             message.guild?.id,

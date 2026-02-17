@@ -394,7 +394,6 @@ async function runCleanup() {
  * @param {string} channelId - Channel ID
  * @param {string} userMessage - User's message
  * @param {string} username - Username
- * @param {Object} config - Bot configuration
  * @param {Object} healthMonitor - Health monitor instance (optional)
  * @param {string} [userId] - Discord user ID for memory scoping
  * @param {string} [guildId] - Discord guild ID for conversation scoping
@@ -404,14 +403,12 @@ export async function generateResponse(
   channelId,
   userMessage,
   username,
-  config,
   healthMonitor = null,
   userId = null,
   guildId = null,
 ) {
   // Use guild-aware config for AI settings (systemPrompt, model, maxTokens)
-  // so per-guild overrides via /config are respected. The `config` parameter
-  // is kept for backward compatibility but not used for AI-specific settings.
+  // so per-guild overrides via /config are respected.
   const guildConfig = getConfig(guildId);
   const history = await getHistoryAsync(channelId, guildId);
 
