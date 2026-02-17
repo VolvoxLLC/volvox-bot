@@ -3,7 +3,6 @@
  * Loads config from PostgreSQL with config.json as the seed/fallback
  */
 
-import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +11,6 @@ import { info, error as logError, warn as logWarn } from '../logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', '..', 'config.json');
-
-/** Event emitter for config change notifications */
-export const configEmitter = new EventEmitter();
 
 /** @type {Array<{path: string, callback: Function}>} Registered change listeners */
 const listeners = [];
