@@ -140,7 +140,9 @@ export function isModerator(member, config) {
 
   // Check bot admin role from config
   if (config.permissions?.adminRoleId) {
-    return member.roles.cache.has(config.permissions.adminRoleId);
+    if (member.roles.cache.has(config.permissions.adminRoleId)) {
+      return true;
+    }
   }
 
   if (config.permissions?.moderatorRoleId) {
