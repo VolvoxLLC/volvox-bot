@@ -60,8 +60,14 @@ export class PostgresTransport extends Transport {
    * @param {Function} callback - Callback to signal completion
    */
   log(info, callback) {
-    // Extract metadata (everything except reserved winston fields)
-    const { level, message, timestamp, ...metadata } = info;
+    // Extract metadata (only string-keyed own properties, excluding Winston Symbol keys)
+    const { level, message, timestamp } = info;
+    const metadata = {};
+    for (const key of Object.keys(info)) {
+      if (key !== 'level' && key !== 'message' && key !== 'timestamp') {
+        metadata[key] = info[key];
+      }
+    }
 
     this.buffer.push({
       level: level || 'info',
