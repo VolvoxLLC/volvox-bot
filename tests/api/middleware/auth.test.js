@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
@@ -104,10 +105,9 @@ describe('auth middleware', () => {
   });
 
   it('should authenticate with valid JWT Bearer token', async () => {
-    const jwt = await import('jsonwebtoken');
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     sessionStore.set('123', 'discord-access-token');
-    const token = jwt.default.sign({ userId: '123', username: 'testuser' }, 'jwt-test-secret', {
+    const token = jwt.sign({ userId: '123', username: 'testuser' }, 'jwt-test-secret', {
       algorithm: 'HS256',
     });
     req.headers.authorization = `Bearer ${token}`;
@@ -143,12 +143,11 @@ describe('auth middleware', () => {
   });
 
   it('should try JWT auth when x-api-secret is invalid', async () => {
-    const jwt = await import('jsonwebtoken');
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     req.headers['x-api-secret'] = 'wrong-secret';
     sessionStore.set('456', 'discord-access-token');
-    const token = jwt.default.sign({ userId: '456' }, 'jwt-test-secret', { algorithm: 'HS256' });
+    const token = jwt.sign({ userId: '456' }, 'jwt-test-secret', { algorithm: 'HS256' });
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireAuth();
 
