@@ -191,7 +191,7 @@ export function getSuggestedNextSteps(error, context = {}) {
     [ErrorType.API_RATE_LIMIT]: 'Wait 60 seconds before trying again.',
 
     [ErrorType.API_UNAUTHORIZED]:
-      'Check the ANTHROPIC_API_KEY environment variable and API credentials.',
+      'Check ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN environment variables. OAuth tokens (sk-ant-oat01-*) require CLAUDE_CODE_OAUTH_TOKEN.',
 
     [ErrorType.API_NOT_FOUND]: 'Verify the Anthropic API endpoint is reachable.',
 

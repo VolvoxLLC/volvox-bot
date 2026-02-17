@@ -52,6 +52,8 @@ if (fileOutputEnabled) {
 const SENSITIVE_FIELDS = [
   'DISCORD_TOKEN',
   'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'CLAUDE_CODE_OAUTH_TOKEN',
   'token',
   'password',
   'apiKey',

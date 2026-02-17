@@ -202,15 +202,16 @@ describe('events module', () => {
 
     // ── @mention routing ──────────────────────────────────────────────
 
-    it('should call accumulateMessage then evaluateNow on @mention', async () => {
+    it('should call sendTyping, accumulateMessage, then evaluateNow on @mention', async () => {
       setup();
+      const sendTyping = vi.fn().mockResolvedValue(undefined);
       const message = {
         author: { bot: false, username: 'user', id: 'author-1' },
         guild: { id: 'g1' },
         content: '<@bot-user-id> hello',
         channel: {
           id: 'c1',
-          sendTyping: vi.fn().mockResolvedValue(undefined),
+          sendTyping,
           send: vi.fn(),
           isThread: vi.fn().mockReturnValue(false),
         },
@@ -220,6 +221,7 @@ describe('events module', () => {
       };
       await onCallbacks.messageCreate(message);
 
+      expect(sendTyping).toHaveBeenCalled();
       expect(accumulateMessage).toHaveBeenCalledWith(message, config);
       expect(evaluateNow).toHaveBeenCalledWith('c1', config, client, null);
     });
@@ -292,6 +294,8 @@ describe('events module', () => {
       };
       await onCallbacks.messageCreate(message);
       expect(evaluateNow).not.toHaveBeenCalled();
+      // Message should still be accumulated via the generic path
+      expect(accumulateMessage).toHaveBeenCalled();
     });
 
     // ── Thread parent allowlist ───────────────────────────────────────

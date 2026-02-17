@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks (must be before imports) ──────────────────────────────────────────
-vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
-  query: vi.fn(),
-}));
+vi.mock('@anthropic-ai/claude-agent-sdk', () => {
+  class AbortError extends Error {}
+  return { query: vi.fn(), AbortError };
+});
 vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn(() => ({ ai: { historyLength: 20, historyTTLDays: 30 } })),
 }));
@@ -77,9 +78,9 @@ function makeConfig(overrides = {}) {
   return {
     ai: { systemPrompt: 'You are a bot.', enabled: true, ...(overrides.ai || {}) },
     triage: {
-      models: { default: 'claude-sonnet-4-5' },
-      budget: { response: 0.5 },
-      timeouts: { response: 30000 },
+      model: 'claude-sonnet-4-5',
+      budget: 0.5,
+      timeout: 30000,
       ...(overrides.triage || {}),
     },
   };

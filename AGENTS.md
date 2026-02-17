@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-**Bill Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude Agent SDK with triage-based model selection), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
+**Bill Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude Agent SDK with unified triage evaluation), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
 
 ## Stack
 
@@ -26,7 +26,7 @@
 | `src/logger.js` | Winston logger setup with file + console transports |
 | `src/commands/*.js` | Slash commands (auto-loaded) |
 | `src/modules/ai.js` | AI chat handler — conversation history, Claude Agent SDK calls |
-| `src/modules/triage.js` | Per-channel message triage — classifies messages, selects model, routes responses |
+| `src/modules/triage.js` | Per-channel message triage — unified SDK call classifies and generates responses in one pass |
 | `src/modules/welcome.js` | Dynamic welcome message generation |
 | `src/modules/spam.js` | Spam/scam pattern detection |
 | `src/modules/moderation.js` | Moderation — case creation, DM notifications, mod log embeds, escalation, tempban scheduler |
@@ -221,7 +221,7 @@ Edit `.gitleaks.toml` — add paths to `[allowlist].paths` or add inline `# gitl
 9. **Duration caps** — Discord timeouts max at 28 days; slowmode caps at 6 hours (21600s). Both are enforced in command logic
 10. **Tempban scheduler** — runs on a 60s interval; started in `index.js` startup and stopped in graceful shutdown. Catches up on missed unbans after restart
 11. **Case numbering** — per-guild sequential and assigned atomically inside `createCase()` using `COALESCE(MAX(case_number), 0) + 1` in a single INSERT
-12. **Triage budget limits** — `budget.triage` and `budget.response` cap SDK spend per call. If a prompt exceeds the budget, the SDK silently truncates the response. Monitor `total_cost_usd` in logs
-13. **Triage timeout behavior** — classification and escalation verification share the same `timeouts.triage` value. On timeout the AbortController fires and the call falls back to `respond-haiku`
-14. **Channel buffer eviction** — triage tracks at most 100 channels; channels inactive for 30 minutes are evicted. If a channel is evicted mid-conversation, the buffer is lost and classification restarts from scratch
-15. **Escalation verification cost** — when triage classifies as Sonnet or Opus, a second SDK call asks the target model to confirm. This doubles the classification cost for escalated conversations
+12. **Triage budget limit** — `budget` caps SDK spend per unified evaluation call. If the budget is exceeded, the SDK returns an error result (`is_error: true`), which the code catches and logs. Monitor `total_cost_usd` in logs
+13. **Triage timeout behavior** — `timeout` controls the AbortController deadline for the unified evaluation call. On timeout the call is aborted and no response is sent
+14. **Channel buffer eviction** — triage tracks at most 100 channels; channels inactive for 30 minutes are evicted. If a channel is evicted mid-conversation, the buffer is lost and evaluation restarts from scratch
+15. **Unified triage evaluation** — a single SDK call classifies AND generates responses via structured output. No separate classification or escalation verification steps. Multi-user buffers produce all responses in one call

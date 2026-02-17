@@ -13,22 +13,14 @@
   },
   "triage": {
     "enabled": true,
-    "defaultInterval": 10000,
+    "defaultInterval": 5000,
     "maxBufferSize": 30,
-    "triggerWords": [],
+    "triggerWords": ["volvox"],
     "moderationKeywords": [],
-    "models": {
-      "triage": "claude-haiku-4-5",
-      "default": "claude-sonnet-4-5"
-    },
-    "budget": {
-      "triage": 0.05,
-      "response": 0.50
-    },
-    "timeouts": {
-      "triage": 10000,
-      "response": 30000
-    },
+    "model": "claude-sonnet-4-5",
+    "budget": 0.50,
+    "timeout": 30000,
+    "moderationResponse": true,
     "channels": [],
     "excludeChannels": []
   },

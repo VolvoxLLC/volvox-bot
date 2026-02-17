@@ -289,7 +289,7 @@ describe('splitMessage integration (channel.send only)', () => {
     expect(result).toHaveLength(2);
   });
 
-  it('should only include embeds/components on the last chunk', async () => {
+  it('should only include embeds/components on the first chunk', async () => {
     needsSplitting.mockReturnValueOnce(true);
     splitMessage.mockReturnValueOnce(['chunk1', 'chunk2', 'chunk3']);
     const mockChannel = { send: vi.fn().mockResolvedValue({ id: 'msg' }) };
@@ -302,21 +302,46 @@ describe('splitMessage integration (channel.send only)', () => {
 
     expect(mockChannel.send).toHaveBeenCalledTimes(3);
 
-    // First two chunks: content + allowedMentions only (no embeds, no components)
+    // First chunk: full payload with embeds and components
     const call0 = mockChannel.send.mock.calls[0][0];
-    expect(call0).toEqual({ content: 'chunk1', allowedMentions: SAFE_ALLOWED_MENTIONS });
-
-    const call1 = mockChannel.send.mock.calls[1][0];
-    expect(call1).toEqual({ content: 'chunk2', allowedMentions: SAFE_ALLOWED_MENTIONS });
-
-    // Last chunk: full payload with embeds and components
-    const call2 = mockChannel.send.mock.calls[2][0];
-    expect(call2).toEqual({
-      content: 'chunk3',
+    expect(call0).toEqual({
+      content: 'chunk1',
       embeds: [{ title: 'test' }],
       components: [{ type: 1 }],
       allowedMentions: SAFE_ALLOWED_MENTIONS,
     });
+
+    // Remaining chunks: content + allowedMentions only
+    const call1 = mockChannel.send.mock.calls[1][0];
+    expect(call1).toEqual({ content: 'chunk2', allowedMentions: SAFE_ALLOWED_MENTIONS });
+
+    const call2 = mockChannel.send.mock.calls[2][0];
+    expect(call2).toEqual({ content: 'chunk3', allowedMentions: SAFE_ALLOWED_MENTIONS });
+  });
+
+  it('should put reply reference on first chunk when splitting', async () => {
+    needsSplitting.mockReturnValueOnce(true);
+    splitMessage.mockReturnValueOnce(['chunk1', 'chunk2']);
+    const mockChannel = { send: vi.fn().mockResolvedValue({ id: 'msg' }) };
+
+    await safeSend(mockChannel, {
+      content: 'a'.repeat(3000),
+      reply: { messageReference: 'msg-target' },
+    });
+
+    expect(mockChannel.send).toHaveBeenCalledTimes(2);
+
+    // First chunk gets the reply reference
+    const call0 = mockChannel.send.mock.calls[0][0];
+    expect(call0).toEqual({
+      content: 'chunk1',
+      reply: { messageReference: 'msg-target' },
+      allowedMentions: SAFE_ALLOWED_MENTIONS,
+    });
+
+    // Second chunk is a plain send (no reply)
+    const call1 = mockChannel.send.mock.calls[1][0];
+    expect(call1).toEqual({ content: 'chunk2', allowedMentions: SAFE_ALLOWED_MENTIONS });
   });
 });
 

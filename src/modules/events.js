@@ -42,7 +42,11 @@ export function registerReadyHandler(client, config, healthMonitor) {
       info('Welcome messages enabled', { channelId: config.welcome.channelId });
     }
     if (config.ai?.enabled) {
-      const triageModel = config.triage?.models?.default ?? 'claude-sonnet-4-5';
+      const triageCfg = config.triage || {};
+      const triageModel =
+        typeof triageCfg.model === 'string'
+          ? triageCfg.model
+          : (triageCfg.models?.default ?? 'claude-sonnet-4-5');
       info('AI chat enabled', { model: triageModel });
     }
     if (config.moderation?.enabled) {
@@ -121,14 +125,21 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         if (!cleanContent) {
           try {
             await safeReply(message, "Hey! What's up?");
-          } catch {
-            // Channel unreachable
+          } catch (err) {
+            warn('safeReply failed for empty mention', {
+              channelId: message.channel.id,
+              userId: message.author.id,
+              error: err?.message,
+            });
           }
           return;
         }
 
         // Accumulate the message into the triage buffer first (for context)
         accumulateMessage(message, guildConfig);
+
+        // Show typing indicator immediately so the user sees feedback
+        message.channel.sendTyping().catch(() => {});
 
         // Force immediate triage evaluation — triage owns the full response lifecycle
         try {
@@ -140,8 +151,12 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
           });
           try {
             await safeReply(message, getUserFriendlyMessage(err));
-          } catch {
-            // Channel unreachable
+          } catch (replyErr) {
+            warn('safeReply failed for error fallback', {
+              channelId: message.channel.id,
+              userId: message.author.id,
+              error: replyErr?.message,
+            });
           }
         }
 
@@ -150,10 +165,14 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     }
 
     // Triage: accumulate message for periodic evaluation (fire-and-forget)
-    try {
-      accumulateMessage(message, guildConfig);
-    } catch (err) {
-      logError('Triage accumulate error', { error: err?.message });
+    // Gated on ai.enabled — this is the master kill-switch for all AI responses.
+    // accumulateMessage also checks triage.enabled internally.
+    if (guildConfig.ai?.enabled) {
+      try {
+        accumulateMessage(message, guildConfig);
+      } catch (err) {
+        logError('Triage accumulate error', { error: err?.message });
+      }
     }
   });
 }

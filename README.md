@@ -9,7 +9,7 @@ AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community.
 ## ✨ Features
 
 - **🧠 AI Chat** — Mention the bot to chat with Claude. Maintains per-channel conversation history with intelligent context management.
-- **🎯 Smart Triage** — Intelligent message triage system that classifies conversations, selects the right model tier (Haiku/Sonnet/Opus), and responds naturally — including organic chime-ins when the bot has something valuable to add.
+- **🎯 Smart Triage** — Unified evaluation system that classifies conversations and generates responses in a single SDK call — including organic chime-ins and community rule enforcement.
 - **👋 Dynamic Welcome Messages** — Contextual onboarding with time-of-day greetings, community activity snapshots, member milestones, and highlight channels.
 - **🛡️ Spam Detection** — Pattern-based scam/spam detection with mod alerts and optional auto-delete.
 - **⚔️ Moderation Suite** — Full-featured mod toolkit: warn, kick, ban, tempban, softban, timeout, purge, lock/unlock, slowmode. Includes case management, mod log routing, DM notifications, auto-escalation, and tempban scheduling.
@@ -97,6 +97,7 @@ pnpm dev
 | `DISCORD_CLIENT_ID` | ✅* | Discord application/client ID for slash-command deployment (`pnpm deploy`) |
 | `GUILD_ID` | ❌ | Guild ID for faster dev command deployment (omit for global) |
 | `ANTHROPIC_API_KEY` | ✅ | Anthropic API key for Claude Agent SDK |
+| `CLAUDE_CODE_OAUTH_TOKEN` | ❌ | Required when using OAuth access tokens (`sk-ant-oat01-*`). Leave `ANTHROPIC_API_KEY` blank when using this. |
 | `DATABASE_URL` | ✅** | PostgreSQL connection string for persistent config/state |
 | `MEM0_API_KEY` | ❌ | Mem0 API key for long-term memory |
 | `BOT_API_SECRET` | ✅*** | Shared secret for web dashboard API authentication |
@@ -132,25 +133,23 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `channels` | string[] | Channel IDs to respond in (empty = all channels) |
 | `historyLength` | number | Max conversation history entries per channel (default: 20) |
 | `historyTTLDays` | number | Days before old history is cleaned up (default: 30) |
-| `threadMode.enabled` | boolean | Enable threaded responses |
-| `threadMode.autoArchiveMinutes` | number | Thread auto-archive timeout |
-| `threadMode.reuseWindowMinutes` | number | Window for reusing existing threads |
+| `threadMode.enabled` | boolean | Enable threaded responses (default: false) |
+| `threadMode.autoArchiveMinutes` | number | Thread auto-archive timeout (default: 60) |
+| `threadMode.reuseWindowMinutes` | number | Window for reusing existing threads (default: 30) |
 
 ### Triage (`triage`)
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `enabled` | boolean | Enable triage-based message classification |
-| `defaultInterval` | number | Base evaluation interval in ms (default: 10000) |
+| `enabled` | boolean | Enable triage-based message evaluation |
+| `defaultInterval` | number | Base evaluation interval in ms (default: 5000) |
 | `maxBufferSize` | number | Max messages per channel buffer (default: 30) |
-| `triggerWords` | string[] | Words that force instant evaluation |
+| `triggerWords` | string[] | Words that force instant evaluation (default: `["volvox"]`) |
 | `moderationKeywords` | string[] | Words that flag for moderation |
-| `models.triage` | string | Model for classification (default: `claude-haiku-4-5`) |
-| `models.default` | string | Default response model (default: `claude-sonnet-4-5`) |
-| `budget.triage` | number | Max USD per triage classification (default: 0.05) |
-| `budget.response` | number | Max USD per response generation (default: 0.50) |
-| `timeouts.triage` | number | Classification timeout in ms (default: 10000) |
-| `timeouts.response` | number | Response generation timeout in ms (default: 30000) |
+| `model` | string | Model for unified evaluation (default: `claude-sonnet-4-5`) |
+| `budget` | number | Max USD per evaluation call (default: 0.50) |
+| `timeout` | number | Evaluation timeout in ms (default: 30000) |
+| `moderationResponse` | boolean | Send moderation nudge messages (default: true) |
 | `channels` | string[] | Channels to monitor (empty = all) |
 | `excludeChannels` | string[] | Channels to never triage |
 
@@ -361,6 +360,7 @@ Set these in the Railway dashboard for the Bot service:
 | `DISCORD_CLIENT_ID` | Yes | Discord application/client ID |
 | `GUILD_ID` | No | Guild ID for faster dev command deployment (omit for global) |
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude Agent SDK |
+| `CLAUDE_CODE_OAUTH_TOKEN` | No | Required when using OAuth access tokens (`sk-ant-oat01-*`). Leave `ANTHROPIC_API_KEY` blank when using this. |
 | `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
 | `MEM0_API_KEY` | No | Mem0 API key for long-term memory |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` (default: `info`) |

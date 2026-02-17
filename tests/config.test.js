@@ -31,11 +31,12 @@ describe('config.json', () => {
     expect(typeof config.triage.enabled).toBe('boolean');
     expect(typeof config.triage.defaultInterval).toBe('number');
     expect(typeof config.triage.maxBufferSize).toBe('number');
-    expect(config.triage.models).toBeDefined();
-    expect(typeof config.triage.models.triage).toBe('string');
-    expect(typeof config.triage.models.default).toBe('string');
-    expect(config.triage.budget).toBeDefined();
-    expect(config.triage.timeouts).toBeDefined();
+    expect(typeof config.triage.model).toBe('string');
+    expect(typeof config.triage.budget).toBe('number');
+    expect(typeof config.triage.timeout).toBe('number');
+    expect(typeof config.triage.moderationResponse).toBe('boolean');
+    expect(Array.isArray(config.triage.triggerWords)).toBe(true);
+    expect(Array.isArray(config.triage.moderationKeywords)).toBe(true);
   });
 
   it('should have a welcome section', () => {

@@ -235,7 +235,7 @@ describe('getSuggestedNextSteps', () => {
   it('should return suggestion for API_UNAUTHORIZED errors', () => {
     const err = new Error('unauth');
     const steps = getSuggestedNextSteps(err, { status: 401 });
-    expect(steps).toContain('ANTHROPIC_API_KEY');
+    expect(steps).toContain('CLAUDE_CODE_OAUTH_TOKEN');
   });
 
   it('should return suggestion for API_NOT_FOUND errors', () => {

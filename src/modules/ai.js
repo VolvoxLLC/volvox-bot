@@ -4,8 +4,9 @@
  * Conversation history is persisted to PostgreSQL with in-memory cache
  */
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { AbortError, query } from '@anthropic-ai/claude-agent-sdk';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { loadPrompt } from '../prompts/index.js';
 import { getConfig } from './config.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
@@ -476,12 +477,7 @@ export async function generateResponse(
   const guildConfig = getConfig(guildId);
   const history = await getHistoryAsync(channelId, guildId);
 
-  let systemPrompt =
-    guildConfig.ai?.systemPrompt ||
-    `You are Volvox Bot, a helpful and friendly Discord bot for the Volvox developer community.
-You're witty, knowledgeable about programming and tech, and always eager to help.
-Keep responses concise and Discord-friendly (under 2000 chars).
-You can use Discord markdown formatting.`;
+  let systemPrompt = guildConfig.ai?.systemPrompt || loadPrompt('default-personality');
 
   // Pre-response: inject user memory context into system prompt (with timeout)
   if (userId) {
@@ -512,20 +508,36 @@ You can use Discord markdown formatting.`;
   // Log incoming AI request
   info('AI request', { channelId, username, message: userMessage });
 
-  try {
-    const controller = new AbortController();
-    const responseTimeout = guildConfig.triage?.timeouts?.response ?? 30000;
-    const timeout = setTimeout(() => controller.abort(), responseTimeout);
+  // Resolve config values with legacy nested-format fallback.
+  // The DB may still have old format: models: {default}, budget: {response}, timeouts: {response}
+  const triageCfg = guildConfig.triage || {};
+  const cfgModel =
+    typeof triageCfg.model === 'string'
+      ? triageCfg.model
+      : (triageCfg.models?.default ?? 'claude-sonnet-4-5');
+  const cfgBudget =
+    typeof triageCfg.budget === 'number' ? triageCfg.budget : (triageCfg.budget?.response ?? 0.5);
+  const cfgTimeout =
+    typeof triageCfg.timeout === 'number'
+      ? triageCfg.timeout
+      : (triageCfg.timeouts?.response ?? 30000);
 
+  const resolvedModel = model ?? cfgModel;
+  const controller = new AbortController();
+  const responseTimeout = cfgTimeout;
+  const timeout = setTimeout(() => controller.abort(), responseTimeout);
+
+  try {
     const generator = query({
       prompt: formattedPrompt,
       options: {
-        model: model ?? guildConfig.triage?.models?.default ?? 'claude-sonnet-4-5',
+        model: resolvedModel,
         systemPrompt: systemPrompt,
         allowedTools: ['WebSearch'],
-        maxBudgetUsd: guildConfig.triage?.budget?.response ?? 0.5,
+        maxBudgetUsd: cfgBudget,
         maxThinkingTokens: maxThinkingTokens ?? 1024,
         abortController: controller,
+        stderr: (data) => logWarn('SDK stderr (ai)', { channelId, data }),
         // bypassPermissions is required for headless SDK usage (no interactive
         // permission prompts). Safety is enforced by the tightly scoped
         // allowedTools list above — only WebSearch is permitted.
@@ -539,11 +551,10 @@ You can use Discord markdown formatting.`;
         result = message;
       }
     }
-    clearTimeout(timeout);
 
     if (!result || result.is_error) {
       const errorMsg = result?.errors?.map((e) => e.message || e).join('; ') || 'Unknown SDK error';
-      logError('SDK query error', { channelId, error: errorMsg });
+      logError('SDK query error', { channelId, error: errorMsg, errors: result?.errors });
       if (healthMonitor) {
         healthMonitor.setAPIStatus('error');
       }
@@ -556,7 +567,7 @@ You can use Discord markdown formatting.`;
     info('AI response', {
       channelId,
       username,
-      model: model ?? guildConfig.triage?.models?.default ?? 'claude-sonnet-4-5',
+      model: resolvedModel,
       total_cost_usd: result.total_cost_usd,
       duration_ms: result.duration_ms,
       response: reply.substring(0, 500),
@@ -581,10 +592,16 @@ You can use Discord markdown formatting.`;
 
     return reply;
   } catch (err) {
-    logError('SDK query error', { error: err.message });
+    if (err instanceof AbortError) {
+      info('AI response aborted', { channelId });
+      return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
+    }
+    logError('SDK query error', { error: err.message, stack: err.stack });
     if (healthMonitor) {
       healthMonitor.setAPIStatus('error');
     }
     return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
+  } finally {
+    clearTimeout(timeout);
   }
 }
