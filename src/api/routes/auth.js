@@ -35,13 +35,7 @@ class SessionStore extends Map {
   }
 
   has(userId) {
-    const entry = super.get(userId);
-    if (!entry) return false;
-    if (Date.now() >= entry.expiresAt) {
-      super.delete(userId);
-      return false;
-    }
-    return true;
+    return this.get(userId) !== undefined;
   }
 
   cleanup() {
