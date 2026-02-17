@@ -29,7 +29,7 @@ export function rateLimit({ windowMs = 15 * 60 * 1000, max = 100 } = {}) {
   // Allow the timer to not prevent process exit
   cleanup.unref();
 
-  return (req, res, next) => {
+  const middleware = (req, res, next) => {
     const ip = req.ip;
     const now = Date.now();
 
@@ -49,4 +49,8 @@ export function rateLimit({ windowMs = 15 * 60 * 1000, max = 100 } = {}) {
 
     next();
   };
+
+  middleware.destroy = () => clearInterval(cleanup);
+
+  return middleware;
 }
