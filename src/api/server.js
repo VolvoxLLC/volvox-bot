@@ -44,7 +44,11 @@ export function createApp(client, dbPool) {
     next();
   });
 
-  // Rate limiting
+  // Rate limiting — destroy any leaked limiter from a prior createApp call
+  if (rateLimiter) {
+    rateLimiter.destroy();
+    rateLimiter = null;
+  }
   rateLimiter = rateLimit();
   app.use(rateLimiter);
 
