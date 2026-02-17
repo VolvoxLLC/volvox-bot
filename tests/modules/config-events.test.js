@@ -59,6 +59,7 @@ describe('config change events', () => {
   });
 
   afterEach(() => {
+    configModule.clearConfigListeners();
     vi.restoreAllMocks();
   });
 
