@@ -10,8 +10,7 @@ WORKDIR /app
 # plus web/package.json for the dashboard package.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY web/package.json ./web/
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --filter bills-bot-web
+RUN pnpm install --frozen-lockfile --filter bills-bot-web
 
 # --- Builder ---
 FROM node:22-alpine AS builder
