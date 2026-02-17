@@ -141,15 +141,13 @@ router.get('/', async (req, res) => {
         })
         .map((ug) => {
           const botGuild = botGuilds.get(ug.id);
-          if (!botGuild) return null;
           return {
             id: ug.id,
             name: botGuild.name,
             icon: botGuild.iconURL(),
             memberCount: botGuild.memberCount,
           };
-        })
-        .filter(Boolean);
+        });
 
       return res.json(filtered);
     } catch (err) {
