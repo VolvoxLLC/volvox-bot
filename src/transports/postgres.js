@@ -110,14 +110,16 @@ export class PostgresTransport extends Transport {
         const placeholders = [];
 
         for (let i = 0; i < entries.length; i++) {
+          let metadataJson;
+          try {
+            metadataJson = JSON.stringify(entries[i].metadata);
+          } catch {
+            // Drop entries with non-serializable metadata to prevent poisoning the batch
+            metadataJson = '{}';
+          }
           const offset = i * 4;
           placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
-          values.push(
-            entries[i].level,
-            entries[i].message,
-            JSON.stringify(entries[i].metadata),
-            entries[i].timestamp,
-          );
+          values.push(entries[i].level, entries[i].message, metadataJson, entries[i].timestamp);
         }
 
         const query = `INSERT INTO logs (level, message, metadata, timestamp) VALUES ${placeholders.join(', ')}`;
@@ -208,7 +210,7 @@ export async function initLogsTable(pool) {
  * @returns {Promise<number>} Number of deleted rows
  */
 export async function pruneOldLogs(pool, retentionDays) {
-  if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
+  if (!Number.isInteger(retentionDays) || retentionDays <= 0) {
     return 0;
   }
 

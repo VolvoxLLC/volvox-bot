@@ -339,6 +339,79 @@ describe('PostgresTransport', () => {
       expect(transport.buffer).toHaveLength(1);
       expect(transport.buffer[0].message).toBe('important log');
     });
+
+    it('should increment dbFailureCount and emit warn on flush failure', async () => {
+      const failPool = createMockPool();
+      const dbError = new Error('Connection refused');
+      failPool.query.mockRejectedValue(dbError);
+
+      transport = new PostgresTransport({ pool: failPool, batchSize: 100 });
+      expect(transport.dbFailureCount).toBe(0);
+
+      const warnHandler = vi.fn();
+      transport.on('warn', warnHandler);
+
+      transport.buffer.push({
+        level: 'error',
+        message: 'test',
+        metadata: {},
+        timestamp: '2026-01-01T00:00:00Z',
+      });
+
+      await transport.flush();
+
+      expect(transport.dbFailureCount).toBe(1);
+      expect(warnHandler).toHaveBeenCalledWith(dbError);
+
+      // Flush again to verify counter increments
+      await transport.flush();
+      expect(transport.dbFailureCount).toBe(2);
+    });
+
+    it('should cap buffer at MAX_BUFFER (10000) on persistent failures', async () => {
+      const failPool = createMockPool();
+      failPool.query.mockRejectedValue(new Error('DB down'));
+
+      transport = new PostgresTransport({ pool: failPool, batchSize: 100 });
+
+      // Fill buffer beyond MAX_BUFFER
+      for (let i = 0; i < 10500; i++) {
+        transport.buffer.push({
+          level: 'info',
+          message: `log-${i}`,
+          metadata: {},
+          timestamp: '2026-01-01T00:00:00Z',
+        });
+      }
+
+      await transport.flush();
+
+      // Buffer should be capped at 10000
+      expect(transport.buffer.length).toBeLessThanOrEqual(10000);
+    });
+
+    it('should safely serialize entries with non-serializable metadata', async () => {
+      transport = new PostgresTransport({ pool: mockPool, batchSize: 100 });
+
+      // Create circular reference
+      const circular = {};
+      circular.self = circular;
+
+      transport.buffer.push({
+        level: 'info',
+        message: 'circular metadata',
+        metadata: circular,
+        timestamp: '2026-01-01T00:00:00Z',
+      });
+
+      // Should not throw — malformed metadata falls back to '{}'
+      await expect(transport.flush()).resolves.toBeUndefined();
+      expect(mockPool.query).toHaveBeenCalledTimes(1);
+
+      // Verify the fallback '{}' was used
+      const callArgs = mockPool.query.mock.calls[0][1];
+      expect(callArgs[2]).toBe('{}');
+    });
   });
 
   describe('close()', () => {
@@ -468,6 +541,14 @@ describe('pruneOldLogs', () => {
     const deleted = await pruneOldLogs(mockPool, 'thirty');
 
     expect(deleted).toBe(0);
+    expect(mockPool.query).not.toHaveBeenCalled();
+  });
+
+  it('should return 0 and skip query for fractional retentionDays', async () => {
+    const mockPool = createMockPool();
+
+    expect(await pruneOldLogs(mockPool, 0.5)).toBe(0);
+    expect(await pruneOldLogs(mockPool, 1.5)).toBe(0);
     expect(mockPool.query).not.toHaveBeenCalled();
   });
 });
