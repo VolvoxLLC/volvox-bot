@@ -7,6 +7,7 @@ import express from 'express';
 import { error, info, warn } from '../logger.js';
 import apiRouter from './index.js';
 import { rateLimit } from './middleware/rateLimit.js';
+import { stopAuthCleanup } from './routes/auth.js';
 
 /** @type {import('node:http').Server | null} */
 let server = null;
@@ -122,6 +123,8 @@ export async function startServer(client, dbPool) {
  * @returns {Promise<void>}
  */
 export async function stopServer() {
+  stopAuthCleanup();
+
   if (rateLimiter) {
     rateLimiter.destroy();
     rateLimiter = null;
