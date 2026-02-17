@@ -308,6 +308,12 @@ async function startup() {
   onConfigChange('logging.database.enabled', async (newValue, _oldValue, path) => {
     if (!dbPool) return;
     try {
+      // Defensive removal: we intentionally remove the existing transport BEFORE
+      // re-initializing the logs table. If initLogsTable throws after the old
+      // transport was removed, pgTransport remains null (no transport active)
+      // until the next successful enable. This is by design — we prefer to
+      // cleanly remove a possibly faulty transport rather than leave it running
+      // during re-init. A subsequent successful enable will restore it.
       if (newValue) {
         if (pgTransport) {
           await removePostgresTransport(pgTransport);
