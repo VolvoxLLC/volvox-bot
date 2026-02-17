@@ -8,7 +8,7 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-import { sessionStore } from '../../../src/api/routes/auth.js';
+import { _seedOAuthState, sessionStore } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
 
@@ -83,6 +83,50 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(403);
       expect(res.body.error).toContain('Invalid or expired OAuth state');
+    });
+
+    it('should exchange code for token and redirect with JWT on success', async () => {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'client-id-123');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', 'client-secret');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+      vi.stubEnv('DASHBOARD_URL', 'http://localhost:3000');
+
+      // Seed a valid OAuth state
+      const state = 'test-state-abc';
+      _seedOAuthState(state);
+
+      // Mock token exchange and user info fetch
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'discord-access-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: '999',
+            username: 'newuser',
+            discriminator: '0001',
+            avatar: 'avatar123',
+          }),
+        });
+
+      const res = await request(app).get(
+        `/api/v1/auth/discord/callback?code=valid-code&state=${state}`,
+      );
+
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toMatch(/^http:\/\/localhost:3000#token=.+/);
+
+      // Verify session was stored server-side
+      expect(sessionStore.get('999')).toBe('discord-access-token');
+
+      // Verify the JWT in the redirect contains user info
+      const token = res.headers.location.split('#token=')[1];
+      const decoded = jwt.verify(token, 'test-session-secret', { algorithms: ['HS256'] });
+      expect(decoded.userId).toBe('999');
+      expect(decoded.username).toBe('newuser');
     });
   });
 

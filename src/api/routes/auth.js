@@ -60,6 +60,17 @@ export const sessionStore = new SessionStore();
 const oauthStates = new Map();
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+/**
+ * Seed an OAuth state for testing purposes.
+ * Adds a state entry with the default TTL so integration tests can exercise
+ * the callback endpoint without performing the redirect flow.
+ *
+ * @param {string} state - The state value to seed
+ */
+export function _seedOAuthState(state) {
+  oauthStates.set(state, Date.now() + STATE_TTL_MS);
+}
+
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
