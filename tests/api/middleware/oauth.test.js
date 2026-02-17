@@ -16,7 +16,7 @@ describe('requireOAuth middleware', () => {
   let next;
 
   beforeEach(() => {
-    req = { headers: {} };
+    req = { headers: {}, ip: '127.0.0.1', path: '/test' };
     res = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
