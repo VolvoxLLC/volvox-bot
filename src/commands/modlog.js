@@ -15,7 +15,7 @@ import {
 } from 'discord.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig, setConfigValue } from '../modules/config.js';
-import { getPermissionError, isModerator } from '../utils/permissions.js';
+import { getPermissionError, hasPermission } from '../utils/permissions.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
@@ -33,9 +33,10 @@ export const adminOnly = true;
  */
 export async function execute(interaction) {
   const config = getConfig();
-  if (!isModerator(interaction.member, config)) {
+  if (!hasPermission(interaction.member, 'modlog', config)) {
+    const permLevel = config.permissions?.allowedCommands?.modlog || 'administrator';
     return await safeReply(interaction, {
-      content: getPermissionError('modlog', 'moderator'),
+      content: getPermissionError('modlog', permLevel),
       ephemeral: true,
     });
   }
