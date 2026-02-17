@@ -178,13 +178,22 @@ export async function loadConfig() {
 
 /**
  * Get the current config (from cache).
- * If no guildId (or guildId='global'), returns the global config object.
- * If guildId provided, returns deep merge of global defaults + guild overrides.
+ *
+ * **Return semantics differ by path (intentional):**
+ * - **Global path** (no guildId or guildId='global'): Returns a LIVE MUTABLE reference
+ *   to the cached global config object. Mutations are visible to all subsequent callers.
+ *   This is intentional for backward compatibility — existing code relies on mutating the
+ *   returned object and having changes propagate.
+ * - **Guild path** (guildId provided): Returns a deep-cloned merged copy of global defaults
+ *   + guild overrides. Each call returns a fresh object; mutations do NOT affect the cache.
+ *   This prevents cross-guild contamination.
+ *
  * @param {string} [guildId] - Guild ID, or omit / 'global' for global defaults
- * @returns {Object} Configuration object
+ * @returns {Object} Configuration object (live reference for global, cloned copy for guild)
  */
 export function getConfig(guildId) {
   if (!guildId || guildId === 'global') {
+    // Global path: returns live mutable cache reference (intentional — see JSDoc above)
     return configCache.get('global') || {};
   }
 
