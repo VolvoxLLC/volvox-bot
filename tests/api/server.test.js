@@ -70,7 +70,7 @@ describe('API server', () => {
     });
 
     it('should skip CORS headers for OPTIONS when DASHBOARD_URL is not set', async () => {
-      delete process.env.DASHBOARD_URL;
+      vi.stubEnv('DASHBOARD_URL', '');
       const app = createApp(client, null);
 
       const res = await request(app).options('/api/v1/nonexistent');
