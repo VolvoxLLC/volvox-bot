@@ -308,6 +308,10 @@ async function startup() {
     if (!dbPool) return;
     try {
       if (newValue) {
+        if (pgTransport) {
+          await removePostgresTransport(pgTransport);
+          pgTransport = null;
+        }
         await initLogsTable(dbPool);
         pgTransport = addPostgresTransport(dbPool, config.logging.database);
         info('PostgreSQL logging transport enabled via config change', { path });
