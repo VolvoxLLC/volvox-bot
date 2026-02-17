@@ -8,6 +8,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { error, info } from '../../logger.js';
 import { requireOAuth } from '../middleware/oauth.js';
+import { fetchUserGuilds } from '../utils/discordApi.js';
 
 const router = Router();
 
@@ -240,17 +241,12 @@ router.get('/me', requireOAuth(), async (req, res) => {
   let guilds = [];
   if (accessToken) {
     try {
-      const response = await fetch(`${DISCORD_API}/users/@me/guilds`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (response.ok) {
-        guilds = (await response.json()).map((g) => ({
-          id: g.id,
-          name: g.name,
-          permissions: g.permissions,
-        }));
-      }
+      const userGuilds = await fetchUserGuilds(userId, accessToken);
+      guilds = userGuilds.map((g) => ({
+        id: g.id,
+        name: g.name,
+        permissions: g.permissions,
+      }));
     } catch {
       // Guilds fetch failed, return user info without guilds
     }
