@@ -130,17 +130,20 @@ describe('events module', () => {
       expect(on).toHaveBeenCalledWith('guildMemberAdd', expect.any(Function));
     });
 
-    it('should call sendWelcomeMessage on member add', async () => {
+    it('should call sendWelcomeMessage on member add with per-guild config', async () => {
       const on = vi.fn();
       const client = { on };
       const config = {};
+      const guildConfig = { welcome: { enabled: true } };
+      getConfig.mockReturnValue(guildConfig);
 
       registerGuildMemberAddHandler(client, config);
       const callback = on.mock.calls[0][1];
-      const member = { user: { tag: 'User#1234' } };
+      const member = { user: { tag: 'User#1234' }, guild: { id: 'guild-123' } };
       await callback(member);
 
-      expect(sendWelcomeMessage).toHaveBeenCalledWith(member, client, config);
+      expect(getConfig).toHaveBeenCalledWith('guild-123');
+      expect(sendWelcomeMessage).toHaveBeenCalledWith(member, client, guildConfig);
     });
   });
 

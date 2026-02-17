@@ -24,7 +24,7 @@ let processHandlersRegistered = false;
 /**
  * Register bot ready event handler
  * @param {Client} client - Discord client
- * @param {Object} config - Bot configuration
+ * @param {Object} config - Startup/global bot configuration used only for one-time feature-gate logging (not per-guild)
  * @param {Object} healthMonitor - Health monitor instance
  */
 export function registerReadyHandler(client, config, healthMonitor) {
@@ -51,11 +51,12 @@ export function registerReadyHandler(client, config, healthMonitor) {
 /**
  * Register guild member add event handler
  * @param {Client} client - Discord client
- * @param {Object} config - Bot configuration
+ * @param {Object} _config - Unused (kept for API compatibility); handler resolves per-guild config via getConfig().
  */
-export function registerGuildMemberAddHandler(client, config) {
+export function registerGuildMemberAddHandler(client, _config) {
   client.on(Events.GuildMemberAdd, async (member) => {
-    await sendWelcomeMessage(member, client, config);
+    const guildConfig = getConfig(member.guild.id);
+    await sendWelcomeMessage(member, client, guildConfig);
   });
 }
 
