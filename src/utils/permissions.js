@@ -100,6 +100,9 @@ export function hasPermission(member, commandName, config) {
  * @returns {boolean} True if member is a guild admin
  */
 export function isGuildAdmin(member, config) {
+  // TODO: Currently delegates to isAdmin. Exists as a separate function to allow
+  // future differentiation (e.g., per-guild permission overrides, guild-specific
+  // admin roles). See Issue #71.
   return isAdmin(member, config);
 }
 

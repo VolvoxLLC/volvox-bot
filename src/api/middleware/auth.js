@@ -39,14 +39,11 @@ export function requireAuth() {
     const apiSecret = req.headers['x-api-secret'];
     if (apiSecret) {
       if (!process.env.BOT_API_SECRET) {
-        warn('BOT_API_SECRET not configured — rejecting API request', {
+        warn('BOT_API_SECRET not configured — skipping API-secret auth and trying JWT', {
           ip: req.ip,
           path: req.path,
         });
-        return res.status(401).json({ error: 'API authentication not configured' });
-      }
-
-      if (isValidSecret(apiSecret)) {
+      } else if (isValidSecret(apiSecret)) {
         req.authMethod = 'api-secret';
         return next();
       }

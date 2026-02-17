@@ -6,7 +6,7 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
-import { error, info } from '../../logger.js';
+import { error, info, warn } from '../../logger.js';
 import { requireOAuth } from '../middleware/oauth.js';
 import { DISCORD_API, fetchUserGuilds } from '../utils/discordApi.js';
 import { sessionStore } from '../utils/sessionStore.js';
@@ -31,6 +31,18 @@ export function _seedOAuthState(state) {
 }
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Validate dashboard redirect target from environment config.
+ * Accepts HTTPS URLs for production and localhost HTTP for local development.
+ *
+ * @param {string|undefined} value - DASHBOARD_URL from environment
+ * @returns {boolean} True if URL is allowed
+ */
+function isValidDashboardUrl(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) return false;
+  return value.startsWith('https://') || value.startsWith('http://localhost');
+}
 
 /**
  * Remove expired state entries from the store
@@ -203,8 +215,16 @@ router.get('/discord/callback', async (req, res) => {
 
     info('User authenticated via OAuth2', { userId: user.id, username: user.username });
 
-    // Redirect with token as fragment to avoid server-side logging
-    const dashboardUrl = process.env.DASHBOARD_URL || '/';
+    // DASHBOARD_URL is admin-configured environment input, not user-controlled request data.
+    // Redirect with token as fragment to avoid server-side logging.
+    const dashboardUrl = isValidDashboardUrl(process.env.DASHBOARD_URL)
+      ? process.env.DASHBOARD_URL
+      : '/';
+    if (dashboardUrl === '/' && process.env.DASHBOARD_URL) {
+      warn('Invalid DASHBOARD_URL; falling back to root redirect', {
+        dashboardUrl: process.env.DASHBOARD_URL,
+      });
+    }
     res.redirect(`${dashboardUrl}#token=${token}`);
   } catch (err) {
     error('OAuth2 callback error', { error: err.message });

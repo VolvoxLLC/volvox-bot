@@ -9,6 +9,9 @@ const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 /**
  * TTL-based session store: userId -> { accessToken, expiresAt }
  * Extends Map to transparently handle expiry on get/has/delete.
+ * NOTE: This is an in-memory store that does not persist across restarts and does not
+ * scale across multiple processes. For multi-process deployments, replace with Redis
+ * or another shared session store.
  */
 class SessionStore extends Map {
   set(userId, accessToken) {

@@ -526,6 +526,35 @@ describe('guilds routes', () => {
         10,
       ]);
     });
+
+    it('should allow OAuth users with MANAGE_GUILD permission', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: String(0x20) }]);
+      mockPool.query.mockResolvedValueOnce({ rows: [{ count: 1 }] }).mockResolvedValueOnce({
+        rows: [{ id: 1, case_number: 1, action: 'warn', guild_id: 'guild1' }],
+      });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/moderation')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.total).toBe(1);
+    });
+
+    it('should deny OAuth users without moderator permissions', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '0' }]);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/moderation')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('moderator access');
+    });
   });
 
   describe('POST /:id/actions', () => {
