@@ -141,6 +141,7 @@ export async function stopServer() {
       if (typeof closing.closeAllConnections === 'function') {
         closing.closeAllConnections();
       }
+      server = null;
       resolve(); // Ensure shutdown completes even on timeout
     }, SHUTDOWN_TIMEOUT_MS);
 

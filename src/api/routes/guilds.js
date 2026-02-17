@@ -7,7 +7,6 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
-import { sanitizeMentions } from '../../utils/sanitizeMentions.js';
 
 const router = Router();
 
@@ -77,6 +76,8 @@ router.get('/:id', (req, res) => {
   const channels = [];
   for (const ch of guild.channels.cache.values()) {
     if (channels.length >= MAX_CHANNELS) break;
+    // type is discord.js ChannelType enum: 0=GuildText, 2=GuildVoice, 4=GuildCategory,
+    // 5=GuildAnnouncement, 13=GuildStageVoice, 15=GuildForum, 16=GuildMedia
     channels.push({ id: ch.id, name: ch.name, type: ch.type });
   }
 
@@ -252,7 +253,13 @@ router.get('/:id/moderation', async (req, res) => {
         req.params.id,
       ]),
       dbPool.query(
-        'SELECT id, guild_id, case_number, action, target_id, target_tag, moderator_id, moderator_tag, reason, duration, expires_at, log_message_id, created_at FROM mod_cases WHERE guild_id = $1 ORDER BY case_number DESC LIMIT $2 OFFSET $3',
+        `SELECT id, guild_id, case_number, action, target_id, target_tag,
+                moderator_id, moderator_tag, reason, duration, expires_at,
+                log_message_id, created_at
+         FROM mod_cases
+         WHERE guild_id = $1
+         ORDER BY case_number DESC
+         LIMIT $2 OFFSET $3`,
         [req.params.id, limit, offset],
       ),
     ]);
@@ -310,9 +317,11 @@ router.post('/:id/actions', async (req, res) => {
     }
 
     try {
-      const sanitizedContent = sanitizeMentions(content);
-      const message = await safeSend(channel, sanitizedContent);
+      // safeSend sanitizes mentions internally via prepareOptions() → sanitizeMessageOptions()
+      const message = await safeSend(channel, content);
       info('Message sent via API', { guild: req.params.id, channel: channelId });
+      // If content exceeded 2000 chars, safeSend splits into multiple messages;
+      // we return the first chunk's content and ID
       const sent = Array.isArray(message) ? message[0] : message;
       res.status(201).json({ id: sent.id, channelId, content: sent.content });
     } catch (err) {
