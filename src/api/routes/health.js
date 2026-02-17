@@ -17,6 +17,15 @@ const router = Router();
 router.get('/', (req, res) => {
   const { client } = req.app.locals;
 
+  // Defensive guard in case health check is hit before Discord login completes
+  if (!client?.ws) {
+    return res.json({
+      status: 'ok',
+      uptime: process.uptime(),
+      discord: { ws: { status: 'connecting' } },
+    });
+  }
+
   const body = {
     status: 'ok',
     uptime: process.uptime(),

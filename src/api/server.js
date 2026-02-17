@@ -60,12 +60,17 @@ export function createApp(client, dbPool) {
 
   // Error handling middleware
   app.use((err, _req, res, _next) => {
-    error('Unhandled API error', { error: err.message, stack: err.stack });
     // Pass through status code from body-parser or other middleware (e.g., 400 for malformed JSON)
     // Only use err.status/err.statusCode if it's a valid 4xx client error code
     // Otherwise default to 500 for server errors
     const statusCode = err.status ?? err.statusCode;
     const status = statusCode >= 400 && statusCode < 500 ? statusCode : 500;
+
+    // Only log stack trace for server errors (5xx), not client errors (4xx)
+    const logMeta = { error: err.message };
+    if (!statusCode || statusCode >= 500) logMeta.stack = err.stack;
+    error('Unhandled API error', logMeta);
+
     res.status(status).json({ error: status < 500 ? err.message : 'Internal server error' });
   });
 
@@ -136,6 +141,7 @@ export async function stopServer() {
       if (typeof closing.closeAllConnections === 'function') {
         closing.closeAllConnections();
       }
+      resolve(); // Ensure shutdown completes even on timeout
     }, SHUTDOWN_TIMEOUT_MS);
 
     closing.close((err) => {

@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
+import { sanitizeMentions } from '../../utils/sanitizeMentions.js';
 
 const router = Router();
 
@@ -95,7 +96,7 @@ router.get('/:id', (req, res) => {
  * API consistency but does not scope the returned config.
  * Per-guild config is tracked in Issue #71.
  */
-router.get('/:id/config', (_req, res) => {
+router.get('/:id/config', (req, res) => {
   const config = getConfig();
   const safeConfig = {};
   for (const key of READABLE_CONFIG_KEYS) {
@@ -141,6 +142,11 @@ router.patch('/:id/config', async (req, res) => {
     return res
       .status(400)
       .json({ error: 'Config path must include at least one dot separator (e.g., "ai.model")' });
+  }
+
+  const segments = path.split('.');
+  if (segments.some((s) => s === '')) {
+    return res.status(400).json({ error: 'Config path contains empty segments' });
   }
 
   try {
@@ -304,7 +310,8 @@ router.post('/:id/actions', async (req, res) => {
     }
 
     try {
-      const message = await safeSend(channel, content);
+      const sanitizedContent = sanitizeMentions(content);
+      const message = await safeSend(channel, sanitizedContent);
       info('Message sent via API', { guild: req.params.id, channel: channelId });
       const sent = Array.isArray(message) ? message[0] : message;
       res.status(201).json({ id: sent.id, channelId, content: sent.content });
