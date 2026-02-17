@@ -82,6 +82,7 @@
   "permissions": {
     "enabled": true,
     "adminRoleId": null,
+    "moderatorRoleId": null,
     "botOwners": ["191633014441115648"],
     "usePermissions": true,
     "allowedCommands": {
