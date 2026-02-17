@@ -245,7 +245,7 @@ router.get('/:id/moderation', async (req, res) => {
         req.params.id,
       ]),
       dbPool.query(
-        'SELECT * FROM mod_cases WHERE guild_id = $1 ORDER BY case_number DESC LIMIT $2 OFFSET $3',
+        'SELECT id, guild_id, case_number, action, target_id, target_tag, moderator_id, moderator_tag, reason, duration, expires_at, log_message_id, created_at FROM mod_cases WHERE guild_id = $1 ORDER BY case_number DESC LIMIT $2 OFFSET $3',
         [req.params.id, limit, offset],
       ),
     ]);
