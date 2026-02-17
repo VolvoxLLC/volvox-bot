@@ -409,10 +409,14 @@ export async function generateResponse(
   userId = null,
   guildId = null,
 ) {
+  // Use guild-aware config for AI settings (systemPrompt, model, maxTokens)
+  // so per-guild overrides via /config are respected. The `config` parameter
+  // is kept for backward compatibility but not used for AI-specific settings.
+  const guildConfig = getConfig(guildId);
   const history = await getHistoryAsync(channelId, guildId);
 
   let systemPrompt =
-    config.ai?.systemPrompt ||
+    guildConfig.ai?.systemPrompt ||
     `You are Volvox Bot, a helpful and friendly Discord bot for the Volvox developer community.
 You're witty, knowledgeable about programming and tech, and always eager to help.
 Keep responses concise and Discord-friendly (under 2000 chars).
@@ -454,8 +458,8 @@ You can use Discord markdown formatting.`;
         ...(OPENCLAW_TOKEN && { Authorization: `Bearer ${OPENCLAW_TOKEN}` }),
       },
       body: JSON.stringify({
-        model: config.ai?.model || 'claude-sonnet-4-20250514',
-        max_tokens: config.ai?.maxTokens || 1024,
+        model: guildConfig.ai?.model || 'claude-sonnet-4-20250514',
+        max_tokens: guildConfig.ai?.maxTokens || 1024,
         messages: messages,
       }),
     });

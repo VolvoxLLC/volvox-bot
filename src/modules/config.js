@@ -25,6 +25,12 @@ const listeners = [];
  * not cheap to rebuild without re-querying PostgreSQL.
  * Hot-path memory/performance pressure is handled separately by mergedConfigCache,
  * which stores computed global+guild views with LRU eviction.
+ *
+ * Expected upper bound: bounded by the number of guilds that have customized
+ * config via /config set or the PATCH API, which mirrors the distinct guild_id
+ * rows in the database. Each entry is small (only the override keys, not full
+ * config). For deployments with >1000 guilds with overrides, consider adding
+ * a size warning log or lazy-loading from DB on cache miss.
  * @type {Map<string, Object>}
  */
 let configCache = new Map();

@@ -349,6 +349,8 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
+      // generateResponse reads AI settings from getConfig(guildId), not the config param
+      getConfig.mockReturnValue({ ai: { systemPrompt: 'You are a bot.' } });
       const config = { ai: { systemPrompt: 'You are a bot.' } };
       const replyPromise = generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
 
