@@ -262,7 +262,7 @@ router.post('/:id/actions', async (req, res) => {
       res.status(500).json({ error: 'Failed to send message' });
     }
   } else {
-    res.status(400).json({ error: 'Unknown action' });
+    res.status(400).json({ error: 'Unsupported action type' });
   }
 });
 

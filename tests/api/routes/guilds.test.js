@@ -396,7 +396,7 @@ describe('guilds routes', () => {
         .send({ action: maliciousAction });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('Unknown action');
+      expect(res.body.error).toContain('Unsupported action type');
       expect(res.body.error).not.toContain(maliciousAction);
     });
 
