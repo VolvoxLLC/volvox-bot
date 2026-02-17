@@ -115,13 +115,16 @@ export async function initDb() {
         await pool.query(`
           ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT
         `);
-        await pool.query(`
-          CREATE INDEX IF NOT EXISTS idx_conversations_guild_id
-          ON conversations (guild_id)
-        `);
       } catch (err) {
-        warn('Failed to backfill guild_id column (requires PG 9.6+)', { error: err.message });
+        warn('Failed to add guild_id column (requires PG 9.6+)', { error: err.message });
       }
+
+      // Create index unconditionally - this ensures the DB is consistent even if ALTER TABLE failed
+      // (e.g., on older PG versions or if column already exists with different type)
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_conversations_guild_id
+        ON conversations (guild_id)
+      `);
 
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_conversations_channel_created
