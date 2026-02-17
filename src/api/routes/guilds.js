@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
+import { sessionStore } from './auth.js';
 
 const router = Router();
 
@@ -70,16 +71,17 @@ async function fetchUserGuilds(accessToken) {
 
 /**
  * Check if an OAuth2 user has admin permissions on a guild.
- * Fetches fresh guild list from Discord using the access token in the JWT.
+ * Fetches fresh guild list from Discord using the access token from the session store.
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
  * @returns {Promise<boolean>} True if user has ADMINISTRATOR permission
  */
 async function isOAuthGuildAdmin(user, guildId) {
-  if (!user?.accessToken) return false;
+  const accessToken = sessionStore.get(user?.userId);
+  if (!accessToken) return false;
   try {
-    const guilds = await fetchUserGuilds(user.accessToken);
+    const guilds = await fetchUserGuilds(accessToken);
     const guild = guilds.find((g) => g.id === guildId);
     if (!guild) return false;
     return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
@@ -134,12 +136,13 @@ router.get('/', async (req, res) => {
   const botGuilds = client.guilds.cache;
 
   if (req.authMethod === 'oauth') {
-    if (!req.user?.accessToken) {
+    const accessToken = sessionStore.get(req.user?.userId);
+    if (!accessToken) {
       return res.status(401).json({ error: 'Missing access token' });
     }
 
     try {
-      const userGuilds = await fetchUserGuilds(req.user.accessToken);
+      const userGuilds = await fetchUserGuilds(accessToken);
       const filtered = userGuilds
         .filter((ug) => {
           // User must have admin permission on the guild
