@@ -31,7 +31,8 @@ describe('isAdmin', () => {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
-    expect(isAdmin(member, {})).toBe(true);
+    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
+    expect(isAdmin(member, config)).toBe(true);
     expect(member.permissions.has).not.toHaveBeenCalled();
   });
 
@@ -41,7 +42,8 @@ describe('isAdmin', () => {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
-    expect(isAdmin(member, {})).toBe(true);
+    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
+    expect(isAdmin(member, config)).toBe(true);
   });
 
   it('should return true for bot owner from config.permissions.botOwners', () => {
@@ -53,6 +55,25 @@ describe('isAdmin', () => {
     };
     const config = { permissions: { botOwners: [customOwnerId] } };
     expect(isAdmin(member, config)).toBe(true);
+  });
+
+  it('should not treat old hardcoded owner ID as bot owner when botOwners is missing', () => {
+    const member = {
+      id: BOT_OWNER_ID,
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    expect(isAdmin(member, {})).toBe(false);
+  });
+
+  it('should not treat old hardcoded owner ID as bot owner when botOwners is empty', () => {
+    const member = {
+      id: BOT_OWNER_ID,
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    const config = { permissions: { botOwners: [] } };
+    expect(isAdmin(member, config)).toBe(false);
   });
 
   it('should return true for members with Administrator permission', () => {
@@ -102,12 +123,46 @@ describe('hasPermission', () => {
     const member = { id: BOT_OWNER_ID };
     const config = {
       permissions: {
+        botOwners: [BOT_OWNER_ID],
         enabled: true,
         usePermissions: true,
         allowedCommands: { config: 'admin' },
       },
     };
     expect(hasPermission(member, 'config', config)).toBe(true);
+  });
+
+  it('should not bypass for old hardcoded owner ID when botOwners is missing', () => {
+    const member = {
+      id: BOT_OWNER_ID,
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    const config = {
+      permissions: {
+        enabled: true,
+        usePermissions: true,
+        allowedCommands: { config: 'admin' },
+      },
+    };
+    expect(hasPermission(member, 'config', config)).toBe(false);
+  });
+
+  it('should not bypass for old hardcoded owner ID when botOwners is empty', () => {
+    const member = {
+      id: BOT_OWNER_ID,
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    const config = {
+      permissions: {
+        botOwners: [],
+        enabled: true,
+        usePermissions: true,
+        allowedCommands: { config: 'admin' },
+      },
+    };
+    expect(hasPermission(member, 'config', config)).toBe(false);
   });
 
   it('should return true when permissions are disabled', () => {
@@ -217,7 +272,8 @@ describe('isGuildAdmin', () => {
 
   it('should return true for bot owner', () => {
     const member = { id: BOT_OWNER_ID };
-    expect(isGuildAdmin(member, {})).toBe(true);
+    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
+    expect(isGuildAdmin(member, config)).toBe(true);
   });
 
   it('should return true for members with Administrator permission', () => {
@@ -262,7 +318,8 @@ describe('isModerator', () => {
 
   it('should return true for bot owner', () => {
     const member = { id: BOT_OWNER_ID };
-    expect(isModerator(member, {})).toBe(true);
+    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
+    expect(isModerator(member, config)).toBe(true);
   });
 
   it('should return true for members with ManageGuild permission', () => {
