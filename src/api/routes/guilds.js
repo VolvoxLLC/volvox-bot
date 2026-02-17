@@ -69,7 +69,9 @@ async function isOAuthGuildAdmin(user, guildId) {
   const guilds = await fetchUserGuilds(user.userId, accessToken);
   const guild = guilds.find((g) => g.id === guildId);
   if (!guild) return false;
-  return (Number(guild.permissions) & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
+  const permissions = Number(guild.permissions);
+  if (Number.isNaN(permissions)) return false;
+  return (permissions & ADMINISTRATOR_FLAG) === ADMINISTRATOR_FLAG;
 }
 
 /**
