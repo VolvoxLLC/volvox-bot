@@ -190,6 +190,53 @@ describe('per-guild configuration', () => {
     });
   });
 
+  describe('prototype pollution protection', () => {
+    it('should skip dangerous keys during deep merge', async () => {
+      const guildId = 'guild-proto-pollution';
+      delete Object.prototype.polluted;
+
+      try {
+        // Directly inject a guild override with __proto__ key into the cache
+        // to simulate a malicious value that bypassed path validation
+        await configModule.setConfigValue('ai.model', 'safe-model', guildId);
+
+        // Set a value whose parsed JSON contains __proto__ — this is the attack vector.
+        // When deepMerge iterates the guild override, it must skip __proto__.
+        await configModule.setConfigValue(
+          'ai.threadMode',
+          '{"__proto__":{"polluted":"yes"}}',
+          guildId,
+        );
+
+        // Trigger deepMerge by requesting guild config
+        configModule.getConfig(guildId);
+
+        // Object.prototype should NOT be polluted
+        expect(Object.prototype.polluted).toBeUndefined();
+      } finally {
+        await configModule.resetConfig('ai', guildId);
+        delete Object.prototype.polluted;
+      }
+    });
+
+    it('should skip constructor and prototype keys during deep merge', async () => {
+      const guildId = 'guild-constructor-pollution';
+
+      try {
+        const dangerousJson = '{"constructor":{"polluted":true},"prototype":{"evil":true}}';
+        await configModule.setConfigValue('ai.threadMode', dangerousJson, guildId);
+
+        const config = configModule.getConfig(guildId);
+
+        // The dangerous keys should not appear in the merged result's ai section
+        expect(config.ai.constructor).toBe(Object); // Should be the native constructor, not overridden
+        expect(config.ai.prototype).toBeUndefined();
+      } finally {
+        await configModule.resetConfig('ai', guildId);
+      }
+    });
+  });
+
   describe('fallback to global defaults', () => {
     it('should return global defaults for unknown guild', () => {
       const config = configModule.getConfig('unknown-guild');

@@ -65,6 +65,8 @@ let fileConfigCache = null;
  */
 function deepMerge(target, source) {
   for (const key of Object.keys(source)) {
+    if (DANGEROUS_KEYS.has(key)) continue;
+
     if (isPlainObject(target[key]) && isPlainObject(source[key])) {
       deepMerge(target[key], source[key]);
     } else {
