@@ -12,6 +12,7 @@ import { createApp } from '../../../src/api/server.js';
 describe('health route', () => {
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
   });
 
   function buildApp() {
