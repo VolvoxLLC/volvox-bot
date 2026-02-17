@@ -135,6 +135,10 @@ router.patch('/:id/config', async (req, res) => {
     return res.status(403).json({ error: 'Modifying this config key is not allowed' });
   }
 
+  if (!path.includes('.')) {
+    return res.status(400).json({ error: 'Config path must include at least one dot separator (e.g., "ai.model")' });
+  }
+
   try {
     const updated = await setConfigValue(path, value);
     info('Config updated via API', { path, value, guild: req.params.id });
