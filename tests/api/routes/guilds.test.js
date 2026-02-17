@@ -109,6 +109,7 @@ describe('guilds routes', () => {
         username: 'testuser',
       },
       secret,
+      { algorithm: 'HS256' },
     );
   }
 
@@ -148,7 +149,9 @@ describe('guilds routes', () => {
     it('should return 401 when session has been revoked', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
       // Sign a valid JWT but do NOT populate sessionStore
-      const token = jwt.sign({ userId: '789', username: 'revokeduser' }, 'jwt-test-secret');
+      const token = jwt.sign({ userId: '789', username: 'revokeduser' }, 'jwt-test-secret', {
+        algorithm: 'HS256',
+      });
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1')

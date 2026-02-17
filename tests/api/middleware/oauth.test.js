@@ -75,7 +75,9 @@ describe('requireOAuth middleware', () => {
   it('should attach decoded user and call next() for valid JWT', () => {
     vi.stubEnv('SESSION_SECRET', 'test-secret');
     sessionStore.set('123', 'discord-access-token');
-    const token = jwt.sign({ userId: '123', username: 'testuser' }, 'test-secret');
+    const token = jwt.sign({ userId: '123', username: 'testuser' }, 'test-secret', {
+      algorithm: 'HS256',
+    });
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireOAuth();
 
@@ -89,7 +91,10 @@ describe('requireOAuth middleware', () => {
 
   it('should return 401 for expired JWT', () => {
     vi.stubEnv('SESSION_SECRET', 'test-secret');
-    const token = jwt.sign({ userId: '123' }, 'test-secret', { expiresIn: '-1s' });
+    const token = jwt.sign({ userId: '123' }, 'test-secret', {
+      algorithm: 'HS256',
+      expiresIn: '-1s',
+    });
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireOAuth();
 
