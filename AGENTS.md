@@ -163,6 +163,15 @@ After every code change, check whether these files need updating:
 
 **Rule of thumb:** If a new contributor (human or AI) would be confused without the update, write it.
 
+## Config Hot-Reload Behavior
+
+Runtime config changes (via `/config set`) are handled in two ways:
+
+- **Per-request modules (AI, spam, moderation):** These modules call `getConfig()` on every invocation, so config changes take effect automatically on the next request. The `onConfigChange` listeners for these modules provide **observability only** (logging).
+- **Stateful objects (logging transport):** The PostgreSQL logging transport is a long-lived Winston transport. It requires **reactive wiring** — `onConfigChange` listeners that add/remove/recreate the transport when `logging.database.*` settings change at runtime. This is implemented in `src/index.js` startup.
+
+When adding new modules, prefer the per-request `getConfig()` pattern. Only add reactive `onConfigChange` wiring for stateful resources that can't re-read config on each use.
+
 ## Common Pitfalls
 
 1. **Missing `node:` prefix** — Biome will catch this, but remember it for new imports

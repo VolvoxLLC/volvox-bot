@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
+    addPostgresTransport: vi.fn(),
+    removePostgresTransport: vi.fn(),
   },
 
   db: {
@@ -43,6 +45,12 @@ const mocks = vi.hoisted(() => ({
 
   config: {
     loadConfig: vi.fn(),
+    onConfigChangeCallbacks: {},
+  },
+
+  postgres: {
+    initLogsTable: vi.fn(),
+    pruneOldLogs: vi.fn(),
   },
 
   events: {
@@ -136,6 +144,8 @@ vi.mock('../src/logger.js', () => ({
   info: mocks.logger.info,
   warn: mocks.logger.warn,
   error: mocks.logger.error,
+  addPostgresTransport: mocks.logger.addPostgresTransport,
+  removePostgresTransport: mocks.logger.removePostgresTransport,
 }));
 
 vi.mock('../src/modules/ai.js', () => ({
@@ -149,6 +159,17 @@ vi.mock('../src/modules/ai.js', () => ({
 
 vi.mock('../src/modules/config.js', () => ({
   loadConfig: mocks.config.loadConfig,
+  onConfigChange: vi.fn((path, cb) => {
+    if (!mocks.config.onConfigChangeCallbacks[path]) {
+      mocks.config.onConfigChangeCallbacks[path] = [];
+    }
+    mocks.config.onConfigChangeCallbacks[path].push(cb);
+  }),
+}));
+
+vi.mock('../src/transports/postgres.js', () => ({
+  initLogsTable: mocks.postgres.initLogsTable,
+  pruneOldLogs: mocks.postgres.pruneOldLogs,
 }));
 
 vi.mock('../src/modules/events.js', () => ({
@@ -197,6 +218,7 @@ async function importIndex({
   stateRaw = null,
   readdirFiles = [],
   loadConfigReject = null,
+  loadConfigResult = null,
   throwOnExit = true,
   checkMem0HealthImpl = null,
 } = {}) {
@@ -224,6 +246,8 @@ async function importIndex({
   mocks.logger.info.mockReset();
   mocks.logger.warn.mockReset();
   mocks.logger.error.mockReset();
+  mocks.logger.addPostgresTransport.mockReset().mockReturnValue({ _transport: true });
+  mocks.logger.removePostgresTransport.mockReset().mockResolvedValue(undefined);
 
   mocks.db.initDb.mockReset().mockResolvedValue({ query: vi.fn() });
   mocks.db.closeDb.mockReset().mockResolvedValue(undefined);
@@ -235,16 +259,22 @@ async function importIndex({
   mocks.ai.startConversationCleanup.mockReset();
   mocks.ai.stopConversationCleanup.mockReset();
 
+  mocks.config.onConfigChangeCallbacks = {};
+  mocks.postgres.initLogsTable.mockReset().mockResolvedValue(undefined);
+  mocks.postgres.pruneOldLogs.mockReset().mockResolvedValue(0);
+
   mocks.config.loadConfig.mockReset().mockImplementation(() => {
     if (loadConfigReject) {
       return Promise.reject(loadConfigReject);
     }
-    return Promise.resolve({
-      ai: { enabled: true, channels: [] },
-      welcome: { enabled: true, channelId: 'welcome-ch' },
-      moderation: { enabled: true },
-      permissions: { enabled: false, usePermissions: false },
-    });
+    return Promise.resolve(
+      loadConfigResult ?? {
+        ai: { enabled: true, channels: [] },
+        welcome: { enabled: true, channelId: 'welcome-ch' },
+        moderation: { enabled: true },
+        permissions: { enabled: false, usePermissions: false },
+      },
+    );
   });
 
   mocks.events.registerEventHandlers.mockReset();
@@ -581,6 +611,67 @@ describe('index.js', () => {
     });
   });
 
+  it('should remove postgres transport through transportLock on shutdown when logging.database is enabled', async () => {
+    await importIndex({
+      token: 'abc',
+      databaseUrl: 'postgres://db',
+      loadConfigResult: {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      },
+    });
+
+    // pgTransport was set during startup; clear the mock to isolate shutdown behavior
+    mocks.logger.removePostgresTransport.mockClear();
+
+    const sigintHandler = mocks.processHandlers.SIGINT;
+    await expect(sigintHandler()).rejects.toThrow('process.exit:0');
+
+    expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+    expect(process.exit).toHaveBeenCalledWith(0);
+  });
+
+  it('should await transportLock during shutdown even when pgTransport is temporarily null', async () => {
+    await importIndex({
+      token: 'abc',
+      databaseUrl: 'postgres://db',
+      loadConfigResult: {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      },
+    });
+
+    // pgTransport was set during startup; clear the mock to isolate shutdown behavior
+    mocks.logger.removePostgresTransport.mockClear();
+
+    // Make removePostgresTransport slow to simulate an in-flight lock chain
+    let resolveRemove;
+    mocks.logger.removePostgresTransport.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRemove = resolve;
+        }),
+    );
+
+    const sigintHandler = mocks.processHandlers.SIGINT;
+    const shutdownPromise = sigintHandler().catch(() => {});
+
+    // Let the lock chain's microtask queue progress
+    await vi.waitFor(() => {
+      expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+    });
+
+    // Resolve the slow remove so shutdown can complete
+    resolveRemove();
+    await shutdownPromise;
+
+    expect(process.exit).toHaveBeenCalledWith(0);
+  });
+
   it('should log load-state failure for invalid JSON', async () => {
     await importIndex({
       token: 'abc',
@@ -622,5 +713,228 @@ describe('index.js', () => {
       stack: expect.any(String),
     });
     expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  describe('config change listeners', () => {
+    /** Helper to invoke a captured onConfigChange callback */
+    function invokeConfigCallback(path, newValue, oldValue = undefined, fullPath = path) {
+      const cbs = mocks.config.onConfigChangeCallbacks[path];
+      if (!cbs || cbs.length === 0) {
+        throw new Error(`No onConfigChange callback registered for "${path}"`);
+      }
+      return Promise.all(cbs.map((cb) => cb(newValue, oldValue, fullPath)));
+    }
+
+    it('should enable postgres transport when logging.database.enabled toggled to true', async () => {
+      const loggingConfig = {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: false, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      };
+
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigResult: loggingConfig,
+      });
+
+      loggingConfig.logging.database.enabled = true;
+      await invokeConfigCallback('logging.database.enabled', true);
+
+      expect(mocks.postgres.initLogsTable).toHaveBeenCalled();
+      expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
+      expect(mocks.logger.info).toHaveBeenCalledWith(
+        'PostgreSQL logging transport enabled via config change',
+        { path: 'logging.database.enabled' },
+      );
+    });
+
+    it('should disable postgres transport when logging.database.enabled toggled to false', async () => {
+      // Start with logging enabled so pgTransport is set
+      const loggingConfig = {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      };
+
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigResult: loggingConfig,
+      });
+
+      // pgTransport should now be set from startup
+      expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
+
+      loggingConfig.logging.database.enabled = false;
+      await invokeConfigCallback('logging.database.enabled', false);
+
+      expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+      expect(mocks.logger.info).toHaveBeenCalledWith(
+        'PostgreSQL logging transport disabled via config change',
+        { path: 'logging.database.enabled' },
+      );
+    });
+
+    it('should recreate transport when batchSize changes while enabled', async () => {
+      const loggingConfig = {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      };
+
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigResult: loggingConfig,
+      });
+
+      mocks.logger.removePostgresTransport.mockClear();
+      mocks.logger.addPostgresTransport.mockClear();
+
+      await invokeConfigCallback('logging.database.batchSize', 20);
+
+      expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+      expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
+      expect(mocks.logger.info).toHaveBeenCalledWith(
+        'PostgreSQL logging transport recreated after config change',
+        { path: 'logging.database.batchSize' },
+      );
+    });
+
+    it('should recreate transport when flushIntervalMs changes while enabled', async () => {
+      const loggingConfig = {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      };
+
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigResult: loggingConfig,
+      });
+
+      mocks.logger.removePostgresTransport.mockClear();
+      mocks.logger.addPostgresTransport.mockClear();
+
+      await invokeConfigCallback('logging.database.flushIntervalMs', 10000);
+
+      expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+      expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
+    });
+
+    it('should recreate transport when minLevel changes while enabled', async () => {
+      const loggingConfig = {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      };
+
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigResult: loggingConfig,
+      });
+
+      mocks.logger.removePostgresTransport.mockClear();
+      mocks.logger.addPostgresTransport.mockClear();
+
+      await invokeConfigCallback('logging.database.minLevel', 'warn');
+
+      expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+      expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
+    });
+
+    it('should not recreate transport when param changes but transport is disabled', async () => {
+      await importIndex({ token: 'abc', databaseUrl: 'postgres://db' });
+
+      mocks.logger.removePostgresTransport.mockClear();
+      mocks.logger.addPostgresTransport.mockClear();
+
+      // pgTransport is null (logging.database.enabled was not set), so this should no-op
+      await invokeConfigCallback('logging.database.batchSize', 20);
+
+      expect(mocks.logger.removePostgresTransport).not.toHaveBeenCalled();
+      expect(mocks.logger.addPostgresTransport).not.toHaveBeenCalled();
+    });
+
+    it('should handle error when addPostgresTransport fails during hot toggle', async () => {
+      const loggingConfig = {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: false, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      };
+
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigResult: loggingConfig,
+      });
+
+      mocks.logger.addPostgresTransport.mockImplementation(() => {
+        throw new Error('transport init failed');
+      });
+
+      loggingConfig.logging.database.enabled = true;
+      await invokeConfigCallback('logging.database.enabled', true);
+
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'Failed to update PostgreSQL logging transport',
+        { path: 'logging.database.enabled', error: 'transport init failed' },
+      );
+    });
+
+    it('should handle error when recreating transport fails', async () => {
+      const loggingConfig = {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      };
+
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigResult: loggingConfig,
+      });
+
+      mocks.logger.removePostgresTransport.mockRejectedValueOnce(new Error('remove failed'));
+
+      await invokeConfigCallback('logging.database.batchSize', 50);
+
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'Failed to update PostgreSQL logging transport',
+        { path: 'logging.database.batchSize', error: 'remove failed' },
+      );
+    });
+
+    it('should log observability for ai/spam/moderation config changes', async () => {
+      await importIndex({ token: 'abc', databaseUrl: null });
+
+      await invokeConfigCallback('ai.*', 'gpt-4', undefined, 'ai.model');
+      expect(mocks.logger.info).toHaveBeenCalledWith('AI config updated', {
+        path: 'ai.model',
+        newValue: 'gpt-4',
+      });
+
+      await invokeConfigCallback('spam.*', true, undefined, 'spam.enabled');
+      expect(mocks.logger.info).toHaveBeenCalledWith('Spam config updated', {
+        path: 'spam.enabled',
+        newValue: true,
+      });
+
+      await invokeConfigCallback('moderation.*', false, undefined, 'moderation.automod');
+      expect(mocks.logger.info).toHaveBeenCalledWith('Moderation config updated', {
+        path: 'moderation.automod',
+        newValue: false,
+      });
+    });
   });
 });

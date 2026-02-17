@@ -26,7 +26,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
-import { loadConfig } from './modules/config.js';
+import { loadConfig, onConfigChange } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
@@ -55,6 +55,12 @@ dotenvConfig();
 // setConfigValue() propagate here automatically without re-assignment.
 let config = {};
 let pgTransport = null;
+// Promise-chain mutex that serializes all transport operations (enable/disable
+// and parameter-change recreates). Each handler appends to the chain so
+// concurrent config updates run sequentially instead of interleaving at await
+// points. This prevents double-remove, duplicate transports, and stale-settings
+// races between the `logging.database.enabled` and `logging.database.*` listeners.
+let transportLock = Promise.resolve();
 
 // Initialize Discord client with required intents.
 //
@@ -231,13 +237,16 @@ async function gracefulShutdown(signal) {
   saveState();
 
   // 3. Remove PostgreSQL logging transport (flushes remaining buffer)
-  if (pgTransport) {
-    try {
+  transportLock = transportLock.then(async () => {
+    if (pgTransport) {
       await removePostgresTransport(pgTransport);
       pgTransport = null;
-    } catch (err) {
-      error('Failed to close PostgreSQL logging transport', { error: err.message });
     }
+  });
+  try {
+    await transportLock;
+  } catch (err) {
+    error('Failed to close PostgreSQL logging transport', { error: err.message });
   }
 
   // 4. Close database pool
@@ -299,6 +308,73 @@ async function startup() {
   // Load config (from DB if available, else config.json)
   config = await loadConfig();
   info('Configuration loaded', { sections: Object.keys(config) });
+
+  // Register config change listeners for hot-reload
+  //
+  // Logging transport: stateful — requires reactive wiring to add/remove/recreate
+  // the PostgreSQL transport when config changes at runtime.
+  //
+  // All logging.database.* listeners funnel through a single helper serialized
+  // by transportLock. This eliminates races between enable/disable and param
+  // changes: only one transport operation runs at a time, and it always reads
+  // the latest config state.
+  async function updateLoggingTransport(changePath) {
+    if (!dbPool) return;
+    const dbConfig = config.logging?.database;
+    const enabled = dbConfig?.enabled;
+
+    if (enabled && !pgTransport) {
+      // Create: enabled + no transport
+      await initLogsTable(dbPool);
+      pgTransport = addPostgresTransport(dbPool, dbConfig);
+      info('PostgreSQL logging transport enabled via config change', { path: changePath });
+    } else if (enabled && pgTransport) {
+      // Recreate: enabled + transport exists (param change)
+      const oldTransport = pgTransport;
+      pgTransport = null;
+      await removePostgresTransport(oldTransport);
+      // Re-check enabled after the async removal — a concurrent disable may
+      // have changed the config while we were awaiting.
+      if (!config.logging?.database?.enabled) return;
+      pgTransport = addPostgresTransport(dbPool, dbConfig);
+      info('PostgreSQL logging transport recreated after config change', { path: changePath });
+    } else if (!enabled && pgTransport) {
+      // Remove: disabled + transport exists
+      await removePostgresTransport(pgTransport);
+      pgTransport = null;
+      info('PostgreSQL logging transport disabled via config change', { path: changePath });
+    }
+    // else: disabled + no transport — no-op
+  }
+
+  for (const key of [
+    'logging.database',
+    'logging.database.enabled',
+    'logging.database.batchSize',
+    'logging.database.flushIntervalMs',
+    'logging.database.minLevel',
+  ]) {
+    onConfigChange(key, async (_newValue, _oldValue, path) => {
+      transportLock = transportLock
+        .then(() => updateLoggingTransport(path))
+        .catch((err) =>
+          error('Failed to update PostgreSQL logging transport', { path, error: err.message }),
+        );
+      await transportLock;
+    });
+  }
+
+  // AI, spam, and moderation modules call getConfig() per-request, so config
+  // changes take effect automatically. Listeners provide observability only.
+  onConfigChange('ai.*', (newValue, _oldValue, path) => {
+    info('AI config updated', { path, newValue });
+  });
+  onConfigChange('spam.*', (newValue, _oldValue, path) => {
+    info('Spam config updated', { path, newValue });
+  });
+  onConfigChange('moderation.*', (newValue, _oldValue, path) => {
+    info('Moderation config updated', { path, newValue });
+  });
 
   // Set up AI module's DB pool reference
   if (dbPool) {
