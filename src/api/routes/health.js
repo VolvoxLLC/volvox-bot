@@ -4,8 +4,8 @@
  * Detailed memory usage requires authentication.
  */
 
-import crypto from 'node:crypto';
 import { Router } from 'express';
+import { isValidSecret } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -22,14 +22,7 @@ router.get('/', (req, res) => {
     uptime: process.uptime(),
   };
 
-  const secret = req.headers['x-api-secret'];
-  const expected = process.env.BOT_API_SECRET;
-  if (
-    expected &&
-    secret &&
-    secret.length === expected.length &&
-    crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected))
-  ) {
+  if (isValidSecret(req.headers['x-api-secret'])) {
     body.discord = {
       status: client.ws.status,
       ping: client.ws.ping,
