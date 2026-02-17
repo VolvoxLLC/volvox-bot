@@ -230,6 +230,7 @@ function createMockInteraction({
   userId = '123456',
   username = 'testuser',
   targetUser = null,
+  guildId = 'guild-123',
   hasManageGuild = false,
   hasAdmin = false,
 } = {}) {
@@ -245,6 +246,7 @@ function createMockInteraction({
       getUser: () => targetUser,
     },
     user: { id: userId, username },
+    guildId,
     memberPermissions: {
       has: (perm) => {
         if (perm === PermissionFlagsBits.ManageGuild) return hasManageGuild;
@@ -424,7 +426,7 @@ describe('memory command', () => {
 
       await execute(interaction);
 
-      expect(deleteAllMemories).toHaveBeenCalledWith('123456');
+      expect(deleteAllMemories).toHaveBeenCalledWith('123456', 'guild-123');
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('cleared'),
@@ -522,8 +524,8 @@ describe('memory command', () => {
       await execute(interaction);
 
       expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
-      expect(searchMemories).toHaveBeenCalledWith('123456', 'Rust', 100);
-      expect(deleteMemory).toHaveBeenCalledWith('mem-1');
+      expect(searchMemories).toHaveBeenCalledWith('123456', 'Rust', 100, 'guild-123');
+      expect(deleteMemory).toHaveBeenCalledWith('mem-1', 'guild-123');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('1 memory'),
@@ -588,8 +590,8 @@ describe('memory command', () => {
       await execute(interaction);
 
       expect(deleteMemory).toHaveBeenCalledTimes(2);
-      expect(deleteMemory).toHaveBeenCalledWith(0);
-      expect(deleteMemory).toHaveBeenCalledWith('mem-2');
+      expect(deleteMemory).toHaveBeenCalledWith(0, 'guild-123');
+      expect(deleteMemory).toHaveBeenCalledWith('mem-2', 'guild-123');
     });
 
     it('should skip memories with empty string, null, or undefined IDs', async () => {
@@ -612,7 +614,7 @@ describe('memory command', () => {
       await execute(interaction);
 
       expect(deleteMemory).toHaveBeenCalledTimes(1);
-      expect(deleteMemory).toHaveBeenCalledWith('valid-id');
+      expect(deleteMemory).toHaveBeenCalledWith('valid-id', 'guild-123');
     });
 
     it('should loop to delete all matching memories across multiple batches', async () => {
@@ -669,8 +671,8 @@ describe('memory command', () => {
 
       expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(deleteMemory).toHaveBeenCalledTimes(2);
-      expect(deleteMemory).toHaveBeenCalledWith('mem-1');
-      expect(deleteMemory).toHaveBeenCalledWith('mem-2');
+      expect(deleteMemory).toHaveBeenCalledWith('mem-1', 'guild-123');
+      expect(deleteMemory).toHaveBeenCalledWith('mem-2', 'guild-123');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('2 memories'),
@@ -711,7 +713,7 @@ describe('memory command', () => {
       await execute(interaction);
 
       expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
-      expect(getMemories).toHaveBeenCalledWith('999');
+      expect(getMemories).toHaveBeenCalledWith('999', 'guild-123');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('targetuser'),
@@ -856,7 +858,7 @@ describe('memory command', () => {
 
       await execute(interaction);
 
-      expect(deleteAllMemories).toHaveBeenCalledWith('999');
+      expect(deleteAllMemories).toHaveBeenCalledWith('999', 'guild-123');
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('targetuser'),

@@ -247,6 +247,8 @@ export function _setClient(newClient) {
 
 /**
  * Run a health check against the mem0 platform on startup.
+ * Intentionally uses getMemoryConfig() without guildId — this is a startup
+ * health check that verifies global mem0 connectivity, not guild-specific config.
  * Verifies the API key is configured and the SDK client can actually
  * communicate with the hosted platform by performing a lightweight search.
  * @param {object} [options]
@@ -309,10 +311,11 @@ export async function checkMem0Health({ signal } = {}) {
  * @param {string} userId - Discord user ID
  * @param {string} text - The memory text to store
  * @param {Object} [metadata] - Optional metadata
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if stored successfully
  */
-export async function addMemory(userId, text, metadata = {}) {
-  if (!checkAndRecoverMemory()) return false;
+export async function addMemory(userId, text, metadata = {}, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return false;
 
   try {
     const c = getClient();
@@ -382,10 +385,11 @@ export async function searchMemories(userId, query, limit, guildId) {
 /**
  * Get all memories for a user.
  * @param {string} userId - Discord user ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array<{id: string, memory: string}>>} All user memories
  */
-export async function getMemories(userId) {
-  if (!checkAndRecoverMemory()) return [];
+export async function getMemories(userId, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return [];
 
   try {
     const c = getClient();
@@ -413,10 +417,11 @@ export async function getMemories(userId) {
 /**
  * Delete all memories for a user.
  * @param {string} userId - Discord user ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if deleted successfully
  */
-export async function deleteAllMemories(userId) {
-  if (!checkAndRecoverMemory()) return false;
+export async function deleteAllMemories(userId, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return false;
 
   try {
     const c = getClient();
@@ -435,10 +440,11 @@ export async function deleteAllMemories(userId) {
 /**
  * Delete a specific memory by ID.
  * @param {string} memoryId - Memory ID to delete
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if deleted successfully
  */
-export async function deleteMemory(memoryId) {
-  if (!checkAndRecoverMemory()) return false;
+export async function deleteMemory(memoryId, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return false;
 
   try {
     const c = getClient();
