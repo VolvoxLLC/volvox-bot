@@ -70,7 +70,7 @@ describe('config change events', () => {
     await configModule.setConfigValue('ai.model', 'new-model');
 
     expect(cb).toHaveBeenCalledOnce();
-    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model');
+    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model', 'global');
   });
 
   it('should fire callback on prefix wildcard match', async () => {
@@ -80,7 +80,7 @@ describe('config change events', () => {
     await configModule.setConfigValue('ai.model', 'new-model');
 
     expect(cb).toHaveBeenCalledOnce();
-    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model');
+    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model', 'global');
   });
 
   it('should not fire callback for non-matching paths', async () => {
@@ -164,7 +164,7 @@ describe('config change events', () => {
 
     await configModule.setConfigValue('ai.enabled', 'false');
 
-    expect(cb).toHaveBeenCalledWith(false, true, 'ai.enabled');
+    expect(cb).toHaveBeenCalledWith(false, true, 'ai.enabled', 'global');
   });
 
   it('should pass undefined as oldValue for new keys', async () => {
@@ -173,7 +173,7 @@ describe('config change events', () => {
 
     await configModule.setConfigValue('ai.newKey', 'hello');
 
-    expect(cb).toHaveBeenCalledWith('hello', undefined, 'ai.newKey');
+    expect(cb).toHaveBeenCalledWith('hello', undefined, 'ai.newKey', 'global');
   });
 
   it('should deep clone object oldValues', async () => {
@@ -209,7 +209,7 @@ describe('config change events', () => {
 
     await configModule.setConfigValue('ai.deep.nested.key', 'value');
 
-    expect(cb).toHaveBeenCalledWith('value', undefined, 'ai.deep.nested.key');
+    expect(cb).toHaveBeenCalledWith('value', undefined, 'ai.deep.nested.key', 'global');
   });
 
   it('should not skip listeners when one calls offConfigChange during callback', async () => {

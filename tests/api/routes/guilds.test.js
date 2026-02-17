@@ -162,7 +162,7 @@ describe('guilds routes', () => {
         .send({ path: 'ai.model', value: 'claude-4' });
 
       expect(res.status).toBe(200);
-      expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'claude-4');
+      expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'claude-4', 'guild1');
     });
 
     it('should return 400 when request body is missing', async () => {

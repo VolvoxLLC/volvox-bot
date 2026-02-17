@@ -36,6 +36,7 @@ import { getConfig, setConfigValue } from '../../src/modules/config.js';
 function createInteraction(subcommand) {
   const collectHandlers = {};
   return {
+    guildId: 'test-guild',
     options: {
       getSubcommand: vi.fn().mockReturnValue(subcommand),
     },
@@ -109,13 +110,41 @@ describe('modlog command', () => {
       await execute(interaction);
 
       expect(setConfigValue).toHaveBeenCalledTimes(7);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.default', null);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.warns', null);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.bans', null);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.kicks', null);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.timeouts', null);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.purges', null);
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.locks', null);
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.default',
+        null,
+        'test-guild',
+      );
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.warns',
+        null,
+        'test-guild',
+      );
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.bans',
+        null,
+        'test-guild',
+      );
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.kicks',
+        null,
+        'test-guild',
+      );
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.timeouts',
+        null,
+        'test-guild',
+      );
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.purges',
+        null,
+        'test-guild',
+      );
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.locks',
+        null,
+        'test-guild',
+      );
 
       expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('disabled'));
     });
@@ -192,7 +221,11 @@ describe('modlog command', () => {
       };
       await collectHandler(channelInteraction);
 
-      expect(setConfigValue).toHaveBeenCalledWith('moderation.logging.channels.warns', '999');
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'moderation.logging.channels.warns',
+        '999',
+        'test-guild',
+      );
       expect(channelInteraction.update).toHaveBeenCalled();
     });
 

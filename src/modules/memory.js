@@ -134,11 +134,12 @@ function getClient() {
 
 /**
  * Get memory config from bot config
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Object} Memory configuration with defaults applied
  */
-export function getMemoryConfig() {
+export function getMemoryConfig(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     return {
       enabled: config?.memory?.enabled ?? true,
       maxContextMemories: config?.memory?.maxContextMemories ?? DEFAULT_MAX_CONTEXT_MEMORIES,

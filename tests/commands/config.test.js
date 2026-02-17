@@ -32,6 +32,7 @@ describe('config command', () => {
     it('should autocomplete section names', async () => {
       const mockRespond = vi.fn();
       const interaction = {
+        guildId: 'test-guild',
         options: {
           getFocused: vi.fn().mockReturnValue({ name: 'section', value: 'ai' }),
         },
@@ -48,6 +49,7 @@ describe('config command', () => {
     it('should autocomplete dot-notation paths', async () => {
       const mockRespond = vi.fn();
       const interaction = {
+        guildId: 'test-guild',
         options: {
           getFocused: vi.fn().mockReturnValue({ name: 'path', value: 'ai.' }),
         },
@@ -66,6 +68,7 @@ describe('config command', () => {
       it('should display all config sections', async () => {
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('view'),
             getString: vi.fn().mockReturnValue(null),
@@ -82,6 +85,7 @@ describe('config command', () => {
       it('should display specific section', async () => {
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('view'),
             getString: vi.fn().mockReturnValue('ai'),
@@ -98,6 +102,7 @@ describe('config command', () => {
       it('should error for unknown section', async () => {
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('view'),
             getString: vi.fn().mockReturnValue('nonexistent'),
@@ -130,6 +135,7 @@ describe('config command', () => {
         });
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('view'),
             getString: vi.fn().mockReturnValue(null),
@@ -154,6 +160,7 @@ describe('config command', () => {
         });
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('view'),
             getString: vi.fn().mockReturnValue(null),
@@ -180,6 +187,7 @@ describe('config command', () => {
           });
           const mockReply = vi.fn();
           const interaction = {
+            guildId: 'test-guild',
             options: {
               getSubcommand: vi.fn().mockReturnValue('view'),
               getString: vi.fn().mockReturnValue(null),
@@ -205,6 +213,7 @@ describe('config command', () => {
       it('should set a config value', async () => {
         const mockEditReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('set'),
             getString: vi.fn().mockImplementation((name) => {
@@ -218,13 +227,14 @@ describe('config command', () => {
         };
 
         await execute(interaction);
-        expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'new-model');
+        expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'new-model', 'test-guild');
         expect(mockEditReply).toHaveBeenCalled();
       });
 
       it('should reject invalid section', async () => {
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('set'),
             getString: vi.fn().mockImplementation((name) => {
@@ -249,6 +259,7 @@ describe('config command', () => {
         setConfigValue.mockRejectedValueOnce(new Error('DB error'));
         const mockEditReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('set'),
             getString: vi.fn().mockImplementation((name) => {
@@ -276,6 +287,7 @@ describe('config command', () => {
         setConfigValue.mockRejectedValueOnce(new Error('error'));
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('set'),
             getString: vi.fn().mockImplementation((name) => {
@@ -304,6 +316,7 @@ describe('config command', () => {
       it('should reset specific section', async () => {
         const mockEditReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('reset'),
             getString: vi.fn().mockReturnValue('ai'),
@@ -313,13 +326,14 @@ describe('config command', () => {
         };
 
         await execute(interaction);
-        expect(resetConfig).toHaveBeenCalledWith('ai');
+        expect(resetConfig).toHaveBeenCalledWith('ai', 'test-guild');
         expect(mockEditReply).toHaveBeenCalled();
       });
 
       it('should reset all when no section specified', async () => {
         const mockEditReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('reset'),
             getString: vi.fn().mockReturnValue(null),
@@ -329,13 +343,14 @@ describe('config command', () => {
         };
 
         await execute(interaction);
-        expect(resetConfig).toHaveBeenCalledWith(undefined);
+        expect(resetConfig).toHaveBeenCalledWith(undefined, 'test-guild');
       });
 
       it('should handle reset error with deferred reply', async () => {
         resetConfig.mockRejectedValueOnce(new Error('reset failed'));
         const mockEditReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('reset'),
             getString: vi.fn().mockReturnValue('ai'),
@@ -355,6 +370,7 @@ describe('config command', () => {
         resetConfig.mockRejectedValueOnce(new Error('reset failed'));
         const mockReply = vi.fn();
         const interaction = {
+          guildId: 'test-guild',
           options: {
             getSubcommand: vi.fn().mockReturnValue('reset'),
             getString: vi.fn().mockReturnValue('ai'),
@@ -378,6 +394,7 @@ describe('config command', () => {
     it('should reply with error for unknown subcommand', async () => {
       const mockReply = vi.fn();
       const interaction = {
+        guildId: 'test-guild',
         options: { getSubcommand: vi.fn().mockReturnValue('unknown') },
         reply: mockReply,
       };

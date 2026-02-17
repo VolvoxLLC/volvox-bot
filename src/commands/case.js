@@ -219,7 +219,7 @@ async function handleReason(interaction) {
   // Try to edit the log message if it exists
   if (caseRow.log_message_id) {
     try {
-      const config = getConfig();
+      const config = getConfig(interaction.guildId);
       const channels = config.moderation?.logging?.channels;
       if (channels) {
         const channelKey = ACTION_LOG_CHANNEL_KEY[caseRow.action];

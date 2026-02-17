@@ -28,11 +28,12 @@ const pendingHydrations = new Map();
 
 /**
  * Get the configured history length from config
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} History length
  */
-function getHistoryLength() {
+function getHistoryLength(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     const len = config?.ai?.historyLength;
     if (typeof len === 'number' && len > 0) return len;
   } catch {
@@ -43,11 +44,12 @@ function getHistoryLength() {
 
 /**
  * Get the configured TTL days from config
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} TTL in days
  */
-function getHistoryTTLDays() {
+function getHistoryTTLDays(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     const ttl = config?.ai?.historyTTLDays;
     if (typeof ttl === 'number' && ttl > 0) return ttl;
   } catch {

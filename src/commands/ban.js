@@ -41,7 +41,7 @@ export async function execute(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
 
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const user = interaction.options.getUser('user');
     const reason = interaction.options.getString('reason');
     const deleteMessageDays = interaction.options.getInteger('delete_messages') || 0;

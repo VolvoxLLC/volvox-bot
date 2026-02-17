@@ -91,10 +91,32 @@ export async function initDb() {
       // Create schema
       await pool.query(`
         CREATE TABLE IF NOT EXISTS config (
-          key TEXT PRIMARY KEY,
+          guild_id TEXT NOT NULL DEFAULT 'global',
+          key TEXT NOT NULL,
           value JSONB NOT NULL,
-          updated_at TIMESTAMPTZ DEFAULT NOW()
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          PRIMARY KEY (guild_id, key)
         )
+      `);
+
+      // Migrate existing config table: add guild_id column and composite PK
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'config' AND column_name = 'guild_id'
+          ) THEN
+            ALTER TABLE config ADD COLUMN guild_id TEXT NOT NULL DEFAULT 'global';
+            ALTER TABLE config DROP CONSTRAINT config_pkey;
+            ALTER TABLE config ADD PRIMARY KEY (guild_id, key);
+          END IF;
+        END $$
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_config_guild_id
+        ON config (guild_id)
       `);
 
       await pool.query(`

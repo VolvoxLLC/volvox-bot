@@ -46,7 +46,7 @@ export async function execute(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
 
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const user = interaction.options.getUser('user');
     const durationStr = interaction.options.getString('duration');
     const reason = interaction.options.getString('reason');

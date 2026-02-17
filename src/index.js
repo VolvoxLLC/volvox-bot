@@ -372,7 +372,7 @@ async function startup() {
     });
   }
 
-  // AI, spam, and moderation modules call getConfig() per-request, so config
+  // AI, spam, and moderation modules call getConfig(guildId) per-request, so config
   // changes take effect automatically. Listeners provide observability only.
   onConfigChange('ai.*', (newValue, _oldValue, path) => {
     info('AI config updated', { path, newValue });

@@ -59,11 +59,12 @@ export function snapAutoArchiveDuration(minutes) {
 
 /**
  * Retrieve threading configuration derived from the bot config, falling back to sensible defaults.
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {{ enabled: boolean, autoArchiveMinutes: number, reuseWindowMs: number }} An object where `enabled` is `true` if threading is enabled; `autoArchiveMinutes` is the thread auto-archive duration in minutes; and `reuseWindowMs` is the thread reuse window in milliseconds.
  */
-export function getThreadConfig() {
+export function getThreadConfig(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     const threadMode = config?.ai?.threadMode;
 
     const rawArchive = threadMode?.autoArchiveMinutes;
@@ -97,7 +98,7 @@ export function getThreadConfig() {
  * @returns {boolean} `true` if the message is eligible for thread handling, `false` otherwise.
  */
 export function shouldUseThread(message) {
-  const threadConfig = getThreadConfig();
+  const threadConfig = getThreadConfig(message.guild?.id);
   if (!threadConfig.enabled) return false;
 
   // Don't create threads in DMs
@@ -200,7 +201,7 @@ export function buildThreadKey(userId, channelId) {
  * @returns {Promise<import('discord.js').ThreadChannel|null>} `ThreadChannel` if a reusable thread was found and prepared, `null` otherwise.
  */
 export async function findExistingThread(message) {
-  const threadConfig = getThreadConfig();
+  const threadConfig = getThreadConfig(message.guild?.id);
   const key = buildThreadKey(message.author.id, message.channel.id);
   const entry = activeThreads.get(key);
 
@@ -256,7 +257,7 @@ export async function findExistingThread(message) {
  * @returns {Promise<import('discord.js').ThreadChannel>} The created thread channel.
  */
 export async function createThread(message, cleanContent) {
-  const threadConfig = getThreadConfig();
+  const threadConfig = getThreadConfig(message.guild?.id);
   const threadName = generateThreadName(
     message.author.displayName || message.author.username,
     cleanContent,

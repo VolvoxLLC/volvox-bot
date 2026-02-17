@@ -93,12 +93,10 @@ router.get('/:id', (req, res) => {
 
 /**
  * GET /:id/config — Read guild config (safe keys only)
- * Note: Config is global, not per-guild. The guild ID is accepted for
- * API consistency but does not scope the returned config.
- * Per-guild config is tracked in Issue #71.
+ * Returns per-guild config (global defaults merged with guild overrides).
  */
 router.get('/:id/config', (req, res) => {
-  const config = getConfig();
+  const config = getConfig(req.params.id);
   const safeConfig = {};
   for (const key of READABLE_CONFIG_KEYS) {
     if (key in config) {
@@ -106,18 +104,15 @@ router.get('/:id/config', (req, res) => {
     }
   }
   res.json({
-    scope: 'global',
-    note: 'Config is global, not per-guild. Per-guild config is tracked in Issue #71.',
+    guildId: req.params.id,
     ...safeConfig,
   });
 });
 
 /**
- * PATCH /:id/config — Update a config value (safe keys only)
+ * PATCH /:id/config — Update a guild-specific config value (safe keys only)
  * Body: { path: "ai.model", value: "claude-3" }
- * Note: Config is global, not per-guild. The guild ID is accepted for
- * API consistency but does not scope the update.
- * Per-guild config is tracked in Issue #71.
+ * Writes to the per-guild config overrides for the requested guild.
  */
 router.patch('/:id/config', async (req, res) => {
   if (!req.body) {
@@ -151,7 +146,7 @@ router.patch('/:id/config', async (req, res) => {
   }
 
   try {
-    const updated = await setConfigValue(path, value);
+    const updated = await setConfigValue(path, value, req.params.id);
     info('Config updated via API', { path, value, guild: req.params.id });
     res.json(updated);
   } catch (err) {

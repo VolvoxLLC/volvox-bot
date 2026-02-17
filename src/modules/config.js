@@ -1,6 +1,7 @@
 /**
  * Configuration Module
  * Loads config from PostgreSQL with config.json as the seed/fallback
+ * Supports per-guild config overrides merged onto global defaults
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -15,11 +16,30 @@ const configPath = join(__dirname, '..', '..', 'config.json');
 /** @type {Array<{path: string, callback: Function}>} Registered change listeners */
 const listeners = [];
 
-/** @type {Object} In-memory config cache */
-let configCache = {};
+/** @type {Map<string, Object>} In-memory config cache keyed by guild_id ('global' for defaults) */
+let configCache = new Map();
 
 /** @type {Object|null} Cached config.json contents (loaded once, never invalidated) */
 let fileConfigCache = null;
+
+/**
+ * Deep merge guild overrides onto global defaults.
+ * For each key, if both source and target have plain objects, merge recursively.
+ * Otherwise the source (guild override) value wins.
+ * @param {Object} target - Cloned global defaults (mutated in place)
+ * @param {Object} source - Guild overrides
+ * @returns {Object} The merged target
+ */
+function deepMerge(target, source) {
+  for (const key of Object.keys(source)) {
+    if (isPlainObject(target[key]) && isPlainObject(source[key])) {
+      deepMerge(target[key], source[key]);
+    } else {
+      target[key] = structuredClone(source[key]);
+    }
+  }
+  return target;
+}
 
 /**
  * Load config.json from disk (used as seed/fallback)
@@ -45,7 +65,7 @@ export function loadConfigFromFile() {
 /**
  * Load config from PostgreSQL, seeding from config.json if empty
  * Falls back to config.json if database is unavailable
- * @returns {Promise<Object>} Configuration object
+ * @returns {Promise<Object>} Global configuration object (for backward compat)
  */
 export async function loadConfig() {
   // Try loading config.json — DB may have valid config even if file is missing
@@ -69,14 +89,20 @@ export async function loadConfig() {
         );
       }
       info('Database not available, using config.json');
-      configCache = structuredClone(fileConfig);
-      return configCache;
+      configCache = new Map();
+      configCache.set('global', structuredClone(fileConfig));
+      return configCache.get('global');
     }
 
-    // Check if config table has any rows
-    const { rows } = await pool.query('SELECT key, value FROM config');
+    // Fetch ALL config rows (all guilds)
+    const { rows } = await pool.query('SELECT guild_id, key, value FROM config');
 
-    if (rows.length === 0) {
+    // Separate global rows from guild-specific rows.
+    // Treat rows with missing/undefined guild_id as 'global' (handles unmigrated DBs).
+    const globalRows = rows.filter((r) => !r.guild_id || r.guild_id === 'global');
+    const guildRows = rows.filter((r) => r.guild_id && r.guild_id !== 'global');
+
+    if (globalRows.length === 0) {
       if (!fileConfig) {
         throw new Error(
           'No configuration source available: database is empty and config.json is missing',
@@ -89,13 +115,14 @@ export async function loadConfig() {
         await client.query('BEGIN');
         for (const [key, value] of Object.entries(fileConfig)) {
           await client.query(
-            'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-            [key, JSON.stringify(value)],
+            'INSERT INTO config (guild_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (guild_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
+            ['global', key, JSON.stringify(value)],
           );
         }
         await client.query('COMMIT');
         info('Config seeded to database');
-        configCache = structuredClone(fileConfig);
+        configCache = new Map();
+        configCache.set('global', structuredClone(fileConfig));
       } catch (txErr) {
         try {
           await client.query('ROLLBACK');
@@ -107,12 +134,28 @@ export async function loadConfig() {
         client.release();
       }
     } else {
-      // Load from database
-      configCache = {};
-      for (const row of rows) {
-        configCache[row.key] = row.value;
+      // Build config map from database rows
+      configCache = new Map();
+
+      // Build global config
+      const globalConfig = {};
+      for (const row of globalRows) {
+        globalConfig[row.key] = row.value;
       }
-      info('Config loaded from database');
+      configCache.set('global', globalConfig);
+
+      // Build per-guild configs (overrides only)
+      for (const row of guildRows) {
+        if (!configCache.has(row.guild_id)) {
+          configCache.set(row.guild_id, {});
+        }
+        configCache.get(row.guild_id)[row.key] = row.value;
+      }
+
+      info('Config loaded from database', {
+        globalKeys: globalRows.length,
+        guildCount: new Set(guildRows.map((r) => r.guild_id)).size,
+      });
     }
   } catch (err) {
     if (!fileConfig) {
@@ -120,18 +163,33 @@ export async function loadConfig() {
       throw err;
     }
     logError('Failed to load config from database, using config.json', { error: err.message });
-    configCache = structuredClone(fileConfig);
+    configCache = new Map();
+    configCache.set('global', structuredClone(fileConfig));
   }
 
-  return configCache;
+  return configCache.get('global');
 }
 
 /**
- * Get the current config (from cache)
+ * Get the current config (from cache).
+ * If no guildId (or guildId='global'), returns the global config object.
+ * If guildId provided, returns deep merge of global defaults + guild overrides.
+ * @param {string} [guildId] - Guild ID, or omit / 'global' for global defaults
  * @returns {Object} Configuration object
  */
-export function getConfig() {
-  return configCache;
+export function getConfig(guildId) {
+  if (!guildId || guildId === 'global') {
+    return configCache.get('global') || {};
+  }
+
+  const globalConfig = configCache.get('global') || {};
+  const guildOverrides = configCache.get(guildId);
+
+  if (!guildOverrides) {
+    return structuredClone(globalConfig);
+  }
+
+  return deepMerge(structuredClone(globalConfig), guildOverrides);
 }
 
 /**
@@ -154,7 +212,7 @@ function getNestedValue(obj, pathParts) {
  * Register a listener for config changes.
  * Use exact paths (e.g. "ai.model") or prefix wildcards (e.g. "ai.*").
  * @param {string} pathOrPrefix - Dot-notation path or prefix with wildcard
- * @param {Function} callback - Called with (newValue, oldValue, fullPath)
+ * @param {Function} callback - Called with (newValue, oldValue, fullPath, guildId)
  */
 export function onConfigChange(pathOrPrefix, callback) {
   listeners.push({ path: pathOrPrefix, callback });
@@ -183,8 +241,9 @@ export function clearConfigListeners() {
  * @param {string} fullPath - The full dot-notation path that changed
  * @param {*} newValue - The new value
  * @param {*} oldValue - The previous value
+ * @param {string} guildId - The guild ID that changed ('global' for global)
  */
-async function emitConfigChangeEvents(fullPath, newValue, oldValue) {
+async function emitConfigChangeEvents(fullPath, newValue, oldValue, guildId) {
   for (const listener of [...listeners]) {
     const isExact = listener.path === fullPath;
     const isPrefix =
@@ -193,7 +252,7 @@ async function emitConfigChangeEvents(fullPath, newValue, oldValue) {
       fullPath.startsWith(listener.path.replace(/\.\*$/, '.'));
     if (isExact || isPrefix) {
       try {
-        const result = listener.callback(newValue, oldValue, fullPath);
+        const result = listener.callback(newValue, oldValue, fullPath, guildId);
         if (result && typeof result.then === 'function') {
           await result.catch((err) => {
             logWarn('Async config change listener error', {
@@ -217,9 +276,10 @@ async function emitConfigChangeEvents(fullPath, newValue, oldValue) {
  * Persists to database and updates in-memory cache
  * @param {string} path - Dot-notation path (e.g., "ai.model")
  * @param {*} value - Value to set (automatically parsed from string)
+ * @param {string} [guildId='global'] - Guild ID, or 'global' for global defaults
  * @returns {Promise<Object>} Updated section config
  */
-export async function setConfigValue(path, value) {
+export async function setConfigValue(path, value, guildId = 'global') {
   const parts = path.split('.');
   if (parts.length < 2) {
     throw new Error('Path must include section and key (e.g., "ai.model")');
@@ -232,8 +292,11 @@ export async function setConfigValue(path, value) {
   const nestedParts = parts.slice(1);
   const parsedVal = parseValue(value);
 
+  // Get the current guild entry from cache (or empty object for new guild)
+  const guildConfig = configCache.get(guildId) || {};
+
   // Deep clone the section for the INSERT case (new section that doesn't exist yet)
-  const sectionClone = structuredClone(configCache[section] || {});
+  const sectionClone = structuredClone(guildConfig[section] || {});
   setNestedValue(sectionClone, nestedParts, parsedVal);
 
   // Write to database first, then update cache.
@@ -257,24 +320,25 @@ export async function setConfigValue(path, value) {
     try {
       await client.query('BEGIN');
       // Lock the row (or prepare for INSERT if missing)
-      const { rows } = await client.query('SELECT value FROM config WHERE key = $1 FOR UPDATE', [
-        section,
-      ]);
+      const { rows } = await client.query(
+        'SELECT value FROM config WHERE guild_id = $1 AND key = $2 FOR UPDATE',
+        [guildId, section],
+      );
 
       if (rows.length > 0) {
         // Row exists — merge change into the live DB value
         const dbSection = rows[0].value;
         setNestedValue(dbSection, nestedParts, parsedVal);
 
-        await client.query('UPDATE config SET value = $1, updated_at = NOW() WHERE key = $2', [
-          JSON.stringify(dbSection),
-          section,
-        ]);
+        await client.query(
+          'UPDATE config SET value = $1, updated_at = NOW() WHERE guild_id = $2 AND key = $3',
+          [JSON.stringify(dbSection), guildId, section],
+        );
       } else {
         // New section — use ON CONFLICT to handle concurrent inserts safely
         await client.query(
-          'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-          [section, JSON.stringify(sectionClone)],
+          'INSERT INTO config (guild_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (guild_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
+          [guildId, section, JSON.stringify(sectionClone)],
         );
       }
       await client.query('COMMIT');
@@ -291,31 +355,82 @@ export async function setConfigValue(path, value) {
     }
   }
 
+  // Ensure guild entry exists in cache
+  if (!configCache.has(guildId)) {
+    configCache.set(guildId, {});
+  }
+  const cacheEntry = configCache.get(guildId);
+
   // Capture old value before mutating cache (deep clone objects to preserve snapshot)
-  const rawOld = getNestedValue(configCache[section], nestedParts);
+  const rawOld = getNestedValue(cacheEntry[section], nestedParts);
   const oldValue = rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
 
   // Update in-memory cache (mutate in-place for reference propagation)
   if (
-    !configCache[section] ||
-    typeof configCache[section] !== 'object' ||
-    Array.isArray(configCache[section])
+    !cacheEntry[section] ||
+    typeof cacheEntry[section] !== 'object' ||
+    Array.isArray(cacheEntry[section])
   ) {
-    configCache[section] = {};
+    cacheEntry[section] = {};
   }
-  setNestedValue(configCache[section], nestedParts, parsedVal);
+  setNestedValue(cacheEntry[section], nestedParts, parsedVal);
 
-  info('Config updated', { path, value: parsedVal, persisted: dbPersisted });
-  await emitConfigChangeEvents(path, parsedVal, oldValue);
-  return configCache[section];
+  info('Config updated', { path, value: parsedVal, guildId, persisted: dbPersisted });
+  await emitConfigChangeEvents(path, parsedVal, oldValue, guildId);
+  return cacheEntry[section];
 }
 
 /**
- * Reset a config section to config.json defaults
+ * Reset a config section to defaults.
+ * For global: resets to config.json defaults.
+ * For guild: deletes guild overrides (falls back to global).
  * @param {string} [section] - Section to reset, or all if omitted
- * @returns {Promise<Object>} Reset config
+ * @param {string} [guildId='global'] - Guild ID, or 'global' for global defaults
+ * @returns {Promise<Object>} Reset config (global config object for global, or remaining guild overrides)
  */
-export async function resetConfig(section) {
+export async function resetConfig(section, guildId = 'global') {
+  // Guild reset — just delete overrides
+  if (guildId !== 'global') {
+    let pool = null;
+    try {
+      pool = getPool();
+    } catch {
+      logWarn('Database unavailable for config reset — updating in-memory only');
+    }
+
+    if (pool) {
+      try {
+        if (section) {
+          await pool.query('DELETE FROM config WHERE guild_id = $1 AND key = $2', [
+            guildId,
+            section,
+          ]);
+        } else {
+          await pool.query('DELETE FROM config WHERE guild_id = $1', [guildId]);
+        }
+      } catch (err) {
+        logError('Database error during guild config reset — updating in-memory only', {
+          guildId,
+          section,
+          error: err.message,
+        });
+      }
+    }
+
+    const guildConfig = configCache.get(guildId);
+    if (guildConfig) {
+      if (section) {
+        delete guildConfig[section];
+      } else {
+        configCache.delete(guildId);
+      }
+    }
+
+    info('Guild config reset', { guildId, section: section || 'all' });
+    return section ? configCache.get(guildId) || {} : {};
+  }
+
+  // Global reset — same logic as before, resets to config.json defaults
   let fileConfig;
   try {
     fileConfig = loadConfigFromFile();
@@ -333,6 +448,8 @@ export async function resetConfig(section) {
     logWarn('Database unavailable for config reset — updating in-memory only');
   }
 
+  const globalConfig = configCache.get('global') || {};
+
   if (section) {
     if (!fileConfig[section]) {
       throw new Error(`Section '${section}' not found in config.json defaults`);
@@ -341,8 +458,8 @@ export async function resetConfig(section) {
     if (pool) {
       try {
         await pool.query(
-          'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-          [section, JSON.stringify(fileConfig[section])],
+          'INSERT INTO config (guild_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (guild_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
+          ['global', section, JSON.stringify(fileConfig[section])],
         );
       } catch (err) {
         logError('Database error during section reset — updating in-memory only', {
@@ -353,12 +470,12 @@ export async function resetConfig(section) {
     }
 
     // Mutate in-place so references stay valid (deep clone to avoid shared refs)
-    const sectionData = configCache[section];
+    const sectionData = globalConfig[section];
     if (sectionData && typeof sectionData === 'object' && !Array.isArray(sectionData)) {
       for (const key of Object.keys(sectionData)) delete sectionData[key];
       Object.assign(sectionData, structuredClone(fileConfig[section]));
     } else {
-      configCache[section] = isPlainObject(fileConfig[section])
+      globalConfig[section] = isPlainObject(fileConfig[section])
         ? structuredClone(fileConfig[section])
         : fileConfig[section];
     }
@@ -371,14 +488,17 @@ export async function resetConfig(section) {
         await client.query('BEGIN');
         for (const [key, value] of Object.entries(fileConfig)) {
           await client.query(
-            'INSERT INTO config (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-            [key, JSON.stringify(value)],
+            'INSERT INTO config (guild_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (guild_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
+            ['global', key, JSON.stringify(value)],
           );
         }
-        // Remove stale keys that exist in DB but not in config.json
+        // Remove stale global keys that exist in DB but not in config.json
         const fileKeys = Object.keys(fileConfig);
         if (fileKeys.length > 0) {
-          await client.query('DELETE FROM config WHERE key != ALL($1::text[])', [fileKeys]);
+          await client.query('DELETE FROM config WHERE guild_id = $1 AND key != ALL($2::text[])', [
+            'global',
+            fileKeys,
+          ]);
         }
         await client.query('COMMIT');
       } catch (txErr) {
@@ -396,23 +516,23 @@ export async function resetConfig(section) {
     }
 
     // Mutate in-place and remove stale keys from cache (deep clone to avoid shared refs)
-    for (const key of Object.keys(configCache)) {
+    for (const key of Object.keys(globalConfig)) {
       if (!(key in fileConfig)) {
-        delete configCache[key];
+        delete globalConfig[key];
       }
     }
     for (const [key, value] of Object.entries(fileConfig)) {
-      if (configCache[key] && isPlainObject(configCache[key]) && isPlainObject(value)) {
-        for (const k of Object.keys(configCache[key])) delete configCache[key][k];
-        Object.assign(configCache[key], structuredClone(value));
+      if (globalConfig[key] && isPlainObject(globalConfig[key]) && isPlainObject(value)) {
+        for (const k of Object.keys(globalConfig[key])) delete globalConfig[key][k];
+        Object.assign(globalConfig[key], structuredClone(value));
       } else {
-        configCache[key] = isPlainObject(value) ? structuredClone(value) : value;
+        globalConfig[key] = isPlainObject(value) ? structuredClone(value) : value;
       }
     }
     info('All config reset to defaults');
   }
 
-  return configCache;
+  return globalConfig;
 }
 
 /** Keys that must never be used as path segments (prototype pollution vectors) */
