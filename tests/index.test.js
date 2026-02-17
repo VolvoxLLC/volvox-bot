@@ -611,6 +611,28 @@ describe('index.js', () => {
     });
   });
 
+  it('should remove postgres transport through transportLock on shutdown when logging.database is enabled', async () => {
+    await importIndex({
+      token: 'abc',
+      databaseUrl: 'postgres://db',
+      loadConfigResult: {
+        ai: { enabled: true, channels: [] },
+        logging: {
+          database: { enabled: true, batchSize: 10, flushIntervalMs: 5000, minLevel: 'info' },
+        },
+      },
+    });
+
+    // pgTransport was set during startup; clear the mock to isolate shutdown behavior
+    mocks.logger.removePostgresTransport.mockClear();
+
+    const sigintHandler = mocks.processHandlers.SIGINT;
+    await expect(sigintHandler()).rejects.toThrow('process.exit:0');
+
+    expect(mocks.logger.removePostgresTransport).toHaveBeenCalled();
+    expect(process.exit).toHaveBeenCalledWith(0);
+  });
+
   it('should log load-state failure for invalid JSON', async () => {
     await importIndex({
       token: 'abc',
