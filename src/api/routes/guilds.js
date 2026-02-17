@@ -7,7 +7,6 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
-import { DISCORD_MAX_LENGTH } from '../../utils/splitMessage.js';
 
 const router = Router();
 
@@ -238,12 +237,6 @@ router.post('/:id/actions', async (req, res) => {
   if (action === 'sendMessage') {
     if (!channelId || !content) {
       return res.status(400).json({ error: 'Missing "channelId" or "content" for sendMessage' });
-    }
-
-    if (typeof content !== 'string' || content.length > DISCORD_MAX_LENGTH) {
-      return res.status(400).json({
-        error: `Content must be a string of at most ${DISCORD_MAX_LENGTH} characters`,
-      });
     }
 
     // Validate channel belongs to guild
