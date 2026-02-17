@@ -195,7 +195,7 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 
 ## ⚔️ Moderation Commands
 
-All moderation commands require the admin role (configured via `permissions.adminRoleId`).
+Most moderation commands require admin-level access. `/modlog` is moderator-level by default (`permissions.allowedCommands.modlog = "moderator"`).
 
 ### Core Actions
 
