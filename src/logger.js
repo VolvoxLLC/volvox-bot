@@ -268,8 +268,11 @@ export function addPostgresTransport(pool, config = {}) {
  */
 export async function removePostgresTransport(transport) {
   if (transport) {
-    await transport.close();
-    logger.remove(transport);
+    try {
+      await transport.close();
+    } finally {
+      logger.remove(transport);
+    }
   }
 }
 
