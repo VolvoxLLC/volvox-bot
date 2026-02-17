@@ -45,6 +45,7 @@ const mocks = vi.hoisted(() => ({
 
   config: {
     loadConfig: vi.fn(),
+    getConfig: vi.fn().mockReturnValue({}),
     onConfigChangeCallbacks: {},
   },
 
@@ -158,6 +159,7 @@ vi.mock('../src/modules/ai.js', () => ({
 }));
 
 vi.mock('../src/modules/config.js', () => ({
+  getConfig: mocks.config.getConfig,
   loadConfig: mocks.config.loadConfig,
   onConfigChange: vi.fn((path, cb) => {
     if (!mocks.config.onConfigChangeCallbacks[path]) {

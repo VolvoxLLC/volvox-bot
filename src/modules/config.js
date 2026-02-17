@@ -195,7 +195,7 @@ export async function loadConfig() {
  */
 export function getConfig(guildId) {
   if (!guildId || guildId === 'global') {
-    // Global path: returns live mutable cache reference (intentional — see JSDoc above)
+    // ⚠️ Returns live cache reference — callers must NOT mutate the returned object
     return configCache.get('global') || {};
   }
 
@@ -238,10 +238,6 @@ function cacheMergedResult(guildId, merged) {
   if (mergedConfigCache.size > MAX_GUILD_CACHE_SIZE) {
     const firstKey = mergedConfigCache.keys().next().value;
     mergedConfigCache.delete(firstKey);
-    // Also evict from the override cache to bound total memory
-    if (firstKey !== 'global') {
-      configCache.delete(firstKey);
-    }
   }
 }
 
@@ -431,7 +427,12 @@ export async function setConfigValue(path, value, guildId = 'global') {
   setNestedValue(cacheEntry[section], nestedParts, parsedVal);
 
   // Invalidate merged config cache for this guild (will be rebuilt on next getConfig)
-  mergedConfigCache.delete(guildId);
+  // When global config changes, ALL merged entries are stale (they depend on global)
+  if (guildId === 'global') {
+    mergedConfigCache.clear();
+  } else {
+    mergedConfigCache.delete(guildId);
+  }
 
   info('Config updated', { path, value: parsedVal, guildId, persisted: dbPersisted });
   await emitConfigChangeEvents(path, parsedVal, oldValue, guildId);
@@ -484,8 +485,12 @@ export async function resetConfig(section, guildId = 'global') {
       }
     }
 
-    // Invalidate merged config cache for this guild
-    mergedConfigCache.delete(guildId);
+    // When global config changes, ALL merged entries are stale (they depend on global)
+    if (guildId === 'global') {
+      mergedConfigCache.clear();
+    } else {
+      mergedConfigCache.delete(guildId);
+    }
 
     info('Guild config reset', { guildId, section: section || 'all' });
     return section ? configCache.get(guildId) || {} : {};

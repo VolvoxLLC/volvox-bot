@@ -141,7 +141,7 @@ describe('guilds routes', () => {
       expect(res.body.welcome).toEqual({ enabled: true });
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
-      expect(getConfig).toHaveBeenCalled();
+      expect(getConfig).toHaveBeenCalledWith('guild1');
     });
 
     it('should return moderation config as readable', async () => {

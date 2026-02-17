@@ -27,7 +27,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
-import { loadConfig, onConfigChange } from './modules/config.js';
+import { getConfig, loadConfig, onConfigChange } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
@@ -185,7 +185,7 @@ client.on('interactionCreate', async (interaction) => {
     info('Slash command received', { command: commandName, user: interaction.user.tag });
 
     // Permission check
-    if (!hasPermission(member, commandName, config)) {
+    if (!hasPermission(member, commandName, getConfig(interaction.guildId))) {
       await safeReply(interaction, {
         content: getPermissionError(commandName),
         ephemeral: true,
