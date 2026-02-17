@@ -188,6 +188,33 @@ describe('modules/config', () => {
       const config = await configModule.loadConfig();
       expect(config.ai.enabled).toBe(true);
     });
+
+    it('should clear merged guild cache on reload', async () => {
+      const mockPool = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({
+            rows: [
+              { guild_id: 'global', key: 'ai', value: { enabled: true, model: 'global-v1' } },
+              { guild_id: 'guild-1', key: 'ai', value: { model: 'guild-v1' } },
+            ],
+          })
+          .mockResolvedValueOnce({
+            rows: [
+              { guild_id: 'global', key: 'ai', value: { enabled: true, model: 'global-v2' } },
+              { guild_id: 'guild-1', key: 'ai', value: { model: 'guild-v2' } },
+            ],
+          }),
+      };
+      const { getPool: mockGetPool } = await import('../../src/db.js');
+      mockGetPool.mockReturnValue(mockPool);
+
+      await configModule.loadConfig();
+      expect(configModule.getConfig('guild-1').ai.model).toBe('guild-v1');
+
+      await configModule.loadConfig();
+      expect(configModule.getConfig('guild-1').ai.model).toBe('guild-v2');
+    });
   });
 
   describe('setConfigValue', () => {

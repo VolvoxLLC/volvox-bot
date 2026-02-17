@@ -74,6 +74,10 @@ export function loadConfigFromFile() {
  * @returns {Promise<Object>} Global configuration object (for backward compat)
  */
 export async function loadConfig() {
+  // Clear stale merged cache — configCache is about to be rebuilt, so any
+  // previously merged guild snapshots are invalid.
+  mergedConfigCache.clear();
+
   // Try loading config.json — DB may have valid config even if file is missing
   let fileConfig;
   try {
