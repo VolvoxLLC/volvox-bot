@@ -11,6 +11,9 @@ import { rateLimit } from './middleware/rateLimit.js';
 /** @type {import('node:http').Server | null} */
 let server = null;
 
+/** @type {ReturnType<typeof rateLimit> | null} */
+let rateLimiter = null;
+
 /**
  * Creates and configures the Express application.
  *
@@ -31,9 +34,8 @@ export function createApp(client, dbPool) {
   // CORS
   const dashboardUrl = process.env.DASHBOARD_URL;
   app.use((req, res, next) => {
-    if (dashboardUrl) {
-      res.set('Access-Control-Allow-Origin', dashboardUrl);
-    }
+    if (!dashboardUrl) return next();
+    res.set('Access-Control-Allow-Origin', dashboardUrl);
     if (req.method === 'OPTIONS') {
       res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
       res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret');
@@ -43,7 +45,8 @@ export function createApp(client, dbPool) {
   });
 
   // Rate limiting
-  app.use(rateLimit());
+  rateLimiter = rateLimit();
+  app.use(rateLimiter);
 
   // Mount API routes under /api/v1
   app.use('/api/v1', apiRouter);
@@ -93,6 +96,11 @@ export async function startServer(client, dbPool) {
  * @returns {Promise<void>}
  */
 export async function stopServer() {
+  if (rateLimiter) {
+    rateLimiter.destroy();
+    rateLimiter = null;
+  }
+
   if (!server) {
     warn('API server stop called but no server running');
     return;
