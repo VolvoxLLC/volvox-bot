@@ -107,7 +107,9 @@ describe('auth middleware', () => {
     const jwt = await import('jsonwebtoken');
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     sessionStore.set('123', 'discord-access-token');
-    const token = jwt.default.sign({ userId: '123', username: 'testuser' }, 'jwt-test-secret');
+    const token = jwt.default.sign({ userId: '123', username: 'testuser' }, 'jwt-test-secret', {
+      algorithm: 'HS256',
+    });
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireAuth();
 
@@ -146,7 +148,7 @@ describe('auth middleware', () => {
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     req.headers['x-api-secret'] = 'wrong-secret';
     sessionStore.set('456', 'discord-access-token');
-    const token = jwt.default.sign({ userId: '456' }, 'jwt-test-secret');
+    const token = jwt.default.sign({ userId: '456' }, 'jwt-test-secret', { algorithm: 'HS256' });
     req.headers.authorization = `Bearer ${token}`;
     const middleware = requireAuth();
 
