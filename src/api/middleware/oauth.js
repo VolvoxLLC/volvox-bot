@@ -3,9 +3,8 @@
  * Verifies JWT tokens from Discord OAuth2 sessions
  */
 
-import jwt from 'jsonwebtoken';
 import { error } from '../../logger.js';
-import { getSessionToken } from '../routes/auth.js';
+import { verifyJwtToken } from './verifyJwt.js';
 
 /**
  * Creates middleware that verifies a JWT Bearer token from the Authorization header.
@@ -22,25 +21,17 @@ export function requireOAuth() {
     }
 
     const token = authHeader.slice(7);
-    const sessionSecret = process.env.SESSION_SECRET;
-
-    if (!sessionSecret) {
-      error('SESSION_SECRET not configured — cannot verify OAuth token', {
-        ip: req.ip,
-        path: req.path,
-      });
-      return res.status(500).json({ error: 'Session not configured' });
-    }
-
-    try {
-      const decoded = jwt.verify(token, sessionSecret, { algorithms: ['HS256'] });
-      if (!getSessionToken(decoded.userId)) {
-        return res.status(401).json({ error: 'Session expired or revoked' });
+    const result = verifyJwtToken(token);
+    if (result.error) {
+      if (result.status === 500) {
+        error('SESSION_SECRET not configured — cannot verify OAuth token', {
+          ip: req.ip,
+          path: req.path,
+        });
       }
-      req.user = decoded;
-      next();
-    } catch {
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      return res.status(result.status).json({ error: result.error });
     }
+    req.user = result.user;
+    next();
   };
 }

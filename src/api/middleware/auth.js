@@ -4,9 +4,8 @@
  */
 
 import crypto from 'node:crypto';
-import jwt from 'jsonwebtoken';
-import { warn } from '../../logger.js';
-import { getSessionToken } from '../routes/auth.js';
+import { error, warn } from '../../logger.js';
+import { verifyJwtToken } from './verifyJwt.js';
 
 /**
  * Performs a constant-time comparison of the given secret against BOT_API_SECRET.
@@ -57,27 +56,19 @@ export function requireAuth() {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
-      const sessionSecret = process.env.SESSION_SECRET;
-
-      if (!sessionSecret) {
-        warn('SESSION_SECRET not configured — cannot verify OAuth token', {
-          ip: req.ip,
-          path: req.path,
-        });
-        return res.status(500).json({ error: 'Session not configured' });
-      }
-
-      try {
-        const decoded = jwt.verify(token, sessionSecret, { algorithms: ['HS256'] });
-        if (!getSessionToken(decoded.userId)) {
-          return res.status(401).json({ error: 'Session expired or revoked' });
+      const result = verifyJwtToken(token);
+      if (result.error) {
+        if (result.status === 500) {
+          error('SESSION_SECRET not configured — cannot verify OAuth token', {
+            ip: req.ip,
+            path: req.path,
+          });
         }
-        req.authMethod = 'oauth';
-        req.user = decoded;
-        return next();
-      } catch {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(result.status).json({ error: result.error });
       }
+      req.authMethod = 'oauth';
+      req.user = result.user;
+      return next();
     }
 
     // Neither auth method provided or valid
