@@ -184,7 +184,7 @@ export function clearConfigListeners() {
  * @param {*} newValue - The new value
  * @param {*} oldValue - The previous value
  */
-function emitConfigChangeEvents(fullPath, newValue, oldValue) {
+async function emitConfigChangeEvents(fullPath, newValue, oldValue) {
   for (const listener of [...listeners]) {
     const isExact = listener.path === fullPath;
     const isPrefix =
@@ -193,7 +193,15 @@ function emitConfigChangeEvents(fullPath, newValue, oldValue) {
       fullPath.startsWith(listener.path.replace(/\.\*$/, '.'));
     if (isExact || isPrefix) {
       try {
-        listener.callback(newValue, oldValue, fullPath);
+        const result = listener.callback(newValue, oldValue, fullPath);
+        if (result && typeof result.then === 'function') {
+          await result.catch((err) => {
+            logWarn('Async config change listener error', {
+              path: fullPath,
+              error: String(err?.message || err),
+            });
+          });
+        }
       } catch (err) {
         logError('Config change listener error', { path: fullPath, error: err.message });
       }
