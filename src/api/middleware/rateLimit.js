@@ -10,7 +10,7 @@
  * @param {Object} [options] - Rate limiter configuration
  * @param {number} [options.windowMs=900000] - Time window in milliseconds (default: 15 minutes)
  * @param {number} [options.max=100] - Maximum requests per window per IP (default: 100)
- * @returns {import('express').RequestHandler} Express middleware function
+ * @returns {import('express').RequestHandler & { destroy: () => void }} Express middleware with a destroy method to clear the cleanup timer
  */
 export function rateLimit({ windowMs = 15 * 60 * 1000, max = 100 } = {}) {
   /** @type {Map<string, { count: number, resetAt: number }>} */
