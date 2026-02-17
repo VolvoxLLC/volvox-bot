@@ -128,6 +128,104 @@ describe('auth routes', () => {
       expect(decoded.userId).toBe('999');
       expect(decoded.username).toBe('newuser');
     });
+
+    it('should return 401 when token exchange response is non-OK', async () => {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'client-id-123');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', 'client-secret');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      const state = 'test-state-token-non-ok';
+      _seedOAuthState(state);
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+      });
+
+      const res = await request(app).get(
+        `/api/v1/auth/discord/callback?code=valid-code&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Failed to exchange authorization code');
+    });
+
+    it('should return 401 when user info response is non-OK', async () => {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'client-id-123');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', 'client-secret');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      const state = 'test-state-user-non-ok';
+      _seedOAuthState(state);
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'discord-access-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+        });
+
+      const res = await request(app).get(
+        `/api/v1/auth/discord/callback?code=valid-code&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Failed to fetch user info');
+    });
+
+    it('should return 502 when token exchange payload has missing or invalid access_token', async () => {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'client-id-123');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', 'client-secret');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      const state = 'test-state-invalid-access-token';
+      _seedOAuthState(state);
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: '' }),
+      });
+
+      const res = await request(app).get(
+        `/api/v1/auth/discord/callback?code=valid-code&state=${state}`,
+      );
+
+      expect(res.status).toBe(502);
+      expect(res.body.error).toBe('Invalid response from Discord');
+    });
+
+    it('should return 502 when user info payload has missing or invalid user.id', async () => {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'client-id-123');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', 'client-secret');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'test-session-secret');
+
+      const state = 'test-state-invalid-user-id';
+      _seedOAuthState(state);
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'discord-access-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id: '' }),
+        });
+
+      const res = await request(app).get(
+        `/api/v1/auth/discord/callback?code=valid-code&state=${state}`,
+      );
+
+      expect(res.status).toBe(502);
+      expect(res.body.error).toBe('Invalid response from Discord');
+    });
   });
 
   describe('GET /api/v1/auth/me', () => {
