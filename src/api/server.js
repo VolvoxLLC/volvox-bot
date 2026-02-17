@@ -92,6 +92,7 @@ export async function startServer(client, dbPool) {
     });
     server.on('error', (err) => {
       error('API server failed to start', { error: err.message });
+      server = null;
       reject(err);
     });
   });
