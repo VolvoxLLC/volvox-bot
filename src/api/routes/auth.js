@@ -8,11 +8,9 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { error, info } from '../../logger.js';
 import { requireOAuth } from '../middleware/oauth.js';
-import { fetchUserGuilds } from '../utils/discordApi.js';
+import { DISCORD_API, fetchUserGuilds } from '../utils/discordApi.js';
 
 const router = Router();
-
-const DISCORD_API = 'https://discord.com/api/v10';
 
 /** Session TTL matches JWT expiry */
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
