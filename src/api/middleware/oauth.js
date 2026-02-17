@@ -31,6 +31,7 @@ export function requireOAuth() {
       }
       return res.status(result.status).json({ error: result.error });
     }
+    req.authMethod = 'oauth';
     req.user = result.user;
     next();
   };
