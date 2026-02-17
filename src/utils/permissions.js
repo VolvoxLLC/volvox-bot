@@ -76,7 +76,7 @@ export function hasPermission(member, commandName, config) {
 
   // If command not in config, default to admin-only for safety
   if (!permissionLevel) {
-    return isAdmin(member, config);
+    return isGuildAdmin(member, config);
   }
 
   // Check permission level
@@ -89,7 +89,7 @@ export function hasPermission(member, commandName, config) {
   }
 
   if (permissionLevel === 'admin') {
-    return isAdmin(member, config);
+    return isGuildAdmin(member, config);
   }
 
   // Unknown permission level - deny for safety
