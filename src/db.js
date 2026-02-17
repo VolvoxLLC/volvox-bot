@@ -109,6 +109,11 @@ export async function initDb() {
         )
       `);
 
+      // Backfill guild_id for databases created before this column existed
+      await pool.query(`
+        ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT
+      `);
+
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_conversations_channel_created
         ON conversations (channel_id, created_at)
