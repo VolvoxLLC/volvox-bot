@@ -557,6 +557,19 @@ export async function resetConfig(section, guildId = 'global') {
             'global',
             fileKeys,
           ]);
+
+          // Warn about orphaned per-guild rows that reference keys no longer in global defaults
+          const orphanResult = await client.query(
+            'SELECT DISTINCT guild_id, key FROM config WHERE guild_id != $1 AND key != ALL($2::text[])',
+            ['global', fileKeys],
+          );
+          if (orphanResult.rows.length > 0) {
+            const orphanSummary = orphanResult.rows.map((r) => `${r.guild_id}:${r.key}`).join(', ');
+            logWarn('Orphaned per-guild config rows reference keys no longer in global defaults', {
+              orphanedEntries: orphanSummary,
+              count: orphanResult.rows.length,
+            });
+          }
         }
         await client.query('COMMIT');
       } catch (txErr) {
