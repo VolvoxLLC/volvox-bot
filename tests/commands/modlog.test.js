@@ -29,6 +29,10 @@ vi.mock('../../src/logger.js', () => ({
   error: vi.fn(),
   warn: vi.fn(),
 }));
+vi.mock('../../src/utils/permissions.js', () => ({
+  isModerator: vi.fn().mockReturnValue(true),
+  getPermissionError: vi.fn().mockReturnValue("❌ You don't have permission to use `/modlog`."),
+}));
 
 import { adminOnly, data, execute } from '../../src/commands/modlog.js';
 import { getConfig, setConfigValue } from '../../src/modules/config.js';
@@ -39,6 +43,7 @@ function createInteraction(subcommand) {
     options: {
       getSubcommand: vi.fn().mockReturnValue(subcommand),
     },
+    member: {},
     user: { id: 'mod1', tag: 'Mod#0001' },
     reply: vi.fn().mockResolvedValue({
       createMessageComponentCollector: vi.fn().mockReturnValue({
