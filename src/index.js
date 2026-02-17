@@ -454,8 +454,12 @@ async function startup() {
   await loadCommands();
   await client.login(token);
 
-  // Start REST API server
-  await startServer(client, dbPool);
+  // Start REST API server (non-fatal — bot continues without it)
+  try {
+    await startServer(client, dbPool);
+  } catch (err) {
+    error('REST API server failed to start — continuing without API', { error: err.message });
+  }
 }
 
 startup().catch((err) => {
