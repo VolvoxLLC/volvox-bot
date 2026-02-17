@@ -85,7 +85,15 @@ export async function startServer(client, dbPool) {
   const app = createApp(client, dbPool);
   const portEnv = process.env.BOT_API_PORT;
   const parsed = portEnv != null ? Number.parseInt(portEnv, 10) : NaN;
-  const port = Number.isNaN(parsed) ? 3001 : parsed;
+  const isValidPort = !Number.isNaN(parsed) && parsed >= 0 && parsed <= 65535;
+  if (portEnv != null && !isValidPort) {
+    warn('Invalid BOT_API_PORT value, falling back to default', {
+      provided: portEnv,
+      parsed,
+      fallback: 3001,
+    });
+  }
+  const port = isValidPort ? parsed : 3001;
 
   return new Promise((resolve, reject) => {
     server = app.listen(port, () => {
