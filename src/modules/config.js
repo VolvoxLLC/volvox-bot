@@ -3,6 +3,7 @@
  * Loads config from PostgreSQL with config.json as the seed/fallback
  */
 
+import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,12 @@ import { info, error as logError, warn as logWarn } from '../logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', '..', 'config.json');
+
+/** Event emitter for config change notifications */
+export const configEmitter = new EventEmitter();
+
+/** @type {Array<{path: string, callback: Function}>} Registered change listeners */
+const listeners = [];
 
 /** @type {Object} In-memory config cache */
 let configCache = {};
@@ -132,6 +139,73 @@ export function getConfig() {
 }
 
 /**
+ * Traverse a nested object along dot-notation path segments and return the value.
+ * Returns undefined if any intermediate key is missing.
+ * @param {Object} obj - Object to traverse
+ * @param {string[]} pathParts - Path segments
+ * @returns {*} Value at the path, or undefined
+ */
+function getNestedValue(obj, pathParts) {
+  let current = obj;
+  for (const part of pathParts) {
+    if (current == null || typeof current !== 'object') return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
+/**
+ * Register a listener for config changes.
+ * Use exact paths (e.g. "ai.model") or prefix wildcards (e.g. "ai.*").
+ * @param {string} pathOrPrefix - Dot-notation path or prefix with wildcard
+ * @param {Function} callback - Called with (newValue, oldValue, fullPath)
+ */
+export function onConfigChange(pathOrPrefix, callback) {
+  listeners.push({ path: pathOrPrefix, callback });
+}
+
+/**
+ * Remove a previously registered config change listener.
+ * @param {string} pathOrPrefix - Same path used in onConfigChange
+ * @param {Function} callback - Same callback reference used in onConfigChange
+ */
+export function offConfigChange(pathOrPrefix, callback) {
+  const idx = listeners.findIndex((l) => l.path === pathOrPrefix && l.callback === callback);
+  if (idx !== -1) listeners.splice(idx, 1);
+}
+
+/**
+ * Remove all registered config change listeners.
+ */
+export function clearConfigListeners() {
+  listeners.length = 0;
+}
+
+/**
+ * Emit config change events to matching listeners.
+ * Matches exact paths and prefix wildcards (e.g. "ai.*" matches "ai.model").
+ * @param {string} fullPath - The full dot-notation path that changed
+ * @param {*} newValue - The new value
+ * @param {*} oldValue - The previous value
+ */
+function emitConfigChangeEvents(fullPath, newValue, oldValue) {
+  for (const listener of listeners) {
+    const isExact = listener.path === fullPath;
+    const isPrefix =
+      !isExact &&
+      listener.path.endsWith('.*') &&
+      fullPath.startsWith(listener.path.replace(/\.\*$/, '.'));
+    if (isExact || isPrefix) {
+      try {
+        listener.callback(newValue, oldValue, fullPath);
+      } catch (err) {
+        logError('Config change listener error', { path: fullPath, error: err.message });
+      }
+    }
+  }
+}
+
+/**
  * Set a config value using dot notation (e.g., "ai.model" or "welcome.enabled")
  * Persists to database and updates in-memory cache
  * @param {string} path - Dot-notation path (e.g., "ai.model")
@@ -210,6 +284,10 @@ export async function setConfigValue(path, value) {
     }
   }
 
+  // Capture old value before mutating cache (deep clone objects to preserve snapshot)
+  const rawOld = getNestedValue(configCache[section], nestedParts);
+  const oldValue = rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
+
   // Update in-memory cache (mutate in-place for reference propagation)
   if (
     !configCache[section] ||
@@ -221,6 +299,7 @@ export async function setConfigValue(path, value) {
   setNestedValue(configCache[section], nestedParts, parsedVal);
 
   info('Config updated', { path, value: parsedVal, persisted: dbPersisted });
+  emitConfigChangeEvents(path, parsedVal, oldValue);
   return configCache[section];
 }
 

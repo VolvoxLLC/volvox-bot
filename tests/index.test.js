@@ -149,6 +149,7 @@ vi.mock('../src/modules/ai.js', () => ({
 
 vi.mock('../src/modules/config.js', () => ({
   loadConfig: mocks.config.loadConfig,
+  onConfigChange: vi.fn(),
 }));
 
 vi.mock('../src/modules/events.js', () => ({

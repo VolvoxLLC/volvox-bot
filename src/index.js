@@ -26,7 +26,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
-import { loadConfig } from './modules/config.js';
+import { loadConfig, onConfigChange } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
@@ -287,6 +287,13 @@ async function startup() {
   // Load config (from DB if available, else config.json)
   config = await loadConfig();
   info('Configuration loaded', { sections: Object.keys(config) });
+
+  // Register config change listeners for hot-reload observability
+  for (const prefix of ['logging.*', 'ai.*', 'spam.*', 'moderation.*']) {
+    onConfigChange(prefix, (newValue, _oldValue, path) => {
+      info('Config changed', { path, newValue });
+    });
+  }
 
   // Set up AI module's DB pool reference
   if (dbPool) {
