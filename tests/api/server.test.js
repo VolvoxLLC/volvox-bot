@@ -69,13 +69,15 @@ describe('API server', () => {
       expect(res.headers['access-control-allow-headers']).toContain('x-api-secret');
     });
 
-    it('should not return 204 for OPTIONS when DASHBOARD_URL is not set', async () => {
+    it('should return 204 for OPTIONS even when DASHBOARD_URL is not set', async () => {
       delete process.env.DASHBOARD_URL;
       const app = createApp(client, null);
 
       const res = await request(app).options('/api/v1/health');
 
-      expect(res.status).not.toBe(204);
+      expect(res.status).toBe(204);
+      expect(res.headers['access-control-allow-origin']).toBeUndefined();
+      expect(res.headers['access-control-allow-methods']).toContain('GET');
     });
 
     it('should return 404 for unknown routes', async () => {

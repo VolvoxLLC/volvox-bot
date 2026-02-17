@@ -33,11 +33,11 @@ export function createApp(client, dbPool) {
   app.use((req, res, next) => {
     if (dashboardUrl) {
       res.set('Access-Control-Allow-Origin', dashboardUrl);
+    }
+    if (req.method === 'OPTIONS') {
       res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
       res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret');
-      if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-      }
+      return res.status(204).end();
     }
     next();
   });
@@ -72,7 +72,7 @@ export async function startServer(client, dbPool) {
 
   const app = createApp(client, dbPool);
   const portEnv = process.env.BOT_API_PORT;
-  const parsed = portEnv != null ? Number.parseInt(portEnv, 10) : 3001;
+  const parsed = portEnv != null ? Number.parseInt(portEnv, 10) : NaN;
   const port = Number.isNaN(parsed) ? 3001 : parsed;
 
   return new Promise((resolve, reject) => {
