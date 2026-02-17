@@ -28,10 +28,7 @@ export function createApp(client, dbPool) {
   app.locals.client = client;
   app.locals.dbPool = dbPool;
 
-  // Body parsing
-  app.use(express.json());
-
-  // CORS
+  // CORS - must come BEFORE body parser so error responses include CORS headers
   const dashboardUrl = process.env.DASHBOARD_URL;
   app.use((req, res, next) => {
     if (!dashboardUrl) return next();
@@ -43,6 +40,9 @@ export function createApp(client, dbPool) {
     }
     next();
   });
+
+  // Body parsing
+  app.use(express.json());
 
   // Rate limiting — destroy any leaked limiter from a prior createApp call
   if (rateLimiter) {
