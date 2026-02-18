@@ -138,6 +138,7 @@ export function AnalyticsDashboard() {
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customRangeError, setCustomRangeError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -190,6 +191,7 @@ export function AnalyticsDashboard() {
       params.set("to", endOfDayIso(customToApplied));
     }
 
+    // Only set interval for non-custom ranges; let server auto-detect for custom ranges
     if (rangePreset !== "custom") {
       params.set("interval", rangePreset === "today" ? "hour" : "day");
     }
@@ -289,8 +291,17 @@ export function AnalyticsDashboard() {
   }, [fetchAnalytics, guildId]);
 
   const applyCustomRange = () => {
-    if (!customFromDraft || !customToDraft) return;
-    if (customFromDraft > customToDraft) return;
+    if (!customFromDraft || !customToDraft) {
+      setCustomRangeError("Select both a from and to date.");
+      return;
+    }
+
+    if (customFromDraft > customToDraft) {
+      setCustomRangeError("\"From\" date must be on or before \"To\" date.");
+      return;
+    }
+
+    setCustomRangeError(null);
     setCustomFromApplied(customFromDraft);
     setCustomToApplied(customToDraft);
   };
@@ -364,7 +375,12 @@ export function AnalyticsDashboard() {
               key={preset.value}
               variant={rangePreset === preset.value ? "default" : "outline"}
               size="sm"
-              onClick={() => setRangePreset(preset.value)}
+              onClick={() => {
+                setRangePreset(preset.value);
+                if (preset.value !== "custom") {
+                  setCustomRangeError(null);
+                }
+              }}
             >
               {preset.label}
             </Button>
@@ -376,19 +392,30 @@ export function AnalyticsDashboard() {
                 aria-label="From date"
                 type="date"
                 value={customFromDraft}
-                onChange={(event) => setCustomFromDraft(event.target.value)}
+                onChange={(event) => {
+                  setCustomFromDraft(event.target.value);
+                  setCustomRangeError(null);
+                }}
                 className="h-9 rounded-md border bg-background px-3 text-sm"
               />
               <input
                 aria-label="To date"
                 type="date"
                 value={customToDraft}
-                onChange={(event) => setCustomToDraft(event.target.value)}
+                onChange={(event) => {
+                  setCustomToDraft(event.target.value);
+                  setCustomRangeError(null);
+                }}
                 className="h-9 rounded-md border bg-background px-3 text-sm"
               />
               <Button size="sm" onClick={applyCustomRange}>
                 Apply
               </Button>
+              {customRangeError ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {customRangeError}
+                </p>
+              ) : null}
             </>
           ) : null}
 

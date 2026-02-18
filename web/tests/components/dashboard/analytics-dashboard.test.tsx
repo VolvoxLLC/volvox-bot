@@ -286,7 +286,7 @@ describe("AnalyticsDashboard", () => {
     });
   });
 
-  it("does not apply custom range when from date is after to date", async () => {
+  it("shows a validation error and does not apply custom range when from date is after to date", async () => {
     localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
@@ -317,6 +317,20 @@ describe("AnalyticsDashboard", () => {
     const callCountBeforeApply = fetchSpy.mock.calls.length;
     await user.click(screen.getByRole("button", { name: "Apply" }));
 
+    expect(
+      screen.getByText('"From" date must be on or before "To" date.'),
+    ).toBeInTheDocument();
+
+    const requestedInvalidRange = fetchSpy.mock.calls.some(([url]) => {
+      const text = String(url);
+      return (
+        text.includes("range=custom") &&
+        text.includes("from=2026-02-20T00%3A00%3A00.000Z") &&
+        text.includes("to=2026-02-10T23%3A59%3A59.999Z")
+      );
+    });
+
     expect(fetchSpy).toHaveBeenCalledTimes(callCountBeforeApply);
+    expect(requestedInvalidRange).toBe(false);
   });
 });
