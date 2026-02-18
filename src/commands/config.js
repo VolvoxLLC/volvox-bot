@@ -5,6 +5,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getConfig, resetConfig, setConfigValue } from '../modules/config.js';
+import { getPermissionError, hasPermission } from '../utils/permissions.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 /**
@@ -157,6 +158,15 @@ export async function autocomplete(interaction) {
  * @param {Object} interaction - Discord interaction
  */
 export async function execute(interaction) {
+  const config = getConfig();
+  if (!hasPermission(interaction.member, 'config', config)) {
+    const permLevel = config.permissions?.allowedCommands?.config || 'administrator';
+    return await safeReply(interaction, {
+      content: getPermissionError('config', permLevel),
+      ephemeral: true,
+    });
+  }
+
   const subcommand = interaction.options.getSubcommand();
 
   switch (subcommand) {

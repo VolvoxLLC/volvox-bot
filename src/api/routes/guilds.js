@@ -4,11 +4,18 @@
  */
 
 import { Router } from 'express';
-import { error, info } from '../../logger.js';
+import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
+import { fetchUserGuilds } from '../utils/discordApi.js';
+import { getSessionToken } from '../utils/sessionStore.js';
 
 const router = Router();
+
+/** Discord ADMINISTRATOR permission flag */
+const ADMINISTRATOR_FLAG = 0x8;
+/** Discord MANAGE_GUILD permission flag */
+const MANAGE_GUILD_FLAG = 0x20;
 
 /**
  * Config keys that are safe to write via the PATCH endpoint.
@@ -49,6 +56,112 @@ function parsePagination(query) {
 }
 
 /**
+ * Check if an OAuth2 user has the specified permission flags on a guild.
+ * Fetches fresh guild list from Discord using the access token from the session store.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @param {string} guildId - Guild ID to check
+ * @param {number} requiredFlags - Bitmask of required permission flags (bitwise OR match)
+ * @returns {Promise<boolean>} True if user has ANY of the required flags (bitwise OR match)
+ */
+async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
+  const accessToken = getSessionToken(user?.userId);
+  if (!accessToken) return false;
+  const guilds = await fetchUserGuilds(user.userId, accessToken);
+  const guild = guilds.find((g) => g.id === guildId);
+  if (!guild) return false;
+  const permissions = Number(guild.permissions);
+  if (Number.isNaN(permissions)) return false;
+  return (permissions & requiredFlags) !== 0;
+}
+
+/**
+ * Check whether the authenticated OAuth2 user is a configured bot owner.
+ * Bot owners bypass API guild-level permission checks.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @returns {boolean} True if JWT userId is in config.permissions.botOwners
+ */
+function isOAuthBotOwner(user) {
+  const botOwners = getConfig()?.permissions?.botOwners;
+  return Array.isArray(botOwners) && botOwners.includes(user?.userId);
+}
+
+/**
+ * Check if an OAuth2 user has admin permissions on a guild.
+ * Admin = ADMINISTRATOR only, aligning with the slash-command isAdmin check.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @param {string} guildId - Guild ID to check
+ * @returns {Promise<boolean>} True if user has admin-level permission
+ */
+function isOAuthGuildAdmin(user, guildId) {
+  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG);
+}
+
+/**
+ * Check if an OAuth2 user has moderator permissions on a guild.
+ * Moderator = ADMINISTRATOR or MANAGE_GUILD, aligning with the slash-command isModerator check.
+ *
+ * @param {Object} user - Decoded JWT user payload
+ * @param {string} guildId - Guild ID to check
+ * @returns {Promise<boolean>} True if user has moderator-level permission
+ */
+function isOAuthGuildModerator(user, guildId) {
+  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG);
+}
+
+/**
+ * Create middleware that verifies OAuth2 users have the required guild permission.
+ * API-secret users and configured bot owners are trusted and pass through.
+ *
+ * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Permission check function
+ * @param {string} errorMessage - Error message for 403 responses
+ * @returns {import('express').RequestHandler}
+ */
+function requireGuildPermission(permissionCheck, errorMessage) {
+  return async (req, res, next) => {
+    if (req.authMethod === 'api-secret') return next();
+
+    if (req.authMethod === 'oauth') {
+      if (isOAuthBotOwner(req.user)) return next();
+
+      try {
+        if (!(await permissionCheck(req.user, req.params.id))) {
+          return res.status(403).json({ error: errorMessage });
+        }
+        return next();
+      } catch (err) {
+        error('Failed to verify guild permission', {
+          error: err.message,
+          guild: req.params.id,
+          userId: req.user?.userId,
+        });
+        return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
+      }
+    }
+
+    warn('Unknown authMethod in guild permission check', {
+      authMethod: req.authMethod,
+      path: req.path,
+    });
+    return res.status(401).json({ error: 'Unauthorized' });
+  };
+}
+
+/** Middleware: verify OAuth2 users are guild admins. API-secret users pass through. */
+const requireGuildAdmin = requireGuildPermission(
+  isOAuthGuildAdmin,
+  'You do not have admin access to this guild',
+);
+
+/** Middleware: verify OAuth2 users are guild moderators. API-secret users pass through. */
+const requireGuildModerator = requireGuildPermission(
+  isOAuthGuildModerator,
+  'You do not have moderator access to this guild',
+);
+
+/**
  * Middleware: validate guild ID param and attach guild to req.
  * Returns 404 if the bot is not in the requested guild.
  */
@@ -64,13 +177,86 @@ function validateGuild(req, res, next) {
   next();
 }
 
-// Apply guild validation to all routes with :id param
-router.param('id', validateGuild);
+/**
+ * GET / — List guilds
+ * For OAuth2 users:
+ * - bot owners: return all guilds where the bot is present (access = "bot-owner")
+ * - non-owners: fetch fresh guilds from Discord and return only guilds where user has
+ *   ADMINISTRATOR (access = "admin") or MANAGE_GUILD (access = "moderator"), and bot is present
+ * For api-secret users: returns all bot guilds
+ */
+router.get('/', async (req, res) => {
+  const { client } = req.app.locals;
+  const botGuilds = client.guilds.cache;
+
+  if (req.authMethod === 'oauth') {
+    if (isOAuthBotOwner(req.user)) {
+      const ownerGuilds = Array.from(botGuilds.values()).map((g) => ({
+        id: g.id,
+        name: g.name,
+        icon: g.iconURL(),
+        memberCount: g.memberCount,
+        access: 'bot-owner',
+      }));
+      return res.json(ownerGuilds);
+    }
+
+    const accessToken = getSessionToken(req.user?.userId);
+    if (!accessToken) {
+      return res.status(401).json({ error: 'Missing access token' });
+    }
+
+    try {
+      const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
+      const filtered = userGuilds.reduce((acc, ug) => {
+        const permissions = Number(ug.permissions);
+        const hasAdmin = (permissions & ADMINISTRATOR_FLAG) !== 0;
+        const hasManageGuild = (permissions & MANAGE_GUILD_FLAG) !== 0;
+        const access = hasAdmin ? 'admin' : hasManageGuild ? 'moderator' : null;
+        if (!access) return acc;
+
+        // Single lookup avoids has/get TOCTOU.
+        const botGuild = botGuilds.get(ug.id);
+        if (!botGuild) return acc;
+        acc.push({
+          id: ug.id,
+          name: botGuild.name,
+          icon: botGuild.iconURL(),
+          memberCount: botGuild.memberCount,
+          access,
+        });
+        return acc;
+      }, []);
+
+      return res.json(filtered);
+    } catch (err) {
+      error('Failed to fetch user guilds from Discord', {
+        error: err.message,
+        userId: req.user?.userId,
+      });
+      return res.status(502).json({ error: 'Failed to fetch guilds from Discord' });
+    }
+  }
+
+  if (req.authMethod === 'api-secret') {
+    const guilds = Array.from(botGuilds.values()).map((g) => ({
+      id: g.id,
+      name: g.name,
+      icon: g.iconURL(),
+      memberCount: g.memberCount,
+    }));
+    return res.json(guilds);
+  }
+
+  // Unknown auth method — reject
+  warn('Unknown authMethod in guild list', { authMethod: req.authMethod, path: req.path });
+  return res.status(401).json({ error: 'Unauthorized' });
+});
 
 /**
  * GET /:id — Guild info
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
   const guild = req.guild;
   const MAX_CHANNELS = 500;
   const channels = [];
@@ -95,7 +281,7 @@ router.get('/:id', (req, res) => {
  * GET /:id/config — Read guild config (safe keys only)
  * Returns per-guild config (global defaults merged with guild overrides).
  */
-router.get('/:id/config', (req, res) => {
+router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
   const config = getConfig(req.params.id);
   const safeConfig = {};
   for (const key of READABLE_CONFIG_KEYS) {
@@ -114,7 +300,7 @@ router.get('/:id/config', (req, res) => {
  * Body: { path: "ai.model", value: "claude-3" }
  * Writes to the per-guild config overrides for the requested guild.
  */
-router.patch('/:id/config', async (req, res) => {
+router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Request body is required' });
   }
@@ -160,7 +346,7 @@ router.patch('/:id/config', async (req, res) => {
 /**
  * GET /:id/stats — Guild statistics
  */
-router.get('/:id/stats', async (req, res) => {
+router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -200,7 +386,7 @@ router.get('/:id/stats', async (req, res) => {
  * Query params: ?limit=25&after=<userId> (max 100)
  * Uses Discord's cursor-based pagination via guild.members.list().
  */
-router.get('/:id/members', async (req, res) => {
+router.get('/:id/members', requireGuildAdmin, validateGuild, async (req, res) => {
   let limit = Number.parseInt(req.query.limit, 10) || 25;
   if (limit < 1) limit = 1;
   if (limit > 100) limit = 100;
@@ -235,7 +421,7 @@ router.get('/:id/members', async (req, res) => {
  * GET /:id/moderation — Paginated moderation cases
  * Query params: ?page=1&limit=25 (max 100)
  */
-router.get('/:id/moderation', async (req, res) => {
+router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -277,7 +463,7 @@ router.get('/:id/moderation', async (req, res) => {
  * POST /:id/actions — Execute bot actions
  * Body: { action: "sendMessage", channelId: "...", content: "..." }
  */
-router.post('/:id/actions', async (req, res) => {
+router.post('/:id/actions', requireGuildAdmin, validateGuild, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body' });
   }

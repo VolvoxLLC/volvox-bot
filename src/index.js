@@ -185,9 +185,11 @@ client.on('interactionCreate', async (interaction) => {
     info('Slash command received', { command: commandName, user: interaction.user.tag });
 
     // Permission check
-    if (!hasPermission(member, commandName, getConfig(interaction.guildId))) {
+    const guildConfig = getConfig(interaction.guildId);
+    if (!hasPermission(member, commandName, guildConfig)) {
+      const permLevel = guildConfig.permissions?.allowedCommands?.[commandName] || 'administrator';
       await safeReply(interaction, {
-        content: getPermissionError(commandName),
+        content: getPermissionError(commandName, permLevel),
         ephemeral: true,
       });
       warn('Permission denied', { user: interaction.user.tag, command: commandName });
@@ -316,6 +318,17 @@ async function startup() {
   // Load config (from DB if available, else config.json)
   config = await loadConfig();
   info('Configuration loaded', { sections: Object.keys(config) });
+  // Warn if using default bot owner ID (upstream maintainer)
+  const defaultOwnerId = '191633014441115648';
+  const owners = config.permissions?.botOwners;
+  if (Array.isArray(owners) && owners.includes(defaultOwnerId)) {
+    warn(
+      'Default botOwners detected in config — update permissions.botOwners with your own Discord user ID(s) before deploying',
+      {
+        defaultOwnerId,
+      },
+    );
+  }
 
   // Register config change listeners for hot-reload
   //

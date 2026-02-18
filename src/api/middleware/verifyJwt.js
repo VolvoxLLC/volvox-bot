@@ -1,0 +1,50 @@
+/**
+ * JWT Verification Helper
+ * Shared JWT verification logic used by both requireAuth and requireOAuth middleware
+ */
+
+import jwt from 'jsonwebtoken';
+import { getSessionToken } from '../utils/sessionStore.js';
+
+/**
+ * Lazily cached SESSION_SECRET — read from env on first call, then reused.
+ * Avoids per-request env lookup while remaining compatible with test stubs
+ * (vi.stubEnv sets process.env before the first call within each test).
+ * Call `_resetSecretCache()` in test teardown if needed.
+ */
+let _cachedSecret;
+
+/** @internal Reset the cached secret (for test teardown). */
+export function _resetSecretCache() {
+  _cachedSecret = undefined;
+}
+
+function getSecret() {
+  if (_cachedSecret === undefined) {
+    _cachedSecret = process.env.SESSION_SECRET || '';
+  }
+  return _cachedSecret;
+}
+
+/**
+ * Verify a JWT token and validate the associated server-side session.
+ *
+ * @param {string} token - The JWT Bearer token to verify
+ * @returns {{ user: Object } | { error: string, status: number }}
+ *   On success: `{ user }` with the decoded JWT payload.
+ *   On failure: `{ error, status }` with an error message and HTTP status code.
+ */
+export function verifyJwtToken(token) {
+  const secret = getSecret();
+  if (!secret) return { error: 'Session not configured', status: 500 };
+
+  try {
+    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
+    if (!getSessionToken(decoded.userId)) {
+      return { error: 'Session expired or revoked', status: 401 };
+    }
+    return { user: decoded };
+  } catch {
+    return { error: 'Invalid or expired token', status: 401 };
+  }
+}

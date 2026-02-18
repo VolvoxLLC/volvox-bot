@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,6 +14,7 @@ vi.mock('../../../src/modules/config.js', () => ({
     welcome: { enabled: true },
     spam: { enabled: true },
     moderation: { enabled: true },
+    permissions: { botOwners: [] },
     database: { host: 'secret-host' },
     token: 'secret-token',
   }),
@@ -23,7 +25,10 @@ vi.mock('../../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue({ id: 'msg1', content: 'Hello!' }),
 }));
 
+import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
+import { guildCache } from '../../../src/api/utils/discordApi.js';
+import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 import { getConfig, setConfigValue } from '../../../src/modules/config.js';
 import { safeSend } from '../../../src/utils/safeSend.js';
 
@@ -88,9 +93,35 @@ describe('guilds routes', () => {
   });
 
   afterEach(() => {
+    sessionStore.clear();
+    guildCache.clear();
+    _resetSecretCache();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
+
+  /**
+   * Helper: create a JWT and populate the server-side session store
+   */
+  function createOAuthToken(secret = 'jwt-test-secret', userId = '123') {
+    sessionStore.set(userId, 'discord-access-token');
+    return jwt.sign(
+      {
+        userId,
+        username: 'testuser',
+      },
+      secret,
+      { algorithm: 'HS256' },
+    );
+  }
+
+  function mockFetchGuilds(guilds) {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => guilds,
+    });
+  }
 
   describe('authentication', () => {
     it('should return 401 without x-api-secret header', async () => {
@@ -104,6 +135,35 @@ describe('guilds routes', () => {
       const res = await request(app).get('/api/v1/guilds/guild1').set('x-api-secret', 'wrong');
 
       expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Invalid API secret');
+    });
+
+    it('should authenticate with valid JWT Bearer token', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: String(0x8) }]);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe('guild1');
+    });
+
+    it('should return 401 when session has been revoked', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      // Sign a valid JWT but do NOT populate sessionStore
+      const token = jwt.sign({ userId: '789', username: 'revokeduser' }, 'jwt-test-secret', {
+        algorithm: 'HS256',
+      });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Session expired or revoked');
     });
   });
 
@@ -113,6 +173,114 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(404);
       expect(res.body.error).toBe('Guild not found');
+    });
+  });
+
+  describe('GET /', () => {
+    it('should return all guilds for api-secret auth', async () => {
+      const res = await request(app).get('/api/v1/guilds').set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].id).toBe('guild1');
+      expect(res.body[0].name).toBe('Test Server');
+      expect(res.body[0].memberCount).toBe(100);
+    });
+
+    it('should return OAuth guilds with access metadata', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([
+        { id: 'guild1', name: 'Test Server', permissions: '8' },
+        { id: 'guild-not-in-bot', name: 'Other Server', permissions: '8' },
+      ]);
+
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      // Only guild1 (bot is in it AND user has admin), not guild-not-in-bot
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].id).toBe('guild1');
+      expect(res.body[0].access).toBe('admin');
+    });
+
+    it('should include guilds where OAuth user has MANAGE_GUILD', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      // 0x20 = MANAGE_GUILD but not ADMINISTRATOR
+      mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: '32' }]);
+
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].id).toBe('guild1');
+      expect(res.body[0].access).toBe('moderator');
+    });
+
+    it('should include admin and moderator access values when both are present', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      const mockGuild2 = {
+        ...mockGuild,
+        id: 'guild2',
+        name: 'Second Server',
+        memberCount: 50,
+      };
+      const client = {
+        guilds: {
+          cache: new Map([
+            ['guild1', mockGuild],
+            ['guild2', mockGuild2],
+          ]),
+        },
+        ws: { status: 0, ping: 42 },
+        user: { tag: 'Bot#1234' },
+      };
+      app = createApp(client, mockPool);
+      mockFetchGuilds([
+        { id: 'guild1', name: 'Test Server', permissions: String(0x8) },
+        { id: 'guild2', name: 'Second Server', permissions: String(0x20) },
+      ]);
+
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(2);
+      expect(res.body.find((g) => g.id === 'guild1')?.access).toBe('admin');
+      expect(res.body.find((g) => g.id === 'guild2')?.access).toBe('moderator');
+    });
+
+    it('should allow bot-owner OAuth users to list all bot guilds without Discord fetch', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      getConfig.mockReturnValueOnce({
+        ai: { model: 'claude-3' },
+        welcome: { enabled: true },
+        spam: { enabled: true },
+        moderation: { enabled: true },
+        permissions: { botOwners: ['owner-1'] },
+      });
+      const token = createOAuthToken('jwt-test-secret', 'owner-1');
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].id).toBe('guild1');
+      expect(res.body[0].access).toBe('bot-owner');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('should exclude guilds where OAuth user has no admin permissions', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: '0' }]);
+
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(0);
     });
   });
 
@@ -127,6 +295,88 @@ describe('guilds routes', () => {
       expect(res.body.memberCount).toBe(100);
       expect(res.body.channels).toBeInstanceOf(Array);
       expect(res.body.channels).toHaveLength(2);
+    });
+  });
+
+  describe('guild admin verification (OAuth)', () => {
+    it('should allow api-secret users to access admin endpoints', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+    });
+
+    it('should allow OAuth users with admin permission on guild', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '8' }]);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it('should deny OAuth users with only MANAGE_GUILD on admin endpoints', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      // 0x20 = MANAGE_GUILD but not ADMINISTRATOR — admin requires ADMINISTRATOR only
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '32' }]);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
+    });
+
+    it('should deny OAuth users without admin or manage-guild permission', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '0' }]);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
+    });
+
+    it('should deny OAuth users not in the guild', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'other-guild', name: 'Other', permissions: '8' }]);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
+    });
+
+    it('should allow bot-owner OAuth users to access admin endpoints without Discord fetch', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      getConfig.mockReturnValueOnce({
+        ai: { model: 'claude-3' },
+        welcome: { enabled: true },
+        spam: { enabled: true },
+        moderation: { enabled: true },
+        permissions: { botOwners: ['owner-admin'] },
+      });
+      const token = createOAuthToken('jwt-test-secret', 'owner-admin');
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -388,6 +638,58 @@ describe('guilds routes', () => {
         10,
         10,
       ]);
+    });
+
+    it('should allow OAuth users with MANAGE_GUILD permission', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: String(0x20) }]);
+      mockPool.query.mockResolvedValueOnce({ rows: [{ count: 1 }] }).mockResolvedValueOnce({
+        rows: [{ id: 1, case_number: 1, action: 'warn', guild_id: 'guild1' }],
+      });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/moderation')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.total).toBe(1);
+    });
+
+    it('should allow bot-owner OAuth users on moderator endpoints without Discord fetch', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      getConfig.mockReturnValueOnce({
+        ai: { model: 'claude-3' },
+        welcome: { enabled: true },
+        spam: { enabled: true },
+        moderation: { enabled: true },
+        permissions: { botOwners: ['owner-mod'] },
+      });
+      const token = createOAuthToken('jwt-test-secret', 'owner-mod');
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      mockPool.query.mockResolvedValueOnce({ rows: [{ count: 1 }] }).mockResolvedValueOnce({
+        rows: [{ id: 1, case_number: 1, action: 'warn', guild_id: 'guild1' }],
+      });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/moderation')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('should deny OAuth users without moderator permissions', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '0' }]);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/moderation')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('moderator access');
     });
   });
 

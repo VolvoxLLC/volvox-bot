@@ -6,13 +6,20 @@ vi.mock('../../src/modules/config.js', () => ({
     ai: { enabled: true, model: 'test-model', maxTokens: 1024 },
     welcome: { enabled: false, channelId: '' },
     moderation: { enabled: false },
+    permissions: { enabled: true, adminRoleId: null, usePermissions: true },
   }),
   setConfigValue: vi.fn().mockResolvedValue({ enabled: true, model: 'new-model' }),
   resetConfig: vi.fn().mockResolvedValue({}),
 }));
 
+vi.mock('../../src/utils/permissions.js', () => ({
+  hasPermission: vi.fn().mockReturnValue(true),
+  getPermissionError: vi.fn().mockReturnValue("❌ You don't have permission to use `/config`."),
+}));
+
 import { autocomplete, data, execute } from '../../src/commands/config.js';
 import { getConfig, resetConfig, setConfigValue } from '../../src/modules/config.js';
+import { hasPermission } from '../../src/utils/permissions.js';
 
 describe('config command', () => {
   afterEach(() => {
@@ -26,6 +33,77 @@ describe('config command', () => {
   it('should export adminOnly flag', async () => {
     const mod = await import('../../src/commands/config.js');
     expect(mod.adminOnly).toBe(true);
+  });
+
+  it('should deny permission when hasPermission fails', async () => {
+    hasPermission.mockReturnValueOnce(false);
+
+    const mockReply = vi.fn();
+    const interaction = {
+      member: {},
+      options: {
+        getSubcommand: vi.fn().mockReturnValue('view'),
+        getString: vi.fn().mockReturnValue(null),
+      },
+      reply: mockReply,
+    };
+
+    await execute(interaction);
+    expect(hasPermission).toHaveBeenCalledWith(
+      interaction.member,
+      'config',
+      expect.objectContaining({ permissions: expect.any(Object) }),
+    );
+    expect(mockReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("don't have permission"),
+        ephemeral: true,
+      }),
+    );
+  });
+
+  it('should allow command when permissions.enabled is false', async () => {
+    getConfig.mockReturnValueOnce({
+      ai: { enabled: true },
+      permissions: { enabled: false, usePermissions: true },
+    });
+    hasPermission.mockReturnValueOnce(true);
+
+    const interaction = {
+      member: {},
+      options: {
+        getSubcommand: vi.fn().mockReturnValue('view'),
+        getString: vi.fn().mockReturnValue(null),
+      },
+      reply: vi.fn(),
+    };
+
+    await execute(interaction);
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: expect.any(Array), ephemeral: true }),
+    );
+  });
+
+  it('should allow command when permissions.usePermissions is false', async () => {
+    getConfig.mockReturnValueOnce({
+      ai: { enabled: true },
+      permissions: { enabled: true, usePermissions: false },
+    });
+    hasPermission.mockReturnValueOnce(true);
+
+    const interaction = {
+      member: {},
+      options: {
+        getSubcommand: vi.fn().mockReturnValue('view'),
+        getString: vi.fn().mockReturnValue(null),
+      },
+      reply: vi.fn(),
+    };
+
+    await execute(interaction);
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: expect.any(Array), ephemeral: true }),
+    );
   });
 
   describe('autocomplete', () => {
@@ -124,7 +202,7 @@ describe('config command', () => {
         // Each section generates ~1023 chars in the embed (JSON truncated to 1000 + field name)
         // Need 6+ sections to push past the 5800-char truncation threshold
         const largeValue = 'x'.repeat(1500);
-        getConfig.mockReturnValueOnce({
+        const largeConfig = {
           section1: { data: largeValue },
           section2: { data: largeValue },
           section3: { data: largeValue },
@@ -132,7 +210,11 @@ describe('config command', () => {
           section5: { data: largeValue },
           section6: { data: largeValue },
           section7: { data: largeValue },
-        });
+        };
+        // First getConfig call is in execute() for permission check; second is in handleView()
+        getConfig
+          .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
+          .mockReturnValueOnce(largeConfig);
         const mockReply = vi.fn();
         const interaction = {
           guildId: 'test-guild',
@@ -155,9 +237,12 @@ describe('config command', () => {
       });
 
       it('should handle getConfig throwing an error', async () => {
-        getConfig.mockImplementationOnce(() => {
-          throw new Error('config error');
-        });
+        // First getConfig call is in execute() for permission check; second throws in handleView()
+        getConfig
+          .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
+          .mockImplementationOnce(() => {
+            throw new Error('config error');
+          });
         const mockReply = vi.fn();
         const interaction = {
           guildId: 'test-guild',
@@ -182,9 +267,12 @@ describe('config command', () => {
         delete process.env.NODE_ENV;
 
         try {
-          getConfig.mockImplementationOnce(() => {
-            throw new Error('pg: connection refused at 10.0.0.5:5432');
-          });
+          // First getConfig call is in execute() for permission check; second throws in handleView()
+          getConfig
+            .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
+            .mockImplementationOnce(() => {
+              throw new Error('pg: connection refused at 10.0.0.5:5432');
+            });
           const mockReply = vi.fn();
           const interaction = {
             guildId: 'test-guild',

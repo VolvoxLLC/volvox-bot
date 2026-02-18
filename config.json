@@ -82,6 +82,8 @@
   "permissions": {
     "enabled": true,
     "adminRoleId": null,
+    "moderatorRoleId": null,
+    "botOwners": ["191633014441115648"],
     "usePermissions": true,
     "allowedCommands": {
       "ping": "everyone",
@@ -101,7 +103,7 @@
       "lock": "admin",
       "unlock": "admin",
       "slowmode": "admin",
-      "modlog": "admin"
+      "modlog": "moderator"
     }
   }
 }

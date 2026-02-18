@@ -187,11 +187,15 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 |-----|------|-------------|
 | `enabled` | boolean | Enable permission checks |
 | `adminRoleId` | string | Role ID for admin commands |
-| `allowedCommands` | object | Per-command permission levels |
+| `moderatorRoleId` | string | Role ID for moderator commands |
+| `botOwners` | string[] | Discord user IDs that bypass all permission checks |
+| `allowedCommands` | object | Per-command permission levels (`everyone`, `moderator`, `admin`) |
+
+> **⚠️ For forks/deployers:** The default `config.json` ships with the upstream maintainer's Discord user ID in `permissions.botOwners`. Update this array with your own Discord user ID(s) before deploying. Bot owners bypass all permission checks.
 
 ## ⚔️ Moderation Commands
 
-All moderation commands require the admin role (configured via `permissions.adminRoleId`).
+Most moderation commands require admin-level access. `/modlog` is moderator-level by default (`permissions.allowedCommands.modlog = "moderator"`).
 
 ### Core Actions
 
@@ -351,6 +355,9 @@ Set these in the Railway dashboard for the Bot service:
 | `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
 | `MEM0_API_KEY` | No | Mem0 API key for long-term memory |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` (default: `info`) |
+| `SESSION_SECRET` | Yes | JWT signing secret for OAuth2 sessions. Generate with `openssl rand -base64 32` |
+| `DISCORD_CLIENT_SECRET` | Yes | Discord OAuth2 client secret (required for dashboard auth) |
+| `DISCORD_REDIRECT_URI` | Yes | OAuth2 callback URL (e.g. `https://your-bot/api/v1/auth/discord/callback`) |
 | `BOT_API_SECRET` | Yes | Shared secret for web dashboard API auth |
 
 ### Web Dashboard Environment Variables

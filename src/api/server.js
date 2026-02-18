@@ -7,6 +7,8 @@ import express from 'express';
 import { error, info, warn } from '../logger.js';
 import apiRouter from './index.js';
 import { rateLimit } from './middleware/rateLimit.js';
+import { stopAuthCleanup } from './routes/auth.js';
+import { stopGuildCacheCleanup } from './utils/discordApi.js';
 
 /** @type {import('node:http').Server | null} */
 let server = null;
@@ -37,7 +39,7 @@ export function createApp(client, dbPool) {
     if (!dashboardUrl) return next();
     res.set('Access-Control-Allow-Origin', dashboardUrl);
     res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret, Authorization');
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
     }
@@ -122,6 +124,9 @@ export async function startServer(client, dbPool) {
  * @returns {Promise<void>}
  */
 export async function stopServer() {
+  stopAuthCleanup();
+  stopGuildCacheCleanup();
+
   if (rateLimiter) {
     rateLimiter.destroy();
     rateLimiter = null;
