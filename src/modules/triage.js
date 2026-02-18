@@ -640,16 +640,20 @@ export async function startTriage(client, config, healthMonitor) {
     },
   );
 
-  // Responder system prompt: use config string if provided, otherwise use the prompt file
+  // Responder system prompt: use config personality if provided, otherwise use the prompt file.
+  // JSON output schema is always appended so it can't be lost when config overrides the personality.
   const responderSystemPromptFlags = config.ai?.systemPrompt
     ? { systemPrompt: config.ai.systemPrompt }
     : { systemPromptFile: promptPath('triage-respond-system') };
+
+  const jsonSchemaAppend = loadPrompt('triage-respond-schema');
 
   responderProcess = new CLIProcess(
     'responder',
     {
       model: resolved.respondModel,
       ...responderSystemPromptFlags,
+      appendSystemPrompt: jsonSchemaAppend,
       maxBudgetUsd: resolved.respondBudget,
       thinkingTokens: resolved.thinkingTokens,
       tools: '', // no tools for response
