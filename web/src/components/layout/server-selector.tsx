@@ -32,7 +32,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Persist selected guild to localStorage
-  const selectGuild = (guild: MutualGuild) => {
+  const selectGuild = useCallback((guild: MutualGuild) => {
     setSelectedGuild(guild);
     try {
       localStorage.setItem(SELECTED_GUILD_KEY, guild.id);
@@ -40,7 +40,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       // localStorage may be unavailable (e.g. incognito)
     }
     broadcastSelectedGuild(guild.id);
-  };
+  }, []);
 
   const loadGuilds = useCallback(async () => {
     // Abort any previous in-flight request before starting a new one.
@@ -97,7 +97,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [selectGuild]);
 
   useEffect(() => {
     loadGuilds();
