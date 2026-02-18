@@ -399,14 +399,14 @@ describe("fetchBotGuilds", () => {
 
     // Verify signal was forwarded to fetch
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://localhost:3001/api/guilds",
+      "http://localhost:3001/api/v1/guilds",
       expect.objectContaining({
         signal: controller.signal,
       }),
     );
   });
 
-  it("sends Authorization header with BOT_API_SECRET", async () => {
+  it("sends x-api-secret header with BOT_API_SECRET", async () => {
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "my-secret";
 
@@ -419,9 +419,9 @@ describe("fetchBotGuilds", () => {
     expect(result).toEqual({ available: true, guilds: [] });
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://localhost:3001/api/guilds",
+      "http://localhost:3001/api/v1/guilds",
       expect.objectContaining({
-        headers: { Authorization: "Bearer my-secret" },
+        headers: { "x-api-secret": "my-secret" },
       }),
     );
   });
@@ -471,7 +471,7 @@ describe("getMutualGuilds", () => {
       if (urlStr.includes("/users/@me/guilds")) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
       }
-      if (urlStr.includes("/api/guilds")) {
+      if (urlStr.includes("/api/v1/guilds")) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(botGuilds) } as Response);
       }
       return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
@@ -499,7 +499,7 @@ describe("getMutualGuilds", () => {
       if (urlStr.includes("/users/@me/guilds")) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
       }
-      if (urlStr.includes("/api/guilds")) {
+      if (urlStr.includes("/api/v1/guilds")) {
         return Promise.resolve({ ok: false, status: 500, statusText: "Internal Server Error" } as Response);
       }
       return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));

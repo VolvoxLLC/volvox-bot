@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { BotGuild, DiscordGuild, MutualGuild } from "@/types/discord";
+import { getBotApiBaseUrl } from "@/lib/bot-api";
 import { logger } from "@/lib/logger";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
@@ -140,9 +141,9 @@ export interface BotGuildResult {
 }
 
 export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResult> {
-  const botApiUrl = process.env.BOT_API_URL;
+  const botApiBaseUrl = getBotApiBaseUrl();
 
-  if (!botApiUrl) {
+  if (!botApiBaseUrl) {
     logger.warn(
       "[discord] BOT_API_URL is not set — cannot filter guilds by bot presence. " +
         "Set BOT_API_URL to enable mutual guild filtering.",
@@ -160,9 +161,9 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
   }
 
   try {
-    const response = await fetchWithRateLimit(`${botApiUrl}/api/guilds`, {
+    const response = await fetchWithRateLimit(`${botApiBaseUrl}/guilds`, {
       headers: {
-        Authorization: `Bearer ${botApiSecret}`,
+        "x-api-secret": botApiSecret,
       },
       signal,
       cache: "no-store",

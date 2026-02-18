@@ -256,6 +256,7 @@ The `web/` directory contains a Next.js admin dashboard for managing Bill Bot th
 - **Discord OAuth2 Login** — Sign in with your Discord account via NextAuth.js
 - **Server Selector** — Choose from mutual guilds (servers where both you and the bot are present)
 - **Token Refresh** — Automatic Discord token refresh with graceful error handling
+- **Analytics Dashboard** — KPI cards, message/AI usage charts, channel activity filtering, and activity heatmaps
 - **Responsive UI** — Mobile-friendly layout with sidebar navigation and dark mode support
 
 ### Setup

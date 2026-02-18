@@ -14,13 +14,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MutualGuild } from "@/types/discord";
 import { getBotInviteUrl, getGuildIconUrl } from "@/lib/discord";
+import {
+  broadcastSelectedGuild,
+  SELECTED_GUILD_KEY,
+} from "@/lib/guild-selection";
 import { cn } from "@/lib/utils";
 
 interface ServerSelectorProps {
   className?: string;
 }
-
-const SELECTED_GUILD_KEY = "bills-bot-selected-guild";
 
 export function ServerSelector({ className }: ServerSelectorProps) {
   const [guilds, setGuilds] = useState<MutualGuild[]>([]);
@@ -37,6 +39,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     } catch {
       // localStorage may be unavailable (e.g. incognito)
     }
+    broadcastSelectedGuild(guild.id);
   };
 
   const loadGuilds = useCallback(async () => {
@@ -70,6 +73,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           const saved = data.find((g: MutualGuild) => g.id === savedId);
           if (saved) {
             setSelectedGuild(saved);
+            broadcastSelectedGuild(saved.id);
             restored = true;
           }
         }
@@ -78,7 +82,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       }
 
       if (!restored && data.length > 0) {
-        setSelectedGuild(data[0]);
+        selectGuild(data[0]);
       }
     } catch (err) {
       // Don't treat aborted fetches as errors

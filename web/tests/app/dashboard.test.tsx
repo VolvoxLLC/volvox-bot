@@ -27,29 +27,17 @@ vi.mock("@/components/layout/dashboard-shell", () => ({
   ),
 }));
 
+vi.mock("@/components/dashboard/analytics-dashboard", () => ({
+  AnalyticsDashboard: () => <div>Analytics dashboard component</div>,
+}));
+
 import DashboardPage from "@/app/dashboard/page";
 import DashboardLayout from "@/app/dashboard/layout";
 
 describe("DashboardPage", () => {
-  it("renders the dashboard heading", () => {
+  it("renders analytics dashboard component", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
-    expect(
-      screen.getByText("Overview of your Bill Bot server."),
-    ).toBeInTheDocument();
-  });
-
-  it("renders stat cards", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText("Total server members")).toBeInTheDocument();
-    expect(screen.getByText("Total moderation actions")).toBeInTheDocument();
-    expect(screen.getByText("AI messages this week")).toBeInTheDocument();
-    expect(screen.getByText("Bot uptime")).toBeInTheDocument();
-  });
-
-  it("renders getting started card", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText("Getting Started")).toBeInTheDocument();
+    expect(screen.getByText("Analytics dashboard component")).toBeInTheDocument();
   });
 });
 

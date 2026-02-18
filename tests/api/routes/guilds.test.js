@@ -59,10 +59,12 @@ describe('guilds routes', () => {
 
   const mockMember = {
     id: 'user1',
-    user: { username: 'testuser' },
+    user: { username: 'testuser', bot: false },
     displayName: 'Test User',
     roles: { cache: new Map([['role1', { id: 'role1', name: 'Admin' }]]) },
     joinedAt: new Date('2024-01-01'),
+    joinedTimestamp: new Date('2024-01-01').getTime(),
+    presence: { status: 'online' },
   };
 
   const mockGuild = {
@@ -72,6 +74,7 @@ describe('guilds routes', () => {
     memberCount: 100,
     channels: { cache: channelCache },
     members: {
+      cache: new Map([['user1', mockMember]]),
       list: vi.fn().mockResolvedValue(new Map([['user1', mockMember]])),
     },
   };
@@ -524,6 +527,128 @@ describe('guilds routes', () => {
       const res = await request(app).get('/api/v1/guilds/guild1/stats').set('x-api-secret', SECRET);
 
       expect(res.status).toBe(500);
+    });
+  });
+
+  describe('GET /:id/analytics', () => {
+    it('should return analytics payload with KPIs, charts, and realtime indicators', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              total_messages: 120,
+              ai_requests: 40,
+              active_users: 10,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              bucket: '2026-02-17T00:00:00.000Z',
+              messages: 120,
+              ai_requests: 40,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              channel_id: 'ch1',
+              messages: 80,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              day_of_week: 2,
+              hour_of_day: 14,
+              messages: 12,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [{ count: 3 }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              model: 'claude-sonnet-4-20250514',
+              requests: 40,
+              prompt_tokens: 5000,
+              completion_tokens: 2000,
+              cost_usd: '0.0456',
+            },
+          ],
+        });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.guildId).toBe('guild1');
+      expect(res.body.kpis.totalMessages).toBe(120);
+      expect(res.body.kpis.aiRequests).toBe(40);
+      expect(res.body.kpis.activeUsers).toBe(10);
+      expect(res.body.kpis.aiCostUsd).toBeCloseTo(0.0456, 6);
+      expect(res.body.realtime.activeAiConversations).toBe(3);
+      expect(res.body.aiUsage.tokens.prompt).toBe(5000);
+      expect(res.body.aiUsage.tokens.completion).toBe(2000);
+      expect(res.body.channelActivity[0]).toEqual({
+        channelId: 'ch1',
+        name: 'general',
+        messages: 80,
+      });
+      expect(res.body.messageVolume).toHaveLength(1);
+      expect(res.body.heatmap).toHaveLength(1);
+    });
+
+    it('should return 400 for invalid custom range params', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=custom')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/from/i);
+    });
+
+    it('should include channelId in query filters when provided', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week&channelId=ch1')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(
+        mockPool.query.mock.calls.some(([, params]) =>
+          Array.isArray(params) ? params.includes('ch1') : false,
+        ),
+      ).toBe(true);
+    });
+
+    it('should gracefully degrade when logs query fails', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockRejectedValueOnce(new Error('logs relation missing'));
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.aiUsage.byModel).toEqual([]);
+      expect(res.body.kpis.aiCostUsd).toBe(0);
     });
   });
 

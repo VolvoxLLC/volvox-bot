@@ -55,6 +55,103 @@ function parsePagination(query) {
   return { page, limit, offset };
 }
 
+const MAX_ANALYTICS_RANGE_DAYS = 90;
+const ACTIVE_CONVERSATION_WINDOW_MINUTES = 15;
+
+/**
+ * Parse and validate a date-ish query param.
+ * @param {unknown} value
+ * @returns {Date|null}
+ */
+function parseDateParam(value) {
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Build a date range from query params.
+ * Supports presets: today, week, month, custom.
+ *
+ * @param {Object} query - Express req.query
+ * @returns {{ from: Date, to: Date, range: 'today'|'week'|'month'|'custom' }}
+ */
+function parseAnalyticsRange(query) {
+  const now = new Date();
+  const rawRange = typeof query.range === 'string' ? query.range.toLowerCase() : 'week';
+  const range = ['today', 'week', 'month', 'custom'].includes(rawRange) ? rawRange : 'week';
+
+  if (range === 'custom') {
+    const from = parseDateParam(query.from);
+    const to = parseDateParam(query.to);
+
+    if (!from || !to) {
+      throw new Error('Custom range requires valid "from" and "to" query params');
+    }
+    if (from > to) {
+      throw new Error('"from" must be before "to"');
+    }
+
+    const maxRangeMs = MAX_ANALYTICS_RANGE_DAYS * 24 * 60 * 60 * 1000;
+    if (to.getTime() - from.getTime() > maxRangeMs) {
+      throw new Error(`Custom range cannot exceed ${MAX_ANALYTICS_RANGE_DAYS} days`);
+    }
+
+    return { from, to, range: 'custom' };
+  }
+
+  const from = new Date(now);
+  if (range === 'today') {
+    from.setHours(0, 0, 0, 0);
+  } else if (range === 'month') {
+    from.setDate(from.getDate() - 30);
+  } else {
+    // Default: week
+    from.setDate(from.getDate() - 7);
+  }
+
+  return { from, to: now, range };
+}
+
+/**
+ * Infer/validate analytics interval bucket size.
+ *
+ * @param {Object} query - Express req.query
+ * @param {Date} from
+ * @param {Date} to
+ * @returns {'hour'|'day'}
+ */
+function parseAnalyticsInterval(query, from, to) {
+  if (query.interval === 'hour' || query.interval === 'day') {
+    return query.interval;
+  }
+
+  // Auto: use hour for short windows (<= 48h), day otherwise.
+  const diffMs = to.getTime() - from.getTime();
+  return diffMs <= 48 * 60 * 60 * 1000 ? 'hour' : 'day';
+}
+
+/**
+ * Human-friendly chart label for a time bucket.
+ * @param {Date} bucket
+ * @param {'hour'|'day'} interval
+ * @returns {string}
+ */
+function formatBucketLabel(bucket, interval) {
+  if (interval === 'hour') {
+    return bucket.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+    });
+  }
+
+  return bucket.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 /**
  * Check if an OAuth2 user has the specified permission flags on a guild.
  * Fetches fresh guild list from Discord using the access token from the session store.
@@ -378,6 +475,262 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
   } catch (err) {
     error('Failed to fetch stats', { error: err.message, guild: req.params.id });
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+/**
+ * GET /:id/analytics — Dashboard analytics dataset
+ * Query params:
+ *   - range=today|week|month|custom
+ *   - from=<ISO date> (required for custom)
+ *   - to=<ISO date> (required for custom)
+ *   - interval=hour|day (optional; auto-derived when omitted)
+ *   - channelId=<Discord channel id> (optional filter)
+ */
+router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) => {
+  const { dbPool } = req.app.locals;
+
+  if (!dbPool) {
+    return res.status(503).json({ error: 'Database not available' });
+  }
+
+  let rangeConfig;
+  try {
+    rangeConfig = parseAnalyticsRange(req.query);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const { from, to, range } = rangeConfig;
+  const interval = parseAnalyticsInterval(req.query, from, to);
+
+  const channelId = typeof req.query.channelId === 'string' ? req.query.channelId.trim() : '';
+  const activeChannelFilter = channelId.length > 0 ? channelId : null;
+
+  const conversationWhereParts = ['guild_id = $1', 'created_at >= $2', 'created_at <= $3'];
+  const conversationValues = [req.params.id, from.toISOString(), to.toISOString()];
+
+  if (activeChannelFilter) {
+    conversationValues.push(activeChannelFilter);
+    conversationWhereParts.push(`channel_id = $${conversationValues.length}`);
+  }
+
+  const conversationWhere = conversationWhereParts.join(' AND ');
+  const bucketExpr =
+    interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
+
+  const logsWhereParts = [
+    "message = 'AI usage'",
+    "metadata->>'guildId' = $1",
+    'timestamp >= $2',
+    'timestamp <= $3',
+  ];
+  const logsValues = [req.params.id, from.toISOString(), to.toISOString()];
+
+  if (activeChannelFilter) {
+    logsValues.push(activeChannelFilter);
+    logsWhereParts.push(`metadata->>'channelId' = $${logsValues.length}`);
+  }
+
+  const logsWhere = logsWhereParts.join(' AND ');
+
+  try {
+    const [kpiResult, volumeResult, channelResult, heatmapResult, activeResult, modelUsageResult] =
+      await Promise.all([
+        dbPool.query(
+          `SELECT
+             COUNT(*)::int AS total_messages,
+             COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests,
+             COUNT(DISTINCT CASE WHEN role = 'user' THEN username END)::int AS active_users
+           FROM conversations
+           WHERE ${conversationWhere}`,
+          conversationValues,
+        ),
+        dbPool.query(
+          `SELECT
+             ${bucketExpr} AS bucket,
+             COUNT(*)::int AS messages,
+             COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests
+           FROM conversations
+           WHERE ${conversationWhere}
+           GROUP BY 1
+           ORDER BY 1 ASC`,
+          conversationValues,
+        ),
+        dbPool.query(
+          `SELECT channel_id, COUNT(*)::int AS messages
+           FROM conversations
+           WHERE ${conversationWhere}
+           GROUP BY channel_id
+           ORDER BY messages DESC
+           LIMIT 10`,
+          conversationValues,
+        ),
+        dbPool.query(
+          `SELECT
+             EXTRACT(DOW FROM created_at)::int AS day_of_week,
+             EXTRACT(HOUR FROM created_at)::int AS hour_of_day,
+             COUNT(*)::int AS messages
+           FROM conversations
+           WHERE ${conversationWhere}
+           GROUP BY 1, 2
+           ORDER BY 1 ASC, 2 ASC`,
+          conversationValues,
+        ),
+        dbPool.query(
+          `SELECT COUNT(DISTINCT channel_id)::int AS count
+           FROM conversations
+           WHERE guild_id = $1
+             AND role = 'assistant'
+             AND created_at >= NOW() - make_interval(mins => $2)`,
+          [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+        ),
+        dbPool
+          .query(
+            `SELECT
+               COALESCE(NULLIF(metadata->>'model', ''), 'unknown') AS model,
+               COUNT(*)::int AS requests,
+               SUM(
+                 CASE
+                   WHEN (metadata->>'promptTokens') ~ '^[0-9]+$'
+                   THEN (metadata->>'promptTokens')::int
+                   ELSE 0
+                 END
+               )::int AS prompt_tokens,
+               SUM(
+                 CASE
+                   WHEN (metadata->>'completionTokens') ~ '^[0-9]+$'
+                   THEN (metadata->>'completionTokens')::int
+                   ELSE 0
+                 END
+               )::int AS completion_tokens,
+               SUM(
+                 CASE
+                   WHEN (metadata->>'estimatedCostUsd') ~ '^[0-9]+(\\.[0-9]+)?$'
+                   THEN (metadata->>'estimatedCostUsd')::numeric
+                   ELSE 0
+                 END
+               ) AS cost_usd
+             FROM logs
+             WHERE ${logsWhere}
+             GROUP BY 1
+             ORDER BY requests DESC`,
+            logsValues,
+          )
+          .catch((err) => {
+            warn('Analytics logs query failed; returning empty AI usage dataset', {
+              guild: req.params.id,
+              error: err.message,
+            });
+            return { rows: [] };
+          }),
+      ]);
+
+    const kpiRow = kpiResult.rows[0] || {
+      total_messages: 0,
+      ai_requests: 0,
+      active_users: 0,
+    };
+
+    const volume = volumeResult.rows.map((row) => {
+      const bucketDate = new Date(row.bucket);
+      return {
+        bucket: bucketDate.toISOString(),
+        label: formatBucketLabel(bucketDate, interval),
+        messages: Number(row.messages || 0),
+        aiRequests: Number(row.ai_requests || 0),
+      };
+    });
+
+    const channelActivity = channelResult.rows.map((row) => {
+      const channelName = req.guild.channels.cache.get(row.channel_id)?.name || row.channel_id;
+      return {
+        channelId: row.channel_id,
+        name: channelName,
+        messages: Number(row.messages || 0),
+      };
+    });
+
+    const heatmap = heatmapResult.rows.map((row) => ({
+      dayOfWeek: Number(row.day_of_week || 0),
+      hour: Number(row.hour_of_day || 0),
+      messages: Number(row.messages || 0),
+    }));
+
+    const usageByModel = modelUsageResult.rows.map((row) => ({
+      model: row.model,
+      requests: Number(row.requests || 0),
+      promptTokens: Number(row.prompt_tokens || 0),
+      completionTokens: Number(row.completion_tokens || 0),
+      costUsd: Number(row.cost_usd || 0),
+    }));
+
+    const promptTokenTotal = usageByModel.reduce((sum, model) => sum + model.promptTokens, 0);
+    const completionTokenTotal = usageByModel.reduce(
+      (sum, model) => sum + model.completionTokens,
+      0,
+    );
+    const aiCostUsd = usageByModel.reduce((sum, model) => sum + model.costUsd, 0);
+
+    const fromMs = from.getTime();
+    const toMs = to.getTime();
+    const newMembers = Array.from(req.guild.members.cache.values()).reduce((count, member) => {
+      if (member.user?.bot) return count;
+      const joinedAt = member.joinedTimestamp;
+      if (!joinedAt) return count;
+      return joinedAt >= fromMs && joinedAt <= toMs ? count + 1 : count;
+    }, 0);
+
+    let onlineMemberCount = 0;
+    let membersWithPresence = 0;
+    for (const member of req.guild.members.cache.values()) {
+      const status = member.presence?.status;
+      if (!status) continue;
+      membersWithPresence++;
+      if (status !== 'offline') onlineMemberCount++;
+    }
+
+    return res.json({
+      guildId: req.params.id,
+      range: {
+        type: range,
+        from: from.toISOString(),
+        to: to.toISOString(),
+        interval,
+        channelId: activeChannelFilter,
+      },
+      kpis: {
+        totalMessages: Number(kpiRow.total_messages || 0),
+        aiRequests: Number(kpiRow.ai_requests || 0),
+        aiCostUsd: Number(aiCostUsd.toFixed(6)),
+        activeUsers: Number(kpiRow.active_users || 0),
+        newMembers,
+      },
+      realtime: {
+        onlineMembers: membersWithPresence > 0 ? onlineMemberCount : null,
+        activeAiConversations: Number(activeResult.rows[0]?.count || 0),
+      },
+      messageVolume: volume,
+      aiUsage: {
+        byModel: usageByModel,
+        tokens: {
+          prompt: promptTokenTotal,
+          completion: completionTokenTotal,
+        },
+      },
+      channelActivity,
+      heatmap,
+    });
+  } catch (err) {
+    error('Failed to fetch analytics', {
+      error: err.message,
+      guild: req.params.id,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      interval,
+      channelId: activeChannelFilter,
+    });
+    return res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
 

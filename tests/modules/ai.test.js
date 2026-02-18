@@ -16,6 +16,7 @@ vi.mock('../../src/modules/memory.js', () => ({
   extractAndStoreMemories: vi.fn(() => Promise.resolve(false)),
 }));
 
+import { info } from '../../src/logger.js';
 import {
   _setPoolGetter,
   addToHistory,
@@ -246,6 +247,36 @@ describe('ai module', () => {
 
       expect(reply).toBe('Hello there!');
       expect(globalThis.fetch).toHaveBeenCalled();
+    });
+
+    it('should log structured AI usage metadata for analytics', async () => {
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          model: 'claude-sonnet-4-20250514',
+          usage: {
+            prompt_tokens: 200,
+            completion_tokens: 100,
+            total_tokens: 300,
+          },
+          choices: [{ message: { content: 'Usage logged' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      await generateResponse('ch1', 'Hi', 'user1', null, null, 'guild-analytics');
+
+      expect(info).toHaveBeenCalledWith(
+        'AI usage',
+        expect.objectContaining({
+          guildId: 'guild-analytics',
+          channelId: 'ch1',
+          model: 'claude-sonnet-4-20250514',
+          promptTokens: 200,
+          completionTokens: 100,
+          totalTokens: 300,
+        }),
+      );
     });
 
     it('should include correct headers in fetch request', async () => {

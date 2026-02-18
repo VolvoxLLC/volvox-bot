@@ -115,6 +115,48 @@ export const OPENCLAW_URL =
 export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_TOKEN || '';
 
 /**
+ * Approximate model pricing (USD per 1M tokens).
+ * Used for dashboard-level cost estimation only.
+ */
+const MODEL_PRICING_PER_MILLION = {
+  'claude-opus-4-1-20250805': { input: 15, output: 75 },
+  'claude-opus-4-20250514': { input: 15, output: 75 },
+  'claude-sonnet-4-20250514': { input: 3, output: 15 },
+  'claude-haiku-4-5': { input: 0.8, output: 4 },
+};
+
+/**
+ * Safely convert a value to a non-negative finite number.
+ * @param {unknown} value
+ * @returns {number}
+ */
+function toNonNegativeNumber(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0) return 0;
+  return num;
+}
+
+/**
+ * Estimate request cost from token usage and model pricing.
+ * Returns 0 when pricing for the model is unknown.
+ *
+ * @param {string} model
+ * @param {number} promptTokens
+ * @param {number} completionTokens
+ * @returns {number}
+ */
+function estimateAiCostUsd(model, promptTokens, completionTokens) {
+  const pricing = MODEL_PRICING_PER_MILLION[model];
+  if (!pricing) return 0;
+
+  const inputCost = (promptTokens / 1_000_000) * pricing.input;
+  const outputCost = (completionTokens / 1_000_000) * pricing.output;
+
+  // Keep precision stable in logs for easier DB aggregation
+  return Number((inputCost + outputCost).toFixed(6));
+}
+
+/**
  * Hydrate conversation history for a channel from DB.
  * Dedupes concurrent hydrations and merges DB rows with in-flight in-memory writes.
  *
@@ -469,7 +511,28 @@ You can use Discord markdown formatting.`;
     }
 
     const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content || 'I got nothing. Try again?';
+    const reply = data?.choices?.[0]?.message?.content || 'I got nothing. Try again?';
+
+    const modelUsed =
+      typeof data?.model === 'string' && data.model.trim().length > 0
+        ? data.model
+        : guildConfig.ai?.model || 'claude-sonnet-4-20250514';
+
+    const promptTokens = toNonNegativeNumber(data?.usage?.prompt_tokens);
+    const completionTokens = toNonNegativeNumber(data?.usage?.completion_tokens);
+    const totalTokens = toNonNegativeNumber(data?.usage?.total_tokens);
+    const estimatedCostUsd = estimateAiCostUsd(modelUsed, promptTokens, completionTokens);
+
+    // Structured usage log powers analytics aggregation in /api/v1/guilds/:id/analytics.
+    info('AI usage', {
+      guildId: guildId || null,
+      channelId,
+      model: modelUsed,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      estimatedCostUsd,
+    });
 
     // Log AI response
     info('AI response', { channelId, username, response: reply.substring(0, 500) });
