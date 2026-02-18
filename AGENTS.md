@@ -37,6 +37,8 @@
 | `src/api/routes/guilds.js` | Guild REST API endpoints (info, config, stats, members, moderation, analytics, actions) |
 | `web/src/components/dashboard/analytics-dashboard.tsx` | Analytics dashboard React component — charts, KPIs, date range controls |
 | `web/src/app/api/guilds/[guildId]/analytics/route.ts` | Next.js API route — proxies analytics requests to bot API with param allowlisting |
+| `web/src/lib/guild-selection.ts` | Guild selection state — localStorage persistence (`SELECTED_GUILD_KEY`) and cross-tab broadcast (`broadcastSelectedGuild`) |
+| `web/src/lib/bot-api.ts` | Bot API URL normalization — `getBotApiBaseUrl` for constructing stable v1 API endpoint |
 | `src/api/middleware/auth.js` | API authentication middleware |
 | `src/api/middleware/rateLimit.js` | Rate limiting middleware |
 | `src/utils/errors.js` | Error classes and handling utilities |

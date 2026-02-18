@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Bot,
@@ -98,6 +98,7 @@ export function AnalyticsDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -161,6 +162,13 @@ export function AnalyticsDashboard() {
     async (backgroundRefresh = false) => {
       if (!guildId) return;
 
+      // Abort any previous in-flight request before starting a new one.
+      // Always uses the ref-based controller so both the initial load
+      // and background refresh share a single cancellation path.
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       if (!backgroundRefresh) {
         setLoading(true);
       }
@@ -171,6 +179,7 @@ export function AnalyticsDashboard() {
           `/api/guilds/${guildId}/analytics?${queryString}`,
           {
             cache: "no-store",
+            signal: controller.signal,
           },
         );
 
@@ -200,13 +209,20 @@ export function AnalyticsDashboard() {
         setAnalytics(payload as DashboardAnalytics);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {
+        // Don't treat aborted fetches as errors
+        if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
         setError(
           fetchError instanceof Error
             ? fetchError.message
             : "Failed to fetch analytics",
         );
       } finally {
-        if (!backgroundRefresh) {
+        // Only reset loading if this request is still the current one.
+        // When fetchAnalytics is called again, the previous request
+        // is aborted and a new controller replaces the ref. Without this
+        // guard the aborted request's finally block would set loading=false,
+        // cancelling out the new request's loading=true.
+        if (abortControllerRef.current === controller) {
           setLoading(false);
         }
       }
@@ -215,7 +231,8 @@ export function AnalyticsDashboard() {
   );
 
   useEffect(() => {
-    fetchAnalytics();
+    void fetchAnalytics();
+    return () => abortControllerRef.current?.abort();
   }, [fetchAnalytics]);
 
   useEffect(() => {
