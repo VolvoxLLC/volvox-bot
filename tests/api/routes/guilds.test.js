@@ -669,6 +669,7 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.aiUsage.byModel).toEqual([]);
       expect(res.body.kpis.aiCostUsd).toBe(0);
+      expect(res.body.kpis.newMembers).toBeTypeOf('number');
     });
   });
 

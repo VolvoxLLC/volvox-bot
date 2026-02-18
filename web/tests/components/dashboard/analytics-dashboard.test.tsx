@@ -333,4 +333,46 @@ describe("AnalyticsDashboard", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(callCountBeforeApply);
     expect(requestedInvalidRange).toBe(false);
   });
+
+  it("shows error card with retry button when API returns error", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: "Internal server error" }),
+    } as Response);
+
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to load analytics/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it("redirects to /login when API returns 401", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+    const originalLocation = window.location;
+    // @ts-expect-error -- mocking location
+    delete window.location;
+    // @ts-expect-error -- mocking location
+    window.location = { href: "" };
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ error: "Unauthorized" }),
+    } as Response);
+
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(window.location.href).toBe("/login");
+    });
+
+    window.location = originalLocation;
+  });
 });

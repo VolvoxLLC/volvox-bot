@@ -503,7 +503,13 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   try {
     rangeConfig = parseAnalyticsRange(req.query);
   } catch (err) {
-    return res.status(400).json({ error: err.message });
+    // parseAnalyticsRange only throws developer-authored validation messages,
+    // but avoid leaking raw error messages for safety
+    const safeMessage =
+      err.message && typeof err.message === 'string' && err.message.length < 200
+        ? err.message
+        : 'Invalid range parameter';
+    return res.status(400).json({ error: safeMessage });
   }
 
   const { from, to, range } = rangeConfig;
