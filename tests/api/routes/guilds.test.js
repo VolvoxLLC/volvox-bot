@@ -591,6 +591,7 @@ describe('guilds routes', () => {
       expect(res.body.kpis.aiRequests).toBe(40);
       expect(res.body.kpis.activeUsers).toBe(10);
       expect(res.body.kpis.aiCostUsd).toBeCloseTo(0.0456, 6);
+      expect(res.body.kpis.newMembers).toBeTypeOf('number');
       expect(res.body.realtime.activeAiConversations).toBe(3);
       expect(res.body.aiUsage.tokens.prompt).toBe(5000);
       expect(res.body.aiUsage.tokens.completion).toBe(2000);

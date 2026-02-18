@@ -117,6 +117,10 @@ export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCL
 /**
  * Approximate model pricing (USD per 1M tokens).
  * Used for dashboard-level cost estimation only.
+ *
+ * NOTE: This table requires manual updates when Anthropic releases new models.
+ * Unknown models return $0 and log a warning (see logWarn in estimateAiCostUsd).
+ * Pricing reference: https://www.anthropic.com/pricing
  */
 const MODEL_PRICING_PER_MILLION = {
   'claude-opus-4-1-20250805': { input: 15, output: 75 },

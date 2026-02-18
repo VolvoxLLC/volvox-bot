@@ -102,7 +102,7 @@ function parseAnalyticsRange(query) {
 
   const from = new Date(now);
   if (range === 'today') {
-    from.setHours(0, 0, 0, 0);
+    from.setUTCHours(0, 0, 0, 0);
   } else if (range === 'month') {
     from.setDate(from.getDate() - 30);
   } else {
