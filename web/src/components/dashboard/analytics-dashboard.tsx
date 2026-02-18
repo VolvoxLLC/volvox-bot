@@ -544,9 +544,11 @@ export function AnalyticsDashboard() {
                 Active AI conversations
               </div>
               <p className="mt-2 text-2xl font-semibold">
-                {analytics == null || loading
+                {loading || analytics == null
                   ? "—"
-                  : formatNumber(analytics.realtime.activeAiConversations ?? 0)}
+                  : analytics.realtime.activeAiConversations === null
+                    ? "N/A"
+                    : formatNumber(analytics.realtime.activeAiConversations)}
               </p>
             </div>
           </CardContent>

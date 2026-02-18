@@ -16,7 +16,7 @@ vi.mock('../../src/modules/memory.js', () => ({
   extractAndStoreMemories: vi.fn(() => Promise.resolve(false)),
 }));
 
-import { info } from '../../src/logger.js';
+import { info, warn } from '../../src/logger.js';
 import {
   _setPoolGetter,
   addToHistory,
@@ -277,6 +277,48 @@ describe('ai module', () => {
           totalTokens: 300,
           estimatedCostUsd: expect.any(Number),
         }),
+      );
+    });
+
+    it.each([
+      {
+        model: 'claude-haiku-4-5-20251001',
+        expectedCostUsd: 0.0007,
+      },
+      {
+        model: 'claude-3-5-haiku-20241022',
+        expectedCostUsd: 0.00056,
+      },
+    ])('should use explicit pricing for $model in AI usage cost estimation', async ({
+      model,
+      expectedCostUsd,
+    }) => {
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          model,
+          usage: {
+            prompt_tokens: 200,
+            completion_tokens: 100,
+            total_tokens: 300,
+          },
+          choices: [{ message: { content: 'Usage logged' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      await generateResponse('ch1', 'Hi', 'user1', null, null, 'guild-analytics');
+
+      expect(info).toHaveBeenCalledWith(
+        'AI usage',
+        expect.objectContaining({
+          model,
+          estimatedCostUsd: expectedCostUsd,
+        }),
+      );
+      expect(warn).not.toHaveBeenCalledWith(
+        'Unknown model for cost estimation, returning $0',
+        expect.objectContaining({ model }),
       );
     });
 

@@ -128,6 +128,9 @@ const MODEL_PRICING_PER_MILLION = {
   'claude-sonnet-4-20250514': { input: 3, output: 15 },
   // Haiku 4.5: $1/M input, $5/M output (https://www.anthropic.com/pricing)
   'claude-haiku-4-5': { input: 1, output: 5 },
+  'claude-haiku-4-5-20251001': { input: 1, output: 5 },
+  // Haiku 3.5: $0.80/M input, $4/M output (https://www.anthropic.com/pricing)
+  'claude-3-5-haiku-20241022': { input: 0.8, output: 4 },
 };
 
 /** Track models we've already warned about to avoid log flooding. */

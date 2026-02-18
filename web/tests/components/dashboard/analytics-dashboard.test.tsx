@@ -135,6 +135,23 @@ describe("AnalyticsDashboard", () => {
     expect(within(card as HTMLElement).getByText("—")).toBeInTheDocument();
   });
 
+  it("shows em dash for active AI conversations before initial load completes", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+    vi.spyOn(global, "fetch").mockReturnValue(new Promise(() => {}));
+
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Active AI conversations")).toBeInTheDocument();
+    });
+
+    const label = screen.getByText("Active AI conversations");
+    const card = label.closest("div")?.parentElement;
+    expect(card).not.toBeNull();
+    expect(within(card as HTMLElement).getByText("—")).toBeInTheDocument();
+    expect(within(card as HTMLElement).queryByText("0")).not.toBeInTheDocument();
+  });
+
   it("omits interval query param for custom range so server can auto-detect", async () => {
     localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
 
