@@ -126,7 +126,7 @@ const MODEL_PRICING_PER_MILLION = {
   'claude-opus-4-1-20250805': { input: 15, output: 75 },
   'claude-opus-4-20250514': { input: 15, output: 75 },
   'claude-sonnet-4-20250514': { input: 3, output: 15 },
-  'claude-haiku-4-5-20241022': { input: 0.8, output: 4 },
+  'claude-haiku-4-5': { input: 0.8, output: 4 },
 };
 
 /** Track models we've already warned about to avoid log flooding. */
