@@ -39,7 +39,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771455645487,
+      "updatedAtMs": 1771457418915,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -58,10 +58,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771457400000,
-        "lastRunAtMs": 1771455600020,
+        "nextRunAtMs": 1771459200000,
+        "lastRunAtMs": 1771457400037,
         "lastStatus": "ok",
-        "lastDurationMs": 45467,
+        "lastDurationMs": 18878,
         "consecutiveErrors": 0
       }
     },
@@ -73,7 +73,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771448721457,
+      "updatedAtMs": 1771455920098,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -93,11 +93,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771455857126,
-        "lastRunAtMs": 1771448657132,
+        "nextRunAtMs": 1771463057126,
+        "lastRunAtMs": 1771455857138,
         "lastStatus": "error",
-        "lastDurationMs": 64325,
-        "consecutiveErrors": 3,
+        "lastDurationMs": 62960,
+        "consecutiveErrors": 4,
         "lastError": "cron announce delivery failed"
       }
     }
