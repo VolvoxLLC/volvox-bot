@@ -27,7 +27,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
-import { loadConfig, onConfigChange } from './modules/config.js';
+import { getConfig, loadConfig, onConfigChange } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
@@ -185,8 +185,9 @@ client.on('interactionCreate', async (interaction) => {
     info('Slash command received', { command: commandName, user: interaction.user.tag });
 
     // Permission check
-    if (!hasPermission(member, commandName, config)) {
-      const permLevel = config.permissions?.allowedCommands?.[commandName] || 'administrator';
+    const guildConfig = getConfig(interaction.guildId);
+    if (!hasPermission(member, commandName, guildConfig)) {
+      const permLevel = guildConfig.permissions?.allowedCommands?.[commandName] || 'administrator';
       await safeReply(interaction, {
         content: getPermissionError(commandName, permLevel),
         ephemeral: true,
@@ -374,7 +375,9 @@ async function startup() {
     'logging.database.flushIntervalMs',
     'logging.database.minLevel',
   ]) {
-    onConfigChange(key, async (_newValue, _oldValue, path) => {
+    onConfigChange(key, async (_newValue, _oldValue, path, guildId) => {
+      // Per-guild config changes should not affect the global logging transport
+      if (guildId && guildId !== 'global') return;
       transportLock = transportLock
         .then(() => updateLoggingTransport(path))
         .catch((err) =>
@@ -384,16 +387,16 @@ async function startup() {
     });
   }
 
-  // AI, spam, and moderation modules call getConfig() per-request, so config
+  // AI, spam, and moderation modules call getConfig(guildId) per-request, so config
   // changes take effect automatically. Listeners provide observability only.
-  onConfigChange('ai.*', (newValue, _oldValue, path) => {
-    info('AI config updated', { path, newValue });
+  onConfigChange('ai.*', (newValue, _oldValue, path, guildId) => {
+    info('AI config updated', { path, newValue, guildId });
   });
-  onConfigChange('spam.*', (newValue, _oldValue, path) => {
-    info('Spam config updated', { path, newValue });
+  onConfigChange('spam.*', (newValue, _oldValue, path, guildId) => {
+    info('Spam config updated', { path, newValue, guildId });
   });
-  onConfigChange('moderation.*', (newValue, _oldValue, path) => {
-    info('Moderation config updated', { path, newValue });
+  onConfigChange('moderation.*', (newValue, _oldValue, path, guildId) => {
+    info('Moderation config updated', { path, newValue, guildId });
   });
 
   // Set up AI module's DB pool reference

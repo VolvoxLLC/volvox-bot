@@ -602,6 +602,37 @@ describe('threading module', () => {
       expect(tracked.threadId).toBe('new-thread-1');
     });
 
+    it('should store guildId in activeThreads entry', async () => {
+      const mockThread = { id: 'new-thread-guild' };
+      const message = {
+        author: { id: 'user1', displayName: 'Alice', username: 'alice' },
+        channel: { id: 'ch1' },
+        guild: { id: 'guild-123' },
+        startThread: vi.fn().mockResolvedValue(mockThread),
+      };
+
+      await createThread(message, 'Hello');
+
+      const key = buildThreadKey('user1', 'ch1');
+      const tracked = getActiveThreads().get(key);
+      expect(tracked.guildId).toBe('guild-123');
+    });
+
+    it('should store null guildId when no guild (DM context)', async () => {
+      const mockThread = { id: 'new-thread-dm' };
+      const message = {
+        author: { id: 'user1', displayName: 'Alice', username: 'alice' },
+        channel: { id: 'ch1' },
+        startThread: vi.fn().mockResolvedValue(mockThread),
+      };
+
+      await createThread(message, 'Hello');
+
+      const key = buildThreadKey('user1', 'ch1');
+      const tracked = getActiveThreads().get(key);
+      expect(tracked.guildId).toBeNull();
+    });
+
     it('should use username when displayName is not available', async () => {
       const mockThread = { id: 'new-thread-2' };
       const message = {
@@ -777,6 +808,43 @@ describe('threading module', () => {
 
       expect(getActiveThreads().has('expired')).toBe(false);
       expect(getActiveThreads().has('fresh')).toBe(true);
+    });
+
+    it('should use per-guild config for eviction', () => {
+      const now = Date.now();
+
+      // Guild A has a short reuse window (10 minutes)
+      // Guild B has a long reuse window (60 minutes)
+      getConfig.mockImplementation((guildId) => {
+        if (guildId === 'guild-a') {
+          return { ai: { threadMode: { enabled: true, reuseWindowMinutes: 10 } } };
+        }
+        if (guildId === 'guild-b') {
+          return { ai: { threadMode: { enabled: true, reuseWindowMinutes: 60 } } };
+        }
+        return { ai: { threadMode: { enabled: true, reuseWindowMinutes: 30 } } };
+      });
+
+      // Entry from guild-a, 15 min old — should be evicted (10 min window)
+      getActiveThreads().set('guild-a-entry', {
+        threadId: 't1',
+        lastActive: now - 15 * 60 * 1000,
+        threadName: 'Guild A thread',
+        guildId: 'guild-a',
+      });
+
+      // Entry from guild-b, 15 min old — should survive (60 min window)
+      getActiveThreads().set('guild-b-entry', {
+        threadId: 't2',
+        lastActive: now - 15 * 60 * 1000,
+        threadName: 'Guild B thread',
+        guildId: 'guild-b',
+      });
+
+      sweepExpiredThreads();
+
+      expect(getActiveThreads().has('guild-a-entry')).toBe(false);
+      expect(getActiveThreads().has('guild-b-entry')).toBe(true);
     });
 
     it('should enforce max-size cap by evicting oldest entries', () => {

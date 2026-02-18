@@ -101,6 +101,7 @@ export async function execute(interaction) {
   const subcommand = interaction.options.getSubcommand();
   const userId = interaction.user.id;
   const username = interaction.user.username;
+  const guildId = interaction.guildId;
 
   // Handle admin subcommand group
   if (subcommandGroup === 'admin') {
@@ -114,7 +115,7 @@ export async function execute(interaction) {
     return;
   }
 
-  if (!checkAndRecoverMemory()) {
+  if (!checkAndRecoverMemory(guildId)) {
     await safeReply(interaction, {
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',
@@ -124,13 +125,13 @@ export async function execute(interaction) {
   }
 
   if (subcommand === 'view') {
-    await handleView(interaction, userId, username);
+    await handleView(interaction, userId, username, guildId);
   } else if (subcommand === 'forget') {
     const topic = interaction.options.getString('topic');
     if (topic) {
-      await handleForgetTopic(interaction, userId, username, topic);
+      await handleForgetTopic(interaction, userId, username, topic, guildId);
     } else {
-      await handleForgetAll(interaction, userId, username);
+      await handleForgetAll(interaction, userId, username, guildId);
     }
   }
 }
@@ -165,11 +166,12 @@ async function handleOptOut(interaction, userId) {
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  * @param {string} userId
  * @param {string} username
+ * @param {string} [guildId]
  */
-async function handleView(interaction, userId, username) {
+async function handleView(interaction, userId, username, guildId) {
   await interaction.deferReply({ ephemeral: true });
 
-  const memories = await getMemories(userId);
+  const memories = await getMemories(userId, guildId);
 
   if (memories.length === 0) {
     await safeEditReply(interaction, {
@@ -193,8 +195,9 @@ async function handleView(interaction, userId, username) {
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  * @param {string} userId
  * @param {string} username
+ * @param {string} [guildId]
  */
-async function handleForgetAll(interaction, userId, username) {
+async function handleForgetAll(interaction, userId, username, guildId) {
   const confirmButton = new ButtonBuilder()
     .setCustomId('memory_forget_confirm')
     .setLabel('Confirm')
@@ -222,7 +225,7 @@ async function handleForgetAll(interaction, userId, username) {
     });
 
     if (buttonInteraction.customId === 'memory_forget_confirm') {
-      const success = await deleteAllMemories(userId);
+      const success = await deleteAllMemories(userId, guildId);
 
       if (success) {
         await safeUpdate(buttonInteraction, {
@@ -258,8 +261,9 @@ async function handleForgetAll(interaction, userId, username) {
  * @param {string} userId
  * @param {string} username
  * @param {string} topic
+ * @param {string} [guildId]
  */
-async function handleForgetTopic(interaction, userId, username, topic) {
+async function handleForgetTopic(interaction, userId, username, topic, guildId) {
   await interaction.deferReply({ ephemeral: true });
 
   const BATCH_SIZE = 100;
@@ -271,7 +275,7 @@ async function handleForgetTopic(interaction, userId, username, topic) {
   // Loop to delete all matching memories (not just the first batch)
   while (iterations < MAX_ITERATIONS) {
     iterations++;
-    const { memories: matches } = await searchMemories(userId, topic, BATCH_SIZE);
+    const { memories: matches } = await searchMemories(userId, topic, BATCH_SIZE, guildId);
 
     if (matches.length === 0) break;
     totalFound += matches.length;
@@ -282,7 +286,9 @@ async function handleForgetTopic(interaction, userId, username, topic) {
 
     if (matchesWithIds.length === 0) break;
 
-    const results = await Promise.allSettled(matchesWithIds.map((m) => deleteMemory(m.id)));
+    const results = await Promise.allSettled(
+      matchesWithIds.map((m) => deleteMemory(m.id, guildId)),
+    );
     const batchDeleted = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
     totalDeleted += batchDeleted;
 
@@ -329,7 +335,9 @@ async function handleAdmin(interaction, subcommand) {
     return;
   }
 
-  if (!checkAndRecoverMemory()) {
+  const guildId = interaction.guildId;
+
+  if (!checkAndRecoverMemory(guildId)) {
     await safeReply(interaction, {
       content:
         '🧠 Memory system is currently unavailable. The bot still works, just without long-term memory.',
@@ -343,9 +351,9 @@ async function handleAdmin(interaction, subcommand) {
   const targetUsername = targetUser.username;
 
   if (subcommand === 'view') {
-    await handleAdminView(interaction, targetId, targetUsername);
+    await handleAdminView(interaction, targetId, targetUsername, guildId);
   } else if (subcommand === 'clear') {
-    await handleAdminClear(interaction, targetId, targetUsername);
+    await handleAdminClear(interaction, targetId, targetUsername, guildId);
   }
 }
 
@@ -354,11 +362,12 @@ async function handleAdmin(interaction, subcommand) {
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  * @param {string} targetId
  * @param {string} targetUsername
+ * @param {string} [guildId]
  */
-async function handleAdminView(interaction, targetId, targetUsername) {
+async function handleAdminView(interaction, targetId, targetUsername, guildId) {
   await interaction.deferReply({ ephemeral: true });
 
-  const memories = await getMemories(targetId);
+  const memories = await getMemories(targetId, guildId);
   const optedOutStatus = isOptedOut(targetId) ? ' *(opted out)*' : '';
 
   if (memories.length === 0) {
@@ -387,8 +396,9 @@ async function handleAdminView(interaction, targetId, targetUsername) {
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  * @param {string} targetId
  * @param {string} targetUsername
+ * @param {string} [guildId]
  */
-async function handleAdminClear(interaction, targetId, targetUsername) {
+async function handleAdminClear(interaction, targetId, targetUsername, guildId) {
   const adminId = interaction.user.id;
 
   const confirmButton = new ButtonBuilder()
@@ -417,7 +427,7 @@ async function handleAdminClear(interaction, targetId, targetUsername) {
     });
 
     if (buttonInteraction.customId === 'memory_admin_clear_confirm') {
-      const success = await deleteAllMemories(targetId);
+      const success = await deleteAllMemories(targetId, guildId);
 
       if (success) {
         await safeUpdate(buttonInteraction, {

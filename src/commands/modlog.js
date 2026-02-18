@@ -135,8 +135,16 @@ async function handleSetup(interaction) {
 
       if (i.customId === 'modlog_channel' && selectedCategory) {
         const channelId = i.values[0];
-        await setConfigValue(`moderation.logging.channels.${selectedCategory}`, channelId);
-        info('Modlog channel configured', { category: selectedCategory, channelId });
+        await setConfigValue(
+          `moderation.logging.channels.${selectedCategory}`,
+          channelId,
+          interaction.guildId,
+        );
+        info('Modlog channel configured', {
+          category: selectedCategory,
+          channelId,
+          guildId: interaction.guildId,
+        });
         await i.update({
           embeds: [
             embed.setDescription(
@@ -176,7 +184,7 @@ async function handleSetup(interaction) {
  */
 async function handleView(interaction) {
   try {
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const channels = config.moderation?.logging?.channels || {};
 
     const embed = new EmbedBuilder()
@@ -209,10 +217,10 @@ async function handleDisable(interaction) {
   try {
     const keys = ['default', 'warns', 'bans', 'kicks', 'timeouts', 'purges', 'locks'];
     for (const key of keys) {
-      await setConfigValue(`moderation.logging.channels.${key}`, null);
+      await setConfigValue(`moderation.logging.channels.${key}`, null, interaction.guildId);
     }
 
-    info('Mod logging disabled', { moderator: interaction.user.tag });
+    info('Mod logging disabled', { moderator: interaction.user.tag, guildId: interaction.guildId });
     await safeEditReply(
       interaction,
       '✅ Mod logging has been disabled. All log channels have been cleared.',

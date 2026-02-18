@@ -28,7 +28,7 @@ export const adminOnly = true;
 export async function execute(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const userId = interaction.options.getString('user_id');
     const reason = interaction.options.getString('reason');
 

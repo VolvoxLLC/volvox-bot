@@ -13,6 +13,7 @@ import { safeReply, safeSend } from '../utils/safeSend.js';
 import { needsSplitting, splitMessage } from '../utils/splitMessage.js';
 import { generateResponse } from './ai.js';
 import { accumulate, resetCounter } from './chimeIn.js';
+import { getConfig } from './config.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { getOrCreateThread, shouldUseThread } from './threading.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
@@ -23,7 +24,7 @@ let processHandlersRegistered = false;
 /**
  * Register bot ready event handler
  * @param {Client} client - Discord client
- * @param {Object} config - Bot configuration
+ * @param {Object} config - Startup/global bot configuration used only for one-time feature-gate logging (not per-guild)
  * @param {Object} healthMonitor - Health monitor instance
  */
 export function registerReadyHandler(client, config, healthMonitor) {
@@ -50,45 +51,49 @@ export function registerReadyHandler(client, config, healthMonitor) {
 /**
  * Register guild member add event handler
  * @param {Client} client - Discord client
- * @param {Object} config - Bot configuration
+ * @param {Object} _config - Unused (kept for API compatibility); handler resolves per-guild config via getConfig().
  */
-export function registerGuildMemberAddHandler(client, config) {
+export function registerGuildMemberAddHandler(client, _config) {
   client.on(Events.GuildMemberAdd, async (member) => {
-    await sendWelcomeMessage(member, client, config);
+    const guildConfig = getConfig(member.guild.id);
+    await sendWelcomeMessage(member, client, guildConfig);
   });
 }
 
 /**
  * Register the MessageCreate event handler that processes incoming messages for spam detection, community activity recording, AI-driven replies (mentions/replies, optional threading, channel whitelisting), and organic chime-in accumulation.
  * @param {Client} client - Discord client instance used to listen and respond to message events.
- * @param {Object} config - Bot configuration (reads moderation.enabled, ai.enabled, ai.channels and other settings referenced by handlers).
+ * @param {Object} _config - Unused (kept for API compatibility); handler resolves per-guild config via getConfig().
  * @param {Object} healthMonitor - Optional health monitor used when generating AI responses to record metrics.
  */
-export function registerMessageCreateHandler(client, config, healthMonitor) {
+export function registerMessageCreateHandler(client, _config, healthMonitor) {
   client.on(Events.MessageCreate, async (message) => {
     // Ignore bots and DMs
     if (message.author.bot) return;
     if (!message.guild) return;
 
+    // Resolve per-guild config so feature gates respect guild overrides
+    const guildConfig = getConfig(message.guild.id);
+
     // Spam detection
-    if (config.moderation?.enabled && isSpam(message.content)) {
+    if (guildConfig.moderation?.enabled && isSpam(message.content)) {
       warn('Spam detected', { userId: message.author.id, contentPreview: '[redacted]' });
-      await sendSpamAlert(message, client, config);
+      await sendSpamAlert(message, client, guildConfig);
       return;
     }
 
     // Feed welcome-context activity tracker
-    recordCommunityActivity(message, config);
+    recordCommunityActivity(message, guildConfig);
 
     // AI chat - respond when mentioned (checked BEFORE accumulate to prevent double responses)
-    if (config.ai?.enabled) {
+    if (guildConfig.ai?.enabled) {
       const isMentioned = message.mentions.has(client.user);
       const isReply = message.reference && message.mentions.repliedUser?.id === client.user.id;
 
       // Check if in allowed channel (if configured)
       // When inside a thread, check the parent channel ID against the allowlist
       // so thread replies aren't blocked by the whitelist.
-      const allowedChannels = config.ai?.channels || [];
+      const allowedChannels = guildConfig.ai?.channels || [];
       const channelIdToCheck = message.channel.isThread?.()
         ? message.channel.parentId
         : message.channel.id;
@@ -131,7 +136,6 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
             historyId,
             cleanContent,
             message.author.username,
-            config,
             healthMonitor,
             message.author.id,
             message.guild?.id,
@@ -168,7 +172,7 @@ export function registerMessageCreateHandler(client, config, healthMonitor) {
     }
 
     // Chime-in: accumulate message for organic participation (fire-and-forget)
-    accumulate(message, config).catch((err) => {
+    accumulate(message, guildConfig).catch((err) => {
       logError('ChimeIn accumulate error', { error: err?.message });
     });
   });

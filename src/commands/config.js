@@ -122,7 +122,7 @@ function collectConfigPaths(source, prefix = '', paths = []) {
 export async function autocomplete(interaction) {
   const focusedOption = interaction.options.getFocused(true);
   const focusedValue = focusedOption.value.toLowerCase().trim();
-  const config = getConfig();
+  const config = getConfig(interaction.guildId);
 
   let choices;
   if (focusedOption.name === 'section') {
@@ -196,7 +196,7 @@ const EMBED_CHAR_LIMIT = 6000;
  */
 async function handleView(interaction) {
   try {
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const section = interaction.options.getString('section');
 
     const embed = new EmbedBuilder()
@@ -285,7 +285,7 @@ async function handleSet(interaction) {
 
   // Validate section exists in live config
   const section = path.split('.')[0];
-  const validSections = Object.keys(getConfig());
+  const validSections = Object.keys(getConfig(interaction.guildId));
   if (!validSections.includes(section)) {
     const safeSection = escapeInlineCode(section);
     return await safeReply(interaction, {
@@ -297,7 +297,7 @@ async function handleSet(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
 
-    const updatedSection = await setConfigValue(path, value);
+    const updatedSection = await setConfigValue(path, value, interaction.guildId);
 
     // Traverse to the actual leaf value for display
     const leafValue = path
@@ -341,15 +341,15 @@ async function handleReset(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
 
-    await resetConfig(section || undefined);
+    await resetConfig(section || undefined, interaction.guildId);
 
     const embed = new EmbedBuilder()
       .setColor(0xfee75c)
       .setTitle('🔄 Config Reset')
       .setDescription(
         section
-          ? `Section **${escapeInlineCode(section)}** has been reset to defaults from config.json.`
-          : 'All configuration has been reset to defaults from config.json.',
+          ? `Guild overrides for section **${escapeInlineCode(section)}** have been cleared; global defaults will apply.`
+          : 'All guild overrides have been cleared; global defaults will apply.',
       )
       .setFooter({ text: 'Changes take effect immediately' })
       .setTimestamp();

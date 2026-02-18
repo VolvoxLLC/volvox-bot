@@ -140,6 +140,71 @@ describe('modules/config', () => {
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
     });
 
+    it('should load guild overrides during fallback seeding', async () => {
+      const mockClient = {
+        query: vi.fn().mockResolvedValue({}),
+        release: vi.fn(),
+      };
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({
+          rows: [
+            // No global rows — triggers seeding from config.json
+            // But guild overrides already exist in DB
+            { guild_id: 'guild-99', key: 'ai', value: { model: 'guild-override-model' } },
+          ],
+        }),
+        connect: vi.fn().mockResolvedValue(mockClient),
+      };
+      const { getPool: mockGetPool } = await import('../../src/db.js');
+      mockGetPool.mockReturnValue(mockPool);
+
+      await configModule.loadConfig();
+
+      // Guild override should be loaded, not dropped
+      const guildConfig = configModule.getConfig('guild-99');
+      expect(guildConfig.ai.model).toBe('guild-override-model');
+      // Other keys should still come from global (seeded from file)
+      expect(guildConfig.ai.enabled).toBe(true);
+    });
+
+    it('should filter dangerous nested keys during recursive deepMerge of guild overrides', async () => {
+      delete Object.prototype.polluted;
+      try {
+        const guildAiOverride = {
+          model: 'guild-model',
+        };
+        Object.defineProperty(guildAiOverride, '__proto__', {
+          value: { polluted: 'yes' },
+          enumerable: true,
+        });
+        guildAiOverride.constructor = { polluted: true };
+        guildAiOverride.prototype = { polluted: true };
+
+        const mockPool = {
+          query: vi.fn().mockResolvedValue({
+            rows: [
+              { guild_id: 'global', key: 'ai', value: { enabled: true, model: 'global-model' } },
+              { guild_id: 'guild-danger', key: 'ai', value: guildAiOverride },
+            ],
+          }),
+        };
+        const { getPool: mockGetPool } = await import('../../src/db.js');
+        mockGetPool.mockReturnValue(mockPool);
+
+        await configModule.loadConfig();
+        const guildConfig = configModule.getConfig('guild-danger');
+
+        expect(guildConfig.ai.model).toBe('guild-model');
+        expect(guildConfig.ai.enabled).toBe(true);
+        expect(guildConfig.ai.constructor).toBe(Object);
+        expect(guildConfig.ai.prototype).toBeUndefined();
+        expect(guildConfig.ai.polluted).toBeUndefined();
+        expect(Object.prototype.polluted).toBeUndefined();
+      } finally {
+        delete Object.prototype.polluted;
+      }
+    });
+
     it('should load config from DB when rows exist', async () => {
       const mockPool = {
         query: vi.fn().mockResolvedValue({
@@ -187,6 +252,33 @@ describe('modules/config', () => {
       // Should fall back to config.json, not crash
       const config = await configModule.loadConfig();
       expect(config.ai.enabled).toBe(true);
+    });
+
+    it('should clear merged guild cache on reload', async () => {
+      const mockPool = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({
+            rows: [
+              { guild_id: 'global', key: 'ai', value: { enabled: true, model: 'global-v1' } },
+              { guild_id: 'guild-1', key: 'ai', value: { model: 'guild-v1' } },
+            ],
+          })
+          .mockResolvedValueOnce({
+            rows: [
+              { guild_id: 'global', key: 'ai', value: { enabled: true, model: 'global-v2' } },
+              { guild_id: 'guild-1', key: 'ai', value: { model: 'guild-v2' } },
+            ],
+          }),
+      };
+      const { getPool: mockGetPool } = await import('../../src/db.js');
+      mockGetPool.mockReturnValue(mockPool);
+
+      await configModule.loadConfig();
+      expect(configModule.getConfig('guild-1').ai.model).toBe('guild-v1');
+
+      await configModule.loadConfig();
+      expect(configModule.getConfig('guild-1').ai.model).toBe('guild-v2');
     });
   });
 

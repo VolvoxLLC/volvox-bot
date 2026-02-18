@@ -152,7 +152,7 @@ export async function execute(interaction) {
       scanned: fetched.size,
     });
 
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const caseData = await createCase(interaction.guild.id, {
       action: 'purge',
       targetId: channel.id,

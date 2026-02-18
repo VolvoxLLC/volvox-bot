@@ -134,11 +134,12 @@ function getClient() {
 
 /**
  * Get memory config from bot config
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Object} Memory configuration with defaults applied
  */
-export function getMemoryConfig() {
+export function getMemoryConfig(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     return {
       enabled: config?.memory?.enabled ?? true,
       maxContextMemories: config?.memory?.maxContextMemories ?? DEFAULT_MAX_CONTEXT_MEMORIES,
@@ -158,10 +159,11 @@ export function getMemoryConfig() {
  * Returns true only if memory is both enabled in config and currently marked available.
  * Does NOT trigger auto-recovery. Use {@link checkAndRecoverMemory} when you want
  * the cooldown-based recovery logic.
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {boolean}
  */
-export function isMemoryAvailable() {
-  const memConfig = getMemoryConfig();
+export function isMemoryAvailable(guildId) {
+  const memConfig = getMemoryConfig(guildId);
   if (!memConfig.enabled) return false;
   return mem0Available;
 }
@@ -173,10 +175,11 @@ export function isMemoryAvailable() {
  * if the service has recovered.
  *
  * Use this instead of {@link isMemoryAvailable} when you want the recovery side effect.
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {boolean}
  */
-export function checkAndRecoverMemory() {
-  const memConfig = getMemoryConfig();
+export function checkAndRecoverMemory(guildId) {
+  const memConfig = getMemoryConfig(guildId);
   if (!memConfig.enabled) return false;
 
   if (mem0Available) return true;
@@ -244,6 +247,8 @@ export function _setClient(newClient) {
 
 /**
  * Run a health check against the mem0 platform on startup.
+ * Intentionally uses getMemoryConfig() without guildId — this is a startup
+ * health check that verifies global mem0 connectivity, not guild-specific config.
  * Verifies the API key is configured and the SDK client can actually
  * communicate with the hosted platform by performing a lightweight search.
  * @param {object} [options]
@@ -306,10 +311,11 @@ export async function checkMem0Health({ signal } = {}) {
  * @param {string} userId - Discord user ID
  * @param {string} text - The memory text to store
  * @param {Object} [metadata] - Optional metadata
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if stored successfully
  */
-export async function addMemory(userId, text, metadata = {}) {
-  if (!checkAndRecoverMemory()) return false;
+export async function addMemory(userId, text, metadata = {}, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return false;
 
   try {
     const c = getClient();
@@ -338,12 +344,13 @@ export async function addMemory(userId, text, metadata = {}) {
  * @param {string} userId - Discord user ID
  * @param {string} query - Search query
  * @param {number} [limit] - Max results (defaults to config maxContextMemories)
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<{memories: Array<{memory: string, score?: number}>, relations: Array}>}
  */
-export async function searchMemories(userId, query, limit) {
-  if (!checkAndRecoverMemory()) return { memories: [], relations: [] };
+export async function searchMemories(userId, query, limit, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return { memories: [], relations: [] };
 
-  const memConfig = getMemoryConfig();
+  const memConfig = getMemoryConfig(guildId);
   const maxResults = limit ?? memConfig.maxContextMemories;
 
   try {
@@ -378,10 +385,11 @@ export async function searchMemories(userId, query, limit) {
 /**
  * Get all memories for a user.
  * @param {string} userId - Discord user ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array<{id: string, memory: string}>>} All user memories
  */
-export async function getMemories(userId) {
-  if (!checkAndRecoverMemory()) return [];
+export async function getMemories(userId, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return [];
 
   try {
     const c = getClient();
@@ -409,10 +417,11 @@ export async function getMemories(userId) {
 /**
  * Delete all memories for a user.
  * @param {string} userId - Discord user ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if deleted successfully
  */
-export async function deleteAllMemories(userId) {
-  if (!checkAndRecoverMemory()) return false;
+export async function deleteAllMemories(userId, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return false;
 
   try {
     const c = getClient();
@@ -431,10 +440,11 @@ export async function deleteAllMemories(userId) {
 /**
  * Delete a specific memory by ID.
  * @param {string} memoryId - Memory ID to delete
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if deleted successfully
  */
-export async function deleteMemory(memoryId) {
-  if (!checkAndRecoverMemory()) return false;
+export async function deleteMemory(memoryId, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return false;
 
   try {
     const c = getClient();
@@ -477,13 +487,14 @@ const MAX_MEMORY_CONTEXT_CHARS = 2000;
  * @param {string} userId - Discord user ID
  * @param {string} username - Display name
  * @param {string} query - The user's current message (for relevance search)
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<string>} Context string or empty string
  */
-export async function buildMemoryContext(userId, username, query) {
-  if (!checkAndRecoverMemory()) return '';
+export async function buildMemoryContext(userId, username, query, guildId) {
+  if (!checkAndRecoverMemory(guildId)) return '';
   if (isOptedOut(userId)) return '';
 
-  const { memories, relations } = await searchMemories(userId, query);
+  const { memories, relations } = await searchMemories(userId, query, undefined, guildId);
 
   if (memories.length === 0 && (!relations || relations.length === 0)) return '';
 
@@ -515,13 +526,20 @@ export async function buildMemoryContext(userId, username, query) {
  * @param {string} username - Display name
  * @param {string} userMessage - What the user said
  * @param {string} assistantReply - What the bot replied
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<boolean>} true if any memories were stored
  */
-export async function extractAndStoreMemories(userId, username, userMessage, assistantReply) {
-  if (!checkAndRecoverMemory()) return false;
+export async function extractAndStoreMemories(
+  userId,
+  username,
+  userMessage,
+  assistantReply,
+  guildId,
+) {
+  if (!checkAndRecoverMemory(guildId)) return false;
   if (isOptedOut(userId)) return false;
 
-  const memConfig = getMemoryConfig();
+  const memConfig = getMemoryConfig(guildId);
   if (!memConfig.autoExtract) return false;
 
   try {

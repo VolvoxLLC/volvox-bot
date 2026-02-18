@@ -374,7 +374,7 @@ async function pollTempbans(client) {
         const targetUser = await client.users.fetch(row.target_id).catch(() => null);
 
         // Create unban case
-        const config = getConfig();
+        const config = getConfig(row.guild_id);
         const unbanCase = await createCase(row.guild_id, {
           action: 'unban',
           targetId: row.target_id,

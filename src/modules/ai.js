@@ -28,11 +28,12 @@ const pendingHydrations = new Map();
 
 /**
  * Get the configured history length from config
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} History length
  */
-function getHistoryLength() {
+function getHistoryLength(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     const len = config?.ai?.historyLength;
     if (typeof len === 'number' && len > 0) return len;
   } catch {
@@ -43,11 +44,12 @@ function getHistoryLength() {
 
 /**
  * Get the configured TTL days from config
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} TTL in days
  */
-function getHistoryTTLDays() {
+function getHistoryTTLDays(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     const ttl = config?.ai?.historyTTLDays;
     if (typeof ttl === 'number' && ttl > 0) return ttl;
   } catch {
@@ -115,10 +117,12 @@ export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCL
 /**
  * Hydrate conversation history for a channel from DB.
  * Dedupes concurrent hydrations and merges DB rows with in-flight in-memory writes.
+ *
  * @param {string} channelId - Channel ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-function hydrateHistory(channelId) {
+function hydrateHistory(channelId, guildId) {
   const pending = pendingHydrations.get(channelId);
   if (pending) {
     return pending;
@@ -134,7 +138,7 @@ function hydrateHistory(channelId) {
     return Promise.resolve(historyRef);
   }
 
-  const limit = getHistoryLength();
+  const limit = getHistoryLength(guildId);
   const hydrationPromise = pool
     .query(
       `SELECT role, content FROM conversations
@@ -186,9 +190,10 @@ function hydrateHistory(channelId) {
 /**
  * Async version of history retrieval that waits for in-flight hydration.
  * @param {string} channelId - Channel ID
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-export async function getHistoryAsync(channelId) {
+export async function getHistoryAsync(channelId, guildId) {
   if (conversationHistory.has(channelId)) {
     const pending = pendingHydrations.get(channelId);
     if (pending) {
@@ -197,7 +202,7 @@ export async function getHistoryAsync(channelId) {
     return conversationHistory.get(channelId);
   }
 
-  return hydrateHistory(channelId);
+  return hydrateHistory(channelId, guildId);
 }
 
 /**
@@ -216,7 +221,7 @@ export function addToHistory(channelId, role, content, username, guildId) {
   const history = conversationHistory.get(channelId);
   history.push({ role, content });
 
-  const maxHistory = getHistoryLength();
+  const maxHistory = getHistoryLength(guildId);
 
   // Trim old messages from in-memory cache
   while (history.length > maxHistory) {
@@ -244,8 +249,13 @@ export function addToHistory(channelId, role, content, username, guildId) {
 }
 
 /**
- * Initialize conversation history from DB on startup
- * Loads last N messages per active channel
+ * Initialize conversation history from DB on startup.
+ * Loads last N messages per active channel.
+ *
+ * Note: Uses global config defaults for history length and TTL intentionally —
+ * this runs at startup across all channels/guilds and guildId is not available.
+ * The guild-aware config path is through generateResponse(), which passes guildId.
+ *
  * @returns {Promise<void>}
  */
 export async function initConversationHistory() {
@@ -343,7 +353,12 @@ export function stopConversationCleanup() {
 }
 
 /**
- * Run a single cleanup pass
+ * Run a single cleanup pass.
+ *
+ * Note: Uses global config default for TTL intentionally — cleanup runs
+ * across all guilds/channels and guildId is not available in this context.
+ * The guild-aware config path is through generateResponse(), which passes guildId.
+ *
  * @returns {Promise<void>}
  */
 async function runCleanup() {
@@ -379,7 +394,6 @@ async function runCleanup() {
  * @param {string} channelId - Channel ID
  * @param {string} userMessage - User's message
  * @param {string} username - Username
- * @param {Object} config - Bot configuration
  * @param {Object} healthMonitor - Health monitor instance (optional)
  * @param {string} [userId] - Discord user ID for memory scoping
  * @param {string} [guildId] - Discord guild ID for conversation scoping
@@ -389,15 +403,17 @@ export async function generateResponse(
   channelId,
   userMessage,
   username,
-  config,
   healthMonitor = null,
   userId = null,
   guildId = null,
 ) {
-  const history = await getHistoryAsync(channelId);
+  // Use guild-aware config for AI settings (systemPrompt, model, maxTokens)
+  // so per-guild overrides via /config are respected.
+  const guildConfig = getConfig(guildId);
+  const history = await getHistoryAsync(channelId, guildId);
 
   let systemPrompt =
-    config.ai?.systemPrompt ||
+    guildConfig.ai?.systemPrompt ||
     `You are Volvox Bot, a helpful and friendly Discord bot for the Volvox developer community.
 You're witty, knowledgeable about programming and tech, and always eager to help.
 Keep responses concise and Discord-friendly (under 2000 chars).
@@ -407,7 +423,7 @@ You can use Discord markdown formatting.`;
   if (userId) {
     try {
       const memoryContext = await Promise.race([
-        buildMemoryContext(userId, username, userMessage),
+        buildMemoryContext(userId, username, userMessage, guildId),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Memory context timeout')), 5000),
         ),
@@ -439,8 +455,8 @@ You can use Discord markdown formatting.`;
         ...(OPENCLAW_TOKEN && { Authorization: `Bearer ${OPENCLAW_TOKEN}` }),
       },
       body: JSON.stringify({
-        model: config.ai?.model || 'claude-sonnet-4-20250514',
-        max_tokens: config.ai?.maxTokens || 1024,
+        model: guildConfig.ai?.model || 'claude-sonnet-4-20250514',
+        max_tokens: guildConfig.ai?.maxTokens || 1024,
         messages: messages,
       }),
     });
@@ -470,7 +486,7 @@ You can use Discord markdown formatting.`;
 
     // Post-response: extract and store memorable facts (fire-and-forget)
     if (userId) {
-      extractAndStoreMemories(userId, username, userMessage, reply).catch((err) => {
+      extractAndStoreMemories(userId, username, userMessage, reply, guildId).catch((err) => {
         logWarn('Memory extraction failed', { userId, error: err.message });
       });
     }

@@ -279,12 +279,10 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
 
 /**
  * GET /:id/config — Read guild config (safe keys only)
- * Note: Config is global, not per-guild. The guild ID is accepted for
- * API consistency but does not scope the returned config.
- * Per-guild config is tracked in Issue #71.
+ * Returns per-guild config (global defaults merged with guild overrides).
  */
-router.get('/:id/config', requireGuildAdmin, validateGuild, (_req, res) => {
-  const config = getConfig();
+router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
+  const config = getConfig(req.params.id);
   const safeConfig = {};
   for (const key of READABLE_CONFIG_KEYS) {
     if (key in config) {
@@ -292,18 +290,15 @@ router.get('/:id/config', requireGuildAdmin, validateGuild, (_req, res) => {
     }
   }
   res.json({
-    scope: 'global',
-    note: 'Config is global, not per-guild. Per-guild config is tracked in Issue #71.',
+    guildId: req.params.id,
     ...safeConfig,
   });
 });
 
 /**
- * PATCH /:id/config — Update a config value (safe keys only)
+ * PATCH /:id/config — Update a guild-specific config value (safe keys only)
  * Body: { path: "ai.model", value: "claude-3" }
- * Note: Config is global, not per-guild. The guild ID is accepted for
- * API consistency but does not scope the update.
- * Per-guild config is tracked in Issue #71.
+ * Writes to the per-guild config overrides for the requested guild.
  */
 router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => {
   if (!req.body) {
@@ -337,9 +332,11 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
   }
 
   try {
-    const updated = await setConfigValue(path, value);
+    await setConfigValue(path, value, req.params.id);
+    const effectiveConfig = getConfig(req.params.id);
+    const effectiveSection = effectiveConfig[topLevelKey] || {};
     info('Config updated via API', { path, value, guild: req.params.id });
-    res.json(updated);
+    res.json(effectiveSection);
   } catch (err) {
     error('Failed to update config via API', { path, error: err.message });
     res.status(500).json({ error: 'Failed to update config' });

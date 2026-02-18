@@ -157,6 +157,22 @@ describe('ai module', () => {
       expect(history[0].content).toBe('message 5');
     });
 
+    it('should pass guildId to getHistoryLength when provided', async () => {
+      getConfig.mockReturnValue({ ai: { historyLength: 3, historyTTLDays: 30 } });
+
+      for (let i = 0; i < 5; i++) {
+        addToHistory('ch-guild', 'user', `msg ${i}`, undefined, 'guild-123');
+      }
+
+      // getConfig should have been called with guildId
+      expect(getConfig).toHaveBeenCalledWith('guild-123');
+
+      // Verify history was actually trimmed to the configured length of 3
+      const history = await getHistoryAsync('ch-guild');
+      expect(history.length).toBe(3);
+      expect(history[0].content).toBe('msg 2');
+    });
+
     it('should write to DB when pool is available', () => {
       const mockQuery = vi.fn().mockResolvedValue({});
       const mockPool = { query: mockQuery };
@@ -226,8 +242,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { model: 'test-model' } };
-      const reply = await generateResponse('ch1', 'Hi', 'user1', config);
+      const reply = await generateResponse('ch1', 'Hi', 'user1');
 
       expect(reply).toBe('Hello there!');
       expect(globalThis.fetch).toHaveBeenCalled();
@@ -242,8 +257,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', 'Hi', 'user', config);
+      await generateResponse('ch1', 'Hi', 'user');
 
       const fetchCall = globalThis.fetch.mock.calls[0];
       expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
@@ -260,20 +274,13 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      await generateResponse(
-        'ch1',
-        'What do you know about me?',
-        'testuser',
-        config,
-        null,
-        'user-123',
-      );
+      await generateResponse('ch1', 'What do you know about me?', 'testuser', null, 'user-123');
 
       expect(buildMemoryContext).toHaveBeenCalledWith(
         'user-123',
         'testuser',
         'What do you know about me?',
+        null,
       );
 
       // Verify the system prompt includes memory context
@@ -292,8 +299,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      await generateResponse('ch1', 'Hi', 'user', config, null, null);
+      await generateResponse('ch1', 'Hi', 'user', null, null);
 
       expect(buildMemoryContext).not.toHaveBeenCalled();
     });
@@ -308,8 +314,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', "I'm learning Rust", 'testuser', config, null, 'user-123');
+      await generateResponse('ch1', "I'm learning Rust", 'testuser', null, 'user-123');
 
       // extractAndStoreMemories is fire-and-forget, wait for it
       await vi.waitFor(() => {
@@ -318,6 +323,7 @@ describe('ai module', () => {
           'testuser',
           "I'm learning Rust",
           'Nice!',
+          null,
         );
       });
     });
@@ -336,8 +342,9 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      const replyPromise = generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
+      // generateResponse reads AI settings from getConfig(guildId)
+      getConfig.mockReturnValue({ ai: { systemPrompt: 'You are a bot.' } });
+      const replyPromise = generateResponse('ch1', 'Hi', 'user', null, 'user-123');
 
       // Advance past the 5s timeout
       await vi.advanceTimersByTimeAsync(5000);
@@ -364,10 +371,50 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: { systemPrompt: 'You are a bot.' } };
-      const reply = await generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
+      const reply = await generateResponse('ch1', 'Hi', 'user', null, 'user-123');
 
       expect(reply).toBe('Still working!');
+    });
+
+    it('should pass guildId to buildMemoryContext and extractAndStoreMemories', async () => {
+      buildMemoryContext.mockResolvedValue('');
+      extractAndStoreMemories.mockResolvedValue(true);
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'Reply!' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      await generateResponse('ch1', 'Hi', 'testuser', null, 'user-123', 'guild-456');
+
+      expect(buildMemoryContext).toHaveBeenCalledWith('user-123', 'testuser', 'Hi', 'guild-456');
+
+      await vi.waitFor(() => {
+        expect(extractAndStoreMemories).toHaveBeenCalledWith(
+          'user-123',
+          'testuser',
+          'Hi',
+          'Reply!',
+          'guild-456',
+        );
+      });
+    });
+
+    it('should call getConfig(guildId) for history-length lookup in generateResponse', async () => {
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: 'OK' } }],
+        }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
+
+      await generateResponse('ch1', 'Hi', 'user', null, null, 'guild-789');
+
+      // getConfig should have been called with guildId for history length lookup
+      expect(getConfig).toHaveBeenCalledWith('guild-789');
     });
 
     it('should not call memory extraction when userId is not provided', async () => {
@@ -379,8 +426,7 @@ describe('ai module', () => {
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse);
 
-      const config = { ai: {} };
-      await generateResponse('ch1', 'Hi', 'user', config);
+      await generateResponse('ch1', 'Hi', 'user');
 
       expect(extractAndStoreMemories).not.toHaveBeenCalled();
     });

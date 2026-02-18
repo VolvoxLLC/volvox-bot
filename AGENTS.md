@@ -76,9 +76,9 @@
 ### Config
 
 - Config is loaded from PostgreSQL (falls back to `config.json`)
-- Use `getConfig()` from `src/modules/config.js` to read config
-- Use `setConfigValue(key, value)` to update at runtime
-- Config is a live object reference — mutations propagate automatically
+- Use `getConfig(guildId?)` from `src/modules/config.js` to read config
+- Use `setConfigValue(path, value, guildId?)` to update at runtime
+- Return semantics are intentional: `getConfig()` / `getConfig('global')` returns a live global reference, while `getConfig(guildId)` returns a detached merged clone (`global + guild overrides`)
 
 ## How to Add a Slash Command
 
@@ -172,8 +172,8 @@ After every code change, check whether these files need updating:
 
 Runtime config changes (via `/config set`) are handled in two ways:
 
-- **Per-request modules (AI, spam, moderation):** These modules call `getConfig()` on every invocation, so config changes take effect automatically on the next request. The `onConfigChange` listeners for these modules provide **observability only** (logging).
-- **Stateful objects (logging transport):** The PostgreSQL logging transport is a long-lived Winston transport. It requires **reactive wiring** — `onConfigChange` listeners that add/remove/recreate the transport when `logging.database.*` settings change at runtime. This is implemented in `src/index.js` startup.
+- **Per-request modules (AI, spam, moderation):** These modules call `getConfig(interaction.guildId)` on every invocation, so config changes take effect automatically on the next request. The `onConfigChange` listeners for these modules provide **observability only** (logging).
+- **Stateful objects (logging transport):** The PostgreSQL logging transport is a long-lived Winston transport. It requires **reactive wiring** — `onConfigChange` listeners that add/remove/recreate the transport when `logging.database.*` settings change at runtime. This is implemented in `src/index.js` startup. `onConfigChange` callbacks receive `(newValue, oldValue, fullPath, guildId)`.
 
 When adding new modules, prefer the per-request `getConfig()` pattern. Only add reactive `onConfigChange` wiring for stateful resources that can't re-read config on each use.
 

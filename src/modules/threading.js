@@ -12,7 +12,7 @@ import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from './config.js';
 
 /**
- * Active thread tracker: Map<`${userId}:${channelId}`, { threadId, lastActive, threadName }>
+ * Active thread tracker: Map<`${userId}:${channelId}`, { threadId, lastActive, threadName, guildId }>
  * Tracks which thread to reuse for a given user+channel combination.
  * Entries are evicted by a periodic sweep and a max-size cap.
  */
@@ -59,11 +59,12 @@ export function snapAutoArchiveDuration(minutes) {
 
 /**
  * Retrieve threading configuration derived from the bot config, falling back to sensible defaults.
+ * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {{ enabled: boolean, autoArchiveMinutes: number, reuseWindowMs: number }} An object where `enabled` is `true` if threading is enabled; `autoArchiveMinutes` is the thread auto-archive duration in minutes; and `reuseWindowMs` is the thread reuse window in milliseconds.
  */
-export function getThreadConfig() {
+export function getThreadConfig(guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     const threadMode = config?.ai?.threadMode;
 
     const rawArchive = threadMode?.autoArchiveMinutes;
@@ -97,7 +98,7 @@ export function getThreadConfig() {
  * @returns {boolean} `true` if the message is eligible for thread handling, `false` otherwise.
  */
 export function shouldUseThread(message) {
-  const threadConfig = getThreadConfig();
+  const threadConfig = getThreadConfig(message.guild?.id);
   if (!threadConfig.enabled) return false;
 
   // Don't create threads in DMs
@@ -200,7 +201,7 @@ export function buildThreadKey(userId, channelId) {
  * @returns {Promise<import('discord.js').ThreadChannel|null>} `ThreadChannel` if a reusable thread was found and prepared, `null` otherwise.
  */
 export async function findExistingThread(message) {
-  const threadConfig = getThreadConfig();
+  const threadConfig = getThreadConfig(message.guild?.id);
   const key = buildThreadKey(message.author.id, message.channel.id);
   const entry = activeThreads.get(key);
 
@@ -239,8 +240,9 @@ export async function findExistingThread(message) {
       }
     }
 
-    // Update last active time
+    // Update last active time and ensure guildId is stored
     entry.lastActive = now;
+    entry.guildId = message.guild?.id ?? entry.guildId ?? null;
     return thread;
   } catch (_err) {
     // Thread not found or inaccessible
@@ -256,7 +258,7 @@ export async function findExistingThread(message) {
  * @returns {Promise<import('discord.js').ThreadChannel>} The created thread channel.
  */
 export async function createThread(message, cleanContent) {
-  const threadConfig = getThreadConfig();
+  const threadConfig = getThreadConfig(message.guild?.id);
   const threadName = generateThreadName(
     message.author.displayName || message.author.username,
     cleanContent,
@@ -273,6 +275,7 @@ export async function createThread(message, cleanContent) {
     threadId: thread.id,
     lastActive: Date.now(),
     threadName,
+    guildId: message.guild?.id ?? null,
   });
 
   info('Created conversation thread', {
@@ -357,15 +360,15 @@ async function _getOrCreateThreadInner(message, cleanContent) {
 
 /**
  * Sweep expired entries from the activeThreads cache.
- * Removes entries older than the configured reuse window and
+ * Removes entries older than the guild-specific configured reuse window and
  * enforces the MAX_CACHE_SIZE cap by evicting oldest entries.
  */
 export function sweepExpiredThreads() {
-  const config = getThreadConfig();
   const now = Date.now();
 
-  // Remove expired entries
+  // Remove expired entries using per-guild config
   for (const [key, entry] of activeThreads) {
+    const config = getThreadConfig(entry.guildId);
     if (now - entry.lastActive > config.reuseWindowMs) {
       activeThreads.delete(key);
     }

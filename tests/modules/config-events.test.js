@@ -70,7 +70,7 @@ describe('config change events', () => {
     await configModule.setConfigValue('ai.model', 'new-model');
 
     expect(cb).toHaveBeenCalledOnce();
-    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model');
+    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model', 'global');
   });
 
   it('should fire callback on prefix wildcard match', async () => {
@@ -80,7 +80,7 @@ describe('config change events', () => {
     await configModule.setConfigValue('ai.model', 'new-model');
 
     expect(cb).toHaveBeenCalledOnce();
-    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model');
+    expect(cb).toHaveBeenCalledWith('new-model', 'test-model', 'ai.model', 'global');
   });
 
   it('should not fire callback for non-matching paths', async () => {
@@ -164,7 +164,7 @@ describe('config change events', () => {
 
     await configModule.setConfigValue('ai.enabled', 'false');
 
-    expect(cb).toHaveBeenCalledWith(false, true, 'ai.enabled');
+    expect(cb).toHaveBeenCalledWith(false, true, 'ai.enabled', 'global');
   });
 
   it('should pass undefined as oldValue for new keys', async () => {
@@ -173,7 +173,7 @@ describe('config change events', () => {
 
     await configModule.setConfigValue('ai.newKey', 'hello');
 
-    expect(cb).toHaveBeenCalledWith('hello', undefined, 'ai.newKey');
+    expect(cb).toHaveBeenCalledWith('hello', undefined, 'ai.newKey', 'global');
   });
 
   it('should deep clone object oldValues', async () => {
@@ -209,7 +209,7 @@ describe('config change events', () => {
 
     await configModule.setConfigValue('ai.deep.nested.key', 'value');
 
-    expect(cb).toHaveBeenCalledWith('value', undefined, 'ai.deep.nested.key');
+    expect(cb).toHaveBeenCalledWith('value', undefined, 'ai.deep.nested.key', 'global');
   });
 
   it('should not skip listeners when one calls offConfigChange during callback', async () => {
@@ -252,6 +252,37 @@ describe('config change events', () => {
     expect(cb1).toHaveBeenCalledOnce();
     expect(cb2).toHaveBeenCalledOnce();
     expect(cb3).toHaveBeenCalledOnce();
+  });
+
+  describe('guild-scoped config changes', () => {
+    it('should pass guildId to listener callbacks for per-guild changes', async () => {
+      const cb = vi.fn();
+      configModule.onConfigChange('logging.database.enabled', cb);
+
+      await configModule.setConfigValue('logging.database.enabled', 'true', 'guild-123');
+
+      expect(cb).toHaveBeenCalledWith(true, undefined, 'logging.database.enabled', 'guild-123');
+    });
+
+    it('should allow listeners to filter by guildId for global-only operations', async () => {
+      // Simulates what index.js does: skip per-guild config changes for the logging transport
+      const transportUpdater = vi.fn();
+      configModule.onConfigChange(
+        'logging.database.enabled',
+        (_newValue, _oldValue, _path, guildId) => {
+          if (guildId && guildId !== 'global') return;
+          transportUpdater();
+        },
+      );
+
+      // Per-guild change should NOT trigger the transport update
+      await configModule.setConfigValue('logging.database.enabled', 'true', 'guild-456');
+      expect(transportUpdater).not.toHaveBeenCalled();
+
+      // Global change should trigger the transport update
+      await configModule.setConfigValue('logging.database.enabled', 'true', 'global');
+      expect(transportUpdater).toHaveBeenCalledOnce();
+    });
   });
 
   it('should catch async listener rejections without unhandled promise rejection', async () => {

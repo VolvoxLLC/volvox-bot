@@ -52,7 +52,7 @@ export async function execute(interaction) {
       .setTimestamp();
     await safeSend(channel, { embeds: [notifyEmbed] });
 
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const caseData = await createCase(interaction.guild.id, {
       action: 'unlock',
       targetId: channel.id,

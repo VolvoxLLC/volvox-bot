@@ -64,7 +64,7 @@ export async function execute(interaction) {
 
     await channel.setRateLimitPerUser(seconds);
 
-    const config = getConfig();
+    const config = getConfig(interaction.guildId);
     const caseData = await createCase(interaction.guild.id, {
       action: 'slowmode',
       targetId: channel.id,

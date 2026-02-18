@@ -54,8 +54,14 @@ vi.mock('../../src/modules/threading.js', () => ({
   getOrCreateThread: vi.fn().mockResolvedValue({ thread: null, isNew: false }),
 }));
 
+// Mock config module — getConfig returns per-guild config
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({}),
+}));
+
 import { generateResponse } from '../../src/modules/ai.js';
 import { accumulate, resetCounter } from '../../src/modules/chimeIn.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   registerErrorHandlers,
   registerEventHandlers,
@@ -124,17 +130,20 @@ describe('events module', () => {
       expect(on).toHaveBeenCalledWith('guildMemberAdd', expect.any(Function));
     });
 
-    it('should call sendWelcomeMessage on member add', async () => {
+    it('should call sendWelcomeMessage on member add with per-guild config', async () => {
       const on = vi.fn();
       const client = { on };
       const config = {};
+      const guildConfig = { welcome: { enabled: true } };
+      getConfig.mockReturnValue(guildConfig);
 
       registerGuildMemberAddHandler(client, config);
       const callback = on.mock.calls[0][1];
-      const member = { user: { tag: 'User#1234' } };
+      const member = { user: { tag: 'User#1234' }, guild: { id: 'guild-123' } };
       await callback(member);
 
-      expect(sendWelcomeMessage).toHaveBeenCalledWith(member, client, config);
+      expect(getConfig).toHaveBeenCalledWith('guild-123');
+      expect(sendWelcomeMessage).toHaveBeenCalledWith(member, client, guildConfig);
     });
   });
 
@@ -156,6 +165,9 @@ describe('events module', () => {
         moderation: { enabled: true },
         ...configOverrides,
       };
+
+      // Wire getConfig mock to return the test config for any guild
+      getConfig.mockReturnValue(config);
 
       registerMessageCreateHandler(client, config, null);
     }
@@ -428,7 +440,6 @@ describe('events module', () => {
         'thread-123',
         'hello from channel',
         'user',
-        config,
         null,
         'author-123',
         'g1',
