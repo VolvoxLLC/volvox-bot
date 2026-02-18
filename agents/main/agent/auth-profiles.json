@@ -62,13 +62,9 @@
       "lastFailureAt": 1771446596780
     },
     "zai:default": {
-      "errorCount": 1,
+      "errorCount": 0,
       "lastFailureAt": 1771447169672,
-      "lastUsed": 1771446741345,
-      "failureCounts": {
-        "timeout": 1
-      },
-      "cooldownUntil": 1771447229672
+      "lastUsed": 1771448466476
     }
   }
 }
