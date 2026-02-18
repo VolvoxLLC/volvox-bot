@@ -1,0 +1,7 @@
+/config.json
+/todos.json
+/notes.json
+data/
+*.log
+node_modules/
+.env

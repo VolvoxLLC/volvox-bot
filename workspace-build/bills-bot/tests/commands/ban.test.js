@@ -1,0 +1,147 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../src/utils/safeSend.js', () => ({
+  safeSend: (ch, opts) => ch.send(opts),
+  safeReply: (t, opts) => t.reply(opts),
+  safeFollowUp: (t, opts) => t.followUp(opts),
+  safeEditReply: (t, opts) => t.editReply(opts),
+}));
+vi.mock('../../src/modules/moderation.js', () => ({
+  createCase: vi.fn().mockResolvedValue({ case_number: 1, action: 'ban', id: 1 }),
+  sendDmNotification: vi.fn().mockResolvedValue(undefined),
+  sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
+  checkHierarchy: vi.fn().mockReturnValue(null),
+  shouldSendDm: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({
+    moderation: {
+      dmNotifications: { warn: true, kick: true, timeout: true, ban: true },
+      logging: { channels: { default: '123' } },
+    },
+  }),
+}));
+
+vi.mock('../../src/logger.js', () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
+
+import { adminOnly, data, execute } from '../../src/commands/ban.js';
+import { checkHierarchy, createCase, sendDmNotification } from '../../src/modules/moderation.js';
+
+describe('ban command', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockUser = { id: 'user1', tag: 'User#0001' };
+  const mockMember = {
+    id: 'user1',
+    user: mockUser,
+    roles: { highest: { position: 5 } },
+  };
+
+  const createInteraction = () => ({
+    options: {
+      getUser: vi.fn().mockReturnValue(mockUser),
+      getString: vi.fn().mockImplementation((name) => {
+        if (name === 'reason') return 'test reason';
+        return null;
+      }),
+      getInteger: vi.fn().mockReturnValue(0),
+    },
+    guild: {
+      id: 'guild1',
+      name: 'Test Server',
+      members: {
+        ban: vi.fn().mockResolvedValue(undefined),
+        fetch: vi.fn().mockResolvedValue(mockMember),
+        me: {
+          roles: { highest: { position: 10 } },
+        },
+      },
+    },
+    member: { roles: { highest: { position: 10 } } },
+    user: { id: 'mod1', tag: 'Mod#0001' },
+    client: { user: { id: 'bot1', tag: 'Bot#0001' } },
+    deferReply: vi.fn().mockResolvedValue(undefined),
+    editReply: vi.fn().mockResolvedValue(undefined),
+    reply: vi.fn().mockResolvedValue(undefined),
+    deferred: true,
+  });
+
+  it('should export data with name "ban"', () => {
+    expect(data.name).toBe('ban');
+  });
+
+  it('should export adminOnly as true', () => {
+    expect(adminOnly).toBe(true);
+  });
+
+  it('should ban a user successfully', async () => {
+    const interaction = createInteraction();
+
+    await execute(interaction);
+
+    expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+    expect(sendDmNotification).toHaveBeenCalled();
+    expect(interaction.guild.members.ban).toHaveBeenCalledWith('user1', {
+      deleteMessageSeconds: 0,
+      reason: 'test reason',
+    });
+    expect(createCase).toHaveBeenCalledWith(
+      'guild1',
+      expect.objectContaining({
+        action: 'ban',
+        targetId: 'user1',
+      }),
+    );
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('has been banned'));
+  });
+
+  it('should skip hierarchy check for users not in guild', async () => {
+    const interaction = createInteraction();
+    interaction.guild.members.fetch.mockRejectedValueOnce(new Error('Unknown Member'));
+
+    await execute(interaction);
+
+    expect(checkHierarchy).not.toHaveBeenCalled();
+    expect(interaction.guild.members.ban).toHaveBeenCalled();
+  });
+
+  it('should reject when hierarchy check fails', async () => {
+    checkHierarchy.mockReturnValueOnce(
+      '❌ You cannot moderate a member with an equal or higher role than yours.',
+    );
+    const interaction = createInteraction();
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('cannot moderate'));
+    expect(interaction.guild.members.ban).not.toHaveBeenCalled();
+  });
+
+  it('should reject when bot role is too low', async () => {
+    checkHierarchy.mockReturnValueOnce(
+      '❌ I cannot moderate this member — my role is not high enough.',
+    );
+    const interaction = createInteraction();
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('my role is not high enough'),
+    );
+    expect(interaction.guild.members.ban).not.toHaveBeenCalled();
+  });
+
+  it('should handle errors gracefully', async () => {
+    createCase.mockRejectedValueOnce(new Error('DB error'));
+    const interaction = createInteraction();
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('An error occurred'),
+    );
+  });
+});

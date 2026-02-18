@@ -1,0 +1,42 @@
+# =============================================================================
+# Veritas Kanban — Docker Compose (DEMO for Product Hunt)
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose-demo.yml up --build -d
+#   docker compose -f docker-compose-demo.yml down
+#   docker compose -f docker-compose-demo.yml logs -f
+# =============================================================================
+
+services:
+  veritas-kanban-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: veritas-kanban-demo
+    # IMPORTANT: must match Dockerfile WORKDIR for relative CMD (node dist/index.js)
+    working_dir: /app/server
+    ports:
+      - '3099:3001'
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATA_DIR=/app/data
+      - VERITAS_ADMIN_KEY=demo-admin-key-for-product-hunt-2026
+      - VERITAS_AUTH_LOCALHOST_BYPASS=true
+      - VERITAS_AUTH_LOCALHOST_ROLE=admin
+      - VERITAS_AUTH_ENABLED=false
+      - CORS_ORIGINS=http://localhost:3099
+    volumes:
+      # Separate data volume for demo instance
+      - kanban-demo-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3001/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  kanban-demo-data:
+    driver: local

@@ -1,0 +1,335 @@
+{
+  "canvas": {
+    "width": 1920,
+    "height": 1080
+  },
+  "widgets": [
+    {
+      "id": "widget-1",
+      "type": "weather",
+      "x": 240,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Local Weather",
+        "location": "Atlanta",
+        "units": "F",
+        "refreshInterval": 600,
+        "showHeader": true
+      }
+    },
+    {
+      "id": "widget-3",
+      "type": "clock",
+      "x": 20,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Clock",
+        "timezone": "local",
+        "format24h": false
+      }
+    },
+    {
+      "id": "widget-12",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-14",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-15",
+      "type": "horizontal-line",
+      "x": 20,
+      "y": 40,
+      "width": 1220,
+      "height": 60,
+      "properties": {
+        "title": "",
+        "showHeader": false,
+        "lineColor": "#30363d",
+        "lineThickness": 2
+      }
+    },
+    {
+      "id": "widget-16",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "showBorder": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-18",
+      "type": "horizontal-line",
+      "x": 20,
+      "y": 40,
+      "width": 1860,
+      "height": 60,
+      "properties": {
+        "title": "",
+        "showHeader": false,
+        "lineColor": "#30363d",
+        "lineThickness": 2
+      }
+    },
+    {
+      "id": "widget-22",
+      "type": "auth-status",
+      "x": 460,
+      "y": 120,
+      "width": 240,
+      "height": 140,
+      "properties": {
+        "title": "Auth Type",
+        "endpoint": "/api/status",
+        "refreshInterval": 30,
+        "showHeader": true
+      }
+    },
+    {
+      "id": "widget-23",
+      "type": "openclaw-release",
+      "x": 720,
+      "y": 120,
+      "width": 280,
+      "height": 140,
+      "properties": {
+        "title": "OpenClaw Release",
+        "openclawUrl": "",
+        "refreshInterval": 3600,
+        "showHeader": true,
+        "widgetFontAdjust": 25
+      }
+    },
+    {
+      "id": "widget-30",
+      "type": "rss-ticker",
+      "x": 0,
+      "y": 1000,
+      "width": 1900,
+      "height": 60,
+      "properties": {
+        "title": "RSS",
+        "feedUrl": "https://magazine.sebastianraschka.com/feed",
+        "maxItems": 10,
+        "refreshInterval": 600
+      }
+    },
+    {
+      "id": "widget-31",
+      "type": "lobsterboard-release",
+      "x": 1020,
+      "y": 120,
+      "width": 240,
+      "height": 140,
+      "properties": {
+        "title": "LobsterBoard",
+        "refreshInterval": 3600,
+        "widgetFontAdjust": 25
+      }
+    },
+    {
+      "id": "widget-38",
+      "type": "cron-jobs",
+      "x": 20,
+      "y": 280,
+      "width": 580,
+      "height": 320,
+      "properties": {
+        "title": "Cron",
+        "endpoint": "/api/cron",
+        "columns": 2,
+        "refreshInterval": 30
+      }
+    },
+    {
+      "id": "widget-39",
+      "type": "system-log",
+      "x": 620,
+      "y": 280,
+      "width": 640,
+      "height": 720,
+      "properties": {
+        "title": "System Log",
+        "endpoint": "/api/system-log",
+        "maxLines": 50,
+        "refreshInterval": 10
+      }
+    },
+    {
+      "id": "widget-40",
+      "type": "activity-list",
+      "x": 20,
+      "y": 620,
+      "width": 580,
+      "height": 380,
+      "properties": {
+        "title": "Today",
+        "endpoint": "/api/today",
+        "maxItems": 10,
+        "refreshInterval": 60
+      }
+    },
+    {
+      "id": "widget-41",
+      "type": "cpu-memory",
+      "x": 1280,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "System",
+        "endpoint": "/api/system",
+        "refreshInterval": 5
+      }
+    },
+    {
+      "id": "widget-42",
+      "type": "disk-usage",
+      "x": 1500,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Disk",
+        "path": "/",
+        "endpoint": "/api/disk",
+        "refreshInterval": 60
+      }
+    },
+    {
+      "id": "widget-43",
+      "type": "network-speed",
+      "x": 1720,
+      "y": 120,
+      "width": 180,
+      "height": 140,
+      "properties": {
+        "title": "Network",
+        "endpoint": "/api/network",
+        "refreshInterval": 2
+      }
+    },
+    {
+      "id": "widget-44",
+      "type": "uptime-monitor",
+      "x": 1560,
+      "y": 560,
+      "width": 340,
+      "height": 200,
+      "properties": {
+        "title": "Uptime",
+        "services": "Website,API,Database",
+        "refreshInterval": 30
+      }
+    },
+    {
+      "id": "widget-45",
+      "type": "calendar",
+      "x": 1280,
+      "y": 560,
+      "width": 260,
+      "height": 200,
+      "properties": {
+        "title": "Calendar",
+        "icalUrl": "https://calendar.google.com/calendar/ical/curbob%40gmail.com/private-da3070618dc7bf05f1515cccd39f09e8/basic.ics",
+        "maxEvents": 5,
+        "refreshInterval": 300
+      }
+    },
+    {
+      "id": "widget-48",
+      "type": "todo-list",
+      "x": 1280,
+      "y": 780,
+      "width": 260,
+      "height": 220,
+      "properties": {
+        "title": "Todo"
+      }
+    },
+    {
+      "id": "widget-49",
+      "type": "github-stats",
+      "x": 1560,
+      "y": 780,
+      "width": 340,
+      "height": 220,
+      "properties": {
+        "title": "GitHub",
+        "username": "curbob",
+        "refreshInterval": 300,
+        "widgetFontAdjust": 25,
+        "apiKey": "YOUR_API_KEY_HERE",
+        "repo": "LobsterBoard"
+      },
+      "_templateNote": "⚠️ Configure this widget's settings after import"
+    },
+    {
+      "id": "widget-50",
+      "type": "quote-of-day",
+      "x": 1280,
+      "y": 280,
+      "width": 620,
+      "height": 180,
+      "properties": {
+        "title": "Quote",
+        "maxLength": 0,
+        "refreshInterval": 3600
+      }
+    },
+    {
+      "id": "widget-51",
+      "type": "stock-ticker",
+      "x": 1280,
+      "y": 480,
+      "width": 620,
+      "height": 60,
+      "properties": {
+        "title": "Stocks",
+        "symbol": "AAPL, MSFT, GOOGL, AMZN, TSLA",
+        "apiKey": "YOUR_API_KEY_HERE",
+        "apiKeyNote": "Get a free key at finnhub.io/register",
+        "refreshInterval": 60
+      },
+      "_templateNote": "⚠️ Configure this widget's settings after import"
+    }
+  ]
+}

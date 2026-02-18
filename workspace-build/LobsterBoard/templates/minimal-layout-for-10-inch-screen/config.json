@@ -1,0 +1,211 @@
+{
+  "canvas": {
+    "width": 1280,
+    "height": 800
+  },
+  "widgets": [
+    {
+      "id": "widget-1",
+      "type": "weather",
+      "x": 240,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Local Weather",
+        "location": "Atlanta",
+        "units": "F",
+        "refreshInterval": 600,
+        "showHeader": true
+      }
+    },
+    {
+      "id": "widget-3",
+      "type": "clock",
+      "x": 20,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Clock",
+        "timezone": "local",
+        "format24h": false
+      }
+    },
+    {
+      "id": "widget-12",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-14",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-15",
+      "type": "horizontal-line",
+      "x": 20,
+      "y": 40,
+      "width": 1220,
+      "height": 60,
+      "properties": {
+        "title": "",
+        "showHeader": false,
+        "lineColor": "#30363d",
+        "lineThickness": 2
+      }
+    },
+    {
+      "id": "widget-16",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "showBorder": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-18",
+      "type": "horizontal-line",
+      "x": 20,
+      "y": 40,
+      "width": 1240,
+      "height": 60,
+      "properties": {
+        "title": "",
+        "showHeader": false,
+        "lineColor": "#30363d",
+        "lineThickness": 2
+      }
+    },
+    {
+      "id": "widget-22",
+      "type": "auth-status",
+      "x": 460,
+      "y": 120,
+      "width": 240,
+      "height": 140,
+      "properties": {
+        "title": "Auth Type",
+        "endpoint": "/api/status",
+        "refreshInterval": 30,
+        "showHeader": true
+      }
+    },
+    {
+      "id": "widget-23",
+      "type": "openclaw-release",
+      "x": 720,
+      "y": 120,
+      "width": 280,
+      "height": 140,
+      "properties": {
+        "title": "OpenClaw Release",
+        "openclawUrl": "",
+        "refreshInterval": 3600,
+        "showHeader": true,
+        "widgetFontAdjust": 25
+      }
+    },
+    {
+      "id": "widget-30",
+      "type": "rss-ticker",
+      "x": 0,
+      "y": 700,
+      "width": 1260,
+      "height": 60,
+      "properties": {
+        "title": "RSS",
+        "feedUrl": "https://magazine.sebastianraschka.com/feed",
+        "maxItems": 10,
+        "refreshInterval": 600
+      }
+    },
+    {
+      "id": "widget-31",
+      "type": "lobsterboard-release",
+      "x": 1020,
+      "y": 120,
+      "width": 240,
+      "height": 140,
+      "properties": {
+        "title": "LobsterBoard",
+        "refreshInterval": 3600,
+        "widgetFontAdjust": 25
+      }
+    },
+    {
+      "id": "widget-38",
+      "type": "cron-jobs",
+      "x": 20,
+      "y": 280,
+      "width": 580,
+      "height": 200,
+      "properties": {
+        "title": "Cron",
+        "endpoint": "/api/cron",
+        "columns": 2,
+        "refreshInterval": 30
+      }
+    },
+    {
+      "id": "widget-39",
+      "type": "system-log",
+      "x": 620,
+      "y": 280,
+      "width": 640,
+      "height": 420,
+      "properties": {
+        "title": "System Log",
+        "endpoint": "/api/system-log",
+        "maxLines": 50,
+        "refreshInterval": 10
+      }
+    },
+    {
+      "id": "widget-40",
+      "type": "activity-list",
+      "x": 20,
+      "y": 500,
+      "width": 580,
+      "height": 200,
+      "properties": {
+        "title": "Today",
+        "endpoint": "/api/today",
+        "maxItems": 10,
+        "refreshInterval": 60
+      }
+    }
+  ]
+}

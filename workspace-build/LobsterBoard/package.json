@@ -1,0 +1,79 @@
+{
+  "name": "lobsterboard",
+  "version": "0.2.1",
+  "description": "Self-hosted drag-and-drop dashboard builder with 50 widgets, template gallery, and custom pages. Works standalone or with OpenClaw.",
+  "keywords": [
+    "dashboard",
+    "widgets",
+    "monitoring",
+    "kpi",
+    "builder",
+    "homelab",
+    "self-hosted",
+    "openclaw"
+  ],
+  "author": "curbob",
+  "license": "BSL-1.1",
+  "homepage": "https://github.com/curbob/LobsterBoard#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/curbob/LobsterBoard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/curbob/LobsterBoard/issues"
+  },
+  "type": "module",
+  "main": "dist/lobsterboard.umd.js",
+  "module": "dist/lobsterboard.esm.js",
+  "unpkg": "dist/lobsterboard.umd.min.js",
+  "jsdelivr": "dist/lobsterboard.umd.min.js",
+  "browser": "dist/lobsterboard.umd.min.js",
+  "exports": {
+    ".": {
+      "import": "./dist/lobsterboard.esm.js",
+      "require": "./dist/lobsterboard.umd.js",
+      "browser": "./dist/lobsterboard.umd.min.js"
+    },
+    "./css": "./dist/lobsterboard.css",
+    "./widgets": {
+      "import": "./src/widgets.js"
+    },
+    "./builder": {
+      "import": "./src/builder.js"
+    }
+  },
+  "bin": {
+    "lobsterboard": "./bin/lobsterboard.mjs"
+  },
+  "files": [
+    "server.cjs",
+    "app.html",
+    "js/",
+    "css/",
+    "dist",
+    "src",
+    "bin/",
+    "templates/",
+    "js/templates.js",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "build:watch": "rollup -c -w",
+    "prebuild": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.9.6",
+    "rollup-plugin-copy": "^3.5.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "systeminformation": "^5.30.7"
+  }
+}

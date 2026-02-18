@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog - LobsterBoard</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-purple: #a371f7;
+      --accent-orange: #d29922;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .logo img {
+      height: 36px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .nav-links a.active {
+      color: var(--accent);
+    }
+
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 48px;
+    }
+
+    .version {
+      margin-bottom: 48px;
+    }
+
+    .version-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .version-number {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .version-date {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .version-tag {
+      background: var(--accent-green);
+      color: var(--bg-primary);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .version-tag.initial {
+      background: var(--accent-purple);
+    }
+
+    .change-section {
+      margin-bottom: 24px;
+    }
+
+    .change-section h3 {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .change-section h3::before {
+      font-size: 18px;
+    }
+
+    .change-section.added h3::before { content: '✨'; }
+    .change-section.changed h3::before { content: '🔄'; }
+    .change-section.fixed h3::before { content: '🐛'; }
+    .change-section.removed h3::before { content: '🗑️'; }
+
+    .change-section ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .change-section li {
+      padding: 8px 0;
+      padding-left: 24px;
+      position: relative;
+      border-bottom: 1px solid var(--bg-tertiary);
+    }
+
+    .change-section li:last-child {
+      border-bottom: none;
+    }
+
+    .change-section li::before {
+      content: '•';
+      position: absolute;
+      left: 8px;
+      color: var(--text-muted);
+    }
+
+    .change-category {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .widget-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .widget-tag {
+      background: var(--bg-tertiary);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .upcoming {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin-top: 48px;
+    }
+
+    .upcoming h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .upcoming ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .upcoming li {
+      padding: 8px 0;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .upcoming li::before {
+      content: '○';
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .mascot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 80px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .mascot:hover {
+      opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+      .nav-links {
+        gap: 16px;
+      }
+      
+      .version-header {
+        flex-wrap: wrap;
+      }
+
+      .widget-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .mascot {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="index.html" class="logo">
+      <img src="lobsterboard-logo-final.png" alt="LobsterBoard">
+    </a>
+    <nav class="nav-links">
+      <a href="index.html">Builder</a>
+      <a href="changelog.html" class="active">Changelog</a>
+      <a href="https://github.com/curbob/LobsterBoard" target="_blank">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <h1>Changelog</h1>
+    <p class="subtitle">All notable changes to LobsterBoard will be documented here.</p>
+
+    <!-- Version 0.1.1 -->
+    <article class="version">
+      <div class="version-header">
+        <span class="version-number">v0.1.1</span>
+        <span class="version-date">February 6, 2026</span>
+      </div>
+
+      <section class="change-section changed">
+        <h3>Changed</h3>
+        <ul>
+          <li>Moved mascot from left sidebar to right (properties panel)</li>
+          <li>Mascot now pinned to bottom of panel (doesn't float up with content)</li>
+        </ul>
+      </section>
+
+      <section class="change-section fixed">
+        <h3>Fixed</h3>
+        <ul>
+          <li>Mascot positioning using flexbox margin-top: auto</li>
+        </ul>
+      </section>
+    </article>
+
+    <!-- Version 0.1.0 -->
+    <article class="version">
+      <div class="version-header">
+        <span class="version-number">v0.1.0</span>
+        <span class="version-date">February 5, 2026</span>
+        <span class="version-tag initial">Initial Release</span>
+      </div>
+
+      <section class="change-section added">
+        <h3>Added</h3>
+        <ul>
+          <li>
+            <strong>Core Builder</strong>
+            <span class="change-category">Drag-and-drop widget placement, grid snapping (20px), resize handles, properties panel</span>
+          </li>
+          <li>
+            <strong>Canvas Controls</strong>
+            <span class="change-category">15+ screen size presets, custom dimensions, zoom controls (+/-, Fit, 1:1), keyboard shortcuts</span>
+          </li>
+          <li>
+            <strong>Preview & Export</strong>
+            <span class="change-category">Live preview modal with inlined styles, export to standalone ZIP (HTML/CSS/JS)</span>
+          </li>
+          <li>
+            <strong>40+ Widgets</strong>
+            <div class="widget-grid">
+              <span class="widget-tag">🤖 Claude Usage</span>
+              <span class="widget-tag">🤖 GPT Usage</span>
+              <span class="widget-tag">🤖 Gemini Usage</span>
+              <span class="widget-tag">🤖 AI Usage (All)</span>
+              <span class="widget-tag">💰 Cost Tracker</span>
+              <span class="widget-tag">🔄 API Status</span>
+              <span class="widget-tag">🌡️ Local Weather</span>
+              <span class="widget-tag">🌍 World Weather</span>
+              <span class="widget-tag">🕐 Clock</span>
+              <span class="widget-tag">🌍 World Clock</span>
+              <span class="widget-tag">⏳ Countdown</span>
+              <span class="widget-tag">📊 Stat Card</span>
+              <span class="widget-tag">💻 CPU/Memory</span>
+              <span class="widget-tag">💾 Disk Usage</span>
+              <span class="widget-tag">🌐 Network Speed</span>
+              <span class="widget-tag">🐳 Docker</span>
+              <span class="widget-tag">📡 Uptime Monitor</span>
+              <span class="widget-tag">✅ Todo List</span>
+              <span class="widget-tag">📅 Calendar</span>
+              <span class="widget-tag">📧 Email Count</span>
+              <span class="widget-tag">🎯 Pomodoro</span>
+              <span class="widget-tag">📈 Stock Ticker</span>
+              <span class="widget-tag">₿ Crypto Price</span>
+              <span class="widget-tag">🏠 Indoor Climate</span>
+              <span class="widget-tag">📷 Camera Feed</span>
+              <span class="widget-tag">🎵 Now Playing</span>
+              <span class="widget-tag">💭 Quote of Day</span>
+              <span class="widget-tag">🔗 Quick Links</span>
+              <span class="widget-tag">📡 RSS Feed</span>
+              <span class="widget-tag">📰 News Ticker</span>
+              <span class="widget-tag">...and more</span>
+            </div>
+          </li>
+          <li>
+            <strong>Branding</strong>
+            <span class="change-category">LobsterBoard name and mascot 🦞, logo wordmark, favicon, Apple touch icon</span>
+          </li>
+          <li>
+            <strong>Dark Theme</strong>
+            <span class="change-category">Consistent dash-card styling, matches OpenClaw aesthetic</span>
+          </li>
+        </ul>
+      </section>
+    </article>
+
+    <!-- Upcoming -->
+    <div class="upcoming">
+      <h2>🚀 Upcoming</h2>
+      <ul>
+        <li>GitHub Pages deployment</li>
+        <li>Import/export dashboard layouts (JSON)</li>
+        <li>Widget templates and presets</li>
+        <li>More customization options</li>
+        <li>Community widget contributions</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    <p>LobsterBoard is open source. <a href="https://github.com/curbob/LobsterBoard">View on GitHub</a></p>
+  </footer>
+
+  <img src="lobsterboard-mascot-clean.png" alt="" class="mascot">
+</body>
+</html>

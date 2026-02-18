@@ -1,0 +1,28 @@
+{
+  "name": "@veritas-kanban/shared",
+  "version": "3.3.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "license": "MIT",
+  "author": "Brad Groux <brad@digitalmeld.io>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BradGroux/veritas-kanban.git"
+  }
+}

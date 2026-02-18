@@ -1,0 +1,53 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs (rebuilt in Docker)
+**/dist
+server/dist
+web/dist
+shared/dist
+
+# Git
+.git
+.gitignore
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# IDE & editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation & non-essential
+docs/
+*.md
+!README.md
+LICENSE
+
+# Tests
+**/*.test.ts
+**/__tests__
+coverage
+
+# Development tools
+cli/
+mcp/
+scripts/
+tasks/
+eslint.config.js
+.prettierrc

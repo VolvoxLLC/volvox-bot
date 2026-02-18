@@ -1,0 +1,36 @@
+node_modules/
+.env
+*.log
+logs/
+coverage/
+
+# Auto Claude data directory and files
+.auto-claude/
+.auto-claude-*
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
+.worktrees/
+.security-key
+logs/security/
+
+# State persistence data (keep structure, ignore content)
+data/*
+!data/.gitkeep
+
+# Test and coverage outputs
+coverage/
+
+# Specs (tracked outside repo)
+.specs/
+
+# Verification scripts
+verify-*.js
+VERIFICATION_GUIDE.md
+
+# Web dashboard
+web/.next/
+web/.env.local
+web/.env.*.local
+web/tsconfig.tsbuildinfo
+

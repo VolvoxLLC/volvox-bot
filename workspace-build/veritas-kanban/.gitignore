@@ -1,0 +1,97 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env — never commit real secrets
+.env
+.env.local
+.env.*.local
+# But DO track .env.example files
+!*.env.example
+!.env.example
+
+# Runtime data (keep .gitkeep for structure)
+tasks/active/*.md
+tasks/archive/*.md
+tasks/backlog/*.md
+tasks/attachments/
+tasks/archive-attachments/
+.veritas-kanban/*
+!.veritas-kanban/.gitkeep
+
+# Historical broken config data (should never have been tracked)
+.veritas-kanban.broken/
+
+# Test
+coverage/
+.nyc_output/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+.veritas-kanban/worktrees/
+
+# TypeScript build info
+*.tsbuildinfo
+.tsbuildinfo
+
+# Vite generated
+vite.config.d.ts
+vite.config.js
+server/.veritas-kanban/*
+!server/.veritas-kanban/.gitkeep
+
+# Security - never commit these file types
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+*.der
+*_rsa
+*_dsa
+*_ed25519
+*_ecdsa
+
+# Backups and temp files
+*.bak
+*.backup
+*.tmp
+*.temp
+.backup/
+backups/
+
+# Package manager lock files (optional - some teams gitignore these)
+# Uncomment if you want to ignore lock files
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

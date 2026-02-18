@@ -1,0 +1,43 @@
+# =============================================================================
+# Veritas Kanban — Docker Compose (Local Testing)
+# =============================================================================
+# Usage:
+#   docker compose up --build        # Build and start
+#   docker compose up -d             # Start in background
+#   docker compose down              # Stop and remove
+#   docker compose logs -f           # Follow logs
+# =============================================================================
+
+services:
+  veritas-kanban:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: veritas-kanban-demo
+    # IMPORTANT: Must match Dockerfile WORKDIR (/app/server) for correct path resolution
+    working_dir: /app/server
+    ports:
+      # Demo instance port (do NOT use production 3001)
+      - '3099:3001'
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATA_DIR=/app/data
+      # Demo auth key (Arcade walkthrough)
+      - VERITAS_ADMIN_KEY=demo-admin-key-for-product-hunt-2026
+      # Host -> container requests come from bridge IP (not 127.0.0.1), so keep API key enabled.
+      - VERITAS_AUTH_LOCALHOST_BYPASS=false
+    volumes:
+      # Persist demo data across container restarts
+      - kanban-demo-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3001/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  kanban-demo-data:
+    driver: local

@@ -1,0 +1,107 @@
+{
+  "ai": {
+    "enabled": true,
+    "model": "claude-sonnet-4-20250514",
+    "maxTokens": 1024,
+    "systemPrompt": "You are Volvox Bot, the friendly AI assistant for the Volvox developer community Discord server.\n\nYou're witty, snarky (but warm), and deeply knowledgeable about programming, software development, and tech.\n\nKey traits:\n- Helpful but not boring\n- Can roast people lightly when appropriate\n- Enthusiastic about cool tech and projects\n- Supportive of beginners learning to code\n- Concise - this is Discord, not an essay\n\n⚠️ CRITICAL RULES:\n- NEVER type @.everyone or @.here (remove the dots) - these ping hundreds of people\n- NEVER use mass mention pings under any circumstances\n- If you need to address the group, say \"everyone\" or \"folks\" without the @ symbol\n\nKeep responses under 2000 chars. Use Discord markdown when helpful.",
+    "channels": [],
+    "historyLength": 20,
+    "historyTTLDays": 30,
+    "threadMode": {
+      "enabled": false,
+      "autoArchiveMinutes": 60,
+      "reuseWindowMinutes": 30
+    }
+  },
+  "chimeIn": {
+    "enabled": false,
+    "evaluateEvery": 10,
+    "model": "claude-haiku-4-5",
+    "maxBufferSize": 10,
+    "channels": [],
+    "excludeChannels": []
+  },
+  "welcome": {
+    "enabled": true,
+    "channelId": "1438631182379253814",
+    "message": "Welcome to Volvox, {user}! 🌱 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask — we're here to help. 💚",
+    "dynamic": {
+      "enabled": true,
+      "timezone": "America/New_York",
+      "activityWindowMinutes": 45,
+      "milestoneInterval": 25,
+      "highlightChannels": ["1438631182379253814", "1444154471704957069", "1446317676988465242"],
+      "excludeChannels": []
+    }
+  },
+  "moderation": {
+    "enabled": true,
+    "alertChannelId": "1438665401243275284",
+    "autoDelete": false,
+    "dmNotifications": {
+      "warn": true,
+      "timeout": true,
+      "kick": true,
+      "ban": true
+    },
+    "escalation": {
+      "enabled": false,
+      "thresholds": [
+        { "warns": 3, "withinDays": 7, "action": "timeout", "duration": "1h" },
+        { "warns": 5, "withinDays": 30, "action": "ban" }
+      ]
+    },
+    "logging": {
+      "channels": {
+        "default": null,
+        "warns": null,
+        "bans": null,
+        "kicks": null,
+        "timeouts": null,
+        "purges": null,
+        "locks": null
+      }
+    }
+  },
+  "memory": {
+    "enabled": true,
+    "maxContextMemories": 5,
+    "autoExtract": true
+  },
+  "logging": {
+    "level": "info",
+    "fileOutput": true,
+    "database": {
+      "enabled": false,
+      "minLevel": "info",
+      "retentionDays": 30,
+      "batchSize": 10,
+      "flushIntervalMs": 5000
+    }
+  },
+  "permissions": {
+    "enabled": true,
+    "adminRoleId": null,
+    "usePermissions": true,
+    "allowedCommands": {
+      "ping": "everyone",
+      "memory": "everyone",
+      "config": "admin",
+      "warn": "admin",
+      "kick": "admin",
+      "timeout": "admin",
+      "untimeout": "admin",
+      "ban": "admin",
+      "tempban": "admin",
+      "unban": "admin",
+      "softban": "admin",
+      "purge": "admin",
+      "case": "admin",
+      "history": "admin",
+      "lock": "admin",
+      "unlock": "admin",
+      "slowmode": "admin",
+      "modlog": "admin"
+    }
+  }
+}

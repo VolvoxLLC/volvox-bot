@@ -1,0 +1,282 @@
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { TaskMetadataSection } from './TaskMetadataSection';
+import { SubtasksSection } from '../SubtasksSection';
+import { VerificationSection } from '../VerificationSection';
+import { DependenciesSection } from '../DependenciesSection';
+import { TimeTrackingSection } from '../TimeTrackingSection';
+import { CommentsSection } from '../CommentsSection';
+import { DeliverablesSection } from '../DeliverablesSection';
+import { BlockedReasonSection } from '../BlockedReasonSection';
+import { LessonsLearnedSection } from '../LessonsLearnedSection';
+import { useDeleteTask, useArchiveTask } from '@/hooks/useTasks';
+import { useFeatureSettings } from '@/hooks/useFeatureSettings';
+import { Trash2, Archive, Calendar, Clock, RotateCcw } from 'lucide-react';
+import type { Task, BlockedReason } from '@veritas-kanban/shared';
+
+interface TaskDetailsTabProps {
+  task: Task;
+  onUpdate: <K extends keyof Task>(field: K, value: Task[K]) => void;
+  onClose: () => void;
+  readOnly?: boolean;
+  onRestore?: (taskId: string) => void;
+}
+
+export function TaskDetailsTab({
+  task,
+  onUpdate,
+  onClose,
+  readOnly = false,
+  onRestore,
+}: TaskDetailsTabProps) {
+  const deleteTask = useDeleteTask();
+  const archiveTask = useArchiveTask();
+  const { settings: featureSettings } = useFeatureSettings();
+  const taskSettings = featureSettings.tasks;
+  const markdownSettings = featureSettings.markdown;
+  const markdownEnabled = markdownSettings?.enableMarkdown ?? true;
+
+  const handleDelete = async () => {
+    await deleteTask.mutateAsync(task.id);
+    onClose();
+  };
+
+  const handleArchive = async () => {
+    await archiveTask.mutateAsync(task.id);
+    onClose();
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Description */}
+      <div className="space-y-2">
+        <Label className="text-muted-foreground">Description</Label>
+        {readOnly ? (
+          <div className="text-sm text-foreground/80 bg-muted/30 rounded-md p-3 min-h-[60px]">
+            {task.description ? (
+              markdownEnabled ? (
+                <MarkdownRenderer content={task.description} />
+              ) : (
+                <p className="whitespace-pre-wrap">{task.description}</p>
+              )
+            ) : (
+              <span className="text-muted-foreground italic">No description</span>
+            )}
+          </div>
+        ) : markdownEnabled ? (
+          <MarkdownEditor
+            value={task.description}
+            onChange={(value) => onUpdate('description', value)}
+            placeholder="Add a description... (supports Markdown)"
+            minHeight={120}
+          />
+        ) : (
+          <Textarea
+            value={task.description}
+            onChange={(e) => onUpdate('description', e.target.value)}
+            placeholder="Add a description..."
+            rows={4}
+            className="resize-none"
+          />
+        )}
+      </div>
+
+      {/* Plan section removed (GH-66 cleanup — planning was agent-internal, not board-level) */}
+
+      {/* Metadata Section */}
+      <TaskMetadataSection task={task} onUpdate={onUpdate} readOnly={readOnly} />
+
+      {/* Blocked Reason (shown when status is blocked) */}
+      {task.status === 'blocked' && (
+        <div className="border-t pt-4">
+          <BlockedReasonSection
+            task={task}
+            onUpdate={(blockedReason: BlockedReason | undefined) =>
+              onUpdate('blockedReason', blockedReason)
+            }
+            readOnly={readOnly}
+          />
+        </div>
+      )}
+
+      {/* Checkpoint Status (shown when checkpoint exists) */}
+      {task.checkpoint && (
+        <div className="border-t pt-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-muted-foreground">Checkpoint</Label>
+              {!readOnly && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Clear checkpoint and discard saved progress"
+                  onClick={async () => {
+                    try {
+                      await fetch(`/api/tasks/${task.id}/checkpoint`, { method: 'DELETE' });
+                      onUpdate('checkpoint', undefined);
+                    } catch (error) {
+                      console.error('Failed to clear checkpoint:', error);
+                    }
+                  }}
+                >
+                  Clear Checkpoint
+                </Button>
+              )}
+            </div>
+            <div
+              role="status"
+              aria-live="polite"
+              className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 space-y-2"
+            >
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 text-xs font-medium">
+                  💾 CHECKPOINT SAVED
+                </span>
+                <span className="text-xs text-muted-foreground">Step {task.checkpoint.step}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Saved: {formatDate(task.checkpoint.timestamp)}
+              </div>
+              {task.checkpoint.resumeCount && task.checkpoint.resumeCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Resumed {task.checkpoint.resumeCount} time(s)</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subtasks */}
+      <div className="border-t pt-4">
+        <SubtasksSection
+          task={task}
+          onAutoCompleteChange={(value) => onUpdate('autoCompleteOnSubtasks', value || undefined)}
+        />
+      </div>
+
+      {/* Verification / Done Criteria */}
+      <div className="border-t pt-4">
+        <VerificationSection task={task} />
+      </div>
+
+      {/* Dependencies */}
+      {taskSettings.enableDependencies && (
+        <div className="border-t pt-4">
+          <DependenciesSection
+            task={task}
+            onBlockedByChange={(blockedBy) => onUpdate('blockedBy', blockedBy)}
+          />
+        </div>
+      )}
+
+      {/* Time Tracking */}
+      {taskSettings.enableTimeTracking && (
+        <div className="border-t pt-4">
+          <TimeTrackingSection task={task} />
+        </div>
+      )}
+
+      {/* Deliverables */}
+      <div className="border-t pt-4">
+        <DeliverablesSection task={task} />
+      </div>
+
+      {/* Comments */}
+      {taskSettings.enableComments && (
+        <div className="border-t pt-4">
+          <CommentsSection task={task} />
+        </div>
+      )}
+
+      {/* Lessons Learned (only shown for completed tasks) */}
+      {task.status === 'done' && (
+        <div className="border-t pt-4">
+          <LessonsLearnedSection task={task} onUpdate={onUpdate} readOnly={readOnly} />
+        </div>
+      )}
+
+      {/* Metadata Footer */}
+      <div className="border-t pt-4 space-y-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          <span>Created: {formatDate(task.created)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          <span>Updated: {formatDate(task.updated)}</span>
+        </div>
+        <div className="text-xs font-mono opacity-50">ID: {task.id}</div>
+      </div>
+
+      {/* Delete/Restore Button */}
+      <div className="border-t pt-4">
+        {readOnly && onRestore ? (
+          <Button variant="default" className="w-full" onClick={() => onRestore(task.id)}>
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Restore to Board
+          </Button>
+        ) : (
+          !readOnly && (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={handleArchive}>
+                <Archive className="h-4 w-4 mr-2" />
+                Archive
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="flex-1">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete "{task.title}".
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}

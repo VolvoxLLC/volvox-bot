@@ -1,0 +1,22 @@
+# Gitleaks False Positives
+# Updated: 2026-01-29 (post-history-rewrite)
+# All entries below are placeholder/example/test values, NOT real secrets.
+
+# Documentation example: "your-admin-key" placeholder in deployment guide
+39423f74cf3849684e8de4ebf746156a6be0ea00:docs/DEPLOYMENT.md:curl-auth-header:557
+
+# Documentation example: "dev-admin-key" placeholder in security audit
+f01a0157f1d1612ab7bea646cf7265ec018e1d9a:docs/SECURITY_AUDIT_2026-01-28.md:curl-auth-header:135
+
+# Test fixture: hardcoded test JWT secret (not used in production)
+f01a0157f1d1612ab7bea646cf7265ec018e1d9a:server/src/__tests__/routes/auth.test.ts:generic-api-key:28
+f01a0157f1d1612ab7bea646cf7265ec018e1d9a:server/src/__tests__/routes/auth.test.ts:generic-api-key:29
+f01a0157f1d1612ab7bea646cf7265ec018e1d9a:server/src/__tests__/routes/auth.test.ts:generic-api-key:60
+
+# .env.example placeholder values ("your-api-key")
+55c742c2dfd731069505e1baab16bb4c328234bd:server/.env.example:curl-auth-header:43
+55c742c2dfd731069505e1baab16bb4c328234bd:server/.env.example:curl-auth-header:46
+
+# Documentation placeholder values ("your-api-key")
+55c742c2dfd731069505e1baab16bb4c328234bd:docs/security.md:curl-auth-header:40
+55c742c2dfd731069505e1baab16bb4c328234bd:docs/security.md:curl-auth-header:47

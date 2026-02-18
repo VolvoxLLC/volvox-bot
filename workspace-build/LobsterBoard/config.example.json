@@ -1,0 +1,388 @@
+{
+  "canvas": {
+    "width": 1920,
+    "height": 1080
+  },
+  "fontScale": 1.25,
+  "widgets": [
+    {
+      "id": "widget-1",
+      "type": "weather",
+      "x": 600,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Local Weather",
+        "location": "Atlanta",
+        "units": "F",
+        "refreshInterval": 600,
+        "showHeader": true
+      }
+    },
+    {
+      "id": "widget-2",
+      "type": "weather-multi",
+      "x": 600,
+      "y": 280,
+      "width": 340,
+      "height": 220,
+      "properties": {
+        "title": "World Weather",
+        "locations": "New York; London; Tokyo",
+        "units": "F",
+        "refreshInterval": 600
+      }
+    },
+    {
+      "id": "widget-3",
+      "type": "clock",
+      "x": 20,
+      "y": 120,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Clock",
+        "timezone": "local",
+        "format24h": false
+      }
+    },
+    {
+      "id": "widget-4",
+      "type": "world-clock",
+      "x": 240,
+      "y": 120,
+      "width": 340,
+      "height": 200,
+      "properties": {
+        "title": "World Clock",
+        "locations": "New York; London; Tokyo",
+        "format24h": false,
+        "refreshInterval": 60
+      }
+    },
+    {
+      "id": "widget-5",
+      "type": "countdown",
+      "x": 240,
+      "y": 340,
+      "width": 340,
+      "height": 160,
+      "properties": {
+        "title": "Countdown",
+        "targetDate": "2026-02-27",
+        "showHours": true,
+        "showMinutes": true
+      }
+    },
+    {
+      "id": "widget-6",
+      "type": "cpu-memory",
+      "x": 20,
+      "y": 280,
+      "width": 200,
+      "height": 160,
+      "properties": {
+        "title": "System",
+        "endpoint": "/api/system",
+        "refreshInterval": 5
+      }
+    },
+    {
+      "id": "widget-7",
+      "type": "disk-usage",
+      "x": 20,
+      "y": 460,
+      "width": 200,
+      "height": 120,
+      "properties": {
+        "title": "Disk",
+        "path": "/",
+        "endpoint": "/api/disk",
+        "refreshInterval": 60
+      }
+    },
+    {
+      "id": "widget-8",
+      "type": "network-speed",
+      "x": 20,
+      "y": 600,
+      "width": 200,
+      "height": 140,
+      "properties": {
+        "title": "Network",
+        "endpoint": "/api/network",
+        "refreshInterval": 2
+      }
+    },
+    {
+      "id": "widget-9",
+      "type": "docker-containers",
+      "x": 600,
+      "y": 520,
+      "width": 340,
+      "height": 200,
+      "properties": {
+        "title": "Containers",
+        "endpoint": "/api/docker",
+        "refreshInterval": 10
+      }
+    },
+    {
+      "id": "widget-10",
+      "type": "uptime-monitor",
+      "x": 240,
+      "y": 520,
+      "width": 340,
+      "height": 200,
+      "properties": {
+        "title": "Uptime",
+        "services": "Website,API,Database",
+        "refreshInterval": 30
+      }
+    },
+    {
+      "id": "widget-12",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-13",
+      "type": "horizontal-line",
+      "x": 20,
+      "y": 40,
+      "width": 1880,
+      "height": 60,
+      "properties": {
+        "title": "",
+        "showHeader": false,
+        "lineColor": "#30363d",
+        "lineThickness": 2
+      }
+    },
+    {
+      "id": "widget-14",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-15",
+      "type": "horizontal-line",
+      "x": 20,
+      "y": 40,
+      "width": 1880,
+      "height": 60,
+      "properties": {
+        "title": "",
+        "showHeader": false,
+        "lineColor": "#30363d",
+        "lineThickness": 2
+      }
+    },
+    {
+      "id": "widget-16",
+      "type": "text-header",
+      "x": 20,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "properties": {
+        "title": "Lobster Board",
+        "showHeader": false,
+        "showBorder": false,
+        "fontSize": 24,
+        "fontColor": "#e6edf3",
+        "textAlign": "left",
+        "fontWeight": "bold"
+      }
+    },
+    {
+      "id": "widget-18",
+      "type": "horizontal-line",
+      "x": 20,
+      "y": 40,
+      "width": 1860,
+      "height": 60,
+      "properties": {
+        "title": "",
+        "showHeader": false,
+        "lineColor": "#30363d",
+        "lineThickness": 2
+      }
+    },
+    {
+      "id": "widget-22",
+      "type": "auth-status",
+      "x": 1080,
+      "y": 100,
+      "width": 240,
+      "height": 140,
+      "properties": {
+        "title": "Auth Type",
+        "endpoint": "/api/status",
+        "refreshInterval": 30,
+        "showHeader": true
+      }
+    },
+    {
+      "id": "widget-23",
+      "type": "openclaw-release",
+      "x": 1340,
+      "y": 100,
+      "width": 240,
+      "height": 140,
+      "properties": {
+        "title": "OpenClaw Release",
+        "openclawUrl": "",
+        "refreshInterval": 3600,
+        "showHeader": true,
+        "widgetFontScale": 1.25
+      }
+    },
+    {
+      "id": "widget-24",
+      "type": "release",
+      "x": 1600,
+      "y": 100,
+      "width": 260,
+      "height": 140,
+      "properties": {
+        "title": "Code Pilot Release",
+        "repo": "op7418/CodePilot",
+        "currentVersion": ".0.6",
+        "refreshInterval": 3600,
+        "showHeader": true
+      }
+    },
+    {
+      "id": "widget-30",
+      "type": "rss-ticker",
+      "x": 0,
+      "y": 1040,
+      "width": 1920,
+      "height": 40,
+      "properties": {
+        "title": "RSS",
+        "feedUrl": "https://magazine.sebastianraschka.com/feed",
+        "maxItems": 10,
+        "refreshInterval": 600
+      }
+    },
+    {
+      "id": "widget-31",
+      "type": "todo-list",
+      "x": 1080,
+      "y": 260,
+      "width": 350,
+      "height": 300,
+      "properties": {
+        "title": "Todo",
+        "items": "Finish LobsterBoard, Check all the widgets, see the world"
+      }
+    },
+    {
+      "id": "widget-32",
+      "type": "calendar",
+      "x": 1460,
+      "y": 260,
+      "width": 400,
+      "height": 300,
+      "properties": {
+        "title": "Calendar",
+        "calendarId": "primary",
+        "maxEvents": 5,
+        "refreshInterval": 300
+      }
+    },
+    {
+      "id": "widget-33",
+      "type": "quick-links",
+      "x": 1080,
+      "y": 580,
+      "width": 360,
+      "height": 140,
+      "properties": {
+        "title": "Quick Links",
+        "columns": 2,
+        "links": [
+          {
+            "name": "reddit",
+            "url": "https://reddit.com"
+          },
+          {
+            "name": "OpenClaw",
+            "url": "https://openclaw.ai/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "widget-34",
+      "type": "quick-links",
+      "x": 1460,
+      "y": 580,
+      "width": 400,
+      "height": 140,
+      "properties": {
+        "title": "Quick Links",
+        "columns": 1,
+        "links": [
+          {
+            "name": "LobsterBoard",
+            "url": "https://github.com/Curbob/LobsterBoard"
+          }
+        ]
+      }
+    },
+    {
+      "id": "widget-35",
+      "type": "ai-usage-claude",
+      "x": 40,
+      "y": 780,
+      "width": 320,
+      "height": 220,
+      "properties": {
+        "title": "Claude",
+        "refreshInterval": 300,
+        "apiKey": ""
+      }
+    },
+    {
+      "id": "widget-37",
+      "type": "pages-menu",
+      "x": 260,
+      "y": 0,
+      "width": 660,
+      "height": 100,
+      "properties": {
+        "title": "Pages",
+        "layout": "horizontal",
+        "refreshInterval": 60,
+        "showHeader": false,
+        "showBorder": false
+      }
+    }
+  ]
+}

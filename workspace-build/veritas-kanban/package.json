@@ -1,0 +1,68 @@
+{
+  "name": "veritas-kanban",
+  "version": "3.3.0",
+  "private": true,
+  "description": "Local-first task management and AI agent orchestration platform",
+  "author": "Brad Groux <brad@digitalmeld.io>",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter server dev\" \"pnpm --filter web dev\"",
+    "dev:clean": "bash scripts/dev-clean.sh",
+    "dev:watchdog": "bash scripts/dev-watchdog.sh",
+    "build": "pnpm --filter server build && pnpm --filter web build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:unit": "pnpm -r test",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:load:smoke": "k6 run load-tests/k6/smoke.js",
+    "test:load": "k6 run load-tests/k6/smoke.js && k6 run load-tests/k6/read-load.js && k6 run load-tests/k6/write-load.js && k6 run load-tests/k6/mixed-load.js && k6 run load-tests/k6/ws-stress.js",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "audit": "pnpm audit --prod",
+    "audit:all": "pnpm audit",
+    "seed": "bash scripts/seed.sh",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "overrides": {
+      "hono": ">=4.11.7"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BradGroux/veritas-kanban.git"
+  }
+}

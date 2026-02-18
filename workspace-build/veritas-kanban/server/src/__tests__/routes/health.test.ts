@@ -1,0 +1,175 @@
+/**
+ * Health Check Route Tests
+ *
+ * Tests the three-tier health check system:
+ *   /health/live  — Liveness probe
+ *   /health/ready — Readiness probe
+ *   /health/deep  — Full diagnostics (admin only)
+ */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import request from 'supertest';
+import express from 'express';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
+import { healthRouter } from '../../routes/health.js';
+import { errorHandler } from '../../middleware/error-handler.js';
+
+describe('Health Routes', () => {
+  let app: express.Express;
+  let testDataDir: string;
+  let originalDataDir: string | undefined;
+
+  beforeEach(async () => {
+    // Create a temp data directory for testing
+    const uniqueSuffix = Math.random().toString(36).substring(7);
+    testDataDir = path.join(os.tmpdir(), `veritas-health-test-${uniqueSuffix}`);
+    await fs.mkdir(testDataDir, { recursive: true });
+
+    // Write a valid tasks.json
+    await fs.writeFile(path.join(testDataDir, 'tasks.json'), JSON.stringify([]));
+
+    // Set DATA_DIR env var
+    originalDataDir = process.env.DATA_DIR;
+    process.env.DATA_DIR = testDataDir;
+
+    // Create test app
+    app = express();
+    app.use(express.json());
+    app.use('/health', healthRouter);
+    app.use(errorHandler);
+  });
+
+  afterEach(async () => {
+    // Restore env
+    if (originalDataDir !== undefined) {
+      process.env.DATA_DIR = originalDataDir;
+    } else {
+      delete process.env.DATA_DIR;
+    }
+
+    // Clean up test directory
+    try {
+      await fs.rm(testDataDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  describe('GET /health/live', () => {
+    it('should return 200 with status ok', async () => {
+      const res = await request(app).get('/health/live');
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.timestamp).toBeDefined();
+      expect(typeof res.body.timestamp).toBe('string');
+    });
+  });
+
+  describe('GET /health (root alias)', () => {
+    it('should return 200 with status ok (backwards compat)', async () => {
+      const res = await request(app).get('/health');
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.timestamp).toBeDefined();
+    });
+  });
+
+  describe('GET /health/ready', () => {
+    it('should return 200 when healthy', async () => {
+      const res = await request(app).get('/health/ready');
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.checks).toBeDefined();
+      expect(res.body.checks.storage).toBe('ok');
+      expect(res.body.checks.memory).toBe('ok');
+      expect(res.body.checks.disk).toBe('ok');
+      expect(res.body.timestamp).toBeDefined();
+    });
+
+    it('should return 503 when data directory is missing', async () => {
+      // Point to a non-existent directory
+      process.env.DATA_DIR = path.join(os.tmpdir(), 'nonexistent-dir-' + Date.now());
+
+      const res = await request(app).get('/health/ready');
+
+      expect(res.status).toBe(503);
+      expect(res.body.status).toBe('degraded');
+      expect(res.body.checks.storage).toBe('fail');
+    });
+
+    it('should return ok when tasks.json does not exist', async () => {
+      // Remove tasks.json — fresh install scenario
+      await fs.unlink(path.join(testDataDir, 'tasks.json'));
+
+      const res = await request(app).get('/health/ready');
+
+      expect(res.status).toBe(200);
+      expect(res.body.checks.storage).toBe('ok');
+    });
+
+    it('should return 503 when tasks.json is corrupt', async () => {
+      // Write invalid JSON to tasks.json
+      await fs.writeFile(path.join(testDataDir, 'tasks.json'), '{invalid json!!!');
+
+      const res = await request(app).get('/health/ready');
+
+      expect(res.status).toBe(503);
+      expect(res.body.status).toBe('degraded');
+      expect(res.body.checks.storage).toBe('fail');
+    });
+  });
+
+  describe('GET /health/deep', () => {
+    it('should return 401 without authentication', async () => {
+      const res = await request(app).get('/health/deep');
+
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 200 with diagnostics for admin', async () => {
+      // Set up admin key for auth — must set NODE_ENV=development
+      // so the auth config cache is refreshed with our test key
+      const adminKey = 'test-admin-key-for-health-check-testing-32chars';
+      const origAdminKey = process.env.VERITAS_ADMIN_KEY;
+      const origAuthEnabled = process.env.VERITAS_AUTH_ENABLED;
+      const origNodeEnv = process.env.NODE_ENV;
+      process.env.VERITAS_ADMIN_KEY = adminKey;
+      process.env.VERITAS_AUTH_ENABLED = 'true';
+      process.env.NODE_ENV = 'development';
+
+      try {
+        const res = await request(app).get('/health/deep').set('X-API-Key', adminKey);
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBeDefined();
+        expect(res.body.checks).toBeDefined();
+        expect(res.body.uptime).toBeTypeOf('number');
+        expect(res.body.version).toBeDefined();
+        expect(res.body.memory).toBeDefined();
+        expect(res.body.memory.heapUsed).toBeTypeOf('number');
+        expect(res.body.memory.heapTotal).toBeTypeOf('number');
+        expect(res.body.memory.rss).toBeTypeOf('number');
+        expect(res.body.memory.external).toBeTypeOf('number');
+        expect(res.body.node).toBeDefined();
+        expect(res.body.node.version).toBe(process.version);
+        expect(res.body.node.platform).toBe(process.platform);
+        expect(res.body.dataDirectory).toBeDefined();
+        expect(res.body.dataDirectory.path).toBe(testDataDir);
+        expect(res.body.dataDirectory.sizeBytes).toBeTypeOf('number');
+        expect(res.body.timestamp).toBeDefined();
+      } finally {
+        // Restore
+        if (origAdminKey !== undefined) process.env.VERITAS_ADMIN_KEY = origAdminKey;
+        else delete process.env.VERITAS_ADMIN_KEY;
+        if (origAuthEnabled !== undefined) process.env.VERITAS_AUTH_ENABLED = origAuthEnabled;
+        else delete process.env.VERITAS_AUTH_ENABLED;
+        if (origNodeEnv !== undefined) process.env.NODE_ENV = origNodeEnv;
+        else delete process.env.NODE_ENV;
+      }
+    });
+  });
+});

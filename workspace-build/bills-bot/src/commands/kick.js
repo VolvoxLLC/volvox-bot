@@ -1,0 +1,77 @@
+/**
+ * Kick Command
+ * Kicks a user from the server and records a moderation case.
+ */
+
+import { SlashCommandBuilder } from 'discord.js';
+import { info, error as logError } from '../logger.js';
+import { getConfig } from '../modules/config.js';
+import {
+  checkHierarchy,
+  createCase,
+  sendDmNotification,
+  sendModLogEmbed,
+  shouldSendDm,
+} from '../modules/moderation.js';
+import { safeEditReply } from '../utils/safeSend.js';
+
+export const data = new SlashCommandBuilder()
+  .setName('kick')
+  .setDescription('Kick a user from the server')
+  .addUserOption((opt) => opt.setName('user').setDescription('Target user').setRequired(true))
+  .addStringOption((opt) =>
+    opt.setName('reason').setDescription('Reason for kick').setRequired(false),
+  );
+
+export const adminOnly = true;
+
+/**
+ * Execute the kick command
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ */
+export async function execute(interaction) {
+  try {
+    await interaction.deferReply({ ephemeral: true });
+
+    const config = getConfig();
+    const target = interaction.options.getMember('user');
+    if (!target) {
+      return await safeEditReply(interaction, '❌ User is not in this server.');
+    }
+    const reason = interaction.options.getString('reason');
+
+    const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
+    if (hierarchyError) {
+      return await safeEditReply(interaction, hierarchyError);
+    }
+
+    if (shouldSendDm(config, 'kick')) {
+      await sendDmNotification(target, 'kick', reason, interaction.guild.name);
+    }
+
+    await target.kick(reason || undefined);
+
+    const caseData = await createCase(interaction.guild.id, {
+      action: 'kick',
+      targetId: target.id,
+      targetTag: target.user.tag,
+      moderatorId: interaction.user.id,
+      moderatorTag: interaction.user.tag,
+      reason,
+    });
+
+    await sendModLogEmbed(interaction.client, config, caseData);
+
+    info('User kicked', { target: target.user.tag, moderator: interaction.user.tag });
+    await safeEditReply(
+      interaction,
+      `✅ **${target.user.tag}** has been kicked. (Case #${caseData.case_number})`,
+    );
+  } catch (err) {
+    logError('Command error', { error: err.message, command: 'kick' });
+    await safeEditReply(
+      interaction,
+      '❌ An error occurred. Please try again or contact an administrator.',
+    ).catch(() => {});
+  }
+}

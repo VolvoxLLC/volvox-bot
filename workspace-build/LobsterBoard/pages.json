@@ -1,0 +1,7 @@
+{
+  "pages": {
+    "notes": { "enabled": true, "order": 10 },
+    "board": { "enabled": true, "order": 20 },
+    "calendar": { "enabled": true, "order": 30 }
+  }
+}
