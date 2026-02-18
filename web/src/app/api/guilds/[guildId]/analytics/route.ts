@@ -9,7 +9,6 @@ export const dynamic = "force-dynamic";
 
 /** Request timeout for analytics proxy calls (10 seconds). */
 const REQUEST_TIMEOUT_MS = 10_000;
-
 const ADMINISTRATOR_PERMISSION = 0x8n;
 
 function hasAdministratorPermission(permissions: string): boolean {
@@ -60,7 +59,10 @@ export async function GET(
   }
 
   const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
-  if (!targetGuild || !hasAdministratorPermission(targetGuild.permissions)) {
+  if (
+    !targetGuild ||
+    !(targetGuild.owner || hasAdministratorPermission(targetGuild.permissions))
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

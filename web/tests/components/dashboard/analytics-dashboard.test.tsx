@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { AnalyticsDashboard } from "@/components/dashboard/analytics-dashboard";
@@ -117,6 +117,78 @@ describe("AnalyticsDashboard", () => {
     expect(screen.getByText("1,234")).toBeInTheDocument();
     expect(screen.getByText("456")).toBeInTheDocument();
     expect(screen.getByText("88")).toBeInTheDocument();
+  });
+
+  it("shows em dash for online members before initial load completes", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+    vi.spyOn(global, "fetch").mockReturnValue(new Promise(() => {}));
+
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Online members")).toBeInTheDocument();
+    });
+
+    const label = screen.getByText("Online members");
+    const card = label.closest("div")?.parentElement;
+    expect(card).not.toBeNull();
+    expect(within(card as HTMLElement).getByText("—")).toBeInTheDocument();
+  });
+
+  it("omits interval query param for custom range so server can auto-detect", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(analyticsPayload),
+    } as Response);
+
+    const user = userEvent.setup();
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Custom" }));
+
+    await waitFor(() => {
+      const customCall = fetchSpy.mock.calls
+        .map(([url]) => String(url))
+        .find((url) => url.includes("range=custom"));
+      expect(customCall).toBeDefined();
+      expect(customCall).not.toContain("interval=");
+    });
+  });
+
+  it("applies accessible scope attributes to heatmap table headers", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(analyticsPayload),
+    } as Response);
+
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Activity heatmap")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("columnheader", { name: "Day" })).toHaveAttribute(
+      "scope",
+      "col",
+    );
+    expect(screen.getByRole("columnheader", { name: "0" })).toHaveAttribute(
+      "scope",
+      "col",
+    );
+    expect(screen.getByRole("rowheader", { name: "Sun" })).toHaveAttribute(
+      "scope",
+      "row",
+    );
   });
 
   it("applies channel filter and refetches with channelId query param", async () => {

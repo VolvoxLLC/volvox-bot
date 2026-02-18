@@ -40,6 +40,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       {
         id: "guild-1",
         permissions: String(0x8),
+        owner: false,
       },
     ]);
   });
@@ -69,6 +70,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       {
         id: "guild-1",
         permissions: "0",
+        owner: false,
       },
     ]);
 
@@ -86,6 +88,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       {
         id: "guild-other",
         permissions: String(0x8),
+        owner: false,
       },
     ]);
 
@@ -95,6 +98,30 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
+  });
+
+  it("allows guild owner access even without ADMINISTRATOR permission bit", async () => {
+    mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
+    mockGetMutualGuilds.mockResolvedValue([
+      {
+        id: "guild-1",
+        permissions: "0",
+        owner: true,
+      },
+    ]);
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: () => Promise.resolve({ ok: true }),
+    } as Response);
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({ guildId: "guild-1" }),
+    });
+
+    expect(response.status).toBe(200);
   });
 
   it("returns 502 when guild permission verification fails", async () => {
@@ -126,7 +153,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
 
   it("returns 500 when BOT_API_URL is malformed", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
-    process.env.BOT_API_URL = "://bad-url";
+    process.env.BOT_API_URL = "http://[";
 
     const response = await GET(createRequest(), {
       params: Promise.resolve({ guildId: "guild-1" }),
@@ -154,7 +181,9 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
 
     expect(response.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringContaining("http://bot.internal:3001/api/v1/guilds/guild-1/analytics?range=week"),
+      expect.stringContaining(
+        "http://bot.internal:3001/api/v1/guilds/guild-1/analytics?range=week",
+      ),
       expect.objectContaining({
         headers: { "x-api-secret": "bot-secret" },
       }),

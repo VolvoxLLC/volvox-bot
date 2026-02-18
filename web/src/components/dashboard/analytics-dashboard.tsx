@@ -504,9 +504,11 @@ export function AnalyticsDashboard() {
                 Online members
               </div>
               <p className="mt-2 text-2xl font-semibold">
-                {analytics?.realtime.onlineMembers === null
-                  ? "N/A"
-                  : formatNumber(analytics?.realtime.onlineMembers ?? 0)}
+                {analytics == null
+                  ? "—"
+                  : analytics.realtime.onlineMembers === null
+                    ? "N/A"
+                    : formatNumber(analytics.realtime.onlineMembers)}
               </p>
             </div>
             <div className="rounded-lg border p-4">
@@ -700,9 +702,13 @@ export function AnalyticsDashboard() {
             <table className="w-full min-w-[720px] border-separate border-spacing-1 text-xs">
               <thead>
                 <tr>
-                  <th className="w-14 text-left text-muted-foreground">Day</th>
+                  <th scope="col" className="w-14 text-left text-muted-foreground">Day</th>
                   {HOURS.map((hour) => (
-                    <th key={hour} className="text-center text-[10px] text-muted-foreground">
+                    <th
+                      key={hour}
+                      scope="col"
+                      className="text-center text-[10px] text-muted-foreground"
+                    >
                       {hour % 3 === 0 ? hour : ""}
                     </th>
                   ))}
@@ -711,7 +717,9 @@ export function AnalyticsDashboard() {
               <tbody>
                 {DAYS.map((day, dayIndex) => (
                   <tr key={day}>
-                    <td className="pr-2 text-muted-foreground">{day}</td>
+                    <th scope="row" className="pr-2 text-muted-foreground">
+                      {day}
+                    </th>
                     {HOURS.map((hour) => {
                       const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
                       const alpha =
