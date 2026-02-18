@@ -136,6 +136,11 @@ const MODEL_PRICING_PER_MILLION = {
 /** Track models we've already warned about to avoid log flooding. */
 const warnedUnknownModels = new Set();
 
+/** Test-only helper to clear unknown-model warning dedupe state. */
+export function _resetWarnedUnknownModels() {
+  warnedUnknownModels.clear();
+}
+
 /**
  * Safely convert a value to a non-negative finite number.
  * @param {unknown} value

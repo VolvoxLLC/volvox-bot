@@ -18,6 +18,7 @@ vi.mock('../../src/modules/memory.js', () => ({
 
 import { info, warn } from '../../src/logger.js';
 import {
+  _resetWarnedUnknownModels,
   _setPoolGetter,
   addToHistory,
   generateResponse,
@@ -45,6 +46,7 @@ describe('ai module', () => {
     setConversationHistory(new Map());
     setPool(null);
     _setPoolGetter(null);
+    _resetWarnedUnknownModels();
     vi.clearAllMocks();
     // Reset config mock to defaults
     getConfig.mockReturnValue({ ai: { historyLength: 20, historyTTLDays: 30 } });
@@ -319,6 +321,32 @@ describe('ai module', () => {
       expect(warn).not.toHaveBeenCalledWith(
         'Unknown model for cost estimation, returning $0',
         expect.objectContaining({ model }),
+      );
+    });
+
+    it('should warn only once for repeated unknown model cost estimation', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            model: 'claude-custom-unknown-1',
+            usage: {
+              prompt_tokens: 200,
+              completion_tokens: 100,
+              total_tokens: 300,
+            },
+            choices: [{ message: { content: 'Unknown model response' } }],
+          }),
+        }),
+      );
+
+      await generateResponse('ch1', 'Hi', 'user1');
+      await generateResponse('ch1', 'Hi again', 'user1');
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        'Unknown model for cost estimation, returning $0',
+        expect.objectContaining({ model: 'claude-custom-unknown-1' }),
       );
     });
 
