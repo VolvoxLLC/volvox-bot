@@ -153,6 +153,19 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
     expect(body.error).toMatch(/not configured/i);
   });
 
+  it("returns 500 when BOT_API_SECRET is missing", async () => {
+    mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
+    delete process.env.BOT_API_SECRET;
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({ guildId: "guild-1" }),
+    });
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toMatch(/not configured/i);
+  });
+
   it("returns 500 when BOT_API_URL is malformed", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
     process.env.BOT_API_URL = "http://[";

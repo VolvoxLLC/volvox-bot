@@ -373,6 +373,7 @@ describe("AnalyticsDashboard", () => {
       expect(window.location.href).toBe("/login");
     });
 
+    // @ts-expect-error -- restoring location mock
     window.location = originalLocation;
   });
 });
