@@ -2,8 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const mockGetToken = vi.fn();
+const mockGetMutualGuilds = vi.fn();
+
 vi.mock("next-auth/jwt", () => ({
   getToken: (...args: unknown[]) => mockGetToken(...args),
+}));
+
+vi.mock("@/lib/discord.server", () => ({
+  getMutualGuilds: (...args: unknown[]) => mockGetMutualGuilds(...args),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -30,6 +36,12 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
     vi.clearAllMocks();
     process.env.BOT_API_URL = "http://bot.internal:3001";
     process.env.BOT_API_SECRET = "bot-secret";
+    mockGetMutualGuilds.mockResolvedValue([
+      {
+        id: "guild-1",
+        permissions: String(0x8),
+      },
+    ]);
   });
 
   afterEach(() => {
@@ -51,6 +63,54 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
     await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
   });
 
+  it("returns 403 when user does not have admin access to requested guild", async () => {
+    mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
+    mockGetMutualGuilds.mockResolvedValue([
+      {
+        id: "guild-1",
+        permissions: "0",
+      },
+    ]);
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({ guildId: "guild-1" }),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
+  });
+
+  it("returns 403 when requested guild is not in user's mutual guilds", async () => {
+    mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
+    mockGetMutualGuilds.mockResolvedValue([
+      {
+        id: "guild-other",
+        permissions: String(0x8),
+      },
+    ]);
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({ guildId: "guild-1" }),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
+  });
+
+  it("returns 502 when guild permission verification fails", async () => {
+    mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
+    mockGetMutualGuilds.mockRejectedValue(new Error("Discord unavailable"));
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({ guildId: "guild-1" }),
+    });
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Failed to verify guild permissions",
+    });
+  });
+
   it("returns 500 when bot API env vars are missing", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
     delete process.env.BOT_API_URL;
@@ -62,6 +122,20 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error).toMatch(/not configured/i);
+  });
+
+  it("returns 500 when BOT_API_URL is malformed", async () => {
+    mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
+    process.env.BOT_API_URL = "://bad-url";
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({ guildId: "guild-1" }),
+    });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Bot API is not configured correctly",
+    });
   });
 
   it("proxies analytics request to bot API v1 with x-api-secret", async () => {

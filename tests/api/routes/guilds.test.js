@@ -613,6 +613,25 @@ describe('guilds routes', () => {
       expect(res.body.error).toMatch(/from/i);
     });
 
+    it('should anchor today range to UTC midnight', async () => {
+      const setUTCHoursSpy = vi.spyOn(Date.prototype, 'setUTCHours');
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=today')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(setUTCHoursSpy).toHaveBeenCalledWith(0, 0, 0, 0);
+    });
+
     it('should include channelId in query filters when provided', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })

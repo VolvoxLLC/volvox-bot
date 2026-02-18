@@ -190,7 +190,9 @@ export function AnalyticsDashboard() {
       params.set("to", endOfDayIso(customToApplied));
     }
 
-    params.set("interval", rangePreset === "today" ? "hour" : "day");
+    if (rangePreset !== "custom") {
+      params.set("interval", rangePreset === "today" ? "hour" : "day");
+    }
 
     if (channelFilter) {
       params.set("channelId", channelFilter);
@@ -288,6 +290,7 @@ export function AnalyticsDashboard() {
 
   const applyCustomRange = () => {
     if (!customFromDraft || !customToDraft) return;
+    if (customFromDraft > customToDraft) return;
     setCustomFromApplied(customFromDraft);
     setCustomToApplied(customToDraft);
   };

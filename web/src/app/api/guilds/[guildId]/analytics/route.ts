@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { getBotApiBaseUrl } from "@/lib/bot-api";
+import { getMutualGuilds } from "@/lib/discord.server";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -9,13 +10,23 @@ export const dynamic = "force-dynamic";
 /** Request timeout for analytics proxy calls (10 seconds). */
 const REQUEST_TIMEOUT_MS = 10_000;
 
+const ADMINISTRATOR_PERMISSION = 0x8n;
+
+function hasAdministratorPermission(permissions: string): boolean {
+  try {
+    return (BigInt(permissions) & ADMINISTRATOR_PERMISSION) === ADMINISTRATOR_PERMISSION;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
 ) {
   const token = await getToken({ req: request });
 
-  if (!token?.accessToken) {
+  if (typeof token?.accessToken !== "string" || token.accessToken.length === 0) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -31,6 +42,28 @@ export async function GET(
     return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
   }
 
+  let mutualGuilds: Awaited<ReturnType<typeof getMutualGuilds>>;
+  try {
+    mutualGuilds = await getMutualGuilds(
+      token.accessToken,
+      AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    );
+  } catch (error) {
+    logger.error(
+      "[api/guilds/:guildId/analytics] Failed to verify guild permissions:",
+      error,
+    );
+    return NextResponse.json(
+      { error: "Failed to verify guild permissions" },
+      { status: 502 },
+    );
+  }
+
+  const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
+  if (!targetGuild || !hasAdministratorPermission(targetGuild.permissions)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const botApiBaseUrl = getBotApiBaseUrl();
   const botApiSecret = process.env.BOT_API_SECRET;
 
@@ -44,9 +77,20 @@ export async function GET(
     );
   }
 
-  const upstreamUrl = new URL(
-    `${botApiBaseUrl}/guilds/${encodeURIComponent(guildId)}/analytics`,
-  );
+  let upstreamUrl: URL;
+  try {
+    upstreamUrl = new URL(
+      `${botApiBaseUrl}/guilds/${encodeURIComponent(guildId)}/analytics`,
+    );
+  } catch {
+    logger.error("[api/guilds/:guildId/analytics] Invalid BOT_API_URL", {
+      botApiBaseUrl,
+    });
+    return NextResponse.json(
+      { error: "Bot API is not configured correctly" },
+      { status: 500 },
+    );
+  }
 
   const allowedParams = ["range", "from", "to", "interval", "channelId"];
   for (const key of allowedParams) {
