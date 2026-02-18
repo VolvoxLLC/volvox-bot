@@ -1,0 +1,138 @@
+{
+  "_meta": {
+    "version": 1,
+    "prefixes": [".", "pip "],
+    "description": "Keyword triggers for Pip. Match prefix + command (case-insensitive). Args after the command are passed to the action.",
+    "examples": [".usage", "pip weather", ".car lock", ".help"]
+  },
+  "triggers": {
+    "usage": {
+      "description": "Claude + Codex API usage (5h/7d utilization windows)",
+      "action": "exec",
+      "command": "echo '=== CLAUDE ===' && node /home/bill/.openclaw/workspace/scripts/check-claude-usage.cjs 2>/dev/null; echo '=== CODEX ===' && node /home/bill/.openclaw/workspace/scripts/check-codex-usage.cjs 2>/dev/null",
+      "format": "Parse both JSON outputs. Show Claude and Codex side by side: 5h and 7d utilization %, reset times, alert levels. If either >=90% warn to switch models."
+    },
+    "codex": {
+      "description": "OpenAI Codex usage only",
+      "action": "exec",
+      "command": "node /home/bill/.openclaw/workspace/scripts/check-codex-usage.cjs",
+      "format": "Parse JSON output. Report primary (5h) and secondary (7d) utilization %, plan type, credits balance, code review usage. If >=90% warn about rate limits."
+    },
+    "claude": {
+      "description": "Claude usage only",
+      "action": "exec",
+      "command": "node /home/bill/.openclaw/workspace/scripts/check-claude-usage.cjs",
+      "format": "Parse JSON output. Report 5h and 7d utilization %, reset times, alert level. If >=90% warn to switch models."
+    },
+    "weather": {
+      "description": "Current weather for Point Pleasant, NJ",
+      "action": "skill",
+      "skill": "weather",
+      "args": "Point Pleasant, NJ",
+      "format": "Concise current conditions + forecast summary."
+    },
+    "car": {
+      "description": "Tesla (King Mobile) status or commands",
+      "action": "exec",
+      "command": "python3 /home/bill/.openclaw/workspace/tesla/tessie.py",
+      "default_args": "status",
+      "allowed_args": [
+        "status",
+        "location",
+        "start-climate",
+        "stop-climate",
+        "lock",
+        "unlock",
+        "honk",
+        "flash",
+        "start-charge",
+        "stop-charge",
+        "wake"
+      ],
+      "format": "Summarize key info: battery %, range, location, climate, lock state. For commands, confirm execution."
+    },
+    "bank": {
+      "description": "Mercury bank account summary",
+      "action": "exec",
+      "command": "python3 /home/bill/.openclaw/workspace/mercury/mercury.py summary",
+      "format": "Show account balances and recent notable transactions."
+    },
+    "email": {
+      "description": "Check Gmail inbox",
+      "action": "skill",
+      "skill": "gog",
+      "args": "gmail inbox unread",
+      "format": "List unread emails with sender, subject, time. Flag urgent ones."
+    },
+    "cal": {
+      "description": "Upcoming calendar events",
+      "action": "skill",
+      "skill": "gog",
+      "args": "calendar upcoming 48h",
+      "format": "List events for next 48h with time, title, location."
+    },
+    "todo": {
+      "description": "Todoist tasks due today",
+      "action": "exec",
+      "command": "td today --json",
+      "format": "List tasks with priorities, projects, and due times. Mention overdue count."
+    },
+    "track": {
+      "description": "Package tracking status",
+      "action": "exec",
+      "command": "TRACK17_TOKEN=90934D5FD9C18881A8E76A3261D73F00 python3 /home/bill/.openclaw/workspace/skills/track17/scripts/track17.py list",
+      "format": "Show packages with latest status, location, and ETA if available."
+    },
+    "news": {
+      "description": "Top tech news from TechMeme",
+      "action": "skill",
+      "skill": "technews",
+      "format": "Top 5-10 headlines with brief summaries."
+    },
+    "dash": {
+      "description": "LobsterBoard dashboard link",
+      "action": "reply",
+      "message": "🦞 **LobsterBoard Dashboard**\n- Local: http://localhost:8080\n- Tailscale: https://bill.tail8b4599.ts.net:8080"
+    },
+    "board": {
+      "description": "Veritas Kanban board link",
+      "action": "reply",
+      "message": "📋 **Veritas Kanban**\n- Local: http://localhost:3000\n- API: http://localhost:3001"
+    },
+    "panel": {
+      "description": "OpenClaw control panel link",
+      "action": "reply",
+      "message": "🦞 **OpenClaw Control Panel**\n- Gateway: http://localhost:18789\n- Docs: https://docs.openclaw.ai\n- Config: `/home/bill/.openclaw/openclaw.json`"
+    },
+    "sessions": {
+      "description": "Codesession stats and active session",
+      "action": "exec",
+      "command": "codesession status 2>/dev/null; echo '---STATS---'; codesession stats 2>/dev/null",
+      "format": "Show active session (if any) with time/cost, then overall stats summary. Always include dashboard link: http://localhost:3800 (Tailscale: http://100.86.34.31:3800)"
+    },
+    "cs": {
+      "description": "Codesession commands (alias for sessions)",
+      "action": "exec",
+      "command": "codesession",
+      "default_args": "status",
+      "allowed_args": ["status", "list", "stats", "show"],
+      "format": "Show codesession output, summarize key info. Always include dashboard link: http://localhost:3800 (Tailscale: http://100.86.34.31:3800)"
+    },
+    "status": {
+      "description": "Full system status (session + Claude usage)",
+      "action": "multi",
+      "steps": ["session_status", "usage"],
+      "format": "Combined session info and Claude utilization."
+    },
+    "links": {
+      "description": "All dashboard and service links",
+      "action": "reply",
+      "message": "🔗 **Links**\n\n🦞 **LobsterBoard** — <https://bill.tail8b4599.ts.net:8080>\n📋 **Veritas Kanban** — <https://bill.tail8b4599.ts.net:3000>\n📊 **Codesession** — <https://bill.tail8b4599.ts.net:3800>\n🦞 **OpenClaw Panel** — <https://bill.tail8b4599.ts.net>"
+    },
+    "help": {
+      "description": "List all available triggers",
+      "action": "help",
+      "format": "List all triggers with descriptions in a clean format."
+    }
+  }
+}

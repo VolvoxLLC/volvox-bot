@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "skills": {
+    "answeroverflow": {
+      "version": "1.0.2",
+      "installedAt": 1769888136848
+    },
+    "summarize": {
+      "version": "1.0.0",
+      "installedAt": 1769914690756
+    },
+    "track17": {
+      "version": "0.1.0",
+      "installedAt": 1770227563552
+    },
+    "bird": {
+      "version": "1.0.0",
+      "installedAt": 1770254090564
+    },
+    "mcporter": {
+      "version": "1.0.0",
+      "installedAt": 1770595613334
+    },
+    "time-tracker": {
+      "version": "1.1.0",
+      "installedAt": 1770615325462
+    },
+    "codesession": {
+      "version": "2.0.1",
+      "installedAt": 1771213520704
+    },
+    "nano-pdf": {
+      "version": "1.0.0",
+      "installedAt": 1770676434473
+    },
+    "session-logs": {
+      "version": "1.0.0",
+      "installedAt": 1770676644933
+    },
+    "self-improving-agent": {
+      "version": "1.0.5",
+      "installedAt": 1771214203499
+    }
+  }
+}

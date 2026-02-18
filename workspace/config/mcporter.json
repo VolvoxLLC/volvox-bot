@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "mem0": {
+      "command": "/home/bill/.local/bin/mem0-mcp-server",
+      "args": [],
+      "env": {
+        "MEM0_API_KEY": "m0-e4DCngs2DbyRwHVVI8rysJCWGtn4DaFi0S4CFvCS",
+        "MEM0_DEFAULT_USER_ID": "bill",
+        "MEM0_ENABLE_GRAPH_DEFAULT": "true"
+      }
+    },
+    "fireseo": {
+      "baseUrl": "https://mcp.fireseo.dev/mcp/sse?api_key=sk-fireseo-e1f35753-b6d6-41e2-a310-89e8958f0145"
+    },
+    "context7": {
+      "baseUrl": "https://context7.liam.sh/sse"
+    },
+    "railway": {
+      "command": "npx",
+      "args": ["-y", "@railway/mcp-server"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "cloudflare": {
+      "baseUrl": "https://bindings.mcp.cloudflare.com/mcp"
+    }
+  },
+  "imports": []
+}

@@ -11564,7 +11564,7 @@
   },
   "agent:build:discord:pip-build:direct:191633014441115648": {
     "sessionId": "48603b87-bca7-4c09-acd7-9761b7421947",
-    "updatedAt": 1771446490585,
+    "updatedAt": 1771446560612,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -11790,16 +11790,16 @@
     "authProfileOverride": "openai-codex:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 25668,
-    "outputTokens": 244,
-    "totalTokens": 26265,
+    "inputTokens": 67062,
+    "outputTokens": 328,
+    "totalTokens": 26712,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771446417737,
+      "generatedAt": 1771446491065,
       "sessionId": "48603b87-bca7-4c09-acd7-9761b7421947",
       "sessionKey": "agent:build:discord:pip-build:direct:191633014441115648",
       "provider": "zai",
@@ -11812,9 +11812,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 51170,
-        "projectContextChars": 34454,
-        "nonProjectContextChars": 16716
+        "chars": 49732,
+        "projectContextChars": 33077,
+        "nonProjectContextChars": 16655
       },
       "injectedWorkspaceFiles": [
         {
@@ -11868,9 +11868,9 @@
         {
           "name": "BOOTSTRAP.md",
           "path": "/home/bill/.openclaw/workspace-build/BOOTSTRAP.md",
-          "missing": false,
-          "rawChars": 1449,
-          "injectedChars": 1449,
+          "missing": true,
+          "rawChars": 0,
+          "injectedChars": 72,
           "truncated": false
         },
         {
