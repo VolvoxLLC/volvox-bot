@@ -275,6 +275,7 @@ describe('ai module', () => {
           promptTokens: 200,
           completionTokens: 100,
           totalTokens: 300,
+          estimatedCostUsd: expect.any(Number),
         }),
       );
     });
