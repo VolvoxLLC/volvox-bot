@@ -139,17 +139,19 @@ function parseAnalyticsInterval(query, from, to) {
  */
 function formatBucketLabel(bucket, interval) {
   if (interval === 'hour') {
-    return bucket.toLocaleString('en-US', {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
-    });
+    }).format(bucket);
   }
 
-  return bucket.toLocaleDateString('en-US', {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
     month: 'short',
     day: 'numeric',
-  });
+  }).format(bucket);
 }
 
 /**
@@ -674,6 +676,13 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
     const fromMs = from.getTime();
     const toMs = to.getTime();
+    /**
+     * NOTE: guild.members.cache only contains members Discord has sent to the
+     * bot (typically those with recent activity/presence). Both newMembers and
+     * onlineMemberCount will undercount relative to the true guild population.
+     * This is a known Discord gateway limitation — a complete count would
+     * require guild.members.fetch(), which is expensive and rate-limited.
+     */
     const newMembers = Array.from(req.guild.members.cache.values()).reduce((count, member) => {
       if (member.user?.bot) return count;
       const joinedAt = member.joinedTimestamp;
@@ -683,6 +692,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
     let onlineMemberCount = 0;
     let membersWithPresence = 0;
+    // Same cache limitation as above — only evaluates cached members with known presence.
     for (const member of req.guild.members.cache.values()) {
       const status = member.presence?.status;
       if (!status) continue;

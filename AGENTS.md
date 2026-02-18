@@ -34,7 +34,9 @@
 | `src/modules/events.js` | Event handler registration (wires modules to Discord events) |
 | `src/api/server.js` | Express API server setup (createApp, startServer, stopServer) |
 | `src/api/index.js` | API route mounting |
-| `src/api/routes/guilds.js` | Guild REST API endpoints (info, config, stats, members, moderation, actions) |
+| `src/api/routes/guilds.js` | Guild REST API endpoints (info, config, stats, members, moderation, analytics, actions) |
+| `web/src/components/dashboard/analytics-dashboard.tsx` | Analytics dashboard React component — charts, KPIs, date range controls |
+| `web/src/app/api/guilds/[guildId]/analytics/route.ts` | Next.js API route — proxies analytics requests to bot API with param allowlisting |
 | `src/api/middleware/auth.js` | API authentication middleware |
 | `src/api/middleware/rateLimit.js` | Rate limiting middleware |
 | `src/utils/errors.js` | Error classes and handling utilities |

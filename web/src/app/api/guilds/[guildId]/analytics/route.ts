@@ -48,8 +48,12 @@ export async function GET(
     `${botApiBaseUrl}/guilds/${encodeURIComponent(guildId)}/analytics`,
   );
 
-  for (const [key, value] of request.nextUrl.searchParams.entries()) {
-    upstreamUrl.searchParams.set(key, value);
+  const allowedParams = ["range", "from", "to", "interval", "channelId"];
+  for (const key of allowedParams) {
+    const value = request.nextUrl.searchParams.get(key);
+    if (value !== null) {
+      upstreamUrl.searchParams.set(key, value);
+    }
   }
 
   try {

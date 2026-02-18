@@ -61,11 +61,11 @@ function formatDateInput(date: Date): string {
 }
 
 function startOfDayIso(dateInput: string): string {
-  return new Date(`${dateInput}T00:00:00.000`).toISOString();
+  return `${dateInput}T00:00:00.000Z`;
 }
 
 function endOfDayIso(dateInput: string): string {
-  return new Date(`${dateInput}T23:59:59.999`).toISOString();
+  return `${dateInput}T23:59:59.999Z`;
 }
 
 function formatUsd(value: number): string {
@@ -82,7 +82,7 @@ function formatNumber(value: number): string {
 }
 
 export function AnalyticsDashboard() {
-  const now = new Date();
+  const [now] = useState(() => new Date());
   const [guildId, setGuildId] = useState<string | null>(null);
   const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>("week");
   const [customFromDraft, setCustomFromDraft] = useState<string>(

@@ -122,7 +122,7 @@ const MODEL_PRICING_PER_MILLION = {
   'claude-opus-4-1-20250805': { input: 15, output: 75 },
   'claude-opus-4-20250514': { input: 15, output: 75 },
   'claude-sonnet-4-20250514': { input: 3, output: 15 },
-  'claude-haiku-4-5': { input: 0.8, output: 4 },
+  'claude-haiku-4-5-20241022': { input: 0.8, output: 4 },
 };
 
 /**
@@ -147,7 +147,10 @@ function toNonNegativeNumber(value) {
  */
 function estimateAiCostUsd(model, promptTokens, completionTokens) {
   const pricing = MODEL_PRICING_PER_MILLION[model];
-  if (!pricing) return 0;
+  if (!pricing) {
+    logWarn('Unknown model for cost estimation, returning $0', { model });
+    return 0;
+  }
 
   const inputCost = (promptTokens / 1_000_000) * pricing.input;
   const outputCost = (completionTokens / 1_000_000) * pricing.output;
