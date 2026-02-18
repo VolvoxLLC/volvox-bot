@@ -120,44 +120,6 @@ const channelBuffers = new Map();
 const MAX_TRACKED_CHANNELS = 100;
 const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
 
-// ── JSON schemas for structured output ───────────────────────────────────────
-
-const CLASSIFY_SCHEMA = {
-  type: 'object',
-  properties: {
-    classification: {
-      type: 'string',
-      enum: ['ignore', 'respond', 'chime-in', 'moderate'],
-    },
-    reasoning: { type: 'string' },
-    targetMessageIds: {
-      type: 'array',
-      items: { type: 'string' },
-      description: 'Message IDs from the conversation that should receive responses',
-    },
-  },
-  required: ['classification', 'reasoning', 'targetMessageIds'],
-};
-
-const RESPOND_SCHEMA = {
-  type: 'object',
-  properties: {
-    responses: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          targetMessageId: { type: 'string' },
-          targetUser: { type: 'string' },
-          response: { type: 'string' },
-        },
-        required: ['targetMessageId', 'targetUser', 'response'],
-      },
-    },
-  },
-  required: ['responses'],
-};
-
 // ── Config resolution ───────────────────────────────────────────────────────
 
 /**
@@ -411,18 +373,13 @@ function buildRespondPrompt(snapshot, classification, config) {
 // ── Result parsers ──────────────────────────────────────────────────────────
 
 /**
- * Parse the classifier's structured output.
- * @param {Object} sdkMessage - Raw SDK result message
+ * Parse the classifier's JSON text output.
+ * @param {Object} sdkMessage - Raw CLI result message
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds } or null
  */
 function parseClassifyResult(sdkMessage, channelId) {
-  let parsed;
-  if (sdkMessage.structured_output && typeof sdkMessage.structured_output === 'object') {
-    parsed = sdkMessage.structured_output;
-  } else {
-    parsed = parseSDKResult(sdkMessage.result, channelId, 'Classifier');
-  }
+  const parsed = parseSDKResult(sdkMessage.result, channelId, 'Classifier');
 
   if (!parsed || !parsed.classification) {
     warn('Classifier result unparseable', { channelId });
@@ -433,18 +390,13 @@ function parseClassifyResult(sdkMessage, channelId) {
 }
 
 /**
- * Parse the responder's structured output.
- * @param {Object} sdkMessage - Raw SDK result message
+ * Parse the responder's JSON text output.
+ * @param {Object} sdkMessage - Raw CLI result message
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { responses: [...] } or null
  */
 function parseRespondResult(sdkMessage, channelId) {
-  let parsed;
-  if (sdkMessage.structured_output && typeof sdkMessage.structured_output === 'object') {
-    parsed = sdkMessage.structured_output;
-  } else {
-    parsed = parseSDKResult(sdkMessage.result, channelId, 'Responder');
-  }
+  const parsed = parseSDKResult(sdkMessage.result, channelId, 'Responder');
 
   if (!parsed) {
     warn('Responder result unparseable', { channelId });
@@ -677,7 +629,6 @@ export async function startTriage(client, config, healthMonitor) {
     {
       model: resolved.classifyModel,
       systemPromptFile: promptPath('triage-classify-system'),
-      jsonSchema: CLASSIFY_SCHEMA,
       maxBudgetUsd: resolved.classifyBudget,
       thinkingTokens: 0, // disabled for classifier
       tools: '', // no tools for classification
@@ -699,7 +650,6 @@ export async function startTriage(client, config, healthMonitor) {
     {
       model: resolved.respondModel,
       ...responderSystemPromptFlags,
-      jsonSchema: RESPOND_SCHEMA,
       maxBudgetUsd: resolved.respondBudget,
       thinkingTokens: resolved.thinkingTokens,
       tools: '', // no tools for response

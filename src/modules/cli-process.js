@@ -126,10 +126,6 @@ function buildArgs(flags, longLived) {
     args.push('--append-system-prompt', flags.appendSystemPrompt);
   }
 
-  if (flags.jsonSchema) {
-    args.push('--json-schema', JSON.stringify(flags.jsonSchema));
-  }
-
   if (flags.tools !== undefined) {
     args.push('--tools', flags.tools);
   }
@@ -205,7 +201,6 @@ export class CLIProcess {
    * @param {string} [flags.systemPromptFile]  Path to system prompt .md file
    * @param {string} [flags.systemPrompt]  System prompt as a string
    * @param {string} [flags.appendSystemPrompt]  Text appended to system prompt
-   * @param {Object} [flags.jsonSchema]  JSON schema for structured output
    * @param {string} [flags.tools]  Tools flag ('' to disable all)
    * @param {string|string[]} [flags.allowedTools]  Allowed tool names
    * @param {string} [flags.permissionMode]  Permission mode (default: 'bypassPermissions')
