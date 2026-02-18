@@ -73,7 +73,6 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           const saved = data.find((g: MutualGuild) => g.id === savedId);
           if (saved) {
             setSelectedGuild(saved);
-            broadcastSelectedGuild(saved.id);
             restored = true;
           }
         }

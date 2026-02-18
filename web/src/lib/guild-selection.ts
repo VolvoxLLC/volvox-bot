@@ -6,9 +6,13 @@ export const GUILD_SELECTED_EVENT = "bills-bot:guild-selected";
  */
 export function broadcastSelectedGuild(guildId: string): void {
   if (typeof window === "undefined") return;
+
+  const normalizedGuildId = guildId.trim();
+  if (!normalizedGuildId) return;
+
   window.dispatchEvent(
     new CustomEvent<string>(GUILD_SELECTED_EVENT, {
-      detail: guildId,
+      detail: normalizedGuildId,
     }),
   );
 }

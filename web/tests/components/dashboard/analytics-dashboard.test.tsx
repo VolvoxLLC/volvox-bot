@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { AnalyticsDashboard } from "@/components/dashboard/analytics-dashboard";
@@ -142,6 +142,48 @@ describe("AnalyticsDashboard", () => {
         String(url).includes("channelId=channel-1"),
       );
       expect(calledWithChannelFilter).toBe(true);
+    });
+  });
+
+  it("converts custom local date boundaries to UTC ISO values in query params", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(analyticsPayload),
+    } as Response);
+
+    const user = userEvent.setup();
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.change(screen.getByLabelText("From date"), {
+      target: { value: "2026-01-15" },
+    });
+    fireEvent.change(screen.getByLabelText("To date"), {
+      target: { value: "2026-01-16" },
+    });
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+
+    await waitFor(() => {
+      const customCalls = fetchSpy.mock.calls.filter(([url]) =>
+        String(url).includes("range=custom"),
+      );
+      expect(customCalls.length).toBeGreaterThan(0);
+
+      const latestCustomCall = customCalls[customCalls.length - 1];
+      const parsedUrl = new URL(String(latestCustomCall[0]), "http://localhost");
+      expect(parsedUrl.searchParams.get("from")).toBe(
+        new Date(2026, 0, 15, 0, 0, 0, 0).toISOString(),
+      );
+      expect(parsedUrl.searchParams.get("to")).toBe(
+        new Date(2026, 0, 16, 23, 59, 59, 999).toISOString(),
+      );
     });
   });
 });

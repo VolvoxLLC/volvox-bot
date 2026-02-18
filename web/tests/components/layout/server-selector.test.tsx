@@ -9,12 +9,27 @@ vi.mock("next/image", () => ({
   ),
 }));
 
+const mockBroadcastSelectedGuild = vi.fn();
+vi.mock("@/lib/guild-selection", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/guild-selection")>(
+    "@/lib/guild-selection",
+  );
+  return {
+    ...actual,
+    broadcastSelectedGuild: (...args: unknown[]) =>
+      mockBroadcastSelectedGuild(...args),
+  };
+});
+
 import { ServerSelector } from "@/components/layout/server-selector";
+import { SELECTED_GUILD_KEY } from "@/lib/guild-selection";
 
 describe("ServerSelector", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    localStorage.clear();
+    mockBroadcastSelectedGuild.mockReset();
     fetchSpy = vi.spyOn(global, "fetch");
   });
 
@@ -62,6 +77,62 @@ describe("ServerSelector", () => {
     await waitFor(() => {
       expect(screen.getByText("Test Server")).toBeInTheDocument();
     });
+  });
+
+  it("does not rebroadcast restored guild selection from localStorage", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "1");
+
+    const guilds = [
+      {
+        id: "1",
+        name: "Restored Server",
+        icon: null,
+        owner: true,
+        permissions: "8",
+        features: [],
+        botPresent: true,
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    render(<ServerSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Restored Server")).toBeInTheDocument();
+    });
+
+    expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
+  });
+
+  it("broadcasts selected guild when defaulting to first guild", async () => {
+    const guilds = [
+      {
+        id: "1",
+        name: "Default Server",
+        icon: null,
+        owner: true,
+        permissions: "8",
+        features: [],
+        botPresent: true,
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    render(<ServerSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Default Server")).toBeInTheDocument();
+    });
+
+    expect(mockBroadcastSelectedGuild).toHaveBeenCalledWith("1");
   });
 
   it("shows error state with retry button on fetch failure", async () => {

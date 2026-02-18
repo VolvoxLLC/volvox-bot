@@ -60,12 +60,53 @@ function formatDateInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function parseLocalDateInput(dateInput: string): {
+  year: number;
+  monthIndex: number;
+  day: number;
+} | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput);
+  if (!match) return null;
+
+  const year = Number.parseInt(match[1], 10);
+  const monthIndex = Number.parseInt(match[2], 10) - 1;
+  const day = Number.parseInt(match[3], 10);
+
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || !Number.isFinite(day)) {
+    return null;
+  }
+
+  return { year, monthIndex, day };
+}
+
 function startOfDayIso(dateInput: string): string {
-  return `${dateInput}T00:00:00.000Z`;
+  const parsed = parseLocalDateInput(dateInput);
+  if (!parsed) return `${dateInput}T00:00:00.000Z`;
+
+  return new Date(
+    parsed.year,
+    parsed.monthIndex,
+    parsed.day,
+    0,
+    0,
+    0,
+    0,
+  ).toISOString();
 }
 
 function endOfDayIso(dateInput: string): string {
-  return `${dateInput}T23:59:59.999Z`;
+  const parsed = parseLocalDateInput(dateInput);
+  if (!parsed) return `${dateInput}T23:59:59.999Z`;
+
+  return new Date(
+    parsed.year,
+    parsed.monthIndex,
+    parsed.day,
+    23,
+    59,
+    59,
+    999,
+  ).toISOString();
 }
 
 function formatUsd(value: number): string {
@@ -352,7 +393,7 @@ export function AnalyticsDashboard() {
             variant="outline"
             size="sm"
             className="gap-2"
-            onClick={() => fetchAnalytics()}
+            onClick={() => void fetchAnalytics()}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -368,7 +409,7 @@ export function AnalyticsDashboard() {
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => fetchAnalytics()}>Try again</Button>
+            <Button onClick={() => void fetchAnalytics()}>Try again</Button>
           </CardContent>
         </Card>
       ) : null}
