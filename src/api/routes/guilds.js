@@ -104,10 +104,13 @@ function parseAnalyticsRange(query) {
   if (range === 'today') {
     from.setUTCHours(0, 0, 0, 0);
   } else if (range === 'month') {
-    from.setDate(from.getDate() - 30);
+    // Use UTC-based date arithmetic for consistency with setUTCHours above
+    const utcTime = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() - 30);
+    from.setTime(utcTime);
   } else {
-    // Default: week
-    from.setDate(from.getDate() - 7);
+    // Default: week - use UTC-based date arithmetic
+    const utcTime = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() - 7);
+    from.setTime(utcTime);
   }
 
   return { from, to: now, range };
@@ -579,14 +582,25 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
            ORDER BY 1 ASC, 2 ASC`,
           conversationValues,
         ),
-        dbPool.query(
-          `SELECT COUNT(DISTINCT channel_id)::int AS count
-           FROM conversations
-           WHERE guild_id = $1
-             AND role = 'assistant'
-             AND created_at >= NOW() - make_interval(mins => $2)`,
-          [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-        ),
+        // Active AI conversations - filter by channel if specified
+        activeChannelFilter
+          ? dbPool.query(
+              `SELECT COUNT(DISTINCT channel_id)::int AS count
+               FROM conversations
+               WHERE guild_id = $1
+                 AND channel_id = $2
+                 AND role = 'assistant'
+                 AND created_at >= NOW() - make_interval(mins => $3)`,
+              [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+            )
+          : dbPool.query(
+              `SELECT COUNT(DISTINCT channel_id)::int AS count
+               FROM conversations
+               WHERE guild_id = $1
+                 AND role = 'assistant'
+                 AND created_at >= NOW() - make_interval(mins => $2)`,
+              [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+            ),
         dbPool
           .query(
             `SELECT

@@ -129,6 +129,9 @@ const MODEL_PRICING_PER_MILLION = {
   'claude-haiku-4-5-20241022': { input: 0.8, output: 4 },
 };
 
+/** Track models we've already warned about to avoid log flooding. */
+const warnedUnknownModels = new Set();
+
 /**
  * Safely convert a value to a non-negative finite number.
  * @param {unknown} value
@@ -152,7 +155,11 @@ function toNonNegativeNumber(value) {
 function estimateAiCostUsd(model, promptTokens, completionTokens) {
   const pricing = MODEL_PRICING_PER_MILLION[model];
   if (!pricing) {
-    logWarn('Unknown model for cost estimation, returning $0', { model });
+    // Only warn once per unknown model to avoid log flooding
+    if (!warnedUnknownModels.has(model)) {
+      logWarn('Unknown model for cost estimation, returning $0', { model });
+      warnedUnknownModels.add(model);
+    }
     return 0;
   }
 
