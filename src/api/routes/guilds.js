@@ -58,6 +58,13 @@ function parsePagination(query) {
 const MAX_ANALYTICS_RANGE_DAYS = 90;
 const ACTIVE_CONVERSATION_WINDOW_MINUTES = 15;
 
+class AnalyticsRangeValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AnalyticsRangeValidationError';
+  }
+}
+
 /**
  * Parse and validate a date-ish query param.
  * @param {unknown} value
@@ -86,15 +93,19 @@ function parseAnalyticsRange(query) {
     const to = parseDateParam(query.to);
 
     if (!from || !to) {
-      throw new Error('Custom range requires valid "from" and "to" query params');
+      throw new AnalyticsRangeValidationError(
+        'Custom range requires valid "from" and "to" query params',
+      );
     }
     if (from > to) {
-      throw new Error('"from" must be before "to"');
+      throw new AnalyticsRangeValidationError('"from" must be before "to"');
     }
 
     const maxRangeMs = MAX_ANALYTICS_RANGE_DAYS * 24 * 60 * 60 * 1000;
     if (to.getTime() - from.getTime() > maxRangeMs) {
-      throw new Error(`Custom range cannot exceed ${MAX_ANALYTICS_RANGE_DAYS} days`);
+      throw new AnalyticsRangeValidationError(
+        `Custom range cannot exceed ${MAX_ANALYTICS_RANGE_DAYS} days`,
+      );
     }
 
     return { from, to, range: 'custom' };
@@ -503,13 +514,15 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   try {
     rangeConfig = parseAnalyticsRange(req.query);
   } catch (err) {
-    // parseAnalyticsRange only throws developer-authored validation messages,
-    // but avoid leaking raw error messages for safety
-    const safeMessage =
-      err.message && typeof err.message === 'string' && err.message.length < 200
-        ? err.message
-        : 'Invalid range parameter';
-    return res.status(400).json({ error: safeMessage });
+    if (err instanceof AnalyticsRangeValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    warn('Unexpected analytics range parsing error', {
+      guild: req.params.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return res.status(400).json({ error: 'Invalid range parameter' });
   }
 
   const { from, to, range } = rangeConfig;
