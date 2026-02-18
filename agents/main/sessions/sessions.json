@@ -940,7 +940,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
-    "updatedAt": 1771453798797,
+    "updatedAt": 1771455645749,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -955,11 +955,11 @@
     "lastTo": "channel:1466215603995152477",
     "lastAccountId": "pip",
     "origin": {
-      "label": "bapes user id:191633014441115648",
-      "provider": "discord",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
       "surface": "discord",
       "chatType": "direct",
-      "from": "discord:191633014441115648",
+      "from": "channel:1466215603995152477",
       "to": "channel:1466215603995152477",
       "accountId": "pip"
     },
@@ -1166,20 +1166,20 @@
     },
     "modelOverride": "glm-5",
     "providerOverride": "zai",
-    "inputTokens": 38734,
-    "outputTokens": 693,
-    "totalTokens": 47024,
+    "inputTokens": 114462,
+    "outputTokens": 416,
+    "totalTokens": 57231,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771452344522,
+      "generatedAt": 1771453958082,
       "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -1188,9 +1188,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 80310,
+        "chars": 80102,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 16851
+        "nonProjectContextChars": 16643
       },
       "injectedWorkspaceFiles": [
         {
@@ -1333,7 +1333,7 @@
       },
       "tools": {
         "listChars": 2170,
-        "schemaChars": 20131,
+        "schemaChars": 19752,
         "entries": [
           {
             "name": "read",
@@ -1356,19 +1356,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -1386,13 +1386,13 @@
           {
             "name": "cron",
             "summaryChars": 2689,
-            "schemaChars": 662,
+            "schemaChars": 581,
             "propertiesCount": 13
           },
           {
             "name": "message",
-            "summaryChars": 478,
-            "schemaChars": 7919,
+            "summaryChars": 471,
+            "schemaChars": 7931,
             "propertiesCount": 85
           },
           {
@@ -1416,31 +1416,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -1452,18 +1452,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -1482,15 +1482,15 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
       }
     },
-    "lastHeartbeatText": "⚠️ 📝 Edit: in ~/.openclaw/workspace/memory/heartbeat-state.json (404 chars) failed: Could not find the exact text in /home/bill/.openclaw/workspace/memory/heartbeat-state.json. The old text must match exactly including all whitespace and newlines.",
-    "lastHeartbeatSentAt": 1771452010459,
-    "authProfileOverride": "zai:default",
+    "lastHeartbeatText": "The scheduled heartbeat check just came through as well — everything is confirmed green and running smoothly. 🐣👍",
+    "lastHeartbeatSentAt": 1771453957946,
+    "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
   },
@@ -2723,7 +2723,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771453800036,
+    "updatedAt": 1771455600046,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2928,14 +2928,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 12449,
-    "outputTokens": 45,
-    "totalTokens": 21921,
+    "inputTokens": 14034,
+    "outputTokens": 66,
+    "totalTokens": 22354,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771453800036,
+    "updatedAt": 1771455600046,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -3140,9 +3140,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 12449,
-    "outputTokens": 45,
-    "totalTokens": 21921,
+    "inputTokens": 14034,
+    "outputTokens": 66,
+    "totalTokens": 22354,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
