@@ -106,7 +106,23 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // AI chat — @mention or reply to bot → instant triage evaluation
     if (guildConfig.ai?.enabled) {
       const isMentioned = message.mentions.has(client.user);
-      const isReply = message.reference && message.mentions.repliedUser?.id === client.user.id;
+
+      // Detect replies to the bot. The mentions.repliedUser check covers the
+      // common case, but fails when the user toggles off "mention on reply"
+      // in Discord. Fall back to fetching the referenced message directly.
+      let isReply = false;
+      if (message.reference?.messageId) {
+        if (message.mentions.repliedUser?.id === client.user.id) {
+          isReply = true;
+        } else {
+          try {
+            const ref = await message.channel.messages.fetch(message.reference.messageId);
+            isReply = ref.author.id === client.user.id;
+          } catch {
+            // Referenced message deleted — not a bot reply
+          }
+        }
+      }
 
       // Check if in allowed channel (if configured)
       // When inside a thread, check the parent channel ID against the allowlist

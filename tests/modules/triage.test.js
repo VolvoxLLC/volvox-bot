@@ -271,7 +271,7 @@ describe('triage module', () => {
   // ── checkTriggerWords (tested via accumulateMessage) ────────────────────
 
   describe('checkTriggerWords', () => {
-    it('should force evaluation when trigger words match', () => {
+    it('should force evaluation when trigger words match', async () => {
       const twConfig = makeConfig({ triage: { triggerWords: ['help'] } });
       const classResult = {
         classification: 'respond',
@@ -287,9 +287,13 @@ describe('triage module', () => {
       mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'I need help please'), twConfig);
+
+      await vi.waitFor(() => {
+        expect(mockClassifierSend).toHaveBeenCalled();
+      });
     });
 
-    it('should trigger on moderation keywords', () => {
+    it('should trigger on moderation keywords', async () => {
       const modConfig = makeConfig({ triage: { moderationKeywords: ['badword'] } });
       const classResult = {
         classification: 'moderate',
@@ -299,9 +303,13 @@ describe('triage module', () => {
       mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'this is badword content'), modConfig);
+
+      await vi.waitFor(() => {
+        expect(mockClassifierSend).toHaveBeenCalled();
+      });
     });
 
-    it('should trigger when spam pattern matches', () => {
+    it('should trigger when spam pattern matches', async () => {
       isSpam.mockReturnValueOnce(true);
       const classResult = {
         classification: 'moderate',
@@ -311,6 +319,10 @@ describe('triage module', () => {
       mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'free crypto claim'), config);
+
+      await vi.waitFor(() => {
+        expect(mockClassifierSend).toHaveBeenCalled();
+      });
     });
   });
 
@@ -398,6 +410,10 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('ch1', 'first'), config);
 
       const first = evaluateNow('ch1', config, client, healthMonitor);
+
+      // Flush microtasks so fetchChannelContext completes and classifierProcess.send()
+      // is called (which assigns the resolveFirst callback from mockImplementationOnce)
+      await vi.advanceTimersByTimeAsync(0);
 
       accumulateMessage(makeMessage('ch1', 'second message', { id: 'msg-2' }), config);
       const second = evaluateNow('ch1', config, client, healthMonitor);
@@ -921,7 +937,7 @@ describe('triage module', () => {
       await evaluateNow('ch1', config, client, healthMonitor);
 
       const prompt = mockClassifierSend.mock.calls[0][0];
-      expect(prompt).toContain('[msg-42] alice: hello world');
+      expect(prompt).toContain('[msg-42] alice (<@u42>): hello world');
     });
   });
 

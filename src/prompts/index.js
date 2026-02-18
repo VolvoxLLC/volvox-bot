@@ -22,7 +22,11 @@ const cache = new Map();
 export function loadPrompt(name, vars = {}) {
   if (!cache.has(name)) {
     const filePath = join(__dirname, `${name}.md`);
-    cache.set(name, readFileSync(filePath, 'utf-8').trim());
+    try {
+      cache.set(name, readFileSync(filePath, 'utf-8').trim());
+    } catch (err) {
+      throw new Error(`Failed to load prompt "${name}" from ${filePath}: ${err.message}`);
+    }
   }
   let template = cache.get(name);
   for (const [key, value] of Object.entries(vars)) {

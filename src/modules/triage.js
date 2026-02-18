@@ -11,6 +11,7 @@ import { info, error as logError, warn } from '../logger.js';
 import { loadPrompt, promptPath } from '../prompts/index.js';
 import { safeSend } from '../utils/safeSend.js';
 import { CLIProcess, CLIProcessError } from './cli-process.js';
+import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 import { isSpam } from './spam.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -104,8 +105,18 @@ let responderProcess = null;
 
 // ── Per-channel state ────────────────────────────────────────────────────────
 /**
+ * @typedef {Object} BufferEntry
+ * @property {string} author - Discord username
+ * @property {string} content - Message content
+ * @property {string} userId - Discord user ID
+ * @property {string} messageId - Discord message ID
+ * @property {number} timestamp - Message creation timestamp (ms)
+ * @property {{author: string, userId: string, content: string, messageId: string}|null} replyTo - Referenced message context
+ */
+
+/**
  * @typedef {Object} ChannelState
- * @property {Array<{author: string, content: string, userId: string, messageId: string}>} messages - Ring buffer of messages
+ * @property {BufferEntry[]} messages - Ring buffer of messages
  * @property {ReturnType<typeof setTimeout>|null} timer - Dynamic interval timer
  * @property {number} lastActivity - Timestamp of last activity
  * @property {boolean} evaluating - Concurrent evaluation guard
@@ -129,13 +140,7 @@ const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
  * 3. Original nested format: models.default / budget.response / timeouts.response
  */
 function resolveTriageConfig(triageConfig) {
-  const classifyModel =
-    triageConfig.classifyModel ??
-    (typeof triageConfig.model === 'string'
-      ? 'claude-haiku-4-5'
-      : triageConfig.models?.default
-        ? 'claude-haiku-4-5'
-        : 'claude-haiku-4-5');
+  const classifyModel = triageConfig.classifyModel ?? 'claude-haiku-4-5';
 
   const respondModel =
     triageConfig.respondModel ??
@@ -143,8 +148,7 @@ function resolveTriageConfig(triageConfig) {
       ? triageConfig.model
       : (triageConfig.models?.default ?? 'claude-sonnet-4-6'));
 
-  const classifyBudget =
-    triageConfig.classifyBudget ?? (typeof triageConfig.budget === 'number' ? 0.05 : 0.05);
+  const classifyBudget = triageConfig.classifyBudget ?? 0.05;
 
   const respondBudget =
     triageConfig.respondBudget ??
@@ -161,6 +165,11 @@ function resolveTriageConfig(triageConfig) {
   const thinkingTokens = triageConfig.thinkingTokens ?? 4096;
   const streaming = triageConfig.streaming ?? false;
 
+  const classifyBaseUrl = triageConfig.classifyBaseUrl ?? null;
+  const respondBaseUrl = triageConfig.respondBaseUrl ?? null;
+  const classifyApiKey = triageConfig.classifyApiKey ?? null;
+  const respondApiKey = triageConfig.respondApiKey ?? null;
+
   return {
     classifyModel,
     respondModel,
@@ -170,6 +179,10 @@ function resolveTriageConfig(triageConfig) {
     tokenRecycleLimit,
     thinkingTokens,
     streaming,
+    classifyBaseUrl,
+    respondBaseUrl,
+    classifyApiKey,
+    respondApiKey,
   };
 }
 
@@ -322,43 +335,103 @@ function checkTriggerWords(content, config) {
   return false;
 }
 
+// ── Channel context fetching ─────────────────────────────────────────────────
+
+/**
+ * Fetch recent messages from Discord's API to provide conversation context
+ * beyond the buffer window. Called at evaluation time (not accumulation) to
+ * minimize API calls.
+ *
+ * @param {string} channelId - The channel to fetch history from
+ * @param {import('discord.js').Client} client - Discord client
+ * @param {Array} bufferSnapshot - Current buffer snapshot (to fetch messages before)
+ * @param {number} [limit=15] - Maximum messages to fetch
+ * @returns {Promise<Array>} Context messages in chronological order
+ */
+async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15) {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel?.messages) return [];
+
+    // Fetch messages before the oldest buffered message
+    const oldest = bufferSnapshot[0];
+    const options = { limit };
+    if (oldest) options.before = oldest.messageId;
+
+    const fetched = await channel.messages.fetch(options);
+    return [...fetched.values()]
+      .reverse() // chronological order
+      .map((m) => ({
+        author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
+        content: m.content?.slice(0, 500) || '',
+        userId: m.author.id,
+        messageId: m.id,
+        timestamp: m.createdTimestamp,
+        isContext: true, // marker to distinguish from triage targets
+      }));
+  } catch {
+    return []; // channel inaccessible — proceed without context
+  }
+}
+
 // ── Prompt builders ─────────────────────────────────────────────────────────
 
 /**
  * Build conversation text with message IDs for prompts.
- * Format: [msg-XXX] username: content
- * @param {Array<{author: string, content: string, userId: string, messageId: string}>} buffer - Buffered messages
- * @returns {string} Formatted conversation text
+ * Splits output into <recent-history> (context) and <messages-to-evaluate> (buffer).
+ * Includes timestamps and reply context when available.
+ *
+ * @param {Array} context - Historical messages fetched from Discord API
+ * @param {Array} buffer - Buffered messages to evaluate
+ * @returns {string} Formatted conversation text with section markers
  */
-function buildConversationText(buffer) {
-  return buffer
-    .map((m) => `[${m.messageId}] ${m.author} (<@${m.userId}>): ${m.content}`)
-    .join('\n');
+function buildConversationText(context, buffer) {
+  const formatMsg = (m) => {
+    const time = m.timestamp ? new Date(m.timestamp).toISOString().slice(11, 19) : '';
+    const timePrefix = time ? `[${time}] ` : '';
+    const replyPrefix = m.replyTo
+      ? `(replying to ${m.replyTo.author}: "${m.replyTo.content.slice(0, 100)}")\n  `
+      : '';
+    return `${timePrefix}[${m.messageId}] ${m.author} (<@${m.userId}>): ${replyPrefix}${m.content}`;
+  };
+
+  let text = '';
+  if (context.length > 0) {
+    text += '<recent-history>\n';
+    text += context.map(formatMsg).join('\n');
+    text += '\n</recent-history>\n\n';
+  }
+  text += '<messages-to-evaluate>\n';
+  text += buffer.map(formatMsg).join('\n');
+  text += '\n</messages-to-evaluate>';
+  return text;
 }
 
 /**
  * Build the classifier prompt from the template.
- * @param {Array} snapshot - Buffer snapshot
- * @param {Object} config - Bot configuration
+ * @param {Array} context - Historical context messages
+ * @param {Array} snapshot - Buffer snapshot (messages to evaluate)
  * @returns {string} Interpolated classify prompt
  */
-function buildClassifyPrompt(snapshot) {
-  const conversationText = buildConversationText(snapshot);
+function buildClassifyPrompt(context, snapshot) {
+  const conversationText = buildConversationText(context, snapshot);
   const communityRules = loadPrompt('community-rules');
   return loadPrompt('triage-classify', { conversationText, communityRules });
 }
 
 /**
  * Build the responder prompt from the template.
- * @param {Array} snapshot - Buffer snapshot
+ * @param {Array} context - Historical context messages
+ * @param {Array} snapshot - Buffer snapshot (messages to evaluate)
  * @param {Object} classification - Parsed classifier output
  * @param {Object} config - Bot configuration
  * @returns {string} Interpolated respond prompt
  */
-function buildRespondPrompt(snapshot, classification, config) {
-  const conversationText = buildConversationText(snapshot);
+function buildRespondPrompt(context, snapshot, classification, config, memoryContext) {
+  const conversationText = buildConversationText(context, snapshot);
   const communityRules = loadPrompt('community-rules');
   const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
+  const antiAbuse = loadPrompt('anti-abuse');
 
   return loadPrompt('triage-respond', {
     systemPrompt,
@@ -367,6 +440,8 @@ function buildRespondPrompt(snapshot, classification, config) {
     classification: classification.classification,
     reasoning: classification.reasoning,
     targetMessageIds: JSON.stringify(classification.targetMessageIds),
+    memoryContext: memoryContext || '',
+    antiAbuse,
   });
 }
 
@@ -503,8 +578,13 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
   };
 
   try {
+    // Step 0: Fetch channel context for conversation history
+    const contextLimit = config.triage?.contextMessages ?? 10;
+    const context =
+      contextLimit > 0 ? await fetchChannelContext(channelId, client, snapshot, contextLimit) : [];
+
     // Step 1: Classify with Haiku
-    const classifyPrompt = buildClassifyPrompt(snapshot);
+    const classifyPrompt = buildClassifyPrompt(context, snapshot);
     const classifyMessage = await classifierProcess.send(classifyPrompt);
     const classification = parseClassifyResult(classifyMessage, channelId);
 
@@ -527,8 +607,44 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
       return;
     }
 
+    // Step 1.5: Build memory context for target users
+    let memoryContext = '';
+    if (classification.targetMessageIds?.length > 0) {
+      const targetEntries = snapshot.filter((m) =>
+        classification.targetMessageIds.includes(m.messageId),
+      );
+      const uniqueUsers = new Map();
+      for (const entry of targetEntries) {
+        if (!uniqueUsers.has(entry.userId)) {
+          uniqueUsers.set(entry.userId, { username: entry.author, content: entry.content });
+        }
+      }
+
+      const memoryParts = await Promise.all(
+        [...uniqueUsers.entries()].map(async ([userId, { username, content }]) => {
+          try {
+            return await Promise.race([
+              buildMemoryContext(userId, username, content),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Memory context timeout')), 5000),
+              ),
+            ]);
+          } catch {
+            return '';
+          }
+        }),
+      );
+      memoryContext = memoryParts.filter(Boolean).join('');
+    }
+
     // Step 2: Respond with Sonnet (only when needed)
-    const respondPrompt = buildRespondPrompt(snapshot, classification, config);
+    const respondPrompt = buildRespondPrompt(
+      context,
+      snapshot,
+      classification,
+      config,
+      memoryContext,
+    );
     const respondMessage = await responderProcess.send(respondPrompt);
     const parsed = parseRespondResult(respondMessage, channelId);
 
@@ -546,6 +662,24 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
 
     // Step 3: Send to Discord
     await sendResponses(channelId, parsed, classification, snapshot, config, client);
+
+    // Step 4: Extract memories from the conversation (fire-and-forget)
+    if (parsed.responses?.length > 0) {
+      for (const r of parsed.responses) {
+        const targetEntry =
+          snapshot.find((m) => m.messageId === r.targetMessageId) ||
+          snapshot.find((m) => m.author === r.targetUser);
+        if (targetEntry && r.response) {
+          extractAndStoreMemories(
+            targetEntry.userId,
+            targetEntry.author,
+            targetEntry.content,
+            r.response,
+          ).catch(() => {});
+        }
+      }
+    }
+
     clearBuffer();
   } catch (err) {
     if (err instanceof CLIProcessError && err.reason === 'timeout') {
@@ -555,17 +689,19 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
 
     logError('Triage evaluation failed', { channelId, error: err.message, stack: err.stack });
 
-    // Try to send a fallback error message
-    try {
-      const channel = await client.channels.fetch(channelId).catch(() => null);
-      if (channel) {
-        await safeSend(
-          channel,
-          "Sorry, I'm having trouble thinking right now. Try again in a moment!",
-        );
+    // Only send user-visible error for non-parse failures (persistent issues)
+    if (!(err instanceof CLIProcessError && err.reason === 'parse')) {
+      try {
+        const channel = await client.channels.fetch(channelId).catch(() => null);
+        if (channel) {
+          await safeSend(
+            channel,
+            "Sorry, I'm having trouble thinking right now. Try again in a moment!",
+          );
+        }
+      } catch {
+        // Nothing more we can do
       }
-    } catch {
-      // Nothing more we can do
     }
   }
 }
@@ -632,6 +768,8 @@ export async function startTriage(client, config, healthMonitor) {
       maxBudgetUsd: resolved.classifyBudget,
       thinkingTokens: 0, // disabled for classifier
       tools: '', // no tools for classification
+      ...(resolved.classifyBaseUrl && { baseUrl: resolved.classifyBaseUrl }),
+      ...(resolved.classifyApiKey && { apiKey: resolved.classifyApiKey }),
     },
     {
       tokenLimit: resolved.tokenRecycleLimit,
@@ -657,6 +795,8 @@ export async function startTriage(client, config, healthMonitor) {
       maxBudgetUsd: resolved.respondBudget,
       thinkingTokens: resolved.thinkingTokens,
       tools: '', // no tools for response
+      ...(resolved.respondBaseUrl && { baseUrl: resolved.respondBaseUrl }),
+      ...(resolved.respondApiKey && { apiKey: resolved.respondApiKey }),
     },
     {
       tokenLimit: resolved.tokenRecycleLimit,
@@ -669,7 +809,9 @@ export async function startTriage(client, config, healthMonitor) {
 
   info('Triage processes started', {
     classifyModel: resolved.classifyModel,
+    classifyBaseUrl: resolved.classifyBaseUrl || 'direct',
     respondModel: resolved.respondModel,
+    respondBaseUrl: resolved.respondBaseUrl || 'direct',
     tokenRecycleLimit: resolved.tokenRecycleLimit,
     streaming: resolved.streaming,
     intervalMs: triageConfig.defaultInterval ?? 0,
@@ -712,7 +854,7 @@ export function stopTriage() {
  * @param {import('discord.js').Message} message - The Discord message to accumulate.
  * @param {Object} config - Bot configuration containing the `triage` settings.
  */
-export function accumulateMessage(message, config) {
+export async function accumulateMessage(message, config) {
   const triageConfig = config.triage;
   if (!triageConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
@@ -724,13 +866,33 @@ export function accumulateMessage(message, config) {
   const buf = getBuffer(channelId);
   const maxBufferSize = triageConfig.maxBufferSize || 30;
 
-  // Push to ring buffer
-  buf.messages.push({
+  // Build buffer entry with timestamp and optional reply context
+  const entry = {
     author: message.author.username,
     content: message.content,
     userId: message.author.id,
     messageId: message.id,
-  });
+    timestamp: message.createdTimestamp,
+    replyTo: null,
+  };
+
+  // Fetch referenced message content when this is a reply
+  if (message.reference?.messageId) {
+    try {
+      const ref = await message.channel.messages.fetch(message.reference.messageId);
+      entry.replyTo = {
+        author: ref.author.username,
+        userId: ref.author.id,
+        content: ref.content?.slice(0, 500) || '',
+        messageId: ref.id,
+      };
+    } catch {
+      // Referenced message deleted or inaccessible — continue without it
+    }
+  }
+
+  // Push to ring buffer
+  buf.messages.push(entry);
 
   // Trim if over cap
   const excess = buf.messages.length - maxBufferSize;

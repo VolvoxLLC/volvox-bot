@@ -38,7 +38,8 @@ export class CLIProcessError extends Error {
     super(message);
     this.name = 'CLIProcessError';
     this.reason = reason;
-    Object.assign(this, meta);
+    const { message: _m, name: _n, stack: _s, ...safeMeta } = meta;
+    Object.assign(this, safeMeta);
   }
 }
 
@@ -159,12 +160,23 @@ function buildArgs(flags, longLived) {
 /**
  * Build the subprocess environment with thinking token configuration.
  * @param {Object} flags
+ * @param {string} [flags.baseUrl]  Override ANTHROPIC_BASE_URL (e.g. for claude-code-router proxy)
+ * @param {string} [flags.apiKey]   Override ANTHROPIC_API_KEY (e.g. for provider-specific key)
  * @returns {Object}
  */
 function buildEnv(flags) {
   const env = { ...process.env };
   const tokens = flags.thinkingTokens ?? 4096;
   env.MAX_THINKING_TOKENS = String(tokens);
+
+  if (flags.baseUrl) {
+    env.ANTHROPIC_BASE_URL = flags.baseUrl;
+  }
+  if (flags.apiKey) {
+    env.ANTHROPIC_API_KEY = flags.apiKey;
+    delete env.CLAUDE_CODE_OAUTH_TOKEN; // avoid conflicting auth headers
+  }
+
   return env;
 }
 
@@ -206,6 +218,8 @@ export class CLIProcess {
    * @param {string} [flags.permissionMode]  Permission mode (default: 'bypassPermissions')
    * @param {number} [flags.maxBudgetUsd]  Budget cap per process lifetime
    * @param {number} [flags.thinkingTokens]  MAX_THINKING_TOKENS env (default: 4096)
+   * @param {string} [flags.baseUrl]  Override ANTHROPIC_BASE_URL (e.g. 'http://router:3456' for CCR proxy)
+   * @param {string} [flags.apiKey]  Override ANTHROPIC_API_KEY (e.g. provider-specific key for routed requests)
    * @param {Object} [meta]
    * @param {number} [meta.tokenLimit=20000]  Token threshold before auto-recycle (long-lived only)
    * @param {boolean} [meta.streaming=false]  true for long-lived mode

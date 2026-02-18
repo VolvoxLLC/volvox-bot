@@ -477,7 +477,9 @@ export async function generateResponse(
   const guildConfig = getConfig(guildId);
   const history = await getHistoryAsync(channelId, guildId);
 
-  let systemPrompt = guildConfig.ai?.systemPrompt || loadPrompt('default-personality');
+  let systemPrompt =
+    guildConfig.ai?.systemPrompt ||
+    loadPrompt('default-personality', { antiAbuse: loadPrompt('anti-abuse') });
 
   // Pre-response: inject user memory context into system prompt (with timeout)
   if (userId) {

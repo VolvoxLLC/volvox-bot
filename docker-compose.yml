@@ -50,5 +50,20 @@ services:
     profiles:
       - full
 
+  router:
+    build:
+      context: ./router
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3456 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - router
+
 volumes:
   pgdata:

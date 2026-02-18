@@ -1,0 +1,23 @@
+{
+  "NON_INTERACTIVE_MODE": true,
+  "LOG": true,
+  "LOG_LEVEL": "info",
+  "Providers": [
+    {
+      "name": "openrouter",
+      "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key": "$OPENROUTER_API_KEY",
+      "models": [
+        "google/gemini-2.0-flash",
+        "deepseek/deepseek-chat-v3-0324",
+        "meta-llama/llama-4-scout"
+      ],
+      "transformer": {
+        "use": ["openrouter"]
+      }
+    }
+  ],
+  "Router": {
+    "default": "openrouter,google/gemini-2.0-flash"
+  }
+}
