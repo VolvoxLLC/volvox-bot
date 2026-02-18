@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { AnalyticsDashboard } from "@/components/dashboard/analytics-dashboard";
@@ -129,10 +129,7 @@ describe("AnalyticsDashboard", () => {
       expect(screen.getByText("Online members")).toBeInTheDocument();
     });
 
-    const label = screen.getByText("Online members");
-    const card = label.closest("div")?.parentElement;
-    expect(card).not.toBeNull();
-    expect(within(card as HTMLElement).getByText("—")).toBeInTheDocument();
+    expect(screen.getByLabelText("Online members value")).toHaveTextContent(/^—$/);
   });
 
   it("shows em dash for active AI conversations before initial load completes", async () => {
@@ -145,11 +142,8 @@ describe("AnalyticsDashboard", () => {
       expect(screen.getByText("Active AI conversations")).toBeInTheDocument();
     });
 
-    const label = screen.getByText("Active AI conversations");
-    const card = label.closest("div")?.parentElement;
-    expect(card).not.toBeNull();
-    expect(within(card as HTMLElement).getByText("—")).toBeInTheDocument();
-    expect(within(card as HTMLElement).queryByText("0")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Active AI conversations value")).toHaveTextContent(/^—$/);
+    expect(screen.getByLabelText("Active AI conversations value")).not.toHaveTextContent(/^0$/);
   });
 
   it("omits interval query param for custom range so server can auto-detect", async () => {

@@ -661,7 +661,7 @@ export function AnalyticsDashboard() {
                 <Activity className="h-4 w-4" />
                 Online members
               </div>
-              <p className="mt-2 text-2xl font-semibold">
+              <p aria-label="Online members value" className="mt-2 text-2xl font-semibold">
                 {analytics == null
                   ? "—"
                   : analytics.realtime.onlineMembers === null
@@ -674,7 +674,10 @@ export function AnalyticsDashboard() {
                 <Bot className="h-4 w-4" />
                 Active AI conversations
               </div>
-              <p className="mt-2 text-2xl font-semibold">
+              <p
+                aria-label="Active AI conversations value"
+                className="mt-2 text-2xl font-semibold"
+              >
                 {loading || analytics == null
                   ? "—"
                   : analytics.realtime.activeAiConversations === null
