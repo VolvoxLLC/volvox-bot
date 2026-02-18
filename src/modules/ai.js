@@ -534,7 +534,9 @@ You can use Discord markdown formatting.`;
 
     const promptTokens = toNonNegativeNumber(data?.usage?.prompt_tokens);
     const completionTokens = toNonNegativeNumber(data?.usage?.completion_tokens);
-    const totalTokens = toNonNegativeNumber(data?.usage?.total_tokens);
+    // Derive totalTokens from prompt + completion as a fallback for proxies that don't return it
+    const totalTokens =
+      toNonNegativeNumber(data?.usage?.total_tokens) || promptTokens + completionTokens;
     const estimatedCostUsd = estimateAiCostUsd(modelUsed, promptTokens, completionTokens);
 
     // Structured usage log powers analytics aggregation in /api/v1/guilds/:id/analytics.

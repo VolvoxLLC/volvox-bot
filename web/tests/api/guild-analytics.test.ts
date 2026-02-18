@@ -1,15 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const mockGetToken = vi.fn();
-const mockGetMutualGuilds = vi.fn();
+const { mockGetToken, mockGetMutualGuilds } = vi.hoisted(() => ({
+  mockGetToken: vi.fn(),
+  mockGetMutualGuilds: vi.fn(),
+}));
 
 vi.mock("next-auth/jwt", () => ({
-  getToken: (...args: unknown[]) => mockGetToken(...args),
+  getToken: mockGetToken,
 }));
 
 vi.mock("@/lib/discord.server", () => ({
-  getMutualGuilds: (...args: unknown[]) => mockGetMutualGuilds(...args),
+  getMutualGuilds: mockGetMutualGuilds,
 }));
 
 vi.mock("@/lib/logger", () => ({
