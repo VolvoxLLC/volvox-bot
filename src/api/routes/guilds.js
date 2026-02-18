@@ -624,21 +624,21 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           .query(
             `SELECT
                COALESCE(NULLIF(metadata->>'model', ''), 'unknown') AS model,
-               COUNT(*)::int AS requests,
+               COUNT(*)::bigint AS requests,
                SUM(
                  CASE
                    WHEN (metadata->>'promptTokens') ~ '^[0-9]+$'
                    THEN (metadata->>'promptTokens')::int
                    ELSE 0
                  END
-               )::int AS prompt_tokens,
+               )::bigint AS prompt_tokens,
                SUM(
                  CASE
                    WHEN (metadata->>'completionTokens') ~ '^[0-9]+$'
                    THEN (metadata->>'completionTokens')::int
                    ELSE 0
                  END
-               )::int AS completion_tokens,
+               )::bigint AS completion_tokens,
                SUM(
                  CASE
                    WHEN (metadata->>'estimatedCostUsd') ~ '^[0-9]+(\\.[0-9]+)?$'
