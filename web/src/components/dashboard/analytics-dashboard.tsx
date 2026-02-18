@@ -433,7 +433,7 @@ export function AnalyticsDashboard() {
       </div>
 
       {error ? (
-        <Card className="border-destructive/50">
+        <Card className="border-destructive/50" role="alert">
           <CardHeader>
             <CardTitle className="text-destructive">Failed to load analytics</CardTitle>
             <CardDescription>{error}</CardDescription>

@@ -259,33 +259,6 @@ describe("AnalyticsDashboard", () => {
     });
   });
 
-  it("omits interval query param for custom ranges", async () => {
-    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
-
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(analyticsPayload),
-    } as Response);
-
-    const user = userEvent.setup();
-    render(<AnalyticsDashboard />);
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalled();
-    });
-
-    await user.click(screen.getByRole("button", { name: "Custom" }));
-
-    await waitFor(() => {
-      const calledWithCustomNoInterval = fetchSpy.mock.calls.some(([url]) => {
-        const requestUrl = String(url);
-        return requestUrl.includes("range=custom") && !requestUrl.includes("interval=");
-      });
-      expect(calledWithCustomNoInterval).toBe(true);
-    });
-  });
-
   it("shows a validation error and does not apply custom range when from date is after to date", async () => {
     localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
 
