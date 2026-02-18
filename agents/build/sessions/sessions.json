@@ -11564,7 +11564,7 @@
   },
   "agent:build:discord:pip-build:direct:191633014441115648": {
     "sessionId": "48603b87-bca7-4c09-acd7-9761b7421947",
-    "updatedAt": 1771446560612,
+    "updatedAt": 1771451369908,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -11790,16 +11790,16 @@
     "authProfileOverride": "openai-codex:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 67062,
-    "outputTokens": 328,
-    "totalTokens": 26712,
+    "inputTokens": 37933,
+    "outputTokens": 556,
+    "totalTokens": 28334,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771446491065,
+      "generatedAt": 1771451266196,
       "sessionId": "48603b87-bca7-4c09-acd7-9761b7421947",
       "sessionKey": "agent:build:discord:pip-build:direct:191633014441115648",
       "provider": "zai",
@@ -11812,9 +11812,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 49732,
+        "chars": 49716,
         "projectContextChars": 33077,
-        "nonProjectContextChars": 16655
+        "nonProjectContextChars": 16639
       },
       "injectedWorkspaceFiles": [
         {

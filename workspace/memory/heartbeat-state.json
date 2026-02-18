@@ -1,18 +1,18 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-18T20:41:00Z",
-    "note": "✅ Two-way sync: pulled context; pushed restoration and git fix notes."
+    "lastRun": "2026-02-18T21:01:00Z",
+    "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-18T20:41:00Z",
+    "lastRun": "2026-02-18T21:01:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "codexUsage": {
-    "lastRun": "2026-02-18T20:39:00Z",
+    "lastRun": "2026-02-18T21:01:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,11 +23,11 @@
     "note": "✅ Token refresh attempted via pty."
   },
   "githubBackup": {
-    "lastRun": "2026-02-18T20:41:00Z",
-    "note": "✅ Auto-backup fixed and pushed to main/master."
+    "lastRun": "2026-02-18T21:01:00Z",
+    "note": "✅ Auto-backup to main pushed."
   },
   "todoistSync": {
-    "lastRun": "2026-02-18T20:39:00Z",
+    "lastRun": "2026-02-18T21:01:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "⚠️ 10 overdue tasks remain."
@@ -37,20 +37,20 @@
     "note": "Claude Code 2.1.44 up to date. npm updates pending check."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-18T20:39:00Z",
+    "lastRun": "2026-02-18T21:01:00Z",
     "personal": {
       "port": 8788,
-      "status": "✅ running"
+      "status": "✅ running (renewed)"
     },
     "volvox": {
       "port": 8789,
-      "status": "🚨 error 500 / expired"
+      "status": "✅ running (renewed)"
     },
     "chirico": {
       "port": 8790,
-      "status": "⚠️ expired"
+      "status": "✅ running (renewed)"
     },
-    "note": "🚨 2 accounts need Gmail re-auth."
+    "note": "✅ All watches renewed."
   },
   "sendblueProxy": {
     "lastRun": "2026-02-18T20:39:00Z",
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-18T20:39:00Z",
-    "note": "🚨 2 accounts need re-auth."
+    "lastRun": "2026-02-18T21:01:00Z",
+    "note": "🚨 Coinbase alerts: sent USDT ($1,237.78) and failed transaction."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-18T20:39:00Z",
-    "note": "✅ Token healthy. No upcoming events."
+    "lastRun": "2026-02-18T21:01:00Z",
+    "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-18T20:39:00Z",
+    "lastRun": "2026-02-18T21:01:00Z",
     "inTransit": 1,
-    "note": "✅ Track17 sync healthy. 1 package updated."
+    "note": "✅ Track17 sync healthy. No changes."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T20:41:00Z",

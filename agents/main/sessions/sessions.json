@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771447334603,
+    "updatedAt": 1771451320432,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -701,7 +701,7 @@
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
-    "updatedAt": 1771441548492,
+    "updatedAt": 1771448736502,
     "skillsSnapshot": {
       "prompt": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>clawhub</name>\n    <description>Use the ClawHub CLI to search, install, update, and publish agent skills from clawhub.com. Use when you need to fetch new skills on the fly, sync installed skills to latest or a specific version, or publish new/updated skill folders with the npm-installed clawhub CLI.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/clawhub/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>coding-agent</name>\n    <description>Delegate coding tasks to Codex, Claude Code, or Pi agents via background process. Use when: (1) building/creating new features or apps, (2) reviewing PRs (spawn in temp dir), (3) refactoring large codebases, (4) iterative coding that needs file exploration. NOT for: simple one-liner fixes (just edit), reading code (use read tool), or any work in ~/clawd workspace (never spawn agents here). Requires a bash tool that supports pty:true.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/coding-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>discord</name>\n    <description>Discord ops via the message tool (channel=discord).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/discord/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gh-issues</name>\n    <description>Fetch GitHub issues, spawn sub-agents to implement fixes and open PRs, then monitor and address PR review comments. Usage: /gh-issues [owner/repo] [--label bug] [--limit 5] [--milestone v1.0] [--assignee @me] [--fork user/repo] [--watch] [--interval 5] [--reviews-only] [--cron] [--dry-run] [--model glm-5] [--notify-channel -1002381931352]</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gh-issues/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>github</name>\n    <description>GitHub operations via `gh` CLI: issues, PRs, CI runs, code review, API queries. Use when: (1) checking PR status or CI, (2) creating/commenting on issues, (3) listing/filtering PRs or issues, (4) viewing run logs. NOT for: complex web UI interactions requiring manual browser flows (use browser tooling when available), bulk operations across many repos (script with gh api), or when gh auth is not configured.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/github/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gog</name>\n    <description>Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gog/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>healthcheck</name>\n    <description>Host security hardening and risk-tolerance configuration for OpenClaw deployments. Use when a user asks for security audits, firewall/SSH/update hardening, risk posture, exposure review, OpenClaw cron scheduling for periodic checks, or version status checks on a machine running OpenClaw (laptop, workstation, Pi, VPS).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/healthcheck/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>mcporter</name>\n    <description>Use the mcporter CLI to list, configure, auth, and call MCP servers/tools directly (HTTP or stdio), including ad-hoc servers, config edits, and CLI/type generation.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/mcporter/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-banana-pro</name>\n    <description>Generate or edit images via Gemini 3 Pro Image (Nano Banana Pro).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/nano-banana-pro/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-pdf</name>\n    <description>Edit PDFs with natural-language instructions using the nano-pdf CLI.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/nano-pdf/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-image-gen</name>\n    <description>Batch-generate images via OpenAI Images API. Random prompt sampler + `index.html` gallery.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-image-gen/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-whisper-api</name>\n    <description>Transcribe audio via OpenAI Audio Transcriptions API (Whisper).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-whisper-api/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>skill-creator</name>\n    <description>Create or update AgentSkills. Use when designing, structuring, or packaging skills with scripts, references, and assets.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/skill-creator/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>summarize</name>\n    <description>Summarize or extract text/transcripts from URLs, podcasts, and local files (great fallback for “transcribe this YouTube/video”).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/summarize/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>tmux</name>\n    <description>Remote-control tmux sessions for interactive CLIs by sending keystrokes and scraping pane output.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/tmux/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>voice-call</name>\n    <description>Start voice calls via the OpenClaw voice-call plugin.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/voice-call/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>weather</name>\n    <description>Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/weather/SKILL.md</location>\n  </skill>\n</available_skills>",
       "skills": [
@@ -911,9 +911,9 @@
     "model": "glm-5",
     "contextTokens": 204800,
     "abortedLastRun": false,
-    "inputTokens": 25307,
-    "outputTokens": 210,
-    "totalTokens": 35035,
+    "inputTokens": 76549,
+    "outputTokens": 250,
+    "totalTokens": 50062,
     "totalTokensFresh": true
   },
   "agent:main:discord:channel:1466215603995152477": {
@@ -940,7 +940,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
-    "updatedAt": 1771448467294,
+    "updatedAt": 1771450265692,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -948,19 +948,19 @@
     "chatType": "direct",
     "deliveryContext": {
       "channel": "discord",
-      "to": "channel:1466215603995152477",
+      "to": "user:191633014441115648",
       "accountId": "pip"
     },
     "lastChannel": "discord",
-    "lastTo": "channel:1466215603995152477",
+    "lastTo": "user:191633014441115648",
     "lastAccountId": "pip",
     "origin": {
-      "label": "channel:1466215603995152477",
+      "label": "user:191633014441115648",
       "provider": "cron-event",
       "surface": "discord",
       "chatType": "direct",
-      "from": "channel:1466215603995152477",
-      "to": "channel:1466215603995152477",
+      "from": "user:191633014441115648",
+      "to": "user:191633014441115648",
       "accountId": "pip"
     },
     "sessionFile": "/home/bill/.openclaw/agents/main/sessions/94272ff2-523b-45de-8f72-988b595dd872.jsonl",
@@ -1166,20 +1166,20 @@
     },
     "modelOverride": "glm-5",
     "providerOverride": "zai",
-    "inputTokens": 448079,
-    "outputTokens": 1202,
-    "totalTokens": 102164,
+    "inputTokens": 39628,
+    "outputTokens": 214,
+    "totalTokens": 39628,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771448175473,
+      "generatedAt": 1771450248549,
       "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -1188,9 +1188,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 80305,
+        "chars": 80097,
         "projectContextChars": 63454,
-        "nonProjectContextChars": 16851
+        "nonProjectContextChars": 16643
       },
       "injectedWorkspaceFiles": [
         {
@@ -1333,7 +1333,7 @@
       },
       "tools": {
         "listChars": 2170,
-        "schemaChars": 20131,
+        "schemaChars": 19752,
         "entries": [
           {
             "name": "read",
@@ -1356,19 +1356,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -1386,13 +1386,13 @@
           {
             "name": "cron",
             "summaryChars": 2689,
-            "schemaChars": 662,
+            "schemaChars": 581,
             "propertiesCount": 13
           },
           {
             "name": "message",
-            "summaryChars": 478,
-            "schemaChars": 7919,
+            "summaryChars": 471,
+            "schemaChars": 7931,
             "propertiesCount": 85
           },
           {
@@ -1416,31 +1416,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -1452,18 +1452,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -1482,14 +1482,14 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
       }
     },
-    "lastHeartbeatText": "⚠️ 📝 Edit: in ~/.openclaw/workspace/memory/heartbeat-state.json (445 chars) failed: Could not find the exact text in /home/bill/.openclaw/workspace/memory/heartbeat-state.json. The old text must match exactly including all whitespace and newlines.",
-    "lastHeartbeatSentAt": 1771447220384,
+    "lastHeartbeatText": "Quick usage update (4 PM):\n\n• **Codex:** 0% — full capacity\n• **Claude:** Rate limit ends in ~4 min — you're almost back in business\n\nI'll keep an eye on that Codex OAuth token, it's got about 2 days left.",
+    "lastHeartbeatSentAt": 1771448737296,
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
@@ -2723,7 +2723,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771448400054,
+    "updatedAt": 1771450200026,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2928,14 +2928,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 11716,
-    "outputTokens": 41,
-    "totalTokens": 21188,
+    "inputTokens": 4213,
+    "outputTokens": 55,
+    "totalTokens": 21621,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771448400054,
+    "updatedAt": 1771450200026,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -3140,14 +3140,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 11716,
-    "outputTokens": 41,
-    "totalTokens": 21188,
+    "inputTokens": 4213,
+    "outputTokens": 55,
+    "totalTokens": 21621,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "9144ce1e-0ab8-49c4-b94d-72569c2f6cc5",
-    "updatedAt": 1771441457168,
+    "updatedAt": 1771448657156,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -3352,14 +3352,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 55604,
-    "outputTokens": 400,
-    "totalTokens": 37806,
+    "inputTokens": 69603,
+    "outputTokens": 302,
+    "totalTokens": 44796,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:9144ce1e-0ab8-49c4-b94d-72569c2f6cc5": {
     "sessionId": "9144ce1e-0ab8-49c4-b94d-72569c2f6cc5",
-    "updatedAt": 1771441457168,
+    "updatedAt": 1771448657156,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -3564,9 +3564,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 55604,
-    "outputTokens": 400,
-    "totalTokens": 37806,
+    "inputTokens": 69603,
+    "outputTokens": 302,
+    "totalTokens": 44796,
     "totalTokensFresh": true
   }
 }
