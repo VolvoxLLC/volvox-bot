@@ -1,0 +1,608 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.2.15",
+    "lastTouchedAt": "2026-02-18T00:53:17.520Z"
+  },
+  "env": {
+    "shellEnv": {
+      "enabled": true
+    },
+    "ZAI_API_KEY": "68a5c638e7e044e5aa8e33fcbc2ac200.CaJjgESnant73oci",
+    "GOG_KEYRING_PASSWORD": "6856"
+  },
+  "wizard": {
+    "lastRunAt": "2026-02-17T18:30:45.127Z",
+    "lastRunVersion": "2026.2.15",
+    "lastRunCommand": "doctor",
+    "lastRunMode": "local"
+  },
+  "logging": {
+    "level": "info",
+    "file": "logs",
+    "consoleLevel": "info",
+    "consoleStyle": "pretty",
+    "redactSensitive": "tools"
+  },
+  "update": {
+    "channel": "stable",
+    "checkOnStart": true
+  },
+  "browser": {
+    "enabled": true
+  },
+  "auth": {
+    "profiles": {
+      "anthropic:default": {
+        "provider": "anthropic",
+        "mode": "token"
+      },
+      "google:default": {
+        "provider": "google",
+        "mode": "api_key"
+      },
+      "openai:default": {
+        "provider": "openai",
+        "mode": "api_key"
+      },
+      "openai-codex:default": {
+        "provider": "openai-codex",
+        "mode": "oauth"
+      },
+      "zai:default": {
+        "provider": "zai",
+        "mode": "api_key"
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "zai": {
+        "baseUrl": "https://api.z.ai/api/coding/paas/v4",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "glm-5",
+            "name": "GLM-5",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 204800,
+            "maxTokens": 131072
+          },
+          {
+            "id": "glm-4.7",
+            "name": "GLM-4.7",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 204800,
+            "maxTokens": 131072
+          },
+          {
+            "id": "glm-4.7-flash",
+            "name": "GLM-4.7 Flash",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 204800,
+            "maxTokens": 131072
+          },
+          {
+            "id": "glm-4.7-flashx",
+            "name": "GLM-4.7 FlashX",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 204800,
+            "maxTokens": 131072
+          }
+        ]
+      },
+      "anthropic": {
+        "baseUrl": "https://api.anthropic.com/v1",
+        "models": [
+          {
+            "id": "claude-sonnet-4-6",
+            "name": "Claude Sonnet 4.6",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openai-codex/gpt-5.3-codex",
+        "fallbacks": [
+          "anthropic/claude-opus-4-6",
+          "zai/glm-5"
+        ]
+      },
+      "models": {
+        "anthropic/claude-opus-4-6": {
+          "alias": "opus"
+        },
+        "anthropic/claude-haiku-4-5": {
+          "alias": "haiku"
+        },
+        "google/gemini-3-flash-preview": {
+          "alias": "flash"
+        },
+        "openai/gpt-5.2": {
+          "alias": "gpt"
+        },
+        "openai-codex/gpt-5.3-codex": {
+          "alias": "codex"
+        },
+        "zai/glm-5": {
+          "alias": "glm"
+        },
+        "zai/glm-4.7": {
+          "alias": "glm4"
+        },
+        "google/gemini-3-pro-preview": {
+          "alias": "pro"
+        },
+        "anthropic/claude-sonnet-4-6": {
+          "alias": "sonnet"
+        }
+      },
+      "workspace": "/home/bill/.openclaw/workspace",
+      "bootstrapTotalMaxChars": 64000,
+      "timeFormat": "12",
+      "memorySearch": {
+        "enabled": true,
+        "sources": [
+          "memory",
+          "sessions"
+        ],
+        "experimental": {
+          "sessionMemory": true
+        },
+        "provider": "gemini",
+        "remote": {
+          "apiKey": "AIzaSyDsv0f8V08pC7LbWgwcVBFH-YhEYIFl49Q",
+          "batch": {
+            "enabled": true
+          }
+        },
+        "store": {
+          "vector": {
+            "enabled": true
+          }
+        },
+        "sync": {
+          "onSessionStart": true,
+          "onSearch": true
+        },
+        "query": {
+          "hybrid": {
+            "enabled": true
+          }
+        },
+        "cache": {
+          "enabled": true
+        }
+      },
+      "contextPruning": {
+        "mode": "cache-ttl"
+      },
+      "compaction": {
+        "mode": "default",
+        "memoryFlush": {
+          "enabled": true
+        }
+      },
+      "thinkingDefault": "high",
+      "verboseDefault": "off",
+      "elevatedDefault": "ask",
+      "typingMode": "instant",
+      "heartbeat": {
+        "every": "30m",
+        "model": "google/gemini-3-flash-preview"
+      },
+      "maxConcurrent": 5,
+      "subagents": {
+        "maxConcurrent": 8,
+        "model": {
+          "primary": "openai-codex/gpt-5.3-codex",
+          "fallbacks": [
+            "anthropic/claude-haiku-4-5",
+            "zai/glm-5"
+          ]
+        }
+      },
+      "sandbox": {
+        "browser": {
+          "enabled": true,
+          "autoStart": true
+        }
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "model": {
+          "primary": "openai-codex/gpt-5.3-codex",
+          "fallbacks": [
+            "anthropic/claude-opus-4-6",
+            "zai/glm-5"
+          ]
+        }
+      },
+      {
+        "id": "build",
+        "model": {
+          "primary": "openai-codex/gpt-5.3-codex",
+          "fallbacks": [
+            "anthropic/claude-opus-4-6",
+            "zai/glm-5"
+          ]
+        }
+      },
+      {
+        "id": "email-triage",
+        "workspace": "/home/bill/.openclaw/workspace-email-triage",
+        "model": {
+          "primary": "google/gemini-3-flash-preview",
+          "fallbacks": [
+            "anthropic/claude-haiku-4-5",
+            "zai/glm-5"
+          ]
+        }
+      }
+    ]
+  },
+  "tools": {
+    "web": {
+      "search": {
+        "enabled": true,
+        "provider": "brave",
+        "apiKey": "BSAV8IuuRCi_Dd5Y0Pcw2eD6ifzAexp"
+      },
+      "fetch": {
+        "maxChars": 75000
+      }
+    },
+    "media": {
+      "image": {
+        "enabled": true
+      }
+    },
+    "elevated": {
+      "enabled": true,
+      "allowFrom": {
+        "discord": [
+          191633014441115650
+        ]
+      }
+    }
+  },
+  "bindings": [
+    {
+      "agentId": "main",
+      "match": {
+        "channel": "discord",
+        "accountId": "pip"
+      }
+    },
+    {
+      "agentId": "build",
+      "match": {
+        "channel": "discord",
+        "accountId": "pip-build"
+      }
+    }
+  ],
+  "messages": {
+    "inbound": {
+      "debounceMs": 1500
+    },
+    "ackReactionScope": "group-mentions"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "bash": true,
+    "restart": true
+  },
+  "session": {
+    "dmScope": "per-account-channel-peer"
+  },
+  "cron": {
+    "enabled": true,
+    "maxConcurrentRuns": 5
+  },
+  "hooks": {
+    "enabled": true,
+    "path": "/hooks",
+    "token": "4ce5b842be9623a0db514b7d7cae85b974eaed0b4fe44c22",
+    "presets": [
+      "gmail"
+    ],
+    "transformsDir": "/home/bill/.openclaw/hooks/transforms",
+    "mappings": [
+      {
+        "match": {
+          "path": "sendblue"
+        },
+        "action": "agent",
+        "wakeMode": "now",
+        "name": "iMessage",
+        "messageTemplate": "📱 iMessage from {{from_number}}: {{content}}",
+        "deliver": true,
+        "channel": "discord",
+        "to": "user:191633014441115648",
+        "thinking": "off"
+      },
+      {
+        "match": {
+          "path": "gmail"
+        },
+        "action": "agent",
+        "wakeMode": "now",
+        "name": "Gmail",
+        "agentId": "email-triage",
+        "sessionKey": "hook:gmail:{{messages[0].id}}",
+        "messageTemplate": "New email from {{messages[0].from}}\nSubject: {{messages[0].subject}}\n\n{{messages[0].body}}\n\nINSTRUCTIONS: Evaluate this email. If important (login codes, billing, payments, action required, replies to Bill, package tracking), DM Bill using: message action=send channel=discord target=user:191633014441115648 message=\"brief summary\". If not important (marketing, newsletters, spam, test emails from himself, Google security alerts about new sign-ins/devices, GitHub PR comments/reviews/CI notifications), reply NO_REPLY. SKIP all Google Security Alert emails. SKIP all GitHub notification emails about PR comments, reviews, code review requests, CI/CD status, and issue comments. Auto-track any package tracking numbers with 17TRACK.",
+        "thinking": "off",
+        "transform": {
+          "module": "gmail-dedup.js"
+        }
+      },
+      {
+        "match": {
+          "path": "gmail-volvox"
+        },
+        "action": "agent",
+        "wakeMode": "now",
+        "name": "Gmail (Volvox)",
+        "agentId": "email-triage",
+        "sessionKey": "hook:gmail-volvox:{{messages[0].id}}",
+        "messageTemplate": "New email from {{messages[0].from}}\nSubject: {{messages[0].subject}}\n\n{{messages[0].body}}\n\nINSTRUCTIONS: Evaluate this email. If important (login codes, billing, payments, action required, replies to Bill, package tracking), DM Bill using: message action=send channel=discord target=user:191633014441115648 message=\"brief summary\". If not important (marketing, newsletters, spam, test emails from himself, Google security alerts about new sign-ins/devices, GitHub PR comments/reviews/CI notifications), reply NO_REPLY. SKIP all Google Security Alert emails. SKIP all GitHub notification emails about PR comments, reviews, code review requests, CI/CD status, and issue comments. Auto-track any package tracking numbers with 17TRACK.",
+        "thinking": "off",
+        "transform": {
+          "module": "gmail-dedup.js"
+        }
+      },
+      {
+        "match": {
+          "path": "gmail-chirico"
+        },
+        "action": "agent",
+        "wakeMode": "now",
+        "name": "Gmail (Chirico)",
+        "agentId": "email-triage",
+        "sessionKey": "hook:gmail-chirico:{{messages[0].id}}",
+        "messageTemplate": "New email from {{messages[0].from}}\nSubject: {{messages[0].subject}}\n\n{{messages[0].body}}\n\nINSTRUCTIONS: Evaluate this email. If important (login codes, billing, payments, action required, replies to Bill, package tracking), DM Bill using: message action=send channel=discord target=user:191633014441115648 message=\"brief summary\". If not important (marketing, newsletters, spam, test emails from himself, Google security alerts about new sign-ins/devices, GitHub PR comments/reviews/CI notifications), reply NO_REPLY. SKIP all Google Security Alert emails. SKIP all GitHub notification emails about PR comments, reviews, code review requests, CI/CD status, and issue comments. Auto-track any package tracking numbers with 17TRACK.",
+        "thinking": "off",
+        "transform": {
+          "module": "gmail-dedup.js"
+        }
+      }
+    ],
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "boot-md": {
+          "enabled": true
+        },
+        "command-logger": {
+          "enabled": true
+        },
+        "session-memory": {
+          "enabled": true
+        },
+        "self-improvement": {
+          "enabled": true
+        }
+      },
+      "load": {
+        "extraDirs": [
+          "/home/bill/.openclaw/workspace/skills/self-improving-agent/hooks/openclaw"
+        ]
+      },
+      "installs": {
+        "self-improvement": {
+          "source": "path",
+          "sourcePath": "/home/bill/.openclaw/workspace/skills/self-improving-agent/hooks/openclaw",
+          "installPath": "/home/bill/.openclaw/workspace/skills/self-improving-agent/hooks/openclaw",
+          "installedAt": "2026-02-16T03:59:14.655Z",
+          "hooks": [
+            "self-improvement"
+          ]
+        }
+      }
+    }
+  },
+  "web": {
+    "enabled": true,
+    "reconnect": {
+      "maxAttempts": 5
+    }
+  },
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "MTQ2NjIxMzg2NTM5NzE2MjE1MA.GRsC4i.Ba1g2_3DchcfgV60CcMyOFZSmiaCOsvSQd904M",
+      "groupPolicy": "allowlist",
+      "replyToMode": "first",
+      "activity": "Streaming Pip 🐣",
+      "status": "online",
+      "activityType": 1,
+      "activityUrl": "https://volvox.dev",
+      "accounts": {
+        "pip": {
+          "name": "Pip",
+          "capabilities": [],
+          "enabled": true,
+          "token": "MTQ2NjIxMzg2NTM5NzE2MjE1MA.GvJOKc.n4LVP2VkH5al2F5UpBuX0acSDjlZXFR8UARSMo",
+          "groupPolicy": "allowlist",
+          "dmPolicy": "pairing",
+          "allowFrom": [
+            191633014441115650
+          ],
+          "dm": {
+            "enabled": true
+          },
+          "guilds": {},
+          "intents": {
+            "presence": true
+          }
+        },
+        "pip-build": {
+          "name": "Pip Build",
+          "capabilities": [],
+          "enabled": true,
+          "token": "MTQ3MDgxMDU5MjkyMjE3MzY1Mg.GEPAK9.xktYpGpEE6maof9_NWSulIQy7q8xbj4k_sZsWM",
+          "groupPolicy": "allowlist",
+          "dmPolicy": "pairing",
+          "allowFrom": [
+            191633014441115650
+          ],
+          "dm": {
+            "enabled": true
+          },
+          "intents": {
+            "presence": true
+          },
+          "activity": "Building the future, breaking builds daily 🔨",
+          "status": "online",
+          "activityType": 5
+        }
+      }
+    }
+  },
+  "discovery": {
+    "mdns": {
+      "mode": "full"
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "controlUi": {
+      "enabled": true,
+      "allowInsecureAuth": true
+    },
+    "auth": {
+      "mode": "token",
+      "token": "3befa8b3a1fa750afacde0e77b4f5300fc8f472253ca0440",
+      "allowTailscale": true
+    },
+    "tailscale": {
+      "mode": "serve",
+      "resetOnExit": false
+    },
+    "tls": {
+      "enabled": false
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": false
+        }
+      }
+    }
+  },
+  "skills": {
+    "load": {
+      "watch": true
+    },
+    "install": {
+      "nodeManager": "pnpm"
+    },
+    "entries": {
+      "local-places": {
+        "apiKey": "AIzaSyAktqExzVFLBB3ycet6gbszN9FRTSZZphU"
+      },
+      "nano-banana-pro": {
+        "apiKey": "AIzaSyBBdthAni2cWwbe5E-ohnMYMrD6VEbU7jI"
+      },
+      "openai-image-gen": {
+        "apiKey": "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"
+      },
+      "openai-whisper-api": {
+        "apiKey": "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"
+      },
+      "sag": {
+        "apiKey": "sk_8ed19b98f63ac91b64a12f4a95171675198bf09bcdb7706e"
+      }
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "entries": {
+      "discord": {
+        "enabled": true
+      },
+      "voice-call": {
+        "enabled": true,
+        "config": {
+          "provider": "twilio",
+          "fromNumber": "+19083650911",
+          "twilio": {
+            "accountSid": "AC115d49f1c93eaf01334679df6fab0bb3",
+            "authToken": "850a9b178b9deb8411ad6097a03f7aaa"
+          },
+          "serve": {
+            "port": 3334,
+            "path": "/voice/webhook"
+          },
+          "tailscale": {
+            "mode": "funnel",
+            "path": "/voice/webhook"
+          },
+          "outbound": {
+            "defaultMode": "conversation"
+          },
+          "streaming": {
+            "enabled": true,
+            "streamPath": "/voice/stream"
+          },
+          "inboundPolicy": "allowlist",
+          "toNumber": "+19083198616",
+          "allowFrom": [
+            "+19083198616"
+          ],
+          "inboundGreeting": "Hey Bill, it's Pip. What's up?"
+        }
+      }
+    }
+  }
+}

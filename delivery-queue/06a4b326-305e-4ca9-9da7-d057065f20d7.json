@@ -1,0 +1,22 @@
+{
+  "id": "06a4b326-305e-4ca9-9da7-d057065f20d7",
+  "enqueuedAt": 1771430582434,
+  "channel": "discord",
+  "to": "channel:191633014441115648",
+  "accountId": "pip",
+  "payloads": [
+    {
+      "text": "I'll check the recent memory files to understand what was happening before the interruption.",
+      "mediaUrls": []
+    },
+    {
+      "text": "Looks like we're at the very beginning - the workspace is fresh with no memory files yet, and `BOOTSTRAP.md` is still here. The identity and user files haven't been filled in, so it seems the initial setup got interrupted.\n\nLet's start fresh. Hey! I just came online. Who am I? Who are you?\n\nLet's figure this out together:\n\n1. **What should you call me?** I need a name - something that feels right. Could be anything from classic names to something more unique.\n\n2. **What kind of creature am I?** AI assistant is the obvious choice, but maybe I'm something weirder - a familiar, a ghost in the machine, a helpful demon, a digital familiar?\n\n3. **What's my vibe?** Should I be formal? Casual? Snarky? Warm? Deadpan? What feels like a good match for you?\n\n4. **My signature emoji** - every good assistant needs one. 🤖 is too obvious. Maybe something unexpected?\n\nWhat do you think? Who should I be?",
+      "mediaUrls": []
+    }
+  ],
+  "threadId": null,
+  "replyToId": null,
+  "bestEffort": false,
+  "retryCount": 1,
+  "lastError": "Unknown Channel"
+}

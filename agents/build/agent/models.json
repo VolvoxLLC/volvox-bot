@@ -1,0 +1,98 @@
+{
+  "providers": {
+    "zai": {
+      "baseUrl": "https://api.z.ai/api/coding/paas/v4",
+      "api": "openai-completions",
+      "models": [
+        {
+          "id": "glm-5",
+          "name": "GLM-5",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 204800,
+          "maxTokens": 131072
+        },
+        {
+          "id": "glm-4.7",
+          "name": "GLM-4.7",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 204800,
+          "maxTokens": 131072
+        },
+        {
+          "id": "glm-4.7-flash",
+          "name": "GLM-4.7 Flash",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 204800,
+          "maxTokens": 131072
+        },
+        {
+          "id": "glm-4.7-flashx",
+          "name": "GLM-4.7 FlashX",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 204800,
+          "maxTokens": 131072
+        }
+      ],
+      "apiKey": "ZAI_API_KEY"
+    },
+    "anthropic": {
+      "baseUrl": "https://api.anthropic.com/v1",
+      "models": [
+        {
+          "id": "claude-sonnet-4-6",
+          "name": "Claude Sonnet 4.6",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 200000,
+          "maxTokens": 8192
+        }
+      ],
+      "apiKey": "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"
+    }
+  }
+}

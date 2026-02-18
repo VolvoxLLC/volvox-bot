@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "3bb6d89e-6898-4708-b9a9-bafea0ece526",
+      "agentId": "main",
+      "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
+      "name": "Evening Digest",
+      "description": "Daily summary at 9:30 PM EST with weather, calendar, tasks, and news",
+      "enabled": true,
+      "createdAtMs": 1771430195206,
+      "updatedAtMs": 1771430195206,
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 21 * * *",
+        "tz": "America/New_York"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Generate evening digest: weather forecast for Point Pleasant NJ 08742, tomorrow's calendar events and tasks, email recap, Reddit AI highlights, and tech news summary. Use concise formatting.",
+        "thinking": "medium"
+      },
+      "delivery": {
+        "mode": "announce",
+        "to": "191633014441115648",
+        "channel": "discord"
+      },
+      "state": {
+        "nextRunAtMs": 1771468200000
+      }
+    },
+    {
+      "id": "ba818e22-96d0-471c-8539-80d736561897",
+      "agentId": "main",
+      "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
+      "name": "Heartbeat Check",
+      "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
+      "enabled": true,
+      "createdAtMs": 1771430195240,
+      "updatedAtMs": 1771444805143,
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/30 * * * *",
+        "tz": "America/New_York"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Run heartbeat checks: check recent emails for urgent items, upcoming calendar events in next 2 hours, package tracking updates, and any critical notifications. Only alert if something important found, otherwise respond with HEARTBEAT_OK.",
+        "thinking": "low"
+      },
+      "delivery": {
+        "mode": "announce",
+        "to": "191633014441115648",
+        "channel": "discord"
+      },
+      "state": {
+        "nextRunAtMs": 1771446600000,
+        "lastRunAtMs": 1771444800007,
+        "lastStatus": "ok",
+        "lastDurationMs": 5136,
+        "consecutiveErrors": 0
+      }
+    },
+    {
+      "id": "2b1140c1-17a2-47b4-956f-a313f64f42c3",
+      "agentId": "main",
+      "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
+      "name": "Usage Monitor",
+      "description": "Check API usage every 2 hours and alert when approaching limits",
+      "enabled": true,
+      "createdAtMs": 1771430195257,
+      "updatedAtMs": 1771441544933,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 */2 * * *",
+        "tz": "America/New_York",
+        "staggerMs": 300000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Check Claude and Codex API usage levels. Alert with emoji warning if either is above 80% in any window. Include current percentages and reset times.",
+        "thinking": "low"
+      },
+      "delivery": {
+        "mode": "announce",
+        "to": "191633014441115648",
+        "channel": "discord"
+      },
+      "state": {
+        "nextRunAtMs": 1771448657126,
+        "lastRunAtMs": 1771441457143,
+        "lastStatus": "error",
+        "lastDurationMs": 87790,
+        "consecutiveErrors": 2,
+        "lastError": "cron announce delivery failed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "9733525b-bcb3-4d19-9357-29b1dc3f2d71",
+  "enqueuedAt": 1771441548525,
+  "channel": "discord",
+  "to": "channel:191633014441115648",
+  "accountId": "pip",
+  "payloads": [
+    {
+      "text": "Usage check — you're in good shape:\n\n- **Codex:** 0% used, full capacity available\n- **Claude:** Rate limited, but recovers in ~1 hour (around 3:05 PM ET)\n\nOne heads-up: your Codex OAuth token expires in about 2 days (Feb 20). Might want to refresh that soon if you haven't already.",
+      "mediaUrls": []
+    }
+  ],
+  "threadId": null,
+  "replyToId": null,
+  "bestEffort": false,
+  "retryCount": 1,
+  "lastError": "Unknown Channel"
+}
