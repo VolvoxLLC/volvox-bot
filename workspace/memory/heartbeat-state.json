@@ -1,43 +1,43 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "note": "✅ Two-way sync: pulled context; no new memories."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "codexUsage": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-18T20:27:00Z",
-    "note": "✅ Token refreshed via pty."
+    "lastRun": "2026-02-18T20:39:00Z",
+    "note": "✅ Token refresh attempted via pty."
   },
   "githubBackup": {
-    "lastRun": "2026-02-18T20:28:00Z",
-    "note": "✅ Committed (fce3b7c). Push failed (TLS error)."
+    "lastRun": "2026-02-18T20:39:00Z",
+    "note": "⚠️ Auto-backup failing (git branch/conflict)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-18T20:26:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "⚠️ 10 overdue tasks remain."
   },
   "morningUpdates": {
     "lastRun": "2026-02-17T15:00:00Z",
-    "note": "Claude Code 2.1.45 up to date. npm updates pending check."
+    "note": "Claude Code 2.1.44 up to date. npm updates pending check."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,25 +53,25 @@
     "note": "🚨 2 accounts need Gmail re-auth."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "note": "🚨 2 accounts need re-auth."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-18T20:27:00Z",
+    "lastRun": "2026-02-18T20:39:00Z",
     "note": "✅ Token healthy. No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-18T20:29:00Z",
-    "inTransit": 0,
-    "note": "✅ track17.py reinstalled via clawhub. DB initialized."
+    "lastRun": "2026-02-18T20:39:00Z",
+    "inTransit": 1,
+    "note": "✅ Track17 sync healthy. 1 package updated."
   },
   "openclawPR": {
     "lastRun": "2026-02-17T21:47:00Z",
@@ -84,19 +84,15 @@
     "lastUpdated": "2026-02-16T01:30:00Z"
   },
   "weatherCheck": {
-    "lastRun": "2026-02-18T20:27:00Z",
-    "note": "Point Pleasant, NJ: 🌫 +34°F."
+    "lastRun": "2026-02-18T20:39:00Z",
+    "note": "Point Pleasant, NJ: 🌫 +43°F."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-18T20:27:00Z",
-    "note": "Sent 3:27 PM check-in via iMessage."
+    "lastRun": "2026-02-18T20:39:00Z",
+    "note": "Sending 3:39 PM check-in."
   },
   "eveningDigest": {
     "lastRun": "2026-02-14T03:01:46Z",
     "note": "Sent 3-part digest: Weather, Tasks, Recap."
-  },
-  "mcpServers": {
-    "lastRun": "2026-02-18T20:27:00Z",
-    "note": "github removed from mcporter config. 6 servers now: mem0, fireseo, context7, railway, sequential-thinking, cloudflare."
   }
 }
