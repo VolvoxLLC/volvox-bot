@@ -15,6 +15,7 @@ Messages to respond to: {{targetMessageIds}}
 <response-rules>
 - Generate one response per targetMessageId.
 - Each response must be concise, Discord-friendly, and under 2000 characters.
+- To mention a user, use their Discord mention tag from the conversation (e.g. <@123456789>), never @username.
 - Use Discord markdown (code blocks, bold, lists) when it aids readability.
 - For "moderate": give a brief, friendly nudge about the relevant rule — not a lecture.
 - For "respond"/"chime-in": respond as the bot personality described above.
