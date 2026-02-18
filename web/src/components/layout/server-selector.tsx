@@ -191,7 +191,12 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         {guilds.map((guild) => (
           <DropdownMenuItem
             key={guild.id}
-            onClick={() => selectGuild(guild)}
+            onClick={() => {
+              if (selectedGuild?.id === guild.id) {
+                return;
+              }
+              selectGuild(guild);
+            }}
             className="flex items-center gap-2"
           >
             {guild.icon ? (

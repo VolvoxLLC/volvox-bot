@@ -135,6 +135,45 @@ describe("ServerSelector", () => {
     expect(mockBroadcastSelectedGuild).toHaveBeenCalledWith("1");
   });
 
+  it("does nothing when clicking the currently selected guild", async () => {
+    const user = userEvent.setup();
+    const guilds = [
+      {
+        id: "1",
+        name: "Default Server",
+        icon: null,
+        owner: true,
+        permissions: "8",
+        features: [],
+        botPresent: true,
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    render(<ServerSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Default Server")).toBeInTheDocument();
+    });
+
+    expect(mockBroadcastSelectedGuild).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    await user.click(
+      screen.getByRole("button", { name: /Default Server/i }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Default Server" }),
+    );
+
+    expect(mockBroadcastSelectedGuild).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("shows error state with retry button on fetch failure", async () => {
     fetchSpy.mockRejectedValue(new Error("Network error"));
     render(<ServerSelector />);
