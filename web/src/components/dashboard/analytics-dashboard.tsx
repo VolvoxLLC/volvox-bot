@@ -240,6 +240,14 @@ function isDashboardAnalyticsPayload(value: unknown): value is DashboardAnalytic
   return true;
 }
 
+function formatLastUpdatedTime(value: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(value);
+}
+
 export function AnalyticsDashboard() {
   const [now] = useState(() => new Date());
   const [guildId, setGuildId] = useState<string | null>(null);
@@ -487,7 +495,7 @@ export function AnalyticsDashboard() {
           </p>
           {lastUpdatedAt ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              Last updated {lastUpdatedAt.toLocaleTimeString()}
+              Last updated {formatLastUpdatedTime(lastUpdatedAt)}
             </p>
           ) : null}
         </div>
