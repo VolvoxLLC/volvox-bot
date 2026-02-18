@@ -18,14 +18,14 @@ No exceptions. If you don't switch, you're dead. This applies to Pip AND Volvox 
 
 ### Usage Monitoring Scripts
 
-**Check Claude usage:** `node /home/bill/.openclaw/workspace/scripts/check-claude-usage.js`
+**Check Claude usage:** `node /home/bill/.openclaw/workspace/scripts/check-claude-usage.cjs`
 
 - Reads OAuth token from `~/.claude/.credentials.json`
 - Hits `https://api.anthropic.com/api/oauth/usage`
 - Returns 5-hour and 7-day utilization percentages
 - Tracks threshold crossings in `memory/claude-usage-state.json`
 
-**Check Codex usage:** `node /home/bill/.openclaw/workspace/scripts/check-codex-usage.js`
+**Check Codex usage:** `node /home/bill/.openclaw/workspace/scripts/check-codex-usage.cjs`
 
 - Reads ChatGPT OAuth token from `~/.codex/auth.json`
 - Hits `https://chatgpt.com/backend-api/wham/usage` (reverse-engineered from Codex CLI Rust source)

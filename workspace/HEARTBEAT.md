@@ -66,7 +66,7 @@ Before running any periodic task, check its `lastRun` — skip if too recent. Af
 ## Check Claude Usage (ALWAYS FIRST)
 
 - **EVERY MORNING (first heartbeat of the day):** Run `claude` with pty, wait for "Welcome back", then kill it. This refreshes the OAuth token for the day. Non-negotiable. Update `claudeTokenRefresh.lastRun`.
-- Run: `node /home/bill/.openclaw/workspace/scripts/check-claude-usage.js`
+- Run: `node /home/bill/.openclaw/workspace/scripts/check-claude-usage.cjs`
 - If script fails with "Token refresh failed": Run `claude` with pty yourself to refresh the token — don't ask Bill
 - If `crossed_threshold` is true OR `alert_level` is not "none": Alert Bill immediately
 - Alert thresholds: 50%, 60%, 70%, 80%, 90% (5-hour window)

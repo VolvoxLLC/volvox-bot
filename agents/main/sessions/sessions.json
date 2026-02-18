@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771451320432,
+    "updatedAt": 1771451492234,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -330,16 +330,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 97852,
-    "outputTokens": 6,
-    "totalTokens": 181945,
+    "inputTokens": 769702,
+    "outputTokens": 3503,
+    "totalTokens": 226148,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771447313085,
+      "generatedAt": 1771451320547,
       "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -940,7 +940,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
-    "updatedAt": 1771450265692,
+    "updatedAt": 1771452010469,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -2723,7 +2723,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771450200026,
+    "updatedAt": 1771452000042,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2928,14 +2928,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 4213,
-    "outputTokens": 55,
-    "totalTokens": 21621,
+    "inputTokens": 12298,
+    "outputTokens": 80,
+    "totalTokens": 21770,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771450200026,
+    "updatedAt": 1771452000042,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -3140,9 +3140,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 4213,
-    "outputTokens": 55,
-    "totalTokens": 21621,
+    "inputTokens": 12298,
+    "outputTokens": 80,
+    "totalTokens": 21770,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {

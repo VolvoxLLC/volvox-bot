@@ -47,7 +47,7 @@ Gateway has automatic fallback configured, but if you sense rate limits coming, 
 
 ### Usage Monitoring
 
-**Script:** `node /home/bill/.openclaw/workspace/scripts/check-claude-usage.js`
+**Script:** `node /home/bill/.openclaw/workspace/scripts/check-claude-usage.cjs`
 **API:** `https://api.anthropic.com/api/oauth/usage` with OAuth token from `~/.claude/.credentials.json`
 
 **⚠️ DAILY TOKEN REFRESH (MANDATORY - every morning, first heartbeat):**
@@ -334,7 +334,7 @@ See `TOOLS.md` for the Discord `message` tool `accountId:"pip"` requirement.
 
 ## Codex Usage Monitoring (Feb 17, 2026)
 
-- **Script:** `node /home/bill/.openclaw/workspace/scripts/check-codex-usage.js`
+- **Script:** `node /home/bill/.openclaw/workspace/scripts/check-codex-usage.cjs`
 - **Trigger:** `.codex` (added to triggers.json)
 - **Endpoint:** `GET https://chatgpt.com/backend-api/wham/usage` (reverse-engineered from Codex CLI Rust binary source at `codex-rs/backend-client/src/client.rs`)
 - **Auth:** ChatGPT OAuth token from `~/.codex/auth.json` + `ChatGPT-Account-Id` header
