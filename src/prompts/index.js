@@ -32,6 +32,16 @@ export function loadPrompt(name, vars = {}) {
 }
 
 /**
+ * Return the absolute file path to a prompt .md file.
+ * Useful for CLI flags that accept a file path (e.g. --system-prompt-file).
+ * @param {string} name - Prompt file name (without .md extension)
+ * @returns {string} Absolute path to the prompt file
+ */
+export function promptPath(name) {
+  return join(__dirname, `${name}.md`);
+}
+
+/**
  * Clear the prompt cache. Useful for testing or hot-reloading.
  */
 export function clearPromptCache() {

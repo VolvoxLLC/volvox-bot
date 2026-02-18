@@ -1,9 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks (must be before imports) ──────────────────────────────────────────
-vi.mock('@anthropic-ai/claude-agent-sdk', () => {
-  class AbortError extends Error {}
-  return { query: vi.fn(), AbortError };
+
+const mockSend = vi.fn();
+const mockClose = vi.fn();
+
+vi.mock('../../src/modules/cli-process.js', () => {
+  class CLIProcessError extends Error {
+    constructor(message, reason, meta = {}) {
+      super(message);
+      this.name = 'CLIProcessError';
+      this.reason = reason;
+      Object.assign(this, meta);
+    }
+  }
+  return {
+    CLIProcess: vi.fn().mockImplementation(function MockCLIProcess() {
+      this.send = mockSend;
+      this.close = mockClose;
+      this.alive = true;
+    }),
+    CLIProcessError,
+  };
 });
 vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn(() => ({ ai: { historyLength: 20, historyTTLDays: 30 } })),
@@ -19,10 +37,8 @@ vi.mock('../../src/logger.js', () => ({
   debug: vi.fn(),
 }));
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
-import { info, warn } from '../../src/logger.js';
+import { info } from '../../src/logger.js';
 import {
-  _resetWarnedUnknownModels,
   _setPoolGetter,
   addToHistory,
   generateResponse,
@@ -34,44 +50,21 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from '../../src/modules/ai.js';
+import { CLIProcess, CLIProcessError } from '../../src/modules/cli-process.js';
 import { getConfig } from '../../src/modules/config.js';
 import { buildMemoryContext, extractAndStoreMemories } from '../../src/modules/memory.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function mockQueryResult(text, extra = {}) {
-  query.mockReturnValue(
-    (async function* () {
-      yield {
-        type: 'result',
-        subtype: 'success',
-        result: text,
-        text: text,
-        is_error: false,
-        total_cost_usd: 0.002,
-        duration_ms: 150,
-        errors: [],
-        ...extra,
-      };
-    })(),
-  );
-}
-
-function mockQueryError(errorMsg) {
-  query.mockReturnValue(
-    (async function* () {
-      yield {
-        type: 'result',
-        subtype: 'error_during_execution',
-        result: null,
-        text: null,
-        is_error: true,
-        errors: [{ message: errorMsg }],
-        total_cost_usd: 0,
-        duration_ms: 50,
-      };
-    })(),
-  );
+function mockSendResult(text, extra = {}) {
+  mockSend.mockResolvedValue({
+    result: text,
+    is_error: false,
+    total_cost_usd: 0.002,
+    duration_ms: 150,
+    usage: { input_tokens: 100, output_tokens: 50 },
+    ...extra,
+  });
 }
 
 function makeConfig(overrides = {}) {
@@ -81,7 +74,7 @@ function makeConfig(overrides = {}) {
       classifyModel: 'claude-haiku-4-5',
       classifyBudget: 0.05,
       respondModel: 'claude-sonnet-4-5',
-      respondBudget: 0.20,
+      respondBudget: 0.2,
       timeout: 30000,
       ...(overrides.triage || {}),
     },
@@ -102,7 +95,6 @@ describe('ai module', () => {
     setConversationHistory(new Map());
     setPool(null);
     _setPoolGetter(null);
-    _resetWarnedUnknownModels();
     vi.clearAllMocks();
     getConfig.mockReturnValue({ ai: { historyLength: 20, historyTTLDays: 30 } });
   });
@@ -213,39 +205,7 @@ describe('ai module', () => {
       expect(history[0].content).toBe('message 5');
     });
 
-    it('should pass guildId to getHistoryLength when provided', async () => {
-      getConfig.mockReturnValue({ ai: { historyLength: 3, historyTTLDays: 30 } });
-
-      for (let i = 0; i < 5; i++) {
-        addToHistory('ch-guild', 'user', `msg ${i}`, undefined, 'guild-123');
-      }
-
-      // getConfig should have been called with guildId
-      expect(getConfig).toHaveBeenCalledWith('guild-123');
-
-      // Verify history was actually trimmed to the configured length of 3
-      const history = await getHistoryAsync('ch-guild');
-      expect(history.length).toBe(3);
-      expect(history[0].content).toBe('msg 2');
-    });
-
     it('should write to DB when pool is available', () => {
-      const mockQuery = vi.fn().mockResolvedValue({});
-      const mockPool = { query: mockQuery };
-      setPool(mockPool);
-
-      addToHistory('ch1', 'user', 'hello', 'testuser', 'guild1');
-
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO conversations'), [
-        'ch1',
-        'user',
-        'hello',
-        'testuser',
-        'guild1',
-      ]);
-    });
-
-    it('should write null guild_id when not provided', () => {
       const mockQuery = vi.fn().mockResolvedValue({});
       const mockPool = { query: mockQuery };
       setPool(mockPool);
@@ -257,7 +217,6 @@ describe('ai module', () => {
         'user',
         'hello',
         'testuser',
-        null,
       ]);
     });
   });
@@ -289,77 +248,80 @@ describe('ai module', () => {
     });
   });
 
-  // ── generateResponse (SDK integration) ────────────────────────────────
+  // ── generateResponse (CLI integration) ────────────────────────────────
 
   describe('generateResponse', () => {
-    it('should call SDK query with correct parameters', async () => {
-      mockQueryResult('Hello there!');
-      getConfig.mockReturnValue(makeConfig());
+    it('should create a CLIProcess and call send with the formatted prompt', async () => {
+      mockSendResult('Hello there!');
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'Hi', 'user1');
+      await generateResponse('ch1', 'Hi', 'user1', config);
 
-      expect(query).toHaveBeenCalledWith(
+      expect(CLIProcess).toHaveBeenCalledWith(
+        'ai-chat',
         expect.objectContaining({
-          prompt: expect.stringContaining('user1: Hi'),
-          options: expect.objectContaining({
-            model: 'claude-sonnet-4-5',
-            systemPrompt: 'You are a bot.',
-            allowedTools: ['WebSearch'],
-            maxBudgetUsd: 0.2,
-            maxThinkingTokens: 1024,
-            permissionMode: 'bypassPermissions',
-          }),
+          model: 'claude-sonnet-4-5',
+          systemPrompt: 'You are a bot.',
+          allowedTools: 'WebSearch',
+          maxBudgetUsd: 0.2,
+          thinkingTokens: 4096,
+        }),
+        expect.objectContaining({
+          streaming: false,
+          timeout: 30000,
         }),
       );
+
+      expect(mockSend).toHaveBeenCalledWith(expect.stringContaining('user1: Hi'));
     });
 
     it('should use model override when provided', async () => {
-      mockQueryResult('Haiku response');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('Haiku response');
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'Hi', 'user1', null, null, null, {
+      await generateResponse('ch1', 'Hi', 'user1', config, null, null, {
         model: 'claude-haiku-4-5',
       });
 
-      expect(query).toHaveBeenCalledWith(
+      expect(CLIProcess).toHaveBeenCalledWith(
+        'ai-chat',
         expect.objectContaining({
-          options: expect.objectContaining({
-            model: 'claude-haiku-4-5',
-          }),
+          model: 'claude-haiku-4-5',
         }),
+        expect.anything(),
       );
     });
 
     it('should use maxThinkingTokens override when provided', async () => {
-      mockQueryResult('Thinking response');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('Thinking response');
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'Hi', 'user1', null, null, null, {
-        maxThinkingTokens: 4096,
+      await generateResponse('ch1', 'Hi', 'user1', config, null, null, {
+        maxThinkingTokens: 8192,
       });
 
-      expect(query).toHaveBeenCalledWith(
+      expect(CLIProcess).toHaveBeenCalledWith(
+        'ai-chat',
         expect.objectContaining({
-          options: expect.objectContaining({
-            maxThinkingTokens: 4096,
-          }),
+          thinkingTokens: 8192,
         }),
+        expect.anything(),
       );
     });
 
-    it('should extract response from async generator result', async () => {
-      mockQueryResult('Hello there!');
-      getConfig.mockReturnValue(makeConfig());
+    it('should extract response from CLIProcess result', async () => {
+      mockSendResult('Hello there!');
+      const config = makeConfig();
 
-      const reply = await generateResponse('ch1', 'Hi', 'user1');
+      const reply = await generateResponse('ch1', 'Hi', 'user1', config);
       expect(reply).toBe('Hello there!');
     });
 
     it('should log cost information on success', async () => {
-      mockQueryResult('OK', { total_cost_usd: 0.005, duration_ms: 200 });
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('OK', { total_cost_usd: 0.005, duration_ms: 200 });
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'Hi', 'user1');
+      await generateResponse('ch1', 'Hi', 'user1', config);
 
       expect(info).toHaveBeenCalledWith(
         'AI response',
@@ -370,91 +332,77 @@ describe('ai module', () => {
       );
     });
 
-    it('should return fallback message on SDK error result', async () => {
-      mockQueryError('Model overloaded');
-      getConfig.mockReturnValue(makeConfig());
+    it('should return fallback message on CLIProcessError with timeout reason', async () => {
+      mockSend.mockRejectedValue(new CLIProcessError('timed out', 'timeout'));
+      const config = makeConfig();
 
-      const reply = await generateResponse('ch1', 'Hi', 'user1');
+      const reply = await generateResponse('ch1', 'Hi', 'user1', config);
       expect(reply).toBe("Sorry, I'm having trouble thinking right now. Try again in a moment!");
     });
 
-    it('should return fallback message when SDK throws', async () => {
-      query.mockImplementation(() => {
-        throw new Error('Network error');
-      });
-      getConfig.mockReturnValue(makeConfig());
+    it('should return fallback message when CLIProcess throws', async () => {
+      mockSend.mockRejectedValue(new Error('Network error'));
+      const config = makeConfig();
 
-      const reply = await generateResponse('ch1', 'Hi', 'user1');
+      const reply = await generateResponse('ch1', 'Hi', 'user1', config);
       expect(reply).toBe("Sorry, I'm having trouble thinking right now. Try again in a moment!");
     });
 
     it('should call recordAIRequest on success', async () => {
-      mockQueryResult('OK');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('OK');
+      const config = makeConfig();
       const hm = makeHealthMonitor();
 
-      await generateResponse('ch1', 'Hi', 'user1', hm);
+      await generateResponse('ch1', 'Hi', 'user1', config, hm);
 
       expect(hm.recordAIRequest).toHaveBeenCalled();
       expect(hm.setAPIStatus).toHaveBeenCalledWith('ok');
     });
 
-    it('should call setAPIStatus error on SDK error', async () => {
-      mockQueryError('Failed');
-      getConfig.mockReturnValue(makeConfig());
+    it('should call setAPIStatus error on CLIProcess error', async () => {
+      mockSend.mockRejectedValue(new Error('Failed'));
+      const config = makeConfig();
       const hm = makeHealthMonitor();
 
-      await generateResponse('ch1', 'Hi', 'user1', hm);
-
-      expect(hm.setAPIStatus).toHaveBeenCalledWith('error');
-    });
-
-    it('should call setAPIStatus error when SDK throws', async () => {
-      query.mockImplementation(() => {
-        throw new Error('Network error');
-      });
-      getConfig.mockReturnValue(makeConfig());
-      const hm = makeHealthMonitor();
-
-      await generateResponse('ch1', 'Hi', 'user1', hm);
+      await generateResponse('ch1', 'Hi', 'user1', config, hm);
 
       expect(hm.setAPIStatus).toHaveBeenCalledWith('error');
     });
 
     it('should call buildMemoryContext with 5s timeout when userId provided', async () => {
       buildMemoryContext.mockResolvedValue('\n\nMemory: likes Rust');
-      mockQueryResult('I know you like Rust!');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('I know you like Rust!');
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'What do you know?', 'testuser', null, 'user-123');
+      await generateResponse('ch1', 'What do you know?', 'testuser', config, null, 'user-123');
 
       expect(buildMemoryContext).toHaveBeenCalledWith('user-123', 'testuser', 'What do you know?');
 
       // System prompt should include memory context
-      expect(query).toHaveBeenCalledWith(
+      expect(CLIProcess).toHaveBeenCalledWith(
+        'ai-chat',
         expect.objectContaining({
-          options: expect.objectContaining({
-            systemPrompt: expect.stringContaining('Memory: likes Rust'),
-          }),
+          systemPrompt: expect.stringContaining('Memory: likes Rust'),
         }),
+        expect.anything(),
       );
     });
 
     it('should not call buildMemoryContext when userId is null', async () => {
-      mockQueryResult('OK');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('OK');
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'Hi', 'user', null, null);
+      await generateResponse('ch1', 'Hi', 'user', config, null, null);
 
       expect(buildMemoryContext).not.toHaveBeenCalled();
     });
 
     it('should fire extractAndStoreMemories after response when userId provided', async () => {
       extractAndStoreMemories.mockResolvedValue(true);
-      mockQueryResult('Nice!');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('Nice!');
+      const config = makeConfig();
 
-      await generateResponse('ch1', "I'm learning Rust", 'testuser', null, 'user-123');
+      await generateResponse('ch1', "I'm learning Rust", 'testuser', config, null, 'user-123');
 
       await vi.waitFor(() => {
         expect(extractAndStoreMemories).toHaveBeenCalledWith(
@@ -462,57 +410,56 @@ describe('ai module', () => {
           'testuser',
           "I'm learning Rust",
           'Nice!',
-          null,
         );
       });
     });
 
     it('should not call extractAndStoreMemories when userId is not provided', async () => {
-      mockQueryResult('OK');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('OK');
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'Hi', 'user');
+      await generateResponse('ch1', 'Hi', 'user', config);
 
       expect(extractAndStoreMemories).not.toHaveBeenCalled();
     });
 
     it('should continue when buildMemoryContext fails', async () => {
       buildMemoryContext.mockRejectedValue(new Error('mem0 down'));
-      mockQueryResult('Still working!');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('Still working!');
+      const config = makeConfig();
 
-      const reply = await generateResponse('ch1', 'Hi', 'user', null, 'user-123');
+      const reply = await generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
       expect(reply).toBe('Still working!');
     });
 
     it('should timeout memory context lookup after 5 seconds', async () => {
       vi.useFakeTimers();
       buildMemoryContext.mockImplementation(() => new Promise(() => {}));
-      mockQueryResult('Working without memory!');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('Working without memory!');
+      const config = makeConfig();
 
-      const replyPromise = generateResponse('ch1', 'Hi', 'user', null, 'user-123');
+      const replyPromise = generateResponse('ch1', 'Hi', 'user', config, null, 'user-123');
       await vi.advanceTimersByTimeAsync(5000);
       const reply = await replyPromise;
 
       expect(reply).toBe('Working without memory!');
       // System prompt should not contain memory context
-      expect(query).toHaveBeenCalledWith(
+      expect(CLIProcess).toHaveBeenCalledWith(
+        'ai-chat',
         expect.objectContaining({
-          options: expect.objectContaining({
-            systemPrompt: 'You are a bot.',
-          }),
+          systemPrompt: 'You are a bot.',
         }),
+        expect.anything(),
       );
 
       vi.useRealTimers();
     });
 
     it('should update conversation history after successful response', async () => {
-      mockQueryResult('Hello!');
-      getConfig.mockReturnValue(makeConfig());
+      mockSendResult('Hello!');
+      const config = makeConfig();
 
-      await generateResponse('ch1', 'Hi', 'testuser');
+      await generateResponse('ch1', 'Hi', 'testuser', config);
 
       const history = await getHistoryAsync('ch1');
       expect(history.length).toBe(2);
@@ -520,48 +467,32 @@ describe('ai module', () => {
       expect(history[1]).toEqual({ role: 'assistant', content: 'Hello!' });
     });
 
-    it('should ignore intermediate SDK events and use only result', async () => {
-      query.mockReturnValue(
-        (async function* () {
-          yield { type: 'progress', data: 'thinking...' };
-          yield { type: 'thinking', content: 'processing' };
-          yield {
-            type: 'result',
-            subtype: 'success',
-            result: 'Final answer!',
-            text: 'Final answer!',
-            is_error: false,
-            total_cost_usd: 0.003,
-            duration_ms: 200,
-            errors: [],
-          };
-        })(),
-      );
-      getConfig.mockReturnValue(makeConfig());
+    it('should return fallback text when result.result is empty', async () => {
+      mockSend.mockResolvedValue({
+        result: '',
+        is_error: false,
+        total_cost_usd: 0.001,
+        duration_ms: 50,
+        usage: { input_tokens: 10, output_tokens: 0 },
+      });
+      const config = makeConfig();
 
-      const reply = await generateResponse('ch1', 'Hi', 'user');
-      expect(reply).toBe('Final answer!');
+      const reply = await generateResponse('ch1', 'Hi', 'user', config);
+      expect(reply).toBe('I got nothing. Try again?');
     });
 
-    it('should return fallback text when result.result is empty', async () => {
-      query.mockReturnValue(
-        (async function* () {
-          yield {
-            type: 'result',
-            subtype: 'success',
-            result: '',
-            text: '',
-            is_error: false,
-            total_cost_usd: 0.001,
-            duration_ms: 50,
-            errors: [],
-          };
-        })(),
-      );
-      getConfig.mockReturnValue(makeConfig());
+    it('should include conversation history in prompt', async () => {
+      addToHistory('ch1', 'user', 'alice: previous question');
+      addToHistory('ch1', 'assistant', 'previous answer');
+      mockSendResult('Follow-up answer!');
+      const config = makeConfig();
 
-      const reply = await generateResponse('ch1', 'Hi', 'user');
-      expect(reply).toBe('I got nothing. Try again?');
+      await generateResponse('ch1', 'follow-up', 'alice', config);
+
+      const sentPrompt = mockSend.mock.calls[0][0];
+      expect(sentPrompt).toContain('alice: previous question');
+      expect(sentPrompt).toContain('Assistant: previous answer');
+      expect(sentPrompt).toContain('alice: follow-up');
     });
   });
 

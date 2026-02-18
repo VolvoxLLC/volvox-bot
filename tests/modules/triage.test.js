@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks (must be before imports) ──────────────────────────────────────────
 
-// Mock SDKProcess — triage.js creates instances and calls .send()
+// Mock CLIProcess — triage.js creates instances and calls .send()
 const mockClassifierSend = vi.fn();
 const mockResponderSend = vi.fn();
 const mockClassifierStart = vi.fn().mockResolvedValue(undefined);
@@ -10,27 +10,33 @@ const mockResponderStart = vi.fn().mockResolvedValue(undefined);
 const mockClassifierClose = vi.fn();
 const mockResponderClose = vi.fn();
 
-vi.mock('../../src/modules/sdk-process.js', () => ({
-  SDKProcess: vi.fn().mockImplementation(function MockSDKProcess(name) {
-    if (name === 'classifier') {
-      this.name = 'classifier';
-      this.send = mockClassifierSend;
-      this.start = mockClassifierStart;
-      this.close = mockClassifierClose;
-      this.alive = true;
-    } else {
-      this.name = 'responder';
-      this.send = mockResponderSend;
-      this.start = mockResponderStart;
-      this.close = mockResponderClose;
-      this.alive = true;
+vi.mock('../../src/modules/cli-process.js', () => {
+  class CLIProcessError extends Error {
+    constructor(message, reason, meta = {}) {
+      super(message);
+      this.name = 'CLIProcessError';
+      this.reason = reason;
+      Object.assign(this, meta);
     }
-  }),
-}));
-
-vi.mock('@anthropic-ai/claude-agent-sdk', () => {
-  class AbortError extends Error {}
-  return { AbortError };
+  }
+  return {
+    CLIProcess: vi.fn().mockImplementation(function MockCLIProcess(name) {
+      if (name === 'classifier') {
+        this.name = 'classifier';
+        this.send = mockClassifierSend;
+        this.start = mockClassifierStart;
+        this.close = mockClassifierClose;
+        this.alive = true;
+      } else {
+        this.name = 'responder';
+        this.send = mockResponderSend;
+        this.start = mockResponderStart;
+        this.close = mockResponderClose;
+        this.alive = true;
+      }
+    }),
+    CLIProcessError,
+  };
 });
 vi.mock('../../src/modules/spam.js', () => ({
   isSpam: vi.fn().mockReturnValue(false),
@@ -104,7 +110,7 @@ function makeConfig(overrides = {}) {
       classifyModel: 'claude-haiku-4-5',
       classifyBudget: 0.05,
       respondModel: 'claude-sonnet-4-5',
-      respondBudget: 0.20,
+      respondBudget: 0.2,
       tokenRecycleLimit: 20000,
       timeout: 30000,
       moderationResponse: true,
@@ -311,7 +317,7 @@ describe('triage module', () => {
   // ── evaluateNow ─────────────────────────────────────────────────────────
 
   describe('evaluateNow', () => {
-    it('should classify then respond via two-step SDK flow', async () => {
+    it('should classify then respond via two-step CLI flow', async () => {
       const classResult = {
         classification: 'respond',
         reasoning: 'simple question',
@@ -820,7 +826,7 @@ describe('triage module', () => {
   // ── startTriage / stopTriage ──────────────────────────────────────────
 
   describe('startTriage / stopTriage', () => {
-    it('should initialize SDK processes', () => {
+    it('should initialize CLI processes', () => {
       // startTriage already called in beforeEach — processes were created
       expect(mockClassifierStart).toHaveBeenCalled();
       expect(mockResponderStart).toHaveBeenCalled();
@@ -842,6 +848,7 @@ describe('triage module', () => {
           classifyModel: 'claude-haiku-4-5',
           respondModel: 'claude-sonnet-4-5',
           tokenRecycleLimit: 20000,
+          streaming: false,
         }),
       );
     });
@@ -955,11 +962,11 @@ describe('triage module', () => {
     });
   });
 
-  // ── SDK edge cases ──────────────────────────────────────────────────
+  // ── CLI edge cases ──────────────────────────────────────────────────
 
-  describe('SDK edge cases', () => {
+  describe('CLI edge cases', () => {
     it('should handle classifier error gracefully and send fallback', async () => {
-      mockClassifierSend.mockRejectedValue(new Error('SDK connection failed'));
+      mockClassifierSend.mockRejectedValue(new Error('CLI process failed'));
 
       accumulateMessage(makeMessage('ch1', 'test'), config);
       await evaluateNow('ch1', config, client, healthMonitor);

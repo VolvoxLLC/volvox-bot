@@ -1,12 +1,12 @@
 /**
  * AI Module
- * Handles AI chat functionality powered by Claude Agent SDK
+ * Handles AI chat functionality powered by Claude CLI (headless mode)
  * Conversation history is persisted to PostgreSQL with in-memory cache
  */
 
-import { AbortError, query } from '@anthropic-ai/claude-agent-sdk';
 import { info, error as logError, warn as logWarn } from '../logger.js';
 import { loadPrompt } from '../prompts/index.js';
+import { CLIProcess, CLIProcessError } from './cli-process.js';
 import { getConfig } from './config.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
@@ -448,7 +448,7 @@ async function runCleanup() {
 }
 
 /**
- * Generate an AI reply for a channel message using the Claude Agent SDK, integrating short-term history and optional user memory.
+ * Generate an AI reply for a channel message using the Claude CLI in headless mode, integrating short-term history and optional user memory.
  *
  * Pre-response: may append a short, relevant memory context scoped to `userId` to the system prompt. Post-response: triggers asynchronous extraction and storage of memorable facts.
  *
@@ -458,9 +458,9 @@ async function runCleanup() {
  * @param {Object} [healthMonitor] - Optional health monitor; if provided, request/result status and counts will be recorded.
  * @param {string} [userId] - Optional user identifier used to scope memory lookups and post-response memory extraction.
  * @param {string} [guildId] - Discord guild ID for per-guild config and conversation scoping.
- * @param {Object} [options] - Optional SDK overrides.
+ * @param {Object} [options] - Optional overrides.
  * @param {string} [options.model] - Model identifier to override the configured default.
- * @param {number} [options.maxThinkingTokens] - Override for the SDK's thinking-token budget.
+ * @param {number} [options.maxThinkingTokens] - Override for the thinking-token budget.
  * @returns {Promise<string>} The assistant's reply text.
  */
 export async function generateResponse(
@@ -517,53 +517,33 @@ export async function generateResponse(
     triageCfg.respondModel ??
     (typeof triageCfg.model === 'string'
       ? triageCfg.model
-      : (triageCfg.models?.default ?? 'claude-sonnet-4-5'));
+      : (triageCfg.models?.default ?? 'claude-sonnet-4-6'));
   const cfgBudget =
     triageCfg.respondBudget ??
-    (typeof triageCfg.budget === 'number' ? triageCfg.budget : (triageCfg.budget?.response ?? 0.20));
+    (typeof triageCfg.budget === 'number' ? triageCfg.budget : (triageCfg.budget?.response ?? 0.2));
   const cfgTimeout =
     typeof triageCfg.timeout === 'number'
       ? triageCfg.timeout
       : (triageCfg.timeouts?.response ?? 30000);
 
   const resolvedModel = model ?? cfgModel;
-  const controller = new AbortController();
-  const responseTimeout = cfgTimeout;
-  const timeout = setTimeout(() => controller.abort(), responseTimeout);
+
+  // Create a short-lived CLIProcess per call — the dynamic system prompt
+  // (base + memory context) is built at runtime and passed as a string flag.
+  const cliProcess = new CLIProcess(
+    'ai-chat',
+    {
+      model: resolvedModel,
+      systemPrompt,
+      allowedTools: 'WebSearch',
+      maxBudgetUsd: cfgBudget,
+      thinkingTokens: maxThinkingTokens ?? 4096,
+    },
+    { streaming: false, timeout: cfgTimeout },
+  );
 
   try {
-    const generator = query({
-      prompt: formattedPrompt,
-      options: {
-        model: resolvedModel,
-        systemPrompt: systemPrompt,
-        allowedTools: ['WebSearch'],
-        maxBudgetUsd: cfgBudget,
-        maxThinkingTokens: maxThinkingTokens ?? 1024,
-        abortController: controller,
-        stderr: (data) => logWarn('SDK stderr (ai)', { channelId, data }),
-        // bypassPermissions is required for headless SDK usage (no interactive
-        // permission prompts). Safety is enforced by the tightly scoped
-        // allowedTools list above — only WebSearch is permitted.
-        permissionMode: 'bypassPermissions',
-      },
-    });
-
-    let result = null;
-    for await (const message of generator) {
-      if (message.type === 'result') {
-        result = message;
-      }
-    }
-
-    if (!result || result.is_error) {
-      const errorMsg = result?.errors?.map((e) => e.message || e).join('; ') || 'Unknown SDK error';
-      logError('SDK query error', { channelId, error: errorMsg, errors: result?.errors });
-      if (healthMonitor) {
-        healthMonitor.setAPIStatus('error');
-      }
-      return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
-    }
+    const result = await cliProcess.send(formattedPrompt);
 
     const reply = result.result || 'I got nothing. Try again?';
 
@@ -596,16 +576,14 @@ export async function generateResponse(
 
     return reply;
   } catch (err) {
-    if (err instanceof AbortError) {
-      info('AI response aborted', { channelId });
+    if (err instanceof CLIProcessError && err.reason === 'timeout') {
+      info('AI response timed out', { channelId, timeout: cfgTimeout });
       return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
     }
-    logError('SDK query error', { error: err.message, stack: err.stack });
+    logError('CLI query error', { error: err.message, stack: err.stack });
     if (healthMonitor) {
       healthMonitor.setAPIStatus('error');
     }
     return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
-  } finally {
-    clearTimeout(timeout);
   }
 }

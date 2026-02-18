@@ -2,16 +2,15 @@
  * Triage Module
  * Per-channel message triage with split Haiku classifier + Sonnet responder.
  *
- * Two long-lived SDKProcess instances handle classification (cheap, fast) and
+ * Two CLIProcess instances handle classification (cheap, fast) and
  * response generation (expensive, only when needed).  ~80% of evaluations are
  * "ignore" — handled by Haiku alone at ~10x lower cost than Sonnet.
  */
 
-import { AbortError } from '@anthropic-ai/claude-agent-sdk';
 import { info, error as logError, warn } from '../logger.js';
-import { loadPrompt } from '../prompts/index.js';
+import { loadPrompt, promptPath } from '../prompts/index.js';
 import { safeSend } from '../utils/safeSend.js';
-import { SDKProcess } from './sdk-process.js';
+import { CLIProcess, CLIProcessError } from './cli-process.js';
 import { isSpam } from './spam.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -98,9 +97,9 @@ let _config = null;
 /** @type {Object|null} */
 let _healthMonitor = null;
 
-/** @type {SDKProcess|null} */
+/** @type {CLIProcess|null} */
 let classifierProcess = null;
-/** @type {SDKProcess|null} */
+/** @type {CLIProcess|null} */
 let responderProcess = null;
 
 // ── Per-channel state ────────────────────────────────────────────────────────
@@ -121,7 +120,7 @@ const channelBuffers = new Map();
 const MAX_TRACKED_CHANNELS = 100;
 const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
 
-// ── JSON schemas for SDK structured output ──────────────────────────────────
+// ── JSON schemas for structured output ───────────────────────────────────────
 
 const CLASSIFY_SCHEMA = {
   type: 'object',
@@ -180,7 +179,7 @@ function resolveTriageConfig(triageConfig) {
     triageConfig.respondModel ??
     (typeof triageConfig.model === 'string'
       ? triageConfig.model
-      : (triageConfig.models?.default ?? 'claude-sonnet-4-5'));
+      : (triageConfig.models?.default ?? 'claude-sonnet-4-6'));
 
   const classifyBudget =
     triageConfig.classifyBudget ?? (typeof triageConfig.budget === 'number' ? 0.05 : 0.05);
@@ -197,8 +196,19 @@ function resolveTriageConfig(triageConfig) {
       : (triageConfig.timeouts?.response ?? 30000);
 
   const tokenRecycleLimit = triageConfig.tokenRecycleLimit ?? 20000;
+  const thinkingTokens = triageConfig.thinkingTokens ?? 4096;
+  const streaming = triageConfig.streaming ?? false;
 
-  return { classifyModel, respondModel, classifyBudget, respondBudget, timeout, tokenRecycleLimit };
+  return {
+    classifyModel,
+    respondModel,
+    classifyBudget,
+    respondBudget,
+    timeout,
+    tokenRecycleLimit,
+    thinkingTokens,
+    streaming,
+  };
 }
 
 // ── Dynamic interval thresholds ──────────────────────────────────────────────
@@ -359,7 +369,9 @@ function checkTriggerWords(content, config) {
  * @returns {string} Formatted conversation text
  */
 function buildConversationText(buffer) {
-  return buffer.map((m) => `[${m.messageId}] ${m.author}: ${m.content}`).join('\n');
+  return buffer
+    .map((m) => `[${m.messageId}] ${m.author} (<@${m.userId}>): ${m.content}`)
+    .join('\n');
 }
 
 /**
@@ -514,7 +526,7 @@ async function sendResponses(channelId, parsed, classification, snapshot, config
   }
 }
 
-// ── Two-step SDK evaluation ─────────────────────────────────────────────────
+// ── Two-step CLI evaluation ──────────────────────────────────────────────────
 
 /**
  * Evaluate buffered messages using a two-step flow:
@@ -584,8 +596,8 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
     await sendResponses(channelId, parsed, classification, snapshot, config, client);
     clearBuffer();
   } catch (err) {
-    if (err instanceof AbortError) {
-      info('Triage evaluation aborted', { channelId });
+    if (err instanceof CLIProcessError && err.reason === 'timeout') {
+      info('Triage evaluation aborted (timeout)', { channelId });
       throw err;
     }
 
@@ -646,7 +658,7 @@ function scheduleEvaluation(channelId, config) {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Start the triage module: create and boot classifier + responder SDK processes.
+ * Start the triage module: create and boot classifier + responder CLI processes.
  *
  * @param {import('discord.js').Client} client - Discord client
  * @param {Object} config - Bot configuration
@@ -660,32 +672,43 @@ export async function startTriage(client, config, healthMonitor) {
   const triageConfig = config.triage || {};
   const resolved = resolveTriageConfig(triageConfig);
 
-  // Create SDK processes with streaming keep-alive to avoid subprocess
-  // spawn overhead.  Token-based recycling bounds context growth.
-  classifierProcess = new SDKProcess(
+  classifierProcess = new CLIProcess(
     'classifier',
     {
       model: resolved.classifyModel,
-      systemPrompt: loadPrompt('triage-classify-system'),
-      outputFormat: { type: 'json_schema', schema: CLASSIFY_SCHEMA },
+      systemPromptFile: promptPath('triage-classify-system'),
+      jsonSchema: CLASSIFY_SCHEMA,
       maxBudgetUsd: resolved.classifyBudget,
-      thinking: { type: 'disabled' },
-      permissionMode: 'bypassPermissions',
+      thinkingTokens: 0, // disabled for classifier
+      tools: '', // no tools for classification
     },
-    { tokenLimit: resolved.tokenRecycleLimit },
+    {
+      tokenLimit: resolved.tokenRecycleLimit,
+      streaming: resolved.streaming,
+      timeout: resolved.timeout,
+    },
   );
 
-  responderProcess = new SDKProcess(
+  // Responder system prompt: use config string if provided, otherwise use the prompt file
+  const responderSystemPromptFlags = config.ai?.systemPrompt
+    ? { systemPrompt: config.ai.systemPrompt }
+    : { systemPromptFile: promptPath('triage-respond-system') };
+
+  responderProcess = new CLIProcess(
     'responder',
     {
       model: resolved.respondModel,
-      systemPrompt: config.ai?.systemPrompt || loadPrompt('triage-respond-system'),
-      outputFormat: { type: 'json_schema', schema: RESPOND_SCHEMA },
+      ...responderSystemPromptFlags,
+      jsonSchema: RESPOND_SCHEMA,
       maxBudgetUsd: resolved.respondBudget,
-      thinking: { type: 'enabled', budgetTokens: 1024 },
-      permissionMode: 'bypassPermissions',
+      thinkingTokens: resolved.thinkingTokens,
+      tools: '', // no tools for response
     },
-    { tokenLimit: resolved.tokenRecycleLimit },
+    {
+      tokenLimit: resolved.tokenRecycleLimit,
+      streaming: resolved.streaming,
+      timeout: resolved.timeout,
+    },
   );
 
   await Promise.all([classifierProcess.start(), responderProcess.start()]);
@@ -694,12 +717,13 @@ export async function startTriage(client, config, healthMonitor) {
     classifyModel: resolved.classifyModel,
     respondModel: resolved.respondModel,
     tokenRecycleLimit: resolved.tokenRecycleLimit,
+    streaming: resolved.streaming,
     intervalMs: triageConfig.defaultInterval ?? 0,
   });
 }
 
 /**
- * Clear all timers, abort in-flight evaluations, close SDK processes, and reset state.
+ * Clear all timers, abort in-flight evaluations, close CLI processes, and reset state.
  */
 export function stopTriage() {
   classifierProcess?.close();
@@ -829,8 +853,8 @@ export async function evaluateNow(channelId, config, client, healthMonitor) {
 
     await evaluateAndRespond(channelId, snapshot, config, client || _client);
   } catch (err) {
-    if (err instanceof AbortError) {
-      info('Triage evaluation aborted', { channelId });
+    if (err instanceof CLIProcessError && err.reason === 'timeout') {
+      info('Triage evaluation aborted (timeout)', { channelId });
       return;
     }
     logError('Triage evaluation error', { channelId, error: err.message });

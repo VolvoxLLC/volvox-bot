@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-**Bill Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude Agent SDK with split Haiku classifier + Sonnet responder triage), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
+**Bill Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude CLI in headless mode with split Haiku classifier + Sonnet responder triage), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
 
 ## Stack
 
@@ -12,7 +12,7 @@
 - **Framework:** discord.js v14
 - **Database:** PostgreSQL (via `pg` — raw SQL, no ORM)
 - **Logging:** Winston with daily file rotation
-- **AI:** Claude via `@anthropic-ai/claude-agent-sdk`
+- **AI:** Claude via CLI (`claude` binary in headless mode, wrapped by `CLIProcess`)
 - **Linting:** Biome
 - **Testing:** Vitest
 - **Hosting:** Railway
@@ -25,9 +25,9 @@
 | `src/db.js` | PostgreSQL pool management (init, query, close) |
 | `src/logger.js` | Winston logger setup with file + console transports |
 | `src/commands/*.js` | Slash commands (auto-loaded) |
-| `src/modules/ai.js` | AI chat handler — conversation history, Claude Agent SDK calls |
-| `src/modules/triage.js` | Per-channel message triage — Haiku classifier + Sonnet responder via SDKProcess |
-| `src/modules/sdk-process.js` | Long-lived SDK process manager with token-based recycling |
+| `src/modules/ai.js` | AI chat handler — conversation history, Claude CLI calls |
+| `src/modules/triage.js` | Per-channel message triage — Haiku classifier + Sonnet responder via CLIProcess |
+| `src/modules/cli-process.js` | Claude CLI subprocess manager with dual-mode (short-lived / long-lived) support and token-based recycling |
 | `src/modules/welcome.js` | Dynamic welcome message generation |
 | `src/modules/spam.js` | Spam/scam pattern detection |
 | `src/modules/moderation.js` | Moderation — case creation, DM notifications, mod log embeds, escalation, tempban scheduler |
@@ -222,8 +222,8 @@ Edit `.gitleaks.toml` — add paths to `[allowlist].paths` or add inline `# gitl
 9. **Duration caps** — Discord timeouts max at 28 days; slowmode caps at 6 hours (21600s). Both are enforced in command logic
 10. **Tempban scheduler** — runs on a 60s interval; started in `index.js` startup and stopped in graceful shutdown. Catches up on missed unbans after restart
 11. **Case numbering** — per-guild sequential and assigned atomically inside `createCase()` using `COALESCE(MAX(case_number), 0) + 1` in a single INSERT
-12. **Triage budget limits** — `classifyBudget` caps Haiku classifier spend; `respondBudget` caps Sonnet responder spend per call. If exceeded, the SDK returns an error result (`is_error: true`), which the code catches and logs. Monitor `total_cost_usd` in logs
+12. **Triage budget limits** — `classifyBudget` caps Haiku classifier spend; `respondBudget` caps Sonnet responder spend per call. If exceeded, the CLI returns an error result (`is_error: true`), which the code catches and logs. Monitor `total_cost_usd` in logs
 13. **Triage timeout behavior** — `timeout` controls the deadline for evaluation calls. On timeout the call is aborted and no response is sent
 14. **Channel buffer eviction** — triage tracks at most 100 channels; channels inactive for 30 minutes are evicted. If a channel is evicted mid-conversation, the buffer is lost and evaluation restarts from scratch
-15. **Split triage evaluation** — two-step flow: Haiku classifies (cheap, ~80% are "ignore" and stop here), then Sonnet responds only when needed. SDKProcess wraps the SDK with token-based recycling (default 20k accumulated tokens) to bound context growth. Both processes use JSON schema structured output
-16. **Token recycling** — each SDKProcess tracks accumulated input+output tokens. When `tokenRecycleLimit` is exceeded, the process is transparently replaced. Recycling is non-blocking — the current caller gets their result, the next caller waits for the fresh process
+15. **Split triage evaluation** — two-step flow: Haiku classifies (cheap, ~80% are "ignore" and stop here), then Sonnet responds only when needed. CLIProcess wraps the `claude` CLI binary with token-based recycling (default 20k accumulated tokens) to bound context growth. Both processes use JSON schema structured output
+16. **Token recycling** — each CLIProcess tracks accumulated input+output tokens. When `tokenRecycleLimit` is exceeded, the process is transparently replaced. Recycling is non-blocking — the current caller gets their result, the next caller waits for the fresh process

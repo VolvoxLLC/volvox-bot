@@ -21,7 +21,7 @@ const TRUNCATION_INDICATOR = '… [truncated]';
  * Default allowedMentions config that only permits user mentions.
  * Applied to every outgoing message as defense-in-depth.
  */
-const SAFE_ALLOWED_MENTIONS = { parse: ['users'] };
+const SAFE_ALLOWED_MENTIONS = { parse: ['users'], repliedUser: true };
 
 /**
  * Normalize message arguments into an options object.
