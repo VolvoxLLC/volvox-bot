@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771463659323,
+    "updatedAt": 1771464107592,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -330,16 +330,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 444054,
-    "outputTokens": 2473,
-    "totalTokens": 226785,
+    "inputTokens": 116955,
+    "outputTokens": 6,
+    "totalTokens": 217778,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771463309593,
+      "generatedAt": 1771463797426,
       "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -940,7 +940,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
-    "updatedAt": 1771463129606,
+    "updatedAt": 1771463783853,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -955,12 +955,12 @@
     "lastTo": "channel:1466215603995152477",
     "lastAccountId": "pip",
     "origin": {
-      "label": "channel:1466215603995152477",
-      "provider": "cron-event",
+      "label": "discord:191633014441115648",
+      "provider": "discord",
       "surface": "discord",
       "chatType": "direct",
-      "from": "channel:1466215603995152477",
-      "to": "channel:1466215603995152477",
+      "from": "discord:191633014441115648",
+      "to": "user:191633014441115648",
       "accountId": "pip"
     },
     "sessionFile": "/home/bill/.openclaw/agents/main/sessions/94272ff2-523b-45de-8f72-988b595dd872.jsonl",
