@@ -37,20 +37,20 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T15:17:00Z",
+    "lastRun": "2026-02-19T15:36:00Z",
     "personal": {
       "port": 8788,
-      "status": "✅ running"
+      "status": "✅ renewed"
     },
     "volvox": {
       "port": 8789,
-      "status": "✅ running"
+      "status": "✅ renewed"
     },
     "chirico": {
       "port": 8790,
-      "status": "✅ running"
+      "status": "✅ renewed"
     },
-    "note": "✅ All watches healthy."
+    "note": "✅ All watches renewed (valid until Feb 26)."
   },
   "sendblueProxy": {
     "lastRun": "2026-02-19T15:17:00Z",
