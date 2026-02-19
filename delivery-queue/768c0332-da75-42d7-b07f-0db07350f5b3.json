@@ -1,0 +1,18 @@
+{
+  "id": "768c0332-da75-42d7-b07f-0db07350f5b3",
+  "enqueuedAt": 1771513315509,
+  "channel": "discord",
+  "to": "channel:191633014441115648",
+  "accountId": "pip",
+  "payloads": [
+    {
+      "text": "Morning digest sent. Running on GLM-5 with full capabilities — just the brain swap, nothing's broken.\n\nWhat's the play for today?",
+      "mediaUrls": []
+    }
+  ],
+  "threadId": null,
+  "replyToId": null,
+  "bestEffort": false,
+  "retryCount": 1,
+  "lastError": "Unknown Channel"
+}

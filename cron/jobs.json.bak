@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771511409874,
+      "updatedAtMs": 1771513239561,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,12 +63,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771513200000,
-        "lastRunAtMs": 1771511400014,
-        "lastStatus": "ok",
-        "lastDurationMs": 9860,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771513200006
+        "nextRunAtMs": 1771515000000,
+        "lastRunAtMs": 1771513200007,
+        "lastStatus": "error",
+        "lastDurationMs": 39554,
+        "consecutiveErrors": 1,
+        "lastError": "cron announce delivery failed"
       }
     },
     {
@@ -79,7 +79,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771506351970,
+      "updatedAtMs": 1771513538209,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -99,11 +99,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771513457126,
-        "lastRunAtMs": 1771506257144,
-        "lastStatus": "ok",
-        "lastDurationMs": 94826,
-        "consecutiveErrors": 0
+        "nextRunAtMs": 1771520657126,
+        "lastRunAtMs": 1771513457168,
+        "lastStatus": "error",
+        "lastDurationMs": 81041,
+        "consecutiveErrors": 1,
+        "lastError": "cron announce delivery failed"
       }
     },
     {
@@ -114,7 +115,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771512331696,
+      "updatedAtMs": 1771514168861,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,12 +135,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771513200000,
-        "lastRunAtMs": 1771512300008,
+        "nextRunAtMs": 1771515000000,
+        "lastRunAtMs": 1771514100015,
         "lastStatus": "ok",
-        "lastDurationMs": 31688,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771513200006
+        "lastDurationMs": 68846,
+        "consecutiveErrors": 0
       }
     },
     {
