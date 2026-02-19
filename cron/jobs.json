@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771497023891,
+      "updatedAtMs": 1771498809860,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,10 +63,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771498800000,
-        "lastRunAtMs": 1771497000020,
+        "nextRunAtMs": 1771500600000,
+        "lastRunAtMs": 1771498800005,
         "lastStatus": "ok",
-        "lastDurationMs": 23871,
+        "lastDurationMs": 9855,
         "consecutiveErrors": 0
       }
     },
@@ -78,7 +78,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771491904418,
+      "updatedAtMs": 1771499123641,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -98,11 +98,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771499057126,
-        "lastRunAtMs": 1771491857140,
+        "nextRunAtMs": 1771506257126,
+        "lastRunAtMs": 1771499057138,
         "lastStatus": "error",
-        "lastDurationMs": 47278,
-        "consecutiveErrors": 9,
+        "lastDurationMs": 66503,
+        "consecutiveErrors": 10,
         "lastError": "cron announce delivery failed"
       }
     },
@@ -114,7 +114,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771497913532,
+      "updatedAtMs": 1771498857549,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,11 +134,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771498800000,
-        "lastRunAtMs": 1771497900015,
+        "nextRunAtMs": 1771499700000,
+        "lastRunAtMs": 1771498809860,
         "lastStatus": "ok",
-        "lastDurationMs": 13517,
-        "consecutiveErrors": 0
+        "lastDurationMs": 47689,
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771499700014
       }
     },
     {
