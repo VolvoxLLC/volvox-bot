@@ -2203,7 +2203,7 @@
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb": {
     "sessionId": "25df5384-d6f8-4daf-b95e-1b59477ecb16",
-    "updatedAt": 1771486217749,
+    "updatedAt": 1771488035793,
     "systemSent": true,
     "label": "Cron: PR Review Patrol (High Frequency)",
     "skillsSnapshot": {
@@ -2419,14 +2419,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 10765,
-    "outputTokens": 30,
-    "totalTokens": 19085,
+    "inputTokens": 6951,
+    "outputTokens": 50,
+    "totalTokens": 19303,
     "totalTokensFresh": true
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb:run:25df5384-d6f8-4daf-b95e-1b59477ecb16": {
     "sessionId": "25df5384-d6f8-4daf-b95e-1b59477ecb16",
-    "updatedAt": 1771486217749,
+    "updatedAt": 1771488035793,
     "systemSent": true,
     "label": "Cron: PR Review Patrol (High Frequency)",
     "skillsSnapshot": {
@@ -2642,9 +2642,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 10765,
-    "outputTokens": 30,
-    "totalTokens": 19085,
+    "inputTokens": 6951,
+    "outputTokens": 50,
+    "totalTokens": 19303,
     "totalTokensFresh": true
   }
 }
