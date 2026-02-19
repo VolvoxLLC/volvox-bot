@@ -1,33 +1,33 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T10:00:30Z",
-    "note": "✅ Two-way sync: pulled and pushed heartbeat state."
+    "lastRun": "2026-02-19T12:39:00Z",
+    "note": "✅ Two-way sync: pushed heartbeat state."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T12:31:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
-    "alertLevel": "warning",
-    "note": "⚠️ API 401: Claude token expired. Needs manual re-auth."
+    "alertLevel": "none",
+    "note": "🚨 7-day window exhausted (100%). Checked via pty."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T08:47:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-19T12:31:00Z",
-    "note": "❌ Token refresh failed (401). Manual auth required."
+    "lastRun": "2026-02-19T12:39:00Z",
+    "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T10:00:30Z",
-    "note": "✅ Auto-backup to main successful (fc9e94b)."
+    "lastRun": "2026-02-19T12:39:00Z",
+    "note": "✅ Auto-backup to main successful (2eb0646)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T10:00:30Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "10 overdue tasks found."
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T12:31:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T12:31:00Z",
-    "note": "✅ Gmail hooks responding."
+    "lastRun": "2026-02-19T12:39:00Z",
+    "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-18T22:30:00Z",
-    "note": "✅ No upcoming events in next 2h."
+    "lastRun": "2026-02-19T13:00:00Z",
+    "note": "✅ No upcoming events in next 2h. Next notable: Court hearing Feb 25."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T12:31:00Z",
+    "lastRun": "2026-02-19T13:00:00Z",
     "inTransit": 1,
-    "note": "✅ Synced. No changes."
+    "note": "✅ UPS pkg departed facility (normal progress)."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
