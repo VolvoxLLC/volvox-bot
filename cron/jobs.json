@@ -9,7 +9,7 @@
       "description": "Daily summary at 9:30 PM EST with weather, calendar, tasks, and news",
       "enabled": true,
       "createdAtMs": 1771430195206,
-      "updatedAtMs": 1771468313479,
+      "updatedAtMs": 1771470350512,
       "schedule": {
         "kind": "cron",
         "expr": "30 21 * * *",
@@ -19,7 +19,7 @@
       "wakeMode": "now",
       "payload": {
         "kind": "agentTurn",
-        "message": "Generate evening digest: weather forecast for Point Pleasant NJ 08742, tomorrow's calendar events and tasks, email recap, Reddit AI highlights, and tech news summary. Use concise formatting.",
+        "message": "Generate evening digest with these sections:\n\n1. **Weather** - Point Pleasant NJ 08742 forecast for tomorrow\n2. **Tasks** - Tomorrow's tasks from Todoist (use td today --json)\n3. **Calendar** - Any events tomorrow\n4. **Reddit AI Highlights** - Fetch top 3 posts from EACH of these subreddits: r/claude, r/claudeai, r/ClaudeCode, r/openai, r/codex, r/ChatGPT, r/LocalLLaMA, r/artificial. Use curl to fetch JSON from reddit.com/r/{subreddit}/top/.json?t=day&limit=3. Group by subreddit.\n5. **Tech News** - Top 5 Hacker News stories\n\nFormat each section clearly. Send as ONE message.",
         "thinking": "medium"
       },
       "delivery": {
@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771470017515,
+      "updatedAtMs": 1771473615186,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,10 +63,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771471800000,
-        "lastRunAtMs": 1771470000006,
+        "nextRunAtMs": 1771475400000,
+        "lastRunAtMs": 1771473600005,
         "lastStatus": "ok",
-        "lastDurationMs": 17509,
+        "lastDurationMs": 15181,
         "consecutiveErrors": 0
       }
     },
@@ -78,7 +78,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771463102660,
+      "updatedAtMs": 1771470359917,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -98,11 +98,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771470257126,
-        "lastRunAtMs": 1771463057130,
+        "nextRunAtMs": 1771477457126,
+        "lastRunAtMs": 1771470257133,
         "lastStatus": "error",
-        "lastDurationMs": 45530,
-        "consecutiveErrors": 5,
+        "lastDurationMs": 102784,
+        "consecutiveErrors": 6,
         "lastError": "cron announce delivery failed"
       }
     },
@@ -114,7 +114,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771470031645,
+      "updatedAtMs": 1771473630820,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,11 +134,41 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771470900000,
-        "lastRunAtMs": 1771470017515,
+        "nextRunAtMs": 1771474500000,
+        "lastRunAtMs": 1771473615186,
         "lastStatus": "ok",
-        "lastDurationMs": 14130,
+        "lastDurationMs": 15634,
         "consecutiveErrors": 0
+      }
+    },
+    {
+      "id": "1b44764d-94cd-4e6a-90f0-87e5902d8234",
+      "agentId": "main",
+      "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
+      "name": "Morning Digest",
+      "description": "Daily morning summary at 9 AM with weather, tasks, calendar, Reddit AI, and Product Hunt",
+      "enabled": true,
+      "createdAtMs": 1771470392107,
+      "updatedAtMs": 1771470392107,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * *",
+        "tz": "America/New_York"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Generate morning digest with these sections:\n\n1. **Weather** - Point Pleasant NJ 08742 forecast for today\n2. **Tasks** - Today's tasks from Todoist (use td today --json)\n3. **Calendar** - Any events today\n4. **Reddit AI Highlights** - Fetch top 3 posts from EACH of these subreddits: r/claude, r/claudeai, r/ClaudeCode, r/openai, r/codex, r/ChatGPT, r/LocalLLaMA, r/artificial. Use curl to fetch JSON from reddit.com/r/{subreddit}/top/.json?t=day&limit=3. Group by subreddit.\n5. **Product Hunt** - Top 5 products today\n\nFormat each section clearly. Send as ONE message.",
+        "thinking": "medium"
+      },
+      "delivery": {
+        "mode": "announce",
+        "to": "191633014441115648",
+        "channel": "discord"
+      },
+      "state": {
+        "nextRunAtMs": 1771509600000
       }
     }
   ]
