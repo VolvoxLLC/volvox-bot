@@ -1,89 +1,98 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T00:32:00Z",
-    "note": "✅ Two-way sync: pushed heartbeat status; no new user memories."
+    "lastRun": "2026-02-19T00:33:00Z",
+    "note": "✅ Two-way sync: pulled context; no new memories."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T00:32:00Z",
+    "lastRun": "2026-02-19T00:33:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "5h: 0% | 7d: 100% (Critical)"
+    "note": "🚨 7-day window exhausted (100%). Fallback active."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T00:32:00Z",
+    "lastRun": "2026-02-19T00:33:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "5h: 0% | 7d: 100% (Critical)"
+    "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-18T20:39:00Z",
-    "note": "✅ Token refresh attempted via pty."
+    "lastRun": "2026-02-19T00:33:00Z",
+    "note": "✅ OAuth token refresh attempted via pty."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T00:32:00Z",
-    "note": "✅ Auto-backup completed (35693c4)."
+    "lastRun": "2026-02-19T00:33:00Z",
+    "note": "✅ Auto-backup success (7319061)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T00:32:00Z",
+    "lastRun": "2026-02-19T00:33:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "⚠️ 10 overdue tasks remain."
   },
   "morningUpdates": {
-    "lastRun": "2026-02-18T14:00:00Z",
-    "note": "Morning checks completed."
+    "lastRun": "2026-02-17T15:00:00Z",
+    "note": "Claude Code 2.1.44 up to date. npm updates pending check."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T00:32:00Z",
-    "personal": { "port": 8788, "status": "✅ running" },
-    "volvox": { "port": 8789, "status": "✅ running" },
-    "chirico": { "port": 8790, "status": "✅ running" },
-    "note": "✅ All watches healthy (extended to Feb 25)."
+    "lastRun": "2026-02-19T00:33:00Z",
+    "personal": {
+      "port": 8788,
+      "status": "✅ running"
+    },
+    "volvox": {
+      "port": 8789,
+      "status": "✅ running (re-authed)"
+    },
+    "chirico": {
+      "port": 8790,
+      "status": "✅ running (re-authed)"
+    },
+    "note": "✅ All Gmail accounts re-authed and healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-19T00:32:00Z",
+    "lastRun": "2026-02-19T00:33:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-18T22:30:00Z",
+    "lastRun": "2026-02-19T00:33:00Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T00:32:00Z",
-    "note": "✅ No urgent emails."
+    "lastRun": "2026-02-19T00:33:00Z",
+    "note": "✅ All tokens healthy."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-19T00:32:00Z",
-    "note": "✅ No upcoming events."
+    "lastRun": "2026-02-19T00:33:00Z",
+    "note": "✅ Token healthy. No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T00:32:00Z",
+    "lastRun": "2026-02-19T00:33:00Z",
     "inTransit": 1,
-    "note": "✅ Sync complete; no status changes."
+    "note": "✅ Track17 sync complete."
   },
   "openclawPR": {
-    "lastRun": "2026-02-18T22:30:00Z",
+    "lastRun": "2026-02-17T21:47:00Z",
     "prNumber": 13672,
     "state": "MERGED",
-    "note": "✅ PR #13672 merged."
+    "note": "✅ PR #13672 unchanged (merged)."
   },
   "billsPRMonitoring": {
-    "lastRun": "2026-02-18T22:30:00Z",
-    "note": "No active PRs requiring attention."
+    "summary": "3 active PRs (bills-bot) with multiple code reviews sent to Bill.",
+    "lastUpdated": "2026-02-16T01:30:00Z"
   },
   "weatherCheck": {
-    "lastRun": "2026-02-19T00:32:00Z",
+    "lastRun": "2026-02-19T00:33:00Z",
     "note": "Point Pleasant, NJ: ☁️ +41°F."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-19T00:32:00Z",
-    "note": "Check-in performed via Discord."
+    "lastRun": "2026-02-19T00:33:00Z",
+    "note": "Heartbeat check-in."
   },
   "eveningDigest": {
     "lastRun": "2026-02-14T03:01:46Z",
-    "note": "Next: 9:30 PM tonight."
+    "note": "Sent 3-part digest: Weather, Tasks, Recap."
   }
 }
