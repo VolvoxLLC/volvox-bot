@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771480486034,
+    "updatedAt": 1771480933229,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -330,20 +330,20 @@
       ],
       "version": 0
     },
-    "inputTokens": 701697,
-    "outputTokens": 2263,
-    "totalTokens": 356993,
+    "inputTokens": 137215,
+    "outputTokens": 202,
+    "totalTokens": 137215,
     "totalTokensFresh": true,
-    "modelProvider": "google",
-    "model": "gemini-3-flash-preview",
-    "contextTokens": 1048576,
+    "modelProvider": "zai",
+    "model": "glm-5",
+    "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771480456533,
+      "generatedAt": 1771480559169,
       "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
       "sessionKey": "agent:main:main",
-      "provider": "google",
-      "model": "gemini-3-flash-preview",
+      "provider": "zai",
+      "model": "glm-5",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -352,9 +352,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 84088,
+        "chars": 84068,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 20629
+        "nonProjectContextChars": 20609
       },
       "injectedWorkspaceFiles": [
         {
@@ -537,7 +537,7 @@
       },
       "tools": {
         "listChars": 2170,
-        "schemaChars": 19752,
+        "schemaChars": 20143,
         "entries": [
           {
             "name": "read",
@@ -560,19 +560,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1037,
+            "schemaChars": 1086,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 949,
+            "schemaChars": 961,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1869,
+            "schemaChars": 1897,
             "propertiesCount": 28
           },
           {
@@ -590,7 +590,7 @@
           {
             "name": "cron",
             "summaryChars": 2689,
-            "schemaChars": 581,
+            "schemaChars": 662,
             "propertiesCount": 13
           },
           {
@@ -620,31 +620,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 176,
+            "schemaChars": 212,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 149,
+            "schemaChars": 161,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 203,
+            "schemaChars": 273,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 312,
+            "schemaChars": 336,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 179,
+            "schemaChars": 191,
             "propertiesCount": 4
           },
           {
@@ -656,18 +656,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 728,
+            "schemaChars": 753,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 360,
+            "schemaChars": 374,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 260,
+            "summaryChars": 201,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -686,7 +686,7 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 423,
+            "schemaChars": 451,
             "propertiesCount": 6
           }
         ]
@@ -2424,7 +2424,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771479000033,
+    "updatedAt": 1771480800029,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2636,7 +2636,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771479000033,
+    "updatedAt": 1771480800029,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
