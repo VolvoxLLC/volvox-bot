@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771524251039,
+      "updatedAtMs": 1771525800050,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,12 +63,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771525800000,
-        "lastRunAtMs": 1771524000011,
+        "nextRunAtMs": 1771527600000,
+        "lastRunAtMs": 1771525800008,
         "lastStatus": "error",
-        "lastDurationMs": 251028,
-        "consecutiveErrors": 1,
-        "lastError": "cron announce delivery failed"
+        "lastDurationMs": 42,
+        "consecutiveErrors": 2,
+        "lastError": "Error: All models failed (3): openai-codex/gpt-5.3-codex: Provider openai-codex is in cooldown (all profiles unavailable) (rate_limit) | anthropic/claude-opus-4-6: Provider anthropic is in cooldown (all profiles unavailable) (rate_limit) | zai/glm-5: Provider zai is in cooldown (all profiles unavailable) (rate_limit)"
       }
     },
     {
@@ -115,7 +115,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771524962862,
+      "updatedAtMs": 1771525800132,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -135,12 +135,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771525800000,
-        "lastRunAtMs": 1771524900025,
+        "nextRunAtMs": 1771526700000,
+        "lastRunAtMs": 1771525800050,
         "lastStatus": "error",
-        "lastDurationMs": 62837,
-        "consecutiveErrors": 1,
-        "lastError": "Error: All models failed (2): anthropic/claude-opus-4-6: No available auth profile for anthropic (all in cooldown or unavailable). (rate_limit) | zai/glm-5: LLM request timed out. (timeout)"
+        "lastDurationMs": 82,
+        "consecutiveErrors": 2,
+        "lastError": "Error: All models failed (2): anthropic/claude-opus-4-6: No available auth profile for anthropic (all in cooldown or unavailable). (rate_limit) | zai/glm-5: No available auth profile for zai (all in cooldown or unavailable). (rate_limit)"
       }
     },
     {
