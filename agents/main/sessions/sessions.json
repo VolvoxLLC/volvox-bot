@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771496780855,
+    "updatedAt": 1771498107379,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -925,7 +925,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
-    "updatedAt": 1771497024158,
+    "updatedAt": 1771497098853,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1256,16 +1256,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 68825,
-    "outputTokens": 1371,
-    "totalTokens": 68199,
+    "inputTokens": 33434,
+    "outputTokens": 641,
+    "totalTokens": 33434,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771495344403,
+      "generatedAt": 1771497024288,
       "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
