@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771502751729,
+    "updatedAt": 1771503968195,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -338,7 +338,7 @@
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771502723972,
+      "generatedAt": 1771502751849,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "google",
