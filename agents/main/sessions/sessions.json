@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771475331367,
+    "updatedAt": 1771475382434,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -330,16 +330,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 407368,
-    "outputTokens": 1889,
-    "totalTokens": 272675,
+    "inputTokens": 398997,
+    "outputTokens": 309,
+    "totalTokens": 259690,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771475161251,
+      "generatedAt": 1771475331474,
       "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -2424,7 +2424,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771473600028,
+    "updatedAt": 1771475400019,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2629,14 +2629,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 16412,
-    "outputTokens": 66,
-    "totalTokens": 24412,
+    "inputTokens": 16319,
+    "outputTokens": 49,
+    "totalTokens": 24703,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771473600028,
+    "updatedAt": 1771475400019,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2841,9 +2841,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 16412,
-    "outputTokens": 66,
-    "totalTokens": 24412,
+    "inputTokens": 16319,
+    "outputTokens": 49,
+    "totalTokens": 24703,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
