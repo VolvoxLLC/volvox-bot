@@ -1,33 +1,33 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T08:21:00Z",
+    "lastRun": "2026-02-19T08:47:00Z",
     "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T08:21:00Z",
+    "lastRun": "2026-02-19T08:47:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T08:21:00Z",
+    "lastRun": "2026-02-19T08:47:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-18T20:39:00Z",
-    "note": "✅ Token refresh attempted via pty."
+    "lastRun": "2026-02-19T05:18:00Z",
+    "note": "✅ Daily morning OAuth token refresh success via pty."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T08:21:00Z",
-    "note": "✅ Auto-backup to main successful (b0b5d60)."
+    "lastRun": "2026-02-19T08:47:00Z",
+    "note": "✅ Auto-backup to main successful (c206a36)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T03:00:00Z",
+    "lastRun": "2026-02-19T07:44:00Z",
     "dueTodayCount": 13,
     "overdueCount": 0,
     "note": "13 tasks due today."
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-18T22:30:00Z",
+    "lastRun": "2026-02-19T08:47:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -61,7 +61,7 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-18T22:30:00Z",
+    "lastRun": "2026-02-19T08:47:00Z",
     "note": "✅ No urgent emails."
   },
   "calendarCheck": {
@@ -69,7 +69,7 @@
     "note": "✅ No upcoming events in next 2h."
   },
   "packageTracking": {
-    "lastRun": "2026-02-18T22:30:00Z",
+    "lastRun": "2026-02-19T08:47:00Z",
     "inTransit": 1,
     "note": "✅ No new updates."
   },
@@ -85,7 +85,7 @@
   },
   "weatherCheck": {
     "lastRun": "2026-02-19T08:21:00Z",
-    "note": "Point Pleasant, NJ: 🌫 +38°F."
+    "note": "Point Pleasant, NJ: checked."
   },
   "billCheckIn": {
     "lastRun": "2026-02-19T08:21:00Z",
