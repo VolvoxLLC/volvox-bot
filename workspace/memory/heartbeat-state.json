@@ -1,33 +1,33 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T05:12:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T05:12:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T05:12:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-19T04:32:00Z",
-    "note": "✅ Token refresh attempted via pty."
+    "lastRun": "2026-02-19T05:18:00Z",
+    "note": "✅ Daily morning OAuth token refresh success via pty."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T05:12:00Z",
-    "note": "✅ Auto-backup success (af33e69)."
+    "lastRun": "2026-02-19T05:19:00Z",
+    "note": "✅ Auto-backup success (57f48db)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:12:00Z",
     "dueTodayCount": 10,
     "overdueCount": 0,
     "note": "10 tasks due today."
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,23 +53,23 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "note": "✅ Checked."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "note": "✅ Checked."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:12:00Z",
     "inTransit": 1,
     "note": "✅ No new updates since 6:32 PM."
   },
@@ -80,15 +80,15 @@
     "note": "✅ PR #13672 merged."
   },
   "billsPRMonitoring": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:12:00Z",
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-19T05:12:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "note": "Point Pleasant, NJ: 🌫 +39°F."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-19T04:32:00Z",
+    "lastRun": "2026-02-19T05:19:00Z",
     "note": "Check-in completed."
   },
   "eveningDigest": {
