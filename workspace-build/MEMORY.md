@@ -166,7 +166,7 @@ sessions_spawn(
 - **⚠️ Send periodic sub-agent updates to Bill** — proactively DM status. NON-NEGOTIABLE.
 - **⚠️ Periodically monitor open PRs and fix review comments proactively** — Bill explicitly requested this.
 - **⚠️ Use masked markdown links for PRs** in Discord updates (e.g. `[#17](<https://github.com/...>)`).
-- **⚠️ High-frequency PR patrol cron enabled** — `PR Review Patrol (High Frequency)` every 10 min (job id: `8b380d56-7314-4ba9-b4c4-ea11d3e5ca6f`) to scan open PRs and spawn fix sub-agents when unresolved threads appear.
+- **⚠️ PR Review Patrol cron** — `PR Review Patrol` every 15 min (job id: `041c005d-992e-440c-8521-c014a53ef7fb`) scans Bill's open PRs, spawns sub-agents (single or batched) to fix unresolved threads + top-level review summaries.
 - **⚠️ Only review Bill's PRs (or my own)** — do NOT check, fix, or address PRs from anyone else unless Bill explicitly tells you to. This includes bot-authored PRs AND PRs from other contributors.
 - **⚠️ bills-bot tasks: GitHub Issues is the source of truth** — not the Veritas Kanban board. Track work via issues, close them when done.
 - **⚠️ PR comments rule** — sub-agents should NOT post GitHub PR summary comments unless Bill explicitly asks.

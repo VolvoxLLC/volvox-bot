@@ -2512,26 +2512,26 @@
   },
   "agent:build:discord:pip-build:direct:191633014441115648": {
     "sessionId": "48603b87-bca7-4c09-acd7-9761b7421947",
-    "updatedAt": 1771465997709,
+    "updatedAt": 1771466325512,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
     "chatType": "direct",
     "deliveryContext": {
       "channel": "discord",
-      "to": "channel:1470812208257826836",
+      "to": "user:191633014441115648",
       "accountId": "pip-build"
     },
     "lastChannel": "discord",
-    "lastTo": "channel:1470812208257826836",
+    "lastTo": "user:191633014441115648",
     "lastAccountId": "pip-build",
     "origin": {
-      "label": "bapes user id:191633014441115648",
+      "label": "Bill",
       "provider": "discord",
       "surface": "discord",
       "chatType": "direct",
       "from": "discord:191633014441115648",
-      "to": "channel:1470812208257826836",
+      "to": "user:191633014441115648",
       "accountId": "pip-build"
     },
     "sessionFile": "/home/bill/.openclaw/agents/build/sessions/48603b87-bca7-4c09-acd7-9761b7421947.jsonl",
@@ -2738,16 +2738,16 @@
     "authProfileOverride": "openai-codex:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 105090,
-    "outputTokens": 973,
-    "totalTokens": 35390,
+    "inputTokens": 79219,
+    "outputTokens": 363,
+    "totalTokens": 37685,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771465854084,
+      "generatedAt": 1771466259652,
       "sessionId": "48603b87-bca7-4c09-acd7-9761b7421947",
       "sessionKey": "agent:build:discord:pip-build:direct:191633014441115648",
       "provider": "zai",
@@ -3499,7 +3499,7 @@
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb": {
     "sessionId": "25df5384-d6f8-4daf-b95e-1b59477ecb16",
-    "updatedAt": 1771465800096,
+    "updatedAt": 1771466449398,
     "systemSent": true,
     "label": "Cron: PR Review Patrol (High Frequency)",
     "skillsSnapshot": {
@@ -3715,14 +3715,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 12712,
-    "outputTokens": 396,
-    "totalTokens": 12641,
+    "inputTokens": 3845,
+    "outputTokens": 215,
+    "totalTokens": 12865,
     "totalTokensFresh": true
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb:run:25df5384-d6f8-4daf-b95e-1b59477ecb16": {
     "sessionId": "25df5384-d6f8-4daf-b95e-1b59477ecb16",
-    "updatedAt": 1771465800096,
+    "updatedAt": 1771466449398,
     "systemSent": true,
     "label": "Cron: PR Review Patrol (High Frequency)",
     "skillsSnapshot": {
@@ -3938,9 +3938,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 12712,
-    "outputTokens": 396,
-    "totalTokens": 12641,
+    "inputTokens": 3845,
+    "outputTokens": 215,
+    "totalTokens": 12865,
     "totalTokensFresh": true
   }
 }

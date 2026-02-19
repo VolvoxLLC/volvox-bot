@@ -39,7 +39,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771464626832,
+      "updatedAtMs": 1771466449396,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -58,10 +58,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771466400000,
-        "lastRunAtMs": 1771464600004,
+        "nextRunAtMs": 1771468200000,
+        "lastRunAtMs": 1771466400006,
         "lastStatus": "ok",
-        "lastDurationMs": 26828,
+        "lastDurationMs": 49390,
         "consecutiveErrors": 0
       }
     },
@@ -109,17 +109,17 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771465848776,
+      "updatedAtMs": 1771466480560,
       "schedule": {
         "kind": "cron",
-        "expr": "*/10 * * * *",
+        "expr": "*/15 * * * *",
         "tz": "America/New_York"
       },
       "sessionTarget": "isolated",
       "wakeMode": "now",
       "payload": {
         "kind": "agentTurn",
-        "message": "Check bills-bot PRs for unresolved review threads. Only check PRs authored by BillChirico. If any PR has unresolved threads, spawn ONE sub-agent per PR to fix them. Use the spawn template from MEMORY.md. If no unresolved threads, respond with HEARTBEAT_OK.",
+        "message": "Check bills-bot for Bill's open PRs only (author: BillChirico). For each PR, fetch ALL unresolved review threads AND top-level review summary comments. If found, spawn sub-agents to fix them — ONE sub-agent per PR if work is small, MULTIPLE sub-agents if there are many threads/comments (batch by logical grouping). Each sub-agent uses git worktree + Codex CLI. Resolve all threads when fixed. Report summary to Bill via DM. If no unresolved issues, respond HEARTBEAT_OK.",
         "thinking": "high",
         "model": "anthropic/claude-opus-4-6"
       },
@@ -129,12 +129,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771466400000,
-        "lastRunAtMs": 1771465800003,
-        "lastStatus": "error",
-        "lastDurationMs": 48773,
-        "lastError": "cron announce delivery failed",
-        "consecutiveErrors": 1
+        "nextRunAtMs": 1771467300000,
+        "lastRunAtMs": 1771466449396,
+        "lastStatus": "ok",
+        "lastDurationMs": 31164,
+        "consecutiveErrors": 0
       }
     }
   ]
