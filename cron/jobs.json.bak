@@ -115,7 +115,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771524323440,
+      "updatedAtMs": 1771524962862,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -135,12 +135,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771524900000,
-        "lastRunAtMs": 1771524251039,
-        "lastStatus": "ok",
-        "lastDurationMs": 72401,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771524900024
+        "nextRunAtMs": 1771525800000,
+        "lastRunAtMs": 1771524900025,
+        "lastStatus": "error",
+        "lastDurationMs": 62837,
+        "consecutiveErrors": 1,
+        "lastError": "Error: All models failed (2): anthropic/claude-opus-4-6: No available auth profile for anthropic (all in cooldown or unavailable). (rate_limit) | zai/glm-5: LLM request timed out. (timeout)"
       }
     },
     {
