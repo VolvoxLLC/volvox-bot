@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771522322184,
+    "updatedAt": 1771522467263,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,15 +329,15 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 3231,
-    "outputTokens": 122,
+    "inputTokens": 9639,
+    "outputTokens": 465,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771522268601,
+      "generatedAt": 1771522322304,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -690,7 +690,7 @@
         ]
       }
     },
-    "totalTokens": 71870
+    "totalTokens": 71930
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
@@ -933,7 +933,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
-    "updatedAt": 1771520918508,
+    "updatedAt": 1771522467243,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1263,16 +1263,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 41837,
-    "outputTokens": 124,
-    "totalTokens": 54893,
+    "inputTokens": 41971,
+    "outputTokens": 183,
+    "totalTokens": 55027,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771520898011,
+      "generatedAt": 1771522447619,
       "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -2768,9 +2768,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 31159,
-    "outputTokens": 103,
-    "totalTokens": 24569,
+    "inputTokens": 15265,
+    "outputTokens": 40,
+    "totalTokens": 24737,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
@@ -4260,9 +4260,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 31159,
-    "outputTokens": 103,
-    "totalTokens": 24569,
+    "inputTokens": 15265,
+    "outputTokens": 40,
+    "totalTokens": 24737,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:8d694d97-1bce-4b21-a477-e4e8808fcbab": {
