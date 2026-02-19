@@ -1,0 +1,18 @@
+{
+  "id": "664d55e5-0fab-48de-8105-a871789fbafd",
+  "enqueuedAt": 1771506154716,
+  "channel": "discord",
+  "to": "channel:191633014441115648",
+  "accountId": "pip",
+  "payloads": [
+    {
+      "text": "Status update — we're running on backup power:\n\n**Current Situation:**\n- Claude: 100% 7-day limit (back Feb 22, ~3 days)\n- Codex: 100% 7-day limit (back Feb 24, ~5 days)\n- Running on **GLM-5** as fallback (Chinese model, capable but different)\n\n**What I can still do:**\n- Read/write files, run commands\n- Web searches, fetch content\n- Discord messaging, iMessage via SendBlue\n- All the usual stuff — just using a different brain\n\n**Heartbeat check (8 AM):**\n- Packages: UPS in transit (normal)\n- Calendar: Clear for next 2 hours (court hearing Feb 25)\n- Email: Hooks healthy\n- Nothing urgent\n\n**Overdue tasks from last night's digest:**\n- Reply bot for tweets\n- Daily reflections feature\n- GA4 analytics setup\n- Business cards\n- Amazon humidifier return ($5.18 refund)\n- Decision Jar → Volvox blog\n- 12 Step Program tab\n- Secret/API key manager setup\n\nWhat do you need? I've still got plenty of runway on this model.",
+      "mediaUrls": []
+    }
+  ],
+  "threadId": null,
+  "replyToId": null,
+  "bestEffort": false,
+  "retryCount": 1,
+  "lastError": "Unknown Channel"
+}
