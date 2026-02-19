@@ -27,7 +27,7 @@
     "note": "✅ Auto-backup to main successful (b954ab2)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T10:00:30Z",
+    "lastRun": "2026-02-19T11:38:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "10 overdue tasks found."
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T08:47:00Z",
+    "lastRun": "2026-02-19T11:38:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -57,21 +57,21 @@
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-19T10:00:30Z",
+    "lastRun": "2026-02-19T11:38:00Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T08:47:00Z",
-    "note": "✅ No urgent emails."
+    "lastRun": "2026-02-19T11:38:00Z",
+    "note": "📦 Amazon deliveries detected. Notifying Bill."
   },
   "calendarCheck": {
     "lastRun": "2026-02-18T22:30:00Z",
     "note": "✅ No upcoming events in next 2h."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T08:47:00Z",
-    "inTransit": 1,
-    "note": "✅ No new updates."
+    "lastRun": "2026-02-19T11:38:00Z",
+    "inTransit": 0,
+    "note": "✅ Packages delivered."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,12 +84,12 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-19T08:21:00Z",
+    "lastRun": "2026-02-19T11:38:00Z",
     "note": "Point Pleasant, NJ: checked."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-19T08:21:00Z",
-    "note": "3 AM check-in completed."
+    "lastRun": "2026-02-19T11:38:00Z",
+    "note": "6:30 AM check-in: Notifying about deliveries and API limits."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
