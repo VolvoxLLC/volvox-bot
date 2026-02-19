@@ -67,7 +67,8 @@
         "lastRunAtMs": 1771522200010,
         "lastStatus": "ok",
         "lastDurationMs": 207695,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771524000010
       }
     },
     {
@@ -139,7 +140,7 @@
         "lastStatus": "error",
         "lastDurationMs": 70197,
         "consecutiveErrors": 1,
-        "lastError": "Error: All models failed (2): anthropic/claude-opus-4-6: No available auth profile for anthropic (all in cooldown or unavailable). (rate_limit) | zai/glm-5: LLM request timed out. (timeout)"
+        "runningAtMs": 1771524000010
       }
     },
     {
