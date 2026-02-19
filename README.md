@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22-green.svg)](https://nodejs.org)
 
-AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community. Built with discord.js v14 and powered by Claude via the [Anthropic Agent SDK](https://github.com/anthropics/claude-agent-sdk).
+AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community. Built with discord.js v14 and powered by Claude via the Claude CLI in headless mode.
 
 ## ✨ Features
 
@@ -25,8 +25,8 @@ Discord User
      │
      ▼
 ┌─────────────┐     ┌──────────────┐     ┌─────────┐
-│  Bill Bot    │────▶│  Anthropic   │────▶│  Claude  │
-│  (Node.js)  │◀────│  Agent SDK  │◀────│  (AI)    │
+│  Bill Bot    │────▶│  Claude CLI  │────▶│  Claude  │
+│  (Node.js)  │◀────│  (headless)  │◀────│  (AI)    │
 └──────┬──────┘     └──────────────┘     └─────────┘
        │
        ▼
@@ -96,7 +96,7 @@ pnpm dev
 | `DISCORD_TOKEN` | ✅ | Discord bot token |
 | `DISCORD_CLIENT_ID` | ✅* | Discord application/client ID for slash-command deployment (`pnpm deploy`) |
 | `GUILD_ID` | ❌ | Guild ID for faster dev command deployment (omit for global) |
-| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key for Claude Agent SDK |
+| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key for Claude AI |
 | `CLAUDE_CODE_OAUTH_TOKEN` | ❌ | Required when using OAuth access tokens (`sk-ant-oat01-*`). Leave `ANTHROPIC_API_KEY` blank when using this. |
 | `DATABASE_URL` | ✅** | PostgreSQL connection string for persistent config/state |
 | `MEM0_API_KEY` | ❌ | Mem0 API key for long-term memory |
@@ -146,12 +146,24 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `maxBufferSize` | number | Max messages per channel buffer (default: 30) |
 | `triggerWords` | string[] | Words that force instant evaluation (default: `["volvox"]`) |
 | `moderationKeywords` | string[] | Words that flag for moderation |
-| `model` | string | Model for unified evaluation (default: `claude-sonnet-4-5`) |
-| `budget` | number | Max USD per evaluation call (default: 0.50) |
+| `classifyModel` | string | Model for classification step (default: `claude-haiku-4-5`) |
+| `respondModel` | string | Model for response step (default: `claude-sonnet-4-6`) |
+| `classifyBudget` | number | Max USD per classify call (default: 0.05) |
+| `respondBudget` | number | Max USD per respond call (default: 0.20) |
+| `thinkingTokens` | number | Thinking token budget for responder (default: 4096) |
+| `contextMessages` | number | Channel history messages fetched for context (default: 10) |
+| `streaming` | boolean | Enable streaming responses (default: false) |
+| `tokenRecycleLimit` | number | Token threshold before recycling CLI process (default: 20000) |
 | `timeout` | number | Evaluation timeout in ms (default: 30000) |
+| `classifyBaseUrl` | string | Custom API base URL for classifier (default: null) |
+| `respondBaseUrl` | string | Custom API base URL for responder (default: null) |
+| `classifyApiKey` | string | Custom API key for classifier (default: null) |
+| `respondApiKey` | string | Custom API key for responder (default: null) |
 | `moderationResponse` | boolean | Send moderation nudge messages (default: true) |
 | `channels` | string[] | Channels to monitor (empty = all) |
 | `excludeChannels` | string[] | Channels to never triage |
+| `debugFooter` | boolean | Show debug stats footer on AI responses (default: false) |
+| `debugFooterLevel` | string | Footer density: `"verbose"`, `"compact"`, or `"split"` (default: `"verbose"`) |
 
 ### Welcome Messages (`welcome`)
 
@@ -359,7 +371,7 @@ Set these in the Railway dashboard for the Bot service:
 | `DISCORD_TOKEN` | Yes | Discord bot token |
 | `DISCORD_CLIENT_ID` | Yes | Discord application/client ID |
 | `GUILD_ID` | No | Guild ID for faster dev command deployment (omit for global) |
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude Agent SDK |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude AI |
 | `CLAUDE_CODE_OAUTH_TOKEN` | No | Required when using OAuth access tokens (`sk-ant-oat01-*`). Leave `ANTHROPIC_API_KEY` blank when using this. |
 | `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
 | `MEM0_API_KEY` | No | Mem0 API key for long-term memory |

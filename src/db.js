@@ -217,6 +217,34 @@ export async function initDb() {
         )
       `);
 
+      // AI usage analytics table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS ai_usage (
+          id SERIAL PRIMARY KEY,
+          guild_id TEXT NOT NULL,
+          channel_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('classify', 'respond')),
+          model TEXT NOT NULL,
+          input_tokens INTEGER NOT NULL DEFAULT 0,
+          output_tokens INTEGER NOT NULL DEFAULT 0,
+          cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
+          cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+          cost_usd NUMERIC(10, 6) NOT NULL DEFAULT 0,
+          duration_ms INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_ai_usage_guild_created
+        ON ai_usage (guild_id, created_at)
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_ai_usage_created_at
+        ON ai_usage (created_at)
+      `);
+
       // Logs table for persistent logging transport
       try {
         await initLogsTable(pool);

@@ -252,26 +252,26 @@ describe('events module', () => {
 
     // ── Empty mention ─────────────────────────────────────────────────
 
-    it('should return "Hey! What\'s up?" for empty mention', async () => {
+    it('should route bare mention to triage instead of canned reply', async () => {
       setup();
-      const mockReply = vi.fn().mockResolvedValue(undefined);
       const message = {
-        author: { bot: false, username: 'user' },
+        author: { bot: false, username: 'user', id: 'u1' },
         guild: { id: 'g1' },
         content: '<@bot-user-id>',
         channel: {
           id: 'c1',
-          sendTyping: vi.fn(),
+          sendTyping: vi.fn().mockResolvedValue(undefined),
           send: vi.fn(),
           isThread: vi.fn().mockReturnValue(false),
         },
         mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
         reference: null,
-        reply: mockReply,
+        reply: vi.fn(),
       };
       await onCallbacks.messageCreate(message);
-      expect(mockReply).toHaveBeenCalledWith("Hey! What's up?");
-      expect(evaluateNow).not.toHaveBeenCalled();
+      expect(accumulateMessage).toHaveBeenCalledWith(message, expect.anything());
+      expect(evaluateNow).toHaveBeenCalledWith('c1', config, client, null);
+      expect(message.reply).not.toHaveBeenCalled();
     });
 
     // ── Allowed channels ──────────────────────────────────────────────

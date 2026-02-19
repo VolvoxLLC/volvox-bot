@@ -118,8 +118,12 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
           try {
             const ref = await message.channel.messages.fetch(message.reference.messageId);
             isReply = ref.author.id === client.user.id;
-          } catch {
-            // Referenced message deleted — not a bot reply
+          } catch (fetchErr) {
+            warn('Could not fetch referenced message for reply detection', {
+              channelId: message.channel.id,
+              messageId: message.reference.messageId,
+              error: fetchErr?.message,
+            });
           }
         }
       }
@@ -135,25 +139,9 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         allowedChannels.length === 0 || allowedChannels.includes(channelIdToCheck);
 
       if ((isMentioned || isReply) && isAllowedChannel) {
-        // Remove the mention from the message
-        const cleanContent = message.content
-          .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
-          .trim();
-
-        if (!cleanContent) {
-          try {
-            await safeReply(message, "Hey! What's up?");
-          } catch (err) {
-            warn('safeReply failed for empty mention', {
-              channelId: message.channel.id,
-              userId: message.author.id,
-              error: err?.message,
-            });
-          }
-          return;
-        }
-
-        // Accumulate the message into the triage buffer first (for context)
+        // Accumulate the message into the triage buffer (for context).
+        // Even bare @mentions with no text go through triage so the classifier
+        // can use recent channel history to produce a meaningful response.
         accumulateMessage(message, guildConfig);
 
         // Show typing indicator immediately so the user sees feedback

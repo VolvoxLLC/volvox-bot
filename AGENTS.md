@@ -51,6 +51,7 @@
 | `src/utils/sanitizeMentions.js` | Mention sanitization — strips @everyone/@here from outgoing text via zero-width space insertion |
 | `src/utils/registerCommands.js` | Discord REST API command registration |
 | `src/utils/splitMessage.js` | Message splitting for Discord's 2000-char limit |
+| `src/utils/debugFooter.js` | Debug stats footer builder and Discord embed wrapper for AI responses |
 | `src/utils/duration.js` | Duration parsing — "1h", "7d" ↔ ms with human-readable formatting |
 | `config.json` | Default configuration (seeded to DB on first run) |
 | `.env.example` | Environment variable template |

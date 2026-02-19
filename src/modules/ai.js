@@ -4,11 +4,8 @@
  * Conversation history is persisted to PostgreSQL with in-memory cache
  */
 
-import { info, error as logError, warn as logWarn } from '../logger.js';
-import { loadPrompt } from '../prompts/index.js';
-import { CLIProcess, CLIProcessError } from './cli-process.js';
+import { info, warn as logWarn } from '../logger.js';
 import { getConfig } from './config.js';
-import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // Conversation history per channel (in-memory cache)
 let conversationHistory = new Map();
@@ -30,12 +27,11 @@ const pendingHydrations = new Map();
 
 /**
  * Get the configured history length from config
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} History length
  */
-function getHistoryLength(guildId) {
+function getHistoryLength() {
   try {
-    const config = getConfig(guildId);
+    const config = getConfig();
     const len = config?.ai?.historyLength;
     if (typeof len === 'number' && len > 0) return len;
   } catch {
@@ -46,12 +42,11 @@ function getHistoryLength(guildId) {
 
 /**
  * Get the configured TTL days from config
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} TTL in days
  */
-function getHistoryTTLDays(guildId) {
+function getHistoryTTLDays() {
   try {
-    const config = getConfig(guildId);
+    const config = getConfig();
     const ttl = config?.ai?.historyTTLDays;
     if (typeof ttl === 'number' && ttl > 0) return ttl;
   } catch {
@@ -112,79 +107,12 @@ export function setConversationHistory(history) {
 }
 
 /**
- * Approximate model pricing (USD per 1M tokens).
- * Used for dashboard-level cost estimation only.
- *
- * NOTE: This table requires manual updates when Anthropic releases new models.
- * Unknown models return $0 and log a warning (see logWarn in estimateAiCostUsd).
- * Pricing reference: https://www.anthropic.com/pricing
- */
-const MODEL_PRICING_PER_MILLION = {
-  'claude-opus-4-1-20250805': { input: 15, output: 75 },
-  'claude-opus-4-20250514': { input: 15, output: 75 },
-  'claude-sonnet-4-20250514': { input: 3, output: 15 },
-  // Haiku 4.5: $1/M input, $5/M output (https://www.anthropic.com/pricing)
-  'claude-haiku-4-5': { input: 1, output: 5 },
-  'claude-haiku-4-5-20251001': { input: 1, output: 5 },
-  // Haiku 3.5: $0.80/M input, $4/M output (https://www.anthropic.com/pricing)
-  'claude-3-5-haiku-20241022': { input: 0.8, output: 4 },
-};
-
-/** Track models we've already warned about to avoid log flooding. */
-const warnedUnknownModels = new Set();
-
-/** Test-only helper to clear unknown-model warning dedupe state. */
-export function _resetWarnedUnknownModels() {
-  warnedUnknownModels.clear();
-}
-
-/**
- * Safely convert a value to a non-negative finite number.
- * @param {unknown} value
- * @returns {number}
- */
-function toNonNegativeNumber(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num < 0) return 0;
-  return num;
-}
-
-/**
- * Estimate request cost from token usage and model pricing.
- * Returns 0 when pricing for the model is unknown.
- *
- * @param {string} model
- * @param {number} promptTokens
- * @param {number} completionTokens
- * @returns {number}
- */
-function estimateAiCostUsd(model, promptTokens, completionTokens) {
-  const pricing = MODEL_PRICING_PER_MILLION[model];
-  if (!pricing) {
-    // Only warn once per unknown model to avoid log flooding
-    if (!warnedUnknownModels.has(model)) {
-      logWarn('Unknown model for cost estimation, returning $0', { model });
-      warnedUnknownModels.add(model);
-    }
-    return 0;
-  }
-
-  const inputCost = (promptTokens / 1_000_000) * pricing.input;
-  const outputCost = (completionTokens / 1_000_000) * pricing.output;
-
-  // Keep precision stable in logs for easier DB aggregation
-  return Number((inputCost + outputCost).toFixed(6));
-}
-
-/**
  * Hydrate conversation history for a channel from DB.
  * Dedupes concurrent hydrations and merges DB rows with in-flight in-memory writes.
- *
  * @param {string} channelId - Channel ID
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-function hydrateHistory(channelId, guildId) {
+function hydrateHistory(channelId) {
   const pending = pendingHydrations.get(channelId);
   if (pending) {
     return pending;
@@ -200,7 +128,7 @@ function hydrateHistory(channelId, guildId) {
     return Promise.resolve(historyRef);
   }
 
-  const limit = getHistoryLength(guildId);
+  const limit = getHistoryLength();
   const hydrationPromise = pool
     .query(
       `SELECT role, content FROM conversations
@@ -252,10 +180,9 @@ function hydrateHistory(channelId, guildId) {
 /**
  * Async version of history retrieval that waits for in-flight hydration.
  * @param {string} channelId - Channel ID
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-export async function getHistoryAsync(channelId, guildId) {
+export async function getHistoryAsync(channelId) {
   if (conversationHistory.has(channelId)) {
     const pending = pendingHydrations.get(channelId);
     if (pending) {
@@ -264,7 +191,7 @@ export async function getHistoryAsync(channelId, guildId) {
     return conversationHistory.get(channelId);
   }
 
-  return hydrateHistory(channelId, guildId);
+  return hydrateHistory(channelId);
 }
 
 /**
@@ -274,16 +201,15 @@ export async function getHistoryAsync(channelId, guildId) {
  * @param {string} role - Message role (user/assistant)
  * @param {string} content - Message content
  * @param {string} [username] - Optional username
- * @param {string} [guildId] - Optional guild ID for scoping
  */
-export function addToHistory(channelId, role, content, username, guildId) {
+export function addToHistory(channelId, role, content, username) {
   if (!conversationHistory.has(channelId)) {
     conversationHistory.set(channelId, []);
   }
   const history = conversationHistory.get(channelId);
   history.push({ role, content });
 
-  const maxHistory = getHistoryLength(guildId);
+  const maxHistory = getHistoryLength();
 
   // Trim old messages from in-memory cache
   while (history.length > maxHistory) {
@@ -295,9 +221,9 @@ export function addToHistory(channelId, role, content, username, guildId) {
   if (pool) {
     pool
       .query(
-        `INSERT INTO conversations (channel_id, role, content, username, guild_id)
-       VALUES ($1, $2, $3, $4, $5)`,
-        [channelId, role, content, username || null, guildId || null],
+        `INSERT INTO conversations (channel_id, role, content, username)
+       VALUES ($1, $2, $3, $4)`,
+        [channelId, role, content, username || null],
       )
       .catch((err) => {
         logError('Failed to persist message to DB', {
@@ -311,13 +237,8 @@ export function addToHistory(channelId, role, content, username, guildId) {
 }
 
 /**
- * Initialize conversation history from DB on startup.
- * Loads last N messages per active channel.
- *
- * Note: Uses global config defaults for history length and TTL intentionally —
- * this runs at startup across all channels/guilds and guildId is not available.
- * The guild-aware config path is through generateResponse(), which passes guildId.
- *
+ * Initialize conversation history from DB on startup
+ * Loads last N messages per active channel
  * @returns {Promise<void>}
  */
 export async function initConversationHistory() {
@@ -417,12 +338,7 @@ export function stopConversationCleanup() {
 /**
  * Delete conversation records older than the configured history TTL from the database.
  *
- * Note: Uses global config default for TTL intentionally — cleanup runs
- * across all guilds/channels and guildId is not available in this context.
- * The guild-aware config path is through generateResponse(), which passes guildId.
- *
  * If no database pool is configured this is a no-op; failures are logged but not thrown.
- * @returns {Promise<void>}
  */
 async function runCleanup() {
   const pool = getPool();
@@ -444,148 +360,5 @@ async function runCleanup() {
     }
   } catch (err) {
     logWarn('Conversation cleanup failed', { error: err.message });
-  }
-}
-
-/**
- * Generate an AI reply for a channel message using the Claude CLI in headless mode, integrating short-term history and optional user memory.
- *
- * Pre-response: may append a short, relevant memory context scoped to `userId` to the system prompt. Post-response: triggers asynchronous extraction and storage of memorable facts.
- *
- * @param {string} channelId - Conversation channel identifier.
- * @param {string} userMessage - The user's message text.
- * @param {string} username - Display name to attribute user messages in history.
- * @param {Object} [healthMonitor] - Optional health monitor; if provided, request/result status and counts will be recorded.
- * @param {string} [userId] - Optional user identifier used to scope memory lookups and post-response memory extraction.
- * @param {string} [guildId] - Discord guild ID for per-guild config and conversation scoping.
- * @param {Object} [options] - Optional overrides.
- * @param {string} [options.model] - Model identifier to override the configured default.
- * @param {number} [options.maxThinkingTokens] - Override for the thinking-token budget.
- * @returns {Promise<string>} The assistant's reply text.
- */
-export async function generateResponse(
-  channelId,
-  userMessage,
-  username,
-  healthMonitor = null,
-  userId = null,
-  guildId = null,
-  { model, maxThinkingTokens } = {},
-) {
-  // Use guild-aware config for AI settings (systemPrompt, model, maxTokens)
-  // so per-guild overrides via /config are respected.
-  const guildConfig = getConfig(guildId);
-  const history = await getHistoryAsync(channelId, guildId);
-
-  let systemPrompt =
-    guildConfig.ai?.systemPrompt ||
-    loadPrompt('default-personality', { antiAbuse: loadPrompt('anti-abuse') });
-
-  // Pre-response: inject user memory context into system prompt (with timeout)
-  if (userId) {
-    try {
-      const memoryContext = await Promise.race([
-        buildMemoryContext(userId, username, userMessage, guildId),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Memory context timeout')), 5000),
-        ),
-      ]);
-      if (memoryContext) {
-        systemPrompt += memoryContext;
-      }
-    } catch (err) {
-      // Memory lookup failed or timed out — continue without it
-      logWarn('Memory context lookup failed', { userId, error: err.message });
-    }
-  }
-
-  // Build conversation context from history
-  const historyText = history
-    .map((msg) => (msg.role === 'user' ? msg.content : `Assistant: ${msg.content}`))
-    .join('\n');
-  const formattedPrompt = historyText
-    ? `${historyText}\n${username}: ${userMessage}`
-    : `${username}: ${userMessage}`;
-
-  // Log incoming AI request
-  info('AI request', { channelId, username, message: userMessage });
-
-  // Resolve config values with 3-layer legacy fallback:
-  // 1. New split format: respondModel / respondBudget
-  // 2. PR #68 flat format: model / budget / timeout
-  // 3. Original nested format: models.default / budget.response / timeouts.response
-  const triageCfg = guildConfig.triage || {};
-  const cfgModel =
-    triageCfg.respondModel ??
-    (typeof triageCfg.model === 'string'
-      ? triageCfg.model
-      : (triageCfg.models?.default ?? 'claude-sonnet-4-6'));
-  const cfgBudget =
-    triageCfg.respondBudget ??
-    (typeof triageCfg.budget === 'number' ? triageCfg.budget : (triageCfg.budget?.response ?? 0.2));
-  const cfgTimeout =
-    typeof triageCfg.timeout === 'number'
-      ? triageCfg.timeout
-      : (triageCfg.timeouts?.response ?? 30000);
-
-  const resolvedModel = model ?? cfgModel;
-
-  // Create a short-lived CLIProcess per call — the dynamic system prompt
-  // (base + memory context) is built at runtime and passed as a string flag.
-  const cliProcess = new CLIProcess(
-    'ai-chat',
-    {
-      model: resolvedModel,
-      systemPrompt,
-      allowedTools: 'WebSearch',
-      maxBudgetUsd: cfgBudget,
-      thinkingTokens: maxThinkingTokens ?? 4096,
-    },
-    { streaming: false, timeout: cfgTimeout },
-  );
-
-  try {
-    const result = await cliProcess.send(formattedPrompt);
-
-    const reply = result.result || 'I got nothing. Try again?';
-
-    // Log AI response with cost
-    info('AI response', {
-      channelId,
-      username,
-      model: resolvedModel,
-      total_cost_usd: result.total_cost_usd,
-      duration_ms: result.duration_ms,
-      response: reply.substring(0, 500),
-    });
-
-    // Record successful AI request
-    if (healthMonitor) {
-      healthMonitor.recordAIRequest();
-      healthMonitor.setAPIStatus('ok');
-    }
-
-    // Update history with username for DB persistence
-    addToHistory(channelId, 'user', `${username}: ${userMessage}`, username, guildId);
-    addToHistory(channelId, 'assistant', reply, undefined, guildId);
-
-    // Post-response: extract and store memorable facts (fire-and-forget)
-    if (userId) {
-      extractAndStoreMemories(userId, username, userMessage, reply, guildId).catch((err) => {
-        logWarn('Memory extraction failed', { userId, error: err.message });
-      });
-    }
-
-    return reply;
-  } catch (err) {
-    if (err instanceof CLIProcessError && err.reason === 'timeout') {
-      info('AI response timed out', { channelId, timeout: cfgTimeout });
-      return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
-    }
-    logError('CLI query error', { error: err.message, stack: err.stack });
-    if (healthMonitor) {
-      healthMonitor.setAPIStatus('error');
-    }
-    return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
   }
 }

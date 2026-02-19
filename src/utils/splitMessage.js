@@ -51,11 +51,12 @@ export function splitMessage(text, maxLength = SAFE_CHUNK_SIZE) {
 }
 
 /**
- * Checks if a message exceeds Discord's character limit.
+ * Checks if a message exceeds a character limit.
  *
  * @param {string} text - The text to check
+ * @param {number} [maxLength=2000] - Maximum length threshold (default: Discord's 2000-char limit)
  * @returns {boolean} True if the message needs splitting
  */
-export function needsSplitting(text) {
-  return text && text.length > DISCORD_MAX_LENGTH;
+export function needsSplitting(text, maxLength = DISCORD_MAX_LENGTH) {
+  return text && text.length > maxLength;
 }

@@ -9,7 +9,9 @@
 
 import { info, error as logError, warn } from '../logger.js';
 import { loadPrompt, promptPath } from '../prompts/index.js';
+import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { safeSend } from '../utils/safeSend.js';
+import { splitMessage } from '../utils/splitMessage.js';
 import { CLIProcess, CLIProcessError } from './cli-process.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 import { isSpam } from './spam.js';
@@ -484,29 +486,50 @@ function parseRespondResult(sdkMessage, channelId) {
 // ── Response sending ────────────────────────────────────────────────────────
 
 /**
- * Send parsed responses to Discord.
- * Extracted from the old evaluateAndRespond for reuse.
+ * Send parsed responses to Discord as plain text with optional debug embed.
+ *
+ * Response text is sent as normal message content (not inside an embed).
+ * When debugFooter is enabled, a structured debug embed is attached to
+ * the same message showing triage and response stats.
+ *
+ * @param {import('discord.js').TextChannel|null} channel - Resolved channel to send to
+ * @param {Object} parsed - Parsed responder output
+ * @param {Object} classification - Classifier output
+ * @param {Array} snapshot - Buffer snapshot
+ * @param {Object} config - Bot configuration
+ * @param {Object} [stats] - Optional stats from classify/respond steps
  */
-async function sendResponses(channelId, parsed, classification, snapshot, config, client) {
+async function sendResponses(channel, parsed, classification, snapshot, config, stats) {
+  if (!channel) {
+    warn('Could not fetch channel for triage response', {});
+    return;
+  }
+
+  const channelId = channel.id;
   const triageConfig = config.triage || {};
   const type = classification.classification;
   const responses = parsed.responses || [];
+
+  // Build debug embed if enabled
+  let debugEmbed;
+  if (triageConfig.debugFooter && stats) {
+    const level = triageConfig.debugFooterLevel || 'verbose';
+    debugEmbed = buildDebugEmbed(stats.classify, stats.respond, level);
+  }
 
   if (type === 'moderate') {
     warn('Moderation flagged', { channelId, reasoning: classification.reasoning });
 
     if (triageConfig.moderationResponse !== false && responses.length > 0) {
-      const channel = await client.channels.fetch(channelId).catch(() => null);
-      if (channel) {
-        for (const r of responses) {
-          if (r.response?.trim()) {
-            const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
-            if (replyRef) {
-              await safeSend(channel, {
-                content: r.response,
-                reply: { messageReference: replyRef },
-              });
-            }
+      for (const r of responses) {
+        if (r.response?.trim()) {
+          const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
+          const chunks = splitMessage(r.response);
+          for (let i = 0; i < chunks.length; i++) {
+            const msgOpts = { content: chunks[i] };
+            if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
+            if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
+            await safeSend(channel, msgOpts);
           }
         }
       }
@@ -520,12 +543,6 @@ async function sendResponses(channelId, parsed, classification, snapshot, config
     return;
   }
 
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel) {
-    warn('Could not fetch channel for triage response', { channelId });
-    return;
-  }
-
   await channel.sendTyping();
 
   for (const r of responses) {
@@ -535,13 +552,13 @@ async function sendResponses(channelId, parsed, classification, snapshot, config
     }
 
     const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
-    if (replyRef) {
-      await safeSend(channel, {
-        content: r.response,
-        reply: { messageReference: replyRef },
-      });
-    } else {
-      await safeSend(channel, r.response);
+    const chunks = splitMessage(r.response);
+
+    for (let i = 0; i < chunks.length; i++) {
+      const msgOpts = { content: chunks[i] };
+      if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
+      if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
+      await safeSend(channel, msgOpts);
     }
 
     info('Triage response sent', {
@@ -582,6 +599,9 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
     const contextLimit = config.triage?.contextMessages ?? 10;
     const context =
       contextLimit > 0 ? await fetchChannelContext(channelId, client, snapshot, contextLimit) : [];
+
+    // Resolve model names for stats
+    const resolved = resolveTriageConfig(config.triage || {});
 
     // Step 1: Classify with Haiku
     const classifyPrompt = buildClassifyPrompt(context, snapshot);
@@ -660,8 +680,20 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
       totalCostUsd: respondMessage.total_cost_usd,
     });
 
-    // Step 3: Send to Discord
-    await sendResponses(channelId, parsed, classification, snapshot, config, client);
+    // Step 3: Build stats, log analytics, and send to Discord
+    const stats = {
+      classify: extractStats(classifyMessage, resolved.classifyModel),
+      respond: extractStats(respondMessage, resolved.respondModel),
+    };
+
+    // Fetch channel once for guildId resolution + passing to sendResponses
+    const channel = await client.channels.fetch(channelId).catch(() => null);
+    const guildId = channel?.guildId;
+
+    // Log AI usage analytics (fire-and-forget)
+    logAiUsage(guildId, channelId, stats);
+
+    await sendResponses(channel, parsed, classification, snapshot, config, stats);
 
     // Step 4: Extract memories from the conversation (fire-and-forget)
     if (parsed.responses?.length > 0) {

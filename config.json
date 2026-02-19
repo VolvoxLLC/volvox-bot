@@ -32,7 +32,9 @@
     "timeout": 30000,
     "moderationResponse": true,
     "channels": [],
-    "excludeChannels": []
+    "excludeChannels": [],
+    "debugFooter": true,
+    "debugFooterLevel": "verbose"
   },
   "welcome": {
     "enabled": true,

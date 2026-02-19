@@ -135,6 +135,8 @@ function makeClient() {
   return {
     channels: {
       fetch: vi.fn().mockResolvedValue({
+        id: 'ch1',
+        guildId: 'guild-1',
         sendTyping: vi.fn().mockResolvedValue(undefined),
         send: vi.fn().mockResolvedValue(undefined),
       }),
@@ -148,6 +150,17 @@ function makeHealthMonitor() {
     recordAIRequest: vi.fn(),
     setAPIStatus: vi.fn(),
   };
+}
+
+/**
+ * Build a matcher for safeSend calls that use plain content (no embed wrapping).
+ * @param {string} text - Expected message content text
+ * @param {string} [replyRef] - Expected reply messageReference
+ */
+function contentWith(text, replyRef) {
+  const base = { content: text };
+  if (replyRef) base.reply = { messageReference: replyRef };
+  return expect.objectContaining(base);
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -346,10 +359,10 @@ describe('triage module', () => {
 
       expect(mockClassifierSend).toHaveBeenCalledTimes(1);
       expect(mockResponderSend).toHaveBeenCalledTimes(1);
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Hello!',
-        reply: { messageReference: 'msg-default' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Hello!', 'msg-default'),
+      );
     });
 
     it('should skip responder on "ignore" classification', async () => {
@@ -466,10 +479,10 @@ describe('triage module', () => {
         'Moderation flagged',
         expect.objectContaining({ channelId: 'ch1' }),
       );
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Rule #4: no spam',
-        reply: { messageReference: 'msg-default' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Rule #4: no spam', 'msg-default'),
+      );
     });
 
     it('should suppress moderation response when moderationResponse is false', async () => {
@@ -512,10 +525,10 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('ch1', 'what time is it', { id: 'msg-123' }), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Quick answer',
-        reply: { messageReference: 'msg-123' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Quick answer', 'msg-123'),
+      );
     });
 
     it('should send response for "chime-in" classification', async () => {
@@ -542,10 +555,10 @@ describe('triage module', () => {
       );
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Interesting point!',
-        reply: { messageReference: 'msg-a1' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Interesting point!', 'msg-a1'),
+      );
     });
 
     it('should warn and clear buffer for unknown classification type', async () => {
@@ -606,14 +619,14 @@ describe('triage module', () => {
       await evaluateNow('ch1', config, client, healthMonitor);
 
       expect(safeSend).toHaveBeenCalledTimes(2);
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Reply to Alice',
-        reply: { messageReference: 'msg-a1' },
-      });
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Reply to Bob',
-        reply: { messageReference: 'msg-b1' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Reply to Alice', 'msg-a1'),
+      );
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Reply to Bob', 'msg-b1'),
+      );
     });
 
     it('should skip empty responses in the array', async () => {
@@ -643,10 +656,10 @@ describe('triage module', () => {
       await evaluateNow('ch1', config, client, healthMonitor);
 
       expect(safeSend).toHaveBeenCalledTimes(1);
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Reply to Bob',
-        reply: { messageReference: 'msg-b1' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Reply to Bob', 'msg-b1'),
+      );
     });
 
     it('should warn when respond has no responses', async () => {
@@ -697,10 +710,10 @@ describe('triage module', () => {
       );
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Reply to Alice',
-        reply: { messageReference: 'msg-real' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        contentWith('Reply to Alice', 'msg-real'),
+      );
     });
 
     it('should fall back to last buffer message when targetUser not found', async () => {
@@ -727,10 +740,7 @@ describe('triage module', () => {
       );
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(safeSend).toHaveBeenCalledWith(expect.anything(), {
-        content: 'Reply',
-        reply: { messageReference: 'msg-alice' },
-      });
+      expect(safeSend).toHaveBeenCalledWith(expect.anything(), contentWith('Reply', 'msg-alice'));
     });
   });
 
@@ -804,7 +814,7 @@ describe('triage module', () => {
       expect(mockClassifierSend).not.toHaveBeenCalled();
     });
 
-    it('should use 2500ms interval for 2-4 messages', () => {
+    it('should use 2500ms interval for 2-4 messages', async () => {
       const classResult = {
         classification: 'ignore',
         reasoning: 'test',
@@ -814,10 +824,16 @@ describe('triage module', () => {
 
       accumulateMessage(makeMessage('ch1', 'msg1'), config);
       accumulateMessage(makeMessage('ch1', 'msg2'), config);
-      vi.advanceTimersByTime(2500);
+
+      // Should not fire before 2500ms
+      vi.advanceTimersByTime(2499);
+      expect(mockClassifierSend).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockClassifierSend).toHaveBeenCalled();
     });
 
-    it('should use 1000ms interval for 5+ messages', () => {
+    it('should use 1000ms interval for 5+ messages', async () => {
       const classResult = {
         classification: 'ignore',
         reasoning: 'test',
@@ -828,7 +844,13 @@ describe('triage module', () => {
       for (let i = 0; i < 5; i++) {
         accumulateMessage(makeMessage('ch1', `msg${i}`), config);
       }
-      vi.advanceTimersByTime(1000);
+
+      // Should not fire before 1000ms
+      vi.advanceTimersByTime(999);
+      expect(mockClassifierSend).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockClassifierSend).toHaveBeenCalled();
     });
 
     it('should use config.triage.defaultInterval as base interval', () => {
