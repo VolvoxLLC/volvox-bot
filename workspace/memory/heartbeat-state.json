@@ -1,33 +1,33 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "note": "✅ Two-way sync: pulled context; no new memories."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%). Fallback active."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-19T00:33:00Z",
-    "note": "✅ OAuth token refresh attempted via pty."
+    "lastRun": "2026-02-19T00:36:00Z",
+    "note": "✅ OAuth token refresh success."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T00:33:00Z",
-    "note": "✅ Auto-backup success (7319061)."
+    "lastRun": "2026-02-19T00:36:00Z",
+    "note": "✅ Auto-backup success (0567d64)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "⚠️ 10 overdue tasks remain."
@@ -37,58 +37,58 @@
     "note": "Claude Code 2.1.44 up to date. npm updates pending check."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
     },
     "volvox": {
       "port": 8789,
-      "status": "✅ running (re-authed)"
+      "status": "✅ running"
     },
     "chirico": {
       "port": 8790,
-      "status": "✅ running (re-authed)"
+      "status": "✅ running"
     },
-    "note": "✅ All Gmail accounts re-authed and healthy."
+    "note": "✅ All Gmail accounts healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "note": "✅ All tokens healthy."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "note": "✅ Token healthy. No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "inTransit": 1,
     "note": "✅ Track17 sync complete."
   },
   "openclawPR": {
-    "lastRun": "2026-02-17T21:47:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "prNumber": 13672,
     "state": "MERGED",
-    "note": "✅ PR #13672 unchanged (merged)."
+    "note": "✅ PR #13672 merged."
   },
   "billsPRMonitoring": {
     "summary": "3 active PRs (bills-bot) with multiple code reviews sent to Bill.",
     "lastUpdated": "2026-02-16T01:30:00Z"
   },
   "weatherCheck": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "note": "Point Pleasant, NJ: ☁️ +41°F."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-19T00:33:00Z",
+    "lastRun": "2026-02-19T00:36:00Z",
     "note": "Heartbeat check-in."
   },
   "eveningDigest": {
