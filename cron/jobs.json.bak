@@ -39,7 +39,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771461040943,
+      "updatedAtMs": 1771462808428,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -58,10 +58,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771462800000,
-        "lastRunAtMs": 1771461000024,
+        "nextRunAtMs": 1771464600000,
+        "lastRunAtMs": 1771462800004,
         "lastStatus": "ok",
-        "lastDurationMs": 40919,
+        "lastDurationMs": 8424,
         "consecutiveErrors": 0
       }
     },
