@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771465401764,
+    "updatedAt": 1771465436040,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -330,16 +330,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 362563,
-    "outputTokens": 2332,
-    "totalTokens": 241294,
+    "inputTokens": 116765,
+    "outputTokens": 976,
+    "totalTokens": 116765,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771465340847,
+      "generatedAt": 1771465401898,
       "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
       "sessionKey": "agent:main:main",
       "provider": "google",
