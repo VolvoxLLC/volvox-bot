@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771464515138,
+    "updatedAt": 1771464987048,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -330,16 +330,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 234748,
-    "outputTokens": 37,
-    "totalTokens": 227174,
+    "inputTokens": 116769,
+    "outputTokens": 659,
+    "totalTokens": 225999,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771464184415,
+      "generatedAt": 1771464515258,
       "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -940,7 +940,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
-    "updatedAt": 1771463783853,
+    "updatedAt": 1771464630594,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -955,12 +955,12 @@
     "lastTo": "channel:1466215603995152477",
     "lastAccountId": "pip",
     "origin": {
-      "label": "discord:191633014441115648",
-      "provider": "discord",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
       "surface": "discord",
       "chatType": "direct",
-      "from": "discord:191633014441115648",
-      "to": "user:191633014441115648",
+      "from": "channel:1466215603995152477",
+      "to": "channel:1466215603995152477",
       "accountId": "pip"
     },
     "sessionFile": "/home/bill/.openclaw/agents/main/sessions/94272ff2-523b-45de-8f72-988b595dd872.jsonl",
@@ -1166,16 +1166,16 @@
     },
     "modelOverride": "glm-5",
     "providerOverride": "zai",
-    "inputTokens": 65504,
-    "outputTokens": 287,
-    "totalTokens": 123755,
+    "inputTokens": 65858,
+    "outputTokens": 255,
+    "totalTokens": 65858,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771463126074,
+      "generatedAt": 1771464627217,
       "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -1488,8 +1488,8 @@
         ]
       }
     },
-    "lastHeartbeatText": "8 PM Usage Check:\n\n🐣 **Codex:** 0% used. Sitting pretty with full capacity.\n🥚 **Claude:** Still in the penalty box for another 25 minutes. Should be back at 8:30 PM.\n\n**Heads up:** That Codex OAuth token expires in about 46 hours (Feb 20). 🐣",
-    "lastHeartbeatSentAt": 1771463125922,
+    "lastHeartbeatText": "8:30 PM Heartbeat is all clear. 🐣\n\n🐣 **Claude:** Cooldown is over — back online.\n🐣 **Codex:** 0% used.\n📦 **Package:** UPS Humidifier return reached the facility at 6:32 PM.\n\nEverything is green. 👍Usage check (10 PM):\n\n• **Codex:** 0% — full capacity\n• **Claude:** Rate limited, back online in ~1 hour (11 PM)\n\nOAuth token expires Feb 20 (~1.5 days). 🐣_Goodnight Bill!_ 🌙🐣\n\nI've finished the final rounds and prep for tomorrow. Here's the 10 PM snapshot:\n\n✅ **Backup:** Git auto-backup success (`745f9d2`).\n✅ **Comms:** Gmail watches renewed; no new urgent alerts.\n✅ **Package:** Amazon return reached the UPS facility (6:32 PM).\n✅ **Usage:** 7-day windows still at 100%, but 5h windows are clear.\n\nEverything is secure. See you in the morning for the 9 AM digest! 🐣💤",
+    "lastHeartbeatSentAt": 1771464627082,
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
@@ -2723,7 +2723,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771462800024,
+    "updatedAt": 1771464600034,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2928,14 +2928,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 14914,
-    "outputTokens": 59,
-    "totalTokens": 23234,
+    "inputTokens": 15063,
+    "outputTokens": 72,
+    "totalTokens": 23383,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
     "sessionId": "eabda209-70eb-43e4-bce9-7d0e0885a69b",
-    "updatedAt": 1771462800024,
+    "updatedAt": 1771464600034,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -3140,9 +3140,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 14914,
-    "outputTokens": 59,
-    "totalTokens": 23234,
+    "inputTokens": 15063,
+    "outputTokens": 72,
+    "totalTokens": 23383,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
