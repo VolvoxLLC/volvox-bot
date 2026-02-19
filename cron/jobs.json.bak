@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771479038654,
+      "updatedAtMs": 1771481386802,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,12 +63,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771480800000,
-        "lastRunAtMs": 1771479000010,
-        "lastStatus": "ok",
-        "lastDurationMs": 38644,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771480800004
+        "nextRunAtMs": 1771482600000,
+        "lastRunAtMs": 1771480800005,
+        "lastStatus": "error",
+        "lastDurationMs": 586797,
+        "consecutiveErrors": 1,
+        "lastError": "Error: cron: job execution timed out"
       }
     },
     {
@@ -115,7 +115,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771479917315,
+      "updatedAtMs": 1771481714617,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -135,12 +135,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771480800000,
-        "lastRunAtMs": 1771479900010,
+        "nextRunAtMs": 1771482600000,
+        "lastRunAtMs": 1771481700008,
         "lastStatus": "ok",
-        "lastDurationMs": 17305,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771480800004
+        "lastDurationMs": 14609,
+        "consecutiveErrors": 0
       }
     },
     {

@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771481261572,
+    "updatedAt": 1771482046756,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -940,7 +940,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
-    "updatedAt": 1771481397206,
+    "updatedAt": 1771481466004,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -1166,16 +1166,16 @@
     },
     "modelOverride": "glm-5",
     "providerOverride": "zai",
-    "inputTokens": 94341,
-    "outputTokens": 86,
-    "totalTokens": 94341,
+    "inputTokens": 287245,
+    "outputTokens": 1587,
+    "totalTokens": 188654,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771479039041,
+      "generatedAt": 1771481397311,
       "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -1488,8 +1488,8 @@
         ]
       }
     },
-    "lastHeartbeatText": "12:30 AM Heartbeat check — everything is quiet and secure. 🐣💤\n\n🐣 **Claude:** Cooldown is over, back online.\n🐣 **Codex:** 0% used, full capacity.\n✅ **Backup:** Most recent backup at midnight (`f1d0b9d`).\n\nSystems are green. Sleep well, Bill! 🐣🌙",
-    "lastHeartbeatSentAt": 1771479038904,
+    "lastHeartbeatText": "1 AM Heartbeat check — everything is quiet and secure. 🐣💤\n\n- ✅ **Backups:** Git auto-backup success (`3c70f93`).\n- ✅ **Usage:** 0% (5h) for Claude/Codex. Still capped on 7-day windows.\n- ✅ **Status:** All systems green.\n\nSleep well, Bill! 🐣🌙💤",
+    "lastHeartbeatSentAt": 1771481397197,
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0

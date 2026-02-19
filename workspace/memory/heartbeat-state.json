@@ -1,43 +1,43 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T06:07:00Z",
+    "lastRun": "2026-02-19T06:10:00Z",
     "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T06:07:00Z",
+    "lastRun": "2026-02-19T06:10:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T06:07:00Z",
+    "lastRun": "2026-02-19T06:10:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-19T05:18:00Z",
-    "note": "✅ Daily morning OAuth token refresh success via pty."
+    "lastRun": "2026-02-18T20:39:00Z",
+    "note": "✅ Token refresh attempted via pty."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T06:07:00Z",
-    "note": "✅ Auto-backup success (b151669)."
+    "lastRun": "2026-02-19T06:10:00Z",
+    "note": "✅ Auto-backup to main successful (3c70f93)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T05:12:00Z",
-    "dueTodayCount": 10,
+    "lastRun": "2026-02-19T03:00:00Z",
+    "dueTodayCount": 13,
     "overdueCount": 0,
-    "note": "10 tasks due today."
+    "note": "13 tasks due today."
   },
   "morningUpdates": {
     "lastRun": "2026-02-18T14:00:00Z",
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T05:40:00Z",
+    "lastRun": "2026-02-18T22:30:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,46 +53,46 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-19T05:19:00Z",
+    "lastRun": "2026-02-18T22:30:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-19T05:19:00Z",
+    "lastRun": "2026-02-18T22:30:00Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T05:40:00Z",
-    "note": "✅ Checked."
+    "lastRun": "2026-02-18T22:30:00Z",
+    "note": "✅ No urgent emails."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-19T05:19:00Z",
-    "note": "✅ Checked."
+    "lastRun": "2026-02-18T22:30:00Z",
+    "note": "✅ No upcoming events in next 2h."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T05:12:00Z",
+    "lastRun": "2026-02-18T22:30:00Z",
     "inTransit": 1,
-    "note": "✅ No new updates since 6:32 PM."
+    "note": "✅ No new updates."
   },
   "openclawPR": {
-    "lastRun": "2026-02-17T21:47:00Z",
+    "lastRun": "2026-02-18T22:30:00Z",
     "prNumber": 13672,
     "state": "MERGED",
     "note": "✅ PR #13672 merged."
   },
   "billsPRMonitoring": {
-    "lastRun": "2026-02-19T05:12:00Z",
+    "lastRun": "2026-02-18T22:30:00Z",
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-19T06:05:00Z",
-    "note": "Point Pleasant, NJ: 🌫 +38°F."
+    "lastRun": "2026-02-19T06:10:00Z",
+    "note": "Point Pleasant, NJ: checked."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-19T05:19:00Z",
-    "note": "Check-in completed."
+    "lastRun": "2026-02-19T06:10:00Z",
+    "note": "1 AM check-in completed."
   },
   "eveningDigest": {
-    "lastRun": "2026-02-19T04:01:00Z",
-    "note": "Sent at 11:01 PM."
+    "lastRun": "2026-02-19T02:30:00Z",
+    "note": "Sent 9:30 PM digest (Reddit roundup manually fixed)."
   }
 }
