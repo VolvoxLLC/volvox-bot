@@ -1,15 +1,15 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T13:31:00Z",
+    "lastRun": "2026-02-19T14:00:00Z",
     "note": "✅ Two-way sync: pushed heartbeat state."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T13:31:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "✅ Checked: 5h usage at 0%."
+    "note": "🚨 7-day window exhausted (100%). Checked via pty."
   },
   "codexUsage": {
     "lastRun": "2026-02-19T12:39:00Z",
@@ -23,21 +23,21 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T13:30:00Z",
-    "note": "✅ Auto-backup to main successful (427412f)."
+    "lastRun": "2026-02-19T14:00:00Z",
+    "note": "✅ Auto-backup to main successful (3d30106)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T13:31:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "10 overdue tasks found."
   },
   "morningUpdates": {
-    "lastRun": "2026-02-18T14:00:00Z",
-    "note": "Morning checks completed."
+    "lastRun": "2026-02-19T14:00:00Z",
+    "note": "Morning checks completed. Updates available: @doist/todoist-cli, mem0ai."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T13:31:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,15 +53,15 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-19T13:31:00Z",
+    "lastRun": "2026-02-19T10:00:30Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-19T13:31:00Z",
+    "lastRun": "2026-02-19T10:00:30Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T13:31:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
@@ -69,9 +69,9 @@
     "note": "✅ No upcoming events in next 2h."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T12:39:00Z",
-    "inTransit": 2,
-    "note": "✅ 2 packages synced."
+    "lastRun": "2026-02-19T14:00:00Z",
+    "inTransit": 1,
+    "note": "✅ Package #2 in transit: Departed from Facility."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -88,11 +88,11 @@
     "note": "Point Pleasant, NJ: checked."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-19T08:21:00Z",
-    "note": "3 AM check-in completed."
+    "lastRun": "2026-02-19T14:01:00Z",
+    "note": "9 AM morning digest sent to Discord."
   },
-  "eveningDigest": {
-    "lastRun": "2026-02-19T02:30:00Z",
-    "note": "Sent 9:30 PM digest (Reddit roundup manually fixed)."
+  "morningDigest": {
+    "lastRun": "2026-02-19T14:01:00Z",
+    "note": "Sent: 10 overdue tasks, r/claude top posts, rain forecast."
   }
 }

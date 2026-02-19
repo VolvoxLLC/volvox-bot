@@ -67,7 +67,8 @@
         "lastRunAtMs": 1771507800014,
         "lastStatus": "ok",
         "lastDurationMs": 15476,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771509600009
       }
     },
     {
@@ -137,7 +138,8 @@
         "lastRunAtMs": 1771508700016,
         "lastStatus": "ok",
         "lastDurationMs": 58498,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771509600009
       }
     },
     {
@@ -167,7 +169,8 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771509600000
+        "nextRunAtMs": 1771509600000,
+        "runningAtMs": 1771509600009
       }
     }
   ]
