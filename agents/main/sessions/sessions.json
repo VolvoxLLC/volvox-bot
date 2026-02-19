@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771517195495,
+    "updatedAt": 1771517430662,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,15 +329,15 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 49760,
-    "outputTokens": 290,
+    "inputTokens": 78501,
+    "outputTokens": 187,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771517105599,
+      "generatedAt": 1771517195588,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -690,7 +690,7 @@
         ]
       }
     },
-    "totalTokens": 62712
+    "totalTokens": 64751
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
