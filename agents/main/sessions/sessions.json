@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "384dea0b-42b4-43ce-9124-5180658d56fb",
-    "updatedAt": 1771482096832,
+    "updatedAt": 1771483716590,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -940,7 +940,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
-    "updatedAt": 1771482607683,
+    "updatedAt": 1771482643414,
     "systemSent": true,
     "abortedLastRun": false,
     "thinkingLevel": "high",
@@ -1166,16 +1166,16 @@
     },
     "modelOverride": "glm-5",
     "providerOverride": "zai",
-    "inputTokens": 287245,
-    "outputTokens": 1587,
-    "totalTokens": 188654,
+    "inputTokens": 294728,
+    "outputTokens": 1675,
+    "totalTokens": 191124,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771481397311,
+      "generatedAt": 1771482607781,
       "sessionId": "94272ff2-523b-45de-8f72-988b595dd872",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -1488,8 +1488,8 @@
         ]
       }
     },
-    "lastHeartbeatText": "1 AM Heartbeat check — everything is quiet and secure. 🐣💤\n\n- ✅ **Backups:** Git auto-backup success (`3c70f93`).\n- ✅ **Usage:** 0% (5h) for Claude/Codex. Still capped on 7-day windows.\n- ✅ **Status:** All systems green.\n\nSleep well, Bill! 🐣🌙💤",
-    "lastHeartbeatSentAt": 1771481397197,
+    "lastHeartbeatText": "1:30 AM Heartbeat check — systems are nominal. 🐣💤\n\n- ✅ **Backup:** Git auto-backup success (`53d847e`).\n- ✅ **Usage:** Both Claude and Codex are at 0% for the 5-hour window.\n- ✅ **Health:** All Gmail and SendBlue proxies are running.\n\nGo back to sleep, Bill. I've got this. 🐣🌙💤",
+    "lastHeartbeatSentAt": 1771482607674,
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
