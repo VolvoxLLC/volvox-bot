@@ -1,50 +1,50 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "note": "✅ Two-way sync completed."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "5h: 0% (Online) | 7d: 100% (resets Feb 22)"
+    "note": "5h: 0% | 7d: 100% (Critical)"
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "5h: 0% (Online) | 7d: 100% (resets Feb 24)"
+    "note": "5h: 0% | 7d: 100% (Critical)"
   },
   "claudeTokenRefresh": {
     "lastRun": "2026-02-18T20:39:00Z",
     "note": "✅ Token refresh attempted via pty."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T00:30:00Z",
-    "note": "✅ Auto-backup completed (9697e28)."
+    "lastRun": "2026-02-19T00:32:00Z",
+    "note": "✅ Auto-backup completed (8140cc6)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T00:30:00Z",
-    "dueTodayCount": 13,
-    "overdueCount": 0,
-    "note": "13 tasks due today."
+    "lastRun": "2026-02-19T00:32:00Z",
+    "dueTodayCount": 0,
+    "overdueCount": 10,
+    "note": "⚠️ 10 overdue tasks remain."
   },
   "morningUpdates": {
     "lastRun": "2026-02-18T14:00:00Z",
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "personal": { "port": 8788, "status": "✅ running" },
     "volvox": { "port": 8789, "status": "✅ running" },
     "chirico": { "port": 8790, "status": "✅ running" },
-    "note": "✅ All watches healthy."
+    "note": "✅ All watches healthy (refreshed today)."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -52,15 +52,15 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "note": "✅ No urgent emails."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "inTransit": 1,
     "note": "✅ 1 package in transit (Departed from Facility)."
   },
@@ -75,11 +75,11 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "note": "Point Pleasant, NJ: ☁️ +41°F."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-19T00:30:00Z",
+    "lastRun": "2026-02-19T00:32:00Z",
     "note": "Check-in completed."
   },
   "eveningDigest": {
