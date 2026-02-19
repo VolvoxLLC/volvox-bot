@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771510112605,
+    "updatedAt": 1771510566168,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 228226,
-    "outputTokens": 1462,
-    "totalTokens": 59600,
+    "inputTokens": 284977,
+    "outputTokens": 1505,
+    "totalTokens": 117821,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771509986624,
+      "generatedAt": 1771510112715,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -694,7 +694,7 @@
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
-    "updatedAt": 1771510114772,
+    "updatedAt": 1771510169689,
     "skillsSnapshot": {
       "prompt": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>clawhub</name>\n    <description>Use the ClawHub CLI to search, install, update, and publish agent skills from clawhub.com. Use when you need to fetch new skills on the fly, sync installed skills to latest or a specific version, or publish new/updated skill folders with the npm-installed clawhub CLI.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/clawhub/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>coding-agent</name>\n    <description>Delegate coding tasks to Codex, Claude Code, or Pi agents via background process. Use when: (1) building/creating new features or apps, (2) reviewing PRs (spawn in temp dir), (3) refactoring large codebases, (4) iterative coding that needs file exploration. NOT for: simple one-liner fixes (just edit), reading code (use read tool), or any work in ~/clawd workspace (never spawn agents here). Requires a bash tool that supports pty:true.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/coding-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>discord</name>\n    <description>Discord ops via the message tool (channel=discord).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/discord/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gh-issues</name>\n    <description>Fetch GitHub issues, spawn sub-agents to implement fixes and open PRs, then monitor and address PR review comments. Usage: /gh-issues [owner/repo] [--label bug] [--limit 5] [--milestone v1.0] [--assignee @me] [--fork user/repo] [--watch] [--interval 5] [--reviews-only] [--cron] [--dry-run] [--model glm-5] [--notify-channel -1002381931352]</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gh-issues/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>github</name>\n    <description>GitHub operations via `gh` CLI: issues, PRs, CI runs, code review, API queries. Use when: (1) checking PR status or CI, (2) creating/commenting on issues, (3) listing/filtering PRs or issues, (4) viewing run logs. NOT for: complex web UI interactions requiring manual browser flows (use browser tooling when available), bulk operations across many repos (script with gh api), or when gh auth is not configured.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/github/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gog</name>\n    <description>Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gog/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>healthcheck</name>\n    <description>Host security hardening and risk-tolerance configuration for OpenClaw deployments. Use when a user asks for security audits, firewall/SSH/update hardening, risk posture, exposure review, OpenClaw cron scheduling for periodic checks, or version status checks on a machine running OpenClaw (laptop, workstation, Pi, VPS).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/healthcheck/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>mcporter</name>\n    <description>Use the mcporter CLI to list, configure, auth, and call MCP servers/tools directly (HTTP or stdio), including ad-hoc servers, config edits, and CLI/type generation.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/mcporter/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-banana-pro</name>\n    <description>Generate or edit images via Gemini 3 Pro Image (Nano Banana Pro).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/nano-banana-pro/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-pdf</name>\n    <description>Edit PDFs with natural-language instructions using the nano-pdf CLI.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/nano-pdf/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-image-gen</name>\n    <description>Batch-generate images via OpenAI Images API. Random prompt sampler + `index.html` gallery.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-image-gen/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-whisper-api</name>\n    <description>Transcribe audio via OpenAI Audio Transcriptions API (Whisper).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-whisper-api/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>skill-creator</name>\n    <description>Create or update AgentSkills. Use when designing, structuring, or packaging skills with scripts, references, and assets.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/skill-creator/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>summarize</name>\n    <description>Summarize or extract text/transcripts from URLs, podcasts, and local files (great fallback for “transcribe this YouTube/video”).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/summarize/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>tmux</name>\n    <description>Remote-control tmux sessions for interactive CLIs by sending keystrokes and scraping pane output.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/tmux/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>voice-call</name>\n    <description>Start voice calls via the OpenClaw voice-call plugin.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/voice-call/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>weather</name>\n    <description>Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/weather/SKILL.md</location>\n  </skill>\n</available_skills>",
       "skills": [
@@ -899,7 +899,15 @@
     },
     "lastChannel": "discord",
     "channel": "discord",
-    "groupId": "191633014441115648"
+    "groupId": "191633014441115648",
+    "modelProvider": "zai",
+    "model": "glm-5",
+    "contextTokens": 204800,
+    "abortedLastRun": false,
+    "inputTokens": 96070,
+    "outputTokens": 374,
+    "totalTokens": 57132,
+    "totalTokensFresh": true
   },
   "agent:main:discord:channel:1466215603995152477": {
     "chatType": "channel",
@@ -925,7 +933,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
-    "updatedAt": 1771509986497,
+    "updatedAt": 1771510195604,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -936,10 +944,10 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "discord:191633014441115648",
-      "provider": "discord",
-      "from": "discord:191633014441115648",
-      "to": "user:191633014441115648",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
+      "from": "channel:1466215603995152477",
+      "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -1255,20 +1263,20 @@
       ],
       "version": 0
     },
-    "inputTokens": 210472,
-    "outputTokens": 1270,
-    "totalTokens": 114786,
+    "inputTokens": 59825,
+    "outputTokens": 2090,
+    "totalTokens": 59825,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771509790000,
+      "generatedAt": 1771510170442,
       "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -1277,9 +1285,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 84073,
+        "chars": 84093,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 20614
+        "nonProjectContextChars": 20634
       },
       "injectedWorkspaceFiles": [
         {
@@ -1462,7 +1470,7 @@
       },
       "tools": {
         "listChars": 2170,
-        "schemaChars": 20143,
+        "schemaChars": 19752,
         "entries": [
           {
             "name": "read",
@@ -1485,19 +1493,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -1515,7 +1523,7 @@
           {
             "name": "cron",
             "summaryChars": 2689,
-            "schemaChars": 662,
+            "schemaChars": 581,
             "propertiesCount": 13
           },
           {
@@ -1545,31 +1553,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -1581,18 +1589,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -1611,7 +1619,7 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
@@ -1621,7 +1629,9 @@
     "lastAccountId": "pip",
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
-    "authProfileOverrideCompactionCount": 0
+    "authProfileOverrideCompactionCount": 0,
+    "lastHeartbeatText": "Here is your official 9 AM Digest. I summarized the gist of it a moment ago, but here are the full details and Reddit links:\n\n---\n\n## ☀️ Weather - Point Pleasant NJ 08742\n\n**Today:** Cloudy, high near 42°F. East wind 5-10 mph.\n**Tonight:** Rain likely (mainly after midnight), low around 35°F. 60% chance of precipitation.\n**Friday:** Rain expected (100% chance), high near 43°F.\n**Looking ahead:** Possible nor'easter Sunday/Monday with snow likely Sunday night.\n\n---\n\n## ✅ Tasks - Overdue Items\n\nYou have **10 overdue tasks** from Feb 14-15:\n- Create reply bot to make it easy to quickly reply to tweets\n- Daily reflections\n- Set up GA4 analytics integration `@openclaw`\n- Make business cards `@personal`\n- Drop off Amazon humidifier return at UPS Store (602 Higgins Ave, Brielle) - $5.18 refund `@openclaw`\n- Add the Decision Jar article in the Volvox blog\n- Finish 12 Step Program tab - Daily Reflections feature `@openclaw`\n- Issue: Finish 12 Step Program Tab - Daily Reflections Feature (GitHub)\n- PR: feat(landing): comprehensive landing page redesign (Decision Jar)\n- Set up secret & API key manager for Pip `@openclaw`\n\n---\n\n## 🔥 Reddit AI Highlights\n\n**r/claude**\n- **Claude Hitting Limit After 5 Messages, Even on Paid Plan** (51 pts)\n- [Link](https://reddit.com/r/claude/comments/1r84vil)\n\n**r/ClaudeCode**\n- **Integrated Operating Environment for Claude Code** - A detailed workflow combining first principles + spec-driven + test-driven + atomic tasks. Commands include `/arm` (brief extraction), `/design` (analysis), `/ar` (adversarial review).\n- [Link](https://reddit.com/r/ClaudeCode)\n\n**r/openai**\n- **Presented without comment** (632 pts)\n- [Link](https://reddit.com/r/OpenAI)\n\n**r/codex**\n- **gpt-5.3-codex-h** ... (truncated)\n\n---\n*Digest complete. I'm staying quiet now unless you need something. 🐣*",
+    "lastHeartbeatSentAt": 1771510170303
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {

@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771507815490,
+      "updatedAtMs": 1771509645723,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,12 +63,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771509600000,
-        "lastRunAtMs": 1771507800014,
-        "lastStatus": "ok",
-        "lastDurationMs": 15476,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771509600009
+        "nextRunAtMs": 1771511400000,
+        "lastRunAtMs": 1771509600010,
+        "lastStatus": "error",
+        "lastDurationMs": 45713,
+        "consecutiveErrors": 1,
+        "lastError": "cron announce delivery failed"
       }
     },
     {
@@ -114,7 +114,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771508758514,
+      "updatedAtMs": 1771510523172,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,12 +134,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771509600000,
-        "lastRunAtMs": 1771508700016,
+        "nextRunAtMs": 1771511400000,
+        "lastRunAtMs": 1771510500030,
         "lastStatus": "ok",
-        "lastDurationMs": 58498,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771509600009
+        "lastDurationMs": 23142,
+        "consecutiveErrors": 0
       }
     },
     {
@@ -150,7 +149,7 @@
       "description": "Daily morning summary at 9 AM with weather, tasks, calendar, Reddit AI, and Product Hunt",
       "enabled": true,
       "createdAtMs": 1771470392107,
-      "updatedAtMs": 1771470392107,
+      "updatedAtMs": 1771510129725,
       "schedule": {
         "kind": "cron",
         "expr": "0 9 * * *",
@@ -169,8 +168,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771509600000,
-        "runningAtMs": 1771509600009
+        "nextRunAtMs": 1771596000000,
+        "lastRunAtMs": 1771509723288,
+        "lastStatus": "error",
+        "lastDurationMs": 406437,
+        "lastError": "cron announce delivery failed",
+        "consecutiveErrors": 1
       }
     }
   ]
