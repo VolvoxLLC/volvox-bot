@@ -68,7 +68,7 @@
         "lastStatus": "error",
         "lastDurationMs": 34789,
         "consecutiveErrors": 1,
-        "lastError": "cron announce delivery failed"
+        "runningAtMs": 1771522200009
       }
     },
     {
@@ -140,7 +140,7 @@
         "lastStatus": "error",
         "lastDurationMs": 68622,
         "consecutiveErrors": 1,
-        "lastError": "Error: All models failed (2): anthropic/claude-opus-4-6: No available auth profile for anthropic (all in cooldown or unavailable). (rate_limit) | zai/glm-5: LLM request timed out. (timeout)"
+        "runningAtMs": 1771522200009
       }
     },
     {
