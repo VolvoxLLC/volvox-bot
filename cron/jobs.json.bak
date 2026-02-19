@@ -100,6 +100,42 @@
         "consecutiveErrors": 5,
         "lastError": "cron announce delivery failed"
       }
+    },
+    {
+      "id": "041c005d-992e-440c-8521-c014a53ef7fb",
+      "agentId": "build",
+      "sessionKey": "agent:build:discord:pip-build:direct:191633014441115648",
+      "name": "PR Review Patrol (High Frequency)",
+      "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
+      "enabled": true,
+      "createdAtMs": 1771465784783,
+      "updatedAtMs": 1771465848776,
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/10 * * * *",
+        "tz": "America/New_York"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Check bills-bot PRs for unresolved review threads. Only check PRs authored by BillChirico. If any PR has unresolved threads, spawn ONE sub-agent per PR to fix them. Use the spawn template from MEMORY.md. If no unresolved threads, respond with HEARTBEAT_OK.",
+        "thinking": "high",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "delivery": {
+        "mode": "announce",
+        "to": "191633014441115648",
+        "channel": "discord"
+      },
+      "state": {
+        "nextRunAtMs": 1771466400000,
+        "lastRunAtMs": 1771465800003,
+        "lastStatus": "error",
+        "lastDurationMs": 48773,
+        "lastError": "cron announce delivery failed",
+        "consecutiveErrors": 1
+      }
     }
   ]
 }

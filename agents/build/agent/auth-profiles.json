@@ -39,22 +39,22 @@
   "usageStats": {
     "anthropic:default": {
       "lastUsed": 1771385979672,
-      "errorCount": 8,
-      "lastFailureAt": 1771451266149,
+      "errorCount": 9,
+      "lastFailureAt": 1771465736633,
       "failureCounts": {
         "auth": 5,
-        "rate_limit": 3
+        "rate_limit": 4
       },
-      "cooldownUntil": 1771454866149
+      "cooldownUntil": 1771469336633
     },
     "openai-codex:default": {
       "lastUsed": 1771407982883,
-      "errorCount": 5,
-      "lastFailureAt": 1771451241917,
+      "errorCount": 6,
+      "lastFailureAt": 1771465711007,
       "failureCounts": {
-        "rate_limit": 5
+        "rate_limit": 6
       },
-      "cooldownUntil": 1771454841917
+      "cooldownUntil": 1771469311007
     },
     "google:default": {
       "lastUsed": 1771307051909,
@@ -68,7 +68,7 @@
     "zai:default": {
       "errorCount": 0,
       "lastFailureAt": 1771390539890,
-      "lastUsed": 1771451404357
+      "lastUsed": 1771465997701
     }
   }
 }
