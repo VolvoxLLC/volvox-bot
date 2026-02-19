@@ -1,15 +1,15 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T12:39:00Z",
+    "lastRun": "2026-02-19T13:21:00Z",
     "note": "✅ Two-way sync: pushed heartbeat state."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T12:39:00Z",
+    "lastRun": "2026-02-19T13:21:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "🚨 7-day window exhausted (100%). Checked via pty."
+    "note": "🚨 7-day window exhausted (100%). Checked via script."
   },
   "codexUsage": {
     "lastRun": "2026-02-19T12:39:00Z",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T12:39:00Z",
-    "note": "✅ Auto-backup to main successful (2eb0646)."
+    "lastRun": "2026-02-19T13:21:00Z",
+    "note": "✅ Auto-backup to main successful (567d69d)."
   },
   "todoistSync": {
     "lastRun": "2026-02-19T12:39:00Z",
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T12:39:00Z",
+    "lastRun": "2026-02-19T13:21:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -65,13 +65,13 @@
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-19T13:00:00Z",
-    "note": "✅ No upcoming events in next 2h. Next notable: Court hearing Feb 25."
+    "lastRun": "2026-02-18T22:30:00Z",
+    "note": "✅ No upcoming events in next 2h."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T13:00:00Z",
-    "inTransit": 1,
-    "note": "✅ UPS pkg departed facility (normal progress)."
+    "lastRun": "2026-02-19T12:39:00Z",
+    "inTransit": 2,
+    "note": "✅ 2 packages synced."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
