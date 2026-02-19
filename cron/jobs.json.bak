@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771527636350,
+      "updatedAtMs": 1771529404184,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,10 +63,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771529400000,
-        "lastRunAtMs": 1771527600005,
+        "nextRunAtMs": 1771531200000,
+        "lastRunAtMs": 1771529400032,
         "lastStatus": "ok",
-        "lastDurationMs": 36345,
+        "lastDurationMs": 4152,
         "consecutiveErrors": 0
       }
     },
@@ -114,7 +114,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771528531940,
+      "updatedAtMs": 1771529430804,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,10 +134,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771529400000,
-        "lastRunAtMs": 1771528500005,
+        "nextRunAtMs": 1771530300000,
+        "lastRunAtMs": 1771529404184,
         "lastStatus": "ok",
-        "lastDurationMs": 31935,
+        "lastDurationMs": 26620,
         "consecutiveErrors": 0
       }
     },
@@ -174,29 +174,6 @@
         "lastDurationMs": 406437,
         "lastError": "cron announce delivery failed",
         "consecutiveErrors": 1
-      }
-    },
-    {
-      "id": "33576ec3-de85-44e9-b5b8-13eec8a292cb",
-      "agentId": "main",
-      "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "name": "Eleftherias Contract Reminder",
-      "enabled": true,
-      "deleteAfterRun": true,
-      "createdAtMs": 1771528889793,
-      "updatedAtMs": 1771528889793,
-      "schedule": {
-        "at": "2026-02-20T01:00:00.000Z",
-        "kind": "at"
-      },
-      "sessionTarget": "main",
-      "wakeMode": "now",
-      "payload": {
-        "kind": "systemEvent",
-        "text": "📝 Reminder: Work on the Eleftherias contract tonight!"
-      },
-      "state": {
-        "nextRunAtMs": 1771549200000
       }
     }
   ]
