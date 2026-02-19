@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771540238551,
+      "updatedAtMs": 1771543833967,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,10 +63,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771542000000,
-        "lastRunAtMs": 1771540200012,
+        "nextRunAtMs": 1771545600000,
+        "lastRunAtMs": 1771543800073,
         "lastStatus": "ok",
-        "lastDurationMs": 38539,
+        "lastDurationMs": 33894,
         "consecutiveErrors": 0
       }
     },
@@ -78,7 +78,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771535113604,
+      "updatedAtMs": 1771542488079,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -98,11 +98,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771542257126,
-        "lastRunAtMs": 1771535057131,
+        "nextRunAtMs": 1771549457126,
+        "lastRunAtMs": 1771542257184,
         "lastStatus": "error",
-        "lastDurationMs": 56473,
-        "consecutiveErrors": 4,
+        "lastDurationMs": 230895,
+        "consecutiveErrors": 5,
         "lastError": "cron announce delivery failed"
       }
     },
@@ -114,7 +114,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771541141629,
+      "updatedAtMs": 1771543912690,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,11 +134,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771542000000,
-        "lastRunAtMs": 1771541100030,
-        "lastStatus": "ok",
-        "lastDurationMs": 41599,
-        "consecutiveErrors": 0
+        "nextRunAtMs": 1771544700000,
+        "lastRunAtMs": 1771543833967,
+        "lastStatus": "error",
+        "lastDurationMs": 78723,
+        "consecutiveErrors": 3,
+        "lastError": "Error: All models failed (2): anthropic/claude-opus-4-6: No available auth profile for anthropic (all in cooldown or unavailable). (rate_limit) | zai/glm-5: LLM request timed out. (timeout)"
       }
     },
     {
