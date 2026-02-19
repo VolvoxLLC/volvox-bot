@@ -73,7 +73,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771455920098,
+      "updatedAtMs": 1771463102660,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -93,11 +93,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771463057126,
-        "lastRunAtMs": 1771455857138,
+        "nextRunAtMs": 1771470257126,
+        "lastRunAtMs": 1771463057130,
         "lastStatus": "error",
-        "lastDurationMs": 62960,
-        "consecutiveErrors": 4,
+        "lastDurationMs": 45530,
+        "consecutiveErrors": 5,
         "lastError": "cron announce delivery failed"
       }
     }
