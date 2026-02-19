@@ -44,7 +44,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771536611152,
+      "updatedAtMs": 1771538406487,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,11 +63,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771538400000,
-        "lastRunAtMs": 1771536600050,
-        "lastStatus": "ok",
-        "lastDurationMs": 11102,
-        "consecutiveErrors": 0
+        "nextRunAtMs": 1771540200000,
+        "lastRunAtMs": 1771538400019,
+        "lastStatus": "error",
+        "lastDurationMs": 6468,
+        "consecutiveErrors": 1,
+        "lastError": "Error: All models failed (3): openai-codex/gpt-5.3-codex: ⚠️ API rate limit reached. Please try again later. (rate_limit) | anthropic/claude-opus-4-6: Provider anthropic is in cooldown (all profiles unavailable) (rate_limit) | zai/glm-5: Provider zai is in cooldown (all profiles unavailable) (rate_limit)"
       }
     },
     {
@@ -114,7 +115,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771536630195,
+      "updatedAtMs": 1771538406604,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,11 +135,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771537500000,
-        "lastRunAtMs": 1771536611163,
-        "lastStatus": "ok",
-        "lastDurationMs": 19032,
-        "consecutiveErrors": 0
+        "nextRunAtMs": 1771539300000,
+        "lastRunAtMs": 1771538406487,
+        "lastStatus": "error",
+        "lastDurationMs": 117,
+        "consecutiveErrors": 1,
+        "lastError": "Error: All models failed (2): anthropic/claude-opus-4-6: No available auth profile for anthropic (all in cooldown or unavailable). (rate_limit) | zai/glm-5: No available auth profile for zai (all in cooldown or unavailable). (rate_limit)"
       }
     },
     {
