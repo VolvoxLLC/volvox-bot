@@ -1,7 +1,7 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T17:16:32Z",
+    "lastRun": "2026-02-19T18:44:00Z",
     "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
@@ -23,8 +23,12 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T17:16:32Z",
-    "note": "✅ Auto-backup to main successful (ee9f8a0)."
+    "lastRun": "2026-02-19T18:44:00Z",
+    "note": "✅ Auto-backup to main successful (a874471)."
+  },
+  "billCheckIn": {
+    "lastRun": "2026-02-19T18:44:00Z",
+    "note": "✅ DM'd Bill to check in."
   },
   "todoistSync": {
     "lastRun": "2026-02-19T15:17:00Z",
@@ -86,10 +90,6 @@
   "weatherCheck": {
     "lastRun": "2026-02-19T08:21:00Z",
     "note": "Point Pleasant, NJ: checked."
-  },
-  "billCheckIn": {
-    "lastRun": "2026-02-19T15:17:00Z",
-    "note": "Bundled Gmail/Proxy health check."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
