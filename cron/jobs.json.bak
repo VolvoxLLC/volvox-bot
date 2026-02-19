@@ -175,6 +175,29 @@
         "lastError": "cron announce delivery failed",
         "consecutiveErrors": 1
       }
+    },
+    {
+      "id": "33576ec3-de85-44e9-b5b8-13eec8a292cb",
+      "agentId": "main",
+      "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
+      "name": "Eleftherias Contract Reminder",
+      "enabled": true,
+      "deleteAfterRun": true,
+      "createdAtMs": 1771528889793,
+      "updatedAtMs": 1771528889793,
+      "schedule": {
+        "at": "2026-02-20T01:00:00.000Z",
+        "kind": "at"
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "📝 Reminder: Work on the Eleftherias contract tonight!"
+      },
+      "state": {
+        "nextRunAtMs": 1771549200000
+      }
     }
   ]
 }

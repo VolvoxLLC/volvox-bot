@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771528590792,
+    "updatedAt": 1771528909920,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,15 +329,15 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 7269,
-    "outputTokens": 522,
+    "inputTokens": 61044,
+    "outputTokens": 287,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771528524593,
+      "generatedAt": 1771528590905,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -690,7 +690,7 @@
         ]
       }
     },
-    "totalTokens": 72741
+    "totalTokens": 72311
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
@@ -933,7 +933,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
-    "updatedAt": 1771527975896,
+    "updatedAt": 1771528909851,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -944,9 +944,9 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "channel:1466215603995152477",
-      "provider": "cron-event",
-      "from": "channel:1466215603995152477",
+      "label": "bapes user id:191633014441115648",
+      "provider": "discord",
+      "from": "discord:191633014441115648",
       "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
@@ -1263,16 +1263,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 52033,
-    "outputTokens": 134,
-    "totalTokens": 56001,
+    "inputTokens": 140955,
+    "outputTokens": 725,
+    "totalTokens": 57197,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771527941702,
+      "generatedAt": 1771528813263,
       "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -1285,9 +1285,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 84073,
+        "chars": 84301,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 20614
+        "nonProjectContextChars": 20842
       },
       "injectedWorkspaceFiles": [
         {
@@ -1470,7 +1470,7 @@
       },
       "tools": {
         "listChars": 2170,
-        "schemaChars": 20143,
+        "schemaChars": 20131,
         "entries": [
           {
             "name": "read",
@@ -1528,8 +1528,8 @@
           },
           {
             "name": "message",
-            "summaryChars": 471,
-            "schemaChars": 7931,
+            "summaryChars": 478,
+            "schemaChars": 7919,
             "propertiesCount": 85
           },
           {
@@ -1627,11 +1627,11 @@
     },
     "lastChannel": "discord",
     "lastAccountId": "pip",
-    "authProfileOverride": "google:default",
-    "authProfileOverrideSource": "auto",
-    "authProfileOverrideCompactionCount": 0,
     "lastHeartbeatText": "Same status. Claude Sunday, Codex Tuesday. 🐣",
-    "lastHeartbeatSentAt": 1771527941617
+    "lastHeartbeatSentAt": 1771527941617,
+    "authProfileOverride": "openai-codex:default",
+    "authProfileOverrideSource": "auto",
+    "authProfileOverrideCompactionCount": 0
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {
