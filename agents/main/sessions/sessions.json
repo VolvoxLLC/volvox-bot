@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771519489562,
+    "updatedAt": 1771519720596,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,19 +329,19 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 10090,
-    "outputTokens": 406,
+    "inputTokens": 233924,
+    "outputTokens": 646,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771518468987,
+      "generatedAt": 1771519489676,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -350,9 +350,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 84068,
+        "chars": 84088,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 20609
+        "nonProjectContextChars": 20629
       },
       "injectedWorkspaceFiles": [
         {
@@ -535,7 +535,7 @@
       },
       "tools": {
         "listChars": 2170,
-        "schemaChars": 20143,
+        "schemaChars": 19752,
         "entries": [
           {
             "name": "read",
@@ -558,19 +558,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -588,7 +588,7 @@
           {
             "name": "cron",
             "summaryChars": 2689,
-            "schemaChars": 662,
+            "schemaChars": 581,
             "propertiesCount": 13
           },
           {
@@ -618,31 +618,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -654,18 +654,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -684,13 +684,13 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
       }
     },
-    "totalTokens": 68216
+    "totalTokens": 155334
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
