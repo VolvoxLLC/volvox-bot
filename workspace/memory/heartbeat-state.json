@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T14:16:00Z",
+    "lastRun": "2026-02-20T14:20:00Z",
     "note": "✅ Two-way sync: pulled context; pushed heartbeat summary."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T14:11:00Z",
+    "lastRun": "2026-02-20T14:20:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -19,25 +19,25 @@
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-20T14:11:00Z",
-    "note": "✅ OAuth token refreshed via pty."
+    "lastRun": "2026-02-20T14:15:00Z",
+    "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T14:16:00Z",
-    "note": "✅ Auto-backup to main successful (c3cd918)."
+    "lastRun": "2026-02-20T14:20:00Z",
+    "note": "✅ Auto-backup to main successful (d50ee15)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T08:05:00Z",
+    "lastRun": "2026-02-20T14:10:00Z",
     "dueTodayCount": 0,
     "overdueCount": 11,
     "note": "11 overdue/today tasks."
   },
   "morningUpdates": {
-    "lastRun": "2026-02-20T14:15:00Z",
-    "note": "✅ Morning checks completed: protobuf outdated."
+    "lastRun": "2026-02-19T14:00:00Z",
+    "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T14:05:00Z",
+    "lastRun": "2026-02-20T14:16:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,7 +53,7 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T14:05:00Z",
+    "lastRun": "2026-02-20T14:16:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T14:09:00Z",
-    "note": "✅ Notified Bill of Das Menon email alert."
+    "lastRun": "2026-02-20T14:16:00Z",
+    "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T14:05:00Z",
+    "lastRun": "2026-02-20T14:16:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T14:15:00Z",
+    "lastRun": "2026-02-20T01:13:00Z",
     "inTransit": 1,
-    "note": "✅ Sync complete. No changes."
+    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,7 +84,7 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T14:05:00Z",
+    "lastRun": "2026-02-20T14:16:00Z",
     "note": "Point Pleasant, NJ: checked (Cloudy +37°F)."
   },
   "billCheckIn": {
