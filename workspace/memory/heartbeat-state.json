@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T00:43:00Z",
-    "note": "✅ Two-way sync: pushed heartbeat state."
+    "lastRun": "2026-02-20T00:53:00Z",
+    "note": "✅ Two-way sync: pulled and pushed heartbeat state."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T00:42:15Z",
+    "lastRun": "2026-02-20T00:53:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,11 +23,11 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T00:42:15Z",
-    "note": "✅ Auto-backup to main successful (dc850fa)."
+    "lastRun": "2026-02-20T00:53:00Z",
+    "note": "✅ Auto-backup to main successful (a282a93)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T00:43:00Z",
+    "lastRun": "2026-02-20T00:53:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "10 overdue tasks found."
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T00:43:00Z",
+    "lastRun": "2026-02-20T00:53:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,7 +53,7 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T00:43:00Z",
+    "lastRun": "2026-02-20T00:53:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,7 +61,7 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T00:43:00Z",
+    "lastRun": "2026-02-20T00:53:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
@@ -88,7 +88,7 @@
     "note": "Point Pleasant, NJ: checked."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-20T00:43:00Z",
+    "lastRun": "2026-02-19T15:17:00Z",
     "note": "Bundled Gmail/Proxy health check."
   },
   "eveningDigest": {
