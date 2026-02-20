@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771605433213,
+    "updatedAt": 1771605857515,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,20 +329,20 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 103656,
-    "outputTokens": 1512,
-    "totalTokens": 52574,
+    "inputTokens": 49900,
+    "outputTokens": 1006,
+    "totalTokens": 49900,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771605176115,
+      "generatedAt": 1771605487927,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -351,9 +351,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 83218,
+        "chars": 83238,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 19759
+        "nonProjectContextChars": 19779
       },
       "injectedWorkspaceFiles": [
         {
@@ -536,7 +536,7 @@
       },
       "tools": {
         "listChars": 1770,
-        "schemaChars": 19016,
+        "schemaChars": 18706,
         "entries": [
           {
             "name": "read",
@@ -559,19 +559,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -607,31 +607,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -643,18 +643,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -673,7 +673,7 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
