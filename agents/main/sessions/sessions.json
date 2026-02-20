@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771607490849,
+    "updatedAt": 1771609080591,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 2372,
-    "outputTokens": 616,
-    "totalTokens": 45291,
+    "inputTokens": 6357,
+    "outputTokens": 1679,
+    "totalTokens": 48253,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771606846799,
+      "generatedAt": 1771607841626,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -351,8 +351,8 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 83218,
-        "projectContextChars": 63459,
+        "chars": 82815,
+        "projectContextChars": 63056,
         "nonProjectContextChars": 19759
       },
       "injectedWorkspaceFiles": [
@@ -400,8 +400,8 @@
           "name": "HEARTBEAT.md",
           "path": "/home/bill/.openclaw/workspace/HEARTBEAT.md",
           "missing": false,
-          "rawChars": 10744,
-          "injectedChars": 10744,
+          "rawChars": 10341,
+          "injectedChars": 10341,
           "truncated": false
         },
         {
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771607613276,
+    "updatedAt": 1771609096024,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 64061,
-    "outputTokens": 115,
-    "totalTokens": 75709,
+    "inputTokens": 63996,
+    "outputTokens": 90,
+    "totalTokens": 75644,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771607450873,
+      "generatedAt": 1771608646194,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -2539,7 +2539,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771606800056,
+    "updatedAt": 1771608600109,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2744,9 +2744,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 70665,
-    "outputTokens": 402,
-    "totalTokens": 43188,
+    "inputTokens": 1067,
+    "outputTokens": 66,
+    "totalTokens": 43435,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
@@ -4353,7 +4353,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:1ef67db5-8804-4976-8c25-d9f784a8e225": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771606800056,
+    "updatedAt": 1771608600109,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -4558,9 +4558,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 70665,
-    "outputTokens": 402,
-    "totalTokens": 43188,
+    "inputTokens": 1067,
+    "outputTokens": 66,
+    "totalTokens": 43435,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
