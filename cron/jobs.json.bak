@@ -66,7 +66,8 @@
         "lastRunAtMs": 1771597800005,
         "lastStatus": "ok",
         "lastDurationMs": 18742,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771599600011
       }
     },
     {
@@ -137,7 +138,8 @@
         "lastRunAtMs": 1771598700018,
         "lastStatus": "ok",
         "lastDurationMs": 36480,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771599600011
       }
     },
     {
