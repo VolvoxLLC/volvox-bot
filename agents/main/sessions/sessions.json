@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771550763044,
+    "updatedAt": 1771551250469,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "37dddbfa-87ea-4c94-b89b-54dfb7ac9640",
-    "updatedAt": 1771551018138,
+    "updatedAt": 1771551161118,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -934,12 +934,12 @@
     "lastTo": "channel:1466215603995152477",
     "lastAccountId": "pip",
     "origin": {
-      "label": "channel:1466215603995152477",
-      "provider": "cron-event",
+      "label": "discord:191633014441115648",
+      "provider": "discord",
       "surface": "discord",
       "chatType": "direct",
-      "from": "channel:1466215603995152477",
-      "to": "channel:1466215603995152477",
+      "from": "discord:191633014441115648",
+      "to": "user:191633014441115648",
       "accountId": "pip"
     },
     "sessionFile": "/home/bill/.openclaw/agents/main/sessions/37dddbfa-87ea-4c94-b89b-54dfb7ac9640.jsonl",
@@ -1253,20 +1253,20 @@
       ],
       "version": 0
     },
-    "inputTokens": 23207,
-    "outputTokens": 38,
-    "totalTokens": 31527,
+    "inputTokens": 1383167,
+    "outputTokens": 7367,
+    "totalTokens": 106890,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771549742733,
+      "generatedAt": 1771551018202,
       "sessionId": "37dddbfa-87ea-4c94-b89b-54dfb7ac9640",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -1275,9 +1275,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 84324,
+        "chars": 83243,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 20865
+        "nonProjectContextChars": 19784
       },
       "injectedWorkspaceFiles": [
         {
@@ -1459,8 +1459,8 @@
         ]
       },
       "tools": {
-        "listChars": 2170,
-        "schemaChars": 20131,
+        "listChars": 1770,
+        "schemaChars": 18706,
         "entries": [
           {
             "name": "read",
@@ -1483,19 +1483,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -1511,15 +1511,9 @@
             "propertiesCount": 33
           },
           {
-            "name": "cron",
-            "summaryChars": 2689,
-            "schemaChars": 662,
-            "propertiesCount": 13
-          },
-          {
             "name": "message",
-            "summaryChars": 478,
-            "schemaChars": 7919,
+            "summaryChars": 471,
+            "schemaChars": 7931,
             "propertiesCount": 85
           },
           {
@@ -1527,12 +1521,6 @@
             "summaryChars": 152,
             "schemaChars": 223,
             "propertiesCount": 2
-          },
-          {
-            "name": "gateway",
-            "summaryChars": 354,
-            "schemaChars": 465,
-            "propertiesCount": 11
           },
           {
             "name": "agents_list",
@@ -1543,31 +1531,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -1579,18 +1567,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -1609,7 +1597,7 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
@@ -1617,7 +1605,9 @@
     },
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
-    "authProfileOverrideCompactionCount": 0
+    "authProfileOverrideCompactionCount": 0,
+    "lastHeartbeatText": "⚠️ ✉️ Message failed: Validation failed for tool \"message\":",
+    "lastHeartbeatSentAt": 1771551018013
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {
