@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T19:38:00Z",
-    "note": "✅ Two-way sync: pulled context."
+    "lastRun": "2026-02-20T19:39:00Z",
+    "note": "✅ Two-way sync: pulled recent context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T19:38:00Z",
+    "lastRun": "2026-02-20T19:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T19:38:00Z",
-    "note": "✅ Auto-backup to main successful (6360588)."
+    "lastRun": "2026-02-20T19:39:00Z",
+    "note": "✅ Auto-backup to main successful (3763f67)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T19:38:00Z",
+    "lastRun": "2026-02-20T19:39:00Z",
     "personal": {
       "port": 8788,
       "status": "⚠️ watch expired Feb 18"
@@ -50,10 +50,10 @@
       "port": 8790,
       "status": "⚠️ watch expired Feb 16"
     },
-    "note": "⚠️ Personal + Chirico watches expired - need renewal."
+    "note": "✅ Volvox active; Personal + Chirico need renewal (Bill notified)."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T19:38:00Z",
+    "lastRun": "2026-02-20T19:39:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,11 +61,11 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T19:38:00Z",
-    "note": "⚠️ Personal + Chirico watches expired - 401 errors."
+    "lastRun": "2026-02-20T19:39:00Z",
+    "note": "✅ Volvox Gmail hook active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T19:38:00Z",
+    "lastRun": "2026-02-20T19:39:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
@@ -84,12 +84,12 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T19:38:00Z",
+    "lastRun": "2026-02-20T19:39:00Z",
     "note": "Point Pleasant, NJ: Cloudy +37°F."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-20T19:38:00Z",
-    "note": "Gmail watches still need renewal."
+    "lastRun": "2026-02-20T19:15:00Z",
+    "note": "Notified about both Gmail watch expirations."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
