@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771556331964,
+    "updatedAt": 1771556793523,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,7 +329,7 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 322641,
+    "inputTokens": 322643,
     "outputTokens": 1346,
     "totalTokensFresh": true,
     "modelProvider": "google",
@@ -337,7 +337,7 @@
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771555945647,
+      "generatedAt": 1771556332104,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -678,7 +678,7 @@
         ]
       }
     },
-    "totalTokens": 216963
+    "totalTokens": 216964
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "37dddbfa-87ea-4c94-b89b-54dfb7ac9640",
-    "updatedAt": 1771555202542,
+    "updatedAt": 1771556711594,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -934,11 +934,11 @@
     "lastTo": "channel:1466215603995152477",
     "lastAccountId": "pip",
     "origin": {
-      "label": "bapes user id:191633014441115648",
-      "provider": "discord",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
       "surface": "discord",
       "chatType": "direct",
-      "from": "discord:191633014441115648",
+      "from": "channel:1466215603995152477",
       "to": "channel:1466215603995152477",
       "accountId": "pip"
     },
@@ -1253,20 +1253,20 @@
       ],
       "version": 0
     },
-    "inputTokens": 149272,
-    "outputTokens": 636,
-    "totalTokens": 54591,
+    "inputTokens": 61937,
+    "outputTokens": 105,
+    "totalTokens": 120456,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771554981007,
+      "generatedAt": 1771556701892,
       "sessionId": "37dddbfa-87ea-4c94-b89b-54dfb7ac9640",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -1275,9 +1275,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 83451,
+        "chars": 83243,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 19992
+        "nonProjectContextChars": 19784
       },
       "injectedWorkspaceFiles": [
         {
@@ -1460,7 +1460,7 @@
       },
       "tools": {
         "listChars": 1770,
-        "schemaChars": 19004,
+        "schemaChars": 18706,
         "entries": [
           {
             "name": "read",
@@ -1483,19 +1483,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -1512,8 +1512,8 @@
           },
           {
             "name": "message",
-            "summaryChars": 478,
-            "schemaChars": 7919,
+            "summaryChars": 471,
+            "schemaChars": 7931,
             "propertiesCount": 85
           },
           {
@@ -1531,31 +1531,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -1567,18 +1567,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -1597,15 +1597,15 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
       }
     },
-    "lastHeartbeatText": "⚠️ 📝 Edit: in ~/.openclaw/workspace/memory/heartbeat-state.json (158 chars) failed: Could not find the exact text in /home/bill/.openclaw/workspace/memory/heartbeat-state.json. The old text must match exactly including all whitespace and newlines.",
-    "lastHeartbeatSentAt": 1771554901711,
-    "authProfileOverride": "openai-codex:default",
+    "lastHeartbeatText": "🚨 **API Usage Alert — 10:04 PM**\n\nWe're still redlining. Both Claude and Codex are tapped out on their 7-day windows.\n\n* **Claude:** Resets Sunday, Feb 22 (~5 PM ET)\n* **Codex:** Resets Tuesday, Feb 24 (~12:27 PM ET)\n\nI'm strictly on survival models for the next couple of days. 🐣",
+    "lastHeartbeatSentAt": 1771556701774,
+    "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
   },
@@ -2539,7 +2539,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "43ff38cf-51dd-4bcb-aec9-f51e0df31676",
-    "updatedAt": 1771554901466,
+    "updatedAt": 1771556599571,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2744,9 +2744,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 12257,
-    "outputTokens": 76,
-    "totalTokens": 28385,
+    "inputTokens": 12703,
+    "outputTokens": 172,
+    "totalTokens": 28807,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
@@ -2963,7 +2963,7 @@
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "8d694d97-1bce-4b21-a477-e4e8808fcbab",
-    "updatedAt": 1771549457153,
+    "updatedAt": 1771556675641,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -3168,9 +3168,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 22496,
-    "outputTokens": 359,
-    "totalTokens": 24909,
+    "inputTokens": 8324,
+    "outputTokens": 345,
+    "totalTokens": 24412,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:9144ce1e-0ab8-49c4-b94d-72569c2f6cc5": {
@@ -3387,7 +3387,7 @@
   },
   "agent:main:cron:3bb6d89e-6898-4708-b9a9-bafea0ece526": {
     "sessionId": "df386b59-b94b-4536-a8ec-a1f4f7a44f5e",
-    "updatedAt": 1771554600040,
+    "updatedAt": 1771556400047,
     "systemSent": true,
     "label": "Cron: Evening Digest",
     "skillsSnapshot": {
@@ -3702,14 +3702,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 494589,
-    "outputTokens": 2708,
-    "totalTokens": 64155,
+    "inputTokens": 342181,
+    "outputTokens": 1596,
+    "totalTokens": 90551,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:43ff38cf-51dd-4bcb-aec9-f51e0df31676": {
     "sessionId": "43ff38cf-51dd-4bcb-aec9-f51e0df31676",
-    "updatedAt": 1771554901466,
+    "updatedAt": 1771556599571,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -3914,14 +3914,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 12257,
-    "outputTokens": 76,
-    "totalTokens": 28385,
+    "inputTokens": 12703,
+    "outputTokens": 172,
+    "totalTokens": 28807,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:8d694d97-1bce-4b21-a477-e4e8808fcbab": {
     "sessionId": "8d694d97-1bce-4b21-a477-e4e8808fcbab",
-    "updatedAt": 1771549457153,
+    "updatedAt": 1771556675641,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -4126,9 +4126,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 22496,
-    "outputTokens": 359,
-    "totalTokens": 24909,
+    "inputTokens": 8324,
+    "outputTokens": 345,
+    "totalTokens": 24412,
     "totalTokensFresh": true
   },
   "agent:main:cron:1b44764d-94cd-4e6a-90f0-87e5902d8234": {
@@ -4777,7 +4777,7 @@
   },
   "agent:main:cron:3bb6d89e-6898-4708-b9a9-bafea0ece526:run:df386b59-b94b-4536-a8ec-a1f4f7a44f5e": {
     "sessionId": "df386b59-b94b-4536-a8ec-a1f4f7a44f5e",
-    "updatedAt": 1771554600040,
+    "updatedAt": 1771556400047,
     "systemSent": true,
     "label": "Cron: Evening Digest",
     "skillsSnapshot": {
@@ -5092,9 +5092,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 494589,
-    "outputTokens": 2708,
-    "totalTokens": 64155,
+    "inputTokens": 342181,
+    "outputTokens": 1596,
+    "totalTokens": 90551,
     "totalTokensFresh": true
   }
 }
