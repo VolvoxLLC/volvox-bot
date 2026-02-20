@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771597004447,
+    "updatedAt": 1771597179511,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -932,10 +932,10 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "channel:1466215603995152477",
-      "provider": "cron-event",
-      "from": "channel:1466215603995152477",
-      "to": "channel:1466215603995152477",
+      "label": "discord:191633014441115648",
+      "provider": "discord",
+      "from": "discord:191633014441115648",
+      "to": "user:191633014441115648",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
