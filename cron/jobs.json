@@ -102,7 +102,7 @@
         "lastStatus": "error",
         "lastDurationMs": 120336,
         "consecutiveErrors": 13,
-        "lastError": "cron announce delivery failed"
+        "runningAtMs": 1771607057153
       }
     },
     {

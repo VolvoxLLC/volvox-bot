@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771606846683,
+    "updatedAt": 1771606948728,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 83840,
-    "outputTokens": 1654,
-    "totalTokens": 49831,
+    "inputTokens": 2372,
+    "outputTokens": 616,
+    "totalTokens": 45291,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771606436809,
+      "generatedAt": 1771606846799,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771606911531,
+    "updatedAt": 1771607059529,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -932,10 +932,10 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "discord:191633014441115648",
+      "label": "bapes user id:191633014441115648",
       "provider": "discord",
       "from": "discord:191633014441115648",
-      "to": "user:191633014441115648",
+      "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 55933,
-    "outputTokens": 524,
-    "totalTokens": 64253,
+    "inputTokens": 118499,
+    "outputTokens": 725,
+    "totalTokens": 67908,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771605302463,
+      "generatedAt": 1771606873818,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -2751,7 +2751,7 @@
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771599857160,
+    "updatedAt": 1771607057181,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -4565,7 +4565,7 @@
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771599857160,
+    "updatedAt": 1771607057181,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
