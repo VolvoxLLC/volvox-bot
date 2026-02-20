@@ -6,14 +6,13 @@
       "agentId": "main",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "name": "Evening Digest",
-      "description": "Daily summary at 9:30 PM EST with weather, calendar, tasks, and news",
+      "description": "Daily summary at 10 PM EST with weather, calendar, tasks, and news",
       "enabled": true,
       "createdAtMs": 1771430195206,
-      "updatedAtMs": 1771470350512,
+      "updatedAtMs": 1771555193862,
       "schedule": {
         "kind": "cron",
-        "expr": "30 21 * * *",
-        "tz": "America/New_York"
+        "expr": "0 22 * * *"
       },
       "sessionTarget": "isolated",
       "wakeMode": "now",
@@ -28,12 +27,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771554600000,
-        "lastRunAtMs": 1771468200007,
+        "nextRunAtMs": 1771556400000,
+        "lastRunAtMs": 1771554600004,
         "lastStatus": "error",
-        "lastDurationMs": 113472,
-        "consecutiveErrors": 1,
-        "runningAtMs": 1771554600003
+        "lastDurationMs": 301456,
+        "consecutiveErrors": 2,
+        "lastError": "cron announce delivery failed"
       }
     },
     {
@@ -44,7 +43,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771552877994,
+      "updatedAtMs": 1771554914268,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -63,12 +62,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771554600000,
-        "lastRunAtMs": 1771552800009,
+        "nextRunAtMs": 1771556400000,
+        "lastRunAtMs": 1771554901460,
         "lastStatus": "ok",
-        "lastDurationMs": 77985,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771554600003
+        "lastDurationMs": 12808,
+        "consecutiveErrors": 0
       }
     },
     {
@@ -115,7 +113,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771553737399,
+      "updatedAtMs": 1771554933669,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -135,12 +133,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771554600000,
-        "lastRunAtMs": 1771553700005,
+        "nextRunAtMs": 1771555500000,
+        "lastRunAtMs": 1771554914268,
         "lastStatus": "ok",
-        "lastDurationMs": 37394,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771554600003
+        "lastDurationMs": 19401,
+        "consecutiveErrors": 0
       }
     },
     {
