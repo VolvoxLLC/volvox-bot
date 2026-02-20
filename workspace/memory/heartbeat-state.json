@@ -1,18 +1,18 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T06:01:00Z",
-    "note": "✅ Two-way sync: pulled and pushed state."
+    "lastRun": "2026-02-20T06:14:00Z",
+    "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T06:01:00Z",
+    "lastRun": "2026-02-20T06:14:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "🚨 7-day window exhausted (100%)."
+    "note": "🚨 7-day window exhausted (100%). Checked via script."
   },
   "codexUsage": {
-    "lastRun": "2026-02-20T06:01:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,21 +23,21 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T06:01:00Z",
-    "note": "✅ Auto-backup successful (fc9b91b). 18 vulnerabilities reported."
+    "lastRun": "2026-02-20T06:14:00Z",
+    "note": "✅ Auto-backup to main successful (909ac32)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T01:31:00Z",
+    "lastRun": "2026-02-20T06:14:00Z",
     "dueTodayCount": 0,
-    "overdueCount": 10,
-    "note": "10 overdue tasks remain."
+    "overdueCount": 11,
+    "note": "11 overdue tasks found."
   },
   "morningUpdates": {
     "lastRun": "2026-02-19T14:00:00Z",
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T01:07:00Z",
+    "lastRun": "2026-02-20T06:14:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,7 +53,7 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T01:07:00Z",
+    "lastRun": "2026-02-20T06:14:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T01:07:00Z",
+    "lastRun": "2026-02-20T06:14:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T01:10:00Z",
+    "lastRun": "2026-02-20T06:14:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T01:31:00Z",
+    "lastRun": "2026-02-20T06:14:00Z",
     "inTransit": 1,
-    "note": "✅ No changes in sync."
+    "note": "✅ 3 packages synced, 1 in transit."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,15 +84,15 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T01:31:00Z",
-    "note": "Point Pleasant, NJ: checked (68°F, misty)."
+    "lastRun": "2026-02-20T06:14:00Z",
+    "note": "Point Pleasant, NJ: checked (39°F, cloudy)."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-20T01:10:00Z",
-    "note": "8 PM check-in + package update sent."
+    "lastRun": "2026-02-20T06:14:00Z",
+    "note": "Late night check - staying quiet."
   },
   "eveningDigest": {
-    "lastRun": "2026-02-20T02:35:00Z",
-    "note": "Relayed evening digest (split into 3 Discord messages)."
+    "lastRun": "2026-02-19T02:30:00Z",
+    "note": "Sent 9:30 PM digest (Reddit roundup manually fixed)."
   }
 }
