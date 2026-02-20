@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771604355896,
+    "updatedAt": 1771605124038,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,20 +329,20 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 49139,
-    "outputTokens": 125,
-    "totalTokens": 49139,
+    "inputTokens": 8016,
+    "outputTokens": 1368,
+    "totalTokens": 48638,
     "totalTokensFresh": true,
-    "modelProvider": "google",
-    "model": "gemini-3-flash-preview",
-    "contextTokens": 1048576,
+    "modelProvider": "zai",
+    "model": "glm-5",
+    "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771604138539,
+      "generatedAt": 1771604356057,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
-      "provider": "google",
-      "model": "gemini-3-flash-preview",
+      "provider": "zai",
+      "model": "glm-5",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -351,9 +351,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 83238,
+        "chars": 83218,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 19779
+        "nonProjectContextChars": 19759
       },
       "injectedWorkspaceFiles": [
         {
@@ -536,7 +536,7 @@
       },
       "tools": {
         "listChars": 1770,
-        "schemaChars": 18706,
+        "schemaChars": 19016,
         "entries": [
           {
             "name": "read",
@@ -559,19 +559,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1037,
+            "schemaChars": 1086,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 949,
+            "schemaChars": 961,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1869,
+            "schemaChars": 1897,
             "propertiesCount": 28
           },
           {
@@ -607,31 +607,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 176,
+            "schemaChars": 212,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 149,
+            "schemaChars": 161,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 203,
+            "schemaChars": 273,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 312,
+            "schemaChars": 336,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 179,
+            "schemaChars": 191,
             "propertiesCount": 4
           },
           {
@@ -643,18 +643,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 728,
+            "schemaChars": 753,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 360,
+            "schemaChars": 374,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 260,
+            "summaryChars": 201,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -673,7 +673,7 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 423,
+            "schemaChars": 451,
             "propertiesCount": 6
           }
         ]
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771604018658,
+    "updatedAt": 1771605057981,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -932,10 +932,10 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "discord:191633014441115648",
-      "provider": "discord",
-      "from": "discord:191633014441115648",
-      "to": "user:191633014441115648",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
+      "from": "channel:1466215603995152477",
+      "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 73193,
+    "inputTokens": 76850,
     "outputTokens": 4,
-    "totalTokens": 73193,
+    "totalTokens": 151716,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771601682219,
+      "generatedAt": 1771605038453,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -1603,11 +1603,11 @@
     },
     "lastChannel": "discord",
     "lastAccountId": "pip",
+    "lastHeartbeatText": "Fix applied. 🐣\n\nThe `heartbeat-state.json` update failed because I tried to be clever with an exact-match edit, but something shifted (probably a whitespace or a timestamp change from another process). I've just overwritten it with the correct, up-to-date values for your morning checks.\n\nAll state is now correctly logged for:\n- ✅ **Codex Usage:** Updated (100% 7-day alert).\n- ✅ **Morning Updates:** Marked as complete.\n- ✅ **OpenClaw Status:** Logged as current.\n- ✅ **Package Tracking:** Updated with the 2:41 PM UTC (9:41 AM EST) departure.\n\nEverything is green. Well, as green as it can be when you're 100% out of Claude and Codex credits. 💸",
+    "lastHeartbeatSentAt": 1771599818338,
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
-    "authProfileOverrideCompactionCount": 0,
-    "lastHeartbeatText": "Fix applied. 🐣\n\nThe `heartbeat-state.json` update failed because I tried to be clever with an exact-match edit, but something shifted (probably a whitespace or a timestamp change from another process). I've just overwritten it with the correct, up-to-date values for your morning checks.\n\nAll state is now correctly logged for:\n- ✅ **Codex Usage:** Updated (100% 7-day alert).\n- ✅ **Morning Updates:** Marked as complete.\n- ✅ **OpenClaw Status:** Logged as current.\n- ✅ **Package Tracking:** Updated with the 2:41 PM UTC (9:41 AM EST) departure.\n\nEverything is green. Well, as green as it can be when you're 100% out of Claude and Codex credits. 💸",
-    "lastHeartbeatSentAt": 1771599818338
+    "authProfileOverrideCompactionCount": 0
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {
@@ -2539,7 +2539,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771603200032,
+    "updatedAt": 1771605000030,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2744,9 +2744,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 69517,
-    "outputTokens": 174,
-    "totalTokens": 42042,
+    "inputTokens": 34023,
+    "outputTokens": 69,
+    "totalTokens": 42215,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
@@ -4353,7 +4353,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:1ef67db5-8804-4976-8c25-d9f784a8e225": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771603200032,
+    "updatedAt": 1771605000030,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -4558,9 +4558,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 69517,
-    "outputTokens": 174,
-    "totalTokens": 42042,
+    "inputTokens": 34023,
+    "outputTokens": 69,
+    "totalTokens": 42215,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
