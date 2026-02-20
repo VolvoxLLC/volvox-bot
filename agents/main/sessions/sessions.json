@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771612263655,
+    "updatedAt": 1771612523375,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771612263914,
+    "updatedAt": 1771612437446,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 72710,
-    "outputTokens": 106,
-    "totalTokens": 75718,
+    "inputTokens": 137532,
+    "outputTokens": 1825,
+    "totalTokens": 80465,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771610491712,
+      "generatedAt": 1771612278289,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -1603,8 +1603,8 @@
     },
     "lastChannel": "discord",
     "lastAccountId": "pip",
-    "lastHeartbeatText": "Fix applied. 🐣\n\nThe `heartbeat-state.json` update failed because I tried to be clever with an exact-match edit, but something shifted (probably a whitespace or a timestamp change from another process). I've just overwritten it with the correct, up-to-date values for your morning checks.\n\nAll state is now correctly logged for:\n- ✅ **Codex Usage:** Updated (100% 7-day alert).\n- ✅ **Morning Updates:** Marked as complete.\n- ✅ **OpenClaw Status:** Logged as current.\n- ✅ **Package Tracking:** Updated with the 2:41 PM UTC (9:41 AM EST) departure.\n\nEverything is green. Well, as green as it can be when you're 100% out of Claude and Codex credits. 💸",
-    "lastHeartbeatSentAt": 1771599818338,
+    "lastHeartbeatText": "⚠️ 📝 Edit: in ~/.openclaw/workspace/memory/heartbeat-state.json failed: Missing required parameter: newText (newText or new_string). Supply correct parameters before retrying.",
+    "lastHeartbeatSentAt": 1771612263905,
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
