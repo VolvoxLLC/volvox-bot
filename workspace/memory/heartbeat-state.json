@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T17:43:00Z",
-    "note": "✅ Two-way sync complete."
+    "lastRun": "2026-02-20T18:02:00Z",
+    "note": "✅ No new memories to sync."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T17:40:00Z",
+    "lastRun": "2026-02-20T18:02:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T17:40:00Z",
-    "note": "✅ Auto-backup to main successful (ca2a32e)."
+    "lastRun": "2026-02-20T18:02:00Z",
+    "note": "✅ Auto-backup to main successful (4d38f26)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -37,20 +37,20 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T17:43:00Z",
+    "lastRun": "2026-02-20T18:02:00Z",
     "personal": {
       "port": 8788,
-      "status": "✅ renewed (expires Feb 27)"
+      "status": "✅ running"
     },
     "volvox": {
       "port": 8789,
-      "status": "✅ running (expires Feb 27)"
+      "status": "✅ running"
     },
     "chirico": {
       "port": 8790,
-      "status": "✅ renewed (expires Feb 27)"
+      "status": "⚠️ watch expired Feb 16"
     },
-    "note": "✅ All watches renewed/fixed."
+    "note": "⚠️ Chirico watch expired - needs renewal."
   },
   "sendblueProxy": {
     "lastRun": "2026-02-20T17:40:00Z",
@@ -61,8 +61,8 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T17:43:00Z",
-    "note": "✅ Gmail watches fixed."
+    "lastRun": "2026-02-20T18:02:00Z",
+    "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
     "lastRun": "2026-02-20T17:40:00Z",
@@ -88,8 +88,8 @@
     "note": "Point Pleasant, NJ: checked (Cloudy +39°F)."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-20T17:43:00Z",
-    "note": "Fixed Gmail watches, notified Bill."
+    "lastRun": "2026-02-20T17:40:00Z",
+    "note": "Notified about Gmail watch expiry + ServiceTitan job link."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
