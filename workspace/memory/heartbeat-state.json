@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T18:18:00Z",
-    "note": "✅ Two-way sync completed."
+    "lastRun": "2026-02-20T18:30:00Z",
+    "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T18:18:00Z",
+    "lastRun": "2026-02-20T18:30:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T18:18:00Z",
-    "note": "✅ Auto-backup to main successful (c59df13)."
+    "lastRun": "2026-02-20T18:30:00Z",
+    "note": "✅ Auto-backup to main successful (a53bcb9)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -37,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T18:18:00Z",
+    "lastRun": "2026-02-20T18:30:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -48,12 +48,12 @@
     },
     "chirico": {
       "port": 8790,
-      "status": "✅ running (hook ok)"
+      "status": "⚠️ watch expired Feb 16"
     },
-    "note": "✅ All hooks healthy."
+    "note": "⚠️ Chirico watch expired - needs renewal."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T18:18:00Z",
+    "lastRun": "2026-02-20T18:30:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T18:18:00Z",
+    "lastRun": "2026-02-20T18:30:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T18:18:00Z",
+    "lastRun": "2026-02-20T18:30:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T01:13:00Z",
+    "lastRun": "2026-02-20T18:30:00Z",
     "inTransit": 1,
-    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
+    "note": "✅ Package 1Z0GJ... Out for Delivery."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,12 +84,8 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T18:18:00Z",
-    "note": "Point Pleasant, NJ: Cloudy +39°F."
-  },
-  "billCheckIn": {
-    "lastRun": "2026-02-20T17:40:00Z",
-    "note": "Notified about Gmail watch expiry + ServiceTitan job link."
+    "lastRun": "2026-02-20T18:30:00Z",
+    "note": "Point Pleasant, NJ: checked (Cloudy +41°F)."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
