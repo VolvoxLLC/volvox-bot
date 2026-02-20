@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771585286589,
+    "updatedAt": 1771585747620,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 185429,
-    "outputTokens": 1465,
-    "totalTokens": 89205,
+    "inputTokens": 229370,
+    "outputTokens": 1508,
+    "totalTokens": 89327,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771584500196,
+      "generatedAt": 1771585286723,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771583434483,
+    "updatedAt": 1771585491511,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1249,16 +1249,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 31917,
+    "inputTokens": 32269,
     "outputTokens": 4,
-    "totalTokens": 31917,
+    "totalTokens": 56749,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771583416054,
+      "generatedAt": 1771585490206,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -2735,14 +2735,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 20233,
-    "outputTokens": 68,
-    "totalTokens": 27401,
+    "inputTokens": 70611,
+    "outputTokens": 982,
+    "totalTokens": 29804,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771578257161,
+    "updatedAt": 1771585457177,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -2947,9 +2947,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 849,
-    "outputTokens": 595,
-    "totalTokens": 16802,
+    "inputTokens": 11468,
+    "outputTokens": 300,
+    "totalTokens": 17602,
     "totalTokensFresh": true
   },
   "agent:main:cron:3bb6d89e-6898-4708-b9a9-bafea0ece526": {
@@ -4871,14 +4871,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 20233,
-    "outputTokens": 68,
-    "totalTokens": 27401,
+    "inputTokens": 70611,
+    "outputTokens": 982,
+    "totalTokens": 29804,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771578257161,
+    "updatedAt": 1771585457177,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -5083,9 +5083,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 849,
-    "outputTokens": 595,
-    "totalTokens": 16802,
+    "inputTokens": 11468,
+    "outputTokens": 300,
+    "totalTokens": 17602,
     "totalTokensFresh": true
   }
 }
