@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T16:45:00Z",
-    "note": "✅ Two-way sync: pulled context; no new memories to push."
+    "lastRun": "2026-02-20T16:52:00Z",
+    "note": "✅ Two-way sync: pulled context; pushed heartbeat summary."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T16:45:00Z",
+    "lastRun": "2026-02-20T16:52:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T16:45:00Z",
-    "note": "✅ Auto-backup to main successful (07168bd)."
+    "lastRun": "2026-02-20T16:52:00Z",
+    "note": "✅ Auto-backup to main successful (82b5fc4)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -33,11 +33,11 @@
     "note": "11 overdue/today tasks."
   },
   "morningUpdates": {
-    "lastRun": "2026-02-20T14:17:00Z",
-    "note": "Morning checks completed; protobuf outdated."
+    "lastRun": "2026-02-19T14:00:00Z",
+    "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T16:45:00Z",
+    "lastRun": "2026-02-20T16:52:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -48,9 +48,9 @@
     },
     "chirico": {
       "port": 8790,
-      "status": "✅ running"
+      "status": "⚠️ 401 Unauthorized - needs OAuth refresh"
     },
-    "note": "✅ All watches healthy."
+    "note": "⚠️ chirico account needs re-auth."
   },
   "sendblueProxy": {
     "lastRun": "2026-02-20T12:37:00Z",
@@ -61,8 +61,8 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T16:45:00Z",
-    "note": "✅ Gmail hooks active; duplicate job app email correctly filtered."
+    "lastRun": "2026-02-20T16:52:00Z",
+    "note": "⚠️ Gmail chirico hook 401 error."
   },
   "calendarCheck": {
     "lastRun": "2026-02-20T12:37:00Z",
@@ -88,8 +88,8 @@
     "note": "Point Pleasant, NJ: checked (Cloudy +37°F)."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-20T01:10:00Z",
-    "note": "8 PM check-in + package update sent."
+    "lastRun": "2026-02-20T16:52:00Z",
+    "note": "Notified about Gmail OAuth issue."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
