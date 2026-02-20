@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-20T19:32:00Z",
     "note": "✅ No new memories to sync."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-20T19:32:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T19:30:00Z",
-    "note": "✅ No changes to backup."
+    "lastRun": "2026-02-20T19:32:00Z",
+    "note": "✅ Auto-backup to main successful (36a38e3)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -33,14 +33,14 @@
     "note": "11 overdue/today tasks."
   },
   "morningUpdates": {
-    "lastRun": "2026-02-20T14:00:00Z",
+    "lastRun": "2026-02-19T14:00:00Z",
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-20T19:32:00Z",
     "personal": {
       "port": 8788,
-      "status": "⚠️ watch expired Feb 18 (hook still working)"
+      "status": "✅ delivery ok"
     },
     "volvox": {
       "port": 8789,
@@ -48,30 +48,30 @@
     },
     "chirico": {
       "port": 8790,
-      "status": "⚠️ watch expired Feb 16"
+      "status": "✅ delivery ok"
     },
-    "note": "⚠️ Personal + Chirico watches need renewal (already notified Bill)."
+    "note": "✅ All hooks delivering ok despite stale expiration dates."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-20T19:32:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-19T10:00:30Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T19:30:00Z",
-    "note": "✅ Gmail hooks active."
+    "lastRun": "2026-02-20T19:32:00Z",
+    "note": "✅ Gmail hooks delivering ok."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-20T19:32:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-20T01:13:00Z",
     "inTransit": 1,
-    "note": "✅ Package 1Z0GJ... Out for Delivery."
+    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,11 +84,15 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T19:30:00Z",
+    "lastRun": "2026-02-20T19:32:00Z",
     "note": "Point Pleasant, NJ: Cloudy +37°F."
+  },
+  "billCheckIn": {
+    "lastRun": "2026-02-20T19:15:00Z",
+    "note": "Notified about Gmail watch expirations."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
-    "note": "Sent 9:30 PM digest."
+    "note": "Sent 9:30 PM digest (Reddit roundup manually fixed)."
   }
 }
