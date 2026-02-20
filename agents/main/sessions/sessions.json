@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771606948728,
+    "updatedAt": 1771607490849,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771607161125,
+    "updatedAt": 1771607613276,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -932,10 +932,10 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "bapes user id:191633014441115648",
+      "label": "discord:191633014441115648",
       "provider": "discord",
       "from": "discord:191633014441115648",
-      "to": "channel:1466215603995152477",
+      "to": "user:191633014441115648",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 125640,
-    "outputTokens": 2117,
-    "totalTokens": 73120,
+    "inputTokens": 64061,
+    "outputTokens": 115,
+    "totalTokens": 75709,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771607031424,
+      "generatedAt": 1771607450873,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -1273,9 +1273,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 83218,
-        "projectContextChars": 63459,
-        "nonProjectContextChars": 19759
+        "chars": 82820,
+        "projectContextChars": 63056,
+        "nonProjectContextChars": 19764
       },
       "injectedWorkspaceFiles": [
         {
@@ -1322,8 +1322,8 @@
           "name": "HEARTBEAT.md",
           "path": "/home/bill/.openclaw/workspace/HEARTBEAT.md",
           "missing": false,
-          "rawChars": 10744,
-          "injectedChars": 10744,
+          "rawChars": 10341,
+          "injectedChars": 10341,
           "truncated": false
         },
         {
@@ -1605,7 +1605,7 @@
     "lastAccountId": "pip",
     "lastHeartbeatText": "Fix applied. 🐣\n\nThe `heartbeat-state.json` update failed because I tried to be clever with an exact-match edit, but something shifted (probably a whitespace or a timestamp change from another process). I've just overwritten it with the correct, up-to-date values for your morning checks.\n\nAll state is now correctly logged for:\n- ✅ **Codex Usage:** Updated (100% 7-day alert).\n- ✅ **Morning Updates:** Marked as complete.\n- ✅ **OpenClaw Status:** Logged as current.\n- ✅ **Package Tracking:** Updated with the 2:41 PM UTC (9:41 AM EST) departure.\n\nEverything is green. Well, as green as it can be when you're 100% out of Claude and Codex credits. 💸",
     "lastHeartbeatSentAt": 1771599818338,
-    "authProfileOverride": "openai-codex:default",
+    "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
   },
