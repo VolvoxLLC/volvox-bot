@@ -1,15 +1,15 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T05:41:00Z",
-    "note": "✅ Two-way sync: pulled context and pushed heartbeat summary."
+    "lastRun": "2026-02-20T05:54:00Z",
+    "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T05:41:00Z",
+    "lastRun": "2026-02-20T05:54:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "🚨 7-day window exhausted (100%). Checked via script."
+    "note": "🚨 7-day window exhausted (100%)."
   },
   "codexUsage": {
     "lastRun": "2026-02-19T12:39:00Z",
@@ -19,25 +19,25 @@
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-20T05:41:00Z",
-    "note": "✅ Token refresh attempted (hit limit)."
+    "lastRun": "2026-02-19T12:39:00Z",
+    "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T05:41:00Z",
-    "note": "✅ Auto-backup to main successful (bde784d)."
+    "lastRun": "2026-02-20T05:54:00Z",
+    "note": "✅ Auto-backup to main successful (27ca50f)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T05:41:00Z",
+    "lastRun": "2026-02-20T01:07:00Z",
     "dueTodayCount": 0,
-    "overdueCount": 11,
-    "note": "11 overdue tasks."
+    "overdueCount": 10,
+    "note": "10 overdue tasks."
   },
   "morningUpdates": {
     "lastRun": "2026-02-19T14:00:00Z",
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T05:41:00Z",
+    "lastRun": "2026-02-20T01:07:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -61,7 +61,7 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T05:41:00Z",
+    "lastRun": "2026-02-20T01:07:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
