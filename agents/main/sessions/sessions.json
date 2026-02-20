@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771590191040,
+    "updatedAt": 1771591023945,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 233037,
-    "outputTokens": 1474,
-    "totalTokens": 90367,
+    "inputTokens": 227400,
+    "outputTokens": 243,
+    "totalTokens": 88940,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771590093924,
+      "generatedAt": 1771590191181,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771588988720,
+    "updatedAt": 1771590644098,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1249,16 +1249,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 290725,
-    "outputTokens": 2940,
-    "totalTokens": 73630,
+    "inputTokens": 31923,
+    "outputTokens": 4,
+    "totalTokens": 31923,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771588826298,
+      "generatedAt": 1771590636253,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -2530,7 +2530,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771588800029,
+    "updatedAt": 1771590600080,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2735,9 +2735,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 46134,
-    "outputTokens": 172,
-    "totalTokens": 30355,
+    "inputTokens": 23493,
+    "outputTokens": 92,
+    "totalTokens": 30661,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
@@ -4666,7 +4666,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:1ef67db5-8804-4976-8c25-d9f784a8e225": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771588800029,
+    "updatedAt": 1771590600080,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -4871,9 +4871,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 46134,
-    "outputTokens": 172,
-    "totalTokens": 30355,
+    "inputTokens": 23493,
+    "outputTokens": 92,
+    "totalTokens": 30661,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
