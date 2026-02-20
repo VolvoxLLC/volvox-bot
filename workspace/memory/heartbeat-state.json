@@ -1,18 +1,18 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T15:00:00Z",
+    "lastRun": "2026-02-20T15:06:00Z",
     "note": "✅ Two-way sync: pulled context; pushed heartbeat summary."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T15:00:00Z",
+    "lastRun": "2026-02-20T15:06:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "✅ 5h usage at 0%."
   },
   "codexUsage": {
-    "lastRun": "2026-02-20T13:04:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,21 +23,21 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T15:00:00Z",
-    "note": "✅ Auto-backup to main successful (9827cd8)."
+    "lastRun": "2026-02-20T15:06:00Z",
+    "note": "✅ Auto-backup to main successful (f8b19ba)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T15:00:00Z",
+    "lastRun": "2026-02-20T08:05:00Z",
     "dueTodayCount": 0,
     "overdueCount": 11,
     "note": "11 overdue/today tasks."
   },
   "morningUpdates": {
-    "lastRun": "2026-02-20T13:13:00Z",
+    "lastRun": "2026-02-19T14:00:00Z",
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T15:00:00Z",
+    "lastRun": "2026-02-20T12:37:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,25 +53,25 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T15:00:00Z",
+    "lastRun": "2026-02-20T12:37:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-20T13:13:00Z",
+    "lastRun": "2026-02-19T10:00:30Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T15:00:00Z",
+    "lastRun": "2026-02-20T12:37:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T15:00:00Z",
+    "lastRun": "2026-02-20T12:37:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T14:41:00Z",
+    "lastRun": "2026-02-20T01:13:00Z",
     "inTransit": 1,
-    "note": "✅ Package 7 Kings Kratom: Departed Facility."
+    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,8 +84,8 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T15:00:00Z",
-    "note": "Point Pleasant, NJ: checked (Rain +40°F)."
+    "lastRun": "2026-02-20T12:37:00Z",
+    "note": "Point Pleasant, NJ: checked (Cloudy +37°F)."
   },
   "billCheckIn": {
     "lastRun": "2026-02-20T01:10:00Z",
