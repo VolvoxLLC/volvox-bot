@@ -57,9 +57,13 @@
       "cooldownUntil": 1771603464299
     },
     "google:default": {
-      "lastUsed": 1771602903249,
-      "errorCount": 0,
-      "lastFailureAt": 1771544232702
+      "lastUsed": 1771602965227,
+      "errorCount": 1,
+      "lastFailureAt": 1771602981077,
+      "failureCounts": {
+        "rate_limit": 1
+      },
+      "cooldownUntil": 1771603041077
     },
     "zai:default": {
       "errorCount": 0,
