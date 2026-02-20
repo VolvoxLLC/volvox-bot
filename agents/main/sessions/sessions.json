@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771548816098,
+    "updatedAt": 1771549644546,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,15 +329,15 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 481689,
-    "outputTokens": 1891,
+    "inputTokens": 383418,
+    "outputTokens": 1471,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771548780130,
+      "generatedAt": 1771548816250,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -690,11 +690,11 @@
         ]
       }
     },
-    "totalTokens": 198282
+    "totalTokens": 188607
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
-    "updatedAt": 1771542490396,
+    "updatedAt": 1771549512213,
     "skillsSnapshot": {
       "prompt": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>clawhub</name>\n    <description>Use the ClawHub CLI to search, install, update, and publish agent skills from clawhub.com. Use when you need to fetch new skills on the fly, sync installed skills to latest or a specific version, or publish new/updated skill folders with the npm-installed clawhub CLI.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/clawhub/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>coding-agent</name>\n    <description>Delegate coding tasks to Codex, Claude Code, or Pi agents via background process. Use when: (1) building/creating new features or apps, (2) reviewing PRs (spawn in temp dir), (3) refactoring large codebases, (4) iterative coding that needs file exploration. NOT for: simple one-liner fixes (just edit), reading code (use read tool), or any work in ~/clawd workspace (never spawn agents here). Requires a bash tool that supports pty:true.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/coding-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>discord</name>\n    <description>Discord ops via the message tool (channel=discord).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/discord/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gh-issues</name>\n    <description>Fetch GitHub issues, spawn sub-agents to implement fixes and open PRs, then monitor and address PR review comments. Usage: /gh-issues [owner/repo] [--label bug] [--limit 5] [--milestone v1.0] [--assignee @me] [--fork user/repo] [--watch] [--interval 5] [--reviews-only] [--cron] [--dry-run] [--model glm-5] [--notify-channel -1002381931352]</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gh-issues/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>github</name>\n    <description>GitHub operations via `gh` CLI: issues, PRs, CI runs, code review, API queries. Use when: (1) checking PR status or CI, (2) creating/commenting on issues, (3) listing/filtering PRs or issues, (4) viewing run logs. NOT for: complex web UI interactions requiring manual browser flows (use browser tooling when available), bulk operations across many repos (script with gh api), or when gh auth is not configured.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/github/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gog</name>\n    <description>Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gog/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>healthcheck</name>\n    <description>Host security hardening and risk-tolerance configuration for OpenClaw deployments. Use when a user asks for security audits, firewall/SSH/update hardening, risk posture, exposure review, OpenClaw cron scheduling for periodic checks, or version status checks on a machine running OpenClaw (laptop, workstation, Pi, VPS).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/healthcheck/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>mcporter</name>\n    <description>Use the mcporter CLI to list, configure, auth, and call MCP servers/tools directly (HTTP or stdio), including ad-hoc servers, config edits, and CLI/type generation.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/mcporter/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-banana-pro</name>\n    <description>Generate or edit images via Gemini 3 Pro Image (Nano Banana Pro).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/nano-banana-pro/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-pdf</name>\n    <description>Edit PDFs with natural-language instructions using the nano-pdf CLI.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/nano-pdf/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-image-gen</name>\n    <description>Batch-generate images via OpenAI Images API. Random prompt sampler + `index.html` gallery.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-image-gen/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-whisper-api</name>\n    <description>Transcribe audio via OpenAI Audio Transcriptions API (Whisper).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-whisper-api/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>skill-creator</name>\n    <description>Create or update AgentSkills. Use when designing, structuring, or packaging skills with scripts, references, and assets.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/skill-creator/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>summarize</name>\n    <description>Summarize or extract text/transcripts from URLs, podcasts, and local files (great fallback for “transcribe this YouTube/video”).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/summarize/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>tmux</name>\n    <description>Remote-control tmux sessions for interactive CLIs by sending keystrokes and scraping pane output.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/tmux/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>voice-call</name>\n    <description>Start voice calls via the OpenClaw voice-call plugin.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/voice-call/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>weather</name>\n    <description>Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/weather/SKILL.md</location>\n  </skill>\n</available_skills>",
       "skills": [
@@ -904,9 +904,9 @@
     "model": "glm-5",
     "contextTokens": 204800,
     "abortedLastRun": false,
-    "inputTokens": 51608,
-    "outputTokens": 110,
-    "totalTokens": 59928,
+    "inputTokens": 51978,
+    "outputTokens": 54,
+    "totalTokens": 60362,
     "totalTokensFresh": true
   },
   "agent:main:discord:channel:1466215603995152477": {
@@ -933,21 +933,21 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
-    "updatedAt": 1771547500098,
+    "updatedAt": 1771549664995,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
     "deliveryContext": {
       "channel": "discord",
-      "to": "channel:1466215603995152477",
+      "to": "user:191633014441115648",
       "accountId": "pip"
     },
-    "lastTo": "channel:1466215603995152477",
+    "lastTo": "user:191633014441115648",
     "origin": {
-      "label": "channel:1466215603995152477",
-      "provider": "cron-event",
-      "from": "channel:1466215603995152477",
-      "to": "channel:1466215603995152477",
+      "label": "Bill",
+      "provider": "discord",
+      "from": "discord:191633014441115648",
+      "to": "user:191633014441115648",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -1263,20 +1263,20 @@
       ],
       "version": 0
     },
-    "inputTokens": 45852,
-    "outputTokens": 45,
-    "totalTokens": 58908,
+    "inputTokens": 69320,
+    "outputTokens": 273,
+    "totalTokens": 135907,
     "totalTokensFresh": true,
-    "modelProvider": "zai",
-    "model": "glm-5",
-    "contextTokens": 204800,
+    "modelProvider": "google",
+    "model": "gemini-3-flash-preview",
+    "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771547466867,
+      "generatedAt": 1771549513138,
       "sessionId": "e00b4377-1bb4-4264-95cb-b85739de16c5",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "provider": "zai",
-      "model": "glm-5",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -1285,9 +1285,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 84073,
+        "chars": 84093,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 20614
+        "nonProjectContextChars": 20634
       },
       "injectedWorkspaceFiles": [
         {
@@ -1470,7 +1470,7 @@
       },
       "tools": {
         "listChars": 2170,
-        "schemaChars": 20143,
+        "schemaChars": 19752,
         "entries": [
           {
             "name": "read",
@@ -1493,19 +1493,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1086,
+            "schemaChars": 1037,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 961,
+            "schemaChars": 949,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1897,
+            "schemaChars": 1869,
             "propertiesCount": 28
           },
           {
@@ -1523,7 +1523,7 @@
           {
             "name": "cron",
             "summaryChars": 2689,
-            "schemaChars": 662,
+            "schemaChars": 581,
             "propertiesCount": 13
           },
           {
@@ -1553,31 +1553,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 212,
+            "schemaChars": 176,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 161,
+            "schemaChars": 149,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 273,
+            "schemaChars": 203,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 336,
+            "schemaChars": 312,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 191,
+            "schemaChars": 179,
             "propertiesCount": 4
           },
           {
@@ -1589,18 +1589,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 753,
+            "schemaChars": 728,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 374,
+            "schemaChars": 360,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 201,
+            "summaryChars": 260,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -1619,7 +1619,7 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 451,
+            "schemaChars": 423,
             "propertiesCount": 6
           }
         ]
@@ -1627,11 +1627,8 @@
     },
     "lastChannel": "discord",
     "lastAccountId": "pip",
-    "lastHeartbeatText": "Countdown: Claude in ~2 days, Codex in ~4 days. 🐣",
-    "lastHeartbeatSentAt": 1771542491406,
-    "authProfileOverride": "google:default",
-    "authProfileOverrideSource": "auto",
-    "authProfileOverrideCompactionCount": 0
+    "lastHeartbeatText": "Hey Bill! 🐣\n\nIt's 8:00 PM — just a quick nudge for that task you set for this time: **Work on Eleftherias contract**.\n\nI'll stay quiet until the 10 PM digest. Good luck! 🐣🌔 **Evening Outlook — Thursday, Feb 19**\n\n**Tomorrow (Friday)**\n- **Weather:** 100% chance of rain all day. High 43°F. It's going to be a washout.\n- **Tasks:** You've still got 10 overdue items in Todoist. Want me to pick one for you to tackle first thing tomorrow?\n\n**Weekend Preview**\n- Nor'easter still on the radar for Sunday/Monday. Snow likely Sunday night into Monday morning. ❄️\n\n**API Status**\n- Claude back Sunday afternoon.\n- Codex back Tuesday afternoon.\n\nEnjoy the quiet night before the rain hits! 🐣🌙",
+    "lastHeartbeatSentAt": 1771549240015
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {
@@ -2563,7 +2560,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "43ff38cf-51dd-4bcb-aec9-f51e0df31676",
-    "updatedAt": 1771547400026,
+    "updatedAt": 1771549200033,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2768,9 +2765,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 20241,
-    "outputTokens": 37,
-    "totalTokens": 28561,
+    "inputTokens": 45279,
+    "outputTokens": 150,
+    "totalTokens": 28847,
     "totalTokensFresh": true
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:eabda209-70eb-43e4-bce9-7d0e0885a69b": {
@@ -2987,7 +2984,7 @@
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "8d694d97-1bce-4b21-a477-e4e8808fcbab",
-    "updatedAt": 1771542257217,
+    "updatedAt": 1771549457153,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -3192,9 +3189,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 31050,
-    "outputTokens": 340,
-    "totalTokens": 24088,
+    "inputTokens": 22496,
+    "outputTokens": 359,
+    "totalTokens": 24909,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:9144ce1e-0ab8-49c4-b94d-72569c2f6cc5": {
@@ -4055,7 +4052,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:43ff38cf-51dd-4bcb-aec9-f51e0df31676": {
     "sessionId": "43ff38cf-51dd-4bcb-aec9-f51e0df31676",
-    "updatedAt": 1771547400026,
+    "updatedAt": 1771549200033,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -4260,14 +4257,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 20241,
-    "outputTokens": 37,
-    "totalTokens": 28561,
+    "inputTokens": 45279,
+    "outputTokens": 150,
+    "totalTokens": 28847,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:8d694d97-1bce-4b21-a477-e4e8808fcbab": {
     "sessionId": "8d694d97-1bce-4b21-a477-e4e8808fcbab",
-    "updatedAt": 1771542257217,
+    "updatedAt": 1771549457153,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -4472,9 +4469,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 31050,
-    "outputTokens": 340,
-    "totalTokens": 24088,
+    "inputTokens": 22496,
+    "outputTokens": 359,
+    "totalTokens": 24909,
     "totalTokensFresh": true
   },
   "agent:main:cron:1b44764d-94cd-4e6a-90f0-87e5902d8234": {
