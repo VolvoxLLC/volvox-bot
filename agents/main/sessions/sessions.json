@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771612597086,
+    "updatedAt": 1771614510864,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771614311249,
+    "updatedAt": 1771614370494,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 68692,
-    "outputTokens": 59,
-    "totalTokens": 80340,
+    "inputTokens": 147559,
+    "outputTokens": 507,
+    "totalTokens": 81293,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771614055619,
+      "generatedAt": 1771614311441,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
