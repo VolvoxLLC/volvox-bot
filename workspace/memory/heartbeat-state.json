@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T20:34:00Z",
-    "note": "✅ Two-way sync: pulled context."
+    "lastRun": "2026-02-20T20:35:00Z",
+    "note": "✅ Two-way sync: pushed package delivery."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T20:34:00Z",
+    "lastRun": "2026-02-20T20:35:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T20:34:00Z",
-    "note": "✅ Auto-backup to main successful (fd52bc2)."
+    "lastRun": "2026-02-20T20:35:00Z",
+    "note": "✅ Auto-backup to main successful (332e777)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -37,23 +37,23 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T20:34:00Z",
+    "lastRun": "2026-02-20T20:35:00Z",
     "personal": {
       "port": 8788,
-      "status": "✅ delivering"
+      "status": "⚠️ watch expired Feb 18"
     },
     "volvox": {
       "port": 8789,
-      "status": "✅ delivering"
+      "status": "✅ running"
     },
     "chirico": {
       "port": 8790,
-      "status": "✅ delivering"
+      "status": "⚠️ watch expired Feb 16"
     },
-    "note": "✅ All accounts delivering (watches expired but still working)."
+    "note": "⚠️ Personal + Chirico watches expired - need renewal."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T20:34:00Z",
+    "lastRun": "2026-02-20T20:35:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T20:34:00Z",
-    "note": "✅ Gmail hooks delivering."
+    "lastRun": "2026-02-20T20:35:00Z",
+    "note": "✅ Package delivery notification received."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T20:34:00Z",
+    "lastRun": "2026-02-20T20:35:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T01:13:00Z",
-    "inTransit": 1,
-    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
+    "lastRun": "2026-02-20T20:35:00Z",
+    "inTransit": 0,
+    "note": "✅ Package 1Z0GJ... DELIVERED (7 Kings order #2138)."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,12 +84,12 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T20:34:00Z",
+    "lastRun": "2026-02-20T20:35:00Z",
     "note": "Point Pleasant, NJ: Cloudy +37°F."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-20T20:34:00Z",
-    "note": "Gmail hooks now working - delivery ok."
+    "lastRun": "2026-02-20T20:35:00Z",
+    "note": "Notified about package delivery."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
