@@ -5,18 +5,18 @@
     "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T18:30:00Z",
+    "lastRun": "2026-02-20T19:05:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "✅ 5h usage at 0%."
+    "note": "✅ 5h usage at 0%. 7d exhausted (resets Feb 22)."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T12:39:00Z",
+    "lastRun": "2026-02-20T19:05:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "🚨 7-day window exhausted (100%)."
+    "note": "✅ 5h usage at 0%. 7d exhausted (resets Feb 25)."
   },
   "claudeTokenRefresh": {
     "lastRun": "2026-02-20T08:05:00Z",

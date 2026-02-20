@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771612437446,
+    "updatedAt": 1771614311249,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 137532,
-    "outputTokens": 1825,
-    "totalTokens": 80465,
+    "inputTokens": 68692,
+    "outputTokens": 59,
+    "totalTokens": 80340,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771612278289,
+      "generatedAt": 1771614055619,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -2744,14 +2744,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 727,
-    "outputTokens": 64,
-    "totalTokens": 44311,
+    "inputTokens": 43758,
+    "outputTokens": 264,
+    "totalTokens": 45142,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771607057181,
+    "updatedAt": 1771614257174,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -2956,9 +2956,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 15072,
-    "outputTokens": 287,
-    "totalTokens": 19911,
+    "inputTokens": 26788,
+    "outputTokens": 279,
+    "totalTokens": 20779,
     "totalTokensFresh": true
   },
   "agent:main:cron:3bb6d89e-6898-4708-b9a9-bafea0ece526": {
@@ -4558,14 +4558,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 727,
-    "outputTokens": 64,
-    "totalTokens": 44311,
+    "inputTokens": 43758,
+    "outputTokens": 264,
+    "totalTokens": 45142,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771607057181,
+    "updatedAt": 1771614257174,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -4770,9 +4770,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 15072,
-    "outputTokens": 287,
-    "totalTokens": 19911,
+    "inputTokens": 26788,
+    "outputTokens": 279,
+    "totalTokens": 20779,
     "totalTokensFresh": true
   },
   "agent:main:cron:1b44764d-94cd-4e6a-90f0-87e5902d8234:run:cd075a01-4049-40c0-bcff-61978260e1c6": {

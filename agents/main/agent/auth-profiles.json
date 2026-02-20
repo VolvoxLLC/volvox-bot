@@ -39,12 +39,12 @@
   "usageStats": {
     "anthropic:default": {
       "lastUsed": 1771513224500,
-      "errorCount": 30,
-      "lastFailureAt": 1771610630017,
+      "errorCount": 31,
+      "lastFailureAt": 1771614283020,
       "failureCounts": {
-        "rate_limit": 30
+        "rate_limit": 31
       },
-      "cooldownUntil": 1771614230017
+      "cooldownUntil": 1771617883020
     },
     "openai-codex:default": {
       "lastUsed": 1771407445004,
@@ -68,7 +68,7 @@
     "zai:default": {
       "errorCount": 0,
       "lastFailureAt": 1771593220018,
-      "lastUsed": 1771613123017
+      "lastUsed": 1771614310892
     }
   }
 }
