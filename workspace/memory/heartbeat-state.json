@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T16:07:00Z",
-    "note": "✅ Two-way sync: pulled context; nothing new to push."
+    "lastRun": "2026-02-20T16:08:00Z",
+    "note": "✅ Two-way sync: pulled context; pushed heartbeat summary."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T16:07:00Z",
+    "lastRun": "2026-02-20T16:08:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,8 +23,8 @@
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T16:07:00Z",
-    "note": "✅ Auto-backup to main successful (f1fcdbe)."
+    "lastRun": "2026-02-20T16:08:00Z",
+    "note": "✅ Auto-backup to main successful (a16c4bf)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -33,11 +33,11 @@
     "note": "11 overdue/today tasks."
   },
   "morningUpdates": {
-    "lastRun": "2026-02-19T14:00:00Z",
-    "note": "Morning checks completed."
+    "lastRun": "2026-02-20T14:17:00Z",
+    "note": "Morning checks completed (protobuf outdated)."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T16:07:00Z",
+    "lastRun": "2026-02-20T16:08:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -50,22 +50,22 @@
       "port": 8790,
       "status": "✅ running"
     },
-    "note": "✅ All watches healthy."
+    "note": "✅ All watches healthy (one transient 401 recovered)."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T12:37:00Z",
+    "lastRun": "2026-02-20T16:08:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-19T10:00:30Z",
+    "lastRun": "2026-02-20T14:17:00Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T16:07:00Z",
+    "lastRun": "2026-02-20T16:08:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T16:07:00Z",
+    "lastRun": "2026-02-20T16:08:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
@@ -84,12 +84,12 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T12:37:00Z",
-    "note": "Point Pleasant, NJ: checked (Cloudy +37°F)."
+    "lastRun": "2026-02-20T16:08:00Z",
+    "note": "Point Pleasant, NJ: checked (Cloudy +45°F)."
   },
   "billCheckIn": {
-    "lastRun": "2026-02-20T16:07:00Z",
-    "note": "11:07 AM heartbeat - all systems nominal."
+    "lastRun": "2026-02-20T16:08:00Z",
+    "note": "11 AM heartbeat check."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
