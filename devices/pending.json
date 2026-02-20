@@ -1,8 +1,9 @@
 {
-  "8406ea66-fd30-4486-9ae7-55c3405b9dbb": {
-    "requestId": "8406ea66-fd30-4486-9ae7-55c3405b9dbb",
+  "7b74df6e-bd96-4b9b-b417-49775d6c1d58": {
+    "requestId": "7b74df6e-bd96-4b9b-b417-49775d6c1d58",
     "deviceId": "d5b8d0387784f20c737863fb9d48a0a0f215878ee3878e9d51b1b3483f95a857",
     "publicKey": "rGSpa96ZRsTneJI7xk0YVI2UE1L5IDcPo7SC0BGZwt8",
+    "displayName": "agent",
     "platform": "linux",
     "clientId": "gateway-client",
     "clientMode": "backend",
@@ -11,10 +12,10 @@
       "operator"
     ],
     "scopes": [
-      "operator.write"
+      "operator.read"
     ],
     "silent": false,
     "isRepair": true,
-    "ts": 1771585489823
+    "ts": 1771588927034
   }
 }

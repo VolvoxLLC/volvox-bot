@@ -1242,7 +1242,7 @@
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb": {
     "sessionId": "5ea1437f-f605-4824-a6d1-33d88093514b",
-    "updatedAt": 1771588825923,
+    "updatedAt": 1771589700039,
     "systemSent": true,
     "label": "Cron: PR Review Patrol (High Frequency)",
     "skillsSnapshot": {
@@ -1458,9 +1458,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 14652,
-    "outputTokens": 110,
-    "totalTokens": 15043,
+    "inputTokens": 434,
+    "outputTokens": 102,
+    "totalTokens": 15322,
     "totalTokensFresh": true
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb:run:678366ea-e225-4877-a005-d4b79b0ed0ec": {
@@ -1688,7 +1688,7 @@
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb:run:5ea1437f-f605-4824-a6d1-33d88093514b": {
     "sessionId": "5ea1437f-f605-4824-a6d1-33d88093514b",
-    "updatedAt": 1771588825923,
+    "updatedAt": 1771589700039,
     "systemSent": true,
     "label": "Cron: PR Review Patrol (High Frequency)",
     "skillsSnapshot": {
@@ -1904,9 +1904,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 14652,
-    "outputTokens": 110,
-    "totalTokens": 15043,
+    "inputTokens": 434,
+    "outputTokens": 102,
+    "totalTokens": 15322,
     "totalTokensFresh": true
   }
 }
