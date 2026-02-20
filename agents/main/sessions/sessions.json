@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771607059529,
+    "updatedAt": 1771607161125,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 118499,
-    "outputTokens": 725,
-    "totalTokens": 67908,
+    "inputTokens": 125640,
+    "outputTokens": 2117,
+    "totalTokens": 73120,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771606873818,
+      "generatedAt": 1771607031424,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -1273,9 +1273,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 83451,
+        "chars": 83218,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 19992
+        "nonProjectContextChars": 19759
       },
       "injectedWorkspaceFiles": [
         {
@@ -1458,7 +1458,7 @@
       },
       "tools": {
         "listChars": 1770,
-        "schemaChars": 19004,
+        "schemaChars": 19016,
         "entries": [
           {
             "name": "read",
@@ -1510,8 +1510,8 @@
           },
           {
             "name": "message",
-            "summaryChars": 478,
-            "schemaChars": 7919,
+            "summaryChars": 471,
+            "schemaChars": 7931,
             "propertiesCount": 85
           },
           {
@@ -2956,9 +2956,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 13626,
-    "outputTokens": 291,
-    "totalTokens": 19191,
+    "inputTokens": 15072,
+    "outputTokens": 287,
+    "totalTokens": 19911,
     "totalTokensFresh": true
   },
   "agent:main:cron:3bb6d89e-6898-4708-b9a9-bafea0ece526": {
@@ -4770,9 +4770,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 13626,
-    "outputTokens": 291,
-    "totalTokens": 19191,
+    "inputTokens": 15072,
+    "outputTokens": 287,
+    "totalTokens": 19911,
     "totalTokensFresh": true
   },
   "agent:main:cron:1b44764d-94cd-4e6a-90f0-87e5902d8234:run:cd075a01-4049-40c0-bcff-61978260e1c6": {

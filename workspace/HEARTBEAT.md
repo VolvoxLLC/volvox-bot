@@ -30,6 +30,7 @@
 - Marketing/promo emails
 - Newsletters
 - Routine notifications (statements ready, etc.)
+- Heartbeat check-ins (just return HEARTBEAT_OK silently)
 
 After DMing important stuff, still end with HEARTBEAT_OK.
 
@@ -54,7 +55,6 @@ Before running any periodic task, check its `lastRun` — skip if too recent. Af
 | Gmail webhook health  | `gmailWebhooks`      | Every 3-4 hours      |
 | SendBlue proxy health | `sendblueProxy`      | Every 3-4 hours      |
 | OpenClaw update check | `openclawUpdate`     | Every 3-4 hours      |
-| Bill check-in         | `billCheckIn`        | Every 3-4 hours      |
 | OpenClaw PR monitor   | `openclawPR`         | 2-3 times per day    |
 | Package tracking      | `packageTracking`    | Every 4-6 hours      |
 | Email check           | `emailCheck`         | Every 3-4 hours      |
@@ -112,14 +112,6 @@ Before running any periodic task, check its `lastRun` — skip if too recent. Af
 - Run: `cd /home/bill/.openclaw && git add -A && git diff --cached --quiet || (git commit -m "Auto-backup $(date '+%Y-%m-%d %I:%M %p')" && git push)`
 - **Only notify Bill if it fails** — otherwise stay silent
 - Update `githubBackup.lastRun` in sync log
-
-## Check In On Bill + Gmail Health (every 3-4 hours)
-
-- Check `billCheckIn.lastRun` — if 3+ hours, DM Bill and ask what he needs
-- Don't just process emails — be a person, not a cron job
-- **Actually do this — no excuses. This has been neglected.**
-- At the same time, check Gmail webhook health (see Gmail section below)
-- Update `billCheckIn.lastRun` in sync log
 
 ## Check for OpenClaw Updates (every 3-4 hours)
 
@@ -195,7 +187,7 @@ If any updates found, notify Bill in the morning digest. Update `morningUpdates.
 - If tasks were completed since last check: Acknowledge progress
 - Update `todoistSync` in sync log with counts
 
-## Gmail Webhook Health (every 3-4 hours, bundled with check-in)
+## Gmail Webhook Health (every 3-4 hours)
 
 - Check `gmailWebhooks.lastRun` — skip if < 3 hours
 - Check all 3 gog serve processes are running:
