@@ -32,8 +32,8 @@
         "lastRunAtMs": 1771468200007,
         "lastStatus": "error",
         "lastDurationMs": 113472,
-        "lastError": "cron announce delivery failed",
-        "consecutiveErrors": 1
+        "consecutiveErrors": 1,
+        "runningAtMs": 1771554600003
       }
     },
     {
@@ -67,7 +67,8 @@
         "lastRunAtMs": 1771552800009,
         "lastStatus": "ok",
         "lastDurationMs": 77985,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771554600003
       }
     },
     {
@@ -138,7 +139,8 @@
         "lastRunAtMs": 1771553700005,
         "lastStatus": "ok",
         "lastDurationMs": 37394,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771554600003
       }
     },
     {
