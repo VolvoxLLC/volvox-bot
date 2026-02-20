@@ -58,17 +58,17 @@
     },
     "google:default": {
       "lastUsed": 1771605551124,
-      "errorCount": 1,
-      "lastFailureAt": 1771605844864,
+      "errorCount": 2,
+      "lastFailureAt": 1771606321145,
       "failureCounts": {
-        "rate_limit": 1
+        "rate_limit": 2
       },
-      "cooldownUntil": 1771605904864
+      "cooldownUntil": 1771606621145
     },
     "zai:default": {
       "errorCount": 0,
       "lastFailureAt": 1771593220018,
-      "lastUsed": 1771605856966
+      "lastUsed": 1771606336907
     }
   }
 }

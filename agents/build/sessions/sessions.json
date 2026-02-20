@@ -1458,9 +1458,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 18172,
-    "outputTokens": 108,
-    "totalTokens": 20834,
+    "inputTokens": 27061,
+    "outputTokens": 103,
+    "totalTokens": 21116,
     "totalTokensFresh": true
   },
   "agent:build:cron:041c005d-992e-440c-8521-c014a53ef7fb:run:678366ea-e225-4877-a005-d4b79b0ed0ec": {
@@ -1904,9 +1904,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 18172,
-    "outputTokens": 108,
-    "totalTokens": 20834,
+    "inputTokens": 27061,
+    "outputTokens": 103,
+    "totalTokens": 21116,
     "totalTokensFresh": true
   }
 }
