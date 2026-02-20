@@ -1,18 +1,18 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T03:18:00Z",
-    "note": "✅ Two-way sync: pulled context."
+    "lastRun": "2026-02-20T04:01:00Z",
+    "note": "✅ Two-way sync: pulled and pushed 11 PM state."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T03:18:00Z",
+    "lastRun": "2026-02-20T04:01:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
     "note": "🚨 7-day window exhausted (100%)."
   },
   "codexUsage": {
-    "lastRun": "2026-02-19T12:39:00Z",
+    "lastRun": "2026-02-20T04:01:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,14 +23,14 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T03:18:00Z",
-    "note": "✅ Auto-backup to main successful (54d4212)."
+    "lastRun": "2026-02-20T04:01:00Z",
+    "note": "✅ Auto-backup successful (d214f1b). 18 vulnerabilities reported."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T01:07:00Z",
+    "lastRun": "2026-02-20T01:31:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
-    "note": "10 overdue tasks."
+    "note": "10 overdue tasks remain."
   },
   "morningUpdates": {
     "lastRun": "2026-02-19T14:00:00Z",
@@ -69,9 +69,9 @@
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T01:13:00Z",
+    "lastRun": "2026-02-20T01:31:00Z",
     "inTransit": 1,
-    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
+    "note": "✅ No changes in sync."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,7 +84,7 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T01:10:00Z",
+    "lastRun": "2026-02-20T01:31:00Z",
     "note": "Point Pleasant, NJ: checked (68°F, misty)."
   },
   "billCheckIn": {
@@ -92,7 +92,7 @@
     "note": "8 PM check-in + package update sent."
   },
   "eveningDigest": {
-    "lastRun": "2026-02-19T02:30:00Z",
-    "note": "Sent 9:30 PM digest (Reddit roundup manually fixed)."
+    "lastRun": "2026-02-20T02:35:00Z",
+    "note": "Relayed evening digest (split into 3 Discord messages)."
   }
 }
