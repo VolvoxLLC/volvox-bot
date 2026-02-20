@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771596145851,
+    "updatedAt": 1771596261955,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 380258,
-    "outputTokens": 2577,
-    "totalTokens": 105978,
+    "inputTokens": 158083,
+    "outputTokens": 1696,
+    "totalTokens": 103276,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771595910496,
+      "generatedAt": 1771596145978,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771596179936,
+    "updatedAt": 1771596307144,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -2744,9 +2744,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 29376,
-    "outputTokens": 92,
-    "totalTokens": 35968,
+    "inputTokens": 168378,
+    "outputTokens": 1470,
+    "totalTokens": 40385,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
@@ -3708,8 +3708,8 @@
     "totalTokensFresh": true
   },
   "agent:main:cron:1b44764d-94cd-4e6a-90f0-87e5902d8234": {
-    "sessionId": "5c6a2e82-592f-46f5-b8f9-4156370d16b9",
-    "updatedAt": 1771509723351,
+    "sessionId": "cd075a01-4049-40c0-bcff-61978260e1c6",
+    "updatedAt": 1771596304708,
     "systemSent": true,
     "label": "Cron: Morning Digest",
     "skillsSnapshot": {
@@ -4880,9 +4880,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 29376,
-    "outputTokens": 92,
-    "totalTokens": 35968,
+    "inputTokens": 168378,
+    "outputTokens": 1470,
+    "totalTokens": 40385,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
@@ -5095,6 +5095,328 @@
     "inputTokens": 2243,
     "outputTokens": 300,
     "totalTokens": 18333,
+    "totalTokensFresh": true
+  },
+  "agent:main:cron:1b44764d-94cd-4e6a-90f0-87e5902d8234:run:cd075a01-4049-40c0-bcff-61978260e1c6": {
+    "sessionId": "cd075a01-4049-40c0-bcff-61978260e1c6",
+    "updatedAt": 1771596304708,
+    "systemSent": true,
+    "label": "Cron: Morning Digest",
+    "skillsSnapshot": {
+      "prompt": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>clawhub</name>\n    <description>Use the ClawHub CLI to search, install, update, and publish agent skills from clawhub.com. Use when you need to fetch new skills on the fly, sync installed skills to latest or a specific version, or publish new/updated skill folders with the npm-installed clawhub CLI.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/clawhub/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>coding-agent</name>\n    <description>Delegate coding tasks to Codex, Claude Code, or Pi agents via background process. Use when: (1) building/creating new features or apps, (2) reviewing PRs (spawn in temp dir), (3) refactoring large codebases, (4) iterative coding that needs file exploration. NOT for: simple one-liner fixes (just edit), reading code (use read tool), or any work in ~/clawd workspace (never spawn agents here). Requires a bash tool that supports pty:true.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/coding-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>discord</name>\n    <description>Discord ops via the message tool (channel=discord).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/discord/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gh-issues</name>\n    <description>Fetch GitHub issues, spawn sub-agents to implement fixes and open PRs, then monitor and address PR review comments. Usage: /gh-issues [owner/repo] [--label bug] [--limit 5] [--milestone v1.0] [--assignee @me] [--fork user/repo] [--watch] [--interval 5] [--reviews-only] [--cron] [--dry-run] [--model glm-5] [--notify-channel -1002381931352]</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gh-issues/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>github</name>\n    <description>GitHub operations via `gh` CLI: issues, PRs, CI runs, code review, API queries. Use when: (1) checking PR status or CI, (2) creating/commenting on issues, (3) listing/filtering PRs or issues, (4) viewing run logs. NOT for: complex web UI interactions requiring manual browser flows (use browser tooling when available), bulk operations across many repos (script with gh api), or when gh auth is not configured.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/github/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gog</name>\n    <description>Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/gog/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>healthcheck</name>\n    <description>Host security hardening and risk-tolerance configuration for OpenClaw deployments. Use when a user asks for security audits, firewall/SSH/update hardening, risk posture, exposure review, OpenClaw cron scheduling for periodic checks, or version status checks on a machine running OpenClaw (laptop, workstation, Pi, VPS).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/healthcheck/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>mcporter</name>\n    <description>Use the mcporter CLI to list, configure, auth, and call MCP servers/tools directly (HTTP or stdio), including ad-hoc servers, config edits, and CLI/type generation.</description>\n    <location>~/.openclaw/workspace/skills/mcporter/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-banana-pro</name>\n    <description>Generate or edit images via Gemini 3 Pro Image (Nano Banana Pro).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/nano-banana-pro/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>nano-pdf</name>\n    <description>Edit PDFs with natural-language instructions using the nano-pdf CLI.</description>\n    <location>~/.openclaw/workspace/skills/nano-pdf/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-image-gen</name>\n    <description>Batch-generate images via OpenAI Images API. Random prompt sampler + `index.html` gallery.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-image-gen/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>openai-whisper-api</name>\n    <description>Transcribe audio via OpenAI Audio Transcriptions API (Whisper).</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/openai-whisper-api/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>skill-creator</name>\n    <description>Create or update AgentSkills. Use when designing, structuring, or packaging skills with scripts, references, and assets.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/skill-creator/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>summarize</name>\n    <description>Summarize URLs or files with the summarize CLI (web, PDFs, images, audio, YouTube).</description>\n    <location>~/.openclaw/workspace/skills/summarize/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>tmux</name>\n    <description>Remote-control tmux sessions for interactive CLIs by sending keystrokes and scraping pane output.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/tmux/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>voice-call</name>\n    <description>Start voice calls via the OpenClaw voice-call plugin.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/voice-call/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>weather</name>\n    <description>Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.</description>\n    <location>~/.npm-global/lib/node_modules/openclaw/skills/weather/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>answeroverflow</name>\n    <description>Search indexed Discord community discussions via Answer Overflow. Find solutions to coding problems, library issues, and community Q&amp;A that only exist in Discord conversations.</description>\n    <location>~/.openclaw/workspace/skills/answeroverflow/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>bird</name>\n    <description>X/Twitter CLI for reading, searching, and posting via cookies or Sweetistics.</description>\n    <location>~/.openclaw/workspace/skills/bird/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>codesession</name>\n    <description>Track agent session costs, file changes, and git commits with codesession-cli. Enforces budget limits and provides detailed session analytics with a web dashboard. v2.0.0 - Alerts dashboard, start fresh, insights page.</description>\n    <location>~/.openclaw/workspace/skills/codesession/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>ga4-analytics</name>\n    <description>Google Analytics 4, Search Console, and Indexing API toolkit. Analyze website traffic, page performance, user demographics, real-time visitors, search queries, and SEO metrics. Use when the user asks to: check site traffic, analyze page views, see traffic sources, view user demographics, get real-time visitor data, check search console queries, analyze SEO performance, request URL re-indexing, inspect index status, compare date ranges, check bounce rates, view conversion data, or get e-commerce revenue. Requires a Google Cloud service account with GA4 and Search Console access.</description>\n    <location>~/.openclaw/workspace/skills/ga4-analytics/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>self-improvement</name>\n    <description>Captures learnings, errors, and corrections to enable continuous improvement. Use when: (1) A command or operation fails unexpectedly, (2) User corrects Claude (&apos;No, that&apos;s wrong...&apos;, &apos;Actually...&apos;), (3) User requests a capability that doesn&apos;t exist, (4) An external API or tool fails, (5) Claude realizes its knowledge is outdated or incorrect, (6) A better approach is discovered for a recurring task. Also review learnings before major tasks.</description>\n    <location>~/.openclaw/workspace/skills/self-improving-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>seo-dataforseo</name>\n    <description>SEO keyword research using the DataForSEO API. Perform keyword analysis, YouTube keyword research, competitor analysis, SERP analysis, and trend tracking. Use when the user asks to: research keywords, analyze search volume/CPC/competition, find keyword suggestions, check keyword difficulty, analyze competitors, get trending topics, do YouTube SEO research, or optimize landing page keywords. Requires a DataForSEO API account and credentials in .env file.</description>\n    <location>~/.openclaw/workspace/skills/seo-dataforseo/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>technews</name>\n    <description>Fetches top stories from TechMeme, summarizes linked articles, and highlights social media reactions. Use when user wants tech news or says /technews.</description>\n    <location>~/.openclaw/workspace/skills/technews/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>time-tracker</name>\n    <description>Track work time per project with start/stop timers and generate productivity reports.</description>\n    <location>~/.openclaw/workspace/skills/time-tracker/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>todoist</name>\n    <description>Manage Todoist tasks, projects, labels, and comments via the todoist CLI wrapper. Use when a user asks to add tasks, list todos, complete items, manage projects, or interact with their Todoist account.</description>\n    <location>~/.openclaw/workspace/skills/todoist-manager/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>track17</name>\n    <description>Track parcels via the 17TRACK API (local SQLite DB, polling + optional webhook ingestion)</description>\n    <location>~/.openclaw/workspace/skills/track17/SKILL.md</location>\n  </skill>\n</available_skills>",
+      "skills": [
+        {
+          "name": "clawhub"
+        },
+        {
+          "name": "coding-agent"
+        },
+        {
+          "name": "discord"
+        },
+        {
+          "name": "gh-issues",
+          "primaryEnv": "GH_TOKEN"
+        },
+        {
+          "name": "github"
+        },
+        {
+          "name": "gog"
+        },
+        {
+          "name": "healthcheck"
+        },
+        {
+          "name": "mcporter"
+        },
+        {
+          "name": "nano-banana-pro",
+          "primaryEnv": "GEMINI_API_KEY"
+        },
+        {
+          "name": "nano-pdf"
+        },
+        {
+          "name": "openai-image-gen",
+          "primaryEnv": "OPENAI_API_KEY"
+        },
+        {
+          "name": "openai-whisper-api",
+          "primaryEnv": "OPENAI_API_KEY"
+        },
+        {
+          "name": "skill-creator"
+        },
+        {
+          "name": "summarize"
+        },
+        {
+          "name": "tmux"
+        },
+        {
+          "name": "voice-call"
+        },
+        {
+          "name": "weather"
+        },
+        {
+          "name": "answeroverflow"
+        },
+        {
+          "name": "bird"
+        },
+        {
+          "name": "codesession"
+        },
+        {
+          "name": "ga4-analytics"
+        },
+        {
+          "name": "self-improvement"
+        },
+        {
+          "name": "seo-dataforseo"
+        },
+        {
+          "name": "technews"
+        },
+        {
+          "name": "time-tracker"
+        },
+        {
+          "name": "todoist"
+        },
+        {
+          "name": "track17"
+        }
+      ],
+      "resolvedSkills": [
+        {
+          "name": "clawhub",
+          "description": "Use the ClawHub CLI to search, install, update, and publish agent skills from clawhub.com. Use when you need to fetch new skills on the fly, sync installed skills to latest or a specific version, or publish new/updated skill folders with the npm-installed clawhub CLI.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/clawhub/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/clawhub",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "coding-agent",
+          "description": "Delegate coding tasks to Codex, Claude Code, or Pi agents via background process. Use when: (1) building/creating new features or apps, (2) reviewing PRs (spawn in temp dir), (3) refactoring large codebases, (4) iterative coding that needs file exploration. NOT for: simple one-liner fixes (just edit), reading code (use read tool), or any work in ~/clawd workspace (never spawn agents here). Requires a bash tool that supports pty:true.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/coding-agent/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/coding-agent",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "discord",
+          "description": "Discord ops via the message tool (channel=discord).",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/discord/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/discord",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "gh-issues",
+          "description": "Fetch GitHub issues, spawn sub-agents to implement fixes and open PRs, then monitor and address PR review comments. Usage: /gh-issues [owner/repo] [--label bug] [--limit 5] [--milestone v1.0] [--assignee @me] [--fork user/repo] [--watch] [--interval 5] [--reviews-only] [--cron] [--dry-run] [--model glm-5] [--notify-channel -1002381931352]",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/gh-issues/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/gh-issues",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "github",
+          "description": "GitHub operations via `gh` CLI: issues, PRs, CI runs, code review, API queries. Use when: (1) checking PR status or CI, (2) creating/commenting on issues, (3) listing/filtering PRs or issues, (4) viewing run logs. NOT for: complex web UI interactions requiring manual browser flows (use browser tooling when available), bulk operations across many repos (script with gh api), or when gh auth is not configured.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/github/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/github",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "gog",
+          "description": "Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/gog/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/gog",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "healthcheck",
+          "description": "Host security hardening and risk-tolerance configuration for OpenClaw deployments. Use when a user asks for security audits, firewall/SSH/update hardening, risk posture, exposure review, OpenClaw cron scheduling for periodic checks, or version status checks on a machine running OpenClaw (laptop, workstation, Pi, VPS).",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/healthcheck/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/healthcheck",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "mcporter",
+          "description": "Use the mcporter CLI to list, configure, auth, and call MCP servers/tools directly (HTTP or stdio), including ad-hoc servers, config edits, and CLI/type generation.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/mcporter/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/mcporter",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "nano-banana-pro",
+          "description": "Generate or edit images via Gemini 3 Pro Image (Nano Banana Pro).",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/nano-banana-pro/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/nano-banana-pro",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "nano-pdf",
+          "description": "Edit PDFs with natural-language instructions using the nano-pdf CLI.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/nano-pdf/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/nano-pdf",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "openai-image-gen",
+          "description": "Batch-generate images via OpenAI Images API. Random prompt sampler + `index.html` gallery.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/openai-image-gen/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/openai-image-gen",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "openai-whisper-api",
+          "description": "Transcribe audio via OpenAI Audio Transcriptions API (Whisper).",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/openai-whisper-api/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/openai-whisper-api",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "skill-creator",
+          "description": "Create or update AgentSkills. Use when designing, structuring, or packaging skills with scripts, references, and assets.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/skill-creator/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/skill-creator",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "summarize",
+          "description": "Summarize URLs or files with the summarize CLI (web, PDFs, images, audio, YouTube).",
+          "filePath": "/home/bill/.openclaw/workspace/skills/summarize/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/summarize",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "tmux",
+          "description": "Remote-control tmux sessions for interactive CLIs by sending keystrokes and scraping pane output.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/tmux/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/tmux",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "voice-call",
+          "description": "Start voice calls via the OpenClaw voice-call plugin.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/voice-call/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/voice-call",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "weather",
+          "description": "Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.",
+          "filePath": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/weather/SKILL.md",
+          "baseDir": "/home/bill/.npm-global/lib/node_modules/openclaw/skills/weather",
+          "source": "openclaw-bundled",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "answeroverflow",
+          "description": "Search indexed Discord community discussions via Answer Overflow. Find solutions to coding problems, library issues, and community Q&A that only exist in Discord conversations.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/answeroverflow/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/answeroverflow",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "bird",
+          "description": "X/Twitter CLI for reading, searching, and posting via cookies or Sweetistics.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/bird/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/bird",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "codesession",
+          "description": "Track agent session costs, file changes, and git commits with codesession-cli. Enforces budget limits and provides detailed session analytics with a web dashboard. v2.0.0 - Alerts dashboard, start fresh, insights page.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/codesession/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/codesession",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "ga4-analytics",
+          "description": "Google Analytics 4, Search Console, and Indexing API toolkit. Analyze website traffic, page performance, user demographics, real-time visitors, search queries, and SEO metrics. Use when the user asks to: check site traffic, analyze page views, see traffic sources, view user demographics, get real-time visitor data, check search console queries, analyze SEO performance, request URL re-indexing, inspect index status, compare date ranges, check bounce rates, view conversion data, or get e-commerce revenue. Requires a Google Cloud service account with GA4 and Search Console access.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/ga4-analytics/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/ga4-analytics",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "self-improvement",
+          "description": "Captures learnings, errors, and corrections to enable continuous improvement. Use when: (1) A command or operation fails unexpectedly, (2) User corrects Claude ('No, that's wrong...', 'Actually...'), (3) User requests a capability that doesn't exist, (4) An external API or tool fails, (5) Claude realizes its knowledge is outdated or incorrect, (6) A better approach is discovered for a recurring task. Also review learnings before major tasks.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/self-improving-agent/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/self-improving-agent",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "seo-dataforseo",
+          "description": "SEO keyword research using the DataForSEO API. Perform keyword analysis, YouTube keyword research, competitor analysis, SERP analysis, and trend tracking. Use when the user asks to: research keywords, analyze search volume/CPC/competition, find keyword suggestions, check keyword difficulty, analyze competitors, get trending topics, do YouTube SEO research, or optimize landing page keywords. Requires a DataForSEO API account and credentials in .env file.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/seo-dataforseo/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/seo-dataforseo",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "technews",
+          "description": "Fetches top stories from TechMeme, summarizes linked articles, and highlights social media reactions. Use when user wants tech news or says /technews.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/technews/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/technews",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "time-tracker",
+          "description": "Track work time per project with start/stop timers and generate productivity reports.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/time-tracker/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/time-tracker",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "todoist",
+          "description": "Manage Todoist tasks, projects, labels, and comments via the todoist CLI wrapper. Use when a user asks to add tasks, list todos, complete items, manage projects, or interact with their Todoist account.",
+          "filePath": "/home/bill/.openclaw/workspace/skills/todoist-manager/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/todoist-manager",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        },
+        {
+          "name": "track17",
+          "description": "Track parcels via the 17TRACK API (local SQLite DB, polling + optional webhook ingestion)",
+          "filePath": "/home/bill/.openclaw/workspace/skills/track17/SKILL.md",
+          "baseDir": "/home/bill/.openclaw/workspace/skills/track17",
+          "source": "openclaw-workspace",
+          "disableModelInvocation": false
+        }
+      ],
+      "version": 0
+    },
+    "modelProvider": "zai",
+    "model": "glm-5",
+    "contextTokens": 204800,
+    "inputTokens": 491697,
+    "outputTokens": 3496,
+    "totalTokens": 98083,
     "totalTokensFresh": true
   }
 }
