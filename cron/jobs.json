@@ -43,7 +43,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771605014898,
+      "updatedAtMs": 1771606850983,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -62,12 +62,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771606800000,
-        "lastRunAtMs": 1771605000009,
+        "nextRunAtMs": 1771608600000,
+        "lastRunAtMs": 1771606800014,
         "lastStatus": "ok",
-        "lastDurationMs": 14889,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771606800013
+        "lastDurationMs": 50969,
+        "consecutiveErrors": 0
       }
     },
     {
@@ -114,7 +113,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771605922533,
+      "updatedAtMs": 1771606861086,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,12 +133,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771606800000,
-        "lastRunAtMs": 1771605900005,
+        "nextRunAtMs": 1771607700000,
+        "lastRunAtMs": 1771606850983,
         "lastStatus": "ok",
-        "lastDurationMs": 22528,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771606800013
+        "lastDurationMs": 10103,
+        "consecutiveErrors": 0
       }
     },
     {
