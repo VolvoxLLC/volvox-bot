@@ -182,6 +182,32 @@ Runtime config changes (via `/config set`) are handled in two ways:
 
 When adding new modules, prefer the per-request `getConfig()` pattern. Only add reactive `onConfigChange` wiring for stateful resources that can't re-read config on each use.
 
+## Secret Scanning
+
+**gitleaks** runs automatically to prevent accidental secret commits.
+
+### How It Works
+
+- **Pre-commit hook** (`.hooks/pre-commit`) — scans staged changes before every commit. Installed automatically when you run `pnpm install` (via the `prepare` script which sets `core.hooksPath`).
+- **CI check** (`.github/workflows/gitleaks.yml`) — runs on every push to `main` and on all PRs as a safety net. This is the hard gate — even if the local hook is bypassed, CI will catch it.
+- **Config** (`.gitleaks.toml`) — extends gitleaks defaults with custom rules for Discord bot tokens, Anthropic API keys, Anthropic OAuth tokens, and mem0 API keys. Allowlists `.env.example`, test directories, and `node_modules/`.
+
+### Installing gitleaks Locally
+
+```sh
+# macOS
+brew install gitleaks
+
+# Go
+go install github.com/gitleaks/gitleaks/v8@latest
+```
+
+If gitleaks is not installed, the pre-commit hook prints install instructions and exits cleanly (non-blocking). CI is the true gate.
+
+### Allowlisting False Positives
+
+Edit `.gitleaks.toml` — add paths to `[allowlist].paths` or add inline `# gitleaks:allow` comments on specific lines.
+
 ## Common Pitfalls
 
 1. **Missing `node:` prefix** — Biome will catch this, but remember it for new imports

@@ -14,7 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
-    "format": "biome format . --write"
+    "format": "biome format . --write",
+    "prepare": "git config core.hooksPath .hooks"
   },
   "dependencies": {
     "discord.js": "^14.25.1",

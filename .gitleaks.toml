@@ -1,0 +1,45 @@
+# Gitleaks configuration for bills-bot
+# https://github.com/gitleaks/gitleaks
+
+title = "bills-bot gitleaks config"
+
+# Extend the default ruleset — adds standard rules for AWS, GCP, GitHub tokens, etc.
+[extend]
+useDefault = true
+
+# Custom rules for project-specific secret patterns
+
+[[rules]]
+id = "discord-bot-token"
+description = "Discord bot token"
+regex = '''[MNO][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27,}'''
+keywords = ["discord", "token", "bot"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API key"
+regex = '''sk-ant-api03-[\w-]{90,}'''
+keywords = ["anthropic", "sk-ant"]
+
+[[rules]]
+id = "anthropic-oauth-token"
+description = "Anthropic OAuth token"
+regex = '''sk-ant-oat01-[\w-]{40,}'''
+keywords = ["anthropic", "sk-ant-oat"]
+
+[[rules]]
+id = "mem0-api-key"
+description = "mem0 API key"
+regex = '''m0-[\w]{20,}'''
+keywords = ["mem0", "m0-"]
+
+# Paths to exclude from scanning
+[allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''node_modules/''',
+  '''tests/''',
+  '''__tests__/''',
+  '''\.gitleaks\.toml$''',
+  '''pnpm-lock\.yaml$''',
+]

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Pre-commit hook: scan staged changes for secrets using gitleaks
+# Installed automatically via `npm install` / `pnpm install` (see package.json "prepare" script)
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "⚠ gitleaks is not installed — skipping secret scan."
+  echo "  Install it to enable pre-commit secret detection:"
+  echo "    brew install gitleaks"
+  echo "    go install github.com/gitleaks/gitleaks/v8@latest"
+  echo "  CI will still catch secrets on push/PR."
+  exit 0
+fi
+
+gitleaks protect --staged --config .gitleaks.toml
