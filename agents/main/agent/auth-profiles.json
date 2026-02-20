@@ -48,13 +48,13 @@
     },
     "openai-codex:default": {
       "lastUsed": 1771407445004,
-      "errorCount": 42,
-      "lastFailureAt": 1771614009660,
+      "errorCount": 43,
+      "lastFailureAt": 1771619407097,
       "failureCounts": {
-        "rate_limit": 41,
+        "rate_limit": 42,
         "timeout": 1
       },
-      "cooldownUntil": 1771617609660
+      "cooldownUntil": 1771623007097
     },
     "google:default": {
       "lastUsed": 1771605551124,
@@ -68,7 +68,7 @@
     "zai:default": {
       "errorCount": 0,
       "lastFailureAt": 1771618138926,
-      "lastUsed": 1771618690326
+      "lastUsed": 1771619462697
     }
   }
 }
