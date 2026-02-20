@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771599650051,
+    "updatedAt": 1771599982648,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 161672,
-    "outputTokens": 271,
-    "totalTokens": 105333,
+    "inputTokens": 222804,
+    "outputTokens": 1600,
+    "totalTokens": 115882,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771599074717,
+      "generatedAt": 1771599650157,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771598219255,
+    "updatedAt": 1771599981863,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 477422,
-    "outputTokens": 3518,
-    "totalTokens": 136978,
+    "inputTokens": 213827,
+    "outputTokens": 1779,
+    "totalTokens": 139307,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771598035091,
+      "generatedAt": 1771599818472,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -1606,8 +1606,8 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "lastHeartbeatText": "Fix deployed. 🐣\n\nI've rewritten the `gmail-dedup.js` transform to be much more aggressive. It now uses a persistent file-based cache in `/tmp`, so even if the gateway restarts or flaps, it will remember what it's already seen. I also tightened the fingerprint logic (subject + sender + first 150 chars of normalized body) to catch those near-identical retries.\n\n**Action items for you:**\n1. **Gmail Auth:** Your personal account (`billchirico@gmail.com`) is still failing with an expired token. Run this to fix it:\n```bash\ngog gmail auth --account billchirico@gmail.com\n```\n2. **Verify:** Let me know if you still see any \"double-tap\" DMs after this.\n\nI'll keep monitoring the logs to make sure the new dedup is catching the retries.",
-    "lastHeartbeatSentAt": 1771598034937
+    "lastHeartbeatText": "Fix applied. 🐣\n\nThe `heartbeat-state.json` update failed because I tried to be clever with an exact-match edit, but something shifted (probably a whitespace or a timestamp change from another process). I've just overwritten it with the correct, up-to-date values for your morning checks.\n\nAll state is now correctly logged for:\n- ✅ **Codex Usage:** Updated (100% 7-day alert).\n- ✅ **Morning Updates:** Marked as complete.\n- ✅ **OpenClaw Status:** Logged as current.\n- ✅ **Package Tracking:** Updated with the 2:41 PM UTC (9:41 AM EST) departure.\n\nEverything is green. Well, as green as it can be when you're 100% out of Claude and Codex credits. 💸",
+    "lastHeartbeatSentAt": 1771599818338
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {
@@ -2744,14 +2744,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 33219,
-    "outputTokens": 63,
-    "totalTokens": 40387,
+    "inputTokens": 100918,
+    "outputTokens": 475,
+    "totalTokens": 41511,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771592657166,
+    "updatedAt": 1771599857160,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -2956,9 +2956,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 2243,
-    "outputTokens": 300,
-    "totalTokens": 18333,
+    "inputTokens": 13626,
+    "outputTokens": 291,
+    "totalTokens": 19191,
     "totalTokensFresh": true
   },
   "agent:main:cron:3bb6d89e-6898-4708-b9a9-bafea0ece526": {
@@ -4558,14 +4558,14 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 33219,
-    "outputTokens": 63,
-    "totalTokens": 40387,
+    "inputTokens": 100918,
+    "outputTokens": 475,
+    "totalTokens": 41511,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771592657166,
+    "updatedAt": 1771599857160,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -4770,9 +4770,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 2243,
-    "outputTokens": 300,
-    "totalTokens": 18333,
+    "inputTokens": 13626,
+    "outputTokens": 291,
+    "totalTokens": 19191,
     "totalTokensFresh": true
   },
   "agent:main:cron:1b44764d-94cd-4e6a-90f0-87e5902d8234:run:cd075a01-4049-40c0-bcff-61978260e1c6": {

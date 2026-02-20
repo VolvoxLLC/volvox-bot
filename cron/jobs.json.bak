@@ -43,7 +43,7 @@
       "description": "Periodic checks every 30 minutes for emails, calendar, package updates",
       "enabled": true,
       "createdAtMs": 1771430195240,
-      "updatedAtMs": 1771597818747,
+      "updatedAtMs": 1771599689087,
       "schedule": {
         "kind": "cron",
         "expr": "*/30 * * * *",
@@ -62,12 +62,12 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771599600000,
-        "lastRunAtMs": 1771597800005,
-        "lastStatus": "ok",
-        "lastDurationMs": 18742,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771599600011
+        "nextRunAtMs": 1771601400000,
+        "lastRunAtMs": 1771599600012,
+        "lastStatus": "error",
+        "lastDurationMs": 89075,
+        "consecutiveErrors": 1,
+        "lastError": "cron announce delivery failed"
       }
     },
     {
@@ -78,7 +78,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771592685718,
+      "updatedAtMs": 1771599977470,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -98,11 +98,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771599857126,
-        "lastRunAtMs": 1771592657140,
+        "nextRunAtMs": 1771607057126,
+        "lastRunAtMs": 1771599857134,
         "lastStatus": "error",
-        "lastDurationMs": 28578,
-        "consecutiveErrors": 12,
+        "lastDurationMs": 120336,
+        "consecutiveErrors": 13,
         "lastError": "cron announce delivery failed"
       }
     },
@@ -114,7 +114,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771598736498,
+      "updatedAtMs": 1771599703702,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -134,12 +134,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771599600000,
-        "lastRunAtMs": 1771598700018,
+        "nextRunAtMs": 1771600500000,
+        "lastRunAtMs": 1771599689087,
         "lastStatus": "ok",
-        "lastDurationMs": 36480,
-        "consecutiveErrors": 0,
-        "runningAtMs": 1771599600011
+        "lastDurationMs": 14615,
+        "consecutiveErrors": 0
       }
     },
     {
