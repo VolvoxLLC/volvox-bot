@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771549998430,
+    "updatedAt": 1771550763044,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,15 +329,15 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 475098,
-    "outputTokens": 2010,
+    "inputTokens": 380902,
+    "outputTokens": 401,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771549771388,
+      "generatedAt": 1771550336669,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -350,9 +350,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 84088,
+        "chars": 83238,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 20629
+        "nonProjectContextChars": 19779
       },
       "injectedWorkspaceFiles": [
         {
@@ -534,8 +534,8 @@
         ]
       },
       "tools": {
-        "listChars": 2170,
-        "schemaChars": 19752,
+        "listChars": 1770,
+        "schemaChars": 18706,
         "entries": [
           {
             "name": "read",
@@ -586,12 +586,6 @@
             "propertiesCount": 33
           },
           {
-            "name": "cron",
-            "summaryChars": 2689,
-            "schemaChars": 581,
-            "propertiesCount": 13
-          },
-          {
             "name": "message",
             "summaryChars": 471,
             "schemaChars": 7931,
@@ -602,12 +596,6 @@
             "summaryChars": 152,
             "schemaChars": 223,
             "propertiesCount": 2
-          },
-          {
-            "name": "gateway",
-            "summaryChars": 354,
-            "schemaChars": 465,
-            "propertiesCount": 11
           },
           {
             "name": "agents_list",
@@ -690,7 +678,7 @@
         ]
       }
     },
-    "totalTokens": 188227
+    "totalTokens": 96957
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
@@ -933,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "37dddbfa-87ea-4c94-b89b-54dfb7ac9640",
-    "updatedAt": 1771549770542,
+    "updatedAt": 1771550341051,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -946,12 +934,12 @@
     "lastTo": "channel:1466215603995152477",
     "lastAccountId": "pip",
     "origin": {
-      "label": "bapes user id:191633014441115648",
+      "label": "discord:191633014441115648",
       "provider": "discord",
       "surface": "discord",
       "chatType": "direct",
       "from": "discord:191633014441115648",
-      "to": "channel:1466215603995152477",
+      "to": "user:191633014441115648",
       "accountId": "pip"
     },
     "sessionFile": "/home/bill/.openclaw/agents/main/sessions/37dddbfa-87ea-4c94-b89b-54dfb7ac9640.jsonl",

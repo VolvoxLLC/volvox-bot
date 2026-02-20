@@ -17,6 +17,6 @@
   "threadId": null,
   "replyToId": null,
   "bestEffort": false,
-  "retryCount": 1,
+  "retryCount": 2,
   "lastError": "Unknown Channel"
 }
