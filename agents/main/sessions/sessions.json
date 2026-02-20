@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771592612587,
+    "updatedAt": 1771594131066,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 49134,
-    "outputTokens": 214,
-    "totalTokens": 98052,
+    "inputTokens": 156751,
+    "outputTokens": 1658,
+    "totalTokens": 102806,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771592431951,
+      "generatedAt": 1771592612728,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -921,19 +921,21 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771592625572,
+    "updatedAt": 1771593310894,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
     "deliveryContext": {
-      "to": "channel:1466215603995152477"
+      "channel": "discord",
+      "to": "channel:1466215603995152477",
+      "accountId": "pip"
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "discord:191633014441115648",
-      "provider": "discord",
-      "from": "discord:191633014441115648",
-      "to": "user:191633014441115648",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
+      "from": "channel:1466215603995152477",
+      "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -1249,19 +1251,16 @@
       ],
       "version": 0
     },
-    "authProfileOverride": "google:default",
-    "authProfileOverrideSource": "auto",
-    "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 32007,
-    "outputTokens": 4,
-    "totalTokens": 32007,
+    "inputTokens": 127246,
+    "outputTokens": 2731,
+    "totalTokens": 122582,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771592528956,
+      "generatedAt": 1771593220716,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -1601,7 +1600,14 @@
           }
         ]
       }
-    }
+    },
+    "lastChannel": "discord",
+    "lastAccountId": "pip",
+    "authProfileOverride": "google:default",
+    "authProfileOverrideSource": "auto",
+    "authProfileOverrideCompactionCount": 0,
+    "lastHeartbeatText": "Hey Bill, got it. I'm seeing the duplicates too—looks like the `email-triage` agent is double-tapping some of these.\n\nI've been digging into the logs and I found a few issues that are likely causing this:\n\n1. **Gateway Flapping:** I'm seeing a lot of `connection refused` and `500` errors in the `gog` logs. When the gateway restarts or hits an error, the `gmail-dedup.js` transform's in-memory \"seen\" list gets wiped, allowing retried hooks to pass through again.\n2. **OAuth Expiry:** Your personal Gmail (`billchirico@gmail.com`) hook is currently failing with `invalid_grant` (token expired/revoked). You'll need to run `gog gmail auth --account billchirico@gmail.com` to refresh that.\n3. **API Exhaustion:** As the system just reminded us, your 7-day windows for both Claude and Codex are at **100% usage**. We're running on Gemini Flash and GLM right now, which is fine, but it might be contributing to some of the \"lane task errors\" I saw in the logs.\n\n**Immediate Plan:**\n- I'm going to update `gmail-dedup.js` to use a more robust fingerprint and possibly a small file-based cache so it survives gateway restarts.\n- I'll check if gog is sending different internal IDs for the same email, which would bypass our `sessionKey` dedup.\n\n**Quick Question:** Are you seeing exact duplicates of the *same* alert, or just many alerts for different emails? (Those USPS and Invoice alerts I just relayed were for two different items).\n\n📊 **API Usage Reminder (8:13 AM):**\n- **Claude:** 5h: 0% | 7-day: **100%** (Resets Saturday 5 PM)\n- **Codex:** 5h: 0% | 7-day: **100%** (Resets Tuesday 12 PM)\n\nStanding by for that `gog` auth refresh whenever you can get to a terminal!",
+    "lastHeartbeatSentAt": 1771593220536
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {
@@ -2745,7 +2751,7 @@
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771585457177,
+    "updatedAt": 1771592657166,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -2950,9 +2956,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 11468,
+    "inputTokens": 2243,
     "outputTokens": 300,
-    "totalTokens": 17602,
+    "totalTokens": 18333,
     "totalTokensFresh": true
   },
   "agent:main:cron:3bb6d89e-6898-4708-b9a9-bafea0ece526": {
@@ -4881,7 +4887,7 @@
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
     "sessionId": "d5ddc341-3197-4658-9518-5053a6addeea",
-    "updatedAt": 1771585457177,
+    "updatedAt": 1771592657166,
     "systemSent": true,
     "label": "Cron: Usage Monitor",
     "skillsSnapshot": {
@@ -5086,9 +5092,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 11468,
+    "inputTokens": 2243,
     "outputTokens": 300,
-    "totalTokens": 17602,
+    "totalTokens": 18333,
     "totalTokensFresh": true
   }
 }

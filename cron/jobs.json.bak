@@ -77,7 +77,7 @@
       "description": "Check API usage every 2 hours and alert when approaching limits",
       "enabled": true,
       "createdAtMs": 1771430195257,
-      "updatedAtMs": 1771585489834,
+      "updatedAtMs": 1771592685718,
       "schedule": {
         "kind": "cron",
         "expr": "0 */2 * * *",
@@ -97,11 +97,11 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771592657126,
-        "lastRunAtMs": 1771585457153,
+        "nextRunAtMs": 1771599857126,
+        "lastRunAtMs": 1771592657140,
         "lastStatus": "error",
-        "lastDurationMs": 32681,
-        "consecutiveErrors": 11,
+        "lastDurationMs": 28578,
+        "consecutiveErrors": 12,
         "lastError": "cron announce delivery failed"
       }
     },
@@ -113,7 +113,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771592582872,
+      "updatedAtMs": 1771593315697,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -133,10 +133,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771593300000,
-        "lastRunAtMs": 1771592528566,
+        "nextRunAtMs": 1771594200000,
+        "lastRunAtMs": 1771593300029,
         "lastStatus": "ok",
-        "lastDurationMs": 54306,
+        "lastDurationMs": 15668,
         "consecutiveErrors": 0
       }
     },
