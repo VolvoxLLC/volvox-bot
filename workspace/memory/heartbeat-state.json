@@ -1,15 +1,15 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-19T22:41:00Z",
-    "note": "✅ Two-way sync: pulled context."
+    "lastRun": "2026-02-20T00:43:00Z",
+    "note": "✅ Two-way sync: pushed heartbeat state."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-19T17:16:32Z",
+    "lastRun": "2026-02-20T00:42:15Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "✅ 5h usage at 0%."
+    "note": "✅ Checked: 5h usage at 0%."
   },
   "codexUsage": {
     "lastRun": "2026-02-19T12:39:00Z",
@@ -23,15 +23,11 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-19T22:41:00Z",
-    "note": "✅ Auto-backup to main successful (1227a18)."
-  },
-  "billCheckIn": {
-    "lastRun": "2026-02-19T22:41:00Z",
-    "note": "✅ DM'd Bill to check in at 5:41 PM EST."
+    "lastRun": "2026-02-20T00:42:15Z",
+    "note": "✅ Auto-backup to main successful (dc850fa)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-19T15:17:00Z",
+    "lastRun": "2026-02-20T00:43:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
     "note": "10 overdue tasks found."
@@ -41,7 +37,7 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-19T16:45:00Z",
+    "lastRun": "2026-02-20T00:43:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -57,15 +53,15 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-19T16:45:00Z",
+    "lastRun": "2026-02-20T00:43:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
-    "lastRun": "2026-02-19T15:00:30Z",
+    "lastRun": "2026-02-19T10:00:30Z",
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-19T16:45:00Z",
+    "lastRun": "2026-02-20T00:43:00Z",
     "note": "✅ Gmail hooks active."
   },
   "calendarCheck": {
@@ -73,9 +69,9 @@
     "note": "✅ No upcoming events in next 2h."
   },
   "packageTracking": {
-    "lastRun": "2026-02-19T17:16:32Z",
-    "inTransit": 3,
-    "note": "✅ 3 packages synced, no changes."
+    "lastRun": "2026-02-19T12:39:00Z",
+    "inTransit": 2,
+    "note": "✅ 2 packages synced."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -90,6 +86,10 @@
   "weatherCheck": {
     "lastRun": "2026-02-19T08:21:00Z",
     "note": "Point Pleasant, NJ: checked."
+  },
+  "billCheckIn": {
+    "lastRun": "2026-02-20T00:43:00Z",
+    "note": "Bundled Gmail/Proxy health check."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
