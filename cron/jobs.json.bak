@@ -137,7 +137,8 @@
         "lastRunAtMs": 1771614055188,
         "lastStatus": "ok",
         "lastDurationMs": 43162,
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1771614900006
       }
     },
     {
