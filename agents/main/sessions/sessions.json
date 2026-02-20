@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771597929144,
+    "updatedAt": 1771598222935,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 156554,
-    "outputTokens": 1486,
-    "totalTokens": 102677,
+    "inputTokens": 105568,
+    "outputTokens": 280,
+    "totalTokens": 56430,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771597790998,
+      "generatedAt": 1771597929268,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771597345716,
+    "updatedAt": 1771598219255,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -932,10 +932,10 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "discord:191633014441115648",
-      "provider": "discord",
-      "from": "discord:191633014441115648",
-      "to": "user:191633014441115648",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
+      "from": "channel:1466215603995152477",
+      "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 65645,
-    "outputTokens": 346,
-    "totalTokens": 65645,
+    "inputTokens": 477422,
+    "outputTokens": 3518,
+    "totalTokens": 136978,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771596997656,
+      "generatedAt": 1771598035091,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
@@ -1606,8 +1606,8 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "lastHeartbeatText": "☕️ Morning, Bill. Here's your Friday morning digest (and yes, it's raining, so grab that umbrella).\n\n---\n\n## 🌅 Morning Digest — Friday, Feb 20\n\n### 🌤️ Weather\n**Currently:** 40°F, Light Rain in Point Pleasant.\n**Today:** Cloudy with showers all day. High of 41°F.\n\n### ✅ Tasks (11 pending)\n- 🔴 Work on Eleftherias contract\n- 🔴 Amazon return @ UPS Store (Brielle) — $5.18 refund\n- 🔴 Set up Secret Manager for Pip\n- 🔴 Finish 12 Step Program Tab (Daily Reflections feature)\n- 🔴 GA4 analytics & Volvox blog (Decision Jar article)\n- 🔴 Create tweet reply bot & business cards\n\n### 📰 Reddit AI\n*Reddit is blocking API requests this morning, so I couldn't pull the latest from r/claude or r/openai.*\n\n### 🚀 Product Hunt Top 5\n1. **Gemini 3.1 Pro** — Smarter model for complex tasks.\n2. **Architect by Lyzr** — Build AI agents.\n3. **Pomelli 2.0 (Google Labs)** — Studio-quality product photos instantly.\n4. **Claudebin** — Share Claude Code sessions as URLs.\n5. **Arcmark** — Sidebar bookmarks for any browser.\n\n---\n\nI'm still looking into that dedup issue we discussed earlier—I'll have an update for you shortly. Have a productive one! 🚀",
-    "lastHeartbeatSentAt": 1771596997544
+    "lastHeartbeatText": "Fix deployed. 🐣\n\nI've rewritten the `gmail-dedup.js` transform to be much more aggressive. It now uses a persistent file-based cache in `/tmp`, so even if the gateway restarts or flaps, it will remember what it's already seen. I also tightened the fingerprint logic (subject + sender + first 150 chars of normalized body) to catch those near-identical retries.\n\n**Action items for you:**\n1. **Gmail Auth:** Your personal account (`billchirico@gmail.com`) is still failing with an expired token. Run this to fix it:\n```bash\ngog gmail auth --account billchirico@gmail.com\n```\n2. **Verify:** Let me know if you still see any \"double-tap\" DMs after this.\n\nI'll keep monitoring the logs to make sure the new dedup is catching the retries.",
+    "lastHeartbeatSentAt": 1771598034937
   },
   "agent:main:discord:pip-build:direct:191633014441115648": {
     "origin": {
