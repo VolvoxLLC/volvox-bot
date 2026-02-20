@@ -1,11 +1,11 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T08:00:00Z",
+    "lastRun": "2026-02-20T08:05:00Z",
     "note": "✅ Two-way sync: pulled context."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T08:00:00Z",
+    "lastRun": "2026-02-20T08:05:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -19,18 +19,18 @@
     "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
-    "lastRun": "2026-02-20T07:21:00Z",
-    "note": "✅ OAuth token refresh success (morning reset)."
+    "lastRun": "2026-02-20T08:05:00Z",
+    "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T08:00:00Z",
-    "note": "✅ Auto-backup to main successful (c7fddc6)."
+    "lastRun": "2026-02-20T08:05:00Z",
+    "note": "✅ Auto-backup to main successful (96f33be)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T08:00:00Z",
+    "lastRun": "2026-02-20T08:05:00Z",
     "dueTodayCount": 0,
     "overdueCount": 11,
-    "note": "11 overdue tasks."
+    "note": "11 overdue/today tasks."
   },
   "morningUpdates": {
     "lastRun": "2026-02-19T14:00:00Z",
