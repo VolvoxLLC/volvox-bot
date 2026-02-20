@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
-    "updatedAt": 1771566929100,
+    "updatedAt": 1771568013113,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,15 +329,15 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 322660,
-    "outputTokens": 1346,
+    "inputTokens": 544102,
+    "outputTokens": 1117,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771566908391,
+      "generatedAt": 1771567875426,
       "sessionId": "1fc78770-6063-41d2-9e40-19f7912dbd45",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -678,7 +678,7 @@
         ]
       }
     },
-    "totalTokens": 216972
+    "totalTokens": 220776
   },
   "agent:main:discord:channel:191633014441115648": {
     "sessionId": "5069036b-e359-44d7-806b-70afc82fda74",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "37dddbfa-87ea-4c94-b89b-54dfb7ac9640",
-    "updatedAt": 1771567265024,
+    "updatedAt": 1771567325423,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -1253,16 +1253,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 62173,
-    "outputTokens": 6,
-    "totalTokens": 62173,
+    "inputTokens": 325609,
+    "outputTokens": 2176,
+    "totalTokens": 135572,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771565486117,
+      "generatedAt": 1771567265157,
       "sessionId": "37dddbfa-87ea-4c94-b89b-54dfb7ac9640",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "google",
