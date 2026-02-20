@@ -1,18 +1,18 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T02:01:00Z",
-    "note": "✅ Two-way sync: pulled and pushed heartbeat state."
+    "lastRun": "2026-02-20T02:20:00Z",
+    "note": "✅ Two-way sync: pushed heartbeat state."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T02:01:00Z",
+    "lastRun": "2026-02-20T02:20:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "🚨 7-day window exhausted (100%)."
+    "note": "🚨 7-day window exhausted (100%). Checked via script."
   },
   "codexUsage": {
-    "lastRun": "2026-02-20T01:31:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
@@ -23,21 +23,21 @@
     "note": "✅ OAuth token refresh attempted via pty (hit limit)."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T02:01:00Z",
-    "note": "✅ Auto-backup successful (6329934). 18 vulnerabilities reported."
+    "lastRun": "2026-02-20T02:20:00Z",
+    "note": "✅ Auto-backup to main successful (563f41e)."
   },
   "todoistSync": {
-    "lastRun": "2026-02-20T01:31:00Z",
+    "lastRun": "2026-02-20T02:25:00Z",
     "dueTodayCount": 0,
     "overdueCount": 10,
-    "note": "10 overdue tasks remain."
+    "note": "10 overdue tasks found."
   },
   "morningUpdates": {
     "lastRun": "2026-02-19T14:00:00Z",
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T01:07:00Z",
+    "lastRun": "2026-02-20T02:25:00Z",
     "personal": {
       "port": 8788,
       "status": "✅ running"
@@ -53,7 +53,7 @@
     "note": "✅ All watches healthy."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T01:07:00Z",
+    "lastRun": "2026-02-20T02:25:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T01:07:00Z",
-    "note": "✅ Gmail hooks active."
+    "lastRun": "2026-02-20T02:25:00Z",
+    "note": "✅ Gmail hooks active. Job application alert sent."
   },
   "calendarCheck": {
     "lastRun": "2026-02-20T01:10:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T01:31:00Z",
+    "lastRun": "2026-02-20T01:13:00Z",
     "inTransit": 1,
-    "note": "✅ No changes in sync."
+    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,7 +84,7 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T01:31:00Z",
+    "lastRun": "2026-02-20T01:10:00Z",
     "note": "Point Pleasant, NJ: checked (68°F, misty)."
   },
   "billCheckIn": {
