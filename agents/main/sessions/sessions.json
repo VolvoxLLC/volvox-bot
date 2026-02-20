@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771591023945,
+    "updatedAt": 1771591988984,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 227400,
-    "outputTokens": 243,
-    "totalTokens": 88940,
+    "inputTokens": 185582,
+    "outputTokens": 1712,
+    "totalTokens": 88503,
     "totalTokensFresh": true,
     "modelProvider": "google",
     "model": "gemini-3-flash-preview",
     "contextTokens": 1048576,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771590191181,
+      "generatedAt": 1771591024126,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "google",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771590644098,
+    "updatedAt": 1771591047563,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -930,10 +930,13 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "channel:1466215603995152477",
-      "provider": "cron-event",
-      "from": "channel:1466215603995152477",
-      "to": "channel:1466215603995152477"
+      "label": "discord:191633014441115648",
+      "provider": "discord",
+      "from": "discord:191633014441115648",
+      "to": "user:191633014441115648",
+      "surface": "discord",
+      "chatType": "direct",
+      "accountId": "pip"
     },
     "sessionFile": "/home/bill/.openclaw/agents/main/sessions/75a24c3f-c1f0-4462-b902-985134a9cc08.jsonl",
     "compactionCount": 0,
