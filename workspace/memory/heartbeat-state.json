@@ -2,7 +2,7 @@
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
     "lastRun": "2026-02-20T10:07:00Z",
-    "note": "✅ Two-way sync: pulled context; pushed heartbeat summary."
+    "note": "✅ Heartbeat summary pushed to Mem0."
   },
   "claudeUsage": {
     "lastRun": "2026-02-20T10:07:00Z",
@@ -24,7 +24,7 @@
   },
   "githubBackup": {
     "lastRun": "2026-02-20T10:07:00Z",
-    "note": "✅ Auto-backup to main successful (404be53)."
+    "note": "✅ Auto-backup to main successful (4fbf9c2)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
