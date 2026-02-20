@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771605124038,
+    "updatedAt": 1771605433213,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 8016,
-    "outputTokens": 1368,
-    "totalTokens": 48638,
+    "inputTokens": 103656,
+    "outputTokens": 1512,
+    "totalTokens": 52574,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771604356057,
+      "generatedAt": 1771605176115,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771605057981,
+    "updatedAt": 1771605337425,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -932,9 +932,9 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "channel:1466215603995152477",
-      "provider": "cron-event",
-      "from": "channel:1466215603995152477",
+      "label": "bapes user id:191633014441115648",
+      "provider": "discord",
+      "from": "discord:191633014441115648",
       "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
@@ -1251,20 +1251,20 @@
       ],
       "version": 0
     },
-    "inputTokens": 76850,
-    "outputTokens": 4,
-    "totalTokens": 151716,
+    "inputTokens": 55933,
+    "outputTokens": 524,
+    "totalTokens": 64253,
     "totalTokensFresh": true,
-    "modelProvider": "google",
-    "model": "gemini-3-flash-preview",
-    "contextTokens": 1048576,
+    "modelProvider": "zai",
+    "model": "glm-5",
+    "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771605038453,
+      "generatedAt": 1771605302463,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
-      "provider": "google",
-      "model": "gemini-3-flash-preview",
+      "provider": "zai",
+      "model": "glm-5",
       "workspaceDir": "/home/bill/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 64000,
@@ -1273,9 +1273,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 83243,
+        "chars": 83451,
         "projectContextChars": 63459,
-        "nonProjectContextChars": 19784
+        "nonProjectContextChars": 19992
       },
       "injectedWorkspaceFiles": [
         {
@@ -1458,7 +1458,7 @@
       },
       "tools": {
         "listChars": 1770,
-        "schemaChars": 18706,
+        "schemaChars": 19004,
         "entries": [
           {
             "name": "read",
@@ -1481,19 +1481,19 @@
           {
             "name": "exec",
             "summaryChars": 181,
-            "schemaChars": 1037,
+            "schemaChars": 1086,
             "propertiesCount": 12
           },
           {
             "name": "process",
             "summaryChars": 85,
-            "schemaChars": 949,
+            "schemaChars": 961,
             "propertiesCount": 12
           },
           {
             "name": "browser",
             "summaryChars": 1251,
-            "schemaChars": 1869,
+            "schemaChars": 1897,
             "propertiesCount": 28
           },
           {
@@ -1510,8 +1510,8 @@
           },
           {
             "name": "message",
-            "summaryChars": 471,
-            "schemaChars": 7931,
+            "summaryChars": 478,
+            "schemaChars": 7919,
             "propertiesCount": 85
           },
           {
@@ -1529,31 +1529,31 @@
           {
             "name": "sessions_list",
             "summaryChars": 54,
-            "schemaChars": 176,
+            "schemaChars": 212,
             "propertiesCount": 4
           },
           {
             "name": "sessions_history",
             "summaryChars": 36,
-            "schemaChars": 149,
+            "schemaChars": 161,
             "propertiesCount": 3
           },
           {
             "name": "sessions_send",
             "summaryChars": 84,
-            "schemaChars": 203,
+            "schemaChars": 273,
             "propertiesCount": 5
           },
           {
             "name": "sessions_spawn",
             "summaryChars": 107,
-            "schemaChars": 312,
+            "schemaChars": 336,
             "propertiesCount": 8
           },
           {
             "name": "subagents",
             "summaryChars": 105,
-            "schemaChars": 179,
+            "schemaChars": 191,
             "propertiesCount": 4
           },
           {
@@ -1565,18 +1565,18 @@
           {
             "name": "web_search",
             "summaryChars": 175,
-            "schemaChars": 728,
+            "schemaChars": 753,
             "propertiesCount": 6
           },
           {
             "name": "web_fetch",
             "summaryChars": 129,
-            "schemaChars": 360,
+            "schemaChars": 374,
             "propertiesCount": 3
           },
           {
             "name": "image",
-            "summaryChars": 260,
+            "summaryChars": 201,
             "schemaChars": 342,
             "propertiesCount": 6
           },
@@ -1595,7 +1595,7 @@
           {
             "name": "voice_call",
             "summaryChars": 72,
-            "schemaChars": 423,
+            "schemaChars": 451,
             "propertiesCount": 6
           }
         ]
@@ -1605,7 +1605,7 @@
     "lastAccountId": "pip",
     "lastHeartbeatText": "Fix applied. 🐣\n\nThe `heartbeat-state.json` update failed because I tried to be clever with an exact-match edit, but something shifted (probably a whitespace or a timestamp change from another process). I've just overwritten it with the correct, up-to-date values for your morning checks.\n\nAll state is now correctly logged for:\n- ✅ **Codex Usage:** Updated (100% 7-day alert).\n- ✅ **Morning Updates:** Marked as complete.\n- ✅ **OpenClaw Status:** Logged as current.\n- ✅ **Package Tracking:** Updated with the 2:41 PM UTC (9:41 AM EST) departure.\n\nEverything is green. Well, as green as it can be when you're 100% out of Claude and Codex credits. 💸",
     "lastHeartbeatSentAt": 1771599818338,
-    "authProfileOverride": "google:default",
+    "authProfileOverride": "openai-codex:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
   },
