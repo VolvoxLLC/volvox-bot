@@ -113,7 +113,7 @@
       "description": "Check bills-bot PRs every 10 min for unresolved review threads and spawn fix sub-agents",
       "enabled": true,
       "createdAtMs": 1771465784783,
-      "updatedAtMs": 1771581731781,
+      "updatedAtMs": 1771582531836,
       "schedule": {
         "kind": "cron",
         "expr": "*/15 * * * *",
@@ -133,10 +133,10 @@
         "channel": "discord"
       },
       "state": {
-        "nextRunAtMs": 1771582500000,
-        "lastRunAtMs": 1771581675058,
+        "nextRunAtMs": 1771583400000,
+        "lastRunAtMs": 1771582500040,
         "lastStatus": "ok",
-        "lastDurationMs": 56723,
+        "lastDurationMs": 31796,
         "consecutiveErrors": 0
       }
     },
