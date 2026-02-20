@@ -1,30 +1,30 @@
 {
   "_description": "Canonical sync log — tracks when every periodic task was last performed. All timestamps ISO 8601 UTC.",
   "mem0Sync": {
-    "lastRun": "2026-02-20T18:30:00Z",
-    "note": "✅ Two-way sync: pulled context."
+    "lastRun": "2026-02-20T19:15:00Z",
+    "note": "✅ Two-way sync: pushed personal Gmail watch expiry."
   },
   "claudeUsage": {
-    "lastRun": "2026-02-20T19:05:00Z",
+    "lastRun": "2026-02-20T19:15:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "✅ 5h usage at 0%. 7d exhausted (resets Feb 22)."
+    "note": "✅ 5h usage at 0%."
   },
   "codexUsage": {
-    "lastRun": "2026-02-20T19:05:00Z",
+    "lastRun": "2026-02-19T12:39:00Z",
     "fiveHour": 0,
     "sevenDay": 100,
     "alertLevel": "none",
-    "note": "✅ 5h usage at 0%. 7d exhausted (resets Feb 25)."
+    "note": "🚨 7-day window exhausted (100%)."
   },
   "claudeTokenRefresh": {
     "lastRun": "2026-02-20T08:05:00Z",
     "note": "✅ OAuth token refreshed."
   },
   "githubBackup": {
-    "lastRun": "2026-02-20T18:30:00Z",
-    "note": "✅ Auto-backup to main successful (a53bcb9)."
+    "lastRun": "2026-02-20T19:15:00Z",
+    "note": "✅ Auto-backup to main successful (9116de6)."
   },
   "todoistSync": {
     "lastRun": "2026-02-20T08:05:00Z",
@@ -37,10 +37,10 @@
     "note": "Morning checks completed."
   },
   "gmailWebhooks": {
-    "lastRun": "2026-02-20T18:30:00Z",
+    "lastRun": "2026-02-20T19:15:00Z",
     "personal": {
       "port": 8788,
-      "status": "✅ running"
+      "status": "⚠️ watch expired Feb 18"
     },
     "volvox": {
       "port": 8789,
@@ -50,10 +50,10 @@
       "port": 8790,
       "status": "⚠️ watch expired Feb 16"
     },
-    "note": "⚠️ Chirico watch expired - needs renewal."
+    "note": "⚠️ Personal + Chirico watches expired - need renewal."
   },
   "sendblueProxy": {
-    "lastRun": "2026-02-20T18:30:00Z",
+    "lastRun": "2026-02-20T19:15:00Z",
     "status": "✅ running (port 3456)"
   },
   "openclawUpdate": {
@@ -61,17 +61,17 @@
     "note": "✅ openclaw up to date."
   },
   "emailCheck": {
-    "lastRun": "2026-02-20T18:30:00Z",
-    "note": "✅ Gmail hooks active."
+    "lastRun": "2026-02-20T19:15:00Z",
+    "note": "⚠️ Personal + Chirico watches expired - 401 errors."
   },
   "calendarCheck": {
-    "lastRun": "2026-02-20T18:30:00Z",
+    "lastRun": "2026-02-20T19:15:00Z",
     "note": "✅ No upcoming events."
   },
   "packageTracking": {
-    "lastRun": "2026-02-20T18:30:00Z",
+    "lastRun": "2026-02-20T01:13:00Z",
     "inTransit": 1,
-    "note": "✅ Package 1Z0GJ... Out for Delivery."
+    "note": "✅ Package 1Z0GJ... is InTransit (Arrived at Facility)."
   },
   "openclawPR": {
     "lastRun": "2026-02-18T22:30:00Z",
@@ -84,8 +84,12 @@
     "note": "No active PRs requiring attention."
   },
   "weatherCheck": {
-    "lastRun": "2026-02-20T18:30:00Z",
-    "note": "Point Pleasant, NJ: checked (Cloudy +41°F)."
+    "lastRun": "2026-02-20T19:15:00Z",
+    "note": "Point Pleasant, NJ: Cloudy +37°F."
+  },
+  "billCheckIn": {
+    "lastRun": "2026-02-20T19:15:00Z",
+    "note": "Notified about both Gmail watch expirations."
   },
   "eveningDigest": {
     "lastRun": "2026-02-19T02:30:00Z",
