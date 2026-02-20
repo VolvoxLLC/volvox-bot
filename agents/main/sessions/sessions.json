@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771619879160,
+    "updatedAt": 1771620528470,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 2495,
-    "outputTokens": 1428,
-    "totalTokens": 53036,
+    "inputTokens": 57746,
+    "outputTokens": 251,
+    "totalTokens": 56321,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771619709916,
+      "generatedAt": 1771619879280,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -921,18 +921,18 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771619722322,
+    "updatedAt": 1771620346935,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
     "deliveryContext": {
       "channel": "discord",
-      "to": "channel:1466215603995152477",
+      "to": "user:191633014441115648",
       "accountId": "pip"
     },
-    "lastTo": "channel:1466215603995152477",
+    "lastTo": "user:191633014441115648",
     "origin": {
-      "label": "discord:191633014441115648",
+      "label": "Bill",
       "provider": "discord",
       "from": "discord:191633014441115648",
       "to": "user:191633014441115648",
@@ -1251,16 +1251,16 @@
       ],
       "version": 0
     },
-    "inputTokens": 856,
-    "outputTokens": 528,
-    "totalTokens": 80982,
+    "inputTokens": 215404,
+    "outputTokens": 202,
+    "totalTokens": 81095,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771619423617,
+      "generatedAt": 1771620133167,
       "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
       "sessionKey": "agent:main:discord:pip:direct:191633014441115648",
       "provider": "zai",
@@ -1273,9 +1273,9 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 82820,
+        "chars": 83048,
         "projectContextChars": 63056,
-        "nonProjectContextChars": 19764
+        "nonProjectContextChars": 19992
       },
       "injectedWorkspaceFiles": [
         {
@@ -1458,7 +1458,7 @@
       },
       "tools": {
         "listChars": 1770,
-        "schemaChars": 19016,
+        "schemaChars": 19004,
         "entries": [
           {
             "name": "read",
@@ -1510,8 +1510,8 @@
           },
           {
             "name": "message",
-            "summaryChars": 471,
-            "schemaChars": 7931,
+            "summaryChars": 478,
+            "schemaChars": 7919,
             "propertiesCount": 85
           },
           {
@@ -1605,7 +1605,7 @@
     "lastAccountId": "pip",
     "lastHeartbeatText": "⚠️ 📝 Edit: in ~/.openclaw/workspace/memory/heartbeat-state.json (161 chars) failed: Could not find the exact text in /home/bill/.openclaw/workspace/memory/heartbeat-state.json. The old text must match exactly including all whitespace and newlines.",
     "lastHeartbeatSentAt": 1771619423449,
-    "authProfileOverride": "google:default",
+    "authProfileOverride": "openai-codex:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0
   },
