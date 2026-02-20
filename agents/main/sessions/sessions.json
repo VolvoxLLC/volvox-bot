@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
-    "updatedAt": 1771615438353,
+    "updatedAt": 1771615499636,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -329,16 +329,16 @@
     "authProfileOverride": "google:default",
     "authProfileOverrideSource": "auto",
     "authProfileOverrideCompactionCount": 0,
-    "inputTokens": 87085,
-    "outputTokens": 1996,
-    "totalTokens": 50657,
+    "inputTokens": 6242,
+    "outputTokens": 1288,
+    "totalTokens": 52105,
     "totalTokensFresh": true,
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1771614847402,
+      "generatedAt": 1771615438501,
       "sessionId": "2ddb617f-ed40-4a19-8063-356aa145032e",
       "sessionKey": "agent:main:main",
       "provider": "zai",
@@ -921,7 +921,7 @@
   },
   "agent:main:discord:pip:direct:191633014441115648": {
     "sessionId": "75a24c3f-c1f0-4462-b902-985134a9cc08",
-    "updatedAt": 1771614882656,
+    "updatedAt": 1771615813896,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -932,10 +932,10 @@
     },
     "lastTo": "channel:1466215603995152477",
     "origin": {
-      "label": "discord:191633014441115648",
-      "provider": "discord",
-      "from": "discord:191633014441115648",
-      "to": "user:191633014441115648",
+      "label": "channel:1466215603995152477",
+      "provider": "cron-event",
+      "from": "channel:1466215603995152477",
+      "to": "channel:1466215603995152477",
       "surface": "discord",
       "chatType": "direct",
       "accountId": "pip"
@@ -2539,7 +2539,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771614000060,
+    "updatedAt": 1771615800038,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -2744,9 +2744,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 43758,
-    "outputTokens": 264,
-    "totalTokens": 45142,
+    "inputTokens": 38167,
+    "outputTokens": 66,
+    "totalTokens": 45335,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3": {
@@ -4353,7 +4353,7 @@
   },
   "agent:main:cron:ba818e22-96d0-471c-8539-80d736561897:run:1ef67db5-8804-4976-8c25-d9f784a8e225": {
     "sessionId": "1ef67db5-8804-4976-8c25-d9f784a8e225",
-    "updatedAt": 1771614000060,
+    "updatedAt": 1771615800038,
     "systemSent": true,
     "label": "Cron: Heartbeat Check",
     "skillsSnapshot": {
@@ -4558,9 +4558,9 @@
     "modelProvider": "zai",
     "model": "glm-5",
     "contextTokens": 204800,
-    "inputTokens": 43758,
-    "outputTokens": 264,
-    "totalTokens": 45142,
+    "inputTokens": 38167,
+    "outputTokens": 66,
+    "totalTokens": 45335,
     "totalTokensFresh": true
   },
   "agent:main:cron:2b1140c1-17a2-47b4-956f-a313f64f42c3:run:d5ddc341-3197-4658-9518-5053a6addeea": {
