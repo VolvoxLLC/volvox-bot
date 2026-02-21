@@ -49,6 +49,24 @@ export class DiscordApiError extends Error {
 }
 
 /**
+ * Custom error for CLI subprocess failures, carrying the failure reason.
+ */
+export class CLIProcessError extends Error {
+  /**
+   * @param {string} message
+   * @param {'timeout'|'killed'|'exit'|'parse'} reason
+   * @param {Object} [meta]
+   */
+  constructor(message, reason, meta = {}) {
+    super(message);
+    this.name = 'CLIProcessError';
+    this.reason = reason;
+    const { message: _m, name: _n, stack: _s, ...safeMeta } = meta;
+    Object.assign(this, safeMeta);
+  }
+}
+
+/**
  * Classify an error into a specific error type
  *
  * @param {Error} error - The error to classify

@@ -20,28 +20,14 @@ import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { info, error as logError, warn } from '../logger.js';
+import { CLIProcessError } from '../utils/errors.js';
 
 // Resolve the `claude` binary path from node_modules/.bin (may not be in PATH in Docker).
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOCAL_BIN = resolve(__dirname, '..', '..', 'node_modules', '.bin', 'claude');
 const CLAUDE_BIN = existsSync(LOCAL_BIN) ? LOCAL_BIN : 'claude';
 
-// ── CLIProcessError ──────────────────────────────────────────────────────────
-
-export class CLIProcessError extends Error {
-  /**
-   * @param {string} message
-   * @param {'timeout'|'killed'|'exit'|'parse'} reason
-   * @param {Object} [meta]
-   */
-  constructor(message, reason, meta = {}) {
-    super(message);
-    this.name = 'CLIProcessError';
-    this.reason = reason;
-    const { message: _m, name: _n, stack: _s, ...safeMeta } = meta;
-    Object.assign(this, safeMeta);
-  }
-}
+export { CLIProcessError };
 
 // ── AsyncQueue ───────────────────────────────────────────────────────────────
 
@@ -255,6 +241,13 @@ export class CLIProcess {
     this.#proc = spawn(CLAUDE_BIN, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       env,
+    });
+
+    // EPIPE protection: if the child dies between the alive check and stdin.write,
+    // catch the error instead of crashing the host process.
+    this.#proc.stdin.on('error', (err) => {
+      warn(`${this.#name}: stdin error (child may have exited)`, { error: err.message });
+      this.#alive = false;
     });
 
     // Capture stderr for diagnostics
@@ -496,6 +489,7 @@ export class CLIProcess {
   #extractResult(message) {
     if (message.is_error) {
       const errMsg = message.errors?.map((e) => e.message || e).join('; ') || 'Unknown CLI error';
+      logError(`${this.#name}: CLI error`, { error: errMsg });
       throw new CLIProcessError(`${this.#name}: CLI error — ${errMsg}`, 'exit');
     }
     return message;

@@ -522,15 +522,23 @@ async function sendResponses(channel, parsed, classification, snapshot, config, 
 
     if (triageConfig.moderationResponse !== false && responses.length > 0) {
       for (const r of responses) {
-        if (r.response?.trim()) {
-          const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
-          const chunks = splitMessage(r.response);
-          for (let i = 0; i < chunks.length; i++) {
-            const msgOpts = { content: chunks[i] };
-            if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
-            if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
-            await safeSend(channel, msgOpts);
+        try {
+          if (r.response?.trim()) {
+            const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
+            const chunks = splitMessage(r.response);
+            for (let i = 0; i < chunks.length; i++) {
+              const msgOpts = { content: chunks[i] };
+              if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
+              if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
+              await safeSend(channel, msgOpts);
+            }
           }
+        } catch (err) {
+          logError('Failed to send moderation response', {
+            channelId,
+            targetUser: r.targetUser,
+            error: err?.message,
+          });
         }
       }
     }
@@ -546,27 +554,35 @@ async function sendResponses(channel, parsed, classification, snapshot, config, 
   await channel.sendTyping();
 
   for (const r of responses) {
-    if (!r.response?.trim()) {
-      warn('Triage generated empty response for user', { channelId, targetUser: r.targetUser });
-      continue;
+    try {
+      if (!r.response?.trim()) {
+        warn('Triage generated empty response for user', { channelId, targetUser: r.targetUser });
+        continue;
+      }
+
+      const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
+      const chunks = splitMessage(r.response);
+
+      for (let i = 0; i < chunks.length; i++) {
+        const msgOpts = { content: chunks[i] };
+        if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
+        if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
+        await safeSend(channel, msgOpts);
+      }
+
+      info('Triage response sent', {
+        channelId,
+        classification: type,
+        targetUser: r.targetUser,
+        targetMessageId: r.targetMessageId,
+      });
+    } catch (err) {
+      logError('Failed to send triage response', {
+        channelId,
+        targetUser: r.targetUser,
+        error: err?.message,
+      });
     }
-
-    const replyRef = validateMessageId(r.targetMessageId, r.targetUser, snapshot);
-    const chunks = splitMessage(r.response);
-
-    for (let i = 0; i < chunks.length; i++) {
-      const msgOpts = { content: chunks[i] };
-      if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
-      if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
-      await safeSend(channel, msgOpts);
-    }
-
-    info('Triage response sent', {
-      channelId,
-      classification: type,
-      targetUser: r.targetUser,
-      targetMessageId: r.targetMessageId,
-    });
   }
 }
 
@@ -581,7 +597,6 @@ async function sendResponses(channel, parsed, classification, snapshot, config, 
  * @param {Array<{author: string, content: string, userId: string, messageId: string}>} snapshot - Buffer snapshot
  * @param {Object} config - Bot configuration
  * @param {import('discord.js').Client} client - Discord client
- * @param {AbortController} [parentController] - Parent abort controller from evaluateNow
  */
 async function evaluateAndRespond(channelId, snapshot, config, client) {
   // Remove only the messages that were part of this evaluation's snapshot.
@@ -609,7 +624,6 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
     const classification = parseClassifyResult(classifyMessage, channelId);
 
     if (!classification) {
-      clearBuffer();
       return;
     }
 
@@ -623,7 +637,6 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
 
     if (classification.classification === 'ignore') {
       info('Triage: ignoring channel', { channelId, reasoning: classification.reasoning });
-      clearBuffer();
       return;
     }
 
@@ -670,7 +683,6 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
 
     if (!parsed || !parsed.responses?.length) {
       warn('Responder returned no responses', { channelId });
-      clearBuffer();
       return;
     }
 
@@ -712,7 +724,6 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
       }
     }
 
-    clearBuffer();
   } catch (err) {
     if (err instanceof CLIProcessError && err.reason === 'timeout') {
       info('Triage evaluation aborted (timeout)', { channelId });
@@ -735,6 +746,8 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
         // Nothing more we can do
       }
     }
+  } finally {
+    clearBuffer();
   }
 }
 
@@ -767,8 +780,7 @@ function scheduleEvaluation(channelId, config) {
   buf.timer = setTimeout(async () => {
     buf.timer = null;
     try {
-      // Use module-level _config ref to ensure latest config in timer callbacks
-      await evaluateNow(channelId, _config || config, _client, _healthMonitor);
+      await evaluateNow(channelId, config, _client, _healthMonitor);
     } catch (err) {
       logError('Scheduled evaluation failed', { channelId, error: err.message });
     }

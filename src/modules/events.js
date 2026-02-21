@@ -175,7 +175,10 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // accumulateMessage also checks triage.enabled internally.
     if (guildConfig.ai?.enabled) {
       try {
-        accumulateMessage(message, guildConfig);
+        const p = accumulateMessage(message, guildConfig);
+        p?.catch((err) => {
+          logError('Triage accumulate error', { error: err?.message });
+        });
       } catch (err) {
         logError('Triage accumulate error', { error: err?.message });
       }

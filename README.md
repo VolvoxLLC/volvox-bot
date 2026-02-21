@@ -9,7 +9,7 @@ AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community.
 ## ✨ Features
 
 - **🧠 AI Chat** — Mention the bot to chat with Claude. Maintains per-channel conversation history with intelligent context management.
-- **🎯 Smart Triage** — Unified evaluation system that classifies conversations and generates responses in a single SDK call — including organic chime-ins and community rule enforcement.
+- **🎯 Smart Triage** — Two-step evaluation (fast classifier + responder) that drives chime-ins and community rule enforcement.
 - **👋 Dynamic Welcome Messages** — Contextual onboarding with time-of-day greetings, community activity snapshots, member milestones, and highlight channels.
 - **🛡️ Spam Detection** — Pattern-based scam/spam detection with mod alerts and optional auto-delete.
 - **⚔️ Moderation Suite** — Full-featured mod toolkit: warn, kick, ban, tempban, softban, timeout, purge, lock/unlock, slowmode. Includes case management, mod log routing, DM notifications, auto-escalation, and tempban scheduling.
