@@ -26,7 +26,7 @@ import {
 import { needsSplitting, splitMessage } from '../../src/utils/splitMessage.js';
 
 const ZWS = '\u200B';
-const SAFE_ALLOWED_MENTIONS = { parse: ['users'] };
+const SAFE_ALLOWED_MENTIONS = { parse: ['users'], repliedUser: true };
 
 // Clear all mocks between tests to prevent cross-test pollution
 // of module-level mock functions (mockLogError, mockLogWarn, splitMessage mocks)
