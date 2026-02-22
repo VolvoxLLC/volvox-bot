@@ -21,7 +21,7 @@ const TRUNCATION_INDICATOR = '… [truncated]';
  * Default allowedMentions config that only permits user mentions.
  * Applied to every outgoing message as defense-in-depth.
  */
-const SAFE_ALLOWED_MENTIONS = { parse: ['users'] };
+const SAFE_ALLOWED_MENTIONS = { parse: ['users'], repliedUser: true };
 
 /**
  * Normalize message arguments into an options object.
@@ -94,8 +94,8 @@ async function sendOrSplit(sendFn, prepared) {
     const chunks = splitMessage(content);
     const results = [];
     for (let i = 0; i < chunks.length; i++) {
-      const isLast = i === chunks.length - 1;
-      const chunkPayload = isLast
+      const isFirst = i === 0;
+      const chunkPayload = isFirst
         ? { ...prepared, content: chunks[i] }
         : { content: chunks[i], allowedMentions: prepared.allowedMentions };
       results.push(await sendFn(chunkPayload));

@@ -51,12 +51,17 @@ if (fileOutputEnabled) {
  */
 const SENSITIVE_FIELDS = [
   'DISCORD_TOKEN',
-  'OPENCLAW_API_KEY',
-  'OPENCLAW_TOKEN',
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'CLAUDE_CODE_OAUTH_TOKEN',
   'token',
   'password',
   'apiKey',
   'authorization',
+  'secret',
+  'clientSecret',
+  'DATABASE_URL',
+  'connectionString',
 ];
 
 /**

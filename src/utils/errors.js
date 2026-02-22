@@ -49,6 +49,24 @@ export class DiscordApiError extends Error {
 }
 
 /**
+ * Custom error for CLI subprocess failures, carrying the failure reason.
+ */
+export class CLIProcessError extends Error {
+  /**
+   * @param {string} message
+   * @param {'timeout'|'killed'|'exit'|'parse'} reason
+   * @param {Object} [meta]
+   */
+  constructor(message, reason, meta = {}) {
+    super(message);
+    this.name = 'CLIProcessError';
+    this.reason = reason;
+    const { message: _m, name: _n, stack: _s, ...safeMeta } = meta;
+    Object.assign(this, safeMeta);
+  }
+}
+
+/**
  * Classify an error into a specific error type
  *
  * @param {Error} error - The error to classify
@@ -174,27 +192,26 @@ export function getUserFriendlyMessage(error, context = {}) {
 }
 
 /**
- * Get suggested next steps for an error
+ * Provide actionable next-step guidance for a classified error.
  *
- * @param {Error} error - The error object
- * @param {Object} context - Optional context
- * @returns {string|null} Suggested next steps or null if none
+ * @param {Error} error - The error to analyze.
+ * @param {Object} [context] - Optional additional context (e.g., `status`, `code`, `isApiError`) to aid classification.
+ * @returns {string|null} A suggested next step for the detected error type, or `null` if no suggestion is available.
  */
 export function getSuggestedNextSteps(error, context = {}) {
   const errorType = classifyError(error, context);
 
   const suggestions = {
-    [ErrorType.NETWORK]: 'Make sure the AI service (OpenClaw) is running and accessible.',
+    [ErrorType.NETWORK]: 'Make sure the Anthropic API is reachable.',
 
     [ErrorType.TIMEOUT]: 'Try a shorter message or wait a moment before retrying.',
 
     [ErrorType.API_RATE_LIMIT]: 'Wait 60 seconds before trying again.',
 
     [ErrorType.API_UNAUTHORIZED]:
-      'Check the OPENCLAW_API_KEY environment variable (or legacy OPENCLAW_TOKEN) and API credentials.',
+      'Check ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN environment variables. OAuth tokens (sk-ant-oat01-*) require CLAUDE_CODE_OAUTH_TOKEN.',
 
-    [ErrorType.API_NOT_FOUND]:
-      'Verify OPENCLAW_API_URL (or legacy OPENCLAW_URL) points to the correct endpoint.',
+    [ErrorType.API_NOT_FOUND]: 'Verify the Anthropic API endpoint is reachable.',
 
     [ErrorType.API_SERVER_ERROR]:
       'The service should recover automatically. If it persists, restart the AI service.',

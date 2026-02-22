@@ -32,6 +32,7 @@ import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { startTriage, stopTriage } from './modules/triage.js';
 import { initLogsTable, pruneOldLogs } from './transports/postgres.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
@@ -225,13 +226,14 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 /**
- * Graceful shutdown handler
- * @param {string} signal - Signal that triggered shutdown
+ * Perform an orderly shutdown: stop background services, persist in-memory state, remove logging transport, close the database pool, disconnect the Discord client, and exit the process.
+ * @param {string} signal - The signal name that initiated shutdown (e.g., "SIGINT", "SIGTERM").
  */
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });
 
-  // 1. Stop conversation cleanup timer and tempban scheduler
+  // 1. Stop triage, conversation cleanup timer, and tempban scheduler
+  stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
 
@@ -297,13 +299,7 @@ if (!token) {
 }
 
 /**
- * Main startup sequence
- * 1. Initialize database
- * 2. Load config from DB (seeds from config.json if empty)
- * 3. Load previous conversation state
- * 4. Register event handlers with live config
- * 5. Load commands
- * 6. Login to Discord
+ * Perform full application startup: initialize the database and optional PostgreSQL logging, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
  */
 async function startup() {
   // Initialize database
@@ -459,6 +455,9 @@ async function startup() {
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
+
+  // Start triage module (per-channel message classification + response)
+  await startTriage(client, config, healthMonitor);
 
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {

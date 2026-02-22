@@ -88,4 +88,15 @@ describe('needsSplitting', () => {
     expect(needsSplitting(null)).toBeFalsy();
     expect(needsSplitting(undefined)).toBeFalsy();
   });
+
+  it('should accept custom maxLength parameter', () => {
+    const text = 'a'.repeat(4097);
+    expect(needsSplitting(text, 4096)).toBe(true);
+    expect(needsSplitting(text, 5000)).toBe(false);
+  });
+
+  it('should default to 2000 when no maxLength given', () => {
+    expect(needsSplitting('a'.repeat(2001))).toBe(true);
+    expect(needsSplitting('a'.repeat(2000))).toBe(false);
+  });
 });

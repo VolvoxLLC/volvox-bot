@@ -1,12 +1,11 @@
 /**
  * AI Module
- * Handles AI chat functionality powered by Claude via OpenClaw
+ * Handles AI chat functionality powered by Claude CLI (headless mode)
  * Conversation history is persisted to PostgreSQL with in-memory cache
  */
 
-import { info, error as logError, warn as logWarn } from '../logger.js';
+import { info, warn as logWarn } from '../logger.js';
 import { getConfig } from './config.js';
-import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // Conversation history per channel (in-memory cache)
 let conversationHistory = new Map();
@@ -28,12 +27,11 @@ const pendingHydrations = new Map();
 
 /**
  * Get the configured history length from config
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} History length
  */
-function getHistoryLength(guildId) {
+function getHistoryLength() {
   try {
-    const config = getConfig(guildId);
+    const config = getConfig();
     const len = config?.ai?.historyLength;
     if (typeof len === 'number' && len > 0) return len;
   } catch {
@@ -44,12 +42,11 @@ function getHistoryLength(guildId) {
 
 /**
  * Get the configured TTL days from config
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {number} TTL in days
  */
-function getHistoryTTLDays(guildId) {
+function getHistoryTTLDays() {
   try {
-    const config = getConfig(guildId);
+    const config = getConfig();
     const ttl = config?.ai?.historyTTLDays;
     if (typeof ttl === 'number' && ttl > 0) return ttl;
   } catch {
@@ -99,95 +96,23 @@ export function getConversationHistory() {
 }
 
 /**
- * Set the conversation history map (for state restoration)
- * @param {Map} history - Conversation history map to restore
+ * Replace the in-memory conversation history with the provided map.
+ *
+ * Also clears any pending hydration promises to avoid stale in-flight hydrations.
+ * @param {Map} history - Map from channelId (string) to an array of message objects representing each channel's history.
  */
 export function setConversationHistory(history) {
   conversationHistory = history;
   pendingHydrations.clear();
 }
 
-// OpenClaw API endpoint/token (exported for shared use by other modules)
-export const OPENCLAW_URL =
-  process.env.OPENCLAW_API_URL ||
-  process.env.OPENCLAW_URL ||
-  'http://localhost:18789/v1/chat/completions';
-export const OPENCLAW_TOKEN = process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_TOKEN || '';
-
-/**
- * Approximate model pricing (USD per 1M tokens).
- * Used for dashboard-level cost estimation only.
- *
- * NOTE: This table requires manual updates when Anthropic releases new models.
- * Unknown models return $0 and log a warning (see logWarn in estimateAiCostUsd).
- * Pricing reference: https://www.anthropic.com/pricing
- */
-const MODEL_PRICING_PER_MILLION = {
-  'claude-opus-4-1-20250805': { input: 15, output: 75 },
-  'claude-opus-4-20250514': { input: 15, output: 75 },
-  'claude-sonnet-4-20250514': { input: 3, output: 15 },
-  // Haiku 4.5: $1/M input, $5/M output (https://www.anthropic.com/pricing)
-  'claude-haiku-4-5': { input: 1, output: 5 },
-  'claude-haiku-4-5-20251001': { input: 1, output: 5 },
-  // Haiku 3.5: $0.80/M input, $4/M output (https://www.anthropic.com/pricing)
-  'claude-3-5-haiku-20241022': { input: 0.8, output: 4 },
-};
-
-/** Track models we've already warned about to avoid log flooding. */
-const warnedUnknownModels = new Set();
-
-/** Test-only helper to clear unknown-model warning dedupe state. */
-export function _resetWarnedUnknownModels() {
-  warnedUnknownModels.clear();
-}
-
-/**
- * Safely convert a value to a non-negative finite number.
- * @param {unknown} value
- * @returns {number}
- */
-function toNonNegativeNumber(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num < 0) return 0;
-  return num;
-}
-
-/**
- * Estimate request cost from token usage and model pricing.
- * Returns 0 when pricing for the model is unknown.
- *
- * @param {string} model
- * @param {number} promptTokens
- * @param {number} completionTokens
- * @returns {number}
- */
-function estimateAiCostUsd(model, promptTokens, completionTokens) {
-  const pricing = MODEL_PRICING_PER_MILLION[model];
-  if (!pricing) {
-    // Only warn once per unknown model to avoid log flooding
-    if (!warnedUnknownModels.has(model)) {
-      logWarn('Unknown model for cost estimation, returning $0', { model });
-      warnedUnknownModels.add(model);
-    }
-    return 0;
-  }
-
-  const inputCost = (promptTokens / 1_000_000) * pricing.input;
-  const outputCost = (completionTokens / 1_000_000) * pricing.output;
-
-  // Keep precision stable in logs for easier DB aggregation
-  return Number((inputCost + outputCost).toFixed(6));
-}
-
 /**
  * Hydrate conversation history for a channel from DB.
  * Dedupes concurrent hydrations and merges DB rows with in-flight in-memory writes.
- *
  * @param {string} channelId - Channel ID
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-function hydrateHistory(channelId, guildId) {
+function hydrateHistory(channelId) {
   const pending = pendingHydrations.get(channelId);
   if (pending) {
     return pending;
@@ -203,7 +128,7 @@ function hydrateHistory(channelId, guildId) {
     return Promise.resolve(historyRef);
   }
 
-  const limit = getHistoryLength(guildId);
+  const limit = getHistoryLength();
   const hydrationPromise = pool
     .query(
       `SELECT role, content FROM conversations
@@ -255,10 +180,9 @@ function hydrateHistory(channelId, guildId) {
 /**
  * Async version of history retrieval that waits for in-flight hydration.
  * @param {string} channelId - Channel ID
- * @param {string} [guildId] - Guild ID for per-guild config
  * @returns {Promise<Array>} Conversation history
  */
-export async function getHistoryAsync(channelId, guildId) {
+export async function getHistoryAsync(channelId) {
   if (conversationHistory.has(channelId)) {
     const pending = pendingHydrations.get(channelId);
     if (pending) {
@@ -267,7 +191,7 @@ export async function getHistoryAsync(channelId, guildId) {
     return conversationHistory.get(channelId);
   }
 
-  return hydrateHistory(channelId, guildId);
+  return hydrateHistory(channelId);
 }
 
 /**
@@ -277,16 +201,15 @@ export async function getHistoryAsync(channelId, guildId) {
  * @param {string} role - Message role (user/assistant)
  * @param {string} content - Message content
  * @param {string} [username] - Optional username
- * @param {string} [guildId] - Optional guild ID for scoping
  */
-export function addToHistory(channelId, role, content, username, guildId) {
+export function addToHistory(channelId, role, content, username) {
   if (!conversationHistory.has(channelId)) {
     conversationHistory.set(channelId, []);
   }
   const history = conversationHistory.get(channelId);
   history.push({ role, content });
 
-  const maxHistory = getHistoryLength(guildId);
+  const maxHistory = getHistoryLength();
 
   // Trim old messages from in-memory cache
   while (history.length > maxHistory) {
@@ -298,9 +221,9 @@ export function addToHistory(channelId, role, content, username, guildId) {
   if (pool) {
     pool
       .query(
-        `INSERT INTO conversations (channel_id, role, content, username, guild_id)
-       VALUES ($1, $2, $3, $4, $5)`,
-        [channelId, role, content, username || null, guildId || null],
+        `INSERT INTO conversations (channel_id, role, content, username)
+       VALUES ($1, $2, $3, $4)`,
+        [channelId, role, content, username || null],
       )
       .catch((err) => {
         logError('Failed to persist message to DB', {
@@ -314,13 +237,8 @@ export function addToHistory(channelId, role, content, username, guildId) {
 }
 
 /**
- * Initialize conversation history from DB on startup.
- * Loads last N messages per active channel.
- *
- * Note: Uses global config defaults for history length and TTL intentionally —
- * this runs at startup across all channels/guilds and guildId is not available.
- * The guild-aware config path is through generateResponse(), which passes guildId.
- *
+ * Initialize conversation history from DB on startup
+ * Loads last N messages per active channel
  * @returns {Promise<void>}
  */
 export async function initConversationHistory() {
@@ -418,13 +336,9 @@ export function stopConversationCleanup() {
 }
 
 /**
- * Run a single cleanup pass.
+ * Delete conversation records older than the configured history TTL from the database.
  *
- * Note: Uses global config default for TTL intentionally — cleanup runs
- * across all guilds/channels and guildId is not available in this context.
- * The guild-aware config path is through generateResponse(), which passes guildId.
- *
- * @returns {Promise<void>}
+ * If no database pool is configured this is a no-op; failures are logged but not thrown.
  */
 async function runCleanup() {
   const pool = getPool();
@@ -446,145 +360,5 @@ async function runCleanup() {
     }
   } catch (err) {
     logWarn('Conversation cleanup failed', { error: err.message });
-  }
-}
-
-/**
- * Generate AI response using OpenClaw's chat completions endpoint.
- *
- * Memory integration:
- * - Pre-response: searches mem0 for relevant user memories and appends them to the system prompt.
- * - Post-response: fires off memory extraction (non-blocking) so new facts get persisted.
- *
- * @param {string} channelId - Channel ID
- * @param {string} userMessage - User's message
- * @param {string} username - Username
- * @param {Object} healthMonitor - Health monitor instance (optional)
- * @param {string} [userId] - Discord user ID for memory scoping
- * @param {string} [guildId] - Discord guild ID for conversation scoping
- * @returns {Promise<string>} AI response
- */
-export async function generateResponse(
-  channelId,
-  userMessage,
-  username,
-  healthMonitor = null,
-  userId = null,
-  guildId = null,
-) {
-  // Use guild-aware config for AI settings (systemPrompt, model, maxTokens)
-  // so per-guild overrides via /config are respected.
-  const guildConfig = getConfig(guildId);
-  const history = await getHistoryAsync(channelId, guildId);
-
-  let systemPrompt =
-    guildConfig.ai?.systemPrompt ||
-    `You are Volvox Bot, a helpful and friendly Discord bot for the Volvox developer community.
-You're witty, knowledgeable about programming and tech, and always eager to help.
-Keep responses concise and Discord-friendly (under 2000 chars).
-You can use Discord markdown formatting.`;
-
-  // Pre-response: inject user memory context into system prompt (with timeout)
-  if (userId) {
-    try {
-      const memoryContext = await Promise.race([
-        buildMemoryContext(userId, username, userMessage, guildId),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Memory context timeout')), 5000),
-        ),
-      ]);
-      if (memoryContext) {
-        systemPrompt += memoryContext;
-      }
-    } catch (err) {
-      // Memory lookup failed or timed out — continue without it
-      logWarn('Memory context lookup failed', { userId, error: err.message });
-    }
-  }
-
-  // Build messages array for OpenAI-compatible API
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...history,
-    { role: 'user', content: `${username}: ${userMessage}` },
-  ];
-
-  // Log incoming AI request
-  info('AI request', { channelId, username, message: userMessage });
-
-  try {
-    const response = await fetch(OPENCLAW_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(OPENCLAW_TOKEN && { Authorization: `Bearer ${OPENCLAW_TOKEN}` }),
-      },
-      body: JSON.stringify({
-        model: guildConfig.ai?.model || 'claude-sonnet-4-20250514',
-        max_tokens: guildConfig.ai?.maxTokens || 1024,
-        messages: messages,
-      }),
-    });
-
-    if (!response.ok) {
-      if (healthMonitor) {
-        healthMonitor.setAPIStatus('error');
-      }
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const reply = data?.choices?.[0]?.message?.content || 'I got nothing. Try again?';
-
-    const modelUsed =
-      typeof data?.model === 'string' && data.model.trim().length > 0
-        ? data.model
-        : guildConfig.ai?.model || 'claude-sonnet-4-20250514';
-
-    const promptTokens = toNonNegativeNumber(data?.usage?.prompt_tokens);
-    const completionTokens = toNonNegativeNumber(data?.usage?.completion_tokens);
-    // Derive totalTokens from prompt + completion as a fallback for proxies that don't return it
-    const totalTokens =
-      toNonNegativeNumber(data?.usage?.total_tokens) || promptTokens + completionTokens;
-    const estimatedCostUsd = estimateAiCostUsd(modelUsed, promptTokens, completionTokens);
-
-    // Structured usage log powers analytics aggregation in /api/v1/guilds/:id/analytics.
-    info('AI usage', {
-      guildId: guildId || null,
-      channelId,
-      model: modelUsed,
-      promptTokens,
-      completionTokens,
-      totalTokens,
-      estimatedCostUsd,
-    });
-
-    // Log AI response
-    info('AI response', { channelId, username, response: reply.substring(0, 500) });
-
-    // Record successful AI request
-    if (healthMonitor) {
-      healthMonitor.recordAIRequest();
-      healthMonitor.setAPIStatus('ok');
-    }
-
-    // Update history with username for DB persistence
-    addToHistory(channelId, 'user', `${username}: ${userMessage}`, username, guildId);
-    addToHistory(channelId, 'assistant', reply, undefined, guildId);
-
-    // Post-response: extract and store memorable facts (fire-and-forget)
-    if (userId) {
-      extractAndStoreMemories(userId, username, userMessage, reply, guildId).catch((err) => {
-        logWarn('Memory extraction failed', { userId, error: err.message });
-      });
-    }
-
-    return reply;
-  } catch (err) {
-    logError('OpenClaw API error', { error: err.message });
-    if (healthMonitor) {
-      healthMonitor.setAPIStatus('error');
-    }
-    return "Sorry, I'm having trouble thinking right now. Try again in a moment!";
   }
 }

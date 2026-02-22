@@ -234,7 +234,7 @@ describe('sendWelcomeMessage', () => {
     await sendWelcomeMessage(member, client, config);
     expect(mockSend).toHaveBeenCalledWith({
       content: 'Welcome <@123> to Test Server!',
-      allowedMentions: { parse: ['users'] },
+      allowedMentions: { parse: ['users'], repliedUser: true },
     });
   });
 
@@ -329,7 +329,7 @@ describe('sendWelcomeMessage', () => {
     await sendWelcomeMessage(member, client, config);
     expect(mockSend).toHaveBeenCalledWith({
       content: 'Welcome, <@123>!',
-      allowedMentions: { parse: ['users'] },
+      allowedMentions: { parse: ['users'], repliedUser: true },
     });
   });
 
