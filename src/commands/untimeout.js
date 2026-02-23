@@ -4,10 +4,7 @@
  */
 
 import { SlashCommandBuilder } from 'discord.js';
-import { info, error as logError } from '../logger.js';
-import { getConfig } from '../modules/config.js';
-import { checkHierarchy, createCase, sendModLogEmbed } from '../modules/moderation.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { executeModAction } from '../utils/modAction.js';
 
 export const data = new SlashCommandBuilder()
   .setName('untimeout')
@@ -24,44 +21,18 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
-
-    const config = getConfig(interaction.guildId);
-    const target = interaction.options.getMember('user');
-    if (!target) {
-      return await safeEditReply(interaction, '❌ User is not in this server.');
-    }
-    const reason = interaction.options.getString('reason');
-
-    const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
-    if (hierarchyError) {
-      return await safeEditReply(interaction, hierarchyError);
-    }
-
-    await target.timeout(null, reason || undefined);
-
-    const caseData = await createCase(interaction.guild.id, {
-      action: 'untimeout',
-      targetId: target.id,
-      targetTag: target.user.tag,
-      moderatorId: interaction.user.id,
-      moderatorTag: interaction.user.tag,
-      reason,
-    });
-
-    await sendModLogEmbed(interaction.client, config, caseData);
-
-    info('User timeout removed', { target: target.user.tag, moderator: interaction.user.tag });
-    await safeEditReply(
-      interaction,
-      `✅ **${target.user.tag}** has had their timeout removed. (Case #${caseData.case_number})`,
-    );
-  } catch (err) {
-    logError('Command error', { error: err.message, command: 'untimeout' });
-    await safeEditReply(
-      interaction,
-      '❌ An error occurred. Please try again or contact an administrator.',
-    ).catch(() => {});
-  }
+  await executeModAction(interaction, {
+    action: 'untimeout',
+    skipDm: true,
+    getTarget: (inter) => {
+      const target = inter.options.getMember('user');
+      if (!target) return { earlyReturn: '\u274C User is not in this server.' };
+      return { target, targetId: target.id, targetTag: target.user.tag };
+    },
+    actionFn: async (target, reason) => {
+      await target.timeout(null, reason || undefined);
+    },
+    formatReply: (tag, c) =>
+      `\u2705 **${tag}** has had their timeout removed. (Case #${c.case_number})`,
+  });
 }

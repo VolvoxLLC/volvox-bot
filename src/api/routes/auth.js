@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { error, info, warn } from '../../logger.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { requireOAuth } from '../middleware/oauth.js';
 import { DISCORD_API, fetchUserGuilds } from '../utils/discordApi.js';
 import { sessionStore } from '../utils/sessionStore.js';
@@ -53,7 +54,12 @@ function isValidDashboardUrl(value) {
   try {
     const parsed = new URL(value);
     if (parsed.protocol === 'https:') return true;
-    if (parsed.protocol === 'http:' && ALLOWED_REDIRECT_HOSTS.has(parsed.hostname)) return true;
+    // Allow plain HTTP only for localhost/loopback in non-production environments
+    if (
+      parsed.protocol === 'http:' &&
+      ALLOWED_REDIRECT_HOSTS.has(parsed.hostname) &&
+      process.env.NODE_ENV !== 'production'
+    ) return true;
     return false;
   } catch {
     return false;
@@ -94,18 +100,18 @@ export function stopAuthCleanup() {
   clearInterval(sessionCleanupInterval);
 }
 
+/** Rate limiter for OAuth initiation — 10 requests per 15 minutes per IP */
+const oauthRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+
 /**
  * GET /discord — Redirect to Discord OAuth2 authorization
  */
-router.get('/discord', (_req, res) => {
+router.get('/discord', oauthRateLimit, (_req, res) => {
   const clientId = process.env.DISCORD_CLIENT_ID;
   const redirectUri = process.env.DISCORD_REDIRECT_URI;
 
   if (!clientId || !redirectUri) {
-    error('OAuth2 not configured for /discord', {
-      hasClientId: Boolean(clientId),
-      hasRedirectUri: Boolean(redirectUri),
-    });
+    error('OAuth2 not configured — required Discord environment variables are missing');
     return res.status(500).json({ error: 'OAuth2 not configured' });
   }
 

@@ -61,10 +61,9 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('OAuth2 not configured');
-      expect(logError).toHaveBeenCalledWith('OAuth2 not configured for /discord', {
-        hasClientId: false,
-        hasRedirectUri: true,
-      });
+      expect(logError).toHaveBeenCalledWith(
+        'OAuth2 not configured — required Discord environment variables are missing',
+      );
     });
 
     it('should return 500 when DISCORD_REDIRECT_URI is not set', async () => {
@@ -75,10 +74,9 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('OAuth2 not configured');
-      expect(logError).toHaveBeenCalledWith('OAuth2 not configured for /discord', {
-        hasClientId: true,
-        hasRedirectUri: false,
-      });
+      expect(logError).toHaveBeenCalledWith(
+        'OAuth2 not configured — required Discord environment variables are missing',
+      );
     });
   });
 

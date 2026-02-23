@@ -4,16 +4,8 @@
  */
 
 import { SlashCommandBuilder } from 'discord.js';
-import { info, error as logError } from '../logger.js';
-import { getConfig } from '../modules/config.js';
-import {
-  checkHierarchy,
-  createCase,
-  sendDmNotification,
-  sendModLogEmbed,
-  shouldSendDm,
-} from '../modules/moderation.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { error as logError } from '../logger.js';
+import { executeModAction } from '../utils/modAction.js';
 
 export const data = new SlashCommandBuilder()
   .setName('softban')
@@ -38,80 +30,49 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
+  let unbanError = null;
 
-    const config = getConfig(interaction.guildId);
-    const target = interaction.options.getMember('user');
-    if (!target) {
-      return await safeEditReply(interaction, '❌ User is not in this server.');
-    }
-    const reason = interaction.options.getString('reason');
-    const deleteMessageDays = interaction.options.getInteger('delete_messages') ?? 7;
+  await executeModAction(interaction, {
+    action: 'softban',
+    getTarget: (inter) => {
+      const target = inter.options.getMember('user');
+      if (!target) return { earlyReturn: '\u274C User is not in this server.' };
+      return { target, targetId: target.id, targetTag: target.user.tag };
+    },
+    extractOptions: (inter) => ({
+      reason: inter.options.getString('reason'),
+    }),
+    actionFn: async (target, reason, inter) => {
+      const deleteMessageDays = inter.options.getInteger('delete_messages') ?? 7;
+      await inter.guild.members.ban(target.id, {
+        deleteMessageSeconds: deleteMessageDays * 86400,
+        reason: reason || undefined,
+      });
 
-    const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
-    if (hierarchyError) {
-      return await safeEditReply(interaction, hierarchyError);
-    }
-
-    if (shouldSendDm(config, 'softban')) {
-      await sendDmNotification(target, 'softban', reason, interaction.guild.name);
-    }
-
-    await interaction.guild.members.ban(target.id, {
-      deleteMessageSeconds: deleteMessageDays * 86400,
-      reason: reason || undefined,
-    });
-
-    let unbanError = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        await interaction.guild.members.unban(target.id, 'Softban');
-        unbanError = null;
-        break;
-      } catch (err) {
-        unbanError = err;
-        logError('Softban unban attempt failed', {
-          error: err.message,
-          targetId: target.id,
-          attempt,
-          command: 'softban',
-        });
-        if (attempt < 3) {
-          await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await inter.guild.members.unban(target.id, 'Softban');
+          unbanError = null;
+          break;
+        } catch (err) {
+          unbanError = err;
+          logError('Softban unban attempt failed', {
+            error: err.message,
+            targetId: target.id,
+            attempt,
+            command: 'softban',
+          });
+          if (attempt < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+          }
         }
       }
-    }
-
-    const caseData = await createCase(interaction.guild.id, {
-      action: 'softban',
-      targetId: target.id,
-      targetTag: target.user.tag,
-      moderatorId: interaction.user.id,
-      moderatorTag: interaction.user.tag,
-      reason,
-    });
-
-    await sendModLogEmbed(interaction.client, config, caseData);
-
-    info('User softbanned', { target: target.user.tag, moderator: interaction.user.tag });
-
-    if (unbanError) {
-      await safeEditReply(
-        interaction,
-        `⚠️ **${target.user.tag}** was banned but the unban failed — they remain banned. Please manually unban. (Case #${caseData.case_number})`,
-      );
-    } else {
-      await safeEditReply(
-        interaction,
-        `✅ **${target.user.tag}** has been soft-banned. (Case #${caseData.case_number})`,
-      );
-    }
-  } catch (err) {
-    logError('Command error', { error: err.message, command: 'softban' });
-    await safeEditReply(
-      interaction,
-      '❌ An error occurred. Please try again or contact an administrator.',
-    ).catch(() => {});
-  }
+    },
+    formatReply: (tag, c) => {
+      if (unbanError) {
+        return `\u26A0\uFE0F **${tag}** was banned but the unban failed \u2014 they remain banned. Please manually unban. (Case #${c.case_number})`;
+      }
+      return `\u2705 **${tag}** has been soft-banned. (Case #${c.case_number})`;
+    },
+  });
 }

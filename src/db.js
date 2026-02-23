@@ -65,9 +65,10 @@ export async function initDb() {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
+    const poolSize = Math.max(1, parseInt(process.env.PG_POOL_SIZE, 10) || 5);
     pool = new Pool({
       connectionString,
-      max: 5,
+      max: poolSize,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
       ssl: getSslConfig(connectionString),

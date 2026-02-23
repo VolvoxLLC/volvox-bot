@@ -285,7 +285,7 @@ describe('config command', () => {
 
           await execute(interaction);
           const content = mockReply.mock.calls[0][0].content;
-          expect(content).toContain('An internal error occurred.');
+          expect(content).toContain('Failed to load config');
           expect(content).not.toContain('pg: connection refused');
         } finally {
           if (originalEnv === undefined) {

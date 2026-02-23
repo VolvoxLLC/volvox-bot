@@ -4,10 +4,8 @@
  */
 
 import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { info, error as logError } from '../logger.js';
-import { getConfig } from '../modules/config.js';
-import { createCase, sendModLogEmbed } from '../modules/moderation.js';
-import { safeEditReply, safeSend } from '../utils/safeSend.js';
+import { safeSend } from '../utils/safeSend.js';
+import { executeModAction } from '../utils/modAction.js';
 
 export const data = new SlashCommandBuilder()
   .setName('lock')
@@ -30,46 +28,34 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
+  await executeModAction(interaction, {
+    action: 'lock',
+    skipHierarchy: true,
+    skipDm: true,
+    getTarget: (inter) => {
+      const channel = inter.options.getChannel('channel') || inter.channel;
+      if (channel.type !== ChannelType.GuildText) {
+        return { earlyReturn: '\u274C Lock can only be used in text channels.' };
+      }
+      return { target: null, targetId: channel.id, targetTag: `#${channel.name}`, _channel: channel };
+    },
+    actionFn: async (_target, reason, inter) => {
+      const channel = inter.options.getChannel('channel') || inter.channel;
+      await channel.permissionOverwrites.edit(inter.guild.roles.everyone, {
+        SendMessages: false,
+      });
 
-    const channel = interaction.options.getChannel('channel') || interaction.channel;
-    const reason = interaction.options.getString('reason');
-
-    if (channel.type !== ChannelType.GuildText) {
-      return await safeEditReply(interaction, '❌ Lock can only be used in text channels.');
-    }
-
-    await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-      SendMessages: false,
-    });
-
-    const notifyEmbed = new EmbedBuilder()
-      .setColor(0xe67e22)
-      .setDescription(
-        `🔒 This channel has been locked by ${interaction.user}${reason ? `\n**Reason:** ${reason}` : ''}`,
-      )
-      .setTimestamp();
-    await safeSend(channel, { embeds: [notifyEmbed] });
-
-    const config = getConfig(interaction.guildId);
-    const caseData = await createCase(interaction.guild.id, {
-      action: 'lock',
-      targetId: channel.id,
-      targetTag: `#${channel.name}`,
-      moderatorId: interaction.user.id,
-      moderatorTag: interaction.user.tag,
-      reason,
-    });
-    await sendModLogEmbed(interaction.client, config, caseData);
-
-    info('Channel locked', { channelId: channel.id, moderator: interaction.user.tag });
-    await safeEditReply(interaction, `✅ ${channel} has been locked.`);
-  } catch (err) {
-    logError('Lock command failed', { error: err.message, command: 'lock' });
-    await safeEditReply(
-      interaction,
-      '❌ An error occurred. Please try again or contact an administrator.',
-    ).catch(() => {});
-  }
+      const notifyEmbed = new EmbedBuilder()
+        .setColor(0xe67e22)
+        .setDescription(
+          `\uD83D\uDD12 This channel has been locked by ${inter.user}${reason ? `\n**Reason:** ${reason}` : ''}`,
+        )
+        .setTimestamp();
+      await safeSend(channel, { embeds: [notifyEmbed] });
+    },
+    formatReply: (_tag, _c) => {
+      const channel = interaction.options.getChannel('channel') || interaction.channel;
+      return `\u2705 ${channel} has been locked.`;
+    },
+  });
 }

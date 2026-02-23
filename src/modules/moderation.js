@@ -6,7 +6,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { info, error as logError } from '../logger.js';
+import { info, error as logError, warn as logWarn } from '../logger.js';
 import { parseDuration } from '../utils/duration.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
@@ -257,7 +257,7 @@ export async function sendModLogEmbed(client, config, caseData) {
 
     return sentMessage;
   } catch (err) {
-    logError('Failed to send mod log embed', { error: err.message, channelId });
+    logWarn('Failed to send mod log embed', { error: err.message, channelId });
     return null;
   }
 }

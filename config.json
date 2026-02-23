@@ -99,7 +99,7 @@
     "enabled": true,
     "adminRoleId": null,
     "moderatorRoleId": null,
-    "botOwners": ["191633014441115648", "1242765652297650288"],
+    "botOwners": [],
     "usePermissions": true,
     "allowedCommands": {
       "ping": "everyone",
