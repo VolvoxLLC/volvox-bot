@@ -438,12 +438,13 @@ function buildConversationText(context, buffer) {
  * Build the classifier prompt from the template.
  * @param {Array} context - Historical context messages
  * @param {Array} snapshot - Buffer snapshot (messages to evaluate)
+ * @param {string} [botUserId] - The bot's own Discord user ID
  * @returns {string} Interpolated classify prompt
  */
-function buildClassifyPrompt(context, snapshot) {
+function buildClassifyPrompt(context, snapshot, botUserId) {
   const conversationText = buildConversationText(context, snapshot);
   const communityRules = loadPrompt('community-rules');
-  return loadPrompt('triage-classify', { conversationText, communityRules });
+  return loadPrompt('triage-classify', { conversationText, communityRules, botUserId: botUserId || 'unknown' });
 }
 
 /**
@@ -622,7 +623,9 @@ async function sendResponses(channel, parsed, classification, snapshot, config, 
   let debugEmbed;
   if (triageConfig.debugFooter && stats) {
     const level = triageConfig.debugFooterLevel || 'verbose';
-    debugEmbed = buildDebugEmbed(stats.classify, stats.respond, level);
+    debugEmbed = buildDebugEmbed(stats.classify, stats.respond, level, {
+      searchCount: stats.searchCount,
+    });
   }
 
   if (type === 'moderate') {
@@ -731,7 +734,7 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
     const resolved = resolveTriageConfig(config.triage || {});
 
     // Step 1: Classify with Haiku
-    const classifyPrompt = buildClassifyPrompt(context, snapshot);
+    const classifyPrompt = buildClassifyPrompt(context, snapshot, client.user?.id);
     debug('Classifier prompt built', {
       channelId,
       promptLength: classifyPrompt.length,
@@ -798,17 +801,21 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
     );
     debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
 
-    // Detect WebSearch tool use mid-stream and send a typing indicator
+    // Detect WebSearch tool use mid-stream: send a typing indicator + count searches
     let searchNotified = false;
+    let searchCount = 0;
     const respondMessage = await responderProcess.send(respondPrompt, {}, {
       onEvent: async (msg) => {
-        if (searchNotified) return;
         const toolUses = msg.message?.content?.filter((c) => c.type === 'tool_use') || [];
-        if (toolUses.some((t) => t.name === 'WebSearch')) {
-          searchNotified = true;
-          const ch = await client.channels.fetch(channelId).catch(() => null);
-          if (ch) {
-            await safeSend(ch, '🔍 Searching the web for that — one moment...');
+        const searches = toolUses.filter((t) => t.name === 'WebSearch');
+        if (searches.length > 0) {
+          searchCount += searches.length;
+          if (!searchNotified) {
+            searchNotified = true;
+            const ch = await client.channels.fetch(channelId).catch(() => null);
+            if (ch) {
+              await safeSend(ch, '🔍 Searching the web for that — one moment...');
+            }
           }
         }
       },
@@ -827,9 +834,14 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
     });
 
     // Step 3: Build stats, log analytics, and send to Discord
+    const targetEntry = snapshot.find((m) => classification.targetMessageIds?.includes(m.messageId));
+    const targetUserId = targetEntry?.userId || null;
+
     const stats = {
       classify: extractStats(classifyMessage, resolved.classifyModel),
       respond: extractStats(respondMessage, resolved.respondModel),
+      userId: targetUserId,
+      searchCount,
     };
 
     // Fetch channel once for guildId resolution + passing to sendResponses

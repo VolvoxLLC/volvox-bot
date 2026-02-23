@@ -219,6 +219,33 @@ describe('buildDebugFooter', () => {
     expect(footer).toContain('🔍 Triage:');
     expect(footer).toContain('Σ Total: $0.000');
   });
+
+  describe('search count display', () => {
+    it('should append search count when > 0 (verbose)', () => {
+      const footer = buildDebugFooter(classifyStats, respondStats, 'verbose', { searchCount: 3 });
+      expect(footer).toContain('🔎×3');
+    });
+
+    it('should append search count when > 0 (split)', () => {
+      const footer = buildDebugFooter(classifyStats, respondStats, 'split', { searchCount: 1 });
+      expect(footer).toContain('🔎×1');
+    });
+
+    it('should append search count when > 0 (compact)', () => {
+      const footer = buildDebugFooter(classifyStats, respondStats, 'compact', { searchCount: 2 });
+      expect(footer).toContain('🔎×2');
+    });
+
+    it('should not show search indicator when searchCount is 0', () => {
+      const footer = buildDebugFooter(classifyStats, respondStats, 'verbose', { searchCount: 0 });
+      expect(footer).not.toContain('🔎');
+    });
+
+    it('should not show search indicator when options omitted', () => {
+      const footer = buildDebugFooter(classifyStats, respondStats, 'verbose');
+      expect(footer).not.toContain('🔎');
+    });
+  });
 });
 
 // ── buildDebugEmbed ─────────────────────────────────────────────────────────
@@ -335,6 +362,23 @@ describe('buildDebugEmbed', () => {
     expect(embed.data.fields).toHaveLength(2);
     expect(embed.data.fields[0].name).toBe('🔍 unknown');
   });
+
+  describe('search count in embed footer', () => {
+    it('should append search count when > 0', () => {
+      const embed = buildDebugEmbed(classifyStats, respondStats, 'verbose', { searchCount: 2 });
+      expect(embed.data.footer.text).toBe('Σ $0.021 • 2.3s • 🔎×2');
+    });
+
+    it('should not show search indicator when searchCount is 0', () => {
+      const embed = buildDebugEmbed(classifyStats, respondStats, 'verbose', { searchCount: 0 });
+      expect(embed.data.footer.text).toBe('Σ $0.021 • 2.3s');
+    });
+
+    it('should not show search indicator when options omitted', () => {
+      const embed = buildDebugEmbed(classifyStats, respondStats, 'verbose');
+      expect(embed.data.footer.text).toBe('Σ $0.021 • 2.3s');
+    });
+  });
 });
 
 // ── logAiUsage ──────────────────────────────────────────────────────────────
@@ -345,7 +389,7 @@ describe('logAiUsage', () => {
     mockQuery.mockResolvedValue({});
   });
 
-  it('should insert two rows (classify + respond)', () => {
+  it('should insert two rows (classify + respond) with user_id and search_count', () => {
     const stats = {
       classify: {
         model: 'claude-haiku-4-5',
@@ -365,25 +409,31 @@ describe('logAiUsage', () => {
         cost: 0.02,
         durationMs: 2250,
       },
+      userId: 'user-123',
+      searchCount: 2,
     };
 
     logAiUsage('guild-1', 'ch-1', stats);
 
     expect(mockQuery).toHaveBeenCalledTimes(2);
 
-    // First call: classify
+    // First call: classify — user_id set, search_count always 0
     const classifyArgs = mockQuery.mock.calls[0][1];
     expect(classifyArgs[0]).toBe('guild-1');
     expect(classifyArgs[1]).toBe('ch-1');
     expect(classifyArgs[2]).toBe('classify');
     expect(classifyArgs[3]).toBe('claude-haiku-4-5');
     expect(classifyArgs[4]).toBe(48);
+    expect(classifyArgs[10]).toBe('user-123'); // user_id
+    expect(classifyArgs[11]).toBe(0); // search_count (classify never searches)
 
-    // Second call: respond
+    // Second call: respond — user_id and search_count set
     const respondArgs = mockQuery.mock.calls[1][1];
     expect(respondArgs[2]).toBe('respond');
     expect(respondArgs[3]).toBe('claude-sonnet-4-6');
     expect(respondArgs[4]).toBe(1204);
+    expect(respondArgs[10]).toBe('user-123'); // user_id
+    expect(respondArgs[11]).toBe(2); // search_count
   });
 
   it('should silently skip when database is not available', () => {
@@ -404,6 +454,8 @@ describe('logAiUsage', () => {
     expect(classifyArgs[3]).toBe('unknown'); // model
     expect(classifyArgs[4]).toBe(0); // inputTokens
     expect(classifyArgs[8]).toBe(0); // cost
+    expect(classifyArgs[10]).toBeNull(); // user_id
+    expect(classifyArgs[11]).toBe(0); // search_count
   });
 
   it('should use "unknown" for null guildId', () => {
