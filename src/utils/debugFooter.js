@@ -55,14 +55,32 @@ function shortModel(model) {
  */
 function extractStats(result, model) {
   const usage = result?.usage || {};
+
+  // The CLI result includes both `usage` (snake_case, aggregate) and
+  // `modelUsage` (camelCase, per-model).  When tools are used (multi-turn),
+  // `usage` may be empty while `modelUsage` contains the real totals.
+  // Fall back to the first modelUsage entry when `usage` has no input tokens.
+  let mu = {};
+  if ((!usage.input_tokens && !usage.inputTokens) && result?.modelUsage) {
+    const entries = Object.values(result.modelUsage);
+    if (entries.length > 0) {
+      mu = entries.reduce((acc, e) => ({
+        inputTokens: (acc.inputTokens || 0) + (e.inputTokens || 0),
+        outputTokens: (acc.outputTokens || 0) + (e.outputTokens || 0),
+        cacheCreationInputTokens: (acc.cacheCreationInputTokens || 0) + (e.cacheCreationInputTokens || 0),
+        cacheReadInputTokens: (acc.cacheReadInputTokens || 0) + (e.cacheReadInputTokens || 0),
+      }), {});
+    }
+  }
+
   return {
     model: model || 'unknown',
     cost: result?.total_cost_usd || 0,
     durationMs: result?.duration_ms || 0,
-    inputTokens: usage.input_tokens ?? usage.inputTokens ?? 0,
-    outputTokens: usage.output_tokens ?? usage.outputTokens ?? 0,
-    cacheCreation: usage.cache_creation_input_tokens ?? 0,
-    cacheRead: usage.cache_read_input_tokens ?? 0,
+    inputTokens: usage.input_tokens ?? usage.inputTokens ?? mu.inputTokens ?? 0,
+    outputTokens: usage.output_tokens ?? usage.outputTokens ?? mu.outputTokens ?? 0,
+    cacheCreation: usage.cache_creation_input_tokens ?? mu.cacheCreationInputTokens ?? 0,
+    cacheRead: usage.cache_read_input_tokens ?? mu.cacheReadInputTokens ?? 0,
   };
 }
 

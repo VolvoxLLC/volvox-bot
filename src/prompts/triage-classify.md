@@ -42,6 +42,15 @@ when the bot can add concrete value to the conversation.
 
 **moderate** — Content may violate a community rule.
 Spam, harassment, abuse, scam links, rule violations, intentional disruption.
+
+When classifying as "moderate", also recommend an action proportional to severity:
+- **warn** — first offense, minor infraction, borderline behavior
+- **timeout** — repeated minor infractions, disruptive but not hostile
+- **kick** — persistent disruption after warnings, bad faith participation
+- **ban** — severe harassment, hate speech, scam/phishing, illegal content
+- **delete** — message should be removed (spam, scam links, doxxing) regardless of user action
+
+Identify which community rule was violated (e.g. "Rule 1: Respect", "Rule 4: No spam/shilling").
 </classification-guide>
 
 <rules>

@@ -7,6 +7,7 @@
  * "ignore" — handled by Haiku alone at ~10x lower cost than Sonnet.
  */
 
+import { EmbedBuilder } from 'discord.js';
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt, promptPath } from '../prompts/index.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
@@ -490,6 +491,9 @@ function parseClassifyResult(sdkMessage, channelId) {
       resultType: typeof sdkMessage.result,
       messageKeys: Object.keys(sdkMessage),
       hasResult: 'result' in sdkMessage,
+      isError: sdkMessage.is_error,
+      errors: sdkMessage.errors?.map((e) => e.message || e).slice(0, 5),
+      stopReason: sdkMessage.stop_reason,
       resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
     });
     return null;
@@ -513,12 +517,78 @@ function parseRespondResult(sdkMessage, channelId) {
       resultType: typeof sdkMessage.result,
       messageKeys: Object.keys(sdkMessage),
       hasResult: 'result' in sdkMessage,
+      isError: sdkMessage.is_error,
+      errors: sdkMessage.errors?.map((e) => e.message || e).slice(0, 5),
+      stopReason: sdkMessage.stop_reason,
       resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
     });
     return null;
   }
 
   return parsed;
+}
+
+// ── Moderation audit log ─────────────────────────────────────────────────────
+
+/**
+ * Send a structured audit embed to the moderation log channel.
+ * Fire-and-forget — failures are logged but never block the warning flow.
+ *
+ * @param {import('discord.js').Client} client - Discord client
+ * @param {Object} classification - Parsed classifier output
+ * @param {Array} snapshot - Buffer snapshot
+ * @param {string} channelId - Source channel where the violation occurred
+ * @param {Object} config - Bot configuration
+ */
+async function sendModerationLog(client, classification, snapshot, channelId, config) {
+  const logChannelId = config.triage?.moderationLogChannel;
+  if (!logChannelId) return;
+
+  try {
+    const logChannel = await client.channels.fetch(logChannelId);
+    if (!logChannel) return;
+
+    // Find target messages from the snapshot
+    const targets = snapshot.filter((m) =>
+      classification.targetMessageIds?.includes(m.messageId),
+    );
+
+    const actionLabels = {
+      warn: '⚠️ Warn',
+      timeout: '🔇 Timeout',
+      kick: '👢 Kick',
+      ban: '🔨 Ban',
+      delete: '🗑️ Delete',
+    };
+
+    const action = classification.recommendedAction || 'unknown';
+    const actionLabel = actionLabels[action] || `❓ ${action}`;
+    const rule = classification.violatedRule || 'Unspecified';
+
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245) // Discord red
+      .setTitle('🛡️ Moderation Flag')
+      .setDescription(classification.reasoning)
+      .addFields(
+        { name: 'Recommended Action', value: actionLabel, inline: true },
+        { name: 'Rule Violated', value: rule, inline: true },
+        { name: 'Channel', value: `<#${channelId}>`, inline: true },
+      )
+      .setTimestamp();
+
+    // Add a field per flagged user with their message content
+    for (const t of targets) {
+      embed.addFields({
+        name: `${t.author} (<@${t.userId}>)`,
+        value: t.content.slice(0, 1024) || '*empty*',
+        inline: false,
+      });
+    }
+
+    await safeSend(logChannel, { embeds: [embed] });
+  } catch (err) {
+    debug('Failed to send moderation audit log', { channelId, error: err.message });
+  }
 }
 
 // ── Response sending ────────────────────────────────────────────────────────
@@ -557,6 +627,10 @@ async function sendResponses(channel, parsed, classification, snapshot, config, 
 
   if (type === 'moderate') {
     warn('Moderation flagged', { channelId, reasoning: classification.reasoning });
+
+    // Fire-and-forget: send audit embed to moderation log channel
+    sendModerationLog(_client, classification, snapshot, channelId, config)
+      .catch((err) => debug('Moderation log fire-and-forget failed', { error: err.message }));
 
     if (triageConfig.moderationResponse !== false && responses.length > 0) {
       for (const r of responses) {
@@ -723,7 +797,22 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
       memoryContext,
     );
     debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
-    const respondMessage = await responderProcess.send(respondPrompt);
+
+    // Detect WebSearch tool use mid-stream and send a typing indicator
+    let searchNotified = false;
+    const respondMessage = await responderProcess.send(respondPrompt, {}, {
+      onEvent: async (msg) => {
+        if (searchNotified) return;
+        const toolUses = msg.message?.content?.filter((c) => c.type === 'tool_use') || [];
+        if (toolUses.some((t) => t.name === 'WebSearch')) {
+          searchNotified = true;
+          const ch = await client.channels.fetch(channelId).catch(() => null);
+          if (ch) {
+            await safeSend(ch, '🔍 Searching the web for that — one moment...');
+          }
+        }
+      },
+    });
     const parsed = parseRespondResult(respondMessage, channelId);
 
     if (!parsed || !parsed.responses?.length) {

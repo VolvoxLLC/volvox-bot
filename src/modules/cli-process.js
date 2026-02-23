@@ -334,14 +334,16 @@ export class CLIProcess {
    * @param {string} [overrides.systemPrompt]  Override system prompt string.
    * @param {string} [overrides.appendSystemPrompt]  Override append-system-prompt.
    * @param {string} [overrides.systemPromptFile]  Override system prompt file path.
+   * @param {Object} [options]  Additional options.
+   * @param {Function} [options.onEvent]  Callback for intermediate NDJSON messages (short-lived only).
    * @returns {Promise<Object>} The result message from the CLI.
    */
-  async send(prompt, overrides = {}) {
+  async send(prompt, overrides = {}, { onEvent } = {}) {
     const release = await this.#acquireMutex();
     try {
       const result = this.#streaming
         ? await this.#sendLongLived(prompt)
-        : await this.#sendShortLived(prompt, overrides);
+        : await this.#sendShortLived(prompt, overrides, onEvent);
 
       // Token recycling — non-blocking so the caller gets the result now.
       if (this.#streaming && this.#accumulatedTokens >= this.#tokenLimit) {
@@ -360,7 +362,7 @@ export class CLIProcess {
     }
   }
 
-  async #sendShortLived(prompt, overrides = {}) {
+  async #sendShortLived(prompt, overrides = {}, onEvent = null) {
     const mergedFlags = { ...this.#flags, ...overrides };
     const args = buildArgs(mergedFlags, false);
 
@@ -413,6 +415,8 @@ export class CLIProcess {
         }
         if (msg.type === 'result') {
           result = msg;
+        } else if (onEvent) {
+          onEvent(msg);
         }
       });
 

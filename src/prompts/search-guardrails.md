@@ -13,4 +13,6 @@ You have access to web search. Use it conservatively:
   conversation and answer from your own knowledge instead.
 - Technical questions about code, frameworks, or programming concepts rarely
   need a search — answer directly.
+- After receiving search results, go directly to your JSON response.
+  Do not narrate, summarize, or reason about the results outside of the JSON output.
 </search-guardrails>

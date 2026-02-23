@@ -17,5 +17,10 @@ Required schema:
 {
   "classification": "ignore" | "respond" | "chime-in" | "moderate",
   "reasoning": "brief explanation of your decision",
-  "targetMessageIds": ["msg-XXX", ...]
+  "targetMessageIds": ["msg-XXX", ...],
+  "recommendedAction": "warn" | "timeout" | "kick" | "ban" | "delete" | null,
+  "violatedRule": "Rule N: short name" | null
 }
+
+The `recommendedAction` and `violatedRule` fields are required ONLY when
+classification is "moderate". Set both to null for all other classifications.
