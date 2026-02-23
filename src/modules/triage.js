@@ -7,7 +7,7 @@
  * "ignore" — handled by Haiku alone at ~10x lower cost than Sonnet.
  */
 
-import { info, error as logError, warn } from '../logger.js';
+import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt, promptPath } from '../prompts/index.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { safeSend } from '../utils/safeSend.js';
@@ -19,11 +19,34 @@ import { isSpam } from './spam.js';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
+ * Strip lone Unicode surrogates from a string, replacing them with U+FFFD.
+ * Discord messages can contain broken surrogates (truncated emoji, malformed
+ * Unicode from mobile clients) that produce invalid JSON when serialized,
+ * causing the Anthropic API to reject the request with a 400 error.
+ * @param {string} str - Input string (may be null/undefined)
+ * @returns {string} Sanitized string with lone surrogates replaced
+ */
+function sanitizeText(str) {
+  if (!str) return str;
+  return str.replace(
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
+    '\uFFFD',
+  );
+}
+
+/**
  * Parse SDK result text as JSON, tolerating truncation and markdown fencing.
  * Returns parsed object on success, or null on failure (after logging).
  */
 function parseSDKResult(raw, channelId, label) {
-  if (!raw) return null;
+  if (!raw) {
+    warn(`${label}: raw result is falsy`, {
+      channelId,
+      rawType: typeof raw,
+      rawValue: String(raw),
+    });
+    return null;
+  }
   const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
   // Strip markdown code fences if present
@@ -365,13 +388,14 @@ async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15
       .reverse() // chronological order
       .map((m) => ({
         author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
-        content: m.content?.slice(0, 500) || '',
+        content: sanitizeText(m.content?.slice(0, 500)) || '',
         userId: m.author.id,
         messageId: m.id,
         timestamp: m.createdTimestamp,
         isContext: true, // marker to distinguish from triage targets
       }));
-  } catch {
+  } catch (err) {
+    debug('fetchChannelContext failed', { channelId, error: err.message });
     return []; // channel inaccessible — proceed without context
   }
 }
@@ -434,6 +458,7 @@ function buildRespondPrompt(context, snapshot, classification, config, memoryCon
   const communityRules = loadPrompt('community-rules');
   const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
   const antiAbuse = loadPrompt('anti-abuse');
+  const searchGuardrails = loadPrompt('search-guardrails');
 
   return loadPrompt('triage-respond', {
     systemPrompt,
@@ -444,6 +469,7 @@ function buildRespondPrompt(context, snapshot, classification, config, memoryCon
     targetMessageIds: JSON.stringify(classification.targetMessageIds),
     memoryContext: memoryContext || '',
     antiAbuse,
+    searchGuardrails,
   });
 }
 
@@ -459,7 +485,13 @@ function parseClassifyResult(sdkMessage, channelId) {
   const parsed = parseSDKResult(sdkMessage.result, channelId, 'Classifier');
 
   if (!parsed || !parsed.classification) {
-    warn('Classifier result unparseable', { channelId });
+    warn('Classifier result unparseable', {
+      channelId,
+      resultType: typeof sdkMessage.result,
+      messageKeys: Object.keys(sdkMessage),
+      hasResult: 'result' in sdkMessage,
+      resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
+    });
     return null;
   }
 
@@ -476,7 +508,13 @@ function parseRespondResult(sdkMessage, channelId) {
   const parsed = parseSDKResult(sdkMessage.result, channelId, 'Responder');
 
   if (!parsed) {
-    warn('Responder result unparseable', { channelId });
+    warn('Responder result unparseable', {
+      channelId,
+      resultType: typeof sdkMessage.result,
+      messageKeys: Object.keys(sdkMessage),
+      hasResult: 'result' in sdkMessage,
+      resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
+    });
     return null;
   }
 
@@ -499,13 +537,13 @@ function parseRespondResult(sdkMessage, channelId) {
  * @param {Object} config - Bot configuration
  * @param {Object} [stats] - Optional stats from classify/respond steps
  */
-async function sendResponses(channel, parsed, classification, snapshot, config, stats) {
+async function sendResponses(channel, parsed, classification, snapshot, config, stats, channelId) {
   if (!channel) {
-    warn('Could not fetch channel for triage response', {});
+    warn('Could not fetch channel for triage response', { channelId });
     return;
   }
 
-  const channelId = channel.id;
+  channelId = channelId || channel.id;
   const triageConfig = config.triage || {};
   const type = classification.classification;
   const responses = parsed.responses || [];
@@ -620,6 +658,11 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
 
     // Step 1: Classify with Haiku
     const classifyPrompt = buildClassifyPrompt(context, snapshot);
+    debug('Classifier prompt built', {
+      channelId,
+      promptLength: classifyPrompt.length,
+      promptSnippet: classifyPrompt.slice(0, 500),
+    });
     const classifyMessage = await classifierProcess.send(classifyPrompt);
     const classification = parseClassifyResult(classifyMessage, channelId);
 
@@ -662,7 +705,8 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
                 setTimeout(() => reject(new Error('Memory context timeout')), 5000),
               ),
             ]);
-          } catch {
+          } catch (err) {
+            debug('Memory context fetch failed', { userId, error: err.message });
             return '';
           }
         }),
@@ -678,6 +722,7 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
       config,
       memoryContext,
     );
+    debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
     const respondMessage = await responderProcess.send(respondPrompt);
     const parsed = parseRespondResult(respondMessage, channelId);
 
@@ -705,7 +750,7 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
     // Log AI usage analytics (fire-and-forget)
     logAiUsage(guildId, channelId, stats);
 
-    await sendResponses(channel, parsed, classification, snapshot, config, stats);
+    await sendResponses(channel, parsed, classification, snapshot, config, stats, channelId);
 
     // Step 4: Extract memories from the conversation (fire-and-forget)
     if (parsed.responses?.length > 0) {
@@ -719,14 +764,14 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
             targetEntry.author,
             targetEntry.content,
             r.response,
-          ).catch(() => {});
+          ).catch((err) => debug('Memory extraction fire-and-forget failed', { userId: targetEntry.userId, error: err.message }));
         }
       }
     }
 
   } catch (err) {
     if (err instanceof CLIProcessError && err.reason === 'timeout') {
-      info('Triage evaluation aborted (timeout)', { channelId });
+      warn('Triage evaluation aborted (timeout)', { channelId });
       throw err;
     }
 
@@ -742,8 +787,8 @@ async function evaluateAndRespond(channelId, snapshot, config, client) {
             "Sorry, I'm having trouble thinking right now. Try again in a moment!",
           );
         }
-      } catch {
-        // Nothing more we can do
+      } catch (sendErr) {
+        debug('Failed to send error message to channel', { channelId, error: sendErr.message });
       }
     }
   } finally {
@@ -838,7 +883,7 @@ export async function startTriage(client, config, healthMonitor) {
       appendSystemPrompt: jsonSchemaAppend,
       maxBudgetUsd: resolved.respondBudget,
       thinkingTokens: resolved.thinkingTokens,
-      tools: '', // no tools for response
+      allowedTools: ['WebSearch'],
       ...(resolved.respondBaseUrl && { baseUrl: resolved.respondBaseUrl }),
       ...(resolved.respondApiKey && { apiKey: resolved.respondApiKey }),
     },
@@ -913,7 +958,7 @@ export async function accumulateMessage(message, config) {
   // Build buffer entry with timestamp and optional reply context
   const entry = {
     author: message.author.username,
-    content: message.content,
+    content: sanitizeText(message.content),
     userId: message.author.id,
     messageId: message.id,
     timestamp: message.createdTimestamp,
@@ -927,11 +972,16 @@ export async function accumulateMessage(message, config) {
       entry.replyTo = {
         author: ref.author.username,
         userId: ref.author.id,
-        content: ref.content?.slice(0, 500) || '',
+        content: sanitizeText(ref.content?.slice(0, 500)) || '',
         messageId: ref.id,
       };
-    } catch {
-      // Referenced message deleted or inaccessible — continue without it
+    } catch (err) {
+      debug('Referenced message fetch failed', {
+        channelId,
+        messageId: message.id,
+        referenceId: message.reference.messageId,
+        error: err.message,
+      });
     }
   }
 
@@ -1014,7 +1064,7 @@ export async function evaluateNow(channelId, config, client, healthMonitor) {
     await evaluateAndRespond(channelId, snapshot, config, client || _client);
   } catch (err) {
     if (err instanceof CLIProcessError && err.reason === 'timeout') {
-      info('Triage evaluation aborted (timeout)', { channelId });
+      warn('Triage evaluation aborted (timeout)', { channelId });
       return;
     }
     logError('Triage evaluation error', { channelId, error: err.message });

@@ -48,6 +48,9 @@ Spam, harassment, abuse, scam links, rule violations, intentional disruption.
 - If the bot was @mentioned or "Volvox" appears by name, NEVER classify as "ignore".
   Even for abuse/token-waste @mentions, classify as "respond" — the response prompt
   handles refusal.
+- If the bot recently responded and a user's message is a direct reaction to the bot
+  (e.g. "Thanks", "ty", "got it", "that worked"), classify as "respond" — not "ignore".
+  Acknowledging gratitude maintains a natural conversational presence.
 - Only target messages from <messages-to-evaluate>, never from <recent-history>.
 - For "ignore", set targetMessageIds to an empty array.
 - For non-ignore, include the message IDs that should receive responses.

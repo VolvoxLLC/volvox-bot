@@ -322,15 +322,23 @@ export async function addMemory(userId, text, metadata = {}, guildId) {
     if (!c) return false;
 
     const messages = [{ role: 'user', content: text }];
-    await c.add(messages, {
+    const result = await c.add(messages, {
       user_id: userId,
       app_id: APP_ID,
       metadata,
       enable_graph: true,
     });
 
-    debug('Memory added', { userId, textPreview: text.substring(0, 100) });
-    return true;
+    const entries = Array.isArray(result) ? result : (result?.results || []);
+    const stored = entries.filter(m => m.event === 'ADD' || m.event === 'UPDATE');
+    debug('Memory added', {
+      userId,
+      textPreview: text.substring(0, 100),
+      memoriesReturned: entries.length,
+      memoriesStored: stored.length,
+      events: entries.map(m => m.event).filter(Boolean),
+    });
+    return stored.length > 0 || (entries.length > 0 && !entries.some(m => m.event));
   } catch (err) {
     logWarn('Failed to add memory', { userId, error: err.message });
     if (!isTransientError(err)) markUnavailable();
@@ -551,19 +559,24 @@ export async function extractAndStoreMemories(
       { role: 'assistant', content: assistantReply },
     ];
 
-    await c.add(messages, {
+    const result = await c.add(messages, {
       user_id: userId,
       app_id: APP_ID,
       metadata: { username },
       enable_graph: true,
     });
 
+    const entries = Array.isArray(result) ? result : (result?.results || []);
+    const stored = entries.filter(m => m.event === 'ADD' || m.event === 'UPDATE');
     debug('Memory extraction completed', {
       userId,
       username,
       messagePreview: userMessage.substring(0, 80),
+      memoriesReturned: entries.length,
+      memoriesStored: stored.length,
+      events: entries.map(m => m.event).filter(Boolean),
     });
-    return true;
+    return stored.length > 0 || (entries.length > 0 && !entries.some(m => m.event));
   } catch (err) {
     // Only log — do NOT call markUnavailable() here.
     // This runs fire-and-forget in the background; a failure for one user's

@@ -19,7 +19,7 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { info, error as logError, warn } from '../logger.js';
+import { debug, info, error as logError, warn } from '../logger.js';
 import { CLIProcessError } from '../utils/errors.js';
 
 // Resolve the `claude` binary path from node_modules/.bin (may not be in PATH in Docker).
@@ -408,6 +408,7 @@ export class CLIProcess {
         try {
           msg = JSON.parse(line);
         } catch {
+          debug(`${this.#name}: non-JSON stdout line (short-lived)`, { line: line.slice(0, 200) });
           return;
         }
         if (msg.type === 'result') {
@@ -420,7 +421,11 @@ export class CLIProcess {
         this.#inflightProc = null;
 
         if (result) {
-          resolve(this.#extractResult(result));
+          try {
+            resolve(this.#extractResult(result));
+          } catch (err) {
+            reject(err);
+          }
         } else {
           const stderr = stderrLines.join('\n');
           reject(
@@ -451,7 +456,11 @@ export class CLIProcess {
     return new Promise((resolve, reject) => {
       this.#pendingResolve = (msg) => {
         clearTimeout(timer);
-        resolve(this.#extractResult(msg));
+        try {
+          resolve(this.#extractResult(msg));
+        } catch (err) {
+          reject(err);
+        }
       };
       this.#pendingReject = (err) => {
         clearTimeout(timer);
@@ -489,7 +498,11 @@ export class CLIProcess {
   #extractResult(message) {
     if (message.is_error) {
       const errMsg = message.errors?.map((e) => e.message || e).join('; ') || 'Unknown CLI error';
-      logError(`${this.#name}: CLI error`, { error: errMsg });
+      logError(`${this.#name}: CLI error`, {
+        error: errMsg,
+        errorCount: message.errors?.length ?? 0,
+        resultSnippet: JSON.stringify(message).slice(0, 500),
+      });
       throw new CLIProcessError(`${this.#name}: CLI error — ${errMsg}`, 'exit');
     }
     return message;
