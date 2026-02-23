@@ -49,10 +49,8 @@ export async function execute(interaction) {
         _durationMs: durationMs,
       };
     },
-    actionFn: async (target, reason, inter) => {
-      const durationStr = inter.options.getString('duration');
-      const durationMs = parseDuration(durationStr);
-      await target.timeout(durationMs, reason || undefined);
+    actionFn: async (target, reason, _inter, opts) => {
+      await target.timeout(opts._durationMs, reason || undefined);
     },
     formatReply: (tag, c) => `\u2705 **${tag}** has been timed out. (Case #${c.case_number})`,
   });

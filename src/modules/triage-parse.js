@@ -44,6 +44,9 @@ export function parseSDKResult(raw, channelId, label) {
   const reasonMatch = stripped.match(/"reasoning"\s*:\s*"([^"]*)/);
 
   if (classMatch) {
+    // Recovery is type-safe: extracts a validated classification string,
+    // defaults reasoning to a sentinel, and sets an empty targetMessageIds
+    // array. No blind JSON bracket-appending is performed.
     const recovered = {
       classification: classMatch[1],
       reasoning: reasonMatch ? reasonMatch[1] : 'Recovered from truncated response',
@@ -92,6 +95,12 @@ export function parseClassifyResult(sdkMessage, channelId) {
 
 /**
  * Parse the responder's JSON text output.
+ *
+ * Note: Response length enforcement (Discord's 2000-char limit) is not applied
+ * here. Individual response text is bounded by MAX_MESSAGE_CHARS=1000 at
+ * accumulation time, and splitMessage() in triage-respond.js handles chunking
+ * for any edge cases before sending to Discord.
+ *
  * @param {Object} sdkMessage - Raw CLI result message
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { responses: [...] } or null

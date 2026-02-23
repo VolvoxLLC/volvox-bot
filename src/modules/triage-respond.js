@@ -4,12 +4,11 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
-import { debug, info, warn, error as logError } from '../logger.js';
+import { info, warn, error as logError } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
-import { resolveMessageId } from './triage-filter.js';
-import { sanitizeText } from './triage-filter.js';
+import { resolveMessageId, sanitizeText } from './triage-filter.js';
 
 /** Maximum characters to keep from fetched context messages. */
 const CONTEXT_MESSAGE_CHAR_LIMIT = 500;
@@ -116,7 +115,7 @@ export async function sendModerationLog(client, classification, snapshot, channe
 
     await safeSend(logChannel, { embeds: [embed] });
   } catch (err) {
-    debug('Failed to send moderation audit log', { channelId, error: err.message });
+    warn('Failed to send moderation audit log', { channelId, error: err.message });
   }
 }
 

@@ -557,7 +557,9 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   if (!ALLOWED_INTERVALS.has(interval)) {
     return res.status(400).json({ error: 'Invalid interval parameter' });
   }
-  const bucketExpr = `date_trunc('${interval}', created_at)`;
+  const bucketExpr = interval === 'hour'
+    ? "date_trunc('hour', created_at)"
+    : "date_trunc('day', created_at)";
 
   const logsWhereParts = [
     "message = 'AI usage'",

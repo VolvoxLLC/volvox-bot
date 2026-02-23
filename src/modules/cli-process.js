@@ -168,7 +168,9 @@ function buildEnv(flags) {
         env.ANTHROPIC_BASE_URL = flags.baseUrl;
       }
     } catch {
-      // Ignore malformed URLs — fall back to default Anthropic endpoint
+      warn('Ignoring malformed baseUrl — falling back to default Anthropic endpoint', {
+        baseUrl: flags.baseUrl,
+      });
     }
   }
   if (flags.apiKey) {

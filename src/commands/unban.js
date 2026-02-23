@@ -29,8 +29,6 @@ export async function execute(interaction) {
     skipDm: true,
     getTarget: async (inter) => {
       const userId = inter.options.getString('user_id');
-      await inter.guild.members.unban(userId, inter.options.getString('reason') || undefined);
-
       let targetTag = userId;
       try {
         const fetchedUser = await inter.client.users.fetch(userId);
@@ -39,6 +37,10 @@ export async function execute(interaction) {
         // User no longer resolvable — keep raw ID
       }
       return { target: null, targetId: userId, targetTag };
+    },
+    actionFn: async (_target, reason, inter) => {
+      const userId = inter.options.getString('user_id');
+      await inter.guild.members.unban(userId, reason || undefined);
     },
     extractOptions: (inter) => ({
       reason: inter.options.getString('reason'),

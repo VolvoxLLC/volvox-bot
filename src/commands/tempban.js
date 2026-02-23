@@ -70,10 +70,7 @@ export async function execute(interaction) {
     },
     afterCase: async (caseData, inter) => {
       const user = inter.options.getUser('user');
-      const durationStr = inter.options.getString('duration');
-      const durationMs = parseDuration(durationStr);
-      const expiresAt = new Date(Date.now() + durationMs);
-      await scheduleAction(inter.guild.id, 'unban', user.id, caseData.id, expiresAt);
+      await scheduleAction(inter.guild.id, 'unban', user.id, caseData.id, caseData.expires_at);
     },
     formatReply: (tag, c) =>
       `\u2705 **${tag}** has been temporarily banned. (Case #${c.case_number})`,

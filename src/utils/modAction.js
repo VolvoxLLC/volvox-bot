@@ -5,7 +5,7 @@
  * case creation, mod log, success reply, and error handling.
  */
 
-import { info, error as logError, warn as logWarn, debug } from '../logger.js';
+import { info, error as logError, debug } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import {
   checkHierarchy,
@@ -24,11 +24,16 @@ import { safeEditReply } from './safeSend.js';
  * @param {string} opts.action - Action name for case/logging (e.g. 'ban', 'kick')
  * @param {Function} opts.getTarget - (interaction, config) => { target, user, targetId, targetTag }
  *   Must return the target info. `target` is the GuildMember (or null for unban).
- *   Return `{ earlyReturn: true }` to signal the function already replied.
- * @param {Function} [opts.actionFn] - async (target, reason, interaction) => void
- *   The unique Discord action. Omit for warn (no Discord action).
+ *   Return `{ earlyReturn: string }` to short-circuit with a user-facing reply.
+ * @param {Function} [opts.actionFn] - async (target, reason, interaction, options) => void
+ *   The unique Discord action. Receives the resolved `options` from `extractOptions`
+ *   as the 4th parameter. Omit for warn (no Discord action).
  * @param {Function} [opts.extractOptions] - (interaction) => { reason, ...extra }
  *   Extract command options. Must include `reason`. Extras are spread into case data.
+ *   Return `{ earlyReturn: string }` to short-circuit with a user-facing reply.
+ *   Fields prefixed with `_` (e.g. `_durationMs`, `_channel`) are private to the
+ *   command — they are passed to `actionFn` but excluded from case data by the
+ *   `...extraCaseData` spread (callers must destructure them out).
  * @param {boolean} [opts.skipHierarchy=false] - Skip role hierarchy check
  * @param {boolean} [opts.skipDm=false] - Skip DM notification
  * @param {string} [opts.dmAction] - Override action name for DM (e.g. tempban uses 'ban')
@@ -104,7 +109,7 @@ export async function executeModAction(interaction, opts) {
 
     // Execute the unique action
     if (actionFn) {
-      await actionFn(target, reason, interaction);
+      await actionFn(target, reason, interaction, options);
     }
 
     // Create case
