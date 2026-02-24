@@ -18,31 +18,21 @@ function hasAdministratorPermission(permissions: string): boolean {
   }
 }
 
-async function verifyGuildAdmin(
+async function authorizeGuildAdmin(
   request: NextRequest,
   guildId: string,
-): Promise<
-  | { ok: true; botApiBaseUrl: string; botApiSecret: string }
-  | { ok: false; response: NextResponse }
-> {
+): Promise<NextResponse | null> {
   const token = await getToken({ req: request });
 
   if (typeof token?.accessToken !== "string" || token.accessToken.length === 0) {
-    return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   if (token.error === "RefreshTokenError") {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: "Token expired. Please sign in again." },
-        { status: 401 },
-      ),
-    };
-  }
-
-  if (!guildId) {
-    return { ok: false, response: NextResponse.json({ error: "Missing guildId" }, { status: 400 }) };
+    return NextResponse.json(
+      { error: "Token expired. Please sign in again." },
+      { status: 401 },
+    );
   }
 
   let mutualGuilds: Awaited<ReturnType<typeof getMutualGuilds>>;
@@ -53,13 +43,10 @@ async function verifyGuildAdmin(
     );
   } catch (error) {
     logger.error("[api/guilds/:guildId/config] Failed to verify guild permissions:", error);
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: "Failed to verify guild permissions" },
-        { status: 502 },
-      ),
-    };
+    return NextResponse.json(
+      { error: "Failed to verify guild permissions" },
+      { status: 502 },
+    );
   }
 
   const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
@@ -67,29 +54,25 @@ async function verifyGuildAdmin(
     !targetGuild ||
     !(targetGuild.owner || hasAdministratorPermission(targetGuild.permissions))
   ) {
-    return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  return null; // authorized
+}
+
+function getBotApiConfig(): { baseUrl: string; secret: string } | NextResponse {
   const botApiBaseUrl = getBotApiBaseUrl();
   const botApiSecret = process.env.BOT_API_SECRET;
 
   if (!botApiBaseUrl || !botApiSecret) {
     logger.error("[api/guilds/:guildId/config] BOT_API_URL and BOT_API_SECRET are required");
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "Bot API is not configured" }, { status: 500 }),
-    };
+    return NextResponse.json(
+      { error: "Bot API is not configured" },
+      { status: 500 },
+    );
   }
 
-  return { ok: true, botApiBaseUrl, botApiSecret };
-}
-
-function buildUpstreamUrl(botApiBaseUrl: string, guildId: string): URL | null {
-  try {
-    return new URL(`${botApiBaseUrl}/guilds/${encodeURIComponent(guildId)}/config`);
-  } catch {
-    return null;
-  }
+  return { baseUrl: botApiBaseUrl, secret: botApiSecret };
 }
 
 export async function GET(
@@ -97,14 +80,23 @@ export async function GET(
   { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
 ) {
   const { guildId } = await params;
-  const auth = await verifyGuildAdmin(request, guildId);
-  if (!auth.ok) return auth.response;
+  if (!guildId) {
+    return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
+  }
 
-  const upstreamUrl = buildUpstreamUrl(auth.botApiBaseUrl, guildId);
-  if (!upstreamUrl) {
-    logger.error("[api/guilds/:guildId/config] Invalid BOT_API_URL", {
-      botApiBaseUrl: auth.botApiBaseUrl,
-    });
+  const authError = await authorizeGuildAdmin(request, guildId);
+  if (authError) return authError;
+
+  const apiConfig = getBotApiConfig();
+  if (apiConfig instanceof NextResponse) return apiConfig;
+
+  let upstreamUrl: URL;
+  try {
+    upstreamUrl = new URL(
+      `${apiConfig.baseUrl}/guilds/${encodeURIComponent(guildId)}/config`,
+    );
+  } catch {
+    logger.error("[api/guilds/:guildId/config] Invalid BOT_API_URL");
     return NextResponse.json(
       { error: "Bot API is not configured correctly" },
       { status: 500 },
@@ -113,25 +105,19 @@ export async function GET(
 
   try {
     const response = await fetch(upstreamUrl.toString(), {
-      headers: { "x-api-secret": auth.botApiSecret },
+      headers: { "x-api-secret": apiConfig.secret },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: "no-store",
     });
 
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      const data: unknown = await response.json();
-      return NextResponse.json(data, { status: response.status });
-    }
-
-    const text = await response.text();
-    return NextResponse.json(
-      { error: text || "Unexpected response from bot API" },
-      { status: response.status },
-    );
+    const data: unknown = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    logger.error("[api/guilds/:guildId/config] Failed to proxy config GET:", error);
-    return NextResponse.json({ error: "Failed to fetch config" }, { status: 500 });
+    logger.error("[api/guilds/:guildId/config] Failed to fetch config:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch config" },
+      { status: 500 },
+    );
   }
 }
 
@@ -140,19 +126,15 @@ export async function PATCH(
   { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
 ) {
   const { guildId } = await params;
-  const auth = await verifyGuildAdmin(request, guildId);
-  if (!auth.ok) return auth.response;
-
-  const upstreamUrl = buildUpstreamUrl(auth.botApiBaseUrl, guildId);
-  if (!upstreamUrl) {
-    logger.error("[api/guilds/:guildId/config] Invalid BOT_API_URL", {
-      botApiBaseUrl: auth.botApiBaseUrl,
-    });
-    return NextResponse.json(
-      { error: "Bot API is not configured correctly" },
-      { status: 500 },
-    );
+  if (!guildId) {
+    return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
   }
+
+  const authError = await authorizeGuildAdmin(request, guildId);
+  if (authError) return authError;
+
+  const apiConfig = getBotApiConfig();
+  if (apiConfig instanceof NextResponse) return apiConfig;
 
   let body: unknown;
   try {
@@ -161,31 +143,51 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // Validate PATCH body shape: must have { path: string, value: unknown }
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    typeof (body as Record<string, unknown>).path !== "string" ||
+    !(body as Record<string, unknown>).path
+  ) {
+    return NextResponse.json(
+      { error: "Invalid patch: expected { path: string, value: unknown }" },
+      { status: 400 },
+    );
+  }
+
+  let upstreamUrl: URL;
+  try {
+    upstreamUrl = new URL(
+      `${apiConfig.baseUrl}/guilds/${encodeURIComponent(guildId)}/config`,
+    );
+  } catch {
+    logger.error("[api/guilds/:guildId/config] Invalid BOT_API_URL");
+    return NextResponse.json(
+      { error: "Bot API is not configured correctly" },
+      { status: 500 },
+    );
+  }
+
   try {
     const response = await fetch(upstreamUrl.toString(), {
       method: "PATCH",
       headers: {
-        "x-api-secret": auth.botApiSecret,
         "Content-Type": "application/json",
+        "x-api-secret": apiConfig.secret,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: "no-store",
     });
 
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      const data: unknown = await response.json();
-      return NextResponse.json(data, { status: response.status });
-    }
-
-    const text = await response.text();
-    return NextResponse.json(
-      { error: text || "Unexpected response from bot API" },
-      { status: response.status },
-    );
+    const data: unknown = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    logger.error("[api/guilds/:guildId/config] Failed to proxy config PATCH:", error);
-    return NextResponse.json({ error: "Failed to update config" }, { status: 500 });
+    logger.error("[api/guilds/:guildId/config] Failed to update config:", error);
+    return NextResponse.json(
+      { error: "Failed to update config" },
+      { status: 500 },
+    );
   }
 }

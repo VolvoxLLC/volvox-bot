@@ -1,4 +1,4 @@
-import { ConfigEditor } from "@/components/config/config-editor";
+import { ConfigEditor } from "@/components/dashboard/config-editor";
 
 export default function ConfigPage() {
   return <ConfigEditor />;
