@@ -15,101 +15,19 @@ import {
   GUILD_SELECTED_EVENT,
   SELECTED_GUILD_KEY,
 } from "@/lib/guild-selection";
+import type { BotConfig, DeepPartial } from "@/types/config";
 import { SYSTEM_PROMPT_MAX_LENGTH } from "@/types/config";
 import { ConfigDiff } from "./config-diff";
 import { SystemPromptEditor } from "./system-prompt-editor";
 import { ResetDefaultsButton } from "./reset-defaults-button";
 
-/** Config sections exposed by the API. */
-interface GuildConfig {
-  guildId?: string;
-  ai?: {
-    enabled?: boolean;
-    systemPrompt?: string;
-    channels?: string[];
-    historyLength?: number;
-    historyTTLDays?: number;
-    threadMode?: {
-      enabled?: boolean;
-      autoArchiveMinutes?: number;
-      reuseWindowMinutes?: number;
-    };
-  };
-  welcome?: {
-    enabled?: boolean;
-    channelId?: string;
-    message?: string;
-    dynamic?: {
-      enabled?: boolean;
-      timezone?: string;
-      activityWindowMinutes?: number;
-      milestoneInterval?: number;
-      highlightChannels?: string[];
-      excludeChannels?: string[];
-    };
-  };
-  spam?: Record<string, unknown>;
-  moderation?: {
-    enabled?: boolean;
-    alertChannelId?: string;
-    autoDelete?: boolean;
-    dmNotifications?: {
-      warn?: boolean;
-      timeout?: boolean;
-      kick?: boolean;
-      ban?: boolean;
-    };
-    escalation?: {
-      enabled?: boolean;
-      thresholds?: Array<{
-        warns?: number;
-        withinDays?: number;
-        action?: string;
-        duration?: string;
-      }>;
-    };
-    logging?: {
-      channels?: {
-        default?: string | null;
-        warns?: string | null;
-        bans?: string | null;
-        kicks?: string | null;
-        timeouts?: string | null;
-        purges?: string | null;
-        locks?: string | null;
-      };
-    };
-  };
-  triage?: {
-    enabled?: boolean;
-    defaultInterval?: number;
-    maxBufferSize?: number;
-    triggerWords?: string[];
-    moderationKeywords?: string[];
-    classifyModel?: string;
-    classifyBudget?: number;
-    respondModel?: string;
-    respondBudget?: number;
-    thinkingTokens?: number;
-    classifyBaseUrl?: string | null;
-    classifyApiKey?: string | null;
-    respondBaseUrl?: string | null;
-    respondApiKey?: string | null;
-    streaming?: boolean;
-    tokenRecycleLimit?: number;
-    contextMessages?: number;
-    timeout?: number;
-    moderationResponse?: boolean;
-    channels?: string[];
-    excludeChannels?: string[];
-    debugFooter?: boolean;
-    debugFooterLevel?: string;
-    moderationLogChannel?: string;
-  };
-}
+/** Config sections exposed by the API — all fields optional for partial API responses. */
+type GuildConfig = DeepPartial<BotConfig>;
 
 function isGuildConfig(data: unknown): data is GuildConfig {
-  return typeof data === "object" && data !== null && !Array.isArray(data);
+  if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
+  const obj = data as Record<string, unknown>;
+  return "ai" in obj || "welcome" in obj || "spam" in obj;
 }
 
 export function ConfigEditor() {
@@ -225,6 +143,7 @@ export function ConfigEditor() {
 
     function onBeforeUnload(e: BeforeUnloadEvent) {
       e.preventDefault();
+      e.returnValue = "";
     }
 
     window.addEventListener("beforeunload", onBeforeUnload);
@@ -301,15 +220,31 @@ export function ConfigEditor() {
       const hasFailures = results.some((r) => r.status === "rejected");
 
       if (hasFailures) {
+        // Partial failure: merge only succeeded sections into savedConfig so
+        // the user can retry failed sections without losing their unsaved edits.
+        const succeededSections = Array.from(bySection.keys()).filter(
+          (s) => !failedSections.includes(s),
+        );
+        if (succeededSections.length > 0) {
+          const snapshot = draftConfig;
+          setSavedConfig((prev) => {
+            if (!prev) return prev;
+            const updated = { ...prev };
+            for (const section of succeededSections) {
+              (updated as Record<string, unknown>)[section] =
+                (snapshot as Record<string, unknown>)[section];
+            }
+            return updated;
+          });
+        }
         toast.error("Some sections failed to save", {
           description: `Failed: ${failedSections.join(", ")}`,
         });
       } else {
         toast.success("Config saved successfully!");
+        // Full success: reload to get the authoritative version from the server
+        await fetchConfig(guildId);
       }
-
-      // Reload to get the authoritative version from the server
-      await fetchConfig(guildId);
     } catch (err) {
       const msg = (err as Error).message || "Failed to save config";
       toast.error("Failed to save config", { description: msg });
@@ -696,6 +631,7 @@ export function ConfigEditor() {
                 <input
                   type="number"
                   step="0.01"
+                  min={0}
                   value={draftConfig.triage?.classifyBudget ?? 0}
                   onChange={(e) => updateTriageField("classifyBudget", Number(e.target.value))}
                   disabled={saving}
@@ -707,6 +643,7 @@ export function ConfigEditor() {
                 <input
                   type="number"
                   step="0.01"
+                  min={0}
                   value={draftConfig.triage?.respondBudget ?? 0}
                   onChange={(e) => updateTriageField("respondBudget", Number(e.target.value))}
                   disabled={saving}
@@ -719,6 +656,7 @@ export function ConfigEditor() {
                 <span className="text-sm font-medium">Default Interval (ms)</span>
                 <input
                   type="number"
+                  min={1}
                   value={draftConfig.triage?.defaultInterval ?? 3000}
                   onChange={(e) => updateTriageField("defaultInterval", Number(e.target.value))}
                   disabled={saving}
@@ -729,6 +667,7 @@ export function ConfigEditor() {
                 <span className="text-sm font-medium">Timeout (ms)</span>
                 <input
                   type="number"
+                  min={1}
                   value={draftConfig.triage?.timeout ?? 30000}
                   onChange={(e) => updateTriageField("timeout", Number(e.target.value))}
                   disabled={saving}
@@ -741,6 +680,7 @@ export function ConfigEditor() {
                 <span className="text-sm font-medium">Context Messages</span>
                 <input
                   type="number"
+                  min={1}
                   value={draftConfig.triage?.contextMessages ?? 10}
                   onChange={(e) => updateTriageField("contextMessages", Number(e.target.value))}
                   disabled={saving}
@@ -751,6 +691,7 @@ export function ConfigEditor() {
                 <span className="text-sm font-medium">Max Buffer Size</span>
                 <input
                   type="number"
+                  min={1}
                   value={draftConfig.triage?.maxBufferSize ?? 30}
                   onChange={(e) => updateTriageField("maxBufferSize", Number(e.target.value))}
                   disabled={saving}
@@ -904,10 +845,7 @@ function computePatches(
           fullPath,
         );
       } else {
-        // Leaf change — the API requires at least one dot in the path
-        if (fullPath.includes(".")) {
-          patches.push({ path: fullPath, value: modVal });
-        }
+        patches.push({ path: fullPath, value: modVal });
       }
     }
   }
