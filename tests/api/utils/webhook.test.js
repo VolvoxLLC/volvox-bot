@@ -8,19 +8,30 @@ vi.mock('../../../src/logger.js', () => ({
 
 vi.mock('../../../src/api/utils/validateWebhookUrl.js', () => ({
   validateWebhookUrl: vi.fn().mockReturnValue(true),
+  validateDnsResolution: vi.fn().mockResolvedValue(true),
 }));
 
-import { validateWebhookUrl } from '../../../src/api/utils/validateWebhookUrl.js';
+import {
+  validateDnsResolution,
+  validateWebhookUrl,
+} from '../../../src/api/utils/validateWebhookUrl.js';
 import { fireAndForgetWebhook, WEBHOOK_TIMEOUT_MS } from '../../../src/api/utils/webhook.js';
 import { warn } from '../../../src/logger.js';
 
-/** Flush the microtask queue far enough to let .then().catch().finally() chains settle. */
-const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+/**
+ * Flush the microtask queue far enough to let .then().catch().finally() chains settle.
+ * Two rounds ensure nested promise chains (e.g. DNS validation → fetch → response) complete.
+ */
+const flushPromises = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+};
 
 describe('fireAndForgetWebhook', () => {
   beforeEach(() => {
     vi.stubEnv('TEST_WEBHOOK_URL', 'https://example.com/hook');
     validateWebhookUrl.mockReturnValue(true);
+    validateDnsResolution.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -61,7 +72,7 @@ describe('fireAndForgetWebhook', () => {
     expect(opts.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it('should abort fetch after WEBHOOK_TIMEOUT_MS', () => {
+  it('should abort fetch after WEBHOOK_TIMEOUT_MS', async () => {
     vi.useFakeTimers();
     let capturedSignal;
     vi.spyOn(globalThis, 'fetch').mockImplementation((_url, opts) => {
@@ -71,10 +82,13 @@ describe('fireAndForgetWebhook', () => {
 
     fireAndForgetWebhook('TEST_WEBHOOK_URL', { event: 'test' });
 
+    // Flush the DNS validation microtask so fetch gets called
+    await vi.advanceTimersByTimeAsync(0);
+
     expect(capturedSignal).toBeInstanceOf(AbortSignal);
     expect(capturedSignal.aborted).toBe(false);
 
-    vi.advanceTimersByTime(WEBHOOK_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(WEBHOOK_TIMEOUT_MS);
 
     expect(capturedSignal.aborted).toBe(true);
   });
@@ -91,6 +105,19 @@ describe('fireAndForgetWebhook', () => {
     );
   });
 
+  it('should sanitize URL in warning logs (strip query/fragment)', async () => {
+    vi.stubEnv('TEST_WEBHOOK_URL', 'https://example.com/hook?token=secret&key=abc#frag');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 500 });
+
+    fireAndForgetWebhook('TEST_WEBHOOK_URL', { event: 'test' });
+    await flushPromises();
+
+    expect(warn).toHaveBeenCalledWith(
+      'TEST_WEBHOOK_URL webhook returned non-OK status',
+      expect.objectContaining({ status: 500, url: 'https://example.com/hook' }),
+    );
+  });
+
   it('should log a warning when fetch throws', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network error'));
 
@@ -100,6 +127,20 @@ describe('fireAndForgetWebhook', () => {
     expect(warn).toHaveBeenCalledWith(
       'TEST_WEBHOOK_URL webhook failed',
       expect.objectContaining({ error: 'network error', url: 'https://example.com/hook' }),
+    );
+  });
+
+  it('should not fetch when DNS resolution check rejects the URL', async () => {
+    validateDnsResolution.mockResolvedValueOnce(false);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    fireAndForgetWebhook('TEST_WEBHOOK_URL', { event: 'test' });
+    await flushPromises();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      'TEST_WEBHOOK_URL webhook blocked by DNS resolution check',
+      expect.objectContaining({ url: 'https://example.com/hook' }),
     );
   });
 });

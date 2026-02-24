@@ -3,6 +3,7 @@
  * Prevents SSRF by rejecting URLs that target internal/private network addresses.
  */
 
+import dns from 'node:dns';
 import { warn } from '../../logger.js';
 
 /**
@@ -89,8 +90,8 @@ function extractMappedIPv4(ipv6) {
 /** Blocked hostnames (case-insensitive check performed by caller). */
 const BLOCKED_HOSTNAMES = new Set(['localhost']);
 
-/** IPv6 loopback representations to block. */
-const BLOCKED_IPV6 = new Set(['::1', '[::1]', '0:0:0:0:0:0:0:1']);
+/** IPv6 loopback representations to block (URL.hostname strips brackets). */
+const BLOCKED_IPV6 = new Set(['::1', '0:0:0:0:0:0:0:1']);
 
 /**
  * Cache of previously validated URLs.
@@ -153,7 +154,14 @@ function _validateUrlUncached(url) {
   if (parsed.protocol === 'http:' && !isDev) return false;
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
 
-  const hostname = parsed.hostname.toLowerCase();
+  const rawHostname = parsed.hostname.toLowerCase();
+
+  // Node.js URL.hostname retains brackets for IPv6 (e.g. '[::1]').
+  // Normalize by stripping them so all checks use the bare address.
+  const hostname =
+    rawHostname.startsWith('[') && rawHostname.endsWith(']')
+      ? rawHostname.slice(1, -1)
+      : rawHostname;
 
   // Blocked hostnames
   if (BLOCKED_HOSTNAMES.has(hostname)) return false;
@@ -164,21 +172,91 @@ function _validateUrlUncached(url) {
   // IPv4 private range check (hostname could be a raw IP)
   if (isBlockedIPv4(hostname)) return false;
 
-  // Bracketed IPv6 — strip brackets and re-check
-  if (hostname.startsWith('[') && hostname.endsWith(']')) {
-    const inner = hostname.slice(1, -1);
-    if (BLOCKED_IPV6.has(inner)) return false;
-
-    // IPv4-mapped IPv6: e.g. [::ffff:127.0.0.1] or [::ffff:7f00:1]
-    const mappedIPv4 = extractMappedIPv4(inner);
-    if (mappedIPv4 && isBlockedIPv4(mappedIPv4)) return false;
-  }
-
-  // Unbracketed IPv4-mapped IPv6 (some parsers may strip brackets)
+  // IPv4-mapped IPv6
   const mappedIPv4 = extractMappedIPv4(hostname);
   if (mappedIPv4 && isBlockedIPv4(mappedIPv4)) return false;
 
   return true;
+}
+
+/**
+ * Resolve a webhook URL's hostname via DNS and validate that all resolved addresses
+ * are safe (not private/reserved/loopback). This closes the TOCTOU gap where a hostname
+ * passes string-based validation but resolves to a blocked IP at fetch time (DNS rebinding).
+ *
+ * Should be called immediately before fetch to minimise the rebinding window.
+ * For IP-literal hostnames, skips DNS resolution (already validated by the sync check).
+ *
+ * @param {string} url - The webhook URL to validate via DNS resolution.
+ * @returns {Promise<boolean>} `true` if all resolved addresses are safe, `false` otherwise.
+ */
+export async function validateDnsResolution(url) {
+  let hostname;
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  // IP-literal hostnames don't need DNS resolution — already checked by sync validation
+  if (isBlockedIPv4(hostname) || ipv4ToLong(hostname) !== null) return true;
+  if (BLOCKED_IPV6.has(hostname)) return true;
+
+  try {
+    // Track whether at least one address family resolved successfully.
+    // If both fail, we reject as a precaution (unresolvable host).
+    let v4Failed = false;
+    let v6Failed = false;
+
+    const [ipv4s, ipv6s] = await Promise.all([
+      dns.promises.resolve4(hostname).catch(() => {
+        v4Failed = true;
+        return [];
+      }),
+      dns.promises.resolve6(hostname).catch(() => {
+        v6Failed = true;
+        return [];
+      }),
+    ]);
+
+    // If both families failed, the hostname is unresolvable — reject
+    if (v4Failed && v6Failed) {
+      return false;
+    }
+
+    for (const ip of ipv4s) {
+      if (isBlockedIPv4(ip)) {
+        warn('Webhook hostname resolved to blocked IPv4 (possible DNS rebinding)', {
+          hostname,
+          ip,
+        });
+        return false;
+      }
+    }
+
+    for (const ip of ipv6s) {
+      if (BLOCKED_IPV6.has(ip)) {
+        warn('Webhook hostname resolved to blocked IPv6 (possible DNS rebinding)', {
+          hostname,
+          ip,
+        });
+        return false;
+      }
+      const mappedV4 = extractMappedIPv4(ip);
+      if (mappedV4 && isBlockedIPv4(mappedV4)) {
+        warn('Webhook hostname resolved to blocked IPv4-mapped IPv6 (possible DNS rebinding)', {
+          hostname,
+          ip,
+        });
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    // DNS resolution failed entirely — reject as a precaution
+    return false;
+  }
 }
 
 /**
