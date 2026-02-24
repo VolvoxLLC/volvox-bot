@@ -1,4 +1,4 @@
-import { validateSingleValue } from '../routes/config.js';
+import { validateSingleValue } from './configValidation.js';
 
 /**
  * Validate and normalize a config PATCH request body containing a dotted config path and its value.
