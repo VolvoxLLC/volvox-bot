@@ -17,6 +17,16 @@ export function fireAndForgetWebhook(envVarName, payload) {
 
   if (!validateWebhookUrl(url)) return;
 
+  // Strip query/fragment to avoid leaking tokens in logs
+  const safeUrl = (() => {
+    try {
+      const u = new URL(url);
+      return `${u.origin}${u.pathname}`;
+    } catch {
+      return '<invalid>';
+    }
+  })();
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 
@@ -28,11 +38,14 @@ export function fireAndForgetWebhook(envVarName, payload) {
   })
     .then((response) => {
       if (!response.ok) {
-        warn(`${envVarName} webhook returned non-OK status`, { status: response.status, url });
+        warn(`${envVarName} webhook returned non-OK status`, {
+          status: response.status,
+          url: safeUrl,
+        });
       }
     })
     .catch((err) => {
-      warn(`${envVarName} webhook failed`, { error: err.message, url });
+      warn(`${envVarName} webhook failed`, { error: err.message, url: safeUrl });
     })
     .finally(() => clearTimeout(timer));
 }

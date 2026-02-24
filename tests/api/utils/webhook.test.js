@@ -91,6 +91,19 @@ describe('fireAndForgetWebhook', () => {
     );
   });
 
+  it('should sanitize URL in warning logs (strip query/fragment)', async () => {
+    vi.stubEnv('TEST_WEBHOOK_URL', 'https://example.com/hook?token=secret&key=abc#frag');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 500 });
+
+    fireAndForgetWebhook('TEST_WEBHOOK_URL', { event: 'test' });
+    await flushPromises();
+
+    expect(warn).toHaveBeenCalledWith(
+      'TEST_WEBHOOK_URL webhook returned non-OK status',
+      expect.objectContaining({ status: 500, url: 'https://example.com/hook' }),
+    );
+  });
+
   it('should log a warning when fetch throws', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network error'));
 
