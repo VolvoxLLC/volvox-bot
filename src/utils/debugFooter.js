@@ -61,15 +61,19 @@ function extractStats(result, model) {
   // `usage` may be empty while `modelUsage` contains the real totals.
   // Fall back to the first modelUsage entry when `usage` has no input tokens.
   let mu = {};
-  if ((!usage.input_tokens && !usage.inputTokens) && result?.modelUsage) {
+  if (!usage.input_tokens && !usage.inputTokens && result?.modelUsage) {
     const entries = Object.values(result.modelUsage);
     if (entries.length > 0) {
-      mu = entries.reduce((acc, e) => ({
-        inputTokens: (acc.inputTokens || 0) + (e.inputTokens || 0),
-        outputTokens: (acc.outputTokens || 0) + (e.outputTokens || 0),
-        cacheCreationInputTokens: (acc.cacheCreationInputTokens || 0) + (e.cacheCreationInputTokens || 0),
-        cacheReadInputTokens: (acc.cacheReadInputTokens || 0) + (e.cacheReadInputTokens || 0),
-      }), {});
+      mu = entries.reduce(
+        (acc, e) => ({
+          inputTokens: (acc.inputTokens || 0) + (e.inputTokens || 0),
+          outputTokens: (acc.outputTokens || 0) + (e.outputTokens || 0),
+          cacheCreationInputTokens:
+            (acc.cacheCreationInputTokens || 0) + (e.cacheCreationInputTokens || 0),
+          cacheReadInputTokens: (acc.cacheReadInputTokens || 0) + (e.cacheReadInputTokens || 0),
+        }),
+        {},
+      );
     }
   }
 
@@ -143,7 +147,12 @@ function buildCompact(classify, respond, searchCount) {
  * @param {number} [options.searchCount] - Number of web searches performed (shown when > 0)
  * @returns {string} Formatted footer string
  */
-export function buildDebugFooter(classifyStats, respondStats, level = 'verbose', { searchCount } = {}) {
+export function buildDebugFooter(
+  classifyStats,
+  respondStats,
+  level = 'verbose',
+  { searchCount } = {},
+) {
   const defaults = {
     model: 'unknown',
     cost: 0,
@@ -224,7 +233,12 @@ function buildSplitFields(classify, respond) {
  * @param {number} [options.searchCount] - Number of web searches performed (shown when > 0)
  * @returns {EmbedBuilder} Discord embed with debug stats fields
  */
-export function buildDebugEmbed(classifyStats, respondStats, level = 'verbose', { searchCount } = {}) {
+export function buildDebugEmbed(
+  classifyStats,
+  respondStats,
+  level = 'verbose',
+  { searchCount } = {},
+) {
   const defaults = {
     model: 'unknown',
     cost: 0,
@@ -243,9 +257,7 @@ export function buildDebugEmbed(classifyStats, respondStats, level = 'verbose', 
   let footerText = `Σ ${formatCost(totalCost)} • ${totalDuration}s`;
   if (searchCount > 0) footerText += ` • 🔎×${searchCount}`;
 
-  const embed = new EmbedBuilder()
-    .setColor(EMBED_COLOR)
-    .setFooter({ text: footerText });
+  const embed = new EmbedBuilder().setColor(EMBED_COLOR).setFooter({ text: footerText });
 
   if (level === 'compact') {
     embed.setDescription(buildCompactDescription(classify, respond));

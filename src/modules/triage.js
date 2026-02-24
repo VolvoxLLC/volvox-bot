@@ -25,29 +25,14 @@ import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 import {
   channelBuffers,
-  clearChannelState,
   clearEvaluatedMessages,
   consumePendingReeval,
-  getBuffer,
   pushToBuffer,
 } from './triage-buffer.js';
-import {
-  getDynamicInterval,
-  isChannelEligible,
-  resolveTriageConfig,
-} from './triage-config.js';
-import {
-  checkTriggerWords,
-  sanitizeText,
-} from './triage-filter.js';
-import {
-  parseClassifyResult,
-  parseRespondResult,
-} from './triage-parse.js';
-import {
-  buildClassifyPrompt,
-  buildRespondPrompt,
-} from './triage-prompt.js';
+import { getDynamicInterval, isChannelEligible, resolveTriageConfig } from './triage-config.js';
+import { checkTriggerWords, sanitizeText } from './triage-filter.js';
+import { parseClassifyResult, parseRespondResult } from './triage-parse.js';
+import { buildClassifyPrompt, buildRespondPrompt } from './triage-prompt.js';
 import {
   buildStatsAndLog,
   fetchChannelContext,
@@ -81,7 +66,9 @@ let responderProcess = null;
 async function runClassification(channelId, snapshot, evalConfig, evalClient) {
   const contextLimit = evalConfig.triage?.contextMessages ?? 10;
   const context =
-    contextLimit > 0 ? await fetchChannelContext(channelId, evalClient, snapshot, contextLimit) : [];
+    contextLimit > 0
+      ? await fetchChannelContext(channelId, evalClient, snapshot, contextLimit)
+      : [];
 
   const classifyPrompt = buildClassifyPrompt(context, snapshot, evalClient.user?.id);
   debug('Classifier prompt built', {
@@ -154,7 +141,15 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
  * @param {import('discord.js').Client} evalClient - Discord client
  * @returns {Promise<{parsed: Object, respondMessage: Object, searchCount: number}|null>}
  */
-async function runResponder(channelId, snapshot, classification, context, memoryContext, evalConfig, evalClient) {
+async function runResponder(
+  channelId,
+  snapshot,
+  classification,
+  context,
+  memoryContext,
+  evalConfig,
+  evalClient,
+) {
   const respondPrompt = buildRespondPrompt(
     context,
     snapshot,
@@ -167,22 +162,26 @@ async function runResponder(channelId, snapshot, classification, context, memory
   // Detect WebSearch tool use mid-stream: send a typing indicator + count searches
   let searchNotified = false;
   let searchCount = 0;
-  const respondMessage = await responderProcess.send(respondPrompt, {}, {
-    onEvent: async (msg) => {
-      const toolUses = msg.message?.content?.filter((c) => c.type === 'tool_use') || [];
-      const searches = toolUses.filter((t) => t.name === 'WebSearch');
-      if (searches.length > 0) {
-        searchCount += searches.length;
-        if (!searchNotified) {
-          searchNotified = true;
-          const ch = await evalClient.channels.fetch(channelId).catch(() => null);
-          if (ch) {
-            await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
+  const respondMessage = await responderProcess.send(
+    respondPrompt,
+    {},
+    {
+      onEvent: async (msg) => {
+        const toolUses = msg.message?.content?.filter((c) => c.type === 'tool_use') || [];
+        const searches = toolUses.filter((t) => t.name === 'WebSearch');
+        if (searches.length > 0) {
+          searchCount += searches.length;
+          if (!searchNotified) {
+            searchNotified = true;
+            const ch = await evalClient.channels.fetch(channelId).catch(() => null);
+            if (ch) {
+              await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
+            }
           }
         }
-      }
+      },
     },
-  });
+  );
   const parsed = parseRespondResult(respondMessage, channelId);
 
   if (!parsed || !parsed.responses?.length) {
@@ -217,7 +216,12 @@ function extractMemories(snapshot, parsed) {
         targetEntry.author,
         targetEntry.content,
         r.response,
-      ).catch((err) => debug('Memory extraction fire-and-forget failed', { userId: targetEntry.userId, error: err.message }));
+      ).catch((err) =>
+        debug('Memory extraction fire-and-forget failed', {
+          userId: targetEntry.userId,
+          error: err.message,
+        }),
+      );
     }
   }
 }
@@ -244,7 +248,13 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
 
     // Step 2: Respond
     const respResult = await runResponder(
-      channelId, snapshot, classification, context, memoryContext, evalConfig, evalClient,
+      channelId,
+      snapshot,
+      classification,
+      context,
+      memoryContext,
+      evalConfig,
+      evalClient,
     );
     if (!respResult) return;
 
@@ -253,21 +263,27 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     // Step 3: Build stats, log analytics, and send to Discord
     const resolved = resolveTriageConfig(evalConfig.triage || {});
     const { stats, channel } = await buildStatsAndLog(
-      classifyMessage, respondMessage, resolved, snapshot, classification,
-      searchCount, evalClient, channelId,
+      classifyMessage,
+      respondMessage,
+      resolved,
+      snapshot,
+      classification,
+      searchCount,
+      evalClient,
+      channelId,
     );
 
     // Fire-and-forget: send audit embed to moderation log channel
     if (classification.classification === 'moderate') {
-      sendModerationLog(evalClient, classification, snapshot, channelId, evalConfig)
-        .catch((err) => debug('Moderation log fire-and-forget failed', { error: err.message }));
+      sendModerationLog(evalClient, classification, snapshot, channelId, evalConfig).catch((err) =>
+        debug('Moderation log fire-and-forget failed', { error: err.message }),
+      );
     }
 
     await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
 
     // Step 4: Extract memories (fire-and-forget)
     extractMemories(snapshot, parsed);
-
   } catch (err) {
     if (err instanceof CLIProcessError && err.reason === 'timeout') {
       warn('Triage evaluation aborted (timeout)', { channelId });

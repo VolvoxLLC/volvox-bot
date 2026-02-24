@@ -8,7 +8,9 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 }));
 vi.mock('../../src/modules/moderation.js', () => ({
   createCase: vi.fn().mockResolvedValue({
-    case_number: 1, action: 'tempban', id: 1,
+    case_number: 1,
+    action: 'tempban',
+    id: 1,
     expires_at: new Date(Date.now() + 86400000),
   }),
   scheduleAction: vi.fn().mockResolvedValue({ id: 10 }),

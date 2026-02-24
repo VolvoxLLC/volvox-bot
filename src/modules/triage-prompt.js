@@ -50,7 +50,11 @@ export function buildConversationText(context, buffer) {
 export function buildClassifyPrompt(context, snapshot, botUserId) {
   const conversationText = buildConversationText(context, snapshot);
   const communityRules = loadPrompt('community-rules');
-  return loadPrompt('triage-classify', { conversationText, communityRules, botUserId: botUserId || 'unknown' });
+  return loadPrompt('triage-classify', {
+    conversationText,
+    communityRules,
+    botUserId: botUserId || 'unknown',
+  });
 }
 
 /**

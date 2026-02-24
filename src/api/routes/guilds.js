@@ -233,7 +233,10 @@ async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
 function getBotOwnerIds() {
   const envValue = process.env.BOT_OWNER_IDS;
   if (envValue) {
-    return envValue.split(',').map((id) => id.trim()).filter(Boolean);
+    return envValue
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
   }
   const owners = getConfig()?.permissions?.botOwners;
   return Array.isArray(owners) ? owners : [];
@@ -622,9 +625,8 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   if (!ALLOWED_INTERVALS.has(interval)) {
     return res.status(400).json({ error: 'Invalid interval parameter' });
   }
-  const bucketExpr = interval === 'hour'
-    ? "date_trunc('hour', created_at)"
-    : "date_trunc('day', created_at)";
+  const bucketExpr =
+    interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
 
   const logsWhereParts = [
     "message = 'AI usage'",

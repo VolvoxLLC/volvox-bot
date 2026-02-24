@@ -4,8 +4,8 @@
  */
 
 import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { safeSend } from '../utils/safeSend.js';
 import { executeModAction } from '../utils/modAction.js';
+import { safeSend } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('lock')
@@ -37,7 +37,12 @@ export async function execute(interaction) {
       if (channel.type !== ChannelType.GuildText) {
         return { earlyReturn: '\u274C Lock can only be used in text channels.' };
       }
-      return { target: null, targetId: channel.id, targetTag: `#${channel.name}`, _channel: channel };
+      return {
+        target: null,
+        targetId: channel.id,
+        targetTag: `#${channel.name}`,
+        _channel: channel,
+      };
     },
     actionFn: async (_target, reason, inter) => {
       const channel = inter.options.getChannel('channel') || inter.channel;

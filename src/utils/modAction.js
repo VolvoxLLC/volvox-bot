@@ -5,7 +5,7 @@
  * case creation, mod log, success reply, and error handling.
  */
 
-import { info, error as logError, debug } from '../logger.js';
+import { debug, info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import {
   checkHierarchy,

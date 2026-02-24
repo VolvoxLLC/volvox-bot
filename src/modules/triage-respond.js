@@ -4,7 +4,7 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
-import { info, warn, error as logError } from '../logger.js';
+import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
@@ -77,9 +77,7 @@ export async function sendModerationLog(client, classification, snapshot, channe
     if (!logChannel) return;
 
     // Find target messages from the snapshot
-    const targets = snapshot.filter((m) =>
-      classification.targetMessageIds?.includes(m.messageId),
-    );
+    const targets = snapshot.filter((m) => classification.targetMessageIds?.includes(m.messageId));
 
     const actionLabels = {
       warn: '\u26A0\uFE0F Warn',
@@ -136,7 +134,15 @@ export async function sendModerationLog(client, classification, snapshot, channe
  * @param {Object} [stats] - Optional stats from classify/respond steps
  * @param {string} [channelId] - Channel ID fallback for logging
  */
-export async function sendResponses(channel, parsed, classification, snapshot, config, stats, channelId) {
+export async function sendResponses(
+  channel,
+  parsed,
+  classification,
+  snapshot,
+  config,
+  stats,
+  channelId,
+) {
   if (!channel) {
     warn('Could not fetch channel for triage response', { channelId });
     return;
@@ -238,7 +244,16 @@ export async function sendResponses(channel, parsed, classification, snapshot, c
  * @param {string} channelId - Channel ID
  * @returns {Promise<{stats: Object, channel: Object|null}>} Stats and resolved channel
  */
-export async function buildStatsAndLog(classifyMessage, respondMessage, resolved, snapshot, classification, searchCount, client, channelId) {
+export async function buildStatsAndLog(
+  classifyMessage,
+  respondMessage,
+  resolved,
+  snapshot,
+  classification,
+  searchCount,
+  client,
+  channelId,
+) {
   const targetEntry = snapshot.find((m) => classification.targetMessageIds?.includes(m.messageId));
   const targetUserId = targetEntry?.userId || null;
 

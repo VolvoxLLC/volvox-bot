@@ -17,7 +17,10 @@ import { PermissionFlagsBits } from 'discord.js';
 function getBotOwnerIds(config) {
   const envValue = process.env.BOT_OWNER_IDS;
   if (envValue) {
-    return envValue.split(',').map((id) => id.trim()).filter(Boolean);
+    return envValue
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
   }
   const owners = config?.permissions?.botOwners;
   return Array.isArray(owners) ? owners : [];

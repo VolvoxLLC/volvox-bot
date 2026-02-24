@@ -7,8 +7,8 @@ import crypto from 'node:crypto';
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { error, info, warn } from '../../logger.js';
-import { rateLimit } from '../middleware/rateLimit.js';
 import { requireOAuth } from '../middleware/oauth.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { DISCORD_API, fetchUserGuilds } from '../utils/discordApi.js';
 import { sessionStore } from '../utils/sessionStore.js';
 
@@ -59,7 +59,8 @@ function isValidDashboardUrl(value) {
       parsed.protocol === 'http:' &&
       ALLOWED_REDIRECT_HOSTS.has(parsed.hostname) &&
       process.env.NODE_ENV !== 'production'
-    ) return true;
+    )
+      return true;
     return false;
   } catch {
     return false;

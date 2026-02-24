@@ -62,7 +62,9 @@ export async function execute(interaction) {
       return {
         reason:
           reason ||
-          (seconds === 0 ? 'Slowmode disabled' : `Slowmode set to ${formatDuration(seconds * 1000)}`),
+          (seconds === 0
+            ? 'Slowmode disabled'
+            : `Slowmode set to ${formatDuration(seconds * 1000)}`),
         duration: seconds > 0 ? formatDuration(seconds * 1000) : null,
       };
     },

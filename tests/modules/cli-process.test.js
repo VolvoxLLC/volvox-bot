@@ -707,10 +707,10 @@ describe('CLIProcess — buildArgs', () => {
     await tick();
 
     const [, args] = spawnMock.mock.calls[0];
-    const atIndices = args.reduce(
-      (acc, v, i) => (v === '--allowedTools' ? [...acc, i] : acc),
-      [],
-    );
+    const atIndices = args.reduce((acc, v, i) => {
+      if (v === '--allowedTools') acc.push(i);
+      return acc;
+    }, []);
     expect(atIndices.length).toBe(2);
     expect(args[atIndices[0] + 1]).toBe('WebSearch');
     expect(args[atIndices[1] + 1]).toBe('Read');
