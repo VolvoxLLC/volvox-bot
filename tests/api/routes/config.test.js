@@ -365,6 +365,52 @@ describe('config routes', () => {
       expect(res.status).toBe(400);
       expect(res.body.details.length).toBeGreaterThanOrEqual(3);
     });
+
+    describe('webhook notifications', () => {
+      it('should fire webhook when CONFIG_CHANGE_WEBHOOK_URL is set', async () => {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true });
+        vi.stubEnv('CONFIG_CHANGE_WEBHOOK_URL', 'https://example.com/hook');
+
+        const res = await request(app)
+          .put('/api/v1/config')
+          .set('x-api-secret', SECRET)
+          .send({ ai: { enabled: true } });
+
+        expect(res.status).toBe(200);
+        expect(fetchSpy).toHaveBeenCalledOnce();
+        const [url, opts] = fetchSpy.mock.calls[0];
+        expect(url).toBe('https://example.com/hook');
+        expect(opts.method).toBe('POST');
+        const body = JSON.parse(opts.body);
+        expect(body.event).toBe('config.updated');
+        expect(body.sections).toEqual(['ai']);
+        expect(body.timestamp).toBeTypeOf('number');
+      });
+
+      it('should not fire webhook when CONFIG_CHANGE_WEBHOOK_URL is unset', async () => {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true });
+
+        const res = await request(app)
+          .put('/api/v1/config')
+          .set('x-api-secret', SECRET)
+          .send({ ai: { enabled: true } });
+
+        expect(res.status).toBe(200);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not block response when webhook fails', async () => {
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
+        vi.stubEnv('CONFIG_CHANGE_WEBHOOK_URL', 'https://example.com/hook');
+
+        const res = await request(app)
+          .put('/api/v1/config')
+          .set('x-api-secret', SECRET)
+          .send({ ai: { enabled: true } });
+
+        expect(res.status).toBe(200);
+      });
+    });
   });
 });
 

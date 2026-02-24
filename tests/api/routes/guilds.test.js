@@ -484,6 +484,62 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(500);
     });
+
+    describe('dashboard webhook notifications', () => {
+      it('should fire dashboard webhook when DASHBOARD_WEBHOOK_URL is set', async () => {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true });
+        vi.stubEnv('DASHBOARD_WEBHOOK_URL', 'https://dashboard.example.com/hook');
+        getConfig.mockReturnValueOnce({
+          ai: { enabled: true, model: 'claude-4' },
+        });
+
+        const res = await request(app)
+          .patch('/api/v1/guilds/guild1/config')
+          .set('x-api-secret', SECRET)
+          .send({ path: 'ai.model', value: 'claude-4' });
+
+        expect(res.status).toBe(200);
+        expect(fetchSpy).toHaveBeenCalledOnce();
+        const [url, opts] = fetchSpy.mock.calls[0];
+        expect(url).toBe('https://dashboard.example.com/hook');
+        expect(opts.method).toBe('POST');
+        const body = JSON.parse(opts.body);
+        expect(body.event).toBe('config.updated');
+        expect(body.guildId).toBe('guild1');
+        expect(body.updatedKeys).toEqual(['ai.model']);
+        expect(body.timestamp).toBeTypeOf('number');
+      });
+
+      it('should not fire dashboard webhook when DASHBOARD_WEBHOOK_URL is unset', async () => {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true });
+        getConfig.mockReturnValueOnce({
+          ai: { enabled: true, model: 'claude-4' },
+        });
+
+        const res = await request(app)
+          .patch('/api/v1/guilds/guild1/config')
+          .set('x-api-secret', SECRET)
+          .send({ path: 'ai.model', value: 'claude-4' });
+
+        expect(res.status).toBe(200);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not block response when dashboard webhook fails', async () => {
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
+        vi.stubEnv('DASHBOARD_WEBHOOK_URL', 'https://dashboard.example.com/hook');
+        getConfig.mockReturnValueOnce({
+          ai: { enabled: true, model: 'claude-4' },
+        });
+
+        const res = await request(app)
+          .patch('/api/v1/guilds/guild1/config')
+          .set('x-api-secret', SECRET)
+          .send({ path: 'ai.model', value: 'claude-4' });
+
+        expect(res.status).toBe(200);
+      });
+    });
   });
 
   describe('GET /:id/stats', () => {
