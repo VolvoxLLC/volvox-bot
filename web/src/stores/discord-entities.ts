@@ -26,7 +26,7 @@ export const useDiscordEntityStore = create<DiscordEntityState>((set, get) => ({
   fetchChannels: async (guildId: string) => {
     const state = get();
     // Skip if already loaded or currently loading
-    if (state.guilds[guildId]?.channels.length || state.loadingChannels[guildId]) {
+    if (state.guilds[guildId]?.channels !== undefined || state.loadingChannels[guildId]) {
       return;
     }
 
@@ -50,7 +50,7 @@ export const useDiscordEntityStore = create<DiscordEntityState>((set, get) => ({
 
   fetchRoles: async (guildId: string) => {
     const state = get();
-    if (state.guilds[guildId]?.roles.length || state.loadingRoles[guildId]) {
+    if (state.guilds[guildId]?.roles !== undefined || state.loadingRoles[guildId]) {
       return;
     }
 
