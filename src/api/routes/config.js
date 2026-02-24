@@ -6,7 +6,11 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
-import { READABLE_CONFIG_KEYS, SAFE_CONFIG_KEYS } from '../utils/configAllowlist.js';
+import {
+  maskSensitiveFields,
+  READABLE_CONFIG_KEYS,
+  SAFE_CONFIG_KEYS,
+} from '../utils/configAllowlist.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 const router = Router();
@@ -242,8 +246,7 @@ export function validateSingleValue(path, value) {
   let currentSchema = schema;
   for (let i = 1; i < segments.length; i++) {
     if (!currentSchema.properties || !currentSchema.properties[segments[i]]) {
-      // Path targets an unknown/extensible property — no schema to validate against
-      return [];
+      return [{ path, message: `Unknown config path: ${path}` }];
     }
     currentSchema = currentSchema.properties[segments[i]];
   }
@@ -259,10 +262,13 @@ export function validateSingleValue(path, value) {
  * @param {string} prefix - Current path prefix
  * @returns {Array<[string, *]>} Array of [dotPath, leafValue] tuples
  */
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 export function flattenToLeafPaths(obj, prefix) {
   const results = [];
 
   for (const [key, value] of Object.entries(obj)) {
+    if (DANGEROUS_KEYS.has(key)) continue;
     const path = `${prefix}.${key}`;
 
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -326,7 +332,7 @@ router.get('/', requireGlobalAdmin, (_req, res) => {
     }
   }
 
-  res.json(safeConfig);
+  res.json(maskSensitiveFields(safeConfig));
 });
 
 /**
@@ -380,6 +386,7 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
       safeConfig[key] = updated[key];
     }
   }
+  const maskedConfig = maskSensitiveFields(safeConfig);
 
   const updatedSections = Object.keys(req.body).filter((k) => SAFE_CONFIG_KEYS.includes(k));
 
@@ -391,7 +398,7 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
       sections: updatedSections,
       timestamp: Date.now(),
     });
-    return res.json(safeConfig);
+    return res.json(maskedConfig);
   }
 
   if (succeeded.length === 0) {
@@ -418,7 +425,7 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
   return res.status(207).json({
     error: 'Partial config update — some writes failed',
     results,
-    config: safeConfig,
+    config: maskedConfig,
   });
 });
 

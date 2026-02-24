@@ -59,24 +59,24 @@ describe('webhooks routes', () => {
   describe('POST /config-update', () => {
     it('should update config with api-secret auth', async () => {
       getConfig.mockReturnValueOnce({
-        ai: { enabled: true, model: 'claude-4' },
+        ai: { enabled: true, systemPrompt: 'claude-4' },
       });
 
       const res = await request(app)
         .post('/api/v1/webhooks/config-update')
         .set('x-api-secret', SECRET)
-        .send({ guildId: 'guild1', path: 'ai.model', value: 'claude-4' });
+        .send({ guildId: 'guild1', path: 'ai.systemPrompt', value: 'claude-4' });
 
       expect(res.status).toBe(200);
-      expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'claude-4', 'guild1');
+      expect(setConfigValue).toHaveBeenCalledWith('ai.systemPrompt', 'claude-4', 'guild1');
       expect(getConfig).toHaveBeenCalledWith('guild1');
-      expect(res.body).toEqual({ enabled: true, model: 'claude-4' });
+      expect(res.body).toEqual({ enabled: true, systemPrompt: 'claude-4' });
     });
 
     it('should return 401 without auth', async () => {
       const res = await request(app)
         .post('/api/v1/webhooks/config-update')
-        .send({ guildId: 'guild1', path: 'ai.model', value: 'claude-4' });
+        .send({ guildId: 'guild1', path: 'ai.systemPrompt', value: 'claude-4' });
 
       expect(res.status).toBe(401);
     });
@@ -88,7 +88,7 @@ describe('webhooks routes', () => {
       const res = await request(app)
         .post('/api/v1/webhooks/config-update')
         .set('Authorization', `Bearer ${token}`)
-        .send({ guildId: 'guild1', path: 'ai.model', value: 'claude-4' });
+        .send({ guildId: 'guild1', path: 'ai.systemPrompt', value: 'claude-4' });
 
       expect(res.status).toBe(403);
       expect(res.body.error).toContain('API secret');
@@ -98,7 +98,7 @@ describe('webhooks routes', () => {
       const res = await request(app)
         .post('/api/v1/webhooks/config-update')
         .set('x-api-secret', SECRET)
-        .send({ path: 'ai.model', value: 'claude-4' });
+        .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('guildId');
@@ -118,7 +118,7 @@ describe('webhooks routes', () => {
       const res = await request(app)
         .post('/api/v1/webhooks/config-update')
         .set('x-api-secret', SECRET)
-        .send({ guildId: 'guild1', path: 'ai.model' });
+        .send({ guildId: 'guild1', path: 'ai.systemPrompt' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('value');
@@ -174,7 +174,7 @@ describe('webhooks routes', () => {
       const res = await request(app)
         .post('/api/v1/webhooks/config-update')
         .set('x-api-secret', SECRET)
-        .send({ guildId: 'guild1', path: 'ai.model', value: 'x' });
+        .send({ guildId: 'guild1', path: 'ai.systemPrompt', value: 'x' });
 
       expect(res.status).toBe(500);
       expect(res.body.error).toContain('Failed to update config');

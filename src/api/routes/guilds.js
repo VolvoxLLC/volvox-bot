@@ -7,7 +7,11 @@ import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
-import { READABLE_CONFIG_KEYS, SAFE_CONFIG_KEYS } from '../utils/configAllowlist.js';
+import {
+  maskSensitiveFields,
+  READABLE_CONFIG_KEYS,
+  SAFE_CONFIG_KEYS,
+} from '../utils/configAllowlist.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
 import { getSessionToken } from '../utils/sessionStore.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
@@ -437,7 +441,7 @@ router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
   }
   res.json({
     guildId: req.params.id,
-    ...safeConfig,
+    ...maskSensitiveFields(safeConfig),
   });
 });
 

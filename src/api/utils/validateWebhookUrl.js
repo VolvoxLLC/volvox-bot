@@ -60,6 +60,37 @@ function isBlockedIPv4(ip) {
   return false;
 }
 
+/**
+ * Extract the embedded IPv4 address from an IPv4-mapped IPv6 address.
+ * Handles both dotted-quad form (::ffff:127.0.0.1) and hex form (::ffff:7f00:1).
+ * Returns null if the address is not an IPv4-mapped IPv6 address.
+ *
+ * @param {string} ipv6 - IPv6 address (without brackets)
+ * @returns {string|null} Dotted-quad IPv4 or null
+ */
+function extractMappedIPv4(ipv6) {
+  const lower = ipv6.toLowerCase();
+  const prefix = '::ffff:';
+  if (!lower.startsWith(prefix)) return null;
+
+  const suffix = ipv6.slice(prefix.length);
+
+  // Dotted-quad form: ::ffff:127.0.0.1
+  if (suffix.includes('.')) {
+    return suffix;
+  }
+
+  // Hex form: ::ffff:7f00:1 → two 16-bit groups
+  const hexParts = suffix.split(':');
+  if (hexParts.length !== 2) return null;
+
+  const hi = Number.parseInt(hexParts[0], 16);
+  const lo = Number.parseInt(hexParts[1], 16);
+  if (Number.isNaN(hi) || Number.isNaN(lo) || hi > 0xffff || lo > 0xffff) return null;
+
+  return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+}
+
 /** Blocked hostnames (case-insensitive check performed by caller). */
 const BLOCKED_HOSTNAMES = new Set(['localhost']);
 
@@ -69,9 +100,11 @@ const BLOCKED_IPV6 = new Set(['::1', '[::1]', '0:0:0:0:0:0:0:1']);
 /**
  * Cache of previously validated URLs.
  * Maps URL string -> boolean (true = valid, false = blocked).
+ * Evicted entirely when size exceeds MAX_CACHE_SIZE to bound memory.
  * @type {Map<string, boolean>}
  */
 const validationCache = new Map();
+const MAX_CACHE_SIZE = 100;
 
 /**
  * Validate a webhook URL for SSRF safety.
@@ -102,6 +135,9 @@ export function validateWebhookUrl(url) {
     warn('Webhook URL rejected by SSRF validation', { url });
   }
 
+  if (validationCache.size >= MAX_CACHE_SIZE) {
+    validationCache.clear();
+  }
   validationCache.set(url, result);
   return result;
 }
@@ -139,7 +175,15 @@ function _validateUrlUncached(url) {
   if (hostname.startsWith('[') && hostname.endsWith(']')) {
     const inner = hostname.slice(1, -1);
     if (BLOCKED_IPV6.has(inner)) return false;
+
+    // IPv4-mapped IPv6: e.g. [::ffff:127.0.0.1] or [::ffff:7f00:1]
+    const mappedIPv4 = extractMappedIPv4(inner);
+    if (mappedIPv4 && isBlockedIPv4(mappedIPv4)) return false;
   }
+
+  // Unbracketed IPv4-mapped IPv6 (some parsers may strip brackets)
+  const mappedIPv4 = extractMappedIPv4(hostname);
+  if (mappedIPv4 && isBlockedIPv4(mappedIPv4)) return false;
 
   return true;
 }

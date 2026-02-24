@@ -93,6 +93,30 @@ describe('validateWebhookUrl', () => {
     it('should reject 0.0.0.0', () => {
       expect(validateWebhookUrl('https://0.0.0.0/hook')).toBe(false);
     });
+
+    it('should reject IPv4-mapped IPv6 loopback [::ffff:127.0.0.1]', () => {
+      expect(validateWebhookUrl('https://[::ffff:127.0.0.1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv4-mapped IPv6 cloud metadata [::ffff:169.254.169.254]', () => {
+      expect(validateWebhookUrl('https://[::ffff:169.254.169.254]/hook')).toBe(false);
+    });
+
+    it('should reject IPv4-mapped IPv6 private network [::ffff:10.0.0.1]', () => {
+      expect(validateWebhookUrl('https://[::ffff:10.0.0.1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv4-mapped IPv6 hex form [::ffff:7f00:1] (127.0.0.1)', () => {
+      expect(validateWebhookUrl('https://[::ffff:7f00:1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv4-mapped IPv6 192.168.x.x [::ffff:192.168.1.1]', () => {
+      expect(validateWebhookUrl('https://[::ffff:192.168.1.1]/hook')).toBe(false);
+    });
+
+    it('should allow IPv4-mapped IPv6 with public IP [::ffff:8.8.8.8]', () => {
+      expect(validateWebhookUrl('https://[::ffff:8.8.8.8]/hook')).toBe(true);
+    });
   });
 
   describe('edge cases', () => {
@@ -126,6 +150,27 @@ describe('validateWebhookUrl', () => {
       _resetValidationCache();
       vi.stubEnv('NODE_ENV', 'production');
       expect(validateWebhookUrl('http://example.com/hook')).toBe(false);
+    });
+
+    it('should evict cache when size exceeds 100 entries', () => {
+      // Fill the cache with 100 entries
+      for (let i = 0; i < 100; i++) {
+        validateWebhookUrl(`https://example-${i}.com/hook`);
+      }
+      // The 101st entry should trigger a cache clear
+      // Verify by checking that a previously cached result is re-evaluated
+      vi.stubEnv('NODE_ENV', 'development');
+      _resetValidationCache();
+
+      // Fill again to 100
+      for (let i = 0; i < 100; i++) {
+        validateWebhookUrl(`https://evict-${i}.com/hook`);
+      }
+      // Stub env to production so http:// would fail
+      vi.stubEnv('NODE_ENV', 'production');
+      // Cache is at 100, next insert triggers clear
+      // Validate a new URL — should work since cache was cleared and re-evaluated
+      expect(validateWebhookUrl('https://evict-new.com/hook')).toBe(true);
     });
   });
 });

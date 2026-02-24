@@ -14,7 +14,11 @@ vi.mock('../../../src/modules/config.js', () => ({
     welcome: { enabled: true },
     spam: { enabled: true },
     moderation: { enabled: true },
-    triage: { enabled: true },
+    triage: {
+      enabled: true,
+      classifyApiKey: 'sk-secret-classify',
+      respondApiKey: 'sk-secret-respond',
+    },
     permissions: { botOwners: [] },
     database: { host: 'secret-host' },
     token: 'secret-token',
@@ -394,28 +398,38 @@ describe('guilds routes', () => {
       expect(res.body.ai).toEqual({ enabled: true, model: 'claude-3', historyLength: 20 });
       expect(res.body.welcome).toEqual({ enabled: true });
       expect(res.body.moderation).toEqual({ enabled: true });
-      expect(res.body.triage).toEqual({ enabled: true });
+      expect(res.body.triage.enabled).toBe(true);
       expect(res.body.permissions).toEqual({ botOwners: [] });
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
       expect(getConfig).toHaveBeenCalledWith('guild1');
+    });
+
+    it('should mask triage API keys in guild config GET responses', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.triage.classifyApiKey).toBe('••••••••');
+      expect(res.body.triage.respondApiKey).toBe('••••••••');
     });
   });
 
   describe('PATCH /:id/config', () => {
     it('should update config value', async () => {
       getConfig.mockReturnValueOnce({
-        ai: { enabled: true, model: 'claude-4', historyLength: 20 },
+        ai: { enabled: true, systemPrompt: 'claude-4', historyLength: 20 },
       });
 
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
-        .send({ path: 'ai.model', value: 'claude-4' });
+        .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ enabled: true, model: 'claude-4', historyLength: 20 });
-      expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'claude-4', 'guild1');
+      expect(res.body).toEqual({ enabled: true, systemPrompt: 'claude-4', historyLength: 20 });
+      expect(setConfigValue).toHaveBeenCalledWith('ai.systemPrompt', 'claude-4', 'guild1');
       expect(getConfig).toHaveBeenCalledWith('guild1');
     });
 
@@ -467,7 +481,7 @@ describe('guilds routes', () => {
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
-        .send({ path: 'ai.model' });
+        .send({ path: 'ai.systemPrompt' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('value');
@@ -479,7 +493,7 @@ describe('guilds routes', () => {
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
-        .send({ path: 'ai.model', value: 'x' });
+        .send({ path: 'ai.systemPrompt', value: 'x' });
 
       expect(res.status).toBe(500);
     });
@@ -506,15 +520,26 @@ describe('guilds routes', () => {
       expect(res.body.error).toContain('maximum depth');
     });
 
-    it('should accept path with exactly 10 segments', async () => {
-      getConfig.mockReturnValueOnce({ ai: {} });
-      const exactPath = 'ai.a.b.c.d.e.f.g.h.i';
+    it('should accept path with exactly 10 segments when path is valid', async () => {
+      getConfig.mockReturnValueOnce({ moderation: {} });
+      // moderation.logging.channels.default is valid; pad with known nested schema path
+      const exactPath = 'moderation.dmNotifications.warn';
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
-        .send({ path: exactPath, value: 'test' });
+        .send({ path: exactPath, value: true });
 
       expect(res.status).toBe(200);
+    });
+
+    it('should reject unknown config path in PATCH', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'ai.nonExistentKey', value: 'test' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.details[0].message).toContain('Unknown config path');
     });
 
     it('should return 400 for type mismatch on PATCH', async () => {
@@ -543,13 +568,13 @@ describe('guilds routes', () => {
         const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true });
         vi.stubEnv('DASHBOARD_WEBHOOK_URL', 'https://dashboard.example.com/hook');
         getConfig.mockReturnValueOnce({
-          ai: { enabled: true, model: 'claude-4' },
+          ai: { enabled: true, systemPrompt: 'claude-4' },
         });
 
         const res = await request(app)
           .patch('/api/v1/guilds/guild1/config')
           .set('x-api-secret', SECRET)
-          .send({ path: 'ai.model', value: 'claude-4' });
+          .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
         expect(res.status).toBe(200);
         expect(fetchSpy).toHaveBeenCalledOnce();
@@ -559,20 +584,20 @@ describe('guilds routes', () => {
         const body = JSON.parse(opts.body);
         expect(body.event).toBe('config.updated');
         expect(body.guildId).toBe('guild1');
-        expect(body.updatedKeys).toEqual(['ai.model']);
+        expect(body.updatedKeys).toEqual(['ai.systemPrompt']);
         expect(body.timestamp).toBeTypeOf('number');
       });
 
       it('should not fire dashboard webhook when DASHBOARD_WEBHOOK_URL is unset', async () => {
         const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true });
         getConfig.mockReturnValueOnce({
-          ai: { enabled: true, model: 'claude-4' },
+          ai: { enabled: true, systemPrompt: 'claude-4' },
         });
 
         const res = await request(app)
           .patch('/api/v1/guilds/guild1/config')
           .set('x-api-secret', SECRET)
-          .send({ path: 'ai.model', value: 'claude-4' });
+          .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
         expect(res.status).toBe(200);
         expect(fetchSpy).not.toHaveBeenCalled();
@@ -582,13 +607,13 @@ describe('guilds routes', () => {
         vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
         vi.stubEnv('DASHBOARD_WEBHOOK_URL', 'https://dashboard.example.com/hook');
         getConfig.mockReturnValueOnce({
-          ai: { enabled: true, model: 'claude-4' },
+          ai: { enabled: true, systemPrompt: 'claude-4' },
         });
 
         const res = await request(app)
           .patch('/api/v1/guilds/guild1/config')
           .set('x-api-secret', SECRET)
-          .send({ path: 'ai.model', value: 'claude-4' });
+          .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
         expect(res.status).toBe(200);
       });

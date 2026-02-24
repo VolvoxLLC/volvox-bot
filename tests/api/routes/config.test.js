@@ -14,7 +14,11 @@ vi.mock('../../../src/modules/config.js', () => ({
     welcome: { enabled: true, channelId: 'ch1' },
     spam: { enabled: true },
     moderation: { enabled: true },
-    triage: { enabled: true },
+    triage: {
+      enabled: true,
+      classifyApiKey: 'sk-secret-classify',
+      respondApiKey: 'sk-secret-respond',
+    },
     permissions: { botOwners: [] },
     database: { host: 'secret-host' },
     token: 'secret-token',
@@ -130,7 +134,7 @@ describe('config routes', () => {
       expect(res.body.welcome).toEqual({ enabled: true, channelId: 'ch1' });
       expect(res.body.spam).toEqual({ enabled: true });
       expect(res.body.moderation).toEqual({ enabled: true });
-      expect(res.body.triage).toEqual({ enabled: true });
+      expect(res.body.triage.enabled).toBe(true);
       expect(res.body.permissions).toEqual({ botOwners: [] });
     });
 
@@ -140,6 +144,14 @@ describe('config routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
+    });
+
+    it('should mask triage API keys in GET responses', async () => {
+      const res = await request(app).get('/api/v1/config').set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.triage.classifyApiKey).toBe('••••••••');
+      expect(res.body.triage.respondApiKey).toBe('••••••••');
     });
 
     it('should call getConfig without guild ID for global config', async () => {
@@ -485,6 +497,13 @@ describe('flattenToLeafPaths', () => {
 
     expect(result).toEqual([['welcome.channelId', null]]);
   });
+
+  it('should skip __proto__, constructor, and prototype keys', () => {
+    const malicious = JSON.parse('{"__proto__":{"polluted":true},"safe":"value"}');
+    const result = flattenToLeafPaths(malicious, 'ai');
+
+    expect(result).toEqual([['ai.safe', 'value']]);
+  });
 });
 
 describe('validateSingleValue', () => {
@@ -504,8 +523,10 @@ describe('validateSingleValue', () => {
     expect(errors[0]).toContain('expected finite number');
   });
 
-  it('should return empty array for unknown/extensible property', () => {
-    expect(validateSingleValue('ai.customSetting', 'anything')).toEqual([]);
+  it('should return error for unknown property within a known section', () => {
+    const errors = validateSingleValue('ai.customSetting', 'anything');
+    expect(errors.length).toBe(1);
+    expect(errors[0].message).toContain('Unknown config path');
   });
 
   it('should return empty array for unknown section', () => {
