@@ -20,7 +20,7 @@ const LOG_PREFIX = "[api/guilds/:guildId/config]";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
+  { params }: { params: Promise<{ guildId: string }> },
 ) {
   const { guildId } = await params;
   if (!guildId) {
@@ -58,7 +58,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
+  { params }: { params: Promise<{ guildId: string }> },
 ) {
   const { guildId } = await params;
   if (!guildId) {
@@ -83,7 +83,8 @@ export async function PATCH(
     typeof body !== "object" ||
     body === null ||
     typeof (body as Record<string, unknown>).path !== "string" ||
-    !(body as Record<string, unknown>).path
+    !(body as Record<string, unknown>).path ||
+    !("value" in (body as Record<string, unknown>))
   ) {
     return NextResponse.json(
       { error: "Invalid patch: expected { path: string, value: unknown }" },

@@ -33,7 +33,7 @@ export interface WelcomeConfig {
   dynamic: WelcomeDynamic;
 }
 
-/** Spam detection configuration (writable section — may be empty/partial). */
+/** Spam config is a passthrough — shape defined by the bot's spam module. */
 export interface SpamConfig {
   [key: string]: unknown;
 }
@@ -124,13 +124,16 @@ export interface BotConfig {
   triage?: TriageConfig;
 }
 
-/** Sections that can be modified via the PATCH endpoint. */
-export type WritableConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";
-
 /** All config sections shown in the editor. */
 export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";
 
-/** Discord message character limit for system prompts. */
+/**
+ * @deprecated Use {@link ConfigSection} directly.
+ * Sections that can be modified via the PATCH endpoint.
+ */
+export type WritableConfigSection = ConfigSection;
+
+/** Maximum characters allowed for the AI system prompt in the config editor. */
 export const SYSTEM_PROMPT_MAX_LENGTH = 4000;
 
 /** Recursively make all properties optional. */
