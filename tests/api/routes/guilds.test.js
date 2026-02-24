@@ -506,6 +506,26 @@ describe('guilds routes', () => {
       expect(res.body.error).toContain('maximum depth');
     });
 
+    it('should return 400 when path has no dot separator (e.g. "ai")', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'ai', value: true });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('dot separator');
+    });
+
+    it('should return 400 when path contains empty segments (e.g. "ai..enabled")', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'ai..enabled', value: true });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('empty segments');
+    });
+
     it('should accept path with exactly 10 segments', async () => {
       getConfig.mockReturnValueOnce({ ai: {} });
       const exactPath = 'ai.a.b.c.d.e.f.g.h.i';

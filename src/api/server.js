@@ -47,7 +47,7 @@ export function createApp(client, dbPool) {
   });
 
   // Body parsing
-  app.use(express.json());
+  app.use(express.json({ limit: '100kb' }));
 
   // Rate limiting — destroy any leaked limiter from a prior createApp call
   if (rateLimiter) {
