@@ -8,6 +8,11 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+vi.mock('../../../src/api/utils/validateWebhookUrl.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, validateDnsResolution: vi.fn().mockResolvedValue(true) };
+});
+
 vi.mock('../../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({
     ai: { enabled: true, model: 'claude-3', historyLength: 20 },
