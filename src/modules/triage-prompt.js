@@ -69,8 +69,8 @@ export function buildClassifyPrompt(context, snapshot, botUserId) {
 export function buildRespondPrompt(context, snapshot, classification, config, memoryContext) {
   const conversationText = buildConversationText(context, snapshot);
   const communityRules = loadPrompt('community-rules');
+  const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
   const antiAbuse = loadPrompt('anti-abuse');
-  const systemPrompt = config.ai?.systemPrompt || loadPrompt('default-personality', { antiAbuse });
   const searchGuardrails = loadPrompt('search-guardrails');
 
   return loadPrompt('triage-respond', {
