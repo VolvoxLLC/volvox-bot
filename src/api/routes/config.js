@@ -246,7 +246,7 @@ export function validateSingleValue(path, value) {
   let currentSchema = schema;
   for (let i = 1; i < segments.length; i++) {
     if (!currentSchema.properties || !currentSchema.properties[segments[i]]) {
-      return [{ path, message: `Unknown config path: ${path}` }];
+      return [`Unknown config path: ${path}`];
     }
     currentSchema = currentSchema.properties[segments[i]];
   }
