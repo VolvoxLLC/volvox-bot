@@ -8,6 +8,12 @@ import { logger } from "@/lib/logger";
 const REQUEST_TIMEOUT_MS = 10_000;
 const ADMINISTRATOR_PERMISSION = 0x8n;
 
+/**
+ * Determines whether a Discord permission bitfield includes the administrator permission.
+ *
+ * @param permissions - The permission bitfield as a decimal string
+ * @returns `true` if the administrator permission bit is present, `false` otherwise
+ */
 export function hasAdministratorPermission(permissions: string): boolean {
   try {
     return (BigInt(permissions) & ADMINISTRATOR_PERMISSION) === ADMINISTRATOR_PERMISSION;
@@ -17,8 +23,16 @@ export function hasAdministratorPermission(permissions: string): boolean {
 }
 
 /**
- * Authorize that the request comes from an admin of the given guild.
- * Returns null on success, or a NextResponse error to short-circuit.
+ * Verify that the incoming request is from the owner or an administrator of the specified guild.
+ *
+ * @param request - The incoming NextRequest containing the user's session/token.
+ * @param guildId - The Discord guild ID to authorize against.
+ * @param logPrefix - Prefix used when logging contextual error messages.
+ * @returns `null` if the requester is authorized; a `NextResponse` containing an error JSON otherwise.
+ *          Possible responses:
+ *          - 401 Unauthorized when the access token is missing or expired.
+ *          - 502 Bad Gateway when mutual guilds cannot be verified.
+ *          - 403 Forbidden when the user is neither the guild owner nor has administrator permission.
  */
 export async function authorizeGuildAdmin(
   request: NextRequest,
@@ -72,8 +86,10 @@ interface BotApiConfig {
 }
 
 /**
- * Resolve the bot API base URL and secret from env vars.
- * Returns the config on success, or a NextResponse error to short-circuit.
+ * Resolve the bot API base URL and secret from environment and validate configuration.
+ *
+ * @param logPrefix - Prefix used in logs to provide contextual information
+ * @returns A `BotApiConfig` containing `baseUrl` and `secret` when configured, otherwise a `NextResponse` with a 500 status indicating the Bot API is not configured
  */
 export function getBotApiConfig(logPrefix: string): BotApiConfig | NextResponse {
   const botApiBaseUrl = getBotApiBaseUrl();
@@ -91,8 +107,10 @@ export function getBotApiConfig(logPrefix: string): BotApiConfig | NextResponse 
 }
 
 /**
- * Build a validated upstream URL for the bot API.
- * Returns the URL on success, or a NextResponse error to short-circuit.
+ * Constructs and validates an upstream URL for the bot API.
+ *
+ * @param logPrefix - Prefix used when logging errors for context
+ * @returns A `URL` for the resolved upstream endpoint, or a `NextResponse` containing a 500 error if the URL cannot be constructed
  */
 export function buildUpstreamUrl(
   baseUrl: string,
@@ -117,7 +135,18 @@ interface ProxyOptions {
 }
 
 /**
- * Proxy a request to the bot API and return the response as NextResponse.
+ * Send a request to the bot API and return its response as a NextResponse.
+ *
+ * If the upstream response has a JSON content type the JSON is returned with the upstream status.
+ * For non-JSON responses the body text is returned inside an `{ error: string }` JSON object with the upstream status.
+ * On network or unexpected errors the provided `errorMessage` is logged and a 500 JSON response containing `{ error: errorMessage }` is returned.
+ *
+ * @param upstreamUrl - Fully constructed URL of the bot API endpoint to call
+ * @param secret - Shared secret added as the `x-api-secret` header for authentication
+ * @param logPrefix - Prefix used when logging errors for context
+ * @param errorMessage - Message used for the returned error JSON and log on failure
+ * @param options - Optional request options (method, headers, body)
+ * @returns A NextResponse containing either the upstream JSON payload (with the upstream status) or an error JSON object; returns status 500 on internal failure
  */
 export async function proxyToBotApi(
   upstreamUrl: URL,

@@ -11,6 +11,13 @@ export const dynamic = "force-dynamic";
 
 const LOG_PREFIX = "[api/guilds/:guildId/config]";
 
+/**
+ * Retrieve the configuration for a guild identified by the route `guildId`.
+ *
+ * @param request - The incoming NextRequest
+ * @param params - Route parameters object (must include `guildId`)
+ * @returns A NextResponse containing the guild configuration JSON on success; an error NextResponse on failure (e.g., 400 when `guildId` is missing, authorization failures, configuration errors, or upstream fetch errors)
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
@@ -36,6 +43,19 @@ export async function GET(
   return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, "Failed to fetch config");
 }
 
+/**
+ * Handles PATCH requests to update a guild's configuration.
+ *
+ * Attempts to validate the route parameter and request body, enforces guild-admin authorization,
+ * and proxies a JSON PATCH to the upstream bot API for /guilds/{guildId}/config.
+ *
+ * @param request - The incoming NextRequest containing the JSON patch body.
+ * @param params - Route parameters object; must provide `guildId`.
+ * @returns A NextResponse forwarded from the bot API on success, or a NextResponse with an error status:
+ *          - 400 when `guildId` is missing, the request body is invalid JSON, or the patch shape is invalid.
+ *          - An authorization error response if the caller is not an authorized guild admin.
+ *          - A configuration error response if the bot API configuration is invalid.
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> | { guildId: string } },

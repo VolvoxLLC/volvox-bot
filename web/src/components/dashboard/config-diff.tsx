@@ -24,6 +24,18 @@ interface DiffLine {
   type: "added" | "removed" | "unchanged";
 }
 
+/**
+ * Render a visual line-by-line diff between two JSON configuration objects.
+ *
+ * If the two objects are identical, a compact card stating "No changes detected."
+ * is rendered. Otherwise a card is rendered showing counts of added and removed lines
+ * and a scrollable, color-coded diff where each line is prefixed with `+`, `-`, or a space.
+ *
+ * @param original - The original configuration object to compare.
+ * @param modified - The modified configuration object to compare.
+ * @param title - Optional title for the card; defaults to "Pending Changes".
+ * @returns A React element containing either a "no changes" card or a color-coded, line-by-line diff view with added/removed counts.
+ */
 export function ConfigDiff({
   original,
   modified,

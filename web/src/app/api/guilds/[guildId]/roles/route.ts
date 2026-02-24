@@ -11,6 +11,12 @@ export const dynamic = "force-dynamic";
 
 const LOG_PREFIX = "[api/guilds/:guildId/roles]";
 
+/**
+ * Handle GET requests to return a guild's roles after verifying the requester has owner or administrator permissions.
+ *
+ * @param params - An object (or promise resolving to an object) with the path parameter `guildId`, the target guild's ID.
+ * @returns A NextResponse containing the proxied Bot API response with the guild's roles, or an error response (e.g., 400 for missing guildId, authorization errors, or upstream/proxy failures).
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> | { guildId: string } },

@@ -17,10 +17,12 @@ export const SENSITIVE_FIELDS = new Set(['triage.classifyApiKey', 'triage.respon
 const MASK = '••••••••';
 
 /**
- * Return a deep clone of `config` with sensitive field values replaced by a mask.
+ * Produce a deep-cloned config object with sensitive fields replaced by a mask.
  *
- * @param {Object} config - Config object (top-level sections as keys)
- * @returns {Object} Cloned config with sensitive values masked
+ * Sensitive fields listed in SENSITIVE_FIELDS are replaced with the MASK value when present and non-empty.
+ *
+ * @param {Object} config - Configuration object whose top-level keys are config sections.
+ * @returns {Object} A deep clone of `config` with sensitive values replaced by `MASK`.
  */
 export function maskSensitiveFields(config) {
   const cloned = structuredClone(config);

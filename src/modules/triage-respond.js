@@ -59,14 +59,14 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 // ── Moderation audit log ─────────────────────────────────────────────────────
 
 /**
- * Send a structured audit embed to the moderation log channel.
- * Fire-and-forget -- failures are logged but never block the warning flow.
+ * Send a structured moderation audit embed to the configured moderation log channel.
  *
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} classification - Parsed classifier output
- * @param {Array} snapshot - Buffer snapshot
- * @param {string} channelId - Source channel where the violation occurred
- * @param {Object} config - Bot configuration
+ * If no moderation log channel is configured or the channel cannot be fetched, the function exits without action.
+ * Errors encountered while sending the embed are caught and ignored so they do not interrupt triage flow.
+ *
+ * @param {Object} classification - Parsed classifier output containing fields like `recommendedAction`, `violatedRule`, `reasoning`, and `targetMessageIds`.
+ * @param {Array<Object>} snapshot - Recent message buffer entries; used to find messages referenced by `classification.targetMessageIds`.
+ * @param {string} channelId - ID of the source channel where the violation occurred (used in the embed's Channel field).
  */
 export async function sendModerationLog(client, classification, snapshot, channelId, config) {
   const logChannelId = config.triage?.moderationLogChannel;
@@ -120,19 +120,19 @@ export async function sendModerationLog(client, classification, snapshot, channe
 // ── Response sending ────────────────────────────────────────────────────────
 
 /**
- * Send parsed responses to Discord as plain text with optional debug embed.
+ * Send triage or moderation responses to a Discord channel as plain text, optionally attaching a debug embed.
  *
- * Response text is sent as normal message content (not inside an embed).
- * When debugFooter is enabled, a structured debug embed is attached to
- * the same message showing triage and response stats.
+ * When the classification indicates moderation, moderation responses are sent if enabled; otherwise standard responses
+ * are sent and the bot will attempt to reply to the target message(s). If debug footer is enabled in triage config and
+ * stats are provided, a debug embed is attached to the first message chunk.
  *
- * @param {import('discord.js').TextChannel|null} channel - Resolved channel to send to
- * @param {Object} parsed - Parsed responder output
- * @param {Object} classification - Classifier output
- * @param {Array} snapshot - Buffer snapshot
- * @param {Object} config - Bot configuration
- * @param {Object} [stats] - Optional stats from classify/respond steps
- * @param {string} [channelId] - Channel ID fallback for logging
+ * @param {import('discord.js').TextChannel|null} channel - Resolved channel to send to; function exits if null.
+ * @param {Object} parsed - Parsed responder output; expected to contain a `responses` array of { response, targetMessageId, targetUser } entries.
+ * @param {Object} classification - Classifier output; `classification.classification` determines moderation vs normal flow and `classification.reasoning` is used for logging.
+ * @param {Array} snapshot - Buffer snapshot used to resolve message references for replies.
+ * @param {Object} config - Bot configuration; uses `config.triage` for debug/footer and moderationResponse settings.
+ * @param {Object} [stats] - Optional stats used to build the debug embed (classify/respond stats and optional searchCount).
+ * @param {string} [channelId] - Channel ID fallback used for logging when `channel` is not available.
  */
 export async function sendResponses(
   channel,
@@ -232,17 +232,16 @@ export async function sendResponses(
 }
 
 /**
- * Build stats object and log analytics for a completed evaluation.
+ * Construct per-invocation AI usage statistics and initiate analytics logging.
  *
- * @param {Object} classifyMessage - Raw classifier SDK message
- * @param {Object} respondMessage - Raw responder SDK message
- * @param {Object} resolved - Resolved triage config with model names
- * @param {Array} snapshot - Buffer snapshot
- * @param {Object} classification - Parsed classification result
- * @param {number} searchCount - Number of web searches performed
- * @param {import('discord.js').Client} client - Discord client
- * @param {string} channelId - Channel ID
- * @returns {Promise<{stats: Object, channel: Object|null}>} Stats and resolved channel
+ * @param {Object} classifyMessage - Raw classifier SDK response used to derive classification stats.
+ * @param {Object} respondMessage - Raw responder SDK response used to derive response-generation stats.
+ * @param {Object} resolved - Resolved triage configuration containing model identifiers (e.g., classifyModel, respondModel).
+ * @param {Array<Object>} snapshot - Recent message buffer snapshot; used to locate the target message/user.
+ * @param {Object} classification - Parsed classification result containing targetMessageIds and reasoning.
+ * @param {number} searchCount - Number of web searches performed during response generation.
+ * @param {string} channelId - ID of the channel where the evaluation occurred.
+ * @returns {{stats: {classify: Object, respond: Object, userId: string|null, searchCount: number}, channel: import('discord.js').Channel|null}} Stats object and the fetched channel (or null if unavailable).
  */
 export async function buildStatsAndLog(
   classifyMessage,

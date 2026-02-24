@@ -30,8 +30,11 @@ export const data = new SlashCommandBuilder()
 export const adminOnly = true;
 
 /**
- * Execute the slowmode command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Set or disable slowmode for a guild text channel according to the command options.
+ *
+ * Parses the provided duration (e.g., "5s", "1m", "1h"), enforces a 6-hour maximum,
+ * applies the rate limit to the specified or current channel, and formats the confirmation reply.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction containing options: `duration` (string; "0" to disable), optional `channel`, and optional `reason`.
  */
 export async function execute(interaction) {
   let seconds = 0;

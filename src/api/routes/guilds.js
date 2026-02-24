@@ -164,13 +164,12 @@ function formatBucketLabel(bucket, interval) {
 }
 
 /**
- * Check if an OAuth2 user has the specified permission flags on a guild.
- * Fetches fresh guild list from Discord using the access token from the session store.
+ * Determine whether an OAuth2 user has any of the specified permission flags for a guild.
  *
- * @param {Object} user - Decoded JWT user payload
- * @param {string} guildId - Guild ID to check
- * @param {number} anyOfFlags - Bitmask of permission flags; returns true if user has ANY of them
- * @returns {Promise<boolean>} True if user has ANY of the specified flags
+ * @param {Object} user - Decoded JWT user payload containing at minimum `userId`.
+ * @param {string} guildId - Discord guild ID to check.
+ * @param {number} anyOfFlags - Bitmask of Discord permission flags; returns `true` if any bit in this mask is present on the user's guild permissions.
+ * @returns {boolean} `true` if the user has any of the specified permission flags on the guild, `false` otherwise.
  */
 async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
   const accessToken = getSessionToken(user?.userId);
@@ -184,11 +183,10 @@ async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
 }
 
 /**
- * Check whether the authenticated OAuth2 user is a configured bot owner.
- * Bot owners bypass API guild-level permission checks.
+ * Determine if the authenticated OAuth2 user is configured as a bot owner.
  *
- * @param {Object} user - Decoded JWT user payload
- * @returns {boolean} True if JWT userId is in BOT_OWNER_IDS or config.permissions.botOwners
+ * @param {Object} user - Decoded JWT user payload; expected to include `userId`.
+ * @returns {boolean} `true` if `user.userId` is listed in the application bot owner IDs, `false` otherwise.
  */
 function isOAuthBotOwner(user) {
   const botOwners = getBotOwnerIds(getConfig());

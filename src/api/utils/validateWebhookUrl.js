@@ -26,10 +26,8 @@ const BLOCKED_IPV4_RANGES = [
 
 /**
  * Convert a dotted-quad IPv4 string to a 32-bit unsigned integer.
- * Returns null if the string is not a valid IPv4 address.
- *
- * @param {string} ip
- * @returns {number|null}
+ * @param {string} ip - IPv4 address in dotted-quad form (e.g. "192.0.2.1").
+ * @returns {number|null} The 32-bit unsigned integer representation of the IPv4 address, or `null` if `ip` is not a valid IPv4 address.
  */
 function ipv4ToLong(ip) {
   const parts = ip.split('.');
@@ -45,10 +43,9 @@ function ipv4ToLong(ip) {
 }
 
 /**
- * Check whether an IPv4 address string falls within any blocked range.
- *
- * @param {string} ip - Dotted-quad IPv4 address
- * @returns {boolean}
+ * Determine whether an IPv4 address is within a blocked or reserved range.
+ * @param {string} ip - IPv4 address in dotted-quad form (e.g., "192.168.0.1"). Invalid or unparsable addresses return `false`.
+ * @returns {boolean} `true` if the IPv4 address falls within a blocked range, `false` otherwise.
  */
 function isBlockedIPv4(ip) {
   const long = ipv4ToLong(ip);
@@ -61,12 +58,10 @@ function isBlockedIPv4(ip) {
 }
 
 /**
- * Extract the embedded IPv4 address from an IPv4-mapped IPv6 address.
- * Handles both dotted-quad form (::ffff:127.0.0.1) and hex form (::ffff:7f00:1).
- * Returns null if the address is not an IPv4-mapped IPv6 address.
+ * Return the embedded IPv4 address when the input is an IPv4-mapped IPv6 address.
  *
- * @param {string} ipv6 - IPv6 address (without brackets)
- * @returns {string|null} Dotted-quad IPv4 or null
+ * @param {string} ipv6 - IPv6 address (without surrounding brackets).
+ * @returns {string|null} The IPv4 address in dotted-quad form if present, `null` otherwise.
  */
 function extractMappedIPv4(ipv6) {
   const lower = ipv6.toLowerCase();
@@ -107,16 +102,9 @@ const validationCache = new Map();
 const MAX_CACHE_SIZE = 100;
 
 /**
- * Validate a webhook URL for SSRF safety.
- *
- * - Scheme must be https:// (or http:// when NODE_ENV === 'development')
- * - Hostname must not resolve to a private/reserved IP range
- * - Hostname must not be localhost, 127.0.0.1, [::1], etc.
- *
- * Results are cached per URL string.
- *
- * @param {string} url - The URL to validate
- * @returns {boolean} true if the URL is safe, false otherwise
+ * Determine whether a webhook URL is safe to use by rejecting private, reserved, or loopback targets and disallowed schemes.
+ * @param {string} url - The URL to validate.
+ * @returns {boolean} true if the URL is safe, false otherwise.
  */
 export function validateWebhookUrl(url) {
   if (!url || typeof url !== 'string') return false;
@@ -143,9 +131,14 @@ export function validateWebhookUrl(url) {
 }
 
 /**
- * Internal uncached validation.
- * @param {string} url
- * @returns {boolean}
+ * Validate a webhook URL against internal/private address restrictions without using the cache.
+ *
+ * Performs URL parsing and enforces allowed schemes (HTTPS; HTTP only when NODE_ENV === 'development'),
+ * then rejects URLs that target blocked hostnames (e.g., localhost), IPv6 loopback forms, IPv4 private/reserved
+ * ranges, or IPv4-mapped IPv6 addresses that map to blocked IPv4s.
+ *
+ * @param {string} url - The webhook URL to validate.
+ * @returns {boolean} `true` if the URL is allowed, `false` if it is invalid or targets a blocked address.
  */
 function _validateUrlUncached(url) {
   let parsed;
@@ -189,7 +182,9 @@ function _validateUrlUncached(url) {
 }
 
 /**
- * Clear the validation cache. Exposed for testing.
+ * Clear the in-memory cache of URL validation results.
+ *
+ * Resets the memoized results used by validateWebhookUrl; intended for use in tests.
  */
 export function _resetValidationCache() {
   validationCache.clear();

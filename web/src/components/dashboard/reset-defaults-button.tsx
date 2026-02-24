@@ -22,6 +22,17 @@ interface ResetDefaultsButtonProps {
   sectionLabel?: string;
 }
 
+/**
+ * Renders a "Discard Changes" button that opens a confirmation dialog to discard unsaved changes.
+ *
+ * The dialog asks the user to confirm discarding either all unsaved changes or a specific section,
+ * and invokes the provided callback when the user confirms.
+ *
+ * @param onReset - Callback invoked when the user confirms discarding changes
+ * @param disabled - If true, the trigger button is disabled
+ * @param sectionLabel - Optional label used in the dialog description to indicate what will be discarded
+ * @returns The rendered button and confirmation dialog React element
+ */
 export function ResetDefaultsButton({
   onReset,
   disabled = false,

@@ -24,8 +24,10 @@ export const data = new SlashCommandBuilder()
 export const adminOnly = true;
 
 /**
- * Execute the unlock command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Unlocks a guild text channel by clearing the @everyone send-message overwrite, notifies the channel, and records the action for moderation.
+ *
+ * Validates that the target is a guild text channel; if valid, removes any explicit SendMessages overwrite for the server's everyone role, sends a notification embed that includes the invoker and optional reason, and produces a moderator-facing reply indicating which channel was unlocked.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The slash command interaction that invoked the unlock command.
  */
 export async function execute(interaction) {
   await executeModAction(interaction, {

@@ -24,12 +24,24 @@ import { ResetDefaultsButton } from "./reset-defaults-button";
 /** Config sections exposed by the API — all fields optional for partial API responses. */
 type GuildConfig = DeepPartial<BotConfig>;
 
+/**
+ * Type guard that checks whether a value is a guild configuration object returned by the API.
+ *
+ * @returns `true` if the value is an object containing at least one of the top-level properties `ai`, `welcome`, or `spam`, `false` otherwise.
+ */
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
   return "ai" in obj || "welcome" in obj || "spam" in obj;
 }
 
+/**
+ * Renders the configuration editor for a selected guild, allowing viewing and editing of AI, welcome, moderation, and triage settings.
+ *
+ * The component loads the guild's authoritative config from the API, keeps a mutable draft for user edits, computes and applies patch updates per top-level section, warns on unsaved changes, and provides keyboard and UI controls for saving or discarding edits.
+ *
+ * @returns The editor UI as JSX when a guild is selected and the draft config is available; `null` while no draft is present (or when rendering is handled by loading/error/no-selection states).
+ */
 export function ConfigEditor() {
   const [guildId, setGuildId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -758,6 +770,18 @@ interface ToggleSwitchProps {
   label: string;
 }
 
+/**
+ * Renders an accessible toggle switch control.
+ *
+ * The switch reflects the `checked` state, calls `onChange` with the new boolean value when toggled,
+ * and exposes an ARIA label derived from `label`.
+ *
+ * @param checked - Current on/off state of the switch.
+ * @param onChange - Callback invoked with the new checked state when the switch is toggled.
+ * @param disabled - When true, disables user interaction and applies disabled styling.
+ * @param label - Human-readable name used for the switch's ARIA label.
+ * @returns The button element acting as the toggle switch.
+ */
 function ToggleSwitch({ checked, onChange, disabled, label }: ToggleSwitchProps) {
   return (
     <button
@@ -780,7 +804,13 @@ function ToggleSwitch({ checked, onChange, disabled, label }: ToggleSwitchProps)
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-/** Recursive deep-equal for plain JSON-serialisable values. */
+/**
+ * Determine whether two JSON-serializable values are deeply equal by recursively comparing primitives, arrays, and plain objects.
+ *
+ * @param a - First value to compare
+ * @param b - Second value to compare
+ * @returns `true` if `a` and `b` are structurally equal, `false` otherwise
+ */
 function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a === null || b === null) return false;
@@ -804,8 +834,14 @@ function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 /**
- * Compare two config objects and return an array of `{ path, value }` patches
- * suitable for the PATCH API endpoint.
+ * Compute a flat list of dot-path patches that describe differences between two guild configs.
+ *
+ * Skips the root-level `guildId`, recurses into plain objects to emit leaf-level changes,
+ * and produces a patch for any differing non-object value or array.
+ *
+ * @param original - The original (server-authoritative) guild configuration to compare against
+ * @param modified - The modified guild configuration containing desired updates
+ * @returns An array of patches where each item has a dot-separated `path` to the changed field and `value` set to the new value
  */
 function computePatches(
   original: GuildConfig,
@@ -813,6 +849,17 @@ function computePatches(
 ): Array<{ path: string; value: unknown }> {
   const patches: Array<{ path: string; value: unknown }> = [];
 
+  /**
+   * Traverse two plain-object trees and record leaf-level differences as path/value patches.
+   *
+   * Walks the structures rooted at `origObj` and `modObj`, compares values recursively, and appends
+   * a patch { path, value } to the outer-scope `patches` array for each leaf or differing non-object
+   * value in `modObj`. The root-level field named "guildId" is ignored.
+   *
+   * @param origObj - The original (source) object to compare against
+   * @param modObj - The modified (target) object to derive patches from
+   * @param prefix - Current dot-separated path prefix for nested keys (use empty string for root)
+   */
   function walk(
     origObj: Record<string, unknown>,
     modObj: Record<string, unknown>,

@@ -47,11 +47,18 @@ function shortModel(model) {
 }
 
 /**
- * Extract stats from a CLIProcess result message.
+ * Normalize and aggregate usage statistics from a CLIProcess result.
  *
- * @param {Object} result - CLIProcess send() result
- * @param {string} model - Model name used
- * @returns {Object} Normalized stats object
+ * @param {Object} result - CLIProcess send() result object; may contain `usage` (snake_case) and/or `modelUsage` (per-model camelCase) fields.
+ * @param {string} model - Model name used for the request.
+ * @returns {Object} An object with normalized fields:
+ *  - model {string} - Model name (or 'unknown').
+ *  - cost {number} - Total cost in USD.
+ *  - durationMs {number} - Duration in milliseconds.
+ *  - inputTokens {number} - Total input tokens.
+ *  - outputTokens {number} - Total output tokens.
+ *  - cacheCreation {number} - Tokens consumed creating cache entries.
+ *  - cacheRead {number} - Tokens consumed reading from cache.
  */
 function extractStats(result, model) {
   const usage = result?.usage || {};
@@ -137,15 +144,14 @@ function buildCompact(classify, respond, searchCount) {
 }
 
 /**
- * Build a debug stats footer string for AI responses.
- * Text-only version — used for logging and backward compatibility.
+ * Build a text-only debug footer summarizing AI usage and costs.
  *
- * @param {Object} classifyStats - Stats from classifier CLIProcess result
- * @param {Object} respondStats - Stats from responder CLIProcess result
- * @param {string} [level="verbose"] - Density level: "verbose", "compact", or "split"
- * @param {Object} [options] - Additional display options
- * @param {number} [options.searchCount] - Number of web searches performed (shown when > 0)
- * @returns {string} Formatted footer string
+ * @param {Object} classifyStats - Stats object from the classifier CLIProcess result.
+ * @param {Object} respondStats - Stats object from the responder CLIProcess result.
+ * @param {string} [level="verbose"] - Density level: "verbose", "compact", or "split".
+ * @param {Object} [options] - Additional display options.
+ * @param {number} [options.searchCount] - Number of web searches performed; included in the footer when greater than 0.
+ * @return {string} The formatted footer string.
  */
 export function buildDebugFooter(
   classifyStats,
@@ -224,14 +230,16 @@ function buildSplitFields(classify, respond) {
 }
 
 /**
- * Build a debug embed with structured fields for AI response stats.
+ * Create a Discord EmbedBuilder containing structured AI usage and cost statistics.
  *
- * @param {Object} classifyStats - Stats from classifier CLIProcess result
- * @param {Object} respondStats - Stats from responder CLIProcess result
- * @param {string} [level="verbose"] - Density level: "verbose", "compact", or "split"
- * @param {Object} [options] - Additional display options
- * @param {number} [options.searchCount] - Number of web searches performed (shown when > 0)
- * @returns {EmbedBuilder} Discord embed with debug stats fields
+ * Includes per-stage fields or a compact description and a footer with total cost and duration.
+ *
+ * @param {Object} classifyStats - Normalized stats for the classification/triage stage.
+ * @param {Object} respondStats - Normalized stats for the response/generation stage.
+ * @param {string} [level="verbose"] - Layout density: "verbose", "compact", or "split".
+ * @param {Object} [options] - Display options.
+ * @param {number} [options.searchCount] - Number of web searches performed; shown in the footer when greater than 0.
+ * @returns {EmbedBuilder} An EmbedBuilder populated with fields or a compact description representing the provided stats.
  */
 export function buildDebugEmbed(
   classifyStats,

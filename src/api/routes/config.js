@@ -137,12 +137,12 @@ const CONFIG_SCHEMA = {
 };
 
 /**
- * Validate a single value against its schema definition.
+ * Validate a value against a schema fragment and collect any validation errors.
  *
- * @param {*} value - Value to validate
- * @param {Object} schema - Schema definition with type, properties, and nullable
- * @param {string} path - Dot-notation path for error messages
- * @returns {string[]} Array of validation error messages
+ * @param {*} value - The value to validate.
+ * @param {Object} schema - Schema fragment describing the expected shape; may include `type` (boolean|string|number|array|object), `nullable`, and `properties` for object children.
+ * @param {string} path - Dot-notation path used to prefix validation error messages.
+ * @returns {string[]} Array of validation error messages; empty if the value is valid for the provided schema.
  */
 function validateValue(value, schema, path) {
   const errors = [];
@@ -229,12 +229,11 @@ export function validateConfigSchema(config) {
 }
 
 /**
- * Validate a single config path + value against the schema.
- * Used by PATCH endpoints and webhook config-update to validate individual writes.
+ * Validate a single configuration path and its value against the writable config schema.
  *
- * @param {string} path - Dot-notation path (e.g. "ai.enabled")
- * @param {*} value - The value to validate
- * @returns {string[]} Array of validation error messages (empty if valid)
+ * @param {string} path - Dot-notation config path (e.g. "ai.enabled").
+ * @param {*} value - The value to validate for the given path.
+ * @returns {Array} Array of validation errors (empty if valid). Each entry is either a string message or an object with `path` and `message` describing the error.
  */
 export function validateSingleValue(path, value) {
   const segments = path.split('.');
@@ -265,6 +264,12 @@ export function validateSingleValue(path, value) {
  */
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
+/**
+ * Flattens a nested object into dot-notated leaf path/value pairs, using the provided prefix as the root path.
+ * @param {Object} obj - The object to flatten.
+ * @param {string} prefix - The starting dot-notated prefix (for example, "section").
+ * @returns {Array<[string, any]>} An array of [path, value] pairs where path is the dot-notated key and value is the leaf value. Arrays and primitive values are treated as leaves; dangerous keys ('__proto__', 'constructor', 'prototype') are skipped.
+ */
 export function flattenToLeafPaths(obj, prefix) {
   const results = [];
 

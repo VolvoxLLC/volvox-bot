@@ -25,6 +25,19 @@ interface SystemPromptEditorProps {
   disabled?: boolean;
 }
 
+/**
+ * Renders a card UI for editing and validating a system prompt with live character counting and visual feedback.
+ *
+ * The component displays a textarea bound to `value`, shows a character counter and an over-limit message when the
+ * input exceeds `maxLength`, applies warning styling when near the threshold, and exposes updates through `onChange`.
+ * It includes accessible attributes (aria-describedby, aria-invalid, polite live region) and supports a disabled state.
+ *
+ * @param value - Current system prompt text shown in the editor
+ * @param onChange - Callback invoked with the updated text when the textarea value changes
+ * @param maxLength - Maximum allowed characters for the prompt; defaults to the configured SYSTEM_PROMPT_MAX_LENGTH
+ * @param disabled - If true, disables editing and dims the control
+ * @returns The JSX element rendering the System Prompt editor card
+ */
 export function SystemPromptEditor({
   value,
   onChange,

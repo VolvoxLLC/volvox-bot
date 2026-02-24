@@ -41,11 +41,11 @@ export function buildConversationText(context, buffer) {
 // ── Prompt builders ─────────────────────────────────────────────────────────
 
 /**
- * Build the classifier prompt from the template.
- * @param {Array} context - Historical context messages
- * @param {Array} snapshot - Buffer snapshot (messages to evaluate)
- * @param {string} [botUserId] - The bot's own Discord user ID
- * @returns {string} Interpolated classify prompt
+ * Construct the classifier prompt by interpolating the triage-classify template with conversation data and community rules.
+ * @param {Array} context - Historical messages to include in the recent-history section.
+ * @param {Array} snapshot - Messages to evaluate that will populate the messages-to-evaluate section.
+ * @param {string} [botUserId] - The bot's Discord user ID; when omitted, 'unknown' is used.
+ * @returns {string} The completed classifier prompt text.
  */
 export function buildClassifyPrompt(context, snapshot, botUserId) {
   const conversationText = buildConversationText(context, snapshot);

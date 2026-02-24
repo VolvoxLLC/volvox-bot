@@ -1,12 +1,18 @@
 import { validateSingleValue } from '../routes/config.js';
 
 /**
- * Validate a config PATCH request body (path + value).
- * Shared between the PATCH /:id/config route and the POST /config-update webhook route.
+ * Validate and normalize a config PATCH request body containing a dotted config path and its value.
  *
- * @param {Object} body - Request body
- * @param {string[]} SAFE_CONFIG_KEYS - Allowlist of writable top-level config keys
+ * Ensures `body.path` is a non-empty string with at least one dot, contains no empty segments,
+ * does not exceed 200 characters, and is no deeper than 10 segments. Ensures `body.value` is present
+ * and delegates semantic validation of the value to shared validators. Verifies the top-level key
+ * (first path segment) is included in `SAFE_CONFIG_KEYS`.
+ *
+ * @param {Object} body - Request body expected to contain `path` (string) and `value`.
+ * @param {string[]} SAFE_CONFIG_KEYS - Allowlist of writable top-level config keys.
  * @returns {{ error: string, status: number, details?: string[] } | { path: string, value: *, topLevelKey: string }}
+ *   On error: an object with `error` and `status`, and `details` when value validation produced messages.
+ *   On success: an object containing the validated `path`, the provided `value`, and the resolved `topLevelKey`.
  */
 export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
   const { path, value } = body || {};

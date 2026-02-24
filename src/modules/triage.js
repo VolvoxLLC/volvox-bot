@@ -56,13 +56,20 @@ let responderProcess = null;
 // ── Two-step CLI evaluation ──────────────────────────────────────────────────
 
 /**
- * Run classification step via the Haiku classifier.
- * @param {string} channelId - Channel being evaluated
- * @param {Array} snapshot - Buffer snapshot
- * @param {Object} evalConfig - Bot configuration
- * @param {import('discord.js').Client} evalClient - Discord client
- * @returns {Promise<{classification: Object, classifyMessage: Object, context: Array, memoryContext: string}|null>}
- */
+ * Classify a channel buffer snapshot using the Haiku classifier and prepare context for responding.
+ *
+ * Builds a classification prompt from recent channel context and the provided snapshot, sends it to the classifier,
+ * parses the result, and, if the classification requires a response, gathers per-target memory context.
+ * @param {string} channelId - ID of the channel being evaluated.
+ * @param {Array<Object>} snapshot - Array of buffered message entries (author, content, userId, messageId, etc.).
+ * @param {Object} evalConfig - Triage configuration (controls context message limits and related settings).
+ * @param {import('discord.js').Client} evalClient - Discord client used to fetch additional context and user info.
+ * @returns {{classification: Object, classifyMessage: Object, context: Array, memoryContext: string}|null} `{
+ *   classification,       // parsed classification object
+ *   classifyMessage,      // raw classifier response message (includes cost metadata)
+ *   context,              // resolved channel context messages used for prompting
+ *   memoryContext         // concatenated memory context for target users (may be empty string)
+ * }` when classification produced actionable output; `null` if classification failed or is `'ignore'`. */
 async function runClassification(channelId, snapshot, evalConfig, evalClient) {
   const contextLimit = evalConfig.triage?.contextMessages ?? 10;
   const context =
@@ -131,15 +138,18 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
 }
 
 /**
- * Run response generation step via the Sonnet responder.
- * @param {string} channelId - Channel being evaluated
- * @param {Array} snapshot - Buffer snapshot
- * @param {Object} classification - Parsed classifier output
- * @param {Array} context - Historical context messages
- * @param {string} memoryContext - Memory context string
- * @param {Object} evalConfig - Bot configuration
- * @param {import('discord.js').Client} evalClient - Discord client
- * @returns {Promise<{parsed: Object, respondMessage: Object, searchCount: number}|null>}
+ * Generate a response for a channel snapshot using the Sonnet responder.
+ *
+ * Builds and sends a respond prompt to the responder process, tracks mid-stream WebSearch tool usage
+ * (optionally notifying the channel), and parses the responder output.
+ *
+ * @param {string} channelId - ID of the channel being evaluated.
+ * @param {Array} snapshot - Ordered buffer snapshot of recent messages to include in the prompt.
+ * @param {Object} classification - Parsed classifier output that guides response behavior.
+ * @param {Array} context - Historical context messages to include in the prompt.
+ * @param {string} memoryContext - Concatenated memory context for target users (may be empty).
+ * @param {Object} evalConfig - Bot configuration used to construct the respond prompt.
+ * @returns {{parsed: Object, respondMessage: Object, searchCount: number}|null} An object containing the parsed responder output (`parsed`), the raw responder message including metadata and cost (`respondMessage`), and the number of `WebSearch` tool uses observed (`searchCount`); returns `null` if no responses were produced.
  */
 async function runResponder(
   channelId,
@@ -199,9 +209,14 @@ async function runResponder(
 }
 
 /**
- * Extract and store memories from responses (fire-and-forget).
- * @param {Array} snapshot - Buffer snapshot
- * @param {Object} parsed - Parsed responder output
+ * Initiates asynchronous extraction and storage of memories for each responder output.
+ *
+ * For each parsed response this function locates the corresponding message in the buffer
+ * (by `targetMessageId` or `targetUser`) and starts a non-blocking memory extraction for that user.
+ * Any errors from extraction are caught and do not propagate.
+ *
+ * @param {Array<Object>} snapshot - Channel buffer snapshot; each entry should include at least `messageId`, `author`, `userId`, and `content`.
+ * @param {Object} parsed - Parsed responder output containing a `responses` array where each item may include `targetMessageId`, `targetUser`, and `response`.
  */
 function extractMemories(snapshot, parsed) {
   if (!parsed.responses?.length) return;
@@ -227,15 +242,15 @@ function extractMemories(snapshot, parsed) {
 }
 
 /**
- * Evaluate buffered messages using a two-step flow:
- * 1. Classify with Haiku (cheap, fast)
- * 2. Respond with Sonnet (only when classification is non-ignore)
+ * Orchestrates a two-step triage for a channel buffer: classify messages, generate responses when needed, send results, and trigger memory extraction.
  *
- * @param {string} channelId - The channel being evaluated
- * @param {Array} snapshot - Buffer snapshot
- * @param {Object} evalConfig - Bot configuration
- * @param {import('discord.js').Client} evalClient - Discord client
- */
+ * Performs a classification pass over the provided snapshot and, if the classification warrants, generates and sends responses to Discord, writes analytics/moderation logs, and initiates background memory extraction. Any CLIProcess timeout is rethrown to the caller; other failures are logged and may produce a user-visible error message in the channel.
+ *
+ * @param {string} channelId - ID of the Discord channel being evaluated.
+ * @param {Array<Object>} snapshot - A snapshot of buffered messages for the channel.
+ * @param {Object} evalConfig - Effective triage configuration to use for this evaluation.
+ * @param {import('discord.js').Client} evalClient - Discord client used to fetch channels and send messages.
+ * @throws {CLIProcessError} When a classifier/responder CLI process times out; the error is rethrown.
 async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
 
