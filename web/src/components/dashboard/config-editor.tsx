@@ -48,7 +48,63 @@ interface GuildConfig {
     };
   };
   spam?: Record<string, unknown>;
-  moderation?: Record<string, unknown>;
+  moderation?: {
+    enabled?: boolean;
+    alertChannelId?: string;
+    autoDelete?: boolean;
+    dmNotifications?: {
+      warn?: boolean;
+      timeout?: boolean;
+      kick?: boolean;
+      ban?: boolean;
+    };
+    escalation?: {
+      enabled?: boolean;
+      thresholds?: Array<{
+        warns?: number;
+        withinDays?: number;
+        action?: string;
+        duration?: string;
+      }>;
+    };
+    logging?: {
+      channels?: {
+        default?: string | null;
+        warns?: string | null;
+        bans?: string | null;
+        kicks?: string | null;
+        timeouts?: string | null;
+        purges?: string | null;
+        locks?: string | null;
+      };
+    };
+  };
+  triage?: {
+    enabled?: boolean;
+    defaultInterval?: number;
+    maxBufferSize?: number;
+    triggerWords?: string[];
+    moderationKeywords?: string[];
+    classifyModel?: string;
+    classifyBudget?: number;
+    respondModel?: string;
+    respondBudget?: number;
+    thinkingTokens?: number;
+    classifyBaseUrl?: string | null;
+    classifyApiKey?: string | null;
+    respondBaseUrl?: string | null;
+    respondApiKey?: string | null;
+    streaming?: boolean;
+    tokenRecycleLimit?: number;
+    contextMessages?: number;
+    timeout?: number;
+    moderationResponse?: boolean;
+    channels?: string[];
+    excludeChannels?: string[];
+    debugFooter?: boolean;
+    debugFooterLevel?: string;
+    moderationLogChannel?: string;
+  };
 }
 
 function isGuildConfig(data: unknown): data is GuildConfig {
@@ -277,6 +333,60 @@ export function ConfigEditor() {
     });
   }, []);
 
+  const updateModerationEnabled = useCallback((enabled: boolean) => {
+    setDraftConfig((prev) => {
+      if (!prev) return prev;
+      return { ...prev, moderation: { ...prev.moderation, enabled } };
+    });
+  }, []);
+
+  const updateModerationField = useCallback((field: string, value: unknown) => {
+    setDraftConfig((prev) => {
+      if (!prev) return prev;
+      return { ...prev, moderation: { ...prev.moderation, [field]: value } };
+    });
+  }, []);
+
+  const updateModerationDmNotification = useCallback((action: string, value: boolean) => {
+    setDraftConfig((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        moderation: {
+          ...prev.moderation,
+          dmNotifications: { ...prev.moderation?.dmNotifications, [action]: value },
+        },
+      };
+    });
+  }, []);
+
+  const updateModerationEscalation = useCallback((enabled: boolean) => {
+    setDraftConfig((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        moderation: {
+          ...prev.moderation,
+          escalation: { ...prev.moderation?.escalation, enabled },
+        },
+      };
+    });
+  }, []);
+
+  const updateTriageEnabled = useCallback((enabled: boolean) => {
+    setDraftConfig((prev) => {
+      if (!prev) return prev;
+      return { ...prev, triage: { ...prev.triage, enabled } };
+    });
+  }, []);
+
+  const updateTriageField = useCallback((field: string, value: unknown) => {
+    setDraftConfig((prev) => {
+      if (!prev) return prev;
+      return { ...prev, triage: { ...prev.triage, [field]: value } };
+    });
+  }, []);
+
   // ── No guild selected ──────────────────────────────────────────
   if (!guildId) {
     return (
@@ -436,22 +546,221 @@ export function ConfigEditor() {
         </CardContent>
       </Card>
 
-      {/* Moderation (read-only) */}
+      {/* Moderation section */}
       {draftConfig.moderation && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Moderation</CardTitle>
-            <CardDescription>
-              Moderation settings are read-only from the dashboard.
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Moderation</CardTitle>
+                <CardDescription>
+                  Configure moderation, escalation, and logging settings.
+                </CardDescription>
+              </div>
+              <ToggleSwitch
+                checked={draftConfig.moderation?.enabled ?? false}
+                onChange={updateModerationEnabled}
+                disabled={saving}
+                label="Moderation"
+              />
+            </div>
           </CardHeader>
-          <CardContent>
-            <pre
-              className="overflow-x-auto rounded-md border bg-muted/30 p-4 font-mono text-xs text-muted-foreground"
-              aria-label="Moderation configuration (read-only)"
-            >
-              {JSON.stringify(draftConfig.moderation, null, 2)}
-            </pre>
+          <CardContent className="space-y-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Alert Channel ID</span>
+              <input
+                type="text"
+                value={draftConfig.moderation?.alertChannelId ?? ""}
+                onChange={(e) => updateModerationField("alertChannelId", e.target.value)}
+                disabled={saving}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Channel ID for moderation alerts"
+              />
+            </label>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Auto-delete flagged messages</span>
+              <ToggleSwitch
+                checked={draftConfig.moderation?.autoDelete ?? false}
+                onChange={(v) => updateModerationField("autoDelete", v)}
+                disabled={saving}
+                label="Auto Delete"
+              />
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">DM Notifications</legend>
+              {(["warn", "timeout", "kick", "ban"] as const).map((action) => (
+                <div key={action} className="flex items-center justify-between">
+                  <span className="text-sm capitalize text-muted-foreground">{action}</span>
+                  <ToggleSwitch
+                    checked={draftConfig.moderation?.dmNotifications?.[action] ?? false}
+                    onChange={(v) => updateModerationDmNotification(action, v)}
+                    disabled={saving}
+                    label={`DM on ${action}`}
+                  />
+                </div>
+              ))}
+            </fieldset>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Escalation Enabled</span>
+              <ToggleSwitch
+                checked={draftConfig.moderation?.escalation?.enabled ?? false}
+                onChange={(v) => updateModerationEscalation(v)}
+                disabled={saving}
+                label="Escalation"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Triage section */}
+      {draftConfig.triage && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Triage</CardTitle>
+                <CardDescription>
+                  Configure message triage classifier, responder models, and channels.
+                </CardDescription>
+              </div>
+              <ToggleSwitch
+                checked={draftConfig.triage?.enabled ?? false}
+                onChange={updateTriageEnabled}
+                disabled={saving}
+                label="Triage"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Classify Model</span>
+              <input
+                type="text"
+                value={draftConfig.triage?.classifyModel ?? ""}
+                onChange={(e) => updateTriageField("classifyModel", e.target.value)}
+                disabled={saving}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="e.g. claude-haiku-4-5"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Respond Model</span>
+              <input
+                type="text"
+                value={draftConfig.triage?.respondModel ?? ""}
+                onChange={(e) => updateTriageField("respondModel", e.target.value)}
+                disabled={saving}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="e.g. claude-sonnet-4-6"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="space-y-2">
+                <span className="text-sm font-medium">Classify Budget</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={draftConfig.triage?.classifyBudget ?? 0}
+                  onChange={(e) => updateTriageField("classifyBudget", Number(e.target.value))}
+                  disabled={saving}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium">Respond Budget</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={draftConfig.triage?.respondBudget ?? 0}
+                  onChange={(e) => updateTriageField("respondBudget", Number(e.target.value))}
+                  disabled={saving}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="space-y-2">
+                <span className="text-sm font-medium">Default Interval (ms)</span>
+                <input
+                  type="number"
+                  value={draftConfig.triage?.defaultInterval ?? 3000}
+                  onChange={(e) => updateTriageField("defaultInterval", Number(e.target.value))}
+                  disabled={saving}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium">Timeout (ms)</span>
+                <input
+                  type="number"
+                  value={draftConfig.triage?.timeout ?? 30000}
+                  onChange={(e) => updateTriageField("timeout", Number(e.target.value))}
+                  disabled={saving}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="space-y-2">
+                <span className="text-sm font-medium">Context Messages</span>
+                <input
+                  type="number"
+                  value={draftConfig.triage?.contextMessages ?? 10}
+                  onChange={(e) => updateTriageField("contextMessages", Number(e.target.value))}
+                  disabled={saving}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium">Max Buffer Size</span>
+                <input
+                  type="number"
+                  value={draftConfig.triage?.maxBufferSize ?? 30}
+                  onChange={(e) => updateTriageField("maxBufferSize", Number(e.target.value))}
+                  disabled={saving}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Streaming</span>
+              <ToggleSwitch
+                checked={draftConfig.triage?.streaming ?? false}
+                onChange={(v) => updateTriageField("streaming", v)}
+                disabled={saving}
+                label="Streaming"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Moderation Response</span>
+              <ToggleSwitch
+                checked={draftConfig.triage?.moderationResponse ?? false}
+                onChange={(v) => updateTriageField("moderationResponse", v)}
+                disabled={saving}
+                label="Moderation Response"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Debug Footer</span>
+              <ToggleSwitch
+                checked={draftConfig.triage?.debugFooter ?? false}
+                onChange={(v) => updateTriageField("debugFooter", v)}
+                disabled={saving}
+                label="Debug Footer"
+              />
+            </div>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Moderation Log Channel</span>
+              <input
+                type="text"
+                value={draftConfig.triage?.moderationLogChannel ?? ""}
+                onChange={(e) => updateTriageField("moderationLogChannel", e.target.value)}
+                disabled={saving}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Channel ID for moderation logs"
+              />
+            </label>
           </CardContent>
         </Card>
       )}
@@ -515,8 +824,6 @@ function computePatches(
     for (const key of allKeys) {
       // Skip the guildId metadata field
       if (prefix === "" && key === "guildId") continue;
-      // Skip read-only sections
-      if (prefix === "" && key === "moderation") continue;
 
       const fullPath = prefix ? `${prefix}.${key}` : key;
       const origVal = origObj[key];

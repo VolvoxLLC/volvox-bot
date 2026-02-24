@@ -14,6 +14,7 @@ vi.mock('../../../src/modules/config.js', () => ({
     welcome: { enabled: true, channelId: 'ch1' },
     spam: { enabled: true },
     moderation: { enabled: true },
+    triage: { enabled: true },
     permissions: { botOwners: [] },
     database: { host: 'secret-host' },
     token: 'secret-token',
@@ -125,6 +126,8 @@ describe('config routes', () => {
       expect(res.body.welcome).toEqual({ enabled: true, channelId: 'ch1' });
       expect(res.body.spam).toEqual({ enabled: true });
       expect(res.body.moderation).toEqual({ enabled: true });
+      expect(res.body.triage).toEqual({ enabled: true });
+      expect(res.body.permissions).toEqual({ botOwners: [] });
     });
 
     it('should exclude sensitive config keys', async () => {
@@ -133,7 +136,6 @@ describe('config routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
-      expect(res.body.permissions).toBeUndefined();
     });
 
     it('should call getConfig without guild ID for global config', async () => {
@@ -242,12 +244,22 @@ describe('config routes', () => {
       const res = await request(app)
         .put('/api/v1/config')
         .set('x-api-secret', SECRET)
-        .send({ moderation: { enabled: false } });
+        .send({ database: { host: 'evil-host' } });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('validation failed');
-      expect(res.body.details[0]).toContain('moderation');
+      expect(res.body.details[0]).toContain('database');
       expect(res.body.details[0]).toContain('not a writable');
+    });
+
+    it('should allow patching moderation config via PUT', async () => {
+      const res = await request(app)
+        .put('/api/v1/config')
+        .set('x-api-secret', SECRET)
+        .send({ moderation: { enabled: false } });
+
+      expect(res.status).toBe(200);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.enabled', false);
     });
 
     it('should return 400 for type mismatch — boolean expected', async () => {
@@ -358,7 +370,7 @@ describe('config routes', () => {
         .put('/api/v1/config')
         .set('x-api-secret', SECRET)
         .send({
-          moderation: { enabled: false },
+          database: { host: 'evil' },
           ai: { enabled: 'yes', historyLength: 'nope' },
         });
 

@@ -13,16 +13,15 @@ const WEBHOOK_TIMEOUT_MS = 5_000;
 
 /**
  * Config sections that can be written via the PUT endpoint.
- * Mirrors SAFE_CONFIG_KEYS in guilds.js — 'moderation' is intentionally
- * excluded to prevent weakening or disabling moderation settings via the API.
+ * Mirrors SAFE_CONFIG_KEYS in guilds.js.
  */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam'];
+const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'triage'];
 
 /**
  * Config sections that can be read via the GET endpoint.
  * Includes everything in SAFE_CONFIG_KEYS plus read-only sections.
  */
-const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'moderation'];
+const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging', 'memory', 'permissions'];
 
 /**
  * Schema definitions for writable config sections.
@@ -70,6 +69,76 @@ const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
+    },
+  },
+  moderation: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      alertChannelId: { type: 'string' },
+      autoDelete: { type: 'boolean' },
+      dmNotifications: {
+        type: 'object',
+        properties: {
+          warn: { type: 'boolean' },
+          timeout: { type: 'boolean' },
+          kick: { type: 'boolean' },
+          ban: { type: 'boolean' },
+        },
+      },
+      escalation: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          thresholds: { type: 'array' },
+        },
+      },
+      logging: {
+        type: 'object',
+        properties: {
+          channels: {
+            type: 'object',
+            properties: {
+              default: { type: 'string', nullable: true },
+              warns: { type: 'string', nullable: true },
+              bans: { type: 'string', nullable: true },
+              kicks: { type: 'string', nullable: true },
+              timeouts: { type: 'string', nullable: true },
+              purges: { type: 'string', nullable: true },
+              locks: { type: 'string', nullable: true },
+            },
+          },
+        },
+      },
+    },
+  },
+  triage: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      defaultInterval: { type: 'number' },
+      maxBufferSize: { type: 'number' },
+      triggerWords: { type: 'array' },
+      moderationKeywords: { type: 'array' },
+      classifyModel: { type: 'string' },
+      classifyBudget: { type: 'number' },
+      respondModel: { type: 'string' },
+      respondBudget: { type: 'number' },
+      thinkingTokens: { type: 'number' },
+      classifyBaseUrl: { type: 'string', nullable: true },
+      classifyApiKey: { type: 'string', nullable: true },
+      respondBaseUrl: { type: 'string', nullable: true },
+      respondApiKey: { type: 'string', nullable: true },
+      streaming: { type: 'boolean' },
+      tokenRecycleLimit: { type: 'number' },
+      contextMessages: { type: 'number' },
+      timeout: { type: 'number' },
+      moderationResponse: { type: 'boolean' },
+      channels: { type: 'array' },
+      excludeChannels: { type: 'array' },
+      debugFooter: { type: 'boolean' },
+      debugFooterLevel: { type: 'string' },
+      moderationLogChannel: { type: 'string' },
     },
   },
 };
@@ -276,7 +345,7 @@ router.get('/', requireGlobalAdmin, (_req, res) => {
 /**
  * PUT / — Update global config with schema validation
  * Body: { "ai": { ... }, "welcome": { ... } }
- * Only writable sections (ai, welcome, spam) are accepted.
+ * Only writable sections (ai, welcome, spam, moderation, triage) are accepted.
  * Values are merged into existing config via setConfigValue.
  */
 router.put('/', requireGlobalAdmin, async (req, res) => {

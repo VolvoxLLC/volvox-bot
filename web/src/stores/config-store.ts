@@ -78,7 +78,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
 
   updateValue: async (guildId: string, path: string, value: unknown) => {
     const topLevelKey = path.split(".")[0] as WritableConfigSection;
-    const writableKeys: WritableConfigSection[] = ["ai", "welcome", "spam"];
+    const writableKeys: WritableConfigSection[] = ["ai", "welcome", "spam", "moderation", "triage"];
     if (!writableKeys.includes(topLevelKey)) {
       set({ error: `Section "${topLevelKey}" is read-only` });
       return;

@@ -76,7 +76,7 @@ export interface ModerationLogging {
   channels: ModerationLogChannels;
 }
 
-/** Moderation configuration (read-only in the dashboard). */
+/** Moderation configuration. */
 export interface ModerationConfig {
   enabled: boolean;
   alertChannelId: string;
@@ -125,7 +125,7 @@ export interface BotConfig {
 }
 
 /** Sections that can be modified via the PATCH endpoint. */
-export type WritableConfigSection = "ai" | "welcome" | "spam";
+export type WritableConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";
 
 /** All config sections shown in the editor. */
 export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";

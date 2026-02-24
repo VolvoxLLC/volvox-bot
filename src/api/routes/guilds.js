@@ -21,16 +21,14 @@ const MANAGE_GUILD_FLAG = 0x20;
 
 /**
  * Config keys that are safe to write via the PATCH endpoint.
- * 'moderation' is intentionally excluded to prevent API callers from
- * weakening or disabling moderation settings.
  */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam'];
+const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'triage'];
 
 /**
  * Config keys that are safe to read via the GET endpoint.
  * Includes everything in SAFE_CONFIG_KEYS plus read-only keys.
  */
-const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'moderation'];
+const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging', 'memory', 'permissions'];
 
 /**
  * Fire-and-forget webhook notification for guild config changes.

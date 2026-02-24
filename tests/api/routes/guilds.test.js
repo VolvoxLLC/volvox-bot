@@ -14,6 +14,7 @@ vi.mock('../../../src/modules/config.js', () => ({
     welcome: { enabled: true },
     spam: { enabled: true },
     moderation: { enabled: true },
+    triage: { enabled: true },
     permissions: { botOwners: [] },
     database: { host: 'secret-host' },
     token: 'secret-token',
@@ -392,18 +393,12 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.ai).toEqual({ enabled: true, model: 'claude-3', historyLength: 20 });
       expect(res.body.welcome).toEqual({ enabled: true });
+      expect(res.body.moderation).toEqual({ enabled: true });
+      expect(res.body.triage).toEqual({ enabled: true });
+      expect(res.body.permissions).toEqual({ botOwners: [] });
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
       expect(getConfig).toHaveBeenCalledWith('guild1');
-    });
-
-    it('should return moderation config as readable', async () => {
-      const res = await request(app)
-        .get('/api/v1/guilds/guild1/config')
-        .set('x-api-secret', SECRET);
-
-      expect(res.status).toBe(200);
-      expect(res.body.moderation).toEqual({ enabled: true });
     });
   });
 
@@ -454,14 +449,18 @@ describe('guilds routes', () => {
       expect(res.body.error).toContain('not allowed');
     });
 
-    it('should return 403 when path targets moderation config', async () => {
+    it('should allow patching moderation config', async () => {
+      getConfig.mockReturnValueOnce({
+        moderation: { enabled: false },
+      });
+
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
         .send({ path: 'moderation.enabled', value: false });
 
-      expect(res.status).toBe(403);
-      expect(res.body.error).toContain('not allowed');
+      expect(res.status).toBe(200);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.enabled', false, 'guild1');
     });
 
     it('should return 400 when value is missing', async () => {

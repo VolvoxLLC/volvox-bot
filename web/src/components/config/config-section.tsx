@@ -20,7 +20,7 @@ const SECTION_META: Record<ConfigSection, { label: string; description: string }
   },
   moderation: {
     label: "Moderation",
-    description: "Moderation settings, escalation, and logging. Read-only for security.",
+    description: "Moderation settings, escalation, and logging.",
   },
   triage: {
     label: "Triage",
@@ -28,7 +28,7 @@ const SECTION_META: Record<ConfigSection, { label: string; description: string }
   },
 };
 
-const READ_ONLY_SECTIONS = new Set<string>(["moderation"]);
+const READ_ONLY_SECTIONS = new Set<string>([]);
 
 function formatLabel(key: string): string {
   return key

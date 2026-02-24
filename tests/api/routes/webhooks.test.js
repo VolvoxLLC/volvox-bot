@@ -14,6 +14,7 @@ vi.mock('../../../src/modules/config.js', () => ({
     welcome: { enabled: true },
     spam: { enabled: true },
     moderation: { enabled: true },
+    triage: { enabled: true },
     permissions: { botOwners: [] },
   }),
   setConfigValue: vi.fn().mockResolvedValue({}),
@@ -133,14 +134,18 @@ describe('webhooks routes', () => {
       expect(res.body.error).toContain('not allowed');
     });
 
-    it('should return 403 when path targets moderation config', async () => {
+    it('should allow patching moderation config', async () => {
+      getConfig.mockReturnValueOnce({
+        moderation: { enabled: false },
+      });
+
       const res = await request(app)
         .post('/api/v1/webhooks/config-update')
         .set('x-api-secret', SECRET)
         .send({ guildId: 'guild1', path: 'moderation.enabled', value: false });
 
-      expect(res.status).toBe(403);
-      expect(res.body.error).toContain('not allowed');
+      expect(res.status).toBe(200);
+      expect(setConfigValue).toHaveBeenCalledWith('moderation.enabled', false, 'guild1');
     });
 
     it('should return 400 when path has no dot separator', async () => {
