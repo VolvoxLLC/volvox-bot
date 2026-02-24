@@ -540,13 +540,12 @@ describe('guilds routes', () => {
       expect(res.body.error).toContain('empty segments');
     });
 
-    it('should accept path with exactly 10 segments', async () => {
-      getConfig.mockReturnValueOnce({ ai: {} });
-      const exactPath = 'ai.a.b.c.d.e.f.g.h.i';
+    it('should accept a valid schema path within depth limit', async () => {
+      getConfig.mockReturnValueOnce({ moderation: {} });
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET)
-        .send({ path: exactPath, value: true });
+        .send({ path: 'moderation.logging.channels.default', value: '123' });
 
       expect(res.status).toBe(200);
     });
