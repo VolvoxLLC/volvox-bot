@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { error, info, warn } from '../../logger.js';
+import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 
 const router = Router();
