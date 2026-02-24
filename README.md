@@ -1,6 +1,6 @@
-# 🤖 Bill Bot — Volvox Discord Bot
+# 🤖 Volvox Bot
 
-[![CI](https://github.com/BillChirico/bills-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/BillChirico/bills-bot/actions/workflows/ci.yml)
+[![CI](https://github.com/VolvoxLLC/volvox-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/VolvoxLLC/volvox-bot/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22-green.svg)](https://nodejs.org)
 
@@ -25,7 +25,7 @@ Discord User
      │
      ▼
 ┌─────────────┐     ┌──────────────┐     ┌─────────┐
-│  Bill Bot    │────▶│  Claude CLI  │────▶│  Claude  │
+│  Volvox Bot  │────▶│  Claude CLI  │────▶│  Claude  │
 │  (Node.js)  │◀────│  (headless)  │◀────│  (AI)    │
 └──────┬──────┘     └──────────────┘     └─────────┘
        │
@@ -48,8 +48,8 @@ Discord User
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/BillChirico/bills-bot.git
-cd bills-bot
+git clone https://github.com/VolvoxLLC/volvox-bot.git
+cd volvox-bot
 pnpm install
 ```
 
@@ -269,7 +269,7 @@ Most moderation commands require admin-level access. `/modlog` is moderator-leve
 
 ## 🌐 Web Dashboard
 
-The `web/` directory contains a Next.js admin dashboard for managing Bill Bot through a browser.
+The `web/` directory contains a Next.js admin dashboard for managing Volvox Bot through a browser.
 
 ### Features
 
@@ -334,15 +334,13 @@ pnpm dev                       # Starts on http://localhost:3000
 
 ## 🚄 Deployment
 
-Bill Bot runs on [Railway](https://railway.app) as a multi-service project with three components:
+Volvox Bot runs on [Railway](https://railway.app) as a multi-service project with three components:
 
 | Service | Type | Config |
 |---------|------|--------|
 | **Bot** | Node.js (Dockerfile) | `railway.toml` |
 | **Postgres** | Railway Plugin | Added via dashboard |
 | **Web Dashboard** | Next.js (Dockerfile) | `web/railway.toml` |
-
-> **Note:** The web dashboard is introduced in PR #60. The `web/` directory may not exist on `main` yet.
 
 ### Project Setup
 
