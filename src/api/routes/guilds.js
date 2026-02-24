@@ -359,27 +359,38 @@ router.get('/', async (req, res) => {
   return res.status(401).json({ error: 'Unauthorized' });
 });
 
+/** Maximum number of channels to return to avoid oversized payloads. */
+const MAX_CHANNELS = 500;
+
+/**
+ * Return a capped list of channels for a guild.
+ *
+ * @param {import('discord.js').Guild} guild
+ * @returns {{ id: string, name: string, type: number }[]}
+ */
+function getGuildChannels(guild) {
+  // type is discord.js ChannelType enum: 0=GuildText, 2=GuildVoice, 4=GuildCategory,
+  // 5=GuildAnnouncement, 13=GuildStageVoice, 15=GuildForum, 16=GuildMedia
+  const channels = [];
+  for (const ch of guild.channels.cache.values()) {
+    if (channels.length >= MAX_CHANNELS) break;
+    channels.push({ id: ch.id, name: ch.name, type: ch.type });
+  }
+  return channels;
+}
+
 /**
  * GET /:id — Guild info
  */
 router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
   const guild = req.guild;
-  const MAX_CHANNELS = 500;
-  const channels = [];
-  for (const ch of guild.channels.cache.values()) {
-    if (channels.length >= MAX_CHANNELS) break;
-    // type is discord.js ChannelType enum: 0=GuildText, 2=GuildVoice, 4=GuildCategory,
-    // 5=GuildAnnouncement, 13=GuildStageVoice, 15=GuildForum, 16=GuildMedia
-    channels.push({ id: ch.id, name: ch.name, type: ch.type });
-  }
-
   res.json({
     id: guild.id,
     name: guild.name,
     icon: guild.iconURL(),
     memberCount: guild.memberCount,
     channelCount: guild.channels.cache.size,
-    channels,
+    channels: getGuildChannels(guild),
   });
 });
 
@@ -387,14 +398,7 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
  * GET /:id/channels — Guild channel list
  */
 router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
-  const guild = req.guild;
-  const MAX_CHANNELS = 500;
-  const channels = [];
-  for (const ch of guild.channels.cache.values()) {
-    if (channels.length >= MAX_CHANNELS) break;
-    channels.push({ id: ch.id, name: ch.name, type: ch.type });
-  }
-  res.json(channels);
+  res.json(getGuildChannels(req.guild));
 });
 
 /**
@@ -454,6 +458,7 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
     fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
       event: 'config.updated',
       guildId: req.params.id,
+      section: topLevelKey,
       updatedKeys: [path],
       timestamp: Date.now(),
     });

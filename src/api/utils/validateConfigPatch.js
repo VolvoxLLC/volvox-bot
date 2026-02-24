@@ -1,4 +1,4 @@
-import { validateSingleValue } from '../routes/config.js';
+import { validateSingleValue } from './configValidation.js';
 
 /**
  * Validate and normalize a config PATCH request body containing a dotted config path and its value.
@@ -25,7 +25,9 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
     return { error: 'Missing "value" in request body', status: 400 };
   }
 
-  const topLevelKey = path.split('.')[0];
+  const segments = path.split('.');
+  const topLevelKey = segments[0];
+
   if (!SAFE_CONFIG_KEYS.includes(topLevelKey)) {
     return { error: 'Modifying this config key is not allowed', status: 403 };
   }
@@ -36,8 +38,6 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
       status: 400,
     };
   }
-
-  const segments = path.split('.');
   if (segments.some((s) => s === '')) {
     return { error: 'Config path contains empty segments', status: 400 };
   }
