@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { SAFE_CONFIG_KEYS } from '../utils/configAllowlist.js';
-import { validateSingleValue } from './config.js';
+import { validateConfigPatchBody } from '../utils/validateConfigPatch.js';
 
 const router = Router();
 
@@ -24,48 +24,20 @@ router.post('/config-update', (req, res) => {
     return res.status(403).json({ error: 'This endpoint requires API secret authentication' });
   }
 
-  const { guildId, path, value } = req.body || {};
+  const { guildId } = req.body || {};
 
   if (!guildId || typeof guildId !== 'string') {
     return res.status(400).json({ error: 'Missing or invalid "guildId" in request body' });
   }
 
-  if (!path || typeof path !== 'string') {
-    return res.status(400).json({ error: 'Missing or invalid "path" in request body' });
+  const result = validateConfigPatchBody(req.body, SAFE_CONFIG_KEYS);
+  if (result.error) {
+    const response = { error: result.error };
+    if (result.details) response.details = result.details;
+    return res.status(result.status).json(response);
   }
 
-  if (value === undefined) {
-    return res.status(400).json({ error: 'Missing "value" in request body' });
-  }
-
-  const topLevelKey = path.split('.')[0];
-  if (!SAFE_CONFIG_KEYS.includes(topLevelKey)) {
-    return res.status(403).json({ error: 'Modifying this config key is not allowed' });
-  }
-
-  if (!path.includes('.')) {
-    return res
-      .status(400)
-      .json({ error: 'Config path must include at least one dot separator (e.g., "ai.model")' });
-  }
-
-  const segments = path.split('.');
-  if (segments.some((s) => s === '')) {
-    return res.status(400).json({ error: 'Config path contains empty segments' });
-  }
-
-  if (path.length > 200) {
-    return res.status(400).json({ error: 'Config path exceeds maximum length of 200 characters' });
-  }
-
-  if (segments.length > 10) {
-    return res.status(400).json({ error: 'Config path exceeds maximum depth of 10 segments' });
-  }
-
-  const valErrors = validateSingleValue(path, value);
-  if (valErrors.length > 0) {
-    return res.status(400).json({ error: 'Value validation failed', details: valErrors });
-  }
+  const { path, value, topLevelKey } = result;
 
   setConfigValue(path, value, guildId)
     .then(() => {

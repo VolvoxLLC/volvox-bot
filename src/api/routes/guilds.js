@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { getBotOwnerIds } from '../../utils/permissions.js';
 import { safeSend } from '../../utils/safeSend.js';
 import {
   maskSensitiveFields,
@@ -14,8 +15,8 @@ import {
 } from '../utils/configAllowlist.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
 import { getSessionToken } from '../utils/sessionStore.js';
+import { validateConfigPatchBody } from '../utils/validateConfigPatch.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
-import { validateSingleValue } from './config.js';
 
 const router = Router();
 
@@ -24,7 +25,6 @@ const ADMINISTRATOR_FLAG = 0x8;
 /** Discord MANAGE_GUILD permission flag */
 const MANAGE_GUILD_FLAG = 0x20;
 
-/**
 /**
  * Upper bound on content length for abuse prevention.
  * safeSend handles the actual Discord 2000-char message splitting.
@@ -184,22 +184,6 @@ async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
 }
 
 /**
- * Get bot owner IDs from environment variable, falling back to config.
- * @returns {string[]}
- */
-function getBotOwnerIds() {
-  const envValue = process.env.BOT_OWNER_IDS;
-  if (envValue) {
-    return envValue
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean);
-  }
-  const owners = getConfig()?.permissions?.botOwners;
-  return Array.isArray(owners) ? owners : [];
-}
-
-/**
  * Check whether the authenticated OAuth2 user is a configured bot owner.
  * Bot owners bypass API guild-level permission checks.
  *
@@ -207,7 +191,7 @@ function getBotOwnerIds() {
  * @returns {boolean} True if JWT userId is in BOT_OWNER_IDS or config.permissions.botOwners
  */
 function isOAuthBotOwner(user) {
-  const botOwners = getBotOwnerIds();
+  const botOwners = getBotOwnerIds(getConfig());
   return botOwners.includes(user?.userId);
 }
 
@@ -455,44 +439,14 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
     return res.status(400).json({ error: 'Request body is required' });
   }
 
-  const { path, value } = req.body;
-
-  if (!path || typeof path !== 'string') {
-    return res.status(400).json({ error: 'Missing or invalid "path" in request body' });
+  const result = validateConfigPatchBody(req.body, SAFE_CONFIG_KEYS);
+  if (result.error) {
+    const response = { error: result.error };
+    if (result.details) response.details = result.details;
+    return res.status(result.status).json(response);
   }
 
-  if (value === undefined) {
-    return res.status(400).json({ error: 'Missing "value" in request body' });
-  }
-
-  const topLevelKey = path.split('.')[0];
-  if (!SAFE_CONFIG_KEYS.includes(topLevelKey)) {
-    return res.status(403).json({ error: 'Modifying this config key is not allowed' });
-  }
-
-  if (!path.includes('.')) {
-    return res
-      .status(400)
-      .json({ error: 'Config path must include at least one dot separator (e.g., "ai.model")' });
-  }
-
-  const segments = path.split('.');
-  if (segments.some((s) => s === '')) {
-    return res.status(400).json({ error: 'Config path contains empty segments' });
-  }
-
-  if (path.length > 200) {
-    return res.status(400).json({ error: 'Config path exceeds maximum length of 200 characters' });
-  }
-
-  if (segments.length > 10) {
-    return res.status(400).json({ error: 'Config path exceeds maximum depth of 10 segments' });
-  }
-
-  const valErrors = validateSingleValue(path, value);
-  if (valErrors.length > 0) {
-    return res.status(400).json({ error: 'Value validation failed', details: valErrors });
-  }
+  const { path, value, topLevelKey } = result;
 
   try {
     await setConfigValue(path, value, req.params.id);

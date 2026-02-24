@@ -14,7 +14,7 @@ import { PermissionFlagsBits } from 'discord.js';
  * @param {Object} [config] - Bot configuration (fallback source)
  * @returns {string[]} Array of bot owner user IDs
  */
-function getBotOwnerIds(config) {
+export function getBotOwnerIds(config) {
   const envValue = process.env.BOT_OWNER_IDS;
   if (envValue) {
     return envValue

@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { getBotOwnerIds } from '../../utils/permissions.js';
 import {
   maskSensitiveFields,
   READABLE_CONFIG_KEYS,
@@ -282,7 +283,6 @@ export function flattenToLeafPaths(obj, prefix) {
 }
 
 /**
-/**
  * Middleware: restrict to API-secret callers or bot-owner OAuth users.
  * Global config changes affect all guilds, so only trusted callers are allowed.
  */
@@ -290,7 +290,7 @@ function requireGlobalAdmin(req, res, next) {
   if (req.authMethod === 'api-secret') return next();
 
   if (req.authMethod === 'oauth') {
-    const botOwners = getBotOwnerIds();
+    const botOwners = getBotOwnerIds(getConfig());
     if (botOwners.includes(req.user?.userId)) return next();
 
     return res.status(403).json({ error: 'Global config access requires bot owner permissions' });
@@ -301,22 +301,6 @@ function requireGlobalAdmin(req, res, next) {
     path: req.path,
   });
   return res.status(401).json({ error: 'Unauthorized' });
-}
-
-/**
- * Get bot owner IDs from environment variable, falling back to config.
- * @returns {string[]}
- */
-function getBotOwnerIds() {
-  const envValue = process.env.BOT_OWNER_IDS;
-  if (envValue) {
-    return envValue
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean);
-  }
-  const owners = getConfig()?.permissions?.botOwners;
-  return Array.isArray(owners) ? owners : [];
 }
 
 /**
