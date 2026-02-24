@@ -41,29 +41,33 @@ export function ConfigDiff({
   modified,
   title = "Pending Changes",
 }: ConfigDiffProps) {
-  const lines = useMemo<DiffLine[]>(() => {
+  const { lines, addedCount, removedCount } = useMemo(() => {
     const originalText = JSON.stringify(original, null, 2);
     const modifiedText = JSON.stringify(modified, null, 2);
 
-    if (originalText === modifiedText) return [];
+    if (originalText === modifiedText) return { lines: [], addedCount: 0, removedCount: 0 };
 
     const changes = diffLines(originalText, modifiedText);
     const result: DiffLine[] = [];
+    let added = 0;
+    let removed = 0;
 
     for (const change of changes) {
       const changeLines = change.value.replace(/\n$/, "").split("\n");
       for (const line of changeLines) {
         if (change.added) {
           result.push({ content: line, type: "added" });
+          added++;
         } else if (change.removed) {
           result.push({ content: line, type: "removed" });
+          removed++;
         } else {
           result.push({ content: line, type: "unchanged" });
         }
       }
     }
 
-    return result;
+    return { lines: result, addedCount: added, removedCount: removed };
   }, [original, modified]);
 
   if (lines.length === 0) {
@@ -76,9 +80,6 @@ export function ConfigDiff({
       </Card>
     );
   }
-
-  const addedCount = lines.filter((l) => l.type === "added").length;
-  const removedCount = lines.filter((l) => l.type === "removed").length;
 
   return (
     <Card>
