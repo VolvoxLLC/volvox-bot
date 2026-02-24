@@ -80,7 +80,7 @@ export async function authorizeGuildAdmin(
   return null; // authorized
 }
 
-interface BotApiConfig {
+export interface BotApiConfig {
   baseUrl: string;
   secret: string;
 }
@@ -179,6 +179,10 @@ export async function proxyToBotApi(
       { status: response.status },
     );
   } catch (error) {
+    if ((error as Error).name === "AbortError" || (error as Error).name === "TimeoutError") {
+      logger.error(`${logPrefix} ${errorMessage}: request timed out`);
+      return NextResponse.json({ error: errorMessage }, { status: 504 });
+    }
     logger.error(`${logPrefix} ${errorMessage}:`, error);
     return NextResponse.json(
       { error: errorMessage },
