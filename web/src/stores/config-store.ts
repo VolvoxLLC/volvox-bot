@@ -37,6 +37,9 @@ function isErrorWithMessage(err: unknown): err is { error: string } {
   );
 }
 
+/** Monotonic counter to discard stale PATCH responses. */
+let patchSeq = 0;
+
 export const useConfigStore = create<ConfigState>((set, get) => ({
   config: null,
   loading: false,
@@ -84,6 +87,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       return;
     }
 
+    const seq = ++patchSeq;
     set({ saving: true, error: null });
 
     try {
@@ -110,15 +114,17 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         return;
       }
 
-      // The PATCH response returns the updated section. Merge it into state.
-      const current = get().config;
-      if (current) {
-        set({
-          config: { ...current, [topLevelKey]: data },
-          saving: false,
-        });
-      } else {
-        set({ saving: false });
+      // Only merge the response if no newer request has started since.
+      if (seq === patchSeq) {
+        const current = get().config;
+        if (current) {
+          set({
+            config: { ...current, [topLevelKey]: data },
+            saving: false,
+          });
+        } else {
+          set({ saving: false });
+        }
       }
     } catch {
       set({ error: "Failed to update config", saving: false });

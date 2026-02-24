@@ -9,9 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-/** Discord message character limit. */
-const DEFAULT_MAX_LENGTH = 4000;
+import { SYSTEM_PROMPT_MAX_LENGTH } from "@/types/config";
 
 /** Threshold (percentage of max) at which the counter turns to a warning color. */
 const WARNING_THRESHOLD = 0.9;
@@ -21,7 +19,7 @@ interface SystemPromptEditorProps {
   value: string;
   /** Called with the updated prompt text. */
   onChange: (value: string) => void;
-  /** Maximum allowed characters (defaults to 4000). */
+  /** Maximum allowed characters. */
   maxLength?: number;
   /** Whether the editor is disabled. */
   disabled?: boolean;
@@ -30,7 +28,7 @@ interface SystemPromptEditorProps {
 export function SystemPromptEditor({
   value,
   onChange,
-  maxLength = DEFAULT_MAX_LENGTH,
+  maxLength = SYSTEM_PROMPT_MAX_LENGTH,
   disabled = false,
 }: SystemPromptEditorProps) {
   const id = useId();

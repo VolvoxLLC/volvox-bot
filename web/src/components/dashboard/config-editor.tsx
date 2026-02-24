@@ -15,6 +15,7 @@ import {
   GUILD_SELECTED_EVENT,
   SELECTED_GUILD_KEY,
 } from "@/lib/guild-selection";
+import { SYSTEM_PROMPT_MAX_LENGTH } from "@/types/config";
 import { ConfigDiff } from "./config-diff";
 import { SystemPromptEditor } from "./system-prompt-editor";
 import { ResetDefaultsButton } from "./reset-defaults-button";
@@ -111,9 +112,6 @@ function isGuildConfig(data: unknown): data is GuildConfig {
   return typeof data === "object" && data !== null && !Array.isArray(data);
 }
 
-/** Discord message character limit for system prompts. */
-const SYSTEM_PROMPT_MAX_LENGTH = 4000;
-
 export function ConfigEditor() {
   const [guildId, setGuildId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -129,7 +127,12 @@ export function ConfigEditor() {
 
   // ── Guild selection ────────────────────────────────────────────
   useEffect(() => {
-    const stored = localStorage.getItem(SELECTED_GUILD_KEY) ?? "";
+    let stored = "";
+    try {
+      stored = localStorage.getItem(SELECTED_GUILD_KEY) ?? "";
+    } catch {
+      // localStorage may be unavailable in SSR or restricted environments
+    }
     setGuildId(stored);
 
     function onGuildSelected(e: Event) {
@@ -204,10 +207,10 @@ export function ConfigEditor() {
     return () => abortRef.current?.abort();
   }, [guildId, fetchConfig]);
 
-  // ── Derived state (memoized to avoid repeated JSON.stringify) ──
+  // ── Derived state ──────────────────────────────────────────────
   const hasChanges = useMemo(() => {
     if (!savedConfig || !draftConfig) return false;
-    return JSON.stringify(savedConfig) !== JSON.stringify(draftConfig);
+    return !deepEqual(savedConfig, draftConfig);
   }, [savedConfig, draftConfig]);
 
   const hasValidationErrors = useMemo(() => {
@@ -228,7 +231,7 @@ export function ConfigEditor() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [hasChanges]);
 
-  // ── Save changes (one field at a time via PATCH) ───────────────
+  // ── Save changes (batched: parallel PATCH per section) ─────────
   const saveChanges = useCallback(async () => {
     if (!guildId || !savedConfig || !draftConfig) return;
 
@@ -245,10 +248,20 @@ export function ConfigEditor() {
       return;
     }
 
+    // Group patches by top-level section for batched requests
+    const bySection = new Map<string, Array<{ path: string; value: unknown }>>();
+    for (const patch of patches) {
+      const section = patch.path.split(".")[0];
+      if (!bySection.has(section)) bySection.set(section, []);
+      bySection.get(section)!.push(patch);
+    }
+
     setSaving(true);
 
-    try {
-      for (const patch of patches) {
+    const failedSections: string[] = [];
+
+    async function sendSection(sectionPatches: Array<{ path: string; value: unknown }>) {
+      for (const patch of sectionPatches) {
         const res = await fetch(
           `/api/guilds/${encodeURIComponent(guildId)}/config`,
           {
@@ -271,8 +284,30 @@ export function ConfigEditor() {
           );
         }
       }
+    }
 
-      toast.success("Config saved successfully!");
+    try {
+      const results = await Promise.allSettled(
+        Array.from(bySection.entries()).map(async ([section, sectionPatches]) => {
+          try {
+            await sendSection(sectionPatches);
+          } catch (err) {
+            failedSections.push(section);
+            throw err;
+          }
+        }),
+      );
+
+      const hasFailures = results.some((r) => r.status === "rejected");
+
+      if (hasFailures) {
+        toast.error("Some sections failed to save", {
+          description: `Failed: ${failedSections.join(", ")}`,
+        });
+      } else {
+        toast.success("Config saved successfully!");
+      }
+
       // Reload to get the authoritative version from the server
       await fetchConfig(guildId);
     } catch (err) {
@@ -804,6 +839,29 @@ function ToggleSwitch({ checked, onChange, disabled, label }: ToggleSwitchProps)
 
 // ── Helpers ────────────────────────────────────────────────────────
 
+/** Recursive deep-equal for plain JSON-serialisable values. */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== typeof b) return false;
+
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((item, i) => deepEqual(item, b[i]));
+  }
+
+  if (typeof a === "object") {
+    const aObj = a as Record<string, unknown>;
+    const bObj = b as Record<string, unknown>;
+    const aKeys = Object.keys(aObj);
+    const bKeys = Object.keys(bObj);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key) => Object.hasOwn(bObj, key) && deepEqual(aObj[key], bObj[key]));
+  }
+
+  return false;
+}
+
 /**
  * Compare two config objects and return an array of `{ path, value }` patches
  * suitable for the PATCH API endpoint.
@@ -829,7 +887,7 @@ function computePatches(
       const origVal = origObj[key];
       const modVal = modObj[key];
 
-      if (JSON.stringify(origVal) === JSON.stringify(modVal)) continue;
+      if (deepEqual(origVal, modVal)) continue;
 
       // If both are plain objects, recurse to find the leaf changes
       if (

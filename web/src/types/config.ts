@@ -129,3 +129,6 @@ export type WritableConfigSection = "ai" | "welcome" | "spam" | "moderation" | "
 
 /** All config sections shown in the editor. */
 export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";
+
+/** Discord message character limit for system prompts. */
+export const SYSTEM_PROMPT_MAX_LENGTH = 4000;
