@@ -89,8 +89,8 @@ function extractMappedIPv4(ipv6) {
 /** Blocked hostnames (case-insensitive check performed by caller). */
 const BLOCKED_HOSTNAMES = new Set(['localhost']);
 
-/** IPv6 loopback representations to block. */
-const BLOCKED_IPV6 = new Set(['::1', '[::1]', '0:0:0:0:0:0:0:1']);
+/** IPv6 loopback representations to block (URL.hostname strips brackets). */
+const BLOCKED_IPV6 = new Set(['::1', '0:0:0:0:0:0:0:1']);
 
 /**
  * Cache of previously validated URLs.
@@ -164,17 +164,7 @@ function _validateUrlUncached(url) {
   // IPv4 private range check (hostname could be a raw IP)
   if (isBlockedIPv4(hostname)) return false;
 
-  // Bracketed IPv6 — strip brackets and re-check
-  if (hostname.startsWith('[') && hostname.endsWith(']')) {
-    const inner = hostname.slice(1, -1);
-    if (BLOCKED_IPV6.has(inner)) return false;
-
-    // IPv4-mapped IPv6: e.g. [::ffff:127.0.0.1] or [::ffff:7f00:1]
-    const mappedIPv4 = extractMappedIPv4(inner);
-    if (mappedIPv4 && isBlockedIPv4(mappedIPv4)) return false;
-  }
-
-  // Unbracketed IPv4-mapped IPv6 (some parsers may strip brackets)
+  // IPv4-mapped IPv6 (URL.hostname already strips brackets for IPv6)
   const mappedIPv4 = extractMappedIPv4(hostname);
   if (mappedIPv4 && isBlockedIPv4(mappedIPv4)) return false;
 
