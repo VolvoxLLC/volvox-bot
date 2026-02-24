@@ -12,19 +12,14 @@ import {
   READABLE_CONFIG_KEYS,
   SAFE_CONFIG_KEYS,
 } from '../utils/configAllowlist.js';
-import {
-  CONFIG_SCHEMA,
-  validateSingleValue,
-  validateValue,
-} from '../utils/configValidation.js';
+import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
-const router = Router();
-
-// validateSingleValue is re-exported here so existing callers that import
-// it from this module continue to work without changes.
+// Re-export validateSingleValue so existing callers that import it from this
+// module continue to work without changes.
 export { validateSingleValue } from '../utils/configValidation.js';
 
+const router = Router();
 
 /**
  * Validate a config object against the schema.
