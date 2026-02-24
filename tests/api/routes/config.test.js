@@ -358,7 +358,7 @@ describe('config routes', () => {
       expect(setConfigValue).toHaveBeenCalledWith('ai.customSetting', 'test');
     });
 
-    it('should reject Infinity as a number value', async () => {
+    it('should reject null on non-nullable number field (Infinity serializes to null)', async () => {
       // JSON.stringify(Infinity) becomes null, so this tests the edge case
       // when sent as a raw number via test helper
       const res = await request(app)
