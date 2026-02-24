@@ -179,5 +179,48 @@ describe('webhooks routes', () => {
       expect(res.status).toBe(500);
       expect(res.body.error).toContain('Failed to update config');
     });
+
+    it('should return 400 when path exceeds 200 characters', async () => {
+      const longPath = `ai.${'a'.repeat(200)}`;
+      const res = await request(app)
+        .post('/api/v1/webhooks/config-update')
+        .set('x-api-secret', SECRET)
+        .send({ guildId: 'guild1', path: longPath, value: 'test' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('maximum length');
+    });
+
+    it('should return 400 when path exceeds 10 segments', async () => {
+      const deepPath = 'ai.a.b.c.d.e.f.g.h.i.j';
+      const res = await request(app)
+        .post('/api/v1/webhooks/config-update')
+        .set('x-api-secret', SECRET)
+        .send({ guildId: 'guild1', path: deepPath, value: 'test' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('maximum depth');
+    });
+
+    it('should return 400 for type mismatch on webhook config-update', async () => {
+      const res = await request(app)
+        .post('/api/v1/webhooks/config-update')
+        .set('x-api-secret', SECRET)
+        .send({ guildId: 'guild1', path: 'ai.enabled', value: 'not-a-boolean' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Value validation failed');
+      expect(res.body.details[0]).toContain('expected boolean');
+    });
+
+    it('should allow valid values through schema validation', async () => {
+      getConfig.mockReturnValueOnce({ ai: { enabled: false } });
+      const res = await request(app)
+        .post('/api/v1/webhooks/config-update')
+        .set('x-api-secret', SECRET)
+        .send({ guildId: 'guild1', path: 'ai.enabled', value: false });
+
+      expect(res.status).toBe(200);
+    });
   });
 });

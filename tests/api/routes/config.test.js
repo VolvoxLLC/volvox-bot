@@ -23,7 +23,11 @@ vi.mock('../../../src/modules/config.js', () => ({
 }));
 
 import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
-import { flattenToLeafPaths, validateConfigSchema } from '../../../src/api/routes/config.js';
+import {
+  flattenToLeafPaths,
+  validateConfigSchema,
+  validateSingleValue,
+} from '../../../src/api/routes/config.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
@@ -480,5 +484,116 @@ describe('flattenToLeafPaths', () => {
     const result = flattenToLeafPaths({ channelId: null }, 'welcome');
 
     expect(result).toEqual([['welcome.channelId', null]]);
+  });
+});
+
+describe('validateSingleValue', () => {
+  it('should return empty array for valid boolean', () => {
+    expect(validateSingleValue('ai.enabled', true)).toEqual([]);
+  });
+
+  it('should return error for boolean type mismatch', () => {
+    const errors = validateSingleValue('ai.enabled', 'yes');
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toContain('expected boolean');
+  });
+
+  it('should return error for number type mismatch', () => {
+    const errors = validateSingleValue('ai.historyLength', 'twenty');
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toContain('expected finite number');
+  });
+
+  it('should return empty array for unknown/extensible property', () => {
+    expect(validateSingleValue('ai.customSetting', 'anything')).toEqual([]);
+  });
+
+  it('should return empty array for unknown section', () => {
+    expect(validateSingleValue('unknown.key', 'value')).toEqual([]);
+  });
+
+  it('should validate nested paths', () => {
+    const errors = validateSingleValue('ai.threadMode.enabled', 'not-a-bool');
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toContain('expected boolean');
+  });
+
+  it('should validate nullable fields', () => {
+    expect(validateSingleValue('welcome.channelId', null)).toEqual([]);
+    const errors = validateSingleValue('ai.enabled', null);
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toContain('must not be null');
+  });
+});
+
+describe('PUT / partial write handling', () => {
+  let app;
+  const SECRET = 'test-secret';
+
+  beforeEach(() => {
+    vi.stubEnv('BOT_API_SECRET', SECRET);
+    const client = {
+      guilds: { cache: new Map() },
+      ws: { status: 0, ping: 42 },
+      user: { tag: 'Bot#1234' },
+    };
+    app = createApp(client, null);
+  });
+
+  afterEach(() => {
+    sessionStore.clear();
+    guildCache.clear();
+    _resetSecretCache();
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('should return 207 when some writes fail', async () => {
+    setConfigValue
+      .mockResolvedValueOnce({}) // ai.enabled succeeds
+      .mockRejectedValueOnce(new Error('DB write error')); // ai.historyLength fails
+
+    const res = await request(app)
+      .put('/api/v1/config')
+      .set('x-api-secret', SECRET)
+      .send({ ai: { enabled: true, historyLength: 30 } });
+
+    expect(res.status).toBe(207);
+    expect(res.body.error).toContain('Partial');
+    expect(res.body.results).toHaveLength(2);
+    expect(res.body.results[0].status).toBe('success');
+    expect(res.body.results[1].status).toBe('failed');
+    expect(res.body.config).toBeDefined();
+  });
+
+  it('should return 500 with results when all writes fail', async () => {
+    setConfigValue.mockRejectedValue(new Error('DB error'));
+
+    const res = await request(app)
+      .put('/api/v1/config')
+      .set('x-api-secret', SECRET)
+      .send({ ai: { enabled: true, historyLength: 30 } });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toContain('all writes failed');
+    expect(res.body.results).toHaveLength(2);
+    expect(res.body.results.every((r) => r.status === 'failed')).toBe(true);
+  });
+
+  it('should include per-field error messages in results', async () => {
+    setConfigValue
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('specific error message'));
+
+    const res = await request(app)
+      .put('/api/v1/config')
+      .set('x-api-secret', SECRET)
+      .send({ ai: { enabled: true, historyLength: 30 } });
+
+    expect(res.status).toBe(207);
+    const failedResult = res.body.results.find((r) => r.status === 'failed');
+    expect(failedResult.error).toBe('specific error message');
+    expect(failedResult.path).toBe('ai.historyLength');
   });
 });

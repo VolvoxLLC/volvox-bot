@@ -484,6 +484,60 @@ describe('guilds routes', () => {
       expect(res.status).toBe(500);
     });
 
+    it('should return 400 when path exceeds 200 characters', async () => {
+      const longPath = `ai.${'a'.repeat(200)}`;
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: longPath, value: 'test' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('maximum length');
+    });
+
+    it('should return 400 when path exceeds 10 segments', async () => {
+      const deepPath = 'ai.a.b.c.d.e.f.g.h.i.j';
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: deepPath, value: 'test' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('maximum depth');
+    });
+
+    it('should accept path with exactly 10 segments', async () => {
+      getConfig.mockReturnValueOnce({ ai: {} });
+      const exactPath = 'ai.a.b.c.d.e.f.g.h.i';
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: exactPath, value: 'test' });
+
+      expect(res.status).toBe(200);
+    });
+
+    it('should return 400 for type mismatch on PATCH', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'ai.enabled', value: 'not-a-boolean' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Value validation failed');
+      expect(res.body.details[0]).toContain('expected boolean');
+    });
+
+    it('should allow valid values through schema validation on PATCH', async () => {
+      getConfig.mockReturnValueOnce({ ai: { enabled: true } });
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'ai.enabled', value: true });
+
+      expect(res.status).toBe(200);
+    });
+
     describe('dashboard webhook notifications', () => {
       it('should fire dashboard webhook when DASHBOARD_WEBHOOK_URL is set', async () => {
         const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true });

@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { validateSingleValue } from './config.js';
 
 const router = Router();
 
@@ -56,6 +57,19 @@ router.post('/config-update', (req, res) => {
   const segments = path.split('.');
   if (segments.some((s) => s === '')) {
     return res.status(400).json({ error: 'Config path contains empty segments' });
+  }
+
+  if (path.length > 200) {
+    return res.status(400).json({ error: 'Config path exceeds maximum length of 200 characters' });
+  }
+
+  if (segments.length > 10) {
+    return res.status(400).json({ error: 'Config path exceeds maximum depth of 10 segments' });
+  }
+
+  const valErrors = validateSingleValue(path, value);
+  if (valErrors.length > 0) {
+    return res.status(400).json({ error: 'Value validation failed', details: valErrors });
   }
 
   setConfigValue(path, value, guildId)

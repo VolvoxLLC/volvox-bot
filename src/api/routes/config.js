@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { validateWebhookUrl } from '../utils/validateWebhookUrl.js';
 
 const router = Router();
 
@@ -236,6 +237,34 @@ export function validateConfigSchema(config) {
 }
 
 /**
+ * Validate a single config path + value against the schema.
+ * Used by PATCH endpoints and webhook config-update to validate individual writes.
+ *
+ * @param {string} path - Dot-notation path (e.g. "ai.enabled")
+ * @param {*} value - The value to validate
+ * @returns {string[]} Array of validation error messages (empty if valid)
+ */
+export function validateSingleValue(path, value) {
+  const segments = path.split('.');
+  const section = segments[0];
+
+  const schema = CONFIG_SCHEMA[section];
+  if (!schema) return []; // unknown section — let SAFE_CONFIG_KEYS guard handle it
+
+  // Walk the schema tree to find the leaf schema for this path
+  let currentSchema = schema;
+  for (let i = 1; i < segments.length; i++) {
+    if (!currentSchema.properties || !currentSchema.properties[segments[i]]) {
+      // Path targets an unknown/extensible property — no schema to validate against
+      return [];
+    }
+    currentSchema = currentSchema.properties[segments[i]];
+  }
+
+  return validateValue(value, currentSchema, path);
+}
+
+/**
  * Flatten a nested object into dot-notation [path, value] pairs.
  * Plain objects are recursed into; arrays and primitives are leaf values.
  *
@@ -268,6 +297,8 @@ export function flattenToLeafPaths(obj, prefix) {
 function notifyWebhook(sections) {
   const url = process.env.CONFIG_CHANGE_WEBHOOK_URL;
   if (!url) return;
+
+  if (!validateWebhookUrl(url)) return;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
@@ -362,34 +393,69 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Config validation failed', details: validationErrors });
   }
 
-  try {
-    for (const [section, sectionValue] of Object.entries(req.body)) {
-      if (!SAFE_CONFIG_KEYS.includes(section)) continue;
-
-      const paths = flattenToLeafPaths(sectionValue, section);
-
-      for (const [path, value] of paths) {
-        await setConfigValue(path, value);
-      }
+  // Collect all leaf writes first
+  const allWrites = [];
+  for (const [section, sectionValue] of Object.entries(req.body)) {
+    if (!SAFE_CONFIG_KEYS.includes(section)) continue;
+    const paths = flattenToLeafPaths(sectionValue, section);
+    for (const [path, value] of paths) {
+      allWrites.push({ path, value });
     }
+  }
 
-    const updated = getConfig();
-    const safeConfig = {};
-
-    for (const key of READABLE_CONFIG_KEYS) {
-      if (key in updated) {
-        safeConfig[key] = updated[key];
-      }
+  // Apply all writes, tracking successes and failures individually
+  const results = [];
+  for (const { path, value } of allWrites) {
+    try {
+      await setConfigValue(path, value);
+      results.push({ path, status: 'success' });
+    } catch (err) {
+      results.push({ path, status: 'failed', error: err.message });
     }
+  }
 
-    const updatedSections = Object.keys(req.body).filter((k) => SAFE_CONFIG_KEYS.includes(k));
+  const succeeded = results.filter((r) => r.status === 'success');
+  const failed = results.filter((r) => r.status === 'failed');
+
+  const updated = getConfig();
+  const safeConfig = {};
+  for (const key of READABLE_CONFIG_KEYS) {
+    if (key in updated) {
+      safeConfig[key] = updated[key];
+    }
+  }
+
+  const updatedSections = Object.keys(req.body).filter((k) => SAFE_CONFIG_KEYS.includes(k));
+
+  if (failed.length === 0) {
+    // All writes succeeded
     info('Global config updated via config API', { sections: updatedSections });
     notifyWebhook(updatedSections);
-    res.json(safeConfig);
-  } catch (err) {
-    error('Failed to update global config via API', { error: err.message });
-    res.status(500).json({ error: 'Failed to update config' });
+    return res.json(safeConfig);
   }
+
+  if (succeeded.length === 0) {
+    // All writes failed
+    error('Failed to update global config via API — all writes failed', {
+      failed: failed.map((f) => f.path),
+    });
+    return res.status(500).json({
+      error: 'Failed to update config — all writes failed',
+      results,
+    });
+  }
+
+  // Partial success
+  warn('Global config partially updated via config API', {
+    succeeded: succeeded.map((s) => s.path),
+    failed: failed.map((f) => f.path),
+  });
+  notifyWebhook(updatedSections);
+  return res.status(207).json({
+    error: 'Partial config update — some writes failed',
+    results,
+    config: safeConfig,
+  });
 });
 
 export default router;

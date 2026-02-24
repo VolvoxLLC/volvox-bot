@@ -9,6 +9,8 @@ import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
 import { getSessionToken } from '../utils/sessionStore.js';
+import { validateWebhookUrl } from '../utils/validateWebhookUrl.js';
+import { validateSingleValue } from './config.js';
 
 const router = Router();
 
@@ -40,6 +42,8 @@ const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging', 'memory', 'permiss
 function notifyDashboardWebhook(guildId, updatedKeys) {
   const url = process.env.DASHBOARD_WEBHOOK_URL;
   if (!url) return;
+
+  if (!validateWebhookUrl(url)) return;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
@@ -520,6 +524,19 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
   const segments = path.split('.');
   if (segments.some((s) => s === '')) {
     return res.status(400).json({ error: 'Config path contains empty segments' });
+  }
+
+  if (path.length > 200) {
+    return res.status(400).json({ error: 'Config path exceeds maximum length of 200 characters' });
+  }
+
+  if (segments.length > 10) {
+    return res.status(400).json({ error: 'Config path exceeds maximum depth of 10 segments' });
+  }
+
+  const valErrors = validateSingleValue(path, value);
+  if (valErrors.length > 0) {
+    return res.status(400).json({ error: 'Value validation failed', details: valErrors });
   }
 
   try {
