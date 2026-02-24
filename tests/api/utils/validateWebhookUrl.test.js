@@ -153,24 +153,23 @@ describe('validateWebhookUrl', () => {
     });
 
     it('should evict cache when size exceeds 100 entries', () => {
-      // Fill the cache with 100 entries
-      for (let i = 0; i < 100; i++) {
-        validateWebhookUrl(`https://example-${i}.com/hook`);
-      }
-      // The 101st entry should trigger a cache clear
-      // Verify by checking that a previously cached result is re-evaluated
+      // Cache the target URL as valid in development (http:// allowed in dev)
       vi.stubEnv('NODE_ENV', 'development');
-      _resetValidationCache();
+      expect(validateWebhookUrl('http://should-evict.com/hook')).toBe(true);
 
-      // Fill again to 100
-      for (let i = 0; i < 100; i++) {
-        validateWebhookUrl(`https://evict-${i}.com/hook`);
+      // Fill the cache with 99 more entries so total = 100 (MAX_CACHE_SIZE)
+      for (let i = 0; i < 99; i++) {
+        validateWebhookUrl(`https://evict-filler-${i}.com/hook`);
       }
-      // Stub env to production so http:// would fail
+
+      // Switch to production — http:// is now invalid
       vi.stubEnv('NODE_ENV', 'production');
-      // Cache is at 100, next insert triggers clear
-      // Validate a new URL — should work since cache was cleared and re-evaluated
-      expect(validateWebhookUrl('https://evict-new.com/hook')).toBe(true);
+
+      // Adding the 101st entry triggers eviction: cache.size (100) >= MAX_CACHE_SIZE → clear
+      validateWebhookUrl('https://evict-trigger.com/hook');
+
+      // Re-evaluate the target URL — it was evicted, so it must be re-evaluated in production context
+      expect(validateWebhookUrl('http://should-evict.com/hook')).toBe(false);
     });
   });
 });
