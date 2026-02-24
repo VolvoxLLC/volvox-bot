@@ -17,7 +17,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       {children}
-      <Toaster position="bottom-right" theme="dark" richColors />
+      <Toaster position="bottom-right" theme="system" richColors />
     </SessionProvider>
   );
 }
