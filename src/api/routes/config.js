@@ -6,22 +6,10 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { READABLE_CONFIG_KEYS, SAFE_CONFIG_KEYS } from '../utils/configAllowlist.js';
+import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 const router = Router();
-
-const WEBHOOK_TIMEOUT_MS = 5_000;
-
-/**
- * Config sections that can be written via the PUT endpoint.
- * Mirrors SAFE_CONFIG_KEYS in guilds.js.
- */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'triage'];
-
-/**
- * Config sections that can be read via the GET endpoint.
- * Includes everything in SAFE_CONFIG_KEYS plus read-only sections.
- */
-const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging', 'memory', 'permissions'];
 
 /**
  * Schema definitions for writable config sections.
@@ -260,36 +248,6 @@ export function flattenToLeafPaths(obj, prefix) {
 }
 
 /**
- * Fire-and-forget webhook notification for config changes.
- * Uses CONFIG_CHANGE_WEBHOOK_URL env var. Logs failure but never blocks the response.
- *
- * @param {string[]} sections - Config sections that were updated
- */
-function notifyWebhook(sections) {
-  const url = process.env.CONFIG_CHANGE_WEBHOOK_URL;
-  if (!url) return;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event: 'config.updated', sections, timestamp: Date.now() }),
-    signal: controller.signal,
-  })
-    .then((response) => {
-      if (!response.ok) {
-        warn('Config change webhook returned non-OK status', { status: response.status, url });
-      }
-    })
-    .catch((err) => {
-      warn('Config change webhook failed', { error: err.message, url });
-    })
-    .finally(() => clearTimeout(timer));
-}
-
-/**
  * Middleware: restrict to API-secret callers or bot-owner OAuth users.
  * Global config changes affect all guilds, so only trusted callers are allowed.
  */
@@ -384,7 +342,11 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
 
     const updatedSections = Object.keys(req.body).filter((k) => SAFE_CONFIG_KEYS.includes(k));
     info('Global config updated via config API', { sections: updatedSections });
-    notifyWebhook(updatedSections);
+    fireAndForgetWebhook('CONFIG_CHANGE_WEBHOOK_URL', {
+      event: 'config.updated',
+      sections: updatedSections,
+      timestamp: Date.now(),
+    });
     res.json(safeConfig);
   } catch (err) {
     error('Failed to update global config via API', { error: err.message });

@@ -6,14 +6,9 @@
 import { Router } from 'express';
 import { error, info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { SAFE_CONFIG_KEYS } from '../utils/configAllowlist.js';
 
 const router = Router();
-
-/**
- * Config keys that can be written via the webhook endpoint.
- * Mirrors SAFE_CONFIG_KEYS in guilds.js / config.js.
- */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'triage'];
 
 /**
  * POST /config-update — Receive a config update pushed from the dashboard.
