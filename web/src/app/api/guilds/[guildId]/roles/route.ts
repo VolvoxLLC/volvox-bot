@@ -19,7 +19,7 @@ const LOG_PREFIX = "[api/guilds/:guildId/roles]";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
+  { params }: { params: Promise<{ guildId: string }> },
 ) {
   const { guildId } = await params;
   if (!guildId) {
