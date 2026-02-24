@@ -24,6 +24,7 @@ describe('fireAndForgetWebhook', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
@@ -76,7 +77,6 @@ describe('fireAndForgetWebhook', () => {
     vi.advanceTimersByTime(WEBHOOK_TIMEOUT_MS);
 
     expect(capturedSignal.aborted).toBe(true);
-    vi.useRealTimers();
   });
 
   it('should log a warning when webhook returns non-OK status', async () => {
