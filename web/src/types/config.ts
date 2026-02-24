@@ -132,3 +132,12 @@ export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";
 
 /** Discord message character limit for system prompts. */
 export const SYSTEM_PROMPT_MAX_LENGTH = 4000;
+
+/** Recursively make all properties optional. */
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends (infer U)[]
+    ? DeepPartial<U>[]
+    : T[P] extends object
+      ? DeepPartial<T[P]>
+      : T[P];
+};
