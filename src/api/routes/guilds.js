@@ -458,6 +458,7 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
     fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
       event: 'config.updated',
       guildId: req.params.id,
+      section: topLevelKey,
       updatedKeys: [path],
       timestamp: Date.now(),
     });
