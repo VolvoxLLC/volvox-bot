@@ -576,7 +576,7 @@ describe('validateSingleValue', () => {
   it('should return error for unknown property within a known section', () => {
     const errors = validateSingleValue('ai.customSetting', 'anything');
     expect(errors.length).toBe(1);
-    expect(errors[0].message).toContain('Unknown config path');
+    expect(errors[0]).toContain('Unknown config path');
   });
 
   it('should return empty array for unknown section', () => {

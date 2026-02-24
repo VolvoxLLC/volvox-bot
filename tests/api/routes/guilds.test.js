@@ -557,7 +557,7 @@ describe('guilds routes', () => {
         .send({ path: 'ai.nonExistentKey', value: 'test' });
 
       expect(res.status).toBe(400);
-      expect(res.body.details[0].message).toContain('Unknown config path');
+      expect(res.body.details[0]).toContain('Unknown config path');
     });
 
     it('should return 400 for type mismatch on PATCH', async () => {
