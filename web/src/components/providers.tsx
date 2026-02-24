@@ -1,6 +1,7 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
+import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 
 /**
@@ -9,5 +10,10 @@ import type { ReactNode } from "react";
  * component which signs out and redirects to /login.
  */
 export function Providers({ children }: { children: ReactNode }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  return (
+    <SessionProvider>
+      {children}
+      <Toaster position="bottom-right" theme="dark" richColors />
+    </SessionProvider>
+  );
 }
