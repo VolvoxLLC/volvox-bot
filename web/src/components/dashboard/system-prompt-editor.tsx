@@ -97,7 +97,7 @@ export function SystemPromptEditor({
                   : "text-muted-foreground",
             )}
             role="status"
-            aria-live="polite"
+            aria-live="off"
           >
             {charCount.toLocaleString()} / {maxLength.toLocaleString()}
           </span>
