@@ -1,6 +1,6 @@
-# Contributing to Bill Bot
+# Contributing to Volvox Bot
 
-Thanks for your interest in contributing! Bill Bot is part of the [Volvox](https://volvox.dev) open-source community.
+Thanks for your interest in contributing! Volvox Bot is part of the [Volvox](https://volvox.dev) open-source community.
 
 ## Getting Started
 

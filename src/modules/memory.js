@@ -6,7 +6,7 @@
  * and graph memory enabled for entity relationship tracking.
  *
  * All operations are scoped per-user (Discord ID) and namespaced
- * with app_id="bills-bot" to isolate from other consumers.
+ * with app_id="volvox-bot" to isolate from other consumers.
  *
  * Graceful fallback: if mem0 is unavailable, all operations return
  * safe defaults (empty arrays / false) so the AI pipeline continues.
@@ -25,7 +25,7 @@ import { getConfig } from './config.js';
 import { isOptedOut } from './optout.js';
 
 /** App namespace — isolates memories from other mem0 consumers */
-const APP_ID = 'bills-bot';
+const APP_ID = 'volvox-bot';
 
 /** Default maximum memories to inject into context */
 const DEFAULT_MAX_CONTEXT_MEMORIES = 5;
