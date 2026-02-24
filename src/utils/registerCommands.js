@@ -1,5 +1,5 @@
 /**
- * Command registration utilities for Bill Bot
+ * Command registration utilities for Volvox Bot
  *
  * Handles registering slash commands with Discord's API
  */

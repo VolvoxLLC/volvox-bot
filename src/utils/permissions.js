@@ -1,5 +1,5 @@
 /**
- * Permission checking utilities for Bill Bot
+ * Permission checking utilities for Volvox Bot
  *
  * Provides centralized permission checks for commands and features.
  */

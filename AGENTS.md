@@ -1,10 +1,10 @@
 # AGENTS.md — AI Coding Agent Guide
 
-> This file provides context for AI coding agents (Claude Code, Copilot, Cursor, etc.) working on bills-bot.
+> This file provides context for AI coding agents (Claude Code, Copilot, Cursor, etc.) working on volvox-bot.
 
 ## Project Overview
 
-**Bill Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude CLI in headless mode with split Haiku classifier + Sonnet responder triage), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
+**Volvox Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude CLI in headless mode with split Haiku classifier + Sonnet responder triage), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
 
 ## Stack
 
