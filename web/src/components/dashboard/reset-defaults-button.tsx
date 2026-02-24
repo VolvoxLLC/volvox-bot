@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +18,7 @@ interface ResetDefaultsButtonProps {
   onReset: () => void;
   /** Whether the button is disabled. */
   disabled?: boolean;
-  /** Optional description shown in the confirmation dialog. */
+  /** Description of what will be discarded, shown in the confirmation dialog. */
   sectionLabel?: string;
 }
 
@@ -38,17 +38,17 @@ export function ResetDefaultsButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled}>
-          <RotateCcw className="mr-2 h-4 w-4" />
-          Reset to Defaults
+          <Undo2 className="mr-2 h-4 w-4" aria-hidden="true" />
+          Discard Changes
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reset to Defaults</DialogTitle>
+          <DialogTitle>Discard Changes?</DialogTitle>
           <DialogDescription>
             {sectionLabel
-              ? `This will reset ${sectionLabel} to the default configuration. Any custom changes will be lost.`
-              : "This will reset all settings to their default values. Any custom changes will be lost."}
+              ? `This will discard ${sectionLabel}. Your configuration will revert to the last saved state.`
+              : "This will discard all unsaved changes. Your configuration will revert to the last saved state."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -56,7 +56,7 @@ export function ResetDefaultsButton({
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
-            Reset
+            Discard
           </Button>
         </DialogFooter>
       </DialogContent>

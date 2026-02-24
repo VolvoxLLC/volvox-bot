@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,9 @@ interface GuildConfig {
 function isGuildConfig(data: unknown): data is GuildConfig {
   return typeof data === "object" && data !== null && !Array.isArray(data);
 }
+
+/** Discord message character limit for system prompts. */
+const SYSTEM_PROMPT_MAX_LENGTH = 4000;
 
 export function ConfigEditor() {
   const [guildId, setGuildId] = useState<string>("");
@@ -145,9 +148,40 @@ export function ConfigEditor() {
     return () => abortRef.current?.abort();
   }, [guildId, fetchConfig]);
 
+  // ── Derived state (memoized to avoid repeated JSON.stringify) ──
+  const hasChanges = useMemo(() => {
+    if (!savedConfig || !draftConfig) return false;
+    return JSON.stringify(savedConfig) !== JSON.stringify(draftConfig);
+  }, [savedConfig, draftConfig]);
+
+  const hasValidationErrors = useMemo(() => {
+    if (!draftConfig) return false;
+    const promptLength = draftConfig.ai?.systemPrompt?.length ?? 0;
+    return promptLength > SYSTEM_PROMPT_MAX_LENGTH;
+  }, [draftConfig]);
+
+  // ── Warn on unsaved changes before navigation ──────────────────
+  useEffect(() => {
+    if (!hasChanges) return;
+
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasChanges]);
+
   // ── Save changes (one field at a time via PATCH) ───────────────
   const saveChanges = useCallback(async () => {
     if (!guildId || !savedConfig || !draftConfig) return;
+
+    if (hasValidationErrors) {
+      toast.error("Cannot save", {
+        description: "Fix validation errors before saving.",
+      });
+      return;
+    }
 
     const patches = computePatches(savedConfig, draftConfig);
     if (patches.length === 0) {
@@ -191,14 +225,27 @@ export function ConfigEditor() {
     } finally {
       setSaving(false);
     }
-  }, [guildId, savedConfig, draftConfig, fetchConfig]);
+  }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
-  // ── Reset to defaults ──────────────────────────────────────────
-  const resetToDefaults = useCallback(() => {
+  // ── Keyboard shortcut: Ctrl/Cmd+S to save ──────────────────────
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        if (hasChanges && !saving && !hasValidationErrors) {
+          saveChanges();
+        }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hasChanges, saving, hasValidationErrors, saveChanges]);
+
+  // ── Discard edits ──────────────────────────────────────────────
+  const discardChanges = useCallback(() => {
     if (!savedConfig) return;
-    // Revert the working copy back to the last-saved state
     setDraftConfig(structuredClone(savedConfig));
-    toast.success("Config reset to saved values.");
+    toast.success("Changes discarded.");
   }, [savedConfig]);
 
   // ── Draft updaters ─────────────────────────────────────────────
@@ -230,12 +277,6 @@ export function ConfigEditor() {
     });
   }, []);
 
-  // ── Derived state ──────────────────────────────────────────────
-  const hasChanges =
-    savedConfig &&
-    draftConfig &&
-    JSON.stringify(savedConfig) !== JSON.stringify(draftConfig);
-
   // ── No guild selected ──────────────────────────────────────────
   if (!guildId) {
     return (
@@ -253,8 +294,9 @@ export function ConfigEditor() {
   // ── Loading state ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center py-12" role="status">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Loading configuration...</span>
       </div>
     );
   }
@@ -295,23 +337,38 @@ export function ConfigEditor() {
         </div>
         <div className="flex items-center gap-2">
           <ResetDefaultsButton
-            onReset={resetToDefaults}
+            onReset={discardChanges}
             disabled={saving || !hasChanges}
-            sectionLabel="the configuration"
+            sectionLabel="all unsaved changes"
           />
           <Button
             onClick={saveChanges}
-            disabled={saving || !hasChanges}
+            disabled={saving || !hasChanges || hasValidationErrors}
+            aria-keyshortcuts="Control+S Meta+S"
           >
             {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Save className="mr-2 h-4 w-4" />
+              <Save className="mr-2 h-4 w-4" aria-hidden="true" />
             )}
-            Save Changes
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>
+
+      {/* Unsaved changes banner */}
+      {hasChanges && (
+        <div
+          className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
+          role="status"
+        >
+          You have unsaved changes.{" "}
+          <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
+            Ctrl+S
+          </kbd>{" "}
+          to save.
+        </div>
+      )}
 
       {/* AI section */}
       <Card>
@@ -323,16 +380,12 @@ export function ConfigEditor() {
                 Configure the AI assistant behavior.
               </CardDescription>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={draftConfig.ai?.enabled ?? false}
-                onChange={(e) => updateAiEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-input"
-                disabled={saving}
-              />
-              Enabled
-            </label>
+            <ToggleSwitch
+              checked={draftConfig.ai?.enabled ?? false}
+              onChange={updateAiEnabled}
+              disabled={saving}
+              label="AI Chat"
+            />
           </div>
         </CardHeader>
       </Card>
@@ -342,6 +395,7 @@ export function ConfigEditor() {
         value={draftConfig.ai?.systemPrompt ?? ""}
         onChange={updateSystemPrompt}
         disabled={saving}
+        maxLength={SYSTEM_PROMPT_MAX_LENGTH}
       />
 
       {/* Welcome section */}
@@ -354,16 +408,12 @@ export function ConfigEditor() {
                 Greet new members when they join the server.
               </CardDescription>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={draftConfig.welcome?.enabled ?? false}
-                onChange={(e) => updateWelcomeEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-input"
-                disabled={saving}
-              />
-              Enabled
-            </label>
+            <ToggleSwitch
+              checked={draftConfig.welcome?.enabled ?? false}
+              onChange={updateWelcomeEnabled}
+              disabled={saving}
+              label="Welcome Messages"
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -376,9 +426,10 @@ export function ConfigEditor() {
               disabled={saving}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="Welcome message template..."
+              aria-describedby="welcome-message-hint"
             />
           </label>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p id="welcome-message-hint" className="mt-1 text-xs text-muted-foreground">
             Use {"{user}"} for the member mention and {"{memberCount}"} for the
             server member count.
           </p>
@@ -395,7 +446,10 @@ export function ConfigEditor() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <pre className="overflow-x-auto rounded-md border bg-muted/30 p-4 font-mono text-xs text-muted-foreground">
+            <pre
+              className="overflow-x-auto rounded-md border bg-muted/30 p-4 font-mono text-xs text-muted-foreground"
+              aria-label="Moderation configuration (read-only)"
+            >
               {JSON.stringify(draftConfig.moderation, null, 2)}
             </pre>
           </CardContent>
@@ -407,6 +461,35 @@ export function ConfigEditor() {
         <ConfigDiff original={savedConfig} modified={draftConfig} />
       )}
     </div>
+  );
+}
+
+// ── Toggle Switch ───────────────────────────────────────────────
+
+interface ToggleSwitchProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  label: string;
+}
+
+function ToggleSwitch({ checked, onChange, disabled, label }: ToggleSwitchProps) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={`Toggle ${label}`}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 aria-checked:bg-primary aria-[checked=false]:bg-muted"
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0.5"
+        data-state={checked ? "checked" : "unchecked"}
+      />
+    </button>
   );
 }
 

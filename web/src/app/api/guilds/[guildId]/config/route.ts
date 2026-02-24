@@ -143,6 +143,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // Validate PATCH body shape: must have { path: string, value: unknown }
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    typeof (body as Record<string, unknown>).path !== "string" ||
+    !(body as Record<string, unknown>).path
+  ) {
+    return NextResponse.json(
+      { error: "Invalid patch: expected { path: string, value: unknown }" },
+      { status: 400 },
+    );
+  }
+
   let upstreamUrl: URL;
   try {
     upstreamUrl = new URL(

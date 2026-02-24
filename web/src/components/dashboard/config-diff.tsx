@@ -65,16 +65,31 @@ export function ConfigDiff({
     );
   }
 
+  const addedCount = lines.filter((l) => l.type === "added").length;
+  const removedCount = lines.filter((l) => l.type === "removed").length;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription>
-          Review your changes before saving.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">{title}</CardTitle>
+            <CardDescription>
+              Review your changes before saving.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-green-400">+{addedCount}</span>
+            <span className="text-red-400">-{removedCount}</span>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto rounded-md border bg-muted/30 font-mono text-sm">
+        <div
+          className="overflow-x-auto rounded-md border bg-muted/30 font-mono text-sm"
+          role="region"
+          aria-label="Configuration diff"
+        >
           <pre className="p-4">
             {lines.map((line, i) => (
               <div
@@ -87,7 +102,10 @@ export function ConfigDiff({
                       : "text-muted-foreground"
                 }
               >
-                <span className="mr-2 inline-block w-4 select-none text-right opacity-60">
+                <span
+                  className="mr-2 inline-block w-4 select-none text-right opacity-60"
+                  aria-hidden="true"
+                >
                   {line.type === "added"
                     ? "+"
                     : line.type === "removed"

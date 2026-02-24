@@ -1,5 +1,5 @@
-export const SELECTED_GUILD_KEY = "bills-bot-selected-guild";
-export const GUILD_SELECTED_EVENT = "bills-bot:guild-selected";
+export const SELECTED_GUILD_KEY = "volvox-bot-selected-guild";
+export const GUILD_SELECTED_EVENT = "volvox-bot:guild-selected";
 
 /**
  * Persist and broadcast guild selection changes so dashboard views can react immediately.
