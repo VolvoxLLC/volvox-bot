@@ -404,6 +404,32 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
 });
 
 /**
+ * GET /:id/channels — Guild channel list
+ */
+router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
+  const guild = req.guild;
+  const MAX_CHANNELS = 500;
+  const channels = [];
+  for (const ch of guild.channels.cache.values()) {
+    if (channels.length >= MAX_CHANNELS) break;
+    channels.push({ id: ch.id, name: ch.name, type: ch.type });
+  }
+  res.json(channels);
+});
+
+/**
+ * GET /:id/roles — Guild role list
+ */
+router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
+  const guild = req.guild;
+  const roles = Array.from(guild.roles.cache.values())
+    .filter((r) => r.id !== guild.id) // exclude @everyone
+    .sort((a, b) => b.position - a.position)
+    .map((r) => ({ id: r.id, name: r.name, color: r.color }));
+  res.json(roles);
+});
+
+/**
  * GET /:id/config — Read guild config (safe keys only)
  * Returns per-guild config (global defaults merged with guild overrides).
  */
