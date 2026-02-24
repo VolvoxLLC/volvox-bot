@@ -1,6 +1,8 @@
+import dns from 'node:dns';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   _resetValidationCache,
+  validateDnsResolution,
   validateWebhookUrl,
 } from '../../../src/api/utils/validateWebhookUrl.js';
 
@@ -171,6 +173,91 @@ describe('validateWebhookUrl', () => {
       // Cache is at 100, next insert triggers clear
       // Validate a new URL — should work since cache was cleared and re-evaluated
       expect(validateWebhookUrl('https://evict-new.com/hook')).toBe(true);
+    });
+  });
+
+  describe('validateDnsResolution', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should accept when hostname resolves to public IPs', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue(['203.0.113.1']);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue([]);
+
+      expect(await validateDnsResolution('https://example.com/hook')).toBe(true);
+    });
+
+    it('should reject when hostname resolves to loopback IPv4 (DNS rebinding)', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue(['127.0.0.1']);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue([]);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to private IPv4 (DNS rebinding)', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue(['10.0.0.1']);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue([]);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to 192.168.x.x', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue(['192.168.1.1']);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue([]);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to link-local (169.254.x.x)', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue(['169.254.169.254']);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue([]);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when any resolved IPv4 is blocked (mixed results)', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue(['8.8.8.8', '127.0.0.1']);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue([]);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to IPv6 loopback', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['::1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to IPv4-mapped IPv6 private address', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['::ffff:127.0.0.1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should return true for IP-literal hostnames (already validated by sync check)', async () => {
+      // IP literals skip DNS resolution — sync validation handles them
+      expect(await validateDnsResolution('https://8.8.8.8/hook')).toBe(true);
+    });
+
+    it('should return false for invalid URLs', async () => {
+      expect(await validateDnsResolution('not-a-url')).toBe(false);
+    });
+
+    it('should return false when DNS resolution fails entirely', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockRejectedValue(new Error('SERVFAIL'));
+      vi.spyOn(dns.promises, 'resolve6').mockRejectedValue(new Error('SERVFAIL'));
+
+      expect(await validateDnsResolution('https://no-such-host.example.com/hook')).toBe(false);
+    });
+
+    it('should handle when only one DNS family fails gracefully', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue(['203.0.113.1']);
+      vi.spyOn(dns.promises, 'resolve6').mockRejectedValue(new Error('NODATA'));
+
+      expect(await validateDnsResolution('https://example.com/hook')).toBe(true);
     });
   });
 });

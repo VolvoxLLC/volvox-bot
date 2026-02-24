@@ -1,5 +1,5 @@
 import { warn } from '../../logger.js';
-import { validateWebhookUrl } from './validateWebhookUrl.js';
+import { validateDnsResolution, validateWebhookUrl } from './validateWebhookUrl.js';
 
 export const WEBHOOK_TIMEOUT_MS = 5_000;
 
@@ -27,25 +27,37 @@ export function fireAndForgetWebhook(envVarName, payload) {
     }
   })();
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal: controller.signal,
-  })
-    .then((response) => {
-      if (!response.ok) {
-        warn(`${envVarName} webhook returned non-OK status`, {
-          status: response.status,
-          url: safeUrl,
-        });
+  // DNS resolution check to close TOCTOU rebinding gap (defense-in-depth)
+  validateDnsResolution(url)
+    .then((dnsOk) => {
+      if (!dnsOk) {
+        warn(`${envVarName} webhook blocked by DNS resolution check`, { url: safeUrl });
+        return;
       }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      })
+        .then((response) => {
+          if (!response.ok) {
+            warn(`${envVarName} webhook returned non-OK status`, {
+              status: response.status,
+              url: safeUrl,
+            });
+          }
+        })
+        .catch((err) => {
+          warn(`${envVarName} webhook failed`, { error: err.message, url: safeUrl });
+        })
+        .finally(() => clearTimeout(timer));
     })
-    .catch((err) => {
-      warn(`${envVarName} webhook failed`, { error: err.message, url: safeUrl });
-    })
-    .finally(() => clearTimeout(timer));
+    .catch(() => {
+      // DNS validation itself failed — swallow to maintain fire-and-forget semantics
+    });
 }
