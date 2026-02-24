@@ -332,89 +332,6 @@ pnpm dev                       # Starts on http://localhost:3000
 2. Wire it into `src/modules/events.js` event handlers
 3. Use the Winston logger (`import { info, error } from '../logger.js'`)
 
-## 🚄 Deployment
-
-Volvox Bot runs on [Railway](https://railway.app) as a multi-service project with three components:
-
-| Service | Type | Config |
-|---------|------|--------|
-| **Bot** | Node.js (Dockerfile) | `railway.toml` |
-| **Postgres** | Railway Plugin | Added via dashboard |
-| **Web Dashboard** | Next.js (Dockerfile) | `web/railway.toml` |
-
-### Project Setup
-
-1. Create a new project on [Railway](https://railway.app)
-2. Connect your GitHub repo — Railway will detect `railway.toml` and create the **Bot** service automatically
-3. Add a **Postgres** plugin from the Railway dashboard (New → Database → PostgreSQL)
-4. Add the **Web Dashboard** as a second service pointing to the `web/` directory (New → GitHub Repo → select this repo, set root directory to `web/`)
-5. Railway auto-deploys on push to `main`
-
-### Database
-
-Add the Railway Postgres plugin, then reference it in service variables using Railway's variable references:
-
-```text
-DATABASE_URL = ${{Postgres.DATABASE_URL}}
-```
-
-This injects the connection string at runtime for both the Bot and Web Dashboard services.
-
-### Bot Service Environment Variables
-
-Set these in the Railway dashboard for the Bot service:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DISCORD_TOKEN` | Yes | Discord bot token |
-| `DISCORD_CLIENT_ID` | Yes | Discord application/client ID |
-| `GUILD_ID` | No | Guild ID for faster dev command deployment (omit for global) |
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude AI |
-| `CLAUDE_CODE_OAUTH_TOKEN` | No | Required when using OAuth access tokens (`sk-ant-oat01-*`). Leave `ANTHROPIC_API_KEY` blank when using this. |
-| `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
-| `MEM0_API_KEY` | No | Mem0 API key for long-term memory |
-| `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` (default: `info`) |
-| `SESSION_SECRET` | Yes | JWT signing secret for OAuth2 sessions. Generate with `openssl rand -base64 32` |
-| `DISCORD_CLIENT_SECRET` | Yes | Discord OAuth2 client secret (required for dashboard auth) |
-| `DISCORD_REDIRECT_URI` | Yes | OAuth2 callback URL (e.g. `https://your-bot/api/v1/auth/discord/callback`) |
-| `BOT_API_SECRET` | Yes | Shared secret for web dashboard API auth |
-
-### Web Dashboard Environment Variables
-
-Set these in the Railway dashboard for the Web Dashboard service:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DISCORD_CLIENT_ID` | Yes | Discord application/client ID (same as bot) |
-| `DISCORD_CLIENT_SECRET` | Yes | Discord OAuth2 client secret |
-| `NEXTAUTH_SECRET` | Yes | Random secret for NextAuth.js session encryption |
-| `NEXTAUTH_URL` | Yes | Public URL — use `https://${{RAILWAY_PUBLIC_DOMAIN}}` |
-| `BOT_API_URL` | Yes | Bot internal URL (see private networking below) |
-| `BOT_API_SECRET` | Yes | Shared secret (must match bot's `BOT_API_SECRET`) |
-| `NEXT_PUBLIC_DISCORD_CLIENT_ID` | Yes | Discord client ID (public, exposed to browser) |
-| `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` — Railway variable reference |
-| `PORT` | No | Set to `3000` if not automatically detected |
-
-### Private Networking
-
-Railway services within the same project can communicate over a private internal network. The bot exposes a REST API server, and the Web Dashboard reaches it at:
-
-```text
-http://bot.railway.internal:<PORT>
-```
-
-> **Note:** The bot exposes a REST API server on `BOT_API_PORT` (default `3001`) alongside its Discord WebSocket connection. `BOT_API_URL` is used by the web dashboard to query bot state.
-
-### Slash Command Registration
-
-After your first deploy, register slash commands with Discord by running:
-
-```bash
-railway run node src/deploy-commands.js
-```
-
-Or execute it from the Railway service shell. This only needs to be done once (and again if you add new commands).
-
 ## 🐳 Local Development with Docker
 
 Run the entire stack locally with a single command using Docker Compose.
@@ -486,4 +403,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 
-[MIT](LICENSE) — Made with 💚 by [Volvox](https://volvox.dev)
+[MIT](LICENSE) 
+
+— Made with 💚 by [Volvox](https://volvox.dev)
