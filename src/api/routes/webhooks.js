@@ -19,7 +19,7 @@ const router = Router();
  *
  * Auth: API secret only (req.authMethod === 'api-secret').
  */
-router.post('/config-update', (req, res) => {
+router.post('/config-update', async (req, res) => {
   if (req.authMethod !== 'api-secret') {
     return res.status(403).json({ error: 'This endpoint requires API secret authentication' });
   }
@@ -39,17 +39,16 @@ router.post('/config-update', (req, res) => {
 
   const { path, value, topLevelKey } = result;
 
-  setConfigValue(path, value, guildId)
-    .then(() => {
-      const effectiveConfig = getConfig(guildId);
-      const effectiveSection = effectiveConfig[topLevelKey] || {};
-      info('Config updated via dashboard webhook', { path, guildId });
-      res.json(effectiveSection);
-    })
-    .catch((err) => {
-      error('Failed to update config via dashboard webhook', { path, error: err.message });
-      res.status(500).json({ error: 'Failed to update config' });
-    });
+  try {
+    await setConfigValue(path, value, guildId);
+    const effectiveConfig = getConfig(guildId);
+    const effectiveSection = effectiveConfig[topLevelKey] || {};
+    info('Config updated via dashboard webhook', { path, guildId });
+    return res.json(effectiveSection);
+  } catch (err) {
+    error('Failed to update config via dashboard webhook', { path, error: err.message });
+    return res.status(500).json({ error: 'Failed to update config' });
+  }
 });
 
 export default router;
