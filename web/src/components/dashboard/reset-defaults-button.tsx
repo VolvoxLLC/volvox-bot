@@ -33,7 +33,7 @@ interface ResetDefaultsButtonProps {
  * @param sectionLabel - Optional label used in the dialog description to indicate what will be discarded
  * @returns The rendered button and confirmation dialog React element
  */
-export function ResetDefaultsButton({
+export function DiscardChangesButton({
   onReset,
   disabled = false,
   sectionLabel,

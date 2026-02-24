@@ -19,7 +19,7 @@ import type { BotConfig, DeepPartial } from "@/types/config";
 import { SYSTEM_PROMPT_MAX_LENGTH } from "@/types/config";
 import { ConfigDiff } from "./config-diff";
 import { SystemPromptEditor } from "./system-prompt-editor";
-import { ResetDefaultsButton } from "./reset-defaults-button";
+import { DiscardChangesButton } from "./reset-defaults-button";
 
 /** Config sections exposed by the API — all fields optional for partial API responses. */
 type GuildConfig = DeepPartial<BotConfig>;
@@ -27,12 +27,25 @@ type GuildConfig = DeepPartial<BotConfig>;
 /**
  * Type guard that checks whether a value is a guild configuration object returned by the API.
  *
- * @returns `true` if the value is an object containing at least one of the top-level properties `ai`, `welcome`, or `spam`, `false` otherwise.
+ * @returns `true` if the value is an object containing at least one known top-level section
+ *   (`ai`, `welcome`, `spam`, `moderation`, `triage`) and each present section is a plain object
+ *   (not an array or null). Returns `false` otherwise.
  */
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  return "ai" in obj || "welcome" in obj || "spam" in obj;
+  const knownSections = ["ai", "welcome", "spam", "moderation", "triage"] as const;
+  const hasKnownSection = knownSections.some((key) => key in obj);
+  if (!hasKnownSection) return false;
+  for (const key of knownSections) {
+    if (key in obj) {
+      const val = obj[key];
+      if (val !== undefined && (typeof val !== "object" || val === null || Array.isArray(val))) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**
@@ -43,6 +56,9 @@ function isGuildConfig(data: unknown): data is GuildConfig {
  * @returns The editor UI as JSX when a guild is selected and the draft config is available; `null` while no draft is present (or when rendering is handled by loading/error/no-selection states).
  */
 export function ConfigEditor() {
+  const inputClasses =
+    "w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+
   const [guildId, setGuildId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -428,7 +444,7 @@ export function ConfigEditor() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ResetDefaultsButton
+          <DiscardChangesButton
             onReset={discardChanges}
             disabled={saving || !hasChanges}
             sectionLabel="all unsaved changes"
@@ -516,7 +532,7 @@ export function ConfigEditor() {
               onChange={(e) => updateWelcomeMessage(e.target.value)}
               rows={4}
               disabled={saving}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className={inputClasses}
               placeholder="Welcome message template..."
               aria-describedby="welcome-message-hint"
             />
@@ -555,7 +571,7 @@ export function ConfigEditor() {
                 value={draftConfig.moderation?.alertChannelId ?? ""}
                 onChange={(e) => updateModerationField("alertChannelId", e.target.value)}
                 disabled={saving}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={inputClasses}
                 placeholder="Channel ID for moderation alerts"
               />
             </label>
@@ -622,7 +638,7 @@ export function ConfigEditor() {
                 value={draftConfig.triage?.classifyModel ?? ""}
                 onChange={(e) => updateTriageField("classifyModel", e.target.value)}
                 disabled={saving}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={inputClasses}
                 placeholder="e.g. claude-haiku-4-5"
               />
             </label>
@@ -633,7 +649,7 @@ export function ConfigEditor() {
                 value={draftConfig.triage?.respondModel ?? ""}
                 onChange={(e) => updateTriageField("respondModel", e.target.value)}
                 disabled={saving}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={inputClasses}
                 placeholder="e.g. claude-sonnet-4-6"
               />
             </label>
@@ -645,9 +661,15 @@ export function ConfigEditor() {
                   step="0.01"
                   min={0}
                   value={draftConfig.triage?.classifyBudget ?? 0}
-                  onChange={(e) => updateTriageField("classifyBudget", Number(e.target.value))}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const num = Number(raw);
+                    if (!Number.isFinite(num)) return;
+                    updateTriageField("classifyBudget", num);
+                  }}
                   disabled={saving}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={inputClasses}
                 />
               </label>
               <label className="space-y-2">
@@ -657,9 +679,15 @@ export function ConfigEditor() {
                   step="0.01"
                   min={0}
                   value={draftConfig.triage?.respondBudget ?? 0}
-                  onChange={(e) => updateTriageField("respondBudget", Number(e.target.value))}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const num = Number(raw);
+                    if (!Number.isFinite(num)) return;
+                    updateTriageField("respondBudget", num);
+                  }}
                   disabled={saving}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={inputClasses}
                 />
               </label>
             </div>
@@ -670,9 +698,15 @@ export function ConfigEditor() {
                   type="number"
                   min={1}
                   value={draftConfig.triage?.defaultInterval ?? 3000}
-                  onChange={(e) => updateTriageField("defaultInterval", Number(e.target.value))}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const num = Number(raw);
+                    if (!Number.isFinite(num)) return;
+                    updateTriageField("defaultInterval", num);
+                  }}
                   disabled={saving}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={inputClasses}
                 />
               </label>
               <label className="space-y-2">
@@ -681,9 +715,15 @@ export function ConfigEditor() {
                   type="number"
                   min={1}
                   value={draftConfig.triage?.timeout ?? 30000}
-                  onChange={(e) => updateTriageField("timeout", Number(e.target.value))}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const num = Number(raw);
+                    if (!Number.isFinite(num)) return;
+                    updateTriageField("timeout", num);
+                  }}
                   disabled={saving}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={inputClasses}
                 />
               </label>
             </div>
@@ -694,9 +734,15 @@ export function ConfigEditor() {
                   type="number"
                   min={1}
                   value={draftConfig.triage?.contextMessages ?? 10}
-                  onChange={(e) => updateTriageField("contextMessages", Number(e.target.value))}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const num = Number(raw);
+                    if (!Number.isFinite(num)) return;
+                    updateTriageField("contextMessages", num);
+                  }}
                   disabled={saving}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={inputClasses}
                 />
               </label>
               <label className="space-y-2">
@@ -705,9 +751,15 @@ export function ConfigEditor() {
                   type="number"
                   min={1}
                   value={draftConfig.triage?.maxBufferSize ?? 30}
-                  onChange={(e) => updateTriageField("maxBufferSize", Number(e.target.value))}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const num = Number(raw);
+                    if (!Number.isFinite(num)) return;
+                    updateTriageField("maxBufferSize", num);
+                  }}
                   disabled={saving}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={inputClasses}
                 />
               </label>
             </div>
@@ -745,7 +797,7 @@ export function ConfigEditor() {
                 value={draftConfig.triage?.moderationLogChannel ?? ""}
                 onChange={(e) => updateTriageField("moderationLogChannel", e.target.value)}
                 disabled={saving}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={inputClasses}
                 placeholder="Channel ID for moderation logs"
               />
             </label>
