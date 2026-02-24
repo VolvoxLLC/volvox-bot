@@ -7,14 +7,13 @@ import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { safeSend } from '../../utils/safeSend.js';
+import { READABLE_CONFIG_KEYS, SAFE_CONFIG_KEYS } from '../utils/configAllowlist.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
 import { getSessionToken } from '../utils/sessionStore.js';
-import { validateWebhookUrl } from '../utils/validateWebhookUrl.js';
+import { fireAndForgetWebhook } from '../utils/webhook.js';
 import { validateSingleValue } from './config.js';
 
 const router = Router();
-
-const WEBHOOK_TIMEOUT_MS = 5_000;
 
 /** Discord ADMINISTRATOR permission flag */
 const ADMINISTRATOR_FLAG = 0x8;
@@ -22,54 +21,6 @@ const ADMINISTRATOR_FLAG = 0x8;
 const MANAGE_GUILD_FLAG = 0x20;
 
 /**
- * Config keys that are safe to write via the PATCH endpoint.
- */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'triage'];
-
-/**
- * Config keys that are safe to read via the GET endpoint.
- * Includes everything in SAFE_CONFIG_KEYS plus read-only keys.
- */
-const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging', 'memory', 'permissions'];
-
-/**
- * Fire-and-forget webhook notification for guild config changes.
- * Uses DASHBOARD_WEBHOOK_URL env var. Logs failure but never blocks the response.
- *
- * @param {string} guildId - Guild whose config was updated
- * @param {string[]} updatedKeys - Dot-path keys that were updated (e.g. ["ai.model"])
- */
-function notifyDashboardWebhook(guildId, updatedKeys) {
-  const url = process.env.DASHBOARD_WEBHOOK_URL;
-  if (!url) return;
-
-  if (!validateWebhookUrl(url)) return;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      event: 'config.updated',
-      guildId,
-      updatedKeys,
-      timestamp: Date.now(),
-    }),
-    signal: controller.signal,
-  })
-    .then((response) => {
-      if (!response.ok) {
-        warn('Dashboard webhook returned non-OK status', { status: response.status, url });
-      }
-    })
-    .catch((err) => {
-      warn('Dashboard webhook failed', { error: err.message, url });
-    })
-    .finally(() => clearTimeout(timer));
-}
-
 /**
  * Upper bound on content length for abuse prevention.
  * safeSend handles the actual Discord 2000-char message splitting.
@@ -544,7 +495,12 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
     const effectiveConfig = getConfig(req.params.id);
     const effectiveSection = effectiveConfig[topLevelKey] || {};
     info('Config updated via API', { path, value, guild: req.params.id });
-    notifyDashboardWebhook(req.params.id, [path]);
+    fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
+      event: 'config.updated',
+      guildId: req.params.id,
+      updatedKeys: [path],
+      timestamp: Date.now(),
+    });
     res.json(effectiveSection);
   } catch (err) {
     error('Failed to update config via API', { path, error: err.message });
