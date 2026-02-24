@@ -31,3 +31,5 @@ Messages to respond to: {{targetMessageIds}}
 </response-rules>
 
 {{antiAbuse}}
+
+{{searchGuardrails}}

@@ -4,11 +4,8 @@
  */
 
 import { ChannelType, SlashCommandBuilder } from 'discord.js';
-import { info, error as logError } from '../logger.js';
-import { getConfig } from '../modules/config.js';
-import { createCase, sendModLogEmbed } from '../modules/moderation.js';
 import { formatDuration, parseDuration } from '../utils/duration.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { executeModAction } from '../utils/modAction.js';
 
 export const data = new SlashCommandBuilder()
   .setName('slowmode')
@@ -37,66 +34,48 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
+  let seconds = 0;
 
-    const channel = interaction.options.getChannel('channel') || interaction.channel;
-    const durationStr = interaction.options.getString('duration');
-    const reason = interaction.options.getString('reason');
+  await executeModAction(interaction, {
+    action: 'slowmode',
+    skipHierarchy: true,
+    skipDm: true,
+    getTarget: (inter) => {
+      const channel = inter.options.getChannel('channel') || inter.channel;
+      return { target: null, targetId: channel.id, targetTag: `#${channel.name}` };
+    },
+    extractOptions: (inter) => {
+      const durationStr = inter.options.getString('duration');
+      const reason = inter.options.getString('reason');
 
-    let seconds = 0;
-
-    if (durationStr !== '0') {
-      const ms = parseDuration(durationStr);
-      if (!ms) {
-        return await safeEditReply(
-          interaction,
-          '❌ Invalid duration format. Use formats like: 5s, 1m, 1h',
-        );
+      if (durationStr !== '0') {
+        const ms = parseDuration(durationStr);
+        if (!ms) {
+          return { earlyReturn: '\u274C Invalid duration format. Use formats like: 5s, 1m, 1h' };
+        }
+        if (ms > 6 * 60 * 60 * 1000) {
+          return { earlyReturn: '\u274C Duration cannot exceed 6 hours.' };
+        }
+        seconds = Math.floor(ms / 1000);
       }
 
-      if (ms > 6 * 60 * 60 * 1000) {
-        return await safeEditReply(interaction, '❌ Duration cannot exceed 6 hours.');
+      return {
+        reason:
+          reason ||
+          (seconds === 0 ? 'Slowmode disabled' : `Slowmode set to ${formatDuration(seconds * 1000)}`),
+        duration: seconds > 0 ? formatDuration(seconds * 1000) : null,
+      };
+    },
+    actionFn: async (_target, _reason, inter) => {
+      const channel = inter.options.getChannel('channel') || inter.channel;
+      await channel.setRateLimitPerUser(seconds);
+    },
+    formatReply: (_tag, c) => {
+      const channel = interaction.options.getChannel('channel') || interaction.channel;
+      if (seconds === 0) {
+        return `\u2705 Slowmode disabled in ${channel}. (Case #${c.case_number})`;
       }
-
-      seconds = Math.floor(ms / 1000);
-    }
-
-    await channel.setRateLimitPerUser(seconds);
-
-    const config = getConfig(interaction.guildId);
-    const caseData = await createCase(interaction.guild.id, {
-      action: 'slowmode',
-      targetId: channel.id,
-      targetTag: `#${channel.name}`,
-      moderatorId: interaction.user.id,
-      moderatorTag: interaction.user.tag,
-      reason:
-        reason ||
-        (seconds === 0 ? 'Slowmode disabled' : `Slowmode set to ${formatDuration(seconds * 1000)}`),
-      duration: seconds > 0 ? formatDuration(seconds * 1000) : null,
-    });
-
-    await sendModLogEmbed(interaction.client, config, caseData);
-
-    if (seconds === 0) {
-      info('Slowmode disabled', { channelId: channel.id, moderator: interaction.user.tag });
-      await safeEditReply(
-        interaction,
-        `✅ Slowmode disabled in ${channel}. (Case #${caseData.case_number})`,
-      );
-    } else {
-      info('Slowmode set', { channelId: channel.id, seconds, moderator: interaction.user.tag });
-      await safeEditReply(
-        interaction,
-        `✅ Slowmode set to **${formatDuration(seconds * 1000)}** in ${channel}. (Case #${caseData.case_number})`,
-      );
-    }
-  } catch (err) {
-    logError('Slowmode command failed', { error: err.message, command: 'slowmode' });
-    await safeEditReply(
-      interaction,
-      '❌ An error occurred. Please try again or contact an administrator.',
-    ).catch(() => {});
-  }
+      return `\u2705 Slowmode set to **${formatDuration(seconds * 1000)}** in ${channel}. (Case #${c.case_number})`;
+    },
+  });
 }

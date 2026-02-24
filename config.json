@@ -21,7 +21,7 @@
     "classifyBudget": 0.05,
     "respondModel": "claude-sonnet-4-6",
     "respondBudget": 0.20,
-    "thinkingTokens": 4096,
+    "thinkingTokens": 1024,
     "classifyBaseUrl": null,
     "classifyApiKey": null,
     "respondBaseUrl": null,
@@ -34,7 +34,8 @@
     "channels": [],
     "excludeChannels": [],
     "debugFooter": true,
-    "debugFooterLevel": "verbose"
+    "debugFooterLevel": "verbose",
+    "moderationLogChannel": "1473219285651292201"
   },
   "welcome": {
     "enabled": true,
@@ -98,7 +99,7 @@
     "enabled": true,
     "adminRoleId": null,
     "moderatorRoleId": null,
-    "botOwners": ["191633014441115648"],
+    "botOwners": [],
     "usePermissions": true,
     "allowedCommands": {
       "ping": "everyone",

@@ -174,10 +174,10 @@ function formatBucketLabel(bucket, interval) {
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
- * @param {number} requiredFlags - Bitmask of required permission flags (bitwise OR match)
- * @returns {Promise<boolean>} True if user has ANY of the required flags (bitwise OR match)
+ * @param {number} anyOfFlags - Bitmask of permission flags; returns true if user has ANY of them
+ * @returns {Promise<boolean>} True if user has ANY of the specified flags
  */
-async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
+async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
   const accessToken = getSessionToken(user?.userId);
   if (!accessToken) return false;
   const guilds = await fetchUserGuilds(user.userId, accessToken);
@@ -185,7 +185,20 @@ async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
   if (!guild) return false;
   const permissions = Number(guild.permissions);
   if (Number.isNaN(permissions)) return false;
-  return (permissions & requiredFlags) !== 0;
+  return (permissions & anyOfFlags) !== 0;
+}
+
+/**
+ * Get bot owner IDs from environment variable, falling back to config.
+ * @returns {string[]}
+ */
+function getBotOwnerIds() {
+  const envValue = process.env.BOT_OWNER_IDS;
+  if (envValue) {
+    return envValue.split(',').map((id) => id.trim()).filter(Boolean);
+  }
+  const owners = getConfig()?.permissions?.botOwners;
+  return Array.isArray(owners) ? owners : [];
 }
 
 /**
@@ -193,11 +206,11 @@ async function hasOAuthGuildPermission(user, guildId, requiredFlags) {
  * Bot owners bypass API guild-level permission checks.
  *
  * @param {Object} user - Decoded JWT user payload
- * @returns {boolean} True if JWT userId is in config.permissions.botOwners
+ * @returns {boolean} True if JWT userId is in BOT_OWNER_IDS or config.permissions.botOwners
  */
 function isOAuthBotOwner(user) {
-  const botOwners = getConfig()?.permissions?.botOwners;
-  return Array.isArray(botOwners) && botOwners.includes(user?.userId);
+  const botOwners = getBotOwnerIds();
+  return botOwners.includes(user?.userId);
 }
 
 /**
@@ -540,8 +553,13 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   }
 
   const conversationWhere = conversationWhereParts.join(' AND ');
-  const bucketExpr =
-    interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
+  const ALLOWED_INTERVALS = new Set(['hour', 'day']);
+  if (!ALLOWED_INTERVALS.has(interval)) {
+    return res.status(400).json({ error: 'Invalid interval parameter' });
+  }
+  const bucketExpr = interval === 'hour'
+    ? "date_trunc('hour', created_at)"
+    : "date_trunc('day', created_at)";
 
   const logsWhereParts = [
     "message = 'AI usage'",
@@ -858,8 +876,13 @@ router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, 
 /**
  * POST /:id/actions — Execute bot actions
  * Body: { action: "sendMessage", channelId: "...", content: "..." }
+ * Restricted to API-secret callers to prevent CSRF via browser-based OAuth sessions.
  */
 router.post('/:id/actions', requireGuildAdmin, validateGuild, async (req, res) => {
+  if (req.authMethod !== 'api-secret') {
+    return res.status(403).json({ error: 'Actions endpoint requires API secret authentication' });
+  }
+
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body' });
   }

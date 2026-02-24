@@ -29,6 +29,9 @@ coverage/
 verify-*.js
 VERIFICATION_GUIDE.md
 
+# Ephemeral review artifacts
+code-review.md
+
 # Web dashboard
 web/.next/
 web/.env.local

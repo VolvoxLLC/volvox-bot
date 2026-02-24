@@ -65,9 +65,10 @@ export async function initDb() {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
+    const poolSize = Math.max(1, parseInt(process.env.PG_POOL_SIZE, 10) || 5);
     pool = new Pool({
       connectionString,
-      max: 5,
+      max: poolSize,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
       ssl: getSslConfig(connectionString),
@@ -231,9 +232,19 @@ export async function initDb() {
           cache_read_tokens INTEGER NOT NULL DEFAULT 0,
           cost_usd NUMERIC(10, 6) NOT NULL DEFAULT 0,
           duration_ms INTEGER NOT NULL DEFAULT 0,
+          user_id TEXT DEFAULT NULL,
+          search_count INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
+
+      // Idempotent migrations for existing databases (silently skip if columns exist)
+      for (const ddl of [
+        'ALTER TABLE ai_usage ADD COLUMN user_id TEXT DEFAULT NULL',
+        'ALTER TABLE ai_usage ADD COLUMN search_count INTEGER NOT NULL DEFAULT 0',
+      ]) {
+        await pool.query(ddl).catch(() => {});
+      }
 
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_ai_usage_guild_created
@@ -243,6 +254,11 @@ export async function initDb() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_ai_usage_created_at
         ON ai_usage (created_at)
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created
+        ON ai_usage (user_id, created_at)
       `);
 
       // Logs table for persistent logging transport

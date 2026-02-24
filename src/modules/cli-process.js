@@ -19,7 +19,7 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { info, error as logError, warn } from '../logger.js';
+import { debug, info, error as logError, warn } from '../logger.js';
 import { CLIProcessError } from '../utils/errors.js';
 
 // Resolve the `claude` binary path from node_modules/.bin (may not be in PATH in Docker).
@@ -130,8 +130,12 @@ function buildArgs(flags, longLived) {
     args.push('--permission-mode', 'bypassPermissions');
   }
 
-  // Required when using bypassPermissions — without this the CLI hangs
-  // waiting for interactive permission approval it can never get (no TTY).
+  // SAFETY: --dangerously-skip-permissions is required for non-interactive
+  // (headless) use. Without it, the CLI blocks waiting for a TTY-based
+  // permission prompt that can never be answered in a subprocess context.
+  // This is safe here because the bot controls what prompts and tools are
+  // passed — user input is never forwarded raw to the CLI. The bot's own
+  // permission model (Discord permissions + config.json) gates access.
   args.push('--dangerously-skip-permissions');
 
   args.push('--no-session-persistence');
@@ -155,8 +159,19 @@ function buildEnv(flags) {
   const tokens = flags.thinkingTokens ?? 4096;
   env.MAX_THINKING_TOKENS = String(tokens);
 
+  // baseUrl is set from admin config (triage.classifyBaseUrl / respondBaseUrl),
+  // never from user input. Validate URL format as defense-in-depth.
   if (flags.baseUrl) {
-    env.ANTHROPIC_BASE_URL = flags.baseUrl;
+    try {
+      const parsed = new URL(flags.baseUrl);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        env.ANTHROPIC_BASE_URL = flags.baseUrl;
+      }
+    } catch {
+      warn('Ignoring malformed baseUrl — falling back to default Anthropic endpoint', {
+        baseUrl: flags.baseUrl,
+      });
+    }
   }
   if (flags.apiKey) {
     env.ANTHROPIC_API_KEY = flags.apiKey;
@@ -334,14 +349,16 @@ export class CLIProcess {
    * @param {string} [overrides.systemPrompt]  Override system prompt string.
    * @param {string} [overrides.appendSystemPrompt]  Override append-system-prompt.
    * @param {string} [overrides.systemPromptFile]  Override system prompt file path.
+   * @param {Object} [options]  Additional options.
+   * @param {Function} [options.onEvent]  Callback for intermediate NDJSON messages (short-lived only).
    * @returns {Promise<Object>} The result message from the CLI.
    */
-  async send(prompt, overrides = {}) {
+  async send(prompt, overrides = {}, { onEvent } = {}) {
     const release = await this.#acquireMutex();
     try {
       const result = this.#streaming
         ? await this.#sendLongLived(prompt)
-        : await this.#sendShortLived(prompt, overrides);
+        : await this.#sendShortLived(prompt, overrides, onEvent);
 
       // Token recycling — non-blocking so the caller gets the result now.
       if (this.#streaming && this.#accumulatedTokens >= this.#tokenLimit) {
@@ -360,7 +377,7 @@ export class CLIProcess {
     }
   }
 
-  async #sendShortLived(prompt, overrides = {}) {
+  async #sendShortLived(prompt, overrides = {}, onEvent = null) {
     const mergedFlags = { ...this.#flags, ...overrides };
     const args = buildArgs(mergedFlags, false);
 
@@ -408,10 +425,13 @@ export class CLIProcess {
         try {
           msg = JSON.parse(line);
         } catch {
+          debug(`${this.#name}: non-JSON stdout line (short-lived)`, { line: line.slice(0, 200) });
           return;
         }
         if (msg.type === 'result') {
           result = msg;
+        } else if (onEvent) {
+          onEvent(msg);
         }
       });
 
@@ -420,7 +440,11 @@ export class CLIProcess {
         this.#inflightProc = null;
 
         if (result) {
-          resolve(this.#extractResult(result));
+          try {
+            resolve(this.#extractResult(result));
+          } catch (err) {
+            reject(err);
+          }
         } else {
           const stderr = stderrLines.join('\n');
           reject(
@@ -451,7 +475,11 @@ export class CLIProcess {
     return new Promise((resolve, reject) => {
       this.#pendingResolve = (msg) => {
         clearTimeout(timer);
-        resolve(this.#extractResult(msg));
+        try {
+          resolve(this.#extractResult(msg));
+        } catch (err) {
+          reject(err);
+        }
       };
       this.#pendingReject = (err) => {
         clearTimeout(timer);
@@ -489,7 +517,11 @@ export class CLIProcess {
   #extractResult(message) {
     if (message.is_error) {
       const errMsg = message.errors?.map((e) => e.message || e).join('; ') || 'Unknown CLI error';
-      logError(`${this.#name}: CLI error`, { error: errMsg });
+      logError(`${this.#name}: CLI error`, {
+        error: errMsg,
+        errorCount: message.errors?.length ?? 0,
+        resultSnippet: JSON.stringify(message).slice(0, 500),
+      });
       throw new CLIProcessError(`${this.#name}: CLI error — ${errMsg}`, 'exit');
     }
     return message;
@@ -512,14 +544,16 @@ export class CLIProcess {
   }
 
   async restart(attempt = 0) {
-    const delay = Math.min(1000 * 2 ** attempt, 30_000);
+    const baseDelay = Math.min(1000 * 2 ** attempt, 30_000);
+    const jitter = Math.floor(Math.random() * 1000);
+    const delay = baseDelay + jitter;
     warn(`Restarting ${this.#name} process`, { attempt, delayMs: delay });
     await new Promise((r) => setTimeout(r, delay));
     try {
       await this.recycle();
     } catch (err) {
       logError(`${this.#name} restart failed`, { error: err.message, attempt });
-      if (attempt < 3) {
+      if (attempt < 5) {
         await this.restart(attempt + 1);
       } else {
         throw err;
@@ -528,23 +562,11 @@ export class CLIProcess {
   }
 
   close() {
-    if (this.#proc) {
-      try {
-        this.#proc.kill('SIGTERM');
-      } catch {
-        // Process may have already exited
-      }
-      this.#proc = null;
-    }
+    this.#killProc(this.#proc);
+    this.#proc = null;
 
-    if (this.#inflightProc) {
-      try {
-        this.#inflightProc.kill('SIGTERM');
-      } catch {
-        // Process may have already exited
-      }
-      this.#inflightProc = null;
-    }
+    this.#killProc(this.#inflightProc);
+    this.#inflightProc = null;
 
     this.#alive = false;
     this.#sessionId = null;
@@ -554,6 +576,29 @@ export class CLIProcess {
       this.#pendingReject = null;
       this.#pendingResolve = null;
     }
+  }
+
+  /**
+   * Send SIGTERM to a child process, then escalate to SIGKILL after 2 seconds
+   * if it hasn't exited. Prevents zombie processes from stuck CLI subprocesses.
+   * @param {import('node:child_process').ChildProcess|null} proc
+   */
+  #killProc(proc) {
+    if (!proc) return;
+    try {
+      proc.kill('SIGTERM');
+    } catch {
+      return; // Already exited
+    }
+    const sigkillTimer = setTimeout(() => {
+      try {
+        proc.kill('SIGKILL');
+      } catch {
+        // Already exited between SIGTERM and SIGKILL — expected
+      }
+    }, 2000);
+    // Don't keep the event loop alive just for the SIGKILL escalation
+    sigkillTimer.unref();
   }
 
   // ── Mutex ────────────────────────────────────────────────────────────────

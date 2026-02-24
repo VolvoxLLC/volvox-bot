@@ -4,6 +4,7 @@
  */
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { warn } from '../logger.js';
 import { getConfig, resetConfig, setConfigValue } from '../modules/config.js';
 import { getPermissionError, hasPermission } from '../utils/permissions.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
@@ -267,10 +268,9 @@ async function handleView(interaction) {
 
     await safeReply(interaction, { embeds: [embed], ephemeral: true });
   } catch (err) {
-    const safeMessage =
-      process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
+    warn('Failed to load config', { error: err.message, guild: interaction.guildId });
     await safeReply(interaction, {
-      content: `❌ Failed to load config: ${safeMessage}`,
+      content: '❌ Failed to load config. Please try again later.',
       ephemeral: true,
     });
   }
@@ -321,9 +321,8 @@ async function handleSet(interaction) {
 
     await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
-    const safeMessage =
-      process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
-    const content = `❌ Failed to set config: ${safeMessage}`;
+    warn('Failed to set config', { error: err.message, guild: interaction.guildId, path });
+    const content = '❌ Failed to set config. Please try again later.';
     if (interaction.deferred) {
       await safeEditReply(interaction, { content });
     } else {
@@ -356,9 +355,8 @@ async function handleReset(interaction) {
 
     await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
-    const safeMessage =
-      process.env.NODE_ENV === 'development' ? err.message : 'An internal error occurred.';
-    const content = `❌ Failed to reset config: ${safeMessage}`;
+    warn('Failed to reset config', { error: err.message, guild: interaction.guildId, section });
+    const content = '❌ Failed to reset config. Please try again later.';
     if (interaction.deferred) {
       await safeEditReply(interaction, { content });
     } else {

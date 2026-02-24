@@ -78,7 +78,12 @@ function deepMerge(target, source) {
 }
 
 /**
- * Load config.json from disk (used as seed/fallback)
+ * Load config.json from disk (used as seed/fallback).
+ *
+ * Security note: config.json integrity is a deployment concern — the file is
+ * read-only at runtime and is not validated beyond JSON parsing. Deployers
+ * must ensure the file is not writable by untrusted processes.
+ *
  * @returns {Object} Configuration object from file
  * @throws {Error} If config.json is missing or unparseable
  */

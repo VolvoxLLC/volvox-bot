@@ -4,18 +4,9 @@
  */
 
 import { SlashCommandBuilder } from 'discord.js';
-import { info, error as logError } from '../logger.js';
-import { getConfig } from '../modules/config.js';
-import {
-  checkHierarchy,
-  createCase,
-  scheduleAction,
-  sendDmNotification,
-  sendModLogEmbed,
-  shouldSendDm,
-} from '../modules/moderation.js';
+import { scheduleAction } from '../modules/moderation.js';
 import { formatDuration, parseDuration } from '../utils/duration.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { executeModAction } from '../utils/modAction.js';
 
 export const data = new SlashCommandBuilder()
   .setName('tempban')
@@ -43,78 +34,45 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
-
-    const config = getConfig(interaction.guildId);
-    const user = interaction.options.getUser('user');
-    const durationStr = interaction.options.getString('duration');
-    const reason = interaction.options.getString('reason');
-    const deleteMessageDays = interaction.options.getInteger('delete_messages') || 0;
-
-    const durationMs = parseDuration(durationStr);
-    if (!durationMs) {
-      return await safeEditReply(interaction, '❌ Invalid duration format. Use e.g. 1d, 7d, 2w.');
-    }
-
-    let member = null;
-    try {
-      member = await interaction.guild.members.fetch(user.id);
-    } catch {
-      // User not in guild — skip hierarchy check
-    }
-
-    if (member) {
-      const hierarchyError = checkHierarchy(
-        interaction.member,
-        member,
-        interaction.guild.members.me,
-      );
-      if (hierarchyError) {
-        return await safeEditReply(interaction, hierarchyError);
+  await executeModAction(interaction, {
+    action: 'tempban',
+    dmAction: 'ban',
+    getTarget: async (inter) => {
+      const user = inter.options.getUser('user');
+      let member = null;
+      try {
+        member = await inter.guild.members.fetch(user.id);
+      } catch {
+        // User not in guild — skip hierarchy check
       }
-
-      if (shouldSendDm(config, 'ban')) {
-        await sendDmNotification(member, 'tempban', reason, interaction.guild.name);
+      return { target: member, targetId: user.id, targetTag: user.tag };
+    },
+    extractOptions: (inter) => {
+      const durationStr = inter.options.getString('duration');
+      const durationMs = parseDuration(durationStr);
+      if (!durationMs) {
+        return { earlyReturn: '\u274C Invalid duration format. Use e.g. 1d, 7d, 2w.' };
       }
-    }
-
-    const expiresAt = new Date(Date.now() + durationMs);
-
-    await interaction.guild.members.ban(user.id, {
-      deleteMessageSeconds: deleteMessageDays * 86400,
-      reason: reason || undefined,
-    });
-
-    const caseData = await createCase(interaction.guild.id, {
-      action: 'tempban',
-      targetId: user.id,
-      targetTag: user.tag,
-      moderatorId: interaction.user.id,
-      moderatorTag: interaction.user.tag,
-      reason,
-      duration: formatDuration(durationMs),
-      expiresAt,
-    });
-
-    await scheduleAction(interaction.guild.id, 'unban', user.id, caseData.id, expiresAt);
-
-    await sendModLogEmbed(interaction.client, config, caseData);
-
-    info('User tempbanned', {
-      target: user.tag,
-      moderator: interaction.user.tag,
-      duration: durationStr,
-    });
-    await safeEditReply(
-      interaction,
-      `✅ **${user.tag}** has been temporarily banned. (Case #${caseData.case_number})`,
-    );
-  } catch (err) {
-    logError('Command error', { error: err.message, command: 'tempban' });
-    await safeEditReply(
-      interaction,
-      '❌ An error occurred. Please try again or contact an administrator.',
-    ).catch(() => {});
-  }
+      return {
+        reason: inter.options.getString('reason'),
+        duration: formatDuration(durationMs),
+        expiresAt: new Date(Date.now() + durationMs),
+        _durationMs: durationMs,
+      };
+    },
+    actionFn: async (_target, reason, inter) => {
+      const user = inter.options.getUser('user');
+      const deleteMessageDays = inter.options.getInteger('delete_messages') || 0;
+      await inter.guild.members.ban(user.id, {
+        deleteMessageSeconds: deleteMessageDays * 86400,
+        reason: reason || undefined,
+      });
+    },
+    afterCase: async (caseData, inter) => {
+      const user = inter.options.getUser('user');
+      await scheduleAction(inter.guild.id, 'unban', user.id, caseData.id, caseData.expires_at);
+    },
+    formatReply: (tag, c) =>
+      `\u2705 **${tag}** has been temporarily banned. (Case #${c.case_number})`,
+  });
 }

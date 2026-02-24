@@ -27,7 +27,7 @@ vi.mock('../../src/utils/duration.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
-import { error as loggerError } from '../../src/logger.js';
+import { error as loggerError, warn as loggerWarn } from '../../src/logger.js';
 import {
   checkEscalation,
   checkHierarchy,
@@ -336,7 +336,7 @@ describe('moderation module', () => {
       });
 
       expect(result).toBeNull();
-      expect(loggerError).toHaveBeenCalledWith(
+      expect(loggerWarn).toHaveBeenCalledWith(
         'Failed to send mod log embed',
         expect.objectContaining({ channelId: '123' }),
       );

@@ -4,16 +4,7 @@
  */
 
 import { SlashCommandBuilder } from 'discord.js';
-import { info, error as logError } from '../logger.js';
-import { getConfig } from '../modules/config.js';
-import {
-  checkHierarchy,
-  createCase,
-  sendDmNotification,
-  sendModLogEmbed,
-  shouldSendDm,
-} from '../modules/moderation.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { executeModAction } from '../utils/modAction.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ban')
@@ -38,62 +29,29 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
-
-    const config = getConfig(interaction.guildId);
-    const user = interaction.options.getUser('user');
-    const reason = interaction.options.getString('reason');
-    const deleteMessageDays = interaction.options.getInteger('delete_messages') || 0;
-
-    let member = null;
-    try {
-      member = await interaction.guild.members.fetch(user.id);
-    } catch {
-      // User not in guild — skip hierarchy check
-    }
-
-    if (member) {
-      const hierarchyError = checkHierarchy(
-        interaction.member,
-        member,
-        interaction.guild.members.me,
-      );
-      if (hierarchyError) {
-        return await safeEditReply(interaction, hierarchyError);
+  await executeModAction(interaction, {
+    action: 'ban',
+    getTarget: async (inter) => {
+      const user = inter.options.getUser('user');
+      let member = null;
+      try {
+        member = await inter.guild.members.fetch(user.id);
+      } catch {
+        // User not in guild — skip hierarchy check
       }
-
-      if (shouldSendDm(config, 'ban')) {
-        await sendDmNotification(member, 'ban', reason, interaction.guild.name);
-      }
-    }
-
-    await interaction.guild.members.ban(user.id, {
-      deleteMessageSeconds: deleteMessageDays * 86400,
-      reason: reason || undefined,
-    });
-
-    const caseData = await createCase(interaction.guild.id, {
-      action: 'ban',
-      targetId: user.id,
-      targetTag: user.tag,
-      moderatorId: interaction.user.id,
-      moderatorTag: interaction.user.tag,
-      reason,
-    });
-
-    await sendModLogEmbed(interaction.client, config, caseData);
-
-    info('User banned', { target: user.tag, moderator: interaction.user.tag });
-    await safeEditReply(
-      interaction,
-      `✅ **${user.tag}** has been banned. (Case #${caseData.case_number})`,
-    );
-  } catch (err) {
-    logError('Command error', { error: err.message, command: 'ban' });
-    await safeEditReply(
-      interaction,
-      '❌ An error occurred. Please try again or contact an administrator.',
-    ).catch(() => {});
-  }
+      return { target: member, targetId: user.id, targetTag: user.tag };
+    },
+    extractOptions: (inter) => ({
+      reason: inter.options.getString('reason'),
+    }),
+    actionFn: async (_target, reason, inter) => {
+      const user = inter.options.getUser('user');
+      const deleteMessageDays = inter.options.getInteger('delete_messages') || 0;
+      await inter.guild.members.ban(user.id, {
+        deleteMessageSeconds: deleteMessageDays * 86400,
+        reason: reason || undefined,
+      });
+    },
+    formatReply: (tag, c) => `\u2705 **${tag}** has been banned. (Case #${c.case_number})`,
+  });
 }

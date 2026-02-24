@@ -21,7 +21,11 @@ export function _resetSecretCache() {
 
 function getSecret() {
   if (_cachedSecret === undefined) {
-    _cachedSecret = process.env.SESSION_SECRET || '';
+    const secret = process.env.SESSION_SECRET;
+    if (!secret) {
+      throw new Error('SESSION_SECRET environment variable is required but not set');
+    }
+    _cachedSecret = secret;
   }
   return _cachedSecret;
 }
@@ -35,8 +39,12 @@ function getSecret() {
  *   On failure: `{ error, status }` with an error message and HTTP status code.
  */
 export function verifyJwtToken(token) {
-  const secret = getSecret();
-  if (!secret) return { error: 'Session not configured', status: 500 };
+  let secret;
+  try {
+    secret = getSecret();
+  } catch {
+    return { error: 'Session not configured', status: 500 };
+  }
 
   try {
     const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });

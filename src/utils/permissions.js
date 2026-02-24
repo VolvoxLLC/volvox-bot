@@ -7,6 +7,23 @@
 import { PermissionFlagsBits } from 'discord.js';
 
 /**
+ * Parse BOT_OWNER_IDS from environment variable.
+ * Accepts a comma-separated list of Discord user IDs.
+ * Falls back to config.permissions.botOwners for backward compatibility.
+ *
+ * @param {Object} [config] - Bot configuration (fallback source)
+ * @returns {string[]} Array of bot owner user IDs
+ */
+function getBotOwnerIds(config) {
+  const envValue = process.env.BOT_OWNER_IDS;
+  if (envValue) {
+    return envValue.split(',').map((id) => id.trim()).filter(Boolean);
+  }
+  const owners = config?.permissions?.botOwners;
+  return Array.isArray(owners) ? owners : [];
+}
+
+/**
  * Check if a member is a bot owner
  *
  * @param {GuildMember} member - Discord guild member
@@ -14,8 +31,8 @@ import { PermissionFlagsBits } from 'discord.js';
  * @returns {boolean} True if member is a bot owner
  */
 function isBotOwner(member, config) {
-  const owners = config?.permissions?.botOwners;
-  if (!Array.isArray(owners) || owners.length === 0) {
+  const owners = getBotOwnerIds(config);
+  if (owners.length === 0) {
     return false;
   }
   const userId = member?.id || member?.user?.id;

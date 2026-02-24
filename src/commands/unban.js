@@ -4,10 +4,7 @@
  */
 
 import { SlashCommandBuilder } from 'discord.js';
-import { info, error as logError } from '../logger.js';
-import { getConfig } from '../modules/config.js';
-import { createCase, sendModLogEmbed } from '../modules/moderation.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { executeModAction } from '../utils/modAction.js';
 
 export const data = new SlashCommandBuilder()
   .setName('unban')
@@ -26,43 +23,28 @@ export const adminOnly = true;
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
-    const config = getConfig(interaction.guildId);
-    const userId = interaction.options.getString('user_id');
-    const reason = interaction.options.getString('reason');
-
-    await interaction.guild.members.unban(userId, reason || undefined);
-
-    let targetTag = userId;
-    try {
-      const fetchedUser = await interaction.client.users.fetch(userId);
-      targetTag = fetchedUser.tag;
-    } catch {
-      // User no longer resolvable — keep raw ID
-    }
-
-    const caseData = await createCase(interaction.guild.id, {
-      action: 'unban',
-      targetId: userId,
-      targetTag,
-      moderatorId: interaction.user.id,
-      moderatorTag: interaction.user.tag,
-      reason,
-    });
-
-    await sendModLogEmbed(interaction.client, config, caseData);
-
-    info('User unbanned', { target: userId, moderator: interaction.user.tag });
-    await safeEditReply(
-      interaction,
-      `✅ **${userId}** has been unbanned. (Case #${caseData.case_number})`,
-    );
-  } catch (err) {
-    logError('Command error', { error: err.message, command: 'unban' });
-    await safeEditReply(
-      interaction,
-      '❌ An error occurred. Please try again or contact an administrator.',
-    ).catch(() => {});
-  }
+  await executeModAction(interaction, {
+    action: 'unban',
+    skipHierarchy: true,
+    skipDm: true,
+    getTarget: async (inter) => {
+      const userId = inter.options.getString('user_id');
+      let targetTag = userId;
+      try {
+        const fetchedUser = await inter.client.users.fetch(userId);
+        targetTag = fetchedUser.tag;
+      } catch {
+        // User no longer resolvable — keep raw ID
+      }
+      return { target: null, targetId: userId, targetTag };
+    },
+    actionFn: async (_target, reason, inter) => {
+      const userId = inter.options.getString('user_id');
+      await inter.guild.members.unban(userId, reason || undefined);
+    },
+    extractOptions: (inter) => ({
+      reason: inter.options.getString('reason'),
+    }),
+    formatReply: (tag, c) => `\u2705 **${tag}** has been unbanned. (Case #${c.case_number})`,
+  });
 }

@@ -6,8 +6,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: billsbot
-    ports:
-      - "5432:5432"
+    # Host port mapping removed — something on the Docker Desktop VM holds :5432.
+    # Bot and web connect via internal network (db:5432). Use `docker compose exec db psql` for queries.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -29,6 +29,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/billsbot
       DATABASE_SSL: "false"
+      DISABLE_PROMPT_CACHING: "1"
 
   web:
     build:

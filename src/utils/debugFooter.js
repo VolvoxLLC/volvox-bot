@@ -55,14 +55,32 @@ function shortModel(model) {
  */
 function extractStats(result, model) {
   const usage = result?.usage || {};
+
+  // The CLI result includes both `usage` (snake_case, aggregate) and
+  // `modelUsage` (camelCase, per-model).  When tools are used (multi-turn),
+  // `usage` may be empty while `modelUsage` contains the real totals.
+  // Fall back to the first modelUsage entry when `usage` has no input tokens.
+  let mu = {};
+  if ((!usage.input_tokens && !usage.inputTokens) && result?.modelUsage) {
+    const entries = Object.values(result.modelUsage);
+    if (entries.length > 0) {
+      mu = entries.reduce((acc, e) => ({
+        inputTokens: (acc.inputTokens || 0) + (e.inputTokens || 0),
+        outputTokens: (acc.outputTokens || 0) + (e.outputTokens || 0),
+        cacheCreationInputTokens: (acc.cacheCreationInputTokens || 0) + (e.cacheCreationInputTokens || 0),
+        cacheReadInputTokens: (acc.cacheReadInputTokens || 0) + (e.cacheReadInputTokens || 0),
+      }), {});
+    }
+  }
+
   return {
     model: model || 'unknown',
     cost: result?.total_cost_usd || 0,
     durationMs: result?.duration_ms || 0,
-    inputTokens: usage.input_tokens ?? usage.inputTokens ?? 0,
-    outputTokens: usage.output_tokens ?? usage.outputTokens ?? 0,
-    cacheCreation: usage.cache_creation_input_tokens ?? 0,
-    cacheRead: usage.cache_read_input_tokens ?? 0,
+    inputTokens: usage.input_tokens ?? usage.inputTokens ?? mu.inputTokens ?? 0,
+    outputTokens: usage.output_tokens ?? usage.outputTokens ?? mu.outputTokens ?? 0,
+    cacheCreation: usage.cache_creation_input_tokens ?? mu.cacheCreationInputTokens ?? 0,
+    cacheRead: usage.cache_read_input_tokens ?? mu.cacheReadInputTokens ?? 0,
   };
 }
 
@@ -71,16 +89,19 @@ function extractStats(result, model) {
 /**
  * Build a verbose debug footer.
  */
-function buildVerbose(classify, respond) {
+function buildVerbose(classify, respond, searchCount) {
   const totalCost = classify.cost + respond.cost;
   const totalDuration = ((classify.durationMs + respond.durationMs) / 1000).toFixed(1);
+
+  let summary = `Σ Total: ${formatCost(totalCost)} • Duration: ${totalDuration}s`;
+  if (searchCount > 0) summary += ` • 🔎×${searchCount}`;
 
   const lines = [
     `🔍 Triage: ${classify.model}`,
     `   In: ${formatTokens(classify.inputTokens)} Out: ${formatTokens(classify.outputTokens)} Cache+: ${formatTokens(classify.cacheCreation)} CacheR: ${formatTokens(classify.cacheRead)} Cost: ${formatCost(classify.cost)}`,
     `💬 Response: ${respond.model}`,
     `   In: ${formatTokens(respond.inputTokens)} Out: ${formatTokens(respond.outputTokens)} Cache+: ${formatTokens(respond.cacheCreation)} CacheR: ${formatTokens(respond.cacheRead)} Cost: ${formatCost(respond.cost)}`,
-    `Σ Total: ${formatCost(totalCost)} • Duration: ${totalDuration}s`,
+    summary,
   ];
   return lines.join('\n');
 }
@@ -88,22 +109,27 @@ function buildVerbose(classify, respond) {
 /**
  * Build a two-line split debug footer.
  */
-function buildSplit(classify, respond) {
+function buildSplit(classify, respond, searchCount) {
   const totalCost = classify.cost + respond.cost;
+
+  let totalSuffix = `Σ ${formatCost(totalCost)}`;
+  if (searchCount > 0) totalSuffix += ` • 🔎×${searchCount}`;
 
   return [
     `🔍 Triage: ${shortModel(classify.model)} • ${formatTokens(classify.inputTokens)}→${formatTokens(classify.outputTokens)} tok • ${formatCost(classify.cost)}`,
-    `💬 Response: ${shortModel(respond.model)} • ${formatTokens(respond.inputTokens)}→${formatTokens(respond.outputTokens)} tok • ${formatCost(respond.cost)} • Σ ${formatCost(totalCost)}`,
+    `💬 Response: ${shortModel(respond.model)} • ${formatTokens(respond.inputTokens)}→${formatTokens(respond.outputTokens)} tok • ${formatCost(respond.cost)} • ${totalSuffix}`,
   ].join('\n');
 }
 
 /**
  * Build a single-line compact debug footer.
  */
-function buildCompact(classify, respond) {
+function buildCompact(classify, respond, searchCount) {
   const totalCost = classify.cost + respond.cost;
 
-  return `🔍 ${shortModel(classify.model)} ${formatTokens(classify.inputTokens)}/${formatTokens(classify.outputTokens)} ${formatCost(classify.cost)} │ 💬 ${shortModel(respond.model)} ${formatTokens(respond.inputTokens)}/${formatTokens(respond.outputTokens)} ${formatCost(respond.cost)} │ Σ ${formatCost(totalCost)}`;
+  let line = `🔍 ${shortModel(classify.model)} ${formatTokens(classify.inputTokens)}/${formatTokens(classify.outputTokens)} ${formatCost(classify.cost)} │ 💬 ${shortModel(respond.model)} ${formatTokens(respond.inputTokens)}/${formatTokens(respond.outputTokens)} ${formatCost(respond.cost)} │ Σ ${formatCost(totalCost)}`;
+  if (searchCount > 0) line += ` │ 🔎×${searchCount}`;
+  return line;
 }
 
 /**
@@ -113,9 +139,11 @@ function buildCompact(classify, respond) {
  * @param {Object} classifyStats - Stats from classifier CLIProcess result
  * @param {Object} respondStats - Stats from responder CLIProcess result
  * @param {string} [level="verbose"] - Density level: "verbose", "compact", or "split"
+ * @param {Object} [options] - Additional display options
+ * @param {number} [options.searchCount] - Number of web searches performed (shown when > 0)
  * @returns {string} Formatted footer string
  */
-export function buildDebugFooter(classifyStats, respondStats, level = 'verbose') {
+export function buildDebugFooter(classifyStats, respondStats, level = 'verbose', { searchCount } = {}) {
   const defaults = {
     model: 'unknown',
     cost: 0,
@@ -130,11 +158,11 @@ export function buildDebugFooter(classifyStats, respondStats, level = 'verbose')
 
   switch (level) {
     case 'compact':
-      return buildCompact(classify, respond);
+      return buildCompact(classify, respond, searchCount);
     case 'split':
-      return buildSplit(classify, respond);
+      return buildSplit(classify, respond, searchCount);
     default:
-      return buildVerbose(classify, respond);
+      return buildVerbose(classify, respond, searchCount);
   }
 }
 
@@ -192,9 +220,11 @@ function buildSplitFields(classify, respond) {
  * @param {Object} classifyStats - Stats from classifier CLIProcess result
  * @param {Object} respondStats - Stats from responder CLIProcess result
  * @param {string} [level="verbose"] - Density level: "verbose", "compact", or "split"
+ * @param {Object} [options] - Additional display options
+ * @param {number} [options.searchCount] - Number of web searches performed (shown when > 0)
  * @returns {EmbedBuilder} Discord embed with debug stats fields
  */
-export function buildDebugEmbed(classifyStats, respondStats, level = 'verbose') {
+export function buildDebugEmbed(classifyStats, respondStats, level = 'verbose', { searchCount } = {}) {
   const defaults = {
     model: 'unknown',
     cost: 0,
@@ -210,9 +240,12 @@ export function buildDebugEmbed(classifyStats, respondStats, level = 'verbose') 
   const totalCost = classify.cost + respond.cost;
   const totalDuration = ((classify.durationMs + respond.durationMs) / 1000).toFixed(1);
 
+  let footerText = `Σ ${formatCost(totalCost)} • ${totalDuration}s`;
+  if (searchCount > 0) footerText += ` • 🔎×${searchCount}`;
+
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
-    .setFooter({ text: `Σ ${formatCost(totalCost)} • ${totalDuration}s` });
+    .setFooter({ text: footerText });
 
   if (level === 'compact') {
     embed.setDescription(buildCompactDescription(classify, respond));
@@ -236,7 +269,7 @@ export function buildDebugEmbed(classifyStats, respondStats, level = 'verbose') 
  *
  * @param {string} guildId - Discord guild ID
  * @param {string} channelId - Discord channel ID
- * @param {Object} stats - Stats object with classify and respond sub-objects
+ * @param {Object} stats - Stats object with classify/respond sub-objects, userId, searchCount
  */
 export function logAiUsage(guildId, channelId, stats) {
   let pool;
@@ -246,10 +279,12 @@ export function logAiUsage(guildId, channelId, stats) {
     return;
   }
 
-  const sql = `INSERT INTO ai_usage (guild_id, channel_id, type, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cost_usd, duration_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
+  const sql = `INSERT INTO ai_usage (guild_id, channel_id, type, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cost_usd, duration_ms, user_id, search_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
 
   const c = stats?.classify || {};
   const r = stats?.respond || {};
+  const userId = stats?.userId || null;
+  const searchCount = stats?.searchCount || 0;
 
   pool
     .query(sql, [
@@ -263,6 +298,8 @@ export function logAiUsage(guildId, channelId, stats) {
       c.cacheRead || 0,
       c.cost || 0,
       c.durationMs || 0,
+      userId,
+      0,
     ])
     .catch((err) => logError('Failed to log AI usage (classify)', { error: err?.message }));
 
@@ -278,6 +315,8 @@ export function logAiUsage(guildId, channelId, stats) {
       r.cacheRead || 0,
       r.cost || 0,
       r.durationMs || 0,
+      userId,
+      searchCount,
     ])
     .catch((err) => logError('Failed to log AI usage (respond)', { error: err?.message }));
 }
