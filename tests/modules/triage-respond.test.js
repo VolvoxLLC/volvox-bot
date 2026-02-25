@@ -43,7 +43,6 @@ import { safeSend } from '../../src/utils/safeSend.js';
 beforeEach(() => {
   vi.clearAllMocks();
 });
-import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('triage-respond', () => {
   describe('fetchChannelContext', () => {
