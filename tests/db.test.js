@@ -115,6 +115,7 @@ describe('db module', () => {
       expect(runnerOpts.direction).toBe('up');
       expect(runnerOpts.migrationsTable).toBe('pgmigrations');
       expect(runnerOpts.dir).toContain('migrations');
+      expect(typeof runnerOpts.log).toBe('function');
     });
 
     it('should return existing pool on second call', async () => {
