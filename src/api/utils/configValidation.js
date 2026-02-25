@@ -58,7 +58,7 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      alertChannelId: { type: 'string' },
+      alertChannelId: { type: 'string', nullable: true },
       autoDelete: { type: 'boolean' },
       dmNotifications: {
         type: 'object',

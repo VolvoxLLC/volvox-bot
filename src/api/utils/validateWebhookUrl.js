@@ -326,6 +326,10 @@ export async function validateDnsResolution(url) {
   // For IP-literal hostnames, validate against blocked ranges (no DNS resolution needed)
   // This is the critical fix: IP-literals must be validated, not auto-accepted
   const isIPv4Literal = ipv4ToLong(hostname) !== null;
+
+  // IPv4-mapped IPv6 in dotted-quad form (e.g. ::ffff:127.0.0.1) can't be parsed by
+  // ipv6ToBigInt, so we detect it explicitly before falling through to DNS resolution.
+  const isMappedIPv4Literal = extractMappedIPv4(hostname) !== null;
   const isIPv6Literal = ipv6ToBigInt(hostname) !== null;
 
   if (isIPv4Literal) {
@@ -333,8 +337,8 @@ export async function validateDnsResolution(url) {
     return !isBlockedIPv4(hostname);
   }
 
-  if (isIPv6Literal) {
-    // IPv6 literal - check if blocked
+  if (isMappedIPv4Literal || isIPv6Literal) {
+    // IPv6 literal (including IPv4-mapped forms) - check if blocked
     return !isBlockedIPv6(hostname);
   }
 
@@ -379,6 +383,12 @@ export async function validateDnsResolution(url) {
         });
         return false;
       }
+    }
+
+    // If both queries "succeeded" but returned zero records, treat the host as
+    // unresolvable — an empty result with no error is still unusable.
+    if (ipv4s.length === 0 && ipv6s.length === 0) {
+      return false;
     }
 
     return true;
