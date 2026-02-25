@@ -353,14 +353,14 @@ describe('config routes', () => {
       expect(setConfigValue).toHaveBeenCalledWith('welcome.channelId', null);
     });
 
-    it('should allow unknown keys within a section (extensible config)', async () => {
+    it('should reject unknown keys within a section (strict schema)', async () => {
       const res = await request(app)
         .put('/api/v1/config')
         .set('x-api-secret', SECRET)
         .send({ ai: { customSetting: 'test' } });
 
-      expect(res.status).toBe(200);
-      expect(setConfigValue).toHaveBeenCalledWith('ai.customSetting', 'test');
+      expect(res.status).toBe(400);
+      expect(res.body.details).toContain('ai.customSetting: unknown config key');
     });
 
     it('should reject null on non-nullable number field (Infinity serializes to null)', async () => {

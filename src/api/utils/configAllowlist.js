@@ -25,6 +25,9 @@ const MASK = '••••••••';
  * @returns {Object} A deep clone of `config` with sensitive values replaced by `MASK`.
  */
 export function maskSensitiveFields(config) {
+  if (config == null) {
+    return {};
+  }
   const cloned = structuredClone(config);
 
   for (const field of SENSITIVE_FIELDS) {

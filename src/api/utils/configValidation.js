@@ -178,6 +178,8 @@ export function validateValue(value, schema, path) {
         for (const [key, val] of Object.entries(value)) {
           if (schema.properties[key]) {
             errors.push(...validateValue(val, schema.properties[key], `${path}.${key}`));
+          } else {
+            errors.push(`${path}.${key}: unknown config key`);
           }
         }
       }

@@ -87,6 +87,22 @@ function extractMappedIPv4(ipv6) {
   return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
 }
 
+/**
+ * Sanitize a URL for safe logging by removing userinfo and query string.
+ * Prevents credential/token leakage in logs.
+ * @param {string} url - The URL to sanitize.
+ * @returns {string} The sanitized URL (origin + pathname + hash), or '[invalid]' if parsing fails.
+ */
+function sanitizeUrlForLogging(url) {
+  try {
+    const parsed = new URL(url);
+    // Reconstruct without userinfo and query string
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}${parsed.hash}`;
+  } catch {
+    return '[invalid]';
+  }
+}
+
 /** Blocked hostnames (case-insensitive check performed by caller). */
 const BLOCKED_HOSTNAMES = new Set(['localhost']);
 
@@ -121,7 +137,7 @@ export function validateWebhookUrl(url) {
   }
 
   if (!result) {
-    warn('Webhook URL rejected by SSRF validation', { url });
+    warn('Webhook URL rejected by SSRF validation', { url: sanitizeUrlForLogging(url) });
   }
 
   if (validationCache.size >= MAX_CACHE_SIZE) {

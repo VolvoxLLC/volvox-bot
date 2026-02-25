@@ -128,7 +128,7 @@ export function buildUpstreamUrl(
   }
 }
 
-interface ProxyOptions {
+export interface ProxyOptions {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
