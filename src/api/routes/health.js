@@ -28,10 +28,13 @@ async function getQueryLogs() {
 const router = Router();
 
 // Graceful fallback for restartTracker — may not exist yet
-let getRestartData = null;
+let getRestarts = null;
+let getRestartPool = null;
 try {
   const mod = await import('../../utils/restartTracker.js');
-  getRestartData = mod.getRestartData ?? mod.default?.getRestartData ?? null;
+  getRestarts = mod.getRestarts ?? null;
+  const dbMod = await import('../../db.js');
+  getRestartPool = dbMod.getPool ?? null;
 } catch {
   // restartTracker not available yet — fallback to null
 }
@@ -97,15 +100,25 @@ router.get('/', async (req, res) => {
     }
 
     // Restart data with graceful fallback
-    if (getRestartData) {
+    if (getRestarts && getRestartPool) {
       try {
-        const restartInfo = await getRestartData();
-        body.restarts = restartInfo;
+        const pool = getRestartPool();
+        if (pool) {
+          const rows = await getRestarts(pool, 20);
+          body.restarts = rows.map(r => ({
+            timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+            reason: r.reason || 'unknown',
+            version: r.version ?? null,
+            uptimeBefore: r.uptime_seconds ?? null,
+          }));
+        } else {
+          body.restarts = [];
+        }
       } catch {
-        body.restarts = { total: 0, last: null };
+        body.restarts = [];
       }
     } else {
-      body.restarts = { total: 0, last: null };
+      body.restarts = [];
     }
   }
 
