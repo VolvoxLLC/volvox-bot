@@ -251,6 +251,7 @@ function extractMemories(snapshot, parsed) {
  * @param {Object} evalConfig - Effective triage configuration to use for this evaluation.
  * @param {import('discord.js').Client} evalClient - Discord client used to fetch channels and send messages.
  * @throws {CLIProcessError} When a classifier/responder CLI process times out; the error is rethrown.
+ */
 async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
 
