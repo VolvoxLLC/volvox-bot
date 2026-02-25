@@ -27,7 +27,8 @@
     "pg": "^8.18.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
-    "winston-transport": "^4.9.0"
+    "winston-transport": "^4.9.0",
+    "ws": "^8.19.0"
   },
   "pnpm": {
     "overrides": {
