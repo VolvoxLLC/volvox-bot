@@ -14,7 +14,11 @@ export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging', 'memory', '
  */
 export const SENSITIVE_FIELDS = new Set(['triage.classifyApiKey', 'triage.respondApiKey']);
 
-const MASK = '••••••••';
+/**
+ * Mask sentinel used to hide sensitive field values in GET responses.
+ * Exported for test assertions.
+ */
+export const MASK = '••••••••';
 
 /**
  * Check whether a value is the mask sentinel used to hide sensitive fields.

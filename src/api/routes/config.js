@@ -53,14 +53,7 @@ export function validateConfigSchema(config) {
   return errors;
 }
 
-/**
- * Flatten a nested object into dot-notation [path, value] pairs.
- * Plain objects are recursed into; arrays and primitives are leaf values.
- *
- * @param {Object} obj - Object to flatten
- * @param {string} prefix - Current path prefix
- * @returns {Array<[string, *]>} Array of [dotPath, leafValue] tuples
- */
+/** Keys that must be skipped during object traversal to prevent prototype pollution. */
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
