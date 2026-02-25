@@ -6,7 +6,7 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import { info, error as logError, warn } from '../../logger.js';
 import { queryLogs } from '../../utils/logQuery.js';
 
@@ -300,7 +300,7 @@ function cleanupClient(ws) {
  */
 function sendJson(ws, data) {
   try {
-    if (ws.readyState === 1) {
+    if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(data));
     }
   } catch {
@@ -342,6 +342,7 @@ export async function stopLogStream() {
     });
 
     wss = null;
+    wsTransport = null;
     authenticatedCount = 0;
     info('WebSocket log stream server stopped', { module: 'logStream' });
   }

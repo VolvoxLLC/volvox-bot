@@ -9,13 +9,16 @@ import { isValidSecret } from '../middleware/auth.js';
 
 /** Lazy-loaded queryLogs — optional diagnostic feature, not required for health */
 let _queryLogs = null;
+let queryLogsFailed = false;
 async function getQueryLogs() {
+  if (queryLogsFailed) return null;
   if (!_queryLogs) {
     try {
       const mod = await import('../../utils/logQuery.js');
       _queryLogs = mod.queryLogs;
     } catch {
-      // logQuery not available — graceful fallback
+      // logQuery not available — tombstone to avoid retrying every request
+      queryLogsFailed = true;
       _queryLogs = null;
     }
   }

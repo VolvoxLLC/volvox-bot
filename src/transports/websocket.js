@@ -5,6 +5,7 @@
  * WebSocket clients in real-time. Zero overhead when no clients are connected.
  */
 
+import WebSocket from 'ws';
 import Transport from 'winston-transport';
 
 /**
@@ -140,7 +141,7 @@ export class WebSocketTransport extends Transport {
 
     for (const ws of this.clients) {
       try {
-        if (ws.readyState === 1 && this.passesFilter(entry, ws.logFilter)) {
+        if (ws.readyState === WebSocket.OPEN && this.passesFilter(entry, ws.logFilter)) {
           ws.send(payload);
         }
       } catch {
