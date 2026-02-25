@@ -83,6 +83,7 @@ describe('guilds routes', () => {
     iconURL: () => 'https://cdn.example.com/icon.png',
     memberCount: 100,
     channels: { cache: channelCache },
+    roles: { cache: new Map([['role1', { id: 'role1', name: 'Admin', position: 1, color: 0 }]]) },
     members: {
       cache: new Map([['user1', mockMember]]),
       list: vi.fn().mockResolvedValue(new Map([['user1', mockMember]])),
@@ -308,6 +309,24 @@ describe('guilds routes', () => {
       expect(res.body.memberCount).toBe(100);
       expect(res.body.channels).toBeInstanceOf(Array);
       expect(res.body.channels).toHaveLength(2);
+    });
+  });
+
+  describe('GET /:id/roles', () => {
+    it('should return guild roles', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/roles')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toBeInstanceOf(Array);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0]).toEqual({ id: 'role1', name: 'Admin', color: 0 });
+    });
+
+    it('should require authentication', async () => {
+      const res = await request(app).get('/api/v1/guilds/guild1/roles');
+      expect(res.status).toBe(401);
     });
   });
 

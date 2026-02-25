@@ -206,9 +206,11 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
     succeeded: succeeded.map((s) => s.path),
     failed: failed.map((f) => f.path),
   });
+  // Report successfully-written sections, not requested ones
+  const writtenSections = [...new Set(succeeded.map((s) => s.path.split('.')[0]))];
   fireAndForgetWebhook('CONFIG_CHANGE_WEBHOOK_URL', {
     event: 'config.updated',
-    sections: updatedSections,
+    sections: writtenSections,
     timestamp: Date.now(),
   });
   return res.status(207).json({
