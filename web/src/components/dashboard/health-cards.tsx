@@ -43,7 +43,7 @@ function formatBytes(bytes: number): string {
 
 function pingColor(ping: number): string {
   if (ping < 100) return "text-green-500";
-  if (ping < 300) return "text-yellow-500";
+  if (ping <= 300) return "text-yellow-500";
   return "text-red-500";
 }
 
