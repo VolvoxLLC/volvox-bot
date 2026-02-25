@@ -106,7 +106,9 @@ function handleConnection(ws) {
   });
 
   ws.on('message', (data) => {
-    handleMessage(ws, data);
+    handleMessage(ws, data).catch((err) => {
+      logError('Unhandled error in WebSocket message handler', { error: err.message });
+    });
   });
 
   ws.on('close', () => {
@@ -125,7 +127,7 @@ function handleConnection(ws) {
  * @param {import('ws').WebSocket} ws
  * @param {Buffer|string} data
  */
-function handleMessage(ws, data) {
+async function handleMessage(ws, data) {
   let msg;
   try {
     msg = JSON.parse(data.toString());
@@ -141,7 +143,7 @@ function handleMessage(ws, data) {
 
   switch (msg.type) {
     case 'auth':
-      handleAuth(ws, msg);
+      await handleAuth(ws, msg);
       break;
 
     case 'filter':
@@ -310,7 +312,7 @@ export async function stopLogStream() {
 
     wss = null;
     authenticatedCount = 0;
-    info('WebSocket log stream server stopped');
+    info('WebSocket log stream server stopped', { module: 'logStream' });
   }
 }
 
