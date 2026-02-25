@@ -46,17 +46,18 @@ function createMessageQueue(ws) {
         return Promise.resolve(queue.shift());
       }
       return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          const idx = waiters.findIndex((w) => w.resolve === resolve);
-          if (idx >= 0) waiters.splice(idx, 1);
-          reject(new Error('Message timeout'));
-        }, timeoutMs);
-        waiters.push({
+        const waiter = {
           resolve: (msg) => {
             clearTimeout(timer);
             resolve(msg);
           },
-        });
+        };
+        const timer = setTimeout(() => {
+          const idx = waiters.indexOf(waiter);
+          if (idx >= 0) waiters.splice(idx, 1);
+          reject(new Error('Message timeout'));
+        }, timeoutMs);
+        waiters.push(waiter);
       });
     },
   };
