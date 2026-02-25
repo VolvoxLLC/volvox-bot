@@ -7,7 +7,17 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+vi.mock('../../../src/utils/logQuery.js', () => ({
+  queryLogs: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+}));
+
+// restartTracker doesn't exist yet — mock the attempted import to fail gracefully
+vi.mock('../../../src/utils/restartTracker.js', () => {
+  throw new Error('Module not found');
+});
+
 import { createApp } from '../../../src/api/server.js';
+import { queryLogs } from '../../../src/utils/logQuery.js';
 
 describe('health route', () => {
   afterEach(() => {
@@ -34,6 +44,9 @@ describe('health route', () => {
     expect(res.body.uptime).toBeTypeOf('number');
     expect(res.body.memory).toBeUndefined();
     expect(res.body.discord).toBeUndefined();
+    expect(res.body.system).toBeUndefined();
+    expect(res.body.errors).toBeUndefined();
+    expect(res.body.restarts).toBeUndefined();
   });
 
   it('should include memory when valid x-api-secret is provided', async () => {
@@ -57,6 +70,9 @@ describe('health route', () => {
     expect(res.status).toBe(200);
     expect(res.body.discord).toBeUndefined();
     expect(res.body.memory).toBeUndefined();
+    expect(res.body.system).toBeUndefined();
+    expect(res.body.errors).toBeUndefined();
+    expect(res.body.restarts).toBeUndefined();
   });
 
   it('should not require authentication', async () => {
@@ -65,5 +81,50 @@ describe('health route', () => {
     const res = await request(app).get('/api/v1/health');
 
     expect(res.status).toBe(200);
+  });
+
+  it('should include system info for authenticated requests', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    const app = buildApp();
+
+    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
+
+    expect(res.status).toBe(200);
+    expect(res.body.system).toBeDefined();
+    expect(res.body.system.platform).toBe(process.platform);
+    expect(res.body.system.nodeVersion).toBe(process.version);
+    expect(res.body.system.cpuUsage).toBeDefined();
+    expect(res.body.system.cpuUsage.user).toBeTypeOf('number');
+    expect(res.body.system.cpuUsage.system).toBeTypeOf('number');
+  });
+
+  it('should include error counts for authenticated requests', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    queryLogs
+      .mockResolvedValueOnce({ rows: [], total: 3 }) // lastHour
+      .mockResolvedValueOnce({ rows: [], total: 15 }); // lastDay
+
+    const app = buildApp();
+
+    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
+
+    expect(res.status).toBe(200);
+    expect(res.body.errors).toBeDefined();
+    expect(res.body.errors.lastHour).toBe(3);
+    expect(res.body.errors.lastDay).toBe(15);
+    expect(queryLogs).toHaveBeenCalledTimes(2);
+    expect(queryLogs).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', limit: 1 }));
+  });
+
+  it('should include restart data fallback when restartTracker unavailable', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    const app = buildApp();
+
+    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
+
+    expect(res.status).toBe(200);
+    expect(res.body.restarts).toBeDefined();
+    expect(res.body.restarts.total).toBe(0);
+    expect(res.body.restarts.last).toBeNull();
   });
 });
