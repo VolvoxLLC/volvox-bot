@@ -81,7 +81,8 @@ export class WebSocketTransport extends Transport {
     // Search filter — case-insensitive substring match on message
     if (filter.search) {
       const searchLower = filter.search.toLowerCase();
-      if (!entry.message?.toLowerCase().includes(searchLower)) {
+      const messageStr = String(entry.message ?? '');
+      if (!messageStr.toLowerCase().includes(searchLower)) {
         return false;
       }
     }
