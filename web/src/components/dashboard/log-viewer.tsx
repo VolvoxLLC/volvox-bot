@@ -67,15 +67,27 @@ function LogRow({
 
   const hasMeta = entry.meta && Object.keys(entry.meta).length > 0;
 
+  const handleKeyDown = hasMeta
+    ? (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }
+    : undefined;
+
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: terminal log row toggle
     <div
       className={cn(
-        "group cursor-pointer border-b border-gray-800/50 px-3 py-1 font-mono text-xs transition-colors",
+        "group border-b border-gray-800/50 px-3 py-1 font-mono text-xs transition-colors",
         level.row,
         hasMeta && "cursor-pointer",
       )}
+      role={hasMeta ? "button" : undefined}
+      tabIndex={hasMeta ? 0 : undefined}
+      aria-expanded={hasMeta ? isExpanded : undefined}
       onClick={hasMeta ? onToggle : undefined}
+      onKeyDown={handleKeyDown}
     >
       {/* Main row */}
       <div className="flex items-start gap-2 min-w-0">
