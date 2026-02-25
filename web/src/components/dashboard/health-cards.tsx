@@ -18,23 +18,11 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BotHealth } from "./types";
+import { formatUptime } from "@/lib/format-time";
 
 interface HealthCardsProps {
   health: BotHealth | null;
   loading: boolean;
-}
-
-function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86_400);
-  const h = Math.floor((seconds % 86_400) / 3_600);
-  const m = Math.floor((seconds % 3_600) / 60);
-
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d}d`);
-  if (h > 0) parts.push(`${h}h`);
-  if (m > 0 || parts.length === 0) parts.push(`${m}m`);
-
-  return parts.join(" ");
 }
 
 function formatBytes(bytes: number): string {
@@ -85,10 +73,11 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
   const cpuSystemSec = health ? health.system.cpuUsage.system / 1_000_000 : 0;
   const cpuTotalSec = cpuUserSec + cpuSystemSec;
   // Show utilization estimate: total CPU time / wall-clock uptime
-  const cpuPct =
-    health && health.uptime > 0
-      ? ((cpuTotalSec / health.uptime) * 100).toFixed(1)
-      : "0.0";
+  // Clamp to 0-100 to handle multi-core environments where raw value can exceed 100%
+  const rawPct = health && health.uptime > 0
+    ? (cpuTotalSec / health.uptime) * 100
+    : 0;
+  const cpuPct = Math.min(Math.max(rawPct, 0), 100).toFixed(1);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
