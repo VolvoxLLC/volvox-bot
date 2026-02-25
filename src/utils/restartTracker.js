@@ -5,7 +5,7 @@
  * for the dashboard to display restart history.
  */
 
-import { error as logError, info, warn } from '../logger.js';
+import { info, error as logError, warn } from '../logger.js';
 
 /** @type {number|null} Startup timestamp in ms for uptime calculation */
 let startedAt = null;

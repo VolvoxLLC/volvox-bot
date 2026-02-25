@@ -17,7 +17,11 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
-import { registerConfigListeners, removeLoggingTransport, setInitialTransport } from './config-listeners.js';
+import {
+  registerConfigListeners,
+  removeLoggingTransport,
+  setInitialTransport,
+} from './config-listeners.js';
 import { closeDb, getPool, initDb } from './db.js';
 import { addPostgresTransport, debug, error, info, warn } from './logger.js';
 import {
@@ -39,8 +43,8 @@ import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
-import { safeFollowUp, safeReply } from './utils/safeSend.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
+import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
