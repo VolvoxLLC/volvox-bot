@@ -1,101 +1,75 @@
-# Task: Health Cards + Restart History UI
+# Task: Fix PR #87 Frontend Review Comments
 
 ## Parent
-- **Master Task:** task-001
+- **PR:** [#87](https://github.com/VolvoxLLC/volvox-bot/pull/87)
 - **Branch:** feat/logs-and-health
-- **Issue:** [#35](https://github.com/VolvoxLLC/volvox-bot/issues/35)
-
-## Context
-
-Build health metric cards and restart history table for the dashboard. Data comes from the extended health endpoint (`GET /api/v1/health`).
-
-### Existing Code
-- `web/src/lib/bot-api-proxy.ts` — API proxy for authenticated requests
-- `web/src/components/dashboard/config-editor.tsx` — Reference for dashboard patterns
-- `web/src/components/ui/` — shadcn/ui components (card, table, badge, etc.)
-- Health endpoint returns: uptime, memory, discord, system, errors, restarts
 
 ## IMPORTANT — READ FIRST
-
-1. **Commit after every file you create or major change**
+1. **Commit after every file you fix**
 2. **Start writing code IMMEDIATELY**
 3. **Expected duration: ~15m**
 
-**Commit flow:**
-1. Create health cards component → commit
-2. Create restart history component → commit
-3. Create page or section → commit
-4. Lint/build → commit
+## Issues to Fix (15 total)
 
-## Files to Create
+### Critical/Major
+1. **`web/src/app/api/log-stream/ws-ticket/route.ts:56`** — SECURITY: `BOT_API_SECRET` returned raw to the browser. This breaks the security model. The endpoint should NOT return the secret directly. Instead, generate a short-lived token/ticket that the WS server can validate, OR have the WS server validate via a different mechanism.
+2. **`web/src/components/dashboard/health-cards.tsx:87`** — CPU card shows cumulative CPU time, not utilization. `process.cpuUsage()` returns microseconds, not percentage. Need to calculate delta between two readings or display differently.
+3. **`web/src/components/dashboard/log-viewer.tsx:79`** — Metadata toggle not keyboard-accessible. Add `onKeyDown` handler for Enter/Space, use `role="button"` and `tabIndex={0}`.
+4. **`web/src/lib/log-ws.ts:70`** — Flatten server `metadata` into `meta` during normalization. Currently keeps raw server format.
+5. **`web/src/lib/log-ws.ts:119`** — Retry ticket-fetch failures instead of returning permanently. Add retry logic with backoff.
 
-- `web/src/components/dashboard/health-cards.tsx` — Health metric cards
-- `web/src/components/dashboard/restart-history.tsx` — Restart log table
-- `web/src/app/dashboard/logs/page.tsx` — Add health section (if page exists from log viewer slice, just add to it — otherwise create)
-
-## Requirements
-
-- [ ] **Health cards** (grid layout):
-  | Card | Data | Display |
-  |------|------|---------|
-  | Uptime | `health.uptime` | Human-readable ("3d 14h 22m") |
-  | Memory | `health.memory.heapUsed/heapTotal` | MB + percentage bar |
-  | Discord Ping | `health.discord.ping` | ms, color: green <100, yellow <300, red >300 |
-  | Guilds | `health.discord.guilds` | Count |
-  | Errors (1h) | `health.errors.lastHour` | Count, red if >0 |
-  | Errors (24h) | `health.errors.lastDay` | Count |
-  | CPU | `health.system.cpuUsage` | user + system % |
-  | Node | `health.system.nodeVersion` | Version string |
-- [ ] **Restart history table**:
-  - Columns: timestamp, reason, version, uptime before restart
-  - Last 20 restarts from `health.restarts`
-  - Human-readable timestamps
-  - Color-coded reasons (startup=green, crash=red)
-- [ ] Auto-refresh health data every 60s
-- [ ] Loading skeleton while fetching
-- [ ] Lint passes, build succeeds
+### Minor
+6. **`.gitignore:4`** — Root-scoped `/logs/` makes unignore rules redundant. Clean up.
+7. **`web/src/app/api/bot-health/route.ts:30`** — Misleading error message when only one config value missing. Check which is missing.
+8. **`web/src/app/api/bot-health/route.ts:69`** — Inconsistent error logging. Use structured format.
+9. **`web/src/app/dashboard/logs/page.tsx:25`** — `handleFilterChange` wrapper adds no value. Pass `sendFilter` directly.
+10. **`web/src/app/dashboard/logs/page.tsx:46`** — Filters enabled during "connecting" state. Disable until connected.
+11. **`web/src/components/dashboard/health-cards.tsx:47`** — 300ms ping classified as red. Use `<=` not `<`.
+12. **`web/src/components/dashboard/health-section.tsx:80`** — `setLoading(false)` redundant on background refresh.
+13. **`web/src/components/dashboard/restart-history.tsx:41`** — Dead code: `|| "< 1m"` fallback unreachable.
+14. **`web/src/components/dashboard/restart-history.tsx:71`** — `"start"` substring matches `"restart"`, misclassifying as green. Use exact match or startsWith.
+15. **`web/src/components/dashboard/types.ts:65`** — `isBotHealth` doesn't validate individual `RestartRecord` items. Add item validation.
 
 ## Constraints
 - Do NOT touch backend files
-- Do NOT touch log viewer (different slice)
-- Use shadcn/ui Card, Table, Badge components
-- Use Tailwind for styling
+- Fix each file, commit, move to next
 
 ## Acceptance Criteria
-- [ ] Health cards display all 8 metrics
-- [ ] Color coding works for ping and errors
-- [ ] Restart history table shows recent restarts
-- [ ] Auto-refresh every 60s
-- [ ] Loading state while fetching
-- [ ] Lint + build pass
+- [ ] All 15 frontend issues fixed
+- [ ] Build passes (`cd web && npx next build`)
+- [ ] TypeScript clean (`tsc --noEmit`)
+- [ ] All changes committed progressively
 
 ## Results
 
 **Status:** ✅ Done
 
-**Commits:**
-- `45f908d` feat: add bot health API proxy route
-- `3c213c5` feat: add health cards component and shared types
-- `c71f821` feat: add restart history table component
-- `8157ffe` feat: add health section orchestrator and logs page; fix gitignore for logs route
+**Commits (12 progressive):**
+- `e678912` fix(security): replace raw BOT_API_SECRET with short-lived HMAC ticket
+- `61589f7` fix: show CPU utilization % instead of raw cumulative seconds
+- `642ed56` fix(a11y): make log metadata toggle keyboard-accessible
+- `f5252d9` fix: flatten server metadata field into meta during normalization
+- `9c25e5f` fix: retry ticket-fetch failures with exponential backoff
+- `f88b176` chore: clean up .gitignore — remove redundant /logs/security/ and unignore rules
+- `e8f5f13` fix: improve bot-health error logging — show which env vars are missing
+- `167a06b` fix: pass sendFilter directly and disable filters until connected
+- `8188397` fix: classify 300ms ping as yellow, not red
+- `38c7a2d` fix: skip redundant setLoading(false) on background health refresh
+- `a14feca` fix: restart-history — remove dead code and fix 'start' matching 'restart'
+- `3523768` fix: validate individual RestartRecord items in isBotHealth
 
-**Changes:**
-- `web/src/app/api/bot-health/route.ts` — authenticated proxy to bot's `GET /api/v1/health`
-- `web/src/components/dashboard/types.ts` — `BotHealth` / `RestartRecord` types + runtime validator
-- `web/src/components/dashboard/health-cards.tsx` — 8-card grid (uptime, memory + bar, discord ping w/ color, guilds, errors 1h/24h w/ red, CPU, Node version)
-- `web/src/components/dashboard/restart-history.tsx` — table with last 20 restarts, color-coded reason badges, human-readable timestamps
-- `web/src/components/dashboard/health-section.tsx` — client component with auto-refresh (60s), loading skeleton, error banner, refresh button
-- `web/src/app/dashboard/logs/page.tsx` — new `/dashboard/logs` route rendering `<HealthSection />`
-- `.gitignore` — added exception for `web/src/app/dashboard/logs/` (conflicts with `logs/` gitignore rule)
+**Changes (10 files, +109/-51):**
+- `.gitignore` — removed redundant `/logs/security/` and unignore rules
+- `ws-ticket/route.ts` — HMAC ticket generation, no longer exposes raw secret
+- `log-ws.ts` — use ticket auth, flatten metadata, retry ticket-fetch failures
+- `health-cards.tsx` — CPU shows utilization %, ping 300ms is yellow not red
+- `log-viewer.tsx` — keyboard-accessible metadata toggle (Enter/Space, role, tabIndex)
+- `bot-health/route.ts` — structured error logging, specific missing env vars
+- `logs/page.tsx` — removed wrapper fn, filters disabled until connected
+- `health-section.tsx` — no redundant setLoading(false) on background refresh
+- `restart-history.tsx` — removed dead code, fixed 'start' matching 'restart'
+- `types.ts` — isBotHealth validates individual RestartRecord items
 
-**Build:** ✅ `next build` — compiled successfully, `/dashboard/logs` route created
-**TypeCheck:** ✅ `tsc --noEmit` — no errors in new files
-**Root lint:** Pre-existing failures in bot JS files only (26 errors existed before this task)
-
-**Acceptance Criteria:**
-- [x] Health cards display all 8 metrics
-- [x] Color coding works for ping (green/yellow/red) and errors (red if >0)
-- [x] Restart history table shows recent restarts (last 20, reversed)
-- [x] Auto-refresh every 60s
-- [x] Loading state while fetching (skeleton cards + table skeleton)
-- [x] Lint + build pass (build ✅, root lint pre-existing failures not introduced by this task)
+**Build:** ✅ `next build` passes (compiled in 6.4s, all routes generated)
+**TypeScript:** ✅ `tsc --noEmit` clean (0 errors)
+**Blockers:** None
