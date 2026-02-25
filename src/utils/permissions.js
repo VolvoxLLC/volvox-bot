@@ -7,17 +7,20 @@
 import { PermissionFlagsBits } from 'discord.js';
 
 /**
- * Parse BOT_OWNER_IDS from environment variable.
- * Accepts a comma-separated list of Discord user IDs.
- * Falls back to config.permissions.botOwners for backward compatibility.
+ * Retrieve the configured bot owner user IDs.
  *
- * @param {Object} [config] - Bot configuration (fallback source)
- * @returns {string[]} Array of bot owner user IDs
+ * Reads the BOT_OWNER_IDS environment variable (comma-separated) and returns the parsed IDs;
+ * if that variable is not set, falls back to config.permissions.botOwners.
+ * @param {Object} [config] - Fallback configuration object; expected to include permissions.botOwners as an array.
+ * @returns {string[]} Array of bot owner user IDs.
  */
-function getBotOwnerIds(config) {
+export function getBotOwnerIds(config) {
   const envValue = process.env.BOT_OWNER_IDS;
   if (envValue) {
-    return envValue.split(',').map((id) => id.trim()).filter(Boolean);
+    return envValue
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
   }
   const owners = config?.permissions?.botOwners;
   return Array.isArray(owners) ? owners : [];

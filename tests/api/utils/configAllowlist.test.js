@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isMasked,
   maskSensitiveFields,
   READABLE_CONFIG_KEYS,
   SAFE_CONFIG_KEYS,
   SENSITIVE_FIELDS,
+  stripMaskedWrites,
 } from '../../../src/api/utils/configAllowlist.js';
 
 describe('configAllowlist', () => {
   describe('SAFE_CONFIG_KEYS', () => {
-    it('should export an array of safe config keys', () => {
-      expect(Array.isArray(SAFE_CONFIG_KEYS)).toBe(true);
-      expect(SAFE_CONFIG_KEYS).toContain('ai');
-      expect(SAFE_CONFIG_KEYS).toContain('welcome');
-      expect(SAFE_CONFIG_KEYS).toContain('spam');
-      expect(SAFE_CONFIG_KEYS).toContain('moderation');
-      expect(SAFE_CONFIG_KEYS).toContain('triage');
+    it('should export a Set of safe config keys', () => {
+      expect(SAFE_CONFIG_KEYS instanceof Set).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('ai')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('welcome')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('spam')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('moderation')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('triage')).toBe(true);
     });
   });
 
@@ -162,6 +164,71 @@ describe('configAllowlist', () => {
       const masked = maskSensitiveFields(config);
 
       expect(masked.triage).toBeUndefined();
+    });
+  });
+
+  describe('isMasked', () => {
+    it('should return true for the mask sentinel value', () => {
+      expect(isMasked('••••••••')).toBe(true);
+    });
+
+    it('should return false for regular strings', () => {
+      expect(isMasked('sk-secret-123')).toBe(false);
+      expect(isMasked('')).toBe(false);
+      expect(isMasked('••••')).toBe(false); // partial mask
+    });
+
+    it('should return false for non-string values', () => {
+      expect(isMasked(null)).toBe(false);
+      expect(isMasked(undefined)).toBe(false);
+      expect(isMasked(42)).toBe(false);
+      expect(isMasked(true)).toBe(false);
+    });
+  });
+
+  describe('stripMaskedWrites', () => {
+    it('should remove writes where sensitive fields have the mask sentinel', () => {
+      const writes = [
+        { path: 'triage.enabled', value: true },
+        { path: 'triage.classifyApiKey', value: '••••••••' },
+        { path: 'triage.respondApiKey', value: '••••••••' },
+      ];
+
+      const result = stripMaskedWrites(writes);
+
+      expect(result).toEqual([{ path: 'triage.enabled', value: true }]);
+    });
+
+    it('should keep writes where sensitive fields have real values', () => {
+      const writes = [
+        { path: 'triage.classifyApiKey', value: 'sk-new-key-123' },
+        { path: 'triage.respondApiKey', value: 'sk-new-key-456' },
+      ];
+
+      const result = stripMaskedWrites(writes);
+
+      expect(result).toEqual(writes);
+    });
+
+    it('should not strip mask sentinel from non-sensitive fields', () => {
+      const writes = [
+        { path: 'ai.model', value: '••••••••' },
+      ];
+
+      const result = stripMaskedWrites(writes);
+
+      expect(result).toEqual(writes);
+    });
+
+    it('should return empty array when all writes are masked sentinels', () => {
+      const writes = [
+        { path: 'triage.classifyApiKey', value: '••••••••' },
+        { path: 'triage.respondApiKey', value: '••••••••' },
+      ];
+
+      const result = stripMaskedWrites(writes);
+
+      expect(result).toEqual([]);
     });
   });
 });

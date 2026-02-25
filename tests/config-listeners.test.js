@@ -113,7 +113,12 @@ describe('config-listeners', () => {
       const config = { logging: { database: { enabled: true, batchSize: 50 } } };
       const listeners = registerAndCapture(dbPool, config);
 
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
 
       expect(initLogsTable).toHaveBeenCalledWith(dbPool);
       expect(addPostgresTransport).toHaveBeenCalledWith(dbPool, config.logging.database);
@@ -133,12 +138,22 @@ describe('config-listeners', () => {
       const listeners = registerAndCapture(dbPool, config);
 
       // First enable the transport
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
       const transportRef = addPostgresTransport.mock.results[0].value;
 
       // Now disable it
       config.logging.database.enabled = false;
-      await listeners['logging.database.enabled'](false, true, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        false,
+        true,
+        'logging.database.enabled',
+        'global',
+      );
 
       expect(removePostgresTransportMock).toHaveBeenCalledWith(transportRef);
       expect(loggerInfo).toHaveBeenCalledWith(
@@ -157,11 +172,21 @@ describe('config-listeners', () => {
       const listeners = registerAndCapture(dbPool, config);
 
       // Enable initially
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
       const oldTransport = addPostgresTransport.mock.results[0].value;
 
       // Trigger recreate via batchSize change (transport exists, still enabled)
-      await listeners['logging.database.batchSize'](100, 50, 'logging.database.batchSize', 'global');
+      await listeners['logging.database.batchSize'](
+        100,
+        50,
+        'logging.database.batchSize',
+        'global',
+      );
 
       expect(removePostgresTransportMock).toHaveBeenCalledWith(oldTransport);
       expect(addPostgresTransport).toHaveBeenCalledTimes(2);
@@ -181,7 +206,12 @@ describe('config-listeners', () => {
       const listeners = registerAndCapture(dbPool, config);
 
       // Enable initially
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
 
       // Simulate: removePostgresTransport is slow and config flips to false mid-operation
       removePostgresTransportMock.mockImplementationOnce(async () => {
@@ -190,7 +220,12 @@ describe('config-listeners', () => {
 
       // Trigger recreate (transport exists, currently enabled)
       config.logging.database.enabled = true; // set back for the initial check
-      await listeners['logging.database'](config.logging.database, null, 'logging.database', 'global');
+      await listeners['logging.database'](
+        config.logging.database,
+        null,
+        'logging.database',
+        'global',
+      );
 
       // After remove, config.enabled is false, so addPostgresTransport should NOT be called again
       // It was called once during initial enable
@@ -207,7 +242,12 @@ describe('config-listeners', () => {
       const listeners = registerAndCapture(dbPool, config);
 
       // Enable transport
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
       const transportRef = addPostgresTransport.mock.results[0].value;
 
       // Call removeLoggingTransport
@@ -246,7 +286,12 @@ describe('config-listeners', () => {
       // Make initLogsTable throw
       initLogsTable.mockRejectedValueOnce(new Error('DB connection failed'));
 
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
 
       expect(loggerError).toHaveBeenCalledWith(
         'Failed to update PostgreSQL logging transport',
@@ -263,7 +308,12 @@ describe('config-listeners', () => {
       const config = { logging: { database: { enabled: true } } };
       const listeners = registerAndCapture(dbPool, config);
 
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'guild-123');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'guild-123',
+      );
 
       expect(initLogsTable).not.toHaveBeenCalled();
       expect(addPostgresTransport).not.toHaveBeenCalled();
@@ -274,7 +324,12 @@ describe('config-listeners', () => {
       const config = { logging: { database: { enabled: true } } };
       const listeners = registerAndCapture(dbPool, config);
 
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
 
       expect(initLogsTable).toHaveBeenCalled();
       expect(addPostgresTransport).toHaveBeenCalled();
@@ -285,7 +340,12 @@ describe('config-listeners', () => {
       const config = { logging: { database: { enabled: true } } };
       const listeners = registerAndCapture(dbPool, config);
 
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', undefined);
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        undefined,
+      );
 
       expect(initLogsTable).toHaveBeenCalled();
       expect(addPostgresTransport).toHaveBeenCalled();
@@ -299,7 +359,12 @@ describe('config-listeners', () => {
       const config = { logging: { database: { enabled: true } } };
       const listeners = registerAndCapture(null, config);
 
-      await listeners['logging.database.enabled'](true, false, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        true,
+        false,
+        'logging.database.enabled',
+        'global',
+      );
 
       expect(initLogsTable).not.toHaveBeenCalled();
       expect(addPostgresTransport).not.toHaveBeenCalled();
@@ -357,7 +422,12 @@ describe('config-listeners', () => {
       const config = { logging: { database: { enabled: false } } };
       const listeners = registerAndCapture(dbPool, config);
 
-      await listeners['logging.database.enabled'](false, true, 'logging.database.enabled', 'global');
+      await listeners['logging.database.enabled'](
+        false,
+        true,
+        'logging.database.enabled',
+        'global',
+      );
 
       expect(initLogsTable).not.toHaveBeenCalled();
       expect(addPostgresTransport).not.toHaveBeenCalled();

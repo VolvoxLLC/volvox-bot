@@ -38,7 +38,7 @@ export function createApp(client, dbPool) {
   app.use((req, res, next) => {
     if (!dashboardUrl) return next();
     res.set('Access-Control-Allow-Origin', dashboardUrl);
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret, Authorization');
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
@@ -47,7 +47,8 @@ export function createApp(client, dbPool) {
   });
 
   // Body parsing
-  app.use(express.json());
+  const bodyLimit = process.env.API_BODY_LIMIT || '100kb';
+  app.use(express.json({ limit: bodyLimit }));
 
   // Rate limiting — destroy any leaked limiter from a prior createApp call
   if (rateLimiter) {

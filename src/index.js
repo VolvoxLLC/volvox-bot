@@ -17,7 +17,11 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
-import { registerConfigListeners, removeLoggingTransport, setInitialTransport } from './config-listeners.js';
+import {
+  registerConfigListeners,
+  removeLoggingTransport,
+  setInitialTransport,
+} from './config-listeners.js';
 import { closeDb, initDb } from './db.js';
 import { addPostgresTransport, debug, error, info, warn } from './logger.js';
 import {

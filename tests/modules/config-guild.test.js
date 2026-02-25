@@ -245,7 +245,7 @@ describe('per-guild configuration', () => {
         expect(nested.safeGlobal).toBe(true);
         expect(nested.safeGuild).toBe(true);
 
-        expect(Object.prototype.hasOwnProperty.call(nested, '__proto__')).toBe(false);
+        expect(Object.hasOwn(nested, '__proto__')).toBe(false);
         expect(nested.constructor).toBe(Object);
         expect(nested.prototype).toBeUndefined();
         expect(Object.prototype.polluted).toBeUndefined();

@@ -301,18 +301,14 @@ export async function checkMem0Health({ signal } = {}) {
 }
 
 /**
- * Add a memory for a user.
- * Graph memory is enabled to automatically build entity relationships.
+ * Store a memory for a user and enable graph relationships for automatic entity linking.
  *
- * Part of the public API — used by extractAndStoreMemories internally and
- * exported for direct use by other modules/plugins that need to store
- * specific memories programmatically.
- *
- * @param {string} userId - Discord user ID
- * @param {string} text - The memory text to store
- * @param {Object} [metadata] - Optional metadata
- * @param {string} [guildId] - Guild ID for per-guild config
- * @returns {Promise<boolean>} true if stored successfully
+ * Persists the provided text and optional metadata under the user's namespace while respecting per-guild memory configuration and availability.
+ * @param {string} userId - Discord user ID to associate the memory with.
+ * @param {string} text - Memory text to store.
+ * @param {Object} [metadata] - Optional key/value metadata to attach to the memory.
+ * @param {string} [guildId] - Guild ID used to determine per-guild memory configuration.
+ * @returns {boolean} `true` if one or more memories were added or updated, `false` otherwise.
  */
 export async function addMemory(userId, text, metadata = {}, guildId) {
   if (!checkAndRecoverMemory(guildId)) return false;
@@ -329,16 +325,16 @@ export async function addMemory(userId, text, metadata = {}, guildId) {
       enable_graph: true,
     });
 
-    const entries = Array.isArray(result) ? result : (result?.results || []);
-    const stored = entries.filter(m => m.event === 'ADD' || m.event === 'UPDATE');
+    const entries = Array.isArray(result) ? result : result?.results || [];
+    const stored = entries.filter((m) => m.event === 'ADD' || m.event === 'UPDATE');
     debug('Memory added', {
       userId,
       textPreview: text.substring(0, 100),
       memoriesReturned: entries.length,
       memoriesStored: stored.length,
-      events: entries.map(m => m.event).filter(Boolean),
+      events: entries.map((m) => m.event).filter(Boolean),
     });
-    return stored.length > 0 || (entries.length > 0 && !entries.some(m => m.event));
+    return stored.length > 0 || (entries.length > 0 && !entries.some((m) => m.event));
   } catch (err) {
     logWarn('Failed to add memory', { userId, error: err.message });
     if (!isTransientError(err)) markUnavailable();
@@ -527,15 +523,15 @@ export async function buildMemoryContext(userId, username, query, guildId) {
 }
 
 /**
- * Analyze a conversation exchange and extract memorable facts to store.
- * Uses mem0's AI to identify new personal info worth remembering.
- * Graph memory is enabled to automatically build entity relationships.
- * @param {string} userId - Discord user ID
- * @param {string} username - Display name
- * @param {string} userMessage - What the user said
- * @param {string} assistantReply - What the bot replied
- * @param {string} [guildId] - Guild ID for per-guild config
- * @returns {Promise<boolean>} true if any memories were stored
+ * Extract memorable facts from a user/assistant exchange and store them in the memory service.
+ *
+ * Respects per-guild memory configuration and user opt-out; if extraction fails it logs the error and returns false without disabling the memory system.
+ * @param {string} userId - Discord user ID for whom memories should be stored.
+ * @param {string} username - Display name to include in stored memory metadata.
+ * @param {string} userMessage - The user's message content to analyze.
+ * @param {string} assistantReply - The assistant's reply content to analyze.
+ * @param {string} [guildId] - Optional guild ID to use per-guild memory configuration.
+ * @returns {Promise<boolean>} `true` if any memories were stored, `false` otherwise.
  */
 export async function extractAndStoreMemories(
   userId,
@@ -566,17 +562,17 @@ export async function extractAndStoreMemories(
       enable_graph: true,
     });
 
-    const entries = Array.isArray(result) ? result : (result?.results || []);
-    const stored = entries.filter(m => m.event === 'ADD' || m.event === 'UPDATE');
+    const entries = Array.isArray(result) ? result : result?.results || [];
+    const stored = entries.filter((m) => m.event === 'ADD' || m.event === 'UPDATE');
     debug('Memory extraction completed', {
       userId,
       username,
       messagePreview: userMessage.substring(0, 80),
       memoriesReturned: entries.length,
       memoriesStored: stored.length,
-      events: entries.map(m => m.event).filter(Boolean),
+      events: entries.map((m) => m.event).filter(Boolean),
     });
-    return stored.length > 0 || (entries.length > 0 && !entries.some(m => m.event));
+    return stored.length > 0 || (entries.length > 0 && !entries.some((m) => m.event));
   } catch (err) {
     // Only log — do NOT call markUnavailable() here.
     // This runs fire-and-forget in the background; a failure for one user's

@@ -4,7 +4,7 @@
  * Conversation history is persisted to PostgreSQL with in-memory cache
  */
 
-import { error as logError, info, warn as logWarn } from '../logger.js';
+import { info, error as logError, warn as logWarn } from '../logger.js';
 import { getConfig } from './config.js';
 
 // Conversation history per channel (in-memory cache)
