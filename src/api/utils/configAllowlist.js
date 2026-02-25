@@ -17,6 +17,34 @@ export const SENSITIVE_FIELDS = new Set(['triage.classifyApiKey', 'triage.respon
 const MASK = '••••••••';
 
 /**
+ * Check whether a value is the mask sentinel used to hide sensitive fields.
+ *
+ * @param {*} value - The value to check.
+ * @returns {boolean} `true` when `value` is the mask placeholder.
+ */
+export function isMasked(value) {
+  return value === MASK;
+}
+
+/**
+ * Remove entries from a flat list of [dotPath, value] writes where the value
+ * matches the mask sentinel for a sensitive field.  This prevents clients from
+ * accidentally (or maliciously) overwriting a real secret with the placeholder
+ * text returned by `maskSensitiveFields`.
+ *
+ * @param {Array<{path: string, value: *}>} writes - Leaf writes to filter.
+ * @returns {Array<{path: string, value: *}>} Writes with masked-sentinel entries removed.
+ */
+export function stripMaskedWrites(writes) {
+  return writes.filter(({ path, value }) => {
+    if (SENSITIVE_FIELDS.has(path) && isMasked(value)) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
  * Produce a deep-cloned config object with sensitive fields replaced by a mask.
  *
  * Sensitive fields listed in SENSITIVE_FIELDS are replaced with the MASK value when present and non-empty.

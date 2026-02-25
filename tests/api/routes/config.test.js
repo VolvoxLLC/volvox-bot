@@ -273,6 +273,41 @@ describe('config routes', () => {
       expect(res.body.details[0]).toContain('not a writable');
     });
 
+    it('should silently skip masked sentinel values for sensitive fields', async () => {
+      const res = await request(app)
+        .put('/api/v1/config')
+        .set('x-api-secret', SECRET)
+        .send({
+          triage: {
+            enabled: true,
+            classifyApiKey: '••••••••',
+            respondApiKey: '••••••••',
+          },
+        });
+
+      expect(res.status).toBe(200);
+      // The mask sentinel values should NOT be written
+      expect(setConfigValue).not.toHaveBeenCalledWith('triage.classifyApiKey', '••••••••');
+      expect(setConfigValue).not.toHaveBeenCalledWith('triage.respondApiKey', '••••••••');
+      // But non-sensitive fields should still be written
+      expect(setConfigValue).toHaveBeenCalledWith('triage.enabled', true);
+    });
+
+    it('should return 400 when all writes are masked sentinel values', async () => {
+      const res = await request(app)
+        .put('/api/v1/config')
+        .set('x-api-secret', SECRET)
+        .send({
+          triage: {
+            classifyApiKey: '••••••••',
+            respondApiKey: '••••••••',
+          },
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('No valid config values');
+    });
+
     it('should allow patching moderation config via PUT', async () => {
       const res = await request(app)
         .put('/api/v1/config')

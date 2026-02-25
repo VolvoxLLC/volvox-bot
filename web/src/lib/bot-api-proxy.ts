@@ -118,7 +118,9 @@ export function buildUpstreamUrl(
   logPrefix: string,
 ): URL | NextResponse {
   try {
-    return new URL(`${baseUrl}${path}`);
+    const normalizedBase = baseUrl.replace(/\/+$/, "");
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return new URL(`${normalizedBase}${normalizedPath}`);
   } catch {
     logger.error(`${logPrefix} Invalid BOT_API_URL`, { baseUrl });
     return NextResponse.json(
@@ -156,12 +158,15 @@ export async function proxyToBotApi(
   options?: ProxyOptions,
 ): Promise<NextResponse> {
   try {
+    // Spread caller headers first, then force the auth secret last so it
+    // can never be overridden by values smuggled through options.headers.
+    const mergedHeaders: Record<string, string> = {
+      ...options?.headers,
+      "x-api-secret": secret,
+    };
     const response = await fetch(upstreamUrl.toString(), {
       method: options?.method ?? "GET",
-      headers: {
-        "x-api-secret": secret,
-        ...options?.headers,
-      },
+      headers: mergedHeaders,
       body: options?.body,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: "no-store",

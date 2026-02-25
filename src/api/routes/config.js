@@ -11,6 +11,7 @@ import {
   maskSensitiveFields,
   READABLE_CONFIG_KEYS,
   SAFE_CONFIG_KEYS,
+  stripMaskedWrites,
 } from '../utils/configAllowlist.js';
 import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
@@ -143,13 +144,21 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
   }
 
   // Collect all leaf writes first
-  const allWrites = [];
+  const rawWrites = [];
   for (const [section, sectionValue] of Object.entries(req.body)) {
     if (!SAFE_CONFIG_KEYS.includes(section)) continue;
     const paths = flattenToLeafPaths(sectionValue, section);
     for (const [path, value] of paths) {
-      allWrites.push({ path, value });
+      rawWrites.push({ path, value });
     }
+  }
+
+  // Strip any writes where the value is the mask sentinel — prevents
+  // accidentally overwriting real secrets with the placeholder text.
+  const allWrites = stripMaskedWrites(rawWrites);
+
+  if (allWrites.length === 0) {
+    return res.status(400).json({ error: 'No valid config values to write' });
   }
 
   // Apply all writes, tracking successes and failures individually
