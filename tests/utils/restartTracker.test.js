@@ -129,6 +129,7 @@ describe('restartTracker', () => {
       expect(pool.query).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining('updateUptimeOnShutdown called before recordRestart'),
+        expect.objectContaining({ module: 'restartTracker' }),
       );
     });
 
