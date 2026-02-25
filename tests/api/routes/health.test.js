@@ -116,6 +116,21 @@ describe('health route', () => {
     expect(queryLogs).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', limit: 1 }));
   });
 
+  it('should handle queryLogs failure gracefully', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    queryLogs.mockRejectedValueOnce(new Error('db connection failed'));
+
+    const app = buildApp();
+
+    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
+
+    expect(res.status).toBe(200);
+    expect(res.body.errors).toBeDefined();
+    expect(res.body.errors.lastHour).toBeNull();
+    expect(res.body.errors.lastDay).toBeNull();
+    expect(res.body.errors.error).toBe('query failed');
+  });
+
   it('should include restart data fallback when restartTracker unavailable', async () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     const app = buildApp();
