@@ -600,6 +600,7 @@ describe('guilds routes', () => {
           .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
         expect(res.status).toBe(200);
+        await new Promise(setImmediate); // Wait for fire-and-forget webhook
         expect(fetchSpy).toHaveBeenCalledOnce();
         const [url, opts] = fetchSpy.mock.calls[0];
         expect(url).toBe('https://dashboard.example.com/hook');

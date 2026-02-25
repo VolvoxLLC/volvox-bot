@@ -64,9 +64,11 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
  * If no moderation log channel is configured or the channel cannot be fetched, the function exits without action.
  * Errors encountered while sending the embed are caught and ignored so they do not interrupt triage flow.
  *
+ * @param {import('discord.js').Client} client - Discord client used to fetch the log channel.
  * @param {Object} classification - Parsed classifier output containing fields like `recommendedAction`, `violatedRule`, `reasoning`, and `targetMessageIds`.
  * @param {Array<Object>} snapshot - Recent message buffer entries; used to find messages referenced by `classification.targetMessageIds`.
  * @param {string} channelId - ID of the source channel where the violation occurred (used in the embed's Channel field).
+ * @param {Object} config - Guild configuration containing `triage.moderationLogChannel`.
  */
 export async function sendModerationLog(client, classification, snapshot, channelId, config) {
   const logChannelId = config.triage?.moderationLogChannel;
@@ -240,6 +242,7 @@ export async function sendResponses(
  * @param {Array<Object>} snapshot - Recent message buffer snapshot; used to locate the target message/user.
  * @param {Object} classification - Parsed classification result containing targetMessageIds and reasoning.
  * @param {number} searchCount - Number of web searches performed during response generation.
+ * @param {import('discord.js').Client} client - Discord client used to fetch the channel.
  * @param {string} channelId - ID of the channel where the evaluation occurred.
  * @returns {{stats: {classify: Object, respond: Object, userId: string|null, searchCount: number}, channel: import('discord.js').Channel|null}} Stats object and the fetched channel (or null if unavailable).
  */

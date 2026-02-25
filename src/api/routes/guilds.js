@@ -362,6 +362,9 @@ router.get('/', async (req, res) => {
 /** Maximum number of channels to return to avoid oversized payloads. */
 const MAX_CHANNELS = 500;
 
+/** Maximum number of roles to return to avoid oversized payloads. */
+const MAX_ROLES = 250;
+
 /**
  * Return a capped list of channels for a guild.
  *
@@ -409,7 +412,8 @@ router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
   const roles = Array.from(guild.roles.cache.values())
     .filter((r) => r.id !== guild.id) // exclude @everyone
     .sort((a, b) => b.position - a.position)
-    .map((r) => ({ id: r.id, name: r.name, color: r.color }));
+    .map((r) => ({ id: r.id, name: r.name, color: r.color }))
+    .slice(0, MAX_ROLES);
   res.json(roles);
 });
 
