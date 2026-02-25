@@ -38,3 +38,7 @@ web/.env.local
 web/.env.*.local
 web/tsconfig.tsbuildinfo
 
+# Un-ignore Next.js route that happens to be named "logs"
+!web/src/app/dashboard/logs/
+!web/src/app/dashboard/logs/**
+

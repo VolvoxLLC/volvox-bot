@@ -1,4 +1,4 @@
-# Task: Log Viewer Page + WebSocket Client
+# Task: Health Cards + Restart History UI
 
 ## Parent
 - **Master Task:** task-001
@@ -7,76 +7,66 @@
 
 ## Context
 
-Build the frontend log viewer page that connects to the WebSocket server at `/ws/logs` and displays real-time + historical logs in a terminal-style UI.
+Build health metric cards and restart history table for the dashboard. Data comes from the extended health endpoint (`GET /api/v1/health`).
 
 ### Existing Code
-- `web/src/app/dashboard/` — Dashboard pages (reference for routing/layout)
-- `web/src/components/dashboard/config-editor.tsx` — Reference for dashboard component patterns
-- `web/src/lib/bot-api-proxy.ts` — API proxy (reference for auth patterns)
-- Backend WebSocket server at `/ws/logs` — auth via `{ type: "auth", secret }`, streams `{ type: "log" }`, accepts `{ type: "filter" }`
+- `web/src/lib/bot-api-proxy.ts` — API proxy for authenticated requests
+- `web/src/components/dashboard/config-editor.tsx` — Reference for dashboard patterns
+- `web/src/components/ui/` — shadcn/ui components (card, table, badge, etc.)
+- Health endpoint returns: uptime, memory, discord, system, errors, restarts
 
 ## IMPORTANT — READ FIRST
 
 1. **Commit after every file you create or major change**
 2. **Start writing code IMMEDIATELY**
-3. **Expected duration: ~20m**
+3. **Expected duration: ~15m**
 
 **Commit flow:**
-1. Create WS client hook → commit
-2. Create log viewer component → commit
-3. Create filter bar component → commit
-4. Create page route → commit
-5. Wire navigation → commit
-6. Lint/build → commit
+1. Create health cards component → commit
+2. Create restart history component → commit
+3. Create page or section → commit
+4. Lint/build → commit
 
 ## Files to Create
 
-- `web/src/lib/log-ws.ts` — WebSocket client hook (`useLogStream`)
-- `web/src/components/dashboard/log-viewer.tsx` — Terminal-style log display
-- `web/src/components/dashboard/log-filters.tsx` — Filter bar (level, module, search)
-- `web/src/app/dashboard/logs/page.tsx` — Log viewer page
+- `web/src/components/dashboard/health-cards.tsx` — Health metric cards
+- `web/src/components/dashboard/restart-history.tsx` — Restart log table
+- `web/src/app/dashboard/logs/page.tsx` — Add health section (if page exists from log viewer slice, just add to it — otherwise create)
 
 ## Requirements
 
-- [x] **WebSocket client hook** (`useLogStream`):
-  - Connect to `/ws/logs`, send auth message
-  - Handle `auth_ok`, `history`, `log` message types
-  - Auto-reconnect on disconnect (exponential backoff)
-  - Send filter messages to server
-  - Expose: `logs`, `isConnected`, `isReconnecting`, `sendFilter`, `clearLogs`
-- [x] **Log viewer component**:
-  - Terminal-style: dark background, **JetBrains Mono** font
-  - Color-coded levels: 🔴 error (red), 🟡 warn (yellow), 🔵 info (blue), ⚫ debug (gray)
-  - Auto-scroll to bottom with "Pause" button to freeze
-  - Click log entry to expand metadata JSON
-  - Max 1000 logs in memory (drop oldest)
-  - Connection status indicator (🟢 connected, 🔴 disconnected, 🟡 reconnecting)
-- [x] **Filter bar**:
-  - Level dropdown (all, error, warn, info, debug)
-  - Module text input
-  - Search text input
-  - "Clear" button
-  - Sends filter to WS server on change
-- [x] **Page route** at `/dashboard/logs`
-- [x] Add "Logs" link to dashboard navigation
-- [x] Lint passes, build succeeds
+- [ ] **Health cards** (grid layout):
+  | Card | Data | Display |
+  |------|------|---------|
+  | Uptime | `health.uptime` | Human-readable ("3d 14h 22m") |
+  | Memory | `health.memory.heapUsed/heapTotal` | MB + percentage bar |
+  | Discord Ping | `health.discord.ping` | ms, color: green <100, yellow <300, red >300 |
+  | Guilds | `health.discord.guilds` | Count |
+  | Errors (1h) | `health.errors.lastHour` | Count, red if >0 |
+  | Errors (24h) | `health.errors.lastDay` | Count |
+  | CPU | `health.system.cpuUsage` | user + system % |
+  | Node | `health.system.nodeVersion` | Version string |
+- [ ] **Restart history table**:
+  - Columns: timestamp, reason, version, uptime before restart
+  - Last 20 restarts from `health.restarts`
+  - Human-readable timestamps
+  - Color-coded reasons (startup=green, crash=red)
+- [ ] Auto-refresh health data every 60s
+- [ ] Loading skeleton while fetching
+- [ ] Lint passes, build succeeds
 
 ## Constraints
 - Do NOT touch backend files
-- Do NOT touch health cards (different slice)
-- Use existing shadcn/ui components where possible
+- Do NOT touch log viewer (different slice)
+- Use shadcn/ui Card, Table, Badge components
 - Use Tailwind for styling
 
 ## Acceptance Criteria
-- [ ] `/dashboard/logs` page loads
-- [ ] WebSocket connects and authenticates
-- [ ] Historical logs display on connect
-- [ ] Real-time logs stream in
-- [ ] Filters work (level, module, search)
-- [ ] Auto-scroll with pause button
-- [ ] Click to expand metadata
-- [ ] Connection status indicator
-- [ ] Navigation link added
+- [ ] Health cards display all 8 metrics
+- [ ] Color coding works for ping and errors
+- [ ] Restart history table shows recent restarts
+- [ ] Auto-refresh every 60s
+- [ ] Loading state while fetching
 - [ ] Lint + build pass
 
 ## Results
@@ -84,37 +74,28 @@ Build the frontend log viewer page that connects to the WebSocket server at `/ws
 **Status:** ✅ Done
 
 **Commits:**
-- `88f10c2` feat: add /api/log-stream/ws-ticket route for authenticated WS connection
-- `ea06e14` feat: add useLogStream WebSocket hook with auto-reconnect
-- `8ae516d` feat: add LogViewer terminal-style component with auto-scroll and metadata expansion
-- `0efdcf9` feat: add LogFilters component with level/module/search controls
-- `1095bf1` feat: add /dashboard/logs page route + fix gitignore scope
-- `ede33e4` feat: add Logs link to dashboard sidebar navigation
+- `45f908d` feat: add bot health API proxy route
+- `3c213c5` feat: add health cards component and shared types
+- `c71f821` feat: add restart history table component
+- `8157ffe` feat: add health section orchestrator and logs page; fix gitignore for logs route
 
-**Files Created:**
-- `web/src/app/api/log-stream/ws-ticket/route.ts` — Server-side API route; validates NextAuth session, returns WS URL + secret to browser
-- `web/src/lib/log-ws.ts` — `useLogStream` hook with auto-reconnect (exponential backoff), auth, history/log/filter message handling, 1000-entry cap
-- `web/src/components/dashboard/log-viewer.tsx` — Terminal-style viewer (JetBrains Mono, color-coded levels, auto-scroll, pause, click-to-expand meta)
-- `web/src/components/dashboard/log-filters.tsx` — Filter bar: level dropdown, module input, search input, clear button; debounced text inputs
-- `web/src/app/dashboard/logs/page.tsx` — Page route at /dashboard/logs
+**Changes:**
+- `web/src/app/api/bot-health/route.ts` — authenticated proxy to bot's `GET /api/v1/health`
+- `web/src/components/dashboard/types.ts` — `BotHealth` / `RestartRecord` types + runtime validator
+- `web/src/components/dashboard/health-cards.tsx` — 8-card grid (uptime, memory + bar, discord ping w/ color, guilds, errors 1h/24h w/ red, CPU, Node version)
+- `web/src/components/dashboard/restart-history.tsx` — table with last 20 restarts, color-coded reason badges, human-readable timestamps
+- `web/src/components/dashboard/health-section.tsx` — client component with auto-refresh (60s), loading skeleton, error banner, refresh button
+- `web/src/app/dashboard/logs/page.tsx` — new `/dashboard/logs` route rendering `<HealthSection />`
+- `.gitignore` — added exception for `web/src/app/dashboard/logs/` (conflicts with `logs/` gitignore rule)
 
-**Files Modified:**
-- `web/src/components/layout/sidebar.tsx` — Added "Logs" nav link (ScrollText icon)
-- `.gitignore` — Scoped `logs/` to root-only (`/logs/`) so Next.js routes named `logs/` aren't ignored
+**Build:** ✅ `next build` — compiled successfully, `/dashboard/logs` route created
+**TypeCheck:** ✅ `tsc --noEmit` — no errors in new files
+**Root lint:** Pre-existing failures in bot JS files only (26 errors existed before this task)
 
-**Note on architecture:** `BOT_API_SECRET` stays server-side. Browser first calls `/api/log-stream/ws-ticket` (NextAuth-gated), receives WS URL + secret, then connects to bot WS directly.
-
-**Lint:** Pre-existing errors in `src/` only — zero errors in new web/ files.
-**Build:** ✅ `next build` passed — `/dashboard/logs` and `/api/log-stream/ws-ticket` both appear in route manifest.
-
-## Acceptance Criteria
-- [x] `/dashboard/logs` page loads
-- [x] WebSocket connects and authenticates
-- [x] Historical logs display on connect
-- [x] Real-time logs stream in
-- [x] Filters work (level, module, search)
-- [x] Auto-scroll with pause button
-- [x] Click to expand metadata
-- [x] Connection status indicator
-- [x] Navigation link added
-- [x] Lint + build pass
+**Acceptance Criteria:**
+- [x] Health cards display all 8 metrics
+- [x] Color coding works for ping (green/yellow/red) and errors (red if >0)
+- [x] Restart history table shows recent restarts (last 20, reversed)
+- [x] Auto-refresh every 60s
+- [x] Loading state while fetching (skeleton cards + table skeleton)
+- [x] Lint + build pass (build ✅, root lint pre-existing failures not introduced by this task)
