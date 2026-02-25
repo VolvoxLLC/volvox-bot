@@ -185,7 +185,11 @@ async function runResponder(
             searchNotified = true;
             const ch = await evalClient.channels.fetch(channelId).catch(() => null);
             if (ch) {
-              await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
+              try {
+                await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
+              } catch (notifyErr) {
+                warn('Failed to send WebSearch notification', { channelId, error: notifyErr?.message });
+              }
             }
           }
         }
