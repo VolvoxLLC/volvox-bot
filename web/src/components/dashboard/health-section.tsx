@@ -31,8 +31,8 @@ export function HealthSection() {
 
     if (!backgroundRefresh) {
       setLoading(true);
+      setError(null);
     }
-    setError(null);
 
     try {
       const response = await fetch("/api/bot-health", {
