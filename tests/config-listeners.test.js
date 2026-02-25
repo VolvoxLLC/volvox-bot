@@ -15,13 +15,9 @@ vi.mock('../src/modules/config.js', () => ({
   onConfigChange: vi.fn(),
 }));
 
-vi.mock('../src/transports/postgres.js', () => ({
-  initLogsTable: vi.fn().mockResolvedValue(undefined),
-}));
-
 describe('config-listeners', () => {
   let registerConfigListeners, removeLoggingTransport, setInitialTransport;
-  let onConfigChange, addPostgresTransport, removePostgresTransportMock, initLogsTable;
+  let onConfigChange, addPostgresTransport, removePostgresTransportMock;
   let loggerInfo, loggerError;
 
   beforeEach(async () => {
@@ -37,10 +33,6 @@ describe('config-listeners', () => {
     vi.mock('../src/modules/config.js', () => ({
       onConfigChange: vi.fn(),
     }));
-    vi.mock('../src/transports/postgres.js', () => ({
-      initLogsTable: vi.fn().mockResolvedValue(undefined),
-    }));
-
     // Import fresh copies of the mocked modules
     const loggerMod = await import('../src/logger.js');
     addPostgresTransport = loggerMod.addPostgresTransport;
@@ -50,9 +42,6 @@ describe('config-listeners', () => {
 
     const configMod = await import('../src/modules/config.js');
     onConfigChange = configMod.onConfigChange;
-
-    const pgMod = await import('../src/transports/postgres.js');
-    initLogsTable = pgMod.initLogsTable;
 
     // Import the module under test with fresh internal state
     const mod = await import('../src/config-listeners.js');
@@ -108,7 +97,7 @@ describe('config-listeners', () => {
   // ── Transport enabled ──────────────────────────────────────────────────
 
   describe('transport enable (enabled=true, no existing transport)', () => {
-    it('calls initLogsTable then addPostgresTransport', async () => {
+    it('calls addPostgresTransport when enabled', async () => {
       const dbPool = { query: vi.fn() };
       const config = { logging: { database: { enabled: true, batchSize: 50 } } };
       const listeners = registerAndCapture(dbPool, config);
@@ -120,7 +109,6 @@ describe('config-listeners', () => {
         'global',
       );
 
-      expect(initLogsTable).toHaveBeenCalledWith(dbPool);
       expect(addPostgresTransport).toHaveBeenCalledWith(dbPool, config.logging.database);
       expect(loggerInfo).toHaveBeenCalledWith(
         'PostgreSQL logging transport enabled via config change',
@@ -283,8 +271,10 @@ describe('config-listeners', () => {
       const config = { logging: { database: { enabled: true } } };
       const listeners = registerAndCapture(dbPool, config);
 
-      // Make initLogsTable throw
-      initLogsTable.mockRejectedValueOnce(new Error('DB connection failed'));
+      // Make addPostgresTransport throw
+      addPostgresTransport.mockImplementationOnce(() => {
+        throw new Error('DB connection failed');
+      });
 
       await listeners['logging.database.enabled'](
         true,
@@ -315,7 +305,6 @@ describe('config-listeners', () => {
         'guild-123',
       );
 
-      expect(initLogsTable).not.toHaveBeenCalled();
       expect(addPostgresTransport).not.toHaveBeenCalled();
     });
 
@@ -331,7 +320,6 @@ describe('config-listeners', () => {
         'global',
       );
 
-      expect(initLogsTable).toHaveBeenCalled();
       expect(addPostgresTransport).toHaveBeenCalled();
     });
 
@@ -347,7 +335,6 @@ describe('config-listeners', () => {
         undefined,
       );
 
-      expect(initLogsTable).toHaveBeenCalled();
       expect(addPostgresTransport).toHaveBeenCalled();
     });
   });
@@ -366,7 +353,6 @@ describe('config-listeners', () => {
         'global',
       );
 
-      expect(initLogsTable).not.toHaveBeenCalled();
       expect(addPostgresTransport).not.toHaveBeenCalled();
     });
   });
@@ -429,7 +415,6 @@ describe('config-listeners', () => {
         'global',
       );
 
-      expect(initLogsTable).not.toHaveBeenCalled();
       expect(addPostgresTransport).not.toHaveBeenCalled();
       expect(removePostgresTransportMock).not.toHaveBeenCalled();
     });
