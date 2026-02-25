@@ -21,7 +21,7 @@ function hasAdministratorPermission(permissions: string): boolean {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ guildId: string }> | { guildId: string } },
+  { params }: { params: Promise<{ guildId: string }> },
 ) {
   const token = await getToken({ req: request });
 

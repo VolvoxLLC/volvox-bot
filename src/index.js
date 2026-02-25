@@ -1,5 +1,5 @@
 /**
- * Bill Bot - Volvox Discord Bot
+ * Volvox Bot - Volvox Discord Bot
  * Main entry point - orchestrates modules
  *
  * Features:
@@ -17,7 +17,11 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
-import { registerConfigListeners, removeLoggingTransport, setInitialTransport } from './config-listeners.js';
+import {
+  registerConfigListeners,
+  removeLoggingTransport,
+  setInitialTransport,
+} from './config-listeners.js';
 import { closeDb, getPool, initDb } from './db.js';
 import { addPostgresTransport, addWebSocketTransport, removeWebSocketTransport, debug, error, info, warn } from './logger.js';
 import {
@@ -80,7 +84,7 @@ let config = {};
 // below (e.g. { parse: ['users', 'roles'] }). You would also need to update
 // SAFE_ALLOWED_MENTIONS in src/utils/safeSend.js to match.
 //
-// See: https://github.com/BillChirico/bills-bot/issues/61
+// See: https://github.com/BillChirico/volvox-bot/issues/61
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,

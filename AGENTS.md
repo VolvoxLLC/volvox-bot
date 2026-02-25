@@ -1,10 +1,10 @@
 # AGENTS.md — AI Coding Agent Guide
 
-> This file provides context for AI coding agents (Claude Code, Copilot, Cursor, etc.) working on bills-bot.
+> This file provides context for AI coding agents (Claude Code, Copilot, Cursor, etc.) working on volvox-bot.
 
 ## Project Overview
 
-**Bill Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude CLI in headless mode with split Haiku classifier + Sonnet responder triage), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
+**Volvox Bot** is a Discord bot for the Volvox developer community. It provides AI chat (via Claude CLI in headless mode with split Haiku classifier + Sonnet responder triage), dynamic welcome messages, spam detection, and runtime configuration management backed by PostgreSQL.
 
 ## Stack
 
@@ -35,10 +35,16 @@
 | `src/modules/events.js` | Event handler registration (wires modules to Discord events) |
 | `src/api/server.js` | Express API server setup (createApp, startServer, stopServer) |
 | `src/api/index.js` | API route mounting |
-| `src/api/routes/guilds.js` | Guild REST API endpoints (info, config, stats, members, moderation, analytics, actions) |
+| `src/api/routes/guilds.js` | Guild REST API endpoints (info, channels, roles, config, stats, members, moderation, analytics, actions) |
 | `web/src/components/dashboard/analytics-dashboard.tsx` | Analytics dashboard React component — charts, KPIs, date range controls |
 | `web/src/types/analytics.ts` | Shared analytics TypeScript contracts used by dashboard UI and analytics API responses |
 | `web/src/app/api/guilds/[guildId]/analytics/route.ts` | Next.js API route — proxies analytics requests to bot API with param allowlisting |
+| `web/src/components/dashboard/channel-selector.tsx` | Channel picker component — single or multi-select Discord channel picker with Zustand store integration |
+| `web/src/components/dashboard/role-selector.tsx` | Role picker component — single or multi-select Discord role picker with color dots |
+| `web/src/components/dashboard/array-editor.tsx` | Tag-input component for editing string arrays (Enter to add, Backspace to remove) |
+| `web/src/stores/discord-entities.ts` | Zustand store — caches Discord channels and roles per guild with fetch-on-demand |
+| `web/src/app/api/guilds/[guildId]/channels/route.ts` | Next.js API route — proxies channel list requests to bot API |
+| `web/src/app/api/guilds/[guildId]/roles/route.ts` | Next.js API route — proxies role list requests to bot API |
 | `web/src/lib/guild-selection.ts` | Guild selection state — localStorage persistence (`SELECTED_GUILD_KEY`) and cross-tab broadcast (`broadcastSelectedGuild`) |
 | `web/src/lib/bot-api.ts` | Bot API URL normalization — `getBotApiBaseUrl` for constructing stable v1 API endpoint |
 | `src/api/middleware/auth.js` | API authentication middleware |

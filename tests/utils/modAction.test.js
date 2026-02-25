@@ -28,7 +28,8 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn().mockImplementation((_inter, msg) => Promise.resolve(msg)),
 }));
 
-import { executeModAction } from '../../src/utils/modAction.js';
+import { debug, error as logError } from '../../src/logger.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   checkHierarchy,
   createCase,
@@ -36,9 +37,8 @@ import {
   sendModLogEmbed,
   shouldSendDm,
 } from '../../src/modules/moderation.js';
-import { getConfig } from '../../src/modules/config.js';
+import { executeModAction } from '../../src/utils/modAction.js';
 import { safeEditReply } from '../../src/utils/safeSend.js';
-import { info, error as logError, debug } from '../../src/logger.js';
 
 describe('executeModAction', () => {
   afterEach(() => {
@@ -112,22 +112,22 @@ describe('executeModAction', () => {
     );
 
     // action executed
-    expect(actionFn).toHaveBeenCalledWith(
-      mockTarget,
-      'test reason',
-      interaction,
-      { reason: 'test reason' },
-    );
+    expect(actionFn).toHaveBeenCalledWith(mockTarget, 'test reason', interaction, {
+      reason: 'test reason',
+    });
 
     // case created with correct data
-    expect(createCase).toHaveBeenCalledWith('guild1', expect.objectContaining({
-      action: 'test',
-      targetId: 'target1',
-      targetTag: 'Target#0001',
-      moderatorId: 'mod1',
-      moderatorTag: 'Mod#0001',
-      reason: 'test reason',
-    }));
+    expect(createCase).toHaveBeenCalledWith(
+      'guild1',
+      expect.objectContaining({
+        action: 'test',
+        targetId: 'target1',
+        targetTag: 'Target#0001',
+        moderatorId: 'mod1',
+        moderatorTag: 'Mod#0001',
+        reason: 'test reason',
+      }),
+    );
 
     // mod log sent
     expect(sendModLogEmbed).toHaveBeenCalledWith(
@@ -151,10 +151,13 @@ describe('executeModAction', () => {
       const interaction = createInteraction();
       const actionFn = vi.fn();
 
-      await executeModAction(interaction, defaultOpts({
-        actionFn,
-        getTarget: () => ({ earlyReturn: 'User not found in this server.' }),
-      }));
+      await executeModAction(
+        interaction,
+        defaultOpts({
+          actionFn,
+          getTarget: () => ({ earlyReturn: 'User not found in this server.' }),
+        }),
+      );
 
       expect(safeEditReply).toHaveBeenCalledWith(interaction, 'User not found in this server.');
       expect(actionFn).not.toHaveBeenCalled();
@@ -166,10 +169,13 @@ describe('executeModAction', () => {
       const actionFn = vi.fn();
 
       // getTarget returns a promise (has .then). The code awaits it.
-      await executeModAction(interaction, defaultOpts({
-        actionFn,
-        getTarget: () => Promise.resolve({ earlyReturn: 'User not in server.' }),
-      }));
+      await executeModAction(
+        interaction,
+        defaultOpts({
+          actionFn,
+          getTarget: () => Promise.resolve({ earlyReturn: 'User not in server.' }),
+        }),
+      );
 
       expect(safeEditReply).toHaveBeenCalledWith(interaction, 'User not in server.');
       expect(actionFn).not.toHaveBeenCalled();
@@ -185,11 +191,14 @@ describe('executeModAction', () => {
     const actionFn = vi.fn();
     const getTargetFn = vi.fn();
 
-    await executeModAction(interaction, defaultOpts({
-      actionFn,
-      getTarget: getTargetFn,
-      extractOptions: () => ({ earlyReturn: 'Invalid duration provided.' }),
-    }));
+    await executeModAction(
+      interaction,
+      defaultOpts({
+        actionFn,
+        getTarget: getTargetFn,
+        extractOptions: () => ({ earlyReturn: 'Invalid duration provided.' }),
+      }),
+    );
 
     expect(safeEditReply).toHaveBeenCalledWith(interaction, 'Invalid duration provided.');
     // getTarget should not even be called when extractOptions short-circuits
@@ -292,28 +301,26 @@ describe('executeModAction', () => {
     const interaction = createInteraction();
     const actionFn = vi.fn().mockResolvedValue(undefined);
 
-    await executeModAction(interaction, defaultOpts({
-      actionFn,
-      extractOptions: () => ({
-        reason: 'spam',
-        _durationMs: 86400000,
-        _channel: 'general',
-        deleteMessageDays: 7,
+    await executeModAction(
+      interaction,
+      defaultOpts({
+        actionFn,
+        extractOptions: () => ({
+          reason: 'spam',
+          _durationMs: 86400000,
+          _channel: 'general',
+          deleteMessageDays: 7,
+        }),
       }),
-    }));
+    );
 
     // actionFn gets the full options object as 4th param
-    expect(actionFn).toHaveBeenCalledWith(
-      mockTarget,
-      'spam',
-      interaction,
-      {
-        reason: 'spam',
-        _durationMs: 86400000,
-        _channel: 'general',
-        deleteMessageDays: 7,
-      },
-    );
+    expect(actionFn).toHaveBeenCalledWith(mockTarget, 'spam', interaction, {
+      reason: 'spam',
+      _durationMs: 86400000,
+      _channel: 'general',
+      deleteMessageDays: 7,
+    });
   });
 
   // ---------------------------------------------------------------
@@ -322,19 +329,25 @@ describe('executeModAction', () => {
   it('should spread extra fields from extractOptions into case data', async () => {
     const interaction = createInteraction();
 
-    await executeModAction(interaction, defaultOpts({
-      extractOptions: () => ({
+    await executeModAction(
+      interaction,
+      defaultOpts({
+        extractOptions: () => ({
+          reason: 'test reason',
+          deleteMessageDays: 7,
+          duration: '1d',
+        }),
+      }),
+    );
+
+    expect(createCase).toHaveBeenCalledWith(
+      'guild1',
+      expect.objectContaining({
         reason: 'test reason',
         deleteMessageDays: 7,
         duration: '1d',
       }),
-    }));
-
-    expect(createCase).toHaveBeenCalledWith('guild1', expect.objectContaining({
-      reason: 'test reason',
-      deleteMessageDays: 7,
-      duration: '1d',
-    }));
+    );
   });
 
   // ---------------------------------------------------------------
@@ -344,18 +357,18 @@ describe('executeModAction', () => {
     const interaction = createInteraction();
     const actionFn = vi.fn().mockResolvedValue(undefined);
 
-    await executeModAction(interaction, defaultOpts({
-      actionFn,
-      extractOptions: undefined,
-    }));
+    await executeModAction(
+      interaction,
+      defaultOpts({
+        actionFn,
+        extractOptions: undefined,
+      }),
+    );
 
     expect(interaction.options.getString).toHaveBeenCalledWith('reason');
-    expect(actionFn).toHaveBeenCalledWith(
-      mockTarget,
-      'test reason',
-      interaction,
-      { reason: 'test reason' },
-    );
+    expect(actionFn).toHaveBeenCalledWith(mockTarget, 'test reason', interaction, {
+      reason: 'test reason',
+    });
   });
 
   // ---------------------------------------------------------------
@@ -365,14 +378,18 @@ describe('executeModAction', () => {
     const interaction = createInteraction();
     const actionFn = vi.fn().mockResolvedValue(undefined);
 
-    await executeModAction(interaction, defaultOpts({
-      actionFn,
-      getTarget: () => Promise.resolve({
-        target: mockTarget,
-        targetId: 'target1',
-        targetTag: 'Target#0001',
+    await executeModAction(
+      interaction,
+      defaultOpts({
+        actionFn,
+        getTarget: () =>
+          Promise.resolve({
+            target: mockTarget,
+            targetId: 'target1',
+            targetTag: 'Target#0001',
+          }),
       }),
-    }));
+    );
 
     // Pipeline should complete normally
     expect(actionFn).toHaveBeenCalled();
@@ -403,10 +420,7 @@ describe('executeModAction', () => {
 
     await executeModAction(interaction, defaultOpts({ dmAction: 'ban' }));
 
-    expect(shouldSendDm).toHaveBeenCalledWith(
-      expect.any(Object),
-      'ban',
-    );
+    expect(shouldSendDm).toHaveBeenCalledWith(expect.any(Object), 'ban');
     expect(sendDmNotification).toHaveBeenCalledWith(
       mockTarget,
       'ban',
@@ -428,10 +442,7 @@ describe('executeModAction', () => {
       'Target#0001',
       expect.objectContaining({ case_number: 1 }),
     );
-    expect(safeEditReply).toHaveBeenCalledWith(
-      interaction,
-      'Custom: Target#0001 was dealt with.',
-    );
+    expect(safeEditReply).toHaveBeenCalledWith(interaction, 'Custom: Target#0001 was dealt with.');
   });
 
   // ---------------------------------------------------------------
@@ -440,13 +451,16 @@ describe('executeModAction', () => {
   it('should skip hierarchy check when target is null (even with skipHierarchy false)', async () => {
     const interaction = createInteraction();
 
-    await executeModAction(interaction, defaultOpts({
-      getTarget: () => ({
-        target: null,
-        targetId: 'target1',
-        targetTag: 'Target#0001',
+    await executeModAction(
+      interaction,
+      defaultOpts({
+        getTarget: () => ({
+          target: null,
+          targetId: 'target1',
+          targetTag: 'Target#0001',
+        }),
       }),
-    }));
+    );
 
     expect(checkHierarchy).not.toHaveBeenCalled();
     // Pipeline continues
@@ -459,13 +473,16 @@ describe('executeModAction', () => {
   it('should skip DM when target is null', async () => {
     const interaction = createInteraction();
 
-    await executeModAction(interaction, defaultOpts({
-      getTarget: () => ({
-        target: null,
-        targetId: 'target1',
-        targetTag: 'Target#0001',
+    await executeModAction(
+      interaction,
+      defaultOpts({
+        getTarget: () => ({
+          target: null,
+          targetId: 'target1',
+          targetTag: 'Target#0001',
+        }),
       }),
-    }));
+    );
 
     expect(sendDmNotification).not.toHaveBeenCalled();
   });

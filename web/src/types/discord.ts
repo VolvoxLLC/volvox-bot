@@ -16,3 +16,15 @@ export interface BotGuild {
 export interface MutualGuild extends DiscordGuild {
   botPresent: boolean;
 }
+
+export interface DiscordChannel {
+  id: string;
+  name: string;
+  type: number;
+}
+
+export interface DiscordRole {
+  id: string;
+  name: string;
+  color: number;
+}

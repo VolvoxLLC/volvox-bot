@@ -5,13 +5,13 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: billsbot
+      POSTGRES_DB: volvoxbot
     # Host port mapping removed — something on the Docker Desktop VM holds :5432.
     # Bot and web connect via internal network (db:5432). Use `docker compose exec db psql` for queries.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d billsbot"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d volvoxbot"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,7 +27,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/billsbot
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/volvoxbot
       DATABASE_SSL: "false"
       DISABLE_PROMPT_CACHING: "1"
 
@@ -44,7 +44,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/billsbot
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/volvoxbot
       DATABASE_SSL: "false"
       NEXTAUTH_URL: http://localhost:3000
       # BOT_API_URL: http://bot:3001  # Uncomment when bot HTTP API is implemented (Issue #29)

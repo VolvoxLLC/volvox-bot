@@ -4,8 +4,8 @@
  */
 
 import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { safeSend } from '../utils/safeSend.js';
 import { executeModAction } from '../utils/modAction.js';
+import { safeSend } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('unlock')
@@ -24,8 +24,10 @@ export const data = new SlashCommandBuilder()
 export const adminOnly = true;
 
 /**
- * Execute the unlock command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Unlocks a guild text channel by clearing the @everyone send-message overwrite, notifies the channel, and records the action for moderation.
+ *
+ * Validates that the target is a guild text channel; if valid, removes any explicit SendMessages overwrite for the server's everyone role, sends a notification embed that includes the invoker and optional reason, and produces a moderator-facing reply indicating which channel was unlocked.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The slash command interaction that invoked the unlock command.
  */
 export async function execute(interaction) {
   await executeModAction(interaction, {
@@ -37,7 +39,12 @@ export async function execute(interaction) {
       if (channel.type !== ChannelType.GuildText) {
         return { earlyReturn: '\u274C Unlock can only be used in text channels.' };
       }
-      return { target: null, targetId: channel.id, targetTag: `#${channel.name}`, _channel: channel };
+      return {
+        target: null,
+        targetId: channel.id,
+        targetTag: `#${channel.name}`,
+        _channel: channel,
+      };
     },
     actionFn: async (_target, reason, inter) => {
       const channel = inter.options.getChannel('channel') || inter.channel;

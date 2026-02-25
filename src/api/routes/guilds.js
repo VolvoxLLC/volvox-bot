@@ -6,9 +6,17 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { getBotOwnerIds } from '../../utils/permissions.js';
 import { safeSend } from '../../utils/safeSend.js';
+import {
+  maskSensitiveFields,
+  READABLE_CONFIG_KEYS,
+  SAFE_CONFIG_KEYS,
+} from '../utils/configAllowlist.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
 import { getSessionToken } from '../utils/sessionStore.js';
+import { validateConfigPatchBody } from '../utils/validateConfigPatch.js';
+import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 const router = Router();
 
@@ -16,19 +24,6 @@ const router = Router();
 const ADMINISTRATOR_FLAG = 0x8;
 /** Discord MANAGE_GUILD permission flag */
 const MANAGE_GUILD_FLAG = 0x20;
-
-/**
- * Config keys that are safe to write via the PATCH endpoint.
- * 'moderation' is intentionally excluded to prevent API callers from
- * weakening or disabling moderation settings.
- */
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam'];
-
-/**
- * Config keys that are safe to read via the GET endpoint.
- * Includes everything in SAFE_CONFIG_KEYS plus read-only keys.
- */
-const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'moderation'];
 
 /**
  * Upper bound on content length for abuse prevention.
@@ -169,13 +164,12 @@ function formatBucketLabel(bucket, interval) {
 }
 
 /**
- * Check if an OAuth2 user has the specified permission flags on a guild.
- * Fetches fresh guild list from Discord using the access token from the session store.
+ * Determine whether an OAuth2 user has any of the specified permission flags for a guild.
  *
- * @param {Object} user - Decoded JWT user payload
- * @param {string} guildId - Guild ID to check
- * @param {number} anyOfFlags - Bitmask of permission flags; returns true if user has ANY of them
- * @returns {Promise<boolean>} True if user has ANY of the specified flags
+ * @param {Object} user - Decoded JWT user payload containing at minimum `userId`.
+ * @param {string} guildId - Discord guild ID to check.
+ * @param {number} anyOfFlags - Bitmask of Discord permission flags; returns `true` if any bit in this mask is present on the user's guild permissions.
+ * @returns {boolean} `true` if the user has any of the specified permission flags on the guild, `false` otherwise.
  */
 async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
   const accessToken = getSessionToken(user?.userId);
@@ -189,27 +183,13 @@ async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
 }
 
 /**
- * Get bot owner IDs from environment variable, falling back to config.
- * @returns {string[]}
- */
-function getBotOwnerIds() {
-  const envValue = process.env.BOT_OWNER_IDS;
-  if (envValue) {
-    return envValue.split(',').map((id) => id.trim()).filter(Boolean);
-  }
-  const owners = getConfig()?.permissions?.botOwners;
-  return Array.isArray(owners) ? owners : [];
-}
-
-/**
- * Check whether the authenticated OAuth2 user is a configured bot owner.
- * Bot owners bypass API guild-level permission checks.
+ * Determine if the authenticated OAuth2 user is configured as a bot owner.
  *
- * @param {Object} user - Decoded JWT user payload
- * @returns {boolean} True if JWT userId is in BOT_OWNER_IDS or config.permissions.botOwners
+ * @param {Object} user - Decoded JWT user payload; expected to include `userId`.
+ * @returns {boolean} `true` if `user.userId` is listed in the application bot owner IDs, `false` otherwise.
  */
 function isOAuthBotOwner(user) {
-  const botOwners = getBotOwnerIds();
+  const botOwners = getBotOwnerIds(getConfig());
   return botOwners.includes(user?.userId);
 }
 
@@ -379,28 +359,62 @@ router.get('/', async (req, res) => {
   return res.status(401).json({ error: 'Unauthorized' });
 });
 
+/** Maximum number of channels to return to avoid oversized payloads. */
+const MAX_CHANNELS = 500;
+
+/** Maximum number of roles to return to avoid oversized payloads. */
+const MAX_ROLES = 250;
+
+/**
+ * Return a capped list of channels for a guild.
+ *
+ * @param {import('discord.js').Guild} guild
+ * @returns {{ id: string, name: string, type: number }[]}
+ */
+function getGuildChannels(guild) {
+  // type is discord.js ChannelType enum: 0=GuildText, 2=GuildVoice, 4=GuildCategory,
+  // 5=GuildAnnouncement, 13=GuildStageVoice, 15=GuildForum, 16=GuildMedia
+  const channels = [];
+  for (const ch of guild.channels.cache.values()) {
+    if (channels.length >= MAX_CHANNELS) break;
+    channels.push({ id: ch.id, name: ch.name, type: ch.type });
+  }
+  return channels;
+}
+
 /**
  * GET /:id — Guild info
  */
 router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
   const guild = req.guild;
-  const MAX_CHANNELS = 500;
-  const channels = [];
-  for (const ch of guild.channels.cache.values()) {
-    if (channels.length >= MAX_CHANNELS) break;
-    // type is discord.js ChannelType enum: 0=GuildText, 2=GuildVoice, 4=GuildCategory,
-    // 5=GuildAnnouncement, 13=GuildStageVoice, 15=GuildForum, 16=GuildMedia
-    channels.push({ id: ch.id, name: ch.name, type: ch.type });
-  }
-
   res.json({
     id: guild.id,
     name: guild.name,
     icon: guild.iconURL(),
     memberCount: guild.memberCount,
     channelCount: guild.channels.cache.size,
-    channels,
+    channels: getGuildChannels(guild),
   });
+});
+
+/**
+ * GET /:id/channels — Guild channel list
+ */
+router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
+  res.json(getGuildChannels(req.guild));
+});
+
+/**
+ * GET /:id/roles — Guild role list
+ */
+router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
+  const guild = req.guild;
+  const roles = Array.from(guild.roles.cache.values())
+    .filter((r) => r.id !== guild.id) // exclude @everyone
+    .sort((a, b) => b.position - a.position)
+    .map((r) => ({ id: r.id, name: r.name, color: r.color }))
+    .slice(0, MAX_ROLES);
+  res.json(roles);
 });
 
 /**
@@ -417,7 +431,7 @@ router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
   }
   res.json({
     guildId: req.params.id,
-    ...safeConfig,
+    ...maskSensitiveFields(safeConfig),
   });
 });
 
@@ -431,37 +445,27 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
     return res.status(400).json({ error: 'Request body is required' });
   }
 
-  const { path, value } = req.body;
-
-  if (!path || typeof path !== 'string') {
-    return res.status(400).json({ error: 'Missing or invalid "path" in request body' });
+  const result = validateConfigPatchBody(req.body, SAFE_CONFIG_KEYS);
+  if (result.error) {
+    const response = { error: result.error };
+    if (result.details) response.details = result.details;
+    return res.status(result.status).json(response);
   }
 
-  if (value === undefined) {
-    return res.status(400).json({ error: 'Missing "value" in request body' });
-  }
-
-  const topLevelKey = path.split('.')[0];
-  if (!SAFE_CONFIG_KEYS.includes(topLevelKey)) {
-    return res.status(403).json({ error: 'Modifying this config key is not allowed' });
-  }
-
-  if (!path.includes('.')) {
-    return res
-      .status(400)
-      .json({ error: 'Config path must include at least one dot separator (e.g., "ai.model")' });
-  }
-
-  const segments = path.split('.');
-  if (segments.some((s) => s === '')) {
-    return res.status(400).json({ error: 'Config path contains empty segments' });
-  }
+  const { path, value, topLevelKey } = result;
 
   try {
     await setConfigValue(path, value, req.params.id);
     const effectiveConfig = getConfig(req.params.id);
     const effectiveSection = effectiveConfig[topLevelKey] || {};
     info('Config updated via API', { path, value, guild: req.params.id });
+    fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
+      event: 'config.updated',
+      guildId: req.params.id,
+      section: topLevelKey,
+      updatedKeys: [path],
+      timestamp: Date.now(),
+    });
     res.json(effectiveSection);
   } catch (err) {
     error('Failed to update config via API', { path, error: err.message });
@@ -557,9 +561,8 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   if (!ALLOWED_INTERVALS.has(interval)) {
     return res.status(400).json({ error: 'Invalid interval parameter' });
   }
-  const bucketExpr = interval === 'hour'
-    ? "date_trunc('hour', created_at)"
-    : "date_trunc('day', created_at)";
+  const bucketExpr =
+    interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
 
   const logsWhereParts = [
     "message = 'AI usage'",

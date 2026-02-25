@@ -7,8 +7,8 @@ import crypto from 'node:crypto';
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { error, info, warn } from '../../logger.js';
-import { rateLimit } from '../middleware/rateLimit.js';
 import { requireOAuth } from '../middleware/oauth.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { DISCORD_API, fetchUserGuilds } from '../utils/discordApi.js';
 import { sessionStore } from '../utils/sessionStore.js';
 
@@ -42,12 +42,13 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const ALLOWED_REDIRECT_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 
 /**
- * Validate dashboard redirect target from environment config.
- * Accepts HTTPS URLs for production and HTTP only for localhost/loopback.
- * Uses URL parsing to prevent prefix-matching attacks (e.g., http://localhost.evil.com).
+ * Determine whether a DASHBOARD_URL value is an allowed redirect target.
  *
- * @param {string|undefined} value - DASHBOARD_URL from environment
- * @returns {boolean} True if URL is allowed
+ * Accepts `https:` URLs. Accepts `http:` only for localhost/loopback hosts when NODE_ENV is not 'production'.
+ * Uses strict URL parsing to avoid hostname prefix-matching attacks.
+ *
+ * @param {string|undefined} value - DASHBOARD_URL string from environment.
+ * @returns {boolean} `true` if the URL is allowed, `false` otherwise.
  */
 function isValidDashboardUrl(value) {
   if (typeof value !== 'string' || value.trim().length === 0) return false;
@@ -59,7 +60,8 @@ function isValidDashboardUrl(value) {
       parsed.protocol === 'http:' &&
       ALLOWED_REDIRECT_HOSTS.has(parsed.hostname) &&
       process.env.NODE_ENV !== 'production'
-    ) return true;
+    )
+      return true;
     return false;
   } catch {
     return false;
