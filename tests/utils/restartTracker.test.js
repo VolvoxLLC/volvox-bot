@@ -196,6 +196,70 @@ describe('restartTracker', () => {
         expect.objectContaining({ error: 'oops' }),
       );
     });
+
+    it('self-heals by creating table on 42P01 then retries successfully', async () => {
+      const rows = [
+        { id: 1, timestamp: new Date(), reason: 'startup', version: '1.0.0', uptime_seconds: 60 },
+      ];
+      let selectCallCount = 0;
+      const pool = {
+        query: vi.fn(async (sql) => {
+          if (sql.includes('FROM bot_restarts')) {
+            selectCallCount++;
+            if (selectCallCount === 1) {
+              const err = new Error('relation "bot_restarts" does not exist');
+              err.code = '42P01';
+              throw err;
+            }
+            // Retry SELECT succeeds
+            return { rows };
+          }
+          // CREATE TABLE call
+          if (sql.includes('CREATE TABLE')) {
+            return { rows: [], rowCount: 0 };
+          }
+          return { rows: [], rowCount: 0 };
+        }),
+      };
+
+      const result = await getRestarts(pool);
+
+      expect(result).toEqual(rows);
+      // Should have called: SELECT (fail), CREATE TABLE, SELECT (success)
+      expect(pool.query).toHaveBeenCalledTimes(3);
+    });
+
+    it('returns [] and logs error when retry SELECT also fails after 42P01 self-heal', async () => {
+      const { error: logError } = await import('../../src/logger.js');
+      let selectCallCount = 0;
+      const pool = {
+        query: vi.fn(async (sql) => {
+          if (sql.includes('FROM bot_restarts')) {
+            selectCallCount++;
+            if (selectCallCount === 1) {
+              const err = new Error('relation "bot_restarts" does not exist');
+              err.code = '42P01';
+              throw err;
+            }
+            // Retry also fails
+            throw new Error('still broken');
+          }
+          // CREATE TABLE succeeds
+          if (sql.includes('CREATE TABLE')) {
+            return { rows: [], rowCount: 0 };
+          }
+          return { rows: [], rowCount: 0 };
+        }),
+      };
+
+      const result = await getRestarts(pool);
+
+      expect(result).toEqual([]);
+      expect(logError).toHaveBeenCalledWith(
+        'Failed to query restarts after table creation',
+        expect.objectContaining({ error: 'still broken' }),
+      );
+    });
   });
 
   // ---------------------------------------------------------------------------
