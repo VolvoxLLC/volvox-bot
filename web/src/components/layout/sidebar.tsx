@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Users,
   Bot,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -38,6 +39,11 @@ const navigation = [
     name: "Bot Config",
     href: "/dashboard/config",
     icon: Bot,
+  },
+  {
+    name: "Logs",
+    href: "/dashboard/logs",
+    icon: ScrollText,
   },
   {
     name: "Settings",

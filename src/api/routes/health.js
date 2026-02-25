@@ -7,14 +7,44 @@
 import { Router } from 'express';
 import { isValidSecret } from '../middleware/auth.js';
 
+/** Lazy-loaded queryLogs — optional diagnostic feature, not required for health */
+let _queryLogs = null;
+let queryLogsFailed = false;
+async function getQueryLogs() {
+  if (queryLogsFailed) return null;
+  if (!_queryLogs) {
+    try {
+      const mod = await import('../../utils/logQuery.js');
+      _queryLogs = mod.queryLogs;
+    } catch {
+      // logQuery not available — tombstone to avoid retrying every request
+      queryLogsFailed = true;
+      _queryLogs = null;
+    }
+  }
+  return _queryLogs;
+}
+
 const router = Router();
+
+// Graceful fallback for restartTracker — may not exist yet
+let getRestarts = null;
+let getRestartPool = null;
+try {
+  const mod = await import('../../utils/restartTracker.js');
+  getRestarts = mod.getRestarts ?? null;
+  const dbMod = await import('../../db.js');
+  getRestartPool = dbMod.getPool ?? null;
+} catch {
+  // restartTracker not available yet — fallback to null
+}
 
 /**
  * GET / — Health check endpoint
  * Returns status, uptime, and Discord connection details.
- * Includes detailed memory usage only when a valid x-api-secret header is provided.
+ * Includes extended data only when a valid x-api-secret header is provided.
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { client } = req.app.locals;
 
   // Defensive guard in case health check is hit before Discord login completes
@@ -38,6 +68,58 @@ router.get('/', (req, res) => {
       guilds: client.guilds.cache.size,
     };
     body.memory = process.memoryUsage();
+
+    body.system = {
+      platform: process.platform,
+      nodeVersion: process.version,
+      cpuUsage: process.cpuUsage(),
+    };
+
+    // Error counts from logs table (optional — partial data on failure)
+    const queryLogs = await getQueryLogs();
+    if (queryLogs) {
+      try {
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        const [hourResult, dayResult] = await Promise.all([
+          queryLogs({ level: 'error', since: oneHourAgo, limit: 1 }),
+          queryLogs({ level: 'error', since: oneDayAgo, limit: 1 }),
+        ]);
+
+        body.errors = {
+          lastHour: hourResult.total,
+          lastDay: dayResult.total,
+        };
+      } catch {
+        body.errors = { lastHour: null, lastDay: null, error: 'query failed' };
+      }
+    } else {
+      body.errors = { lastHour: null, lastDay: null, error: 'log query unavailable' };
+    }
+
+    // Restart data with graceful fallback
+    if (getRestarts && getRestartPool) {
+      try {
+        const pool = getRestartPool();
+        if (pool) {
+          const rows = await getRestarts(pool, 20);
+          body.restarts = rows.map(r => ({
+            timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+            reason: r.reason || 'unknown',
+            version: r.version ?? null,
+            uptimeBefore: r.uptime_seconds ?? null,
+          }));
+        } else {
+          body.restarts = [];
+        }
+      } catch {
+        body.restarts = [];
+      }
+    } else {
+      body.restarts = [];
+    }
   }
 
   res.json(body);

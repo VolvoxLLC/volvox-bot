@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { PostgresTransport } from './transports/postgres.js';
+import { WebSocketTransport } from './transports/websocket.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', 'config.json');
@@ -278,6 +279,38 @@ export async function removePostgresTransport(transport) {
     } finally {
       logger.remove(transport);
     }
+  }
+}
+
+/**
+ * Create and add a WebSocket transport to the logger.
+ * Returns the transport instance so it can be passed to the WS server setup.
+ *
+ * @returns {WebSocketTransport} The transport instance
+ */
+export function addWebSocketTransport() {
+  const transport = new WebSocketTransport({
+    level: logLevel,
+    format: winston.format.combine(
+      redactSensitiveData,
+      winston.format.timestamp(),
+      winston.format.json(),
+    ),
+  });
+
+  logger.add(transport);
+  return transport;
+}
+
+/**
+ * Remove a WebSocket transport from the logger.
+ *
+ * @param {WebSocketTransport} transport - The transport to remove
+ */
+export function removeWebSocketTransport(transport) {
+  if (transport) {
+    transport.close();
+    logger.remove(transport);
   }
 }
 

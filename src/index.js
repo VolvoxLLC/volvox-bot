@@ -22,8 +22,8 @@ import {
   removeLoggingTransport,
   setInitialTransport,
 } from './config-listeners.js';
-import { closeDb, initDb } from './db.js';
-import { addPostgresTransport, debug, error, info, warn } from './logger.js';
+import { closeDb, getPool, initDb } from './db.js';
+import { addPostgresTransport, addWebSocketTransport, removeWebSocketTransport, debug, error, info, warn } from './logger.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -43,6 +43,7 @@ import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
+import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
 import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
@@ -52,6 +53,15 @@ const __dirname = dirname(__filename);
 // State persistence path
 const dataDir = join(__dirname, '..', 'data');
 const statePath = join(dataDir, 'state.json');
+
+// Package version (for restart tracking)
+let BOT_VERSION = 'unknown';
+try {
+  const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+  BOT_VERSION = pkg.version;
+} catch {
+  // package.json unreadable — version stays 'unknown'
+}
 
 // Load environment variables
 dotenvConfig();
@@ -257,6 +267,14 @@ async function gracefulShutdown(signal) {
     error('Failed to close PostgreSQL logging transport', { error: err.message });
   }
 
+  // 3.5. Record uptime before closing the pool
+  try {
+    const pool = getPool();
+    await updateUptimeOnShutdown(pool);
+  } catch (err) {
+    warn('Failed to record uptime on shutdown', { error: err.message, module: 'shutdown' });
+  }
+
   // 4. Close database pool
   info('Closing database connection');
   try {
@@ -303,6 +321,9 @@ async function startup() {
   if (process.env.DATABASE_URL) {
     dbPool = await initDb();
     info('Database initialized');
+
+    // Record this startup in the restart history table
+    await recordRestart(dbPool, 'startup', BOT_VERSION);
   } else {
     warn('DATABASE_URL not set — using config.json only (no persistence)');
   }
@@ -401,11 +422,19 @@ async function startup() {
   await loadCommands();
   await client.login(token);
 
-  // Start REST API server (non-fatal — bot continues without it)
-  try {
-    await startServer(client, dbPool);
-  } catch (err) {
-    error('REST API server failed to start — continuing without API', { error: err.message });
+  // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
+  {
+    let wsTransport = null;
+    try {
+      wsTransport = addWebSocketTransport();
+      await startServer(client, dbPool, { wsTransport });
+    } catch (err) {
+      // Clean up orphaned transport if startServer failed after it was created
+      if (wsTransport) {
+        removeWebSocketTransport(wsTransport);
+      }
+      error('REST API server failed to start — continuing without API', { error: err.message });
+    }
   }
 }
 

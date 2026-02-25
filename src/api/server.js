@@ -9,6 +9,7 @@ import apiRouter from './index.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { stopAuthCleanup } from './routes/auth.js';
 import { stopGuildCacheCleanup } from './utils/discordApi.js';
+import { setupLogStream, stopLogStream } from './ws/logStream.js';
 
 /** @type {import('node:http').Server | null} */
 let server = null;
@@ -85,9 +86,11 @@ export function createApp(client, dbPool) {
  *
  * @param {import('discord.js').Client} client - Discord client instance
  * @param {import('pg').Pool | null} dbPool - PostgreSQL connection pool
+ * @param {Object} [options] - Additional options
+ * @param {import('../transports/websocket.js').WebSocketTransport} [options.wsTransport] - WebSocket transport for log streaming
  * @returns {Promise<import('node:http').Server>} The HTTP server instance
  */
-export async function startServer(client, dbPool) {
+export async function startServer(client, dbPool, options = {}) {
   if (server) {
     warn('startServer called while a server is already running — closing orphaned server');
     await stopServer();
@@ -109,6 +112,17 @@ export async function startServer(client, dbPool) {
   return new Promise((resolve, reject) => {
     server = app.listen(port, () => {
       info('API server started', { port });
+
+      // Attach WebSocket log stream if transport provided
+      if (options.wsTransport) {
+        try {
+          setupLogStream(server, options.wsTransport);
+        } catch (err) {
+          error('Failed to setup WebSocket log stream', { error: err.message });
+          // Non-fatal — HTTP server still works without WS streaming
+        }
+      }
+
       resolve(server);
     });
     server.once('error', (err) => {
@@ -125,6 +139,9 @@ export async function startServer(client, dbPool) {
  * @returns {Promise<void>}
  */
 export async function stopServer() {
+  // Stop WebSocket log stream before closing HTTP server
+  await stopLogStream();
+
   stopAuthCleanup();
   stopGuildCacheCleanup();
 

@@ -1,7 +1,7 @@
 node_modules/
 .env
 *.log
-logs/
+/logs/
 coverage/
 .next/
 
@@ -13,7 +13,6 @@ coverage/
 .claude_settings.json
 .worktrees/
 .security-key
-logs/security/
 
 # State persistence data (keep structure, ignore content)
 data/*
