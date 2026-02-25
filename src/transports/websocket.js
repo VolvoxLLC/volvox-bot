@@ -106,11 +106,13 @@ export class WebSocketTransport extends Transport {
     }
 
     const { level, message, timestamp } = info;
+    const messageText = typeof message === 'string' ? message : String(message ?? '');
 
-    // Extract metadata (exclude Winston internal properties)
+    // Extract metadata (exclude Winston internal properties + splat symbol)
+    const EXCLUDED_KEYS = new Set(['level', 'message', 'timestamp', 'splat']);
     const metadata = {};
     for (const key of Object.keys(info)) {
-      if (key !== 'level' && key !== 'message' && key !== 'timestamp') {
+      if (!EXCLUDED_KEYS.has(key)) {
         metadata[key] = info[key];
       }
     }
@@ -118,7 +120,7 @@ export class WebSocketTransport extends Transport {
     const entry = {
       type: 'log',
       level: level || 'info',
-      message: message || '',
+      message: messageText,
       metadata,
       timestamp: timestamp || new Date().toISOString(),
       module: metadata.module || null,
@@ -132,7 +134,7 @@ export class WebSocketTransport extends Transport {
       payload = JSON.stringify({
         type: 'log',
         level: entry.level,
-        message: entry.message,
+        message: messageText,
         metadata: {},
         timestamp: entry.timestamp,
         module: null,
