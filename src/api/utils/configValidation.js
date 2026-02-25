@@ -176,7 +176,7 @@ export function validateValue(value, schema, path) {
         );
       } else if (schema.properties) {
         for (const [key, val] of Object.entries(value)) {
-          if (schema.properties[key]) {
+          if (Object.hasOwn(schema.properties, key)) {
             errors.push(...validateValue(val, schema.properties[key], `${path}.${key}`));
           } else {
             errors.push(`${path}.${key}: unknown config key`);
@@ -206,7 +206,7 @@ export function validateSingleValue(path, value) {
   // Walk the schema tree to find the leaf schema for this path
   let currentSchema = schema;
   for (let i = 1; i < segments.length; i++) {
-    if (!currentSchema.properties || !currentSchema.properties[segments[i]]) {
+    if (!currentSchema.properties || !Object.hasOwn(currentSchema.properties, segments[i])) {
       return [`Unknown config path: ${path}`];
     }
     currentSchema = currentSchema.properties[segments[i]];
