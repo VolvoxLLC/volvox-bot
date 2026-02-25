@@ -19,7 +19,7 @@ import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
 import { registerConfigListeners, removeLoggingTransport, setInitialTransport } from './config-listeners.js';
 import { closeDb, initDb } from './db.js';
-import { addPostgresTransport, debug, error, info, warn } from './logger.js';
+import { addPostgresTransport, addWebSocketTransport, debug, error, info, warn } from './logger.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -397,9 +397,10 @@ async function startup() {
   await loadCommands();
   await client.login(token);
 
-  // Start REST API server (non-fatal — bot continues without it)
+  // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
   try {
-    await startServer(client, dbPool);
+    const wsTransport = addWebSocketTransport();
+    await startServer(client, dbPool, { wsTransport });
   } catch (err) {
     error('REST API server failed to start — continuing without API', { error: err.message });
   }
