@@ -19,7 +19,7 @@ import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
 import { registerConfigListeners, removeLoggingTransport, setInitialTransport } from './config-listeners.js';
 import { closeDb, getPool, initDb } from './db.js';
-import { addPostgresTransport, addWebSocketTransport, debug, error, info, warn } from './logger.js';
+import { addPostgresTransport, addWebSocketTransport, removeWebSocketTransport, debug, error, info, warn } from './logger.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -51,9 +51,13 @@ const dataDir = join(__dirname, '..', 'data');
 const statePath = join(dataDir, 'state.json');
 
 // Package version (for restart tracking)
-const { version: BOT_VERSION } = JSON.parse(
-  readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
-);
+let BOT_VERSION = 'unknown';
+try {
+  const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+  BOT_VERSION = pkg.version;
+} catch {
+  // package.json unreadable — version stays 'unknown'
+}
 
 // Load environment variables
 dotenvConfig();
@@ -415,11 +419,18 @@ async function startup() {
   await client.login(token);
 
   // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
-  try {
-    const wsTransport = addWebSocketTransport();
-    await startServer(client, dbPool, { wsTransport });
-  } catch (err) {
-    error('REST API server failed to start — continuing without API', { error: err.message });
+  {
+    let wsTransport = null;
+    try {
+      wsTransport = addWebSocketTransport();
+      await startServer(client, dbPool, { wsTransport });
+    } catch (err) {
+      // Clean up orphaned transport if startServer failed after it was created
+      if (wsTransport) {
+        removeWebSocketTransport(wsTransport);
+      }
+      error('REST API server failed to start — continuing without API', { error: err.message });
+    }
   }
 }
 
