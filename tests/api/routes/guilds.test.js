@@ -468,6 +468,17 @@ describe('guilds routes', () => {
       expect(res.body.error).toContain('not allowed');
     });
 
+    it('should return 400 when attempting to write mask sentinel back to a sensitive field', async () => {
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'triage.classifyApiKey', value: '••••••••' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('mask sentinel');
+      expect(setConfigValue).not.toHaveBeenCalled();
+    });
+
     it('should allow patching moderation config', async () => {
       getConfig.mockReturnValueOnce({
         moderation: { enabled: false },

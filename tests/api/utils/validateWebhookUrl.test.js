@@ -318,6 +318,43 @@ describe('validateWebhookUrl', () => {
       expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
     });
 
+    it('should reject when hostname resolves to IPv4-mapped IPv6 in 10.x private range', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['::ffff:10.0.0.1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to IPv4-mapped IPv6 in 192.168.x.x range', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['::ffff:192.168.1.1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to IPv4-mapped IPv6 in hex form (private)', async () => {
+      // ::ffff:7f00:0001 = ::ffff:127.0.0.1
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['::ffff:7f00:0001']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should allow when hostname resolves to IPv4-mapped IPv6 of a public address', async () => {
+      // ::ffff:8.8.8.8 maps to the public Google DNS address
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['::ffff:8.8.8.8']);
+
+      expect(await validateDnsResolution('https://example.com/hook')).toBe(true);
+    });
+
+    it('should return false when both DNS families return empty arrays (no records)', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue([]);
+
+      expect(await validateDnsResolution('https://no-records.example.com/hook')).toBe(false);
+    });
+
     it('should return true for public IPv4-literal hostnames', async () => {
       // IP literals skip DNS resolution but are still validated against blocked ranges
       expect(await validateDnsResolution('https://8.8.8.8/hook')).toBe(true);

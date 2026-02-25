@@ -1,3 +1,4 @@
+import { isMasked, SENSITIVE_FIELDS } from './configAllowlist.js';
 import { validateSingleValue } from './configValidation.js';
 
 /**
@@ -51,6 +52,12 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
 
   if (segments.length > 10) {
     return { error: 'Config path exceeds maximum depth of 10 segments', status: 400 };
+  }
+
+  // Reject mask sentinel write-backs — clients must not re-submit the placeholder
+  // that GET responses use to hide sensitive values (e.g. '••••••••').
+  if (SENSITIVE_FIELDS.has(path) && isMasked(value)) {
+    return { error: 'Cannot write mask sentinel back to a sensitive config field', status: 400 };
   }
 
   const valErrors = validateSingleValue(path, value);

@@ -594,6 +594,20 @@ describe('flattenToLeafPaths', () => {
 
     expect(result).toEqual([['ai.safe', 'value']]);
   });
+
+  it('should skip "constructor" key to prevent prototype pollution', () => {
+    const malicious = { constructor: { polluted: true }, safe: 'value' };
+    const result = flattenToLeafPaths(malicious, 'ai');
+
+    expect(result).toEqual([['ai.safe', 'value']]);
+  });
+
+  it('should skip "prototype" key to prevent prototype pollution', () => {
+    const malicious = { prototype: { polluted: true }, safe: 'value' };
+    const result = flattenToLeafPaths(malicious, 'ai');
+
+    expect(result).toEqual([['ai.safe', 'value']]);
+  });
 });
 
 describe('validateSingleValue', () => {
