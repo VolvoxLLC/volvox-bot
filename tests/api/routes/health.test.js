@@ -123,8 +123,7 @@ describe('health route', () => {
     const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
 
     expect(res.status).toBe(200);
-    expect(res.body.restarts).toBeDefined();
-    expect(res.body.restarts.total).toBe(0);
-    expect(res.body.restarts.last).toBeNull();
+    expect(Array.isArray(res.body.restarts)).toBe(true);
+    expect(res.body.restarts).toHaveLength(0);
   });
 });
