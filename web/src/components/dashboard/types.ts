@@ -63,6 +63,14 @@ export function isBotHealth(value: unknown): value is BotHealth {
   if (typeof c.user !== "number" || typeof c.system !== "number") return false;
 
   if (!Array.isArray(v.restarts)) return false;
+  for (const item of v.restarts) {
+    if (typeof item !== "object" || item === null) return false;
+    const r = item as Record<string, unknown>;
+    if (typeof r.timestamp !== "string") return false;
+    if (typeof r.reason !== "string") return false;
+    if (typeof r.version !== "string") return false;
+    if (typeof r.uptimeBefore !== "number") return false;
+  }
 
   return true;
 }
