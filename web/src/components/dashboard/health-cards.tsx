@@ -151,7 +151,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span className="text-2xl font-bold">
-            {health ? health.discord.guilds.toLocaleString("en-US") : "—"}
+            {health ? health.discord.guilds.toLocaleString() : "—"}
           </span>
         </CardContent>
       </Card>
@@ -168,7 +168,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           <span
             className={`text-2xl font-bold ${health && health.errors.lastHour != null ? errorColor(health.errors.lastHour) : ""}`}
           >
-            {health ? (health.errors.lastHour?.toLocaleString("en-US") ?? "—") : "—"}
+            {health ? (health.errors.lastHour?.toLocaleString() ?? "—") : "—"}
           </span>
         </CardContent>
       </Card>
@@ -185,7 +185,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           <span
             className={`text-2xl font-bold ${health && health.errors.lastDay != null ? errorColor(health.errors.lastDay) : ""}`}
           >
-            {health ? (health.errors.lastDay?.toLocaleString("en-US") ?? "—") : "—"}
+            {health ? (health.errors.lastDay?.toLocaleString() ?? "—") : "—"}
           </span>
         </CardContent>
       </Card>
