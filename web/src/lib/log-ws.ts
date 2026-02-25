@@ -121,6 +121,15 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     const ticket = await fetchTicket();
     if (!ticket || unmountedRef.current) {
       connectingRef.current = false;
+      // Ticket fetch failed — retry with backoff instead of giving up
+      if (!unmountedRef.current) {
+        setStatus("reconnecting");
+        const delay = backoffRef.current;
+        backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
+        reconnectTimerRef.current = setTimeout(() => {
+          if (!unmountedRef.current) connect();
+        }, delay);
+      }
       return;
     }
 
