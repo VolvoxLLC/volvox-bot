@@ -69,7 +69,11 @@ export async function recordRestart(pool, reason = 'startup', version = null) {
  */
 export async function updateUptimeOnShutdown(pool) {
   if (lastRestartId === null || startedAt === null) {
-    warn('updateUptimeOnShutdown called before recordRestart — skipping');
+    warn('updateUptimeOnShutdown called before recordRestart — skipping', {
+      module: 'restartTracker',
+      lastRestartId,
+      startedAt,
+    });
     return;
   }
 
@@ -104,6 +108,23 @@ export async function getRestarts(pool, limit = 20) {
     );
     return result.rows;
   } catch (err) {
+    // Self-heal: auto-create table if it doesn't exist, then retry
+    if (err.code === '42P01') {
+      try {
+        await ensureTable(pool);
+        const result = await pool.query(
+          `SELECT id, timestamp, reason, version, uptime_seconds
+             FROM bot_restarts
+            ORDER BY timestamp DESC
+            LIMIT $1`,
+          [Math.max(1, Math.floor(limit))],
+        );
+        return result.rows;
+      } catch (retryErr) {
+        logError('Failed to query restarts after table creation', { error: retryErr.message });
+        return [];
+      }
+    }
     logError('Failed to query restarts', { error: err.message });
     return [];
   }
