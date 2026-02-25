@@ -37,7 +37,8 @@ function formatUptime(seconds: number): string {
   if (h > 0) parts.push(`${h}h`);
   if (m > 0) parts.push(`${m}m`);
 
-  return parts.join(" ") || "< 1m";
+  // seconds >= 60 guarantees at least m >= 1, so parts is never empty
+  return parts.join(" ");
 }
 
 type ReasonStyle = {
@@ -49,9 +50,7 @@ type ReasonStyle = {
 function reasonStyle(reason: string): ReasonStyle {
   const normalized = reason.toLowerCase();
 
-  if (normalized.includes("startup") || normalized.includes("start")) {
-    return { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", label: reason };
-  }
+  // Check crash/restart before startup to avoid "restart" matching "start"
   if (
     normalized.includes("crash") ||
     normalized.includes("error") ||
@@ -59,6 +58,12 @@ function reasonStyle(reason: string): ReasonStyle {
     normalized.includes("unhandled")
   ) {
     return { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400", label: reason };
+  }
+  if (normalized.includes("restart")) {
+    return { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", label: reason };
+  }
+  if (normalized.includes("startup") || normalized.startsWith("start")) {
+    return { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", label: reason };
   }
   if (normalized.includes("deploy") || normalized.includes("update")) {
     return { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", label: reason };
