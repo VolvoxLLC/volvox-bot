@@ -97,12 +97,13 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   const ticketRef = useRef<{ wsUrl: string; ticket: string } | null>(null);
   const unmountedRef = useRef(false);
   const connectingRef = useRef(false);
+  const connectAttemptRef = useRef(0);
 
   // ── Fetch ticket once ──────────────────────────────────────────────────────
   const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; ticket: string } | null> => {
     // Always fetch a fresh ticket — they're short-lived HMAC tokens
     try {
-      const res = await fetch("/api/log-stream/ws-ticket");
+      const res = await fetch("/api/log-stream/ws-ticket", { cache: "no-store" });
       if (!res.ok) return null;
       const data = (await res.json()) as { wsUrl?: string; ticket?: string };
       if (!data.wsUrl || !data.ticket) return null;
@@ -117,9 +118,17 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   const connect = useCallback(async () => {
     if (unmountedRef.current || connectingRef.current) return;
     connectingRef.current = true;
+    const attempt = ++connectAttemptRef.current;
 
     const ticket = await fetchTicket();
-    if (!ticket || unmountedRef.current) {
+
+    // Bail if a newer connect() has superseded us or component unmounted
+    if (attempt !== connectAttemptRef.current || unmountedRef.current) {
+      connectingRef.current = false;
+      return;
+    }
+
+    if (!ticket) {
       connectingRef.current = false;
       // Ticket fetch failed — retry with backoff instead of giving up
       if (!unmountedRef.current) {
@@ -205,7 +214,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     };
 
     ws.onclose = () => {
-      if (unmountedRef.current) return;
+      if (unmountedRef.current || attempt !== connectAttemptRef.current) return;
       connectingRef.current = false;
       setStatus("reconnecting");
 
@@ -230,6 +239,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     return () => {
       unmountedRef.current = true;
       connectingRef.current = false;
+      connectAttemptRef.current++;  // Invalidate any in-flight connect
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (wsRef.current) {
         wsRef.current.onclose = null;

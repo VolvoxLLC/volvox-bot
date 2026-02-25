@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BotHealth, RestartRecord } from "./types";
+import { formatUptime } from "@/lib/format-time";
 
 interface RestartHistoryProps {
   health: BotHealth | null;
@@ -13,7 +14,7 @@ const MAX_RESTARTS = 20;
 
 function formatTimestamp(iso: string): string {
   try {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -24,21 +25,6 @@ function formatTimestamp(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-function formatUptime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const d = Math.floor(seconds / 86_400);
-  const h = Math.floor((seconds % 86_400) / 3_600);
-  const m = Math.floor((seconds % 3_600) / 60);
-
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d}d`);
-  if (h > 0) parts.push(`${h}h`);
-  if (m > 0) parts.push(`${m}m`);
-
-  // seconds >= 60 guarantees at least m >= 1, so parts is never empty
-  return parts.join(" ");
 }
 
 type ReasonStyle = {
@@ -98,7 +84,9 @@ function TableSkeleton() {
 
 export function RestartHistory({ health, loading }: RestartHistoryProps) {
   const restarts: RestartRecord[] = health
-    ? [...health.restarts].reverse().slice(0, MAX_RESTARTS)
+    ? [...health.restarts]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, MAX_RESTARTS)
     : [];
 
   return (

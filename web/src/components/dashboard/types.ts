@@ -42,6 +42,7 @@ export function isBotHealth(value: unknown): value is BotHealth {
   if (typeof mem !== "object" || mem === null) return false;
   const m = mem as Record<string, unknown>;
   if (typeof m.heapUsed !== "number" || typeof m.heapTotal !== "number") return false;
+  if (m.rss !== undefined && typeof m.rss !== "number") return false;
 
   const discord = v.discord;
   if (typeof discord !== "object" || discord === null) return false;

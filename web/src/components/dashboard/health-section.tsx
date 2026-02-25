@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HealthCards } from "./health-cards";
@@ -10,7 +11,7 @@ import { isBotHealth, type BotHealth } from "./types";
 const AUTO_REFRESH_MS = 60_000;
 
 function formatLastUpdated(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
@@ -18,6 +19,7 @@ function formatLastUpdated(date: Date): string {
 }
 
 export function HealthSection() {
+  const router = useRouter();
   const [health, setHealth] = useState<BotHealth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export function HealthSection() {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    const didSetLoading = !backgroundRefresh;
 
     if (!backgroundRefresh) {
       setLoading(true);
@@ -41,7 +44,7 @@ export function HealthSection() {
       });
 
       if (response.status === 401) {
-        window.location.href = "/login";
+        router.replace("/login");
         return;
       }
 
@@ -68,6 +71,7 @@ export function HealthSection() {
       }
 
       setHealth(payload);
+      setError(null);
       setLastUpdatedAt(new Date());
     } catch (fetchError) {
       if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
@@ -75,9 +79,7 @@ export function HealthSection() {
         fetchError instanceof Error ? fetchError.message : "Failed to fetch health data",
       );
     } finally {
-      // Only clear loading if this controller is still the active one,
-      // and only if we actually set loading to true (foreground refresh).
-      if (abortControllerRef.current === controller && !backgroundRefresh) {
+      if (didSetLoading) {
         setLoading(false);
       }
     }
