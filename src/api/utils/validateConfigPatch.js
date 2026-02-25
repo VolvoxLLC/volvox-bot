@@ -26,6 +26,12 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
   }
 
   const segments = path.split('.');
+
+  // Check for empty segments FIRST (handles leading/trailing dots like ".ai.key")
+  if (segments.some((s) => s === '')) {
+    return { error: 'Config path contains empty segments', status: 400 };
+  }
+
   const topLevelKey = segments[0];
 
   if (!SAFE_CONFIG_KEYS.includes(topLevelKey)) {
@@ -37,9 +43,6 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
       error: 'Config path must include at least one dot separator (e.g., "ai.model")',
       status: 400,
     };
-  }
-  if (segments.some((s) => s === '')) {
-    return { error: 'Config path contains empty segments', status: 400 };
   }
 
   if (path.length > 200) {

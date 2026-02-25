@@ -66,7 +66,7 @@ describe('validateConfigPatch', () => {
 
     it('should allow null or false as values', () => {
       const bodyNull = {
-        path: 'ai.channelId',
+        path: 'welcome.channelId',
         value: null,
       };
 

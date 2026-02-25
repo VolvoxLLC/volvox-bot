@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   buildStatsAndLog,
   fetchChannelContext,
@@ -38,6 +38,11 @@ vi.mock('../../src/modules/triage-filter.js', () => ({
 }));
 
 import { warn } from '../../src/logger.js';
+import { safeSend } from '../../src/utils/safeSend.js';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('triage-respond', () => {
