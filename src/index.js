@@ -263,8 +263,8 @@ async function gracefulShutdown(signal) {
   try {
     const pool = getPool();
     await updateUptimeOnShutdown(pool);
-  } catch {
-    // Pool may not be initialized (no DATABASE_URL configured) — safe to skip
+  } catch (err) {
+    warn('Failed to record uptime on shutdown', { error: err.message, module: 'shutdown' });
   }
 
   // 4. Close database pool
