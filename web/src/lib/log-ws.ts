@@ -88,19 +88,19 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   const backoffRef = useRef(INITIAL_BACKOFF_MS);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeFilterRef = useRef<LogFilter>({});
-  const ticketRef = useRef<{ wsUrl: string; secret: string } | null>(null);
+  const ticketRef = useRef<{ wsUrl: string; ticket: string } | null>(null);
   const unmountedRef = useRef(false);
   const connectingRef = useRef(false);
 
   // ── Fetch ticket once ──────────────────────────────────────────────────────
-  const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; secret: string } | null> => {
-    if (ticketRef.current) return ticketRef.current;
+  const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; ticket: string } | null> => {
+    // Always fetch a fresh ticket — they're short-lived HMAC tokens
     try {
       const res = await fetch("/api/log-stream/ws-ticket");
       if (!res.ok) return null;
-      const data = (await res.json()) as { wsUrl?: string; secret?: string };
-      if (!data.wsUrl || !data.secret) return null;
-      ticketRef.current = { wsUrl: data.wsUrl, secret: data.secret };
+      const data = (await res.json()) as { wsUrl?: string; ticket?: string };
+      if (!data.wsUrl || !data.ticket) return null;
+      ticketRef.current = { wsUrl: data.wsUrl, ticket: data.ticket };
       return ticketRef.current;
     } catch {
       return null;
@@ -132,7 +132,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
         ws.close();
         return;
       }
-      ws.send(JSON.stringify({ type: "auth", secret: ticket.secret }));
+      ws.send(JSON.stringify({ type: "auth", ticket: ticket.ticket }));
     };
 
     ws.onmessage = (event: MessageEvent) => {

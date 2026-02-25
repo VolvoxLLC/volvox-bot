@@ -1,3 +1,4 @@
+import { randomBytes, createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
@@ -5,14 +6,31 @@ import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
+/** Ticket lifetime — 30 seconds is plenty to open a WebSocket. */
+const TICKET_TTL_MS = 30_000;
+
+/**
+ * Generate a short-lived HMAC ticket the WS server can validate
+ * without the browser ever seeing the raw secret.
+ *
+ * Format: `<nonce>.<expiry>.<hmac>`
+ *
+ * The bot WS server recreates the HMAC from (nonce + expiry) using the
+ * shared BOT_API_SECRET and verifies it matches + isn't expired.
+ */
+function createTicket(secret: string): string {
+  const nonce = randomBytes(16).toString("hex");
+  const expiry = Date.now() + TICKET_TTL_MS;
+  const payload = `${nonce}.${expiry}`;
+  const hmac = createHmac("sha256", secret).update(payload).digest("hex");
+  return `${payload}.${hmac}`;
+}
+
 /**
  * Returns WebSocket connection info for the log stream.
  *
- * Validates session then returns the WS URL and bot API secret so the
- * browser can authenticate to the bot's /ws/logs endpoint.
- *
- * The secret is scoped to authenticated dashboard users only — it never
- * appears in client-side HTML or public bundles.
+ * Validates the session, generates a short-lived HMAC ticket, and returns
+ * the WS URL + ticket. The raw BOT_API_SECRET never leaves the server.
  */
 export async function GET(request: NextRequest) {
   const token = await getToken({ req: request });
@@ -53,5 +71,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ wsUrl, secret: botApiSecret });
+  const ticket = createTicket(botApiSecret);
+
+  return NextResponse.json({ wsUrl, ticket });
 }
