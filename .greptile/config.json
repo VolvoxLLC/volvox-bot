@@ -1,0 +1,45 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax", "security"],
+  "rules": [
+    {
+      "id": "no-console",
+      "rule": "Never use console.log/warn/error in production code. Always use the Winston logger imported from src/logger.js.",
+      "scope": ["src/**"],
+      "severity": "high"
+    },
+    {
+      "id": "esm-only",
+      "rule": "This project uses ESM exclusively. Use import/export, not require/module.exports. Use node: prefix for builtins (e.g. node:path, node:fs).",
+      "severity": "medium"
+    },
+    {
+      "id": "conventional-commits",
+      "rule": "Commit messages must follow conventional commits format: type(scope): description. Types: feat, fix, refactor, test, docs, chore, build.",
+      "severity": "low"
+    },
+    {
+      "id": "no-any",
+      "rule": "In TypeScript files, avoid 'any' type without a justification comment explaining why it's necessary.",
+      "scope": ["web/**/*.ts", "web/**/*.tsx"],
+      "severity": "medium"
+    },
+    {
+      "id": "parameterized-queries",
+      "rule": "Always use parameterized queries ($1, $2) with pg. Never interpolate user input into SQL strings.",
+      "scope": ["src/**"],
+      "severity": "high"
+    },
+    {
+      "id": "error-handling",
+      "rule": "All database operations and external API calls must have proper error handling with try/catch. Log errors via Winston with context.",
+      "severity": "medium"
+    },
+    {
+      "id": "no-hardcoded-locale",
+      "rule": "Do not hardcode locale strings like 'en-US' in Intl.DateTimeFormat or toLocaleString. Use undefined to respect the user's runtime locale.",
+      "scope": ["web/**"],
+      "severity": "low"
+    }
+  ]
+}
