@@ -65,7 +65,7 @@ exports.up = (pgm) => {
       guild_id TEXT NOT NULL,
       action TEXT NOT NULL,
       target_id TEXT NOT NULL,
-      case_id INTEGER REFERENCES mod_cases(id),
+      case_id INTEGER REFERENCES mod_cases(id) ON DELETE SET NULL,
       execute_at TIMESTAMPTZ NOT NULL,
       executed BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT NOW()
@@ -102,7 +102,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_ai_usage_guild_created ON ai_usage (guild_id, created_at)');
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_ai_usage_created_at ON ai_usage (created_at)');
-  pgm.sql('CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created ON ai_usage (user_id, created_at)');
+  pgm.sql('CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created ON ai_usage (user_id, created_at) WHERE user_id IS NOT NULL');
 
   // 7. logs
   pgm.sql(`
