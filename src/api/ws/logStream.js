@@ -51,6 +51,12 @@ let authenticatedCount = 0;
  * @param {import('../../transports/websocket.js').WebSocketTransport} transport - The WebSocket Winston transport
  */
 export function setupLogStream(httpServer, transport) {
+  // Guard against double-call — cleanup previous instance first
+  if (wss) {
+    warn('setupLogStream called while already running — cleaning up previous instance');
+    stopLogStream();
+  }
+
   wsTransport = transport;
 
   wss = new WebSocketServer({
@@ -221,16 +227,12 @@ async function handleAuth(ws, msg) {
     ws.authTimeout = null;
   }
 
-  // Register with transport for real-time log broadcasting
-  if (wsTransport) {
-    wsTransport.addClient(ws);
-  }
-
   sendJson(ws, { type: 'auth_ok' });
 
   info('WebSocket client authenticated', { totalClients: authenticatedCount });
 
-  // Send historical logs
+  // Send historical logs BEFORE registering for real-time broadcast
+  // to prevent race where live logs arrive before history and get overwritten
   try {
     const { rows } = await queryLogs({ limit: HISTORY_LIMIT });
     // Reverse so oldest comes first (queryLogs returns DESC order)
@@ -246,6 +248,11 @@ async function handleAuth(ws, msg) {
     logError('Failed to send historical logs', { error: err.message });
     // Non-fatal — real-time streaming still works
     sendJson(ws, { type: 'history', logs: [] });
+  }
+
+  // Register with transport for real-time log broadcasting AFTER history is sent
+  if (wsTransport) {
+    wsTransport.addClient(ws);
   }
 }
 
