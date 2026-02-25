@@ -18,7 +18,7 @@ import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
 import { registerConfigListeners, removeLoggingTransport, setInitialTransport } from './config-listeners.js';
-import { closeDb, initDb } from './db.js';
+import { closeDb, getPool, initDb } from './db.js';
 import { addPostgresTransport, debug, error, info, warn } from './logger.js';
 import {
   getConversationHistory,
@@ -40,6 +40,7 @@ import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { safeFollowUp, safeReply } from './utils/safeSend.js';
+import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
 
 // ES module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -48,6 +49,11 @@ const __dirname = dirname(__filename);
 // State persistence path
 const dataDir = join(__dirname, '..', 'data');
 const statePath = join(dataDir, 'state.json');
+
+// Package version (for restart tracking)
+const { version: BOT_VERSION } = JSON.parse(
+  readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
+);
 
 // Load environment variables
 dotenvConfig();
@@ -253,6 +259,14 @@ async function gracefulShutdown(signal) {
     error('Failed to close PostgreSQL logging transport', { error: err.message });
   }
 
+  // 3.5. Record uptime before closing the pool
+  try {
+    const pool = getPool();
+    await updateUptimeOnShutdown(pool);
+  } catch {
+    // Pool may not be initialized (no DATABASE_URL configured) — safe to skip
+  }
+
   // 4. Close database pool
   info('Closing database connection');
   try {
@@ -299,6 +313,9 @@ async function startup() {
   if (process.env.DATABASE_URL) {
     dbPool = await initDb();
     info('Database initialized');
+
+    // Record this startup in the restart history table
+    await recordRestart(dbPool, 'startup', BOT_VERSION);
   } else {
     warn('DATABASE_URL not set — using config.json only (no persistence)');
   }
