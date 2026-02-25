@@ -15,6 +15,10 @@
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "format": "biome format . --write",
+    "migrate": "node-pg-migrate up --migrations-dir migrations",
+    "migrate:up": "node-pg-migrate up --migrations-dir migrations",
+    "migrate:down": "node-pg-migrate down --migrations-dir migrations",
+    "migrate:create": "node-pg-migrate create --migrations-dir migrations",
     "prepare": "git config core.hooksPath .hooks"
   },
   "dependencies": {
