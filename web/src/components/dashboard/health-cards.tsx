@@ -177,9 +177,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span
-            className={`text-2xl font-bold ${health ? errorColor(health.errors.lastHour) : ""}`}
+            className={`text-2xl font-bold ${health && health.errors.lastHour != null ? errorColor(health.errors.lastHour) : ""}`}
           >
-            {health ? health.errors.lastHour.toLocaleString("en-US") : "—"}
+            {health ? (health.errors.lastHour?.toLocaleString("en-US") ?? "—") : "—"}
           </span>
         </CardContent>
       </Card>
@@ -194,9 +194,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span
-            className={`text-2xl font-bold ${health ? errorColor(health.errors.lastDay) : ""}`}
+            className={`text-2xl font-bold ${health && health.errors.lastDay != null ? errorColor(health.errors.lastDay) : ""}`}
           >
-            {health ? health.errors.lastDay.toLocaleString("en-US") : "—"}
+            {health ? (health.errors.lastDay?.toLocaleString("en-US") ?? "—") : "—"}
           </span>
         </CardContent>
       </Card>

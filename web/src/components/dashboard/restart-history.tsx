@@ -138,10 +138,10 @@ export function RestartHistory({ health, loading }: RestartHistoryProps) {
                       <ReasonBadge reason={restart.reason} />
                     </td>
                     <td className="py-2.5 pr-4 font-mono text-xs">
-                      {restart.version}
+                      {restart.version ?? "—"}
                     </td>
                     <td className="py-2.5 text-muted-foreground">
-                      {formatUptime(restart.uptimeBefore)}
+                      {restart.uptimeBefore != null ? formatUptime(restart.uptimeBefore) : "—"}
                     </td>
                   </tr>
                 ))}

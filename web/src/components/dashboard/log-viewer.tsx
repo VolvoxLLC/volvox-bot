@@ -95,7 +95,7 @@ function LogRow({
         <span className="shrink-0 text-gray-600 select-none">{time}</span>
 
         {/* Level badge */}
-        <span className={cn("shrink-0 w-4 select-none", level.badge)}>{level.label}</span>
+        <span className={cn("shrink-0 min-w-[3rem] select-none", level.badge)}>{level.label}</span>
 
         {/* Module */}
         {entry.module && (
