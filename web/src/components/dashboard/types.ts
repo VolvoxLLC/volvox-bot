@@ -2,8 +2,8 @@
 export interface RestartRecord {
   timestamp: string;
   reason: string;
-  version: string;
-  uptimeBefore: number; // seconds
+  version: string | null;
+  uptimeBefore: number | null; // seconds
 }
 
 /** Shape of the bot health payload from GET /api/v1/health. */
@@ -19,8 +19,8 @@ export interface BotHealth {
     guilds: number;
   };
   errors: {
-    lastHour: number;
-    lastDay: number;
+    lastHour: number | null;
+    lastDay: number | null;
   };
   system: {
     cpuUsage: {
@@ -51,7 +51,8 @@ export function isBotHealth(value: unknown): value is BotHealth {
   const errors = v.errors;
   if (typeof errors !== "object" || errors === null) return false;
   const e = errors as Record<string, unknown>;
-  if (typeof e.lastHour !== "number" || typeof e.lastDay !== "number") return false;
+  if (e.lastHour !== null && typeof e.lastHour !== "number") return false;
+  if (e.lastDay !== null && typeof e.lastDay !== "number") return false;
 
   const system = v.system;
   if (typeof system !== "object" || system === null) return false;
@@ -68,8 +69,8 @@ export function isBotHealth(value: unknown): value is BotHealth {
     const r = item as Record<string, unknown>;
     if (typeof r.timestamp !== "string") return false;
     if (typeof r.reason !== "string") return false;
-    if (typeof r.version !== "string") return false;
-    if (typeof r.uptimeBefore !== "number") return false;
+    if (r.version !== null && typeof r.version !== "string") return false;
+    if (r.uptimeBefore !== null && typeof r.uptimeBefore !== "number") return false;
   }
 
   return true;
