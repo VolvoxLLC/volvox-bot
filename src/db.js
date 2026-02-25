@@ -18,17 +18,17 @@ let pool = null;
 let initializing = false;
 
 /**
- * Determine SSL configuration based on DATABASE_SSL env var and connection string.
+ * Selects the SSL configuration for a pg.Pool based on DATABASE_SSL and the connection string.
  *
  * DATABASE_SSL values:
  *   "false" / "off"      → SSL disabled
- *   "no-verify"          → SSL enabled but server cert not verified
- *   "true" / "on" / unset → SSL enabled with full verification
+ *   "no-verify"          → SSL enabled but server certificate not verified
+ *   "true" / "on" / unset → SSL enabled with server certificate verification
  *
- * Railway internal connections always disable SSL regardless of env var.
+ * Connections whose host contains "railway.internal" always disable SSL.
  *
  * @param {string} connectionString - Database connection URL
- * @returns {false|{rejectUnauthorized: boolean}} SSL config for pg.Pool
+ * @returns {false|{rejectUnauthorized: boolean}} `false` to disable SSL, or an object with `rejectUnauthorized` indicating whether server certificates must be verified
  */
 function getSslConfig(connectionString) {
   // Railway internal connections never need SSL
@@ -51,9 +51,9 @@ function getSslConfig(connectionString) {
 }
 
 /**
- * Run pending database migrations via node-pg-migrate.
+ * Apply pending PostgreSQL schema migrations from the project's migrations directory.
  *
- * @param {string} databaseUrl - PostgreSQL connection string
+ * @param {string} databaseUrl - Connection string used to run migrations against the database.
  * @returns {Promise<void>}
  */
 async function runMigrations(databaseUrl) {
@@ -78,6 +78,7 @@ async function runMigrations(databaseUrl) {
  * @returns {Promise<pg.Pool>} The initialized pg.Pool instance.
  * @throws {Error} If initialization is already in progress.
  * @throws {Error} If the DATABASE_URL environment variable is not set.
+ * @throws {Error} If the connection test or migration application fails.
  */
 export async function initDb() {
   if (initializing) {
