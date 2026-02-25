@@ -1,3 +1,4 @@
+import { createHmac, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
@@ -5,6 +6,17 @@ import { WebSocketTransport } from '../../../src/transports/websocket.js';
 import { setupLogStream, stopLogStream, getAuthenticatedClientCount } from '../../../src/api/ws/logStream.js';
 
 const TEST_SECRET = 'test-api-secret-for-ws';
+
+/**
+ * Generate a valid HMAC ticket for WebSocket auth.
+ * Format: nonce.expiry.hmac
+ */
+function makeTicket(secret = TEST_SECRET, ttlMs = 60_000) {
+  const nonce = randomBytes(16).toString('hex');
+  const expiry = String(Date.now() + ttlMs);
+  const hmac = createHmac('sha256', secret).update(`${nonce}.${expiry}`).digest('hex');
+  return `${nonce}.${expiry}.${hmac}`;
+}
 
 function createTestServer() {
   return new Promise((resolve) => {
@@ -65,7 +77,7 @@ function createMessageQueue(ws) {
 
 function waitForClose(ws, timeoutMs = 3000) {
   return new Promise((resolve, reject) => {
-    if (ws.readyState === WebSocket.CLOSED) return resolve(ws._closeCode || 1000);
+    if (ws.readyState === WebSocket.CLOSED) return resolve(1000);
     const timer = setTimeout(() => reject(new Error('Close timeout')), timeoutMs);
     ws.once('close', (code) => {
       clearTimeout(timer);
@@ -120,7 +132,7 @@ describe('WebSocket Log Stream', () => {
    * Authenticate and consume both auth_ok and history.
    */
   async function authenticate(ws, mq) {
-    sendJson(ws, { type: 'auth', secret: TEST_SECRET });
+    sendJson(ws, { type: 'auth', ticket: makeTicket() });
     const authOk = await mq.next();
     expect(authOk.type).toBe('auth_ok');
     const history = await mq.next();
@@ -131,7 +143,7 @@ describe('WebSocket Log Stream', () => {
   describe('authentication', () => {
     it('should accept valid auth and send auth_ok + history', async () => {
       const { ws, mq } = await connect();
-      sendJson(ws, { type: 'auth', secret: TEST_SECRET });
+      sendJson(ws, { type: 'auth', ticket: makeTicket() });
 
       const authOk = await mq.next();
       expect(authOk.type).toBe('auth_ok');
@@ -144,7 +156,7 @@ describe('WebSocket Log Stream', () => {
     it('should reject invalid auth and close connection', async () => {
       const { ws } = await connect();
       const closePromise = waitForClose(ws);
-      sendJson(ws, { type: 'auth', secret: 'bad' });
+      sendJson(ws, { type: 'auth', ticket: 'bad.ticket.value' });
       const code = await closePromise;
       expect(code).toBe(4003);
     });
@@ -153,7 +165,7 @@ describe('WebSocket Log Stream', () => {
       const { ws, mq } = await connect();
       await authenticate(ws, mq);
 
-      sendJson(ws, { type: 'auth', secret: TEST_SECRET });
+      sendJson(ws, { type: 'auth', ticket: makeTicket() });
       const errMsg = await mq.next();
       expect(errMsg.type).toBe('error');
       expect(errMsg.message).toBe('Already authenticated');
@@ -175,7 +187,7 @@ describe('WebSocket Log Stream', () => {
 
       const { ws: ws11 } = await connect();
       const closePromise = waitForClose(ws11);
-      sendJson(ws11, { type: 'auth', secret: TEST_SECRET });
+      sendJson(ws11, { type: 'auth', ticket: makeTicket() });
       const code = await closePromise;
       expect(code).toBe(4029);
     });

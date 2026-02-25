@@ -5,10 +5,10 @@
  * Handles auth, client lifecycle, per-client filtering, and heartbeat.
  */
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { info, error as logError, warn } from '../../logger.js';
 import { queryLogs } from '../../utils/logQuery.js';
-import { isValidSecret } from '../middleware/auth.js';
 
 /** Maximum number of concurrent authenticated clients */
 const MAX_CLIENTS = 10;
@@ -156,7 +156,38 @@ async function handleMessage(ws, data) {
 }
 
 /**
- * Handle auth message. Validates the secret and sends historical logs.
+ * Validate an HMAC ticket of the form `nonce.expiry.hmac`.
+ *
+ * @param {string} ticket - The ticket string from the client
+ * @param {string} secret - The BOT_API_SECRET used to derive the HMAC
+ * @returns {boolean} True if the ticket is valid and not expired
+ */
+function validateTicket(ticket, secret) {
+  if (!ticket || !secret) return false;
+
+  const parts = ticket.split('.');
+  if (parts.length !== 3) return false;
+
+  const [nonce, expiry, hmac] = parts;
+  if (!nonce || !expiry || !hmac) return false;
+
+  // Check expiry
+  if (parseInt(expiry, 10) <= Date.now()) return false;
+
+  // Re-derive HMAC and compare with timing-safe equality
+  const expected = createHmac('sha256', secret)
+    .update(`${nonce}.${expiry}`)
+    .digest('hex');
+
+  try {
+    return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hmac, 'hex'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Handle auth message. Validates the ticket and sends historical logs.
  *
  * @param {import('ws').WebSocket} ws
  * @param {Object} msg
@@ -167,8 +198,8 @@ async function handleAuth(ws, msg) {
     return;
   }
 
-  if (!msg.secret || !isValidSecret(msg.secret)) {
-    warn('WebSocket auth failed', { reason: 'invalid secret' });
+  if (!msg.ticket || !validateTicket(msg.ticket, process.env.BOT_API_SECRET)) {
+    warn('WebSocket auth failed', { reason: 'invalid ticket' });
     ws.close(4003, 'Authentication failed');
     return;
   }
