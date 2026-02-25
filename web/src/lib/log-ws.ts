@@ -63,9 +63,15 @@ function normalizeEntry(raw: unknown, id: string): LogEntry | null {
   const level = normalizeLevel(r.level);
   const module = typeof r.module === "string" ? r.module : undefined;
 
-  // Everything that isn't a top-level field goes into meta
-  const { message: _m, timestamp: _t, level: _l, module: _mod, type: _type, ...rest } = r;
-  const meta = Object.keys(rest).length > 0 ? (rest as Record<string, unknown>) : undefined;
+  // Flatten server `metadata` object into meta alongside other extra fields
+  const { message: _m, timestamp: _t, level: _l, module: _mod, type: _type, metadata: rawMeta, ...rest } = r;
+  const flatMeta: Record<string, unknown> = {
+    ...(typeof rawMeta === "object" && rawMeta !== null && !Array.isArray(rawMeta)
+      ? (rawMeta as Record<string, unknown>)
+      : {}),
+    ...rest,
+  };
+  const meta = Object.keys(flatMeta).length > 0 ? flatMeta : undefined;
 
   return { id, timestamp, level, message, module, meta };
 }
@@ -88,19 +94,19 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   const backoffRef = useRef(INITIAL_BACKOFF_MS);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeFilterRef = useRef<LogFilter>({});
-  const ticketRef = useRef<{ wsUrl: string; secret: string } | null>(null);
+  const ticketRef = useRef<{ wsUrl: string; ticket: string } | null>(null);
   const unmountedRef = useRef(false);
   const connectingRef = useRef(false);
 
   // ── Fetch ticket once ──────────────────────────────────────────────────────
-  const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; secret: string } | null> => {
-    if (ticketRef.current) return ticketRef.current;
+  const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; ticket: string } | null> => {
+    // Always fetch a fresh ticket — they're short-lived HMAC tokens
     try {
       const res = await fetch("/api/log-stream/ws-ticket");
       if (!res.ok) return null;
-      const data = (await res.json()) as { wsUrl?: string; secret?: string };
-      if (!data.wsUrl || !data.secret) return null;
-      ticketRef.current = { wsUrl: data.wsUrl, secret: data.secret };
+      const data = (await res.json()) as { wsUrl?: string; ticket?: string };
+      if (!data.wsUrl || !data.ticket) return null;
+      ticketRef.current = { wsUrl: data.wsUrl, ticket: data.ticket };
       return ticketRef.current;
     } catch {
       return null;
@@ -115,6 +121,15 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     const ticket = await fetchTicket();
     if (!ticket || unmountedRef.current) {
       connectingRef.current = false;
+      // Ticket fetch failed — retry with backoff instead of giving up
+      if (!unmountedRef.current) {
+        setStatus("reconnecting");
+        const delay = backoffRef.current;
+        backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
+        reconnectTimerRef.current = setTimeout(() => {
+          if (!unmountedRef.current) connect();
+        }, delay);
+      }
       return;
     }
 
@@ -132,7 +147,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
         ws.close();
         return;
       }
-      ws.send(JSON.stringify({ type: "auth", secret: ticket.secret }));
+      ws.send(JSON.stringify({ type: "auth", ticket: ticket.ticket }));
     };
 
     ws.onmessage = (event: MessageEvent) => {

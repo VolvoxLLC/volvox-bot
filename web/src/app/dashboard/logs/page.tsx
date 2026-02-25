@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback } from "react";
 import { LogViewer } from "@/components/dashboard/log-viewer";
 import { LogFilters } from "@/components/dashboard/log-filters";
 import { HealthSection } from "@/components/dashboard/health-section";
 import { useLogStream } from "@/lib/log-ws";
-import type { LogFilter } from "@/lib/log-ws";
 
 /**
  * /dashboard/logs — Real-time log viewer and health monitoring page.
@@ -16,13 +14,6 @@ import type { LogFilter } from "@/lib/log-ws";
  */
 export default function LogsPage() {
   const { logs, status, sendFilter, clearLogs } = useLogStream();
-
-  const handleFilterChange = useCallback(
-    (filter: LogFilter) => {
-      sendFilter(filter);
-    },
-    [sendFilter],
-  );
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col gap-6">
@@ -41,8 +32,8 @@ export default function LogsPage() {
         </div>
 
         <LogFilters
-          onFilterChange={handleFilterChange}
-          disabled={status === "disconnected"}
+          onFilterChange={sendFilter}
+          disabled={status !== "connected"}
         />
 
         <div className="flex-1 min-h-0">

@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
   const botApiSecret = process.env.BOT_API_SECRET;
 
   if (!botApiBaseUrl || !botApiSecret) {
-    logger.error("[api/bot-health] BOT_API_URL and BOT_API_SECRET are required");
+    const missing = [
+      !botApiBaseUrl && "BOT_API_URL",
+      !botApiSecret && "BOT_API_SECRET",
+    ].filter(Boolean);
+    logger.error("[api/bot-health] Missing required env vars", { missing });
     return NextResponse.json(
       { error: "Bot API is not configured" },
       { status: 500 },
@@ -66,7 +70,9 @@ export async function GET(request: NextRequest) {
       { status: response.status },
     );
   } catch (error) {
-    logger.error("[api/bot-health] Failed to proxy health data:", error);
+    logger.error("[api/bot-health] Failed to proxy health data", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Failed to fetch health data" },
       { status: 500 },
