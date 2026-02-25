@@ -229,6 +229,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
 
     return () => {
       unmountedRef.current = true;
+      connectingRef.current = false;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (wsRef.current) {
         wsRef.current.onclose = null;
