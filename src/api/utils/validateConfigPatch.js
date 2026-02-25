@@ -10,7 +10,7 @@ import { validateSingleValue } from './configValidation.js';
  * (first path segment) is included in `SAFE_CONFIG_KEYS`.
  *
  * @param {Object} body - Request body expected to contain `path` (string) and `value`.
- * @param {string[]} SAFE_CONFIG_KEYS - Allowlist of writable top-level config keys.
+ * @param {Set<string>} SAFE_CONFIG_KEYS - Allowlist of writable top-level config keys.
  * @returns {{ error: string, status: number, details?: string[] } | { path: string, value: *, topLevelKey: string }}
  *   On error: an object with `error` and `status`, and `details` when value validation produced messages.
  *   On success: an object containing the validated `path`, the provided `value`, and the resolved `topLevelKey`.
@@ -26,24 +26,25 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
     return { error: 'Missing "value" in request body', status: 400 };
   }
 
+  // Check path format FIRST (before allowlist) for consistent 400 responses
+  if (!path.includes('.')) {
+    return {
+      error: 'Config path must include at least one dot separator (e.g., "ai.model")',
+      status: 400,
+    };
+  }
+
   const segments = path.split('.');
 
-  // Check for empty segments FIRST (handles leading/trailing dots like ".ai.key")
+  // Check for empty segments (handles leading/trailing dots like ".ai.key")
   if (segments.some((s) => s === '')) {
     return { error: 'Config path contains empty segments', status: 400 };
   }
 
   const topLevelKey = segments[0];
 
-  if (!SAFE_CONFIG_KEYS.includes(topLevelKey)) {
+  if (!SAFE_CONFIG_KEYS.has(topLevelKey)) {
     return { error: 'Modifying this config key is not allowed', status: 403 };
-  }
-
-  if (!path.includes('.')) {
-    return {
-      error: 'Config path must include at least one dot separator (e.g., "ai.model")',
-      status: 400,
-    };
   }
 
   if (path.length > 200) {

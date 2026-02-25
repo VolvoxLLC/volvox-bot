@@ -12,7 +12,7 @@ vi.mock('../../../src/api/routes/config.js', () => ({
   }),
 }));
 
-const SAFE_CONFIG_KEYS = ['ai', 'welcome', 'spam', 'moderation', 'triage'];
+const SAFE_CONFIG_KEYS = new Set(['ai', 'welcome', 'spam', 'moderation', 'triage']);
 
 describe('validateConfigPatch', () => {
   describe('validateConfigPatchBody', () => {

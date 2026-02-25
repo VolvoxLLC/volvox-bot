@@ -10,13 +10,13 @@ import {
 
 describe('configAllowlist', () => {
   describe('SAFE_CONFIG_KEYS', () => {
-    it('should export an array of safe config keys', () => {
-      expect(Array.isArray(SAFE_CONFIG_KEYS)).toBe(true);
-      expect(SAFE_CONFIG_KEYS).toContain('ai');
-      expect(SAFE_CONFIG_KEYS).toContain('welcome');
-      expect(SAFE_CONFIG_KEYS).toContain('spam');
-      expect(SAFE_CONFIG_KEYS).toContain('moderation');
-      expect(SAFE_CONFIG_KEYS).toContain('triage');
+    it('should export a Set of safe config keys', () => {
+      expect(SAFE_CONFIG_KEYS instanceof Set).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('ai')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('welcome')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('spam')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('moderation')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('triage')).toBe(true);
     });
   });
 

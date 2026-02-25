@@ -149,6 +149,7 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
  * @param {Array} context - Historical context messages to include in the prompt.
  * @param {string} memoryContext - Concatenated memory context for target users (may be empty).
  * @param {Object} evalConfig - Bot configuration used to construct the respond prompt.
+ * @param {Object} evalClient - Discord client instance for sending typing notifications.
  * @returns {{parsed: Object, respondMessage: Object, searchCount: number}|null} An object containing the parsed responder output (`parsed`), the raw responder message including metadata and cost (`respondMessage`), and the number of `WebSearch` tool uses observed (`searchCount`); returns `null` if no responses were produced.
  */
 async function runResponder(

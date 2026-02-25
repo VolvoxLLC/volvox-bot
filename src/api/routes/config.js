@@ -37,9 +37,9 @@ export function validateConfigSchema(config) {
   }
 
   for (const [key, value] of Object.entries(config)) {
-    if (!SAFE_CONFIG_KEYS.includes(key)) {
+    if (!SAFE_CONFIG_KEYS.has(key)) {
       errors.push(
-        `"${key}" is not a writable config section. Writable sections: ${SAFE_CONFIG_KEYS.join(', ')}`,
+        `"${key}" is not a writable config section. Writable sections: ${[...SAFE_CONFIG_KEYS].join(', ')}`,
       );
       continue;
     }
@@ -139,7 +139,7 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
   // Collect all leaf writes first
   const rawWrites = [];
   for (const [section, sectionValue] of Object.entries(req.body)) {
-    if (!SAFE_CONFIG_KEYS.includes(section)) continue;
+    if (!SAFE_CONFIG_KEYS.has(section)) continue;
     const paths = flattenToLeafPaths(sectionValue, section);
     for (const [path, value] of paths) {
       rawWrites.push({ path, value });
@@ -177,7 +177,7 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
   }
   const maskedConfig = maskSensitiveFields(safeConfig);
 
-  const updatedSections = Object.keys(req.body).filter((k) => SAFE_CONFIG_KEYS.includes(k));
+  const updatedSections = Object.keys(req.body).filter((k) => SAFE_CONFIG_KEYS.has(k));
 
   if (failed.length === 0) {
     // All writes succeeded

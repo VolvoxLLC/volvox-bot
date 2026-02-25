@@ -120,8 +120,8 @@ export const CONFIG_SCHEMA = {
       channels: { type: 'array' },
       excludeChannels: { type: 'array' },
       debugFooter: { type: 'boolean' },
-      debugFooterLevel: { type: 'string' },
-      moderationLogChannel: { type: 'string' },
+      debugFooterLevel: { type: 'string', nullable: true },
+      moderationLogChannel: { type: 'string', nullable: true },
     },
   },
 };
