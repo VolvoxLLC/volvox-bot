@@ -163,7 +163,7 @@ async function handleMessage(ws, data) {
  * @returns {boolean} True if the ticket is valid and not expired
  */
 function validateTicket(ticket, secret) {
-  if (!ticket || !secret) return false;
+  if (typeof ticket !== 'string' || typeof secret !== 'string') return false;
 
   const parts = ticket.split('.');
   if (parts.length !== 3) return false;
@@ -171,8 +171,9 @@ function validateTicket(ticket, secret) {
   const [nonce, expiry, hmac] = parts;
   if (!nonce || !expiry || !hmac) return false;
 
-  // Check expiry
-  if (parseInt(expiry, 10) <= Date.now()) return false;
+  // Check expiry — guard against NaN from non-numeric strings
+  const expiryNum = Number(expiry);
+  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return false;
 
   // Re-derive HMAC and compare with timing-safe equality
   const expected = createHmac('sha256', secret)
@@ -198,7 +199,7 @@ async function handleAuth(ws, msg) {
     return;
   }
 
-  if (!msg.ticket || !validateTicket(msg.ticket, process.env.BOT_API_SECRET)) {
+  if (typeof msg.ticket !== 'string' || !validateTicket(msg.ticket, process.env.BOT_API_SECRET)) {
     warn('WebSocket auth failed', { reason: 'invalid ticket' });
     ws.close(4003, 'Authentication failed');
     return;
