@@ -63,9 +63,15 @@ function normalizeEntry(raw: unknown, id: string): LogEntry | null {
   const level = normalizeLevel(r.level);
   const module = typeof r.module === "string" ? r.module : undefined;
 
-  // Everything that isn't a top-level field goes into meta
-  const { message: _m, timestamp: _t, level: _l, module: _mod, type: _type, ...rest } = r;
-  const meta = Object.keys(rest).length > 0 ? (rest as Record<string, unknown>) : undefined;
+  // Flatten server `metadata` object into meta alongside other extra fields
+  const { message: _m, timestamp: _t, level: _l, module: _mod, type: _type, metadata: rawMeta, ...rest } = r;
+  const flatMeta: Record<string, unknown> = {
+    ...(typeof rawMeta === "object" && rawMeta !== null && !Array.isArray(rawMeta)
+      ? (rawMeta as Record<string, unknown>)
+      : {}),
+    ...rest,
+  };
+  const meta = Object.keys(flatMeta).length > 0 ? flatMeta : undefined;
 
   return { id, timestamp, level, message, module, meta };
 }
