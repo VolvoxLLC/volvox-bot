@@ -115,7 +115,12 @@ export async function startServer(client, dbPool, options = {}) {
 
       // Attach WebSocket log stream if transport provided
       if (options.wsTransport) {
-        setupLogStream(server, options.wsTransport);
+        try {
+          setupLogStream(server, options.wsTransport);
+        } catch (err) {
+          error('Failed to setup WebSocket log stream', { error: err.message });
+          // Non-fatal — HTTP server still works without WS streaming
+        }
       }
 
       resolve(server);
