@@ -14,24 +14,6 @@ let startedAt = null;
 let lastRestartId = null;
 
 /**
- * Ensure the bot_restarts table exists.
- *
- * @param {import('pg').Pool} pool - PostgreSQL connection pool
- * @returns {Promise<void>}
- */
-async function ensureTable(pool) {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS bot_restarts (
-      id SERIAL PRIMARY KEY,
-      timestamp TIMESTAMPTZ DEFAULT NOW(),
-      reason TEXT NOT NULL DEFAULT 'startup',
-      version TEXT,
-      uptime_seconds NUMERIC
-    )
-  `);
-}
-
-/**
  * Record a bot restart in the database.
  * Auto-creates the table if it does not exist.
  *
@@ -44,8 +26,6 @@ export async function recordRestart(pool, reason = 'startup', version = null) {
   startedAt = Date.now();
 
   try {
-    await ensureTable(pool);
-
     const result = await pool.query(
       `INSERT INTO bot_restarts (reason, version) VALUES ($1, $2) RETURNING id`,
       [reason, version ?? null],
@@ -108,23 +88,6 @@ export async function getRestarts(pool, limit = 20) {
     );
     return result.rows;
   } catch (err) {
-    // Self-heal: auto-create table if it doesn't exist, then retry
-    if (err.code === '42P01') {
-      try {
-        await ensureTable(pool);
-        const result = await pool.query(
-          `SELECT id, timestamp, reason, version, uptime_seconds
-             FROM bot_restarts
-            ORDER BY timestamp DESC
-            LIMIT $1`,
-          [Math.max(1, Math.floor(limit))],
-        );
-        return result.rows;
-      } catch (retryErr) {
-        logError('Failed to query restarts after table creation', { error: retryErr.message });
-        return [];
-      }
-    }
     logError('Failed to query restarts', { error: err.message });
     return [];
   }

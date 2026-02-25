@@ -1,11 +1,13 @@
 /**
  * Database Module
- * PostgreSQL connection pool and schema initialization
+ * PostgreSQL connection pool and migration runner
  */
 
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import pg from 'pg';
-import { info, error as logError, warn } from './logger.js';
-import { initLogsTable } from './transports/postgres.js';
+import { runner } from 'node-pg-migrate';
+import { info, error as logError } from './logger.js';
 
 const { Pool } = pg;
 
@@ -49,8 +51,33 @@ function getSslConfig(connectionString) {
 }
 
 /**
- * Initialize the database connection pool and create schema
- * @returns {Promise<pg.Pool>} The connection pool
+ * Run pending database migrations via node-pg-migrate.
+ *
+ * @param {string} databaseUrl - PostgreSQL connection string
+ * @returns {Promise<void>}
+ */
+async function runMigrations(databaseUrl) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const migrationsDir = path.resolve(__dirname, '..', 'migrations');
+
+  await runner({
+    databaseUrl,
+    dir: migrationsDir,
+    direction: 'up',
+    migrationsTable: 'pgmigrations',
+    log: (msg) => info(msg),
+  });
+
+  info('Database migrations applied');
+}
+
+/**
+ * Initialize the PostgreSQL connection pool and apply any pending database migrations.
+ *
+ * @returns {Promise<pg.Pool>} The initialized pg.Pool instance.
+ * @throws {Error} If initialization is already in progress.
+ * @throws {Error} If the DATABASE_URL environment variable is not set.
  */
 export async function initDb() {
   if (initializing) {
@@ -89,184 +116,8 @@ export async function initDb() {
         client.release();
       }
 
-      // Create schema
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS config (
-          guild_id TEXT NOT NULL DEFAULT 'global',
-          key TEXT NOT NULL,
-          value JSONB NOT NULL,
-          updated_at TIMESTAMPTZ DEFAULT NOW(),
-          PRIMARY KEY (guild_id, key)
-        )
-      `);
-
-      // Migrate existing config table: add guild_id column and composite PK.
-      // Looks up the actual PK constraint name from pg_constraint instead of
-      // assuming 'config_pkey', which may differ across environments.
-      await pool.query(`
-        DO $$
-        DECLARE
-          pk_name TEXT;
-        BEGIN
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'config' AND column_name = 'guild_id'
-          ) THEN
-            ALTER TABLE config ADD COLUMN guild_id TEXT NOT NULL DEFAULT 'global';
-            SELECT conname INTO pk_name FROM pg_constraint
-            WHERE conrelid = 'config'::regclass AND contype = 'p';
-            IF pk_name IS NOT NULL THEN
-              EXECUTE format('ALTER TABLE config DROP CONSTRAINT %I', pk_name);
-            END IF;
-            ALTER TABLE config ADD PRIMARY KEY (guild_id, key);
-          END IF;
-        END $$
-      `);
-
-      // Note: No standalone guild_id index needed — the composite PK (guild_id, key)
-      // already covers guild_id-only queries via leftmost prefix.
-
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS conversations (
-          id SERIAL PRIMARY KEY,
-          channel_id TEXT NOT NULL,
-          guild_id TEXT,
-          role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
-          content TEXT NOT NULL,
-          username TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-
-      // Backfill guild_id for databases created before this column existed.
-      // ADD COLUMN IF NOT EXISTS requires PostgreSQL 9.6+.
-      try {
-        await pool.query(`
-          ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT
-        `);
-      } catch (err) {
-        warn('Failed to add guild_id column (requires PG 9.6+)', { error: err.message });
-      }
-
-      // Create index - wrap in try/catch in case ALTER TABLE failed (e.g., PG < 9.6)
-      try {
-        await pool.query(`
-          CREATE INDEX IF NOT EXISTS idx_conversations_guild_id
-          ON conversations (guild_id)
-        `);
-      } catch (err) {
-        warn('Failed to create guild_id index (column may not exist)', { error: err.message });
-      }
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_conversations_channel_created
-        ON conversations (channel_id, created_at)
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_conversations_created_at
-        ON conversations (created_at)
-      `);
-
-      // Moderation tables
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS mod_cases (
-          id SERIAL PRIMARY KEY,
-          guild_id TEXT NOT NULL,
-          case_number INTEGER NOT NULL,
-          action TEXT NOT NULL,
-          target_id TEXT NOT NULL,
-          target_tag TEXT NOT NULL,
-          moderator_id TEXT NOT NULL,
-          moderator_tag TEXT NOT NULL,
-          reason TEXT,
-          duration TEXT,
-          expires_at TIMESTAMPTZ,
-          log_message_id TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          UNIQUE(guild_id, case_number)
-        )
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_mod_cases_guild_target
-        ON mod_cases (guild_id, target_id, created_at)
-      `);
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS mod_scheduled_actions (
-          id SERIAL PRIMARY KEY,
-          guild_id TEXT NOT NULL,
-          action TEXT NOT NULL,
-          target_id TEXT NOT NULL,
-          case_id INTEGER REFERENCES mod_cases(id),
-          execute_at TIMESTAMPTZ NOT NULL,
-          executed BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_mod_scheduled_actions_pending
-        ON mod_scheduled_actions (executed, execute_at)
-      `);
-
-      // Memory opt-out table
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS memory_optouts (
-          user_id TEXT PRIMARY KEY,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-
-      // AI usage analytics table
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS ai_usage (
-          id SERIAL PRIMARY KEY,
-          guild_id TEXT NOT NULL,
-          channel_id TEXT NOT NULL,
-          type TEXT NOT NULL CHECK (type IN ('classify', 'respond')),
-          model TEXT NOT NULL,
-          input_tokens INTEGER NOT NULL DEFAULT 0,
-          output_tokens INTEGER NOT NULL DEFAULT 0,
-          cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
-          cache_read_tokens INTEGER NOT NULL DEFAULT 0,
-          cost_usd NUMERIC(10, 6) NOT NULL DEFAULT 0,
-          duration_ms INTEGER NOT NULL DEFAULT 0,
-          user_id TEXT DEFAULT NULL,
-          search_count INTEGER NOT NULL DEFAULT 0,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-
-      // Idempotent migrations for existing databases (silently skip if columns exist)
-      for (const ddl of [
-        'ALTER TABLE ai_usage ADD COLUMN user_id TEXT DEFAULT NULL',
-        'ALTER TABLE ai_usage ADD COLUMN search_count INTEGER NOT NULL DEFAULT 0',
-      ]) {
-        await pool.query(ddl).catch(() => {});
-      }
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_ai_usage_guild_created
-        ON ai_usage (guild_id, created_at)
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_ai_usage_created_at
-        ON ai_usage (created_at)
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created
-        ON ai_usage (user_id, created_at)
-      `);
-
-      // Logs table for persistent logging transport
-      try {
-        await initLogsTable(pool);
-      } catch (err) {
-        logError('Failed to initialize logs table', { error: err.message });
-      }
+      // Run pending migrations
+      await runMigrations(connectionString);
 
       info('Database schema initialized');
     } catch (err) {

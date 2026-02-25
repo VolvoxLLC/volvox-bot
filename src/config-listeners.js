@@ -10,7 +10,6 @@
 
 import { addPostgresTransport, error, info, removePostgresTransport } from './logger.js';
 import { onConfigChange } from './modules/config.js';
-import { initLogsTable } from './transports/postgres.js';
 
 /** @type {import('winston').transport | null} */
 let pgTransport = null;
@@ -39,7 +38,6 @@ export function registerConfigListeners({ dbPool, config }) {
     const enabled = dbConfig?.enabled;
 
     if (enabled && !pgTransport) {
-      await initLogsTable(dbPool);
       pgTransport = addPostgresTransport(dbPool, dbConfig);
       info('PostgreSQL logging transport enabled via config change', { path: changePath });
     } else if (enabled && pgTransport) {

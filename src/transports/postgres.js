@@ -168,41 +168,6 @@ export class PostgresTransport extends Transport {
 }
 
 /**
- * Initialize the logs table in PostgreSQL.
- * Uses CREATE TABLE IF NOT EXISTS — safe for repeated calls.
- *
- * @param {import('pg').Pool} pool - PostgreSQL connection pool
- * @returns {Promise<void>}
- */
-export async function initLogsTable(pool) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS logs (
-        id SERIAL PRIMARY KEY,
-        level VARCHAR(10) NOT NULL,
-        message TEXT NOT NULL,
-        metadata JSONB DEFAULT '{}',
-        timestamp TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    await client.query('CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp)');
-
-    await client.query('CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)');
-
-    await client.query('COMMIT');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-/**
  * Delete log entries older than the specified retention period.
  *
  * @param {import('pg').Pool} pool - PostgreSQL connection pool
