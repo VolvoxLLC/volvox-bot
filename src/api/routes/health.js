@@ -5,8 +5,22 @@
  */
 
 import { Router } from 'express';
-import { queryLogs } from '../../utils/logQuery.js';
 import { isValidSecret } from '../middleware/auth.js';
+
+/** Lazy-loaded queryLogs — optional diagnostic feature, not required for health */
+let _queryLogs = null;
+async function getQueryLogs() {
+  if (!_queryLogs) {
+    try {
+      const mod = await import('../../utils/logQuery.js');
+      _queryLogs = mod.queryLogs;
+    } catch {
+      // logQuery not available — graceful fallback
+      _queryLogs = null;
+    }
+  }
+  return _queryLogs;
+}
 
 const router = Router();
 
@@ -55,20 +69,29 @@ router.get('/', async (req, res) => {
       cpuUsage: process.cpuUsage(),
     };
 
-    // Error counts from logs table
-    const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    // Error counts from logs table (optional — partial data on failure)
+    const queryLogs = await getQueryLogs();
+    if (queryLogs) {
+      try {
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const [hourResult, dayResult] = await Promise.all([
-      queryLogs({ level: 'error', since: oneHourAgo, limit: 1 }),
-      queryLogs({ level: 'error', since: oneDayAgo, limit: 1 }),
-    ]);
+        const [hourResult, dayResult] = await Promise.all([
+          queryLogs({ level: 'error', since: oneHourAgo, limit: 1 }),
+          queryLogs({ level: 'error', since: oneDayAgo, limit: 1 }),
+        ]);
 
-    body.errors = {
-      lastHour: hourResult.total,
-      lastDay: dayResult.total,
-    };
+        body.errors = {
+          lastHour: hourResult.total,
+          lastDay: dayResult.total,
+        };
+      } catch {
+        body.errors = { lastHour: null, lastDay: null, error: 'query failed' };
+      }
+    } else {
+      body.errors = { lastHour: null, lastDay: null, error: 'log query unavailable' };
+    }
 
     // Restart data with graceful fallback
     if (getRestartData) {
