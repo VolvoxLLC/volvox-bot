@@ -92,6 +92,60 @@ describe('validateWebhookUrl', () => {
       expect(validateWebhookUrl('https://[::1]/hook')).toBe(false);
     });
 
+    it('should reject IPv6 unspecified address [::]', () => {
+      expect(validateWebhookUrl('https://[::]/hook')).toBe(false);
+    });
+
+    it('should reject IPv6 link-local [fe80::1]', () => {
+      expect(validateWebhookUrl('https://[fe80::1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv6 link-local [febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff]', () => {
+      expect(
+        validateWebhookUrl('https://[febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff]/hook')
+      ).toBe(false);
+    });
+
+    it('should reject IPv6 ULA (private) [fc00::1]', () => {
+      expect(validateWebhookUrl('https://[fc00::1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv6 ULA (private) [fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]', () => {
+      expect(
+        validateWebhookUrl('https://[fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]/hook')
+      ).toBe(false);
+    });
+
+    it('should reject IPv6 multicast [ff00::1]', () => {
+      expect(validateWebhookUrl('https://[ff00::1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv6 multicast [ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]', () => {
+      expect(
+        validateWebhookUrl('https://[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]/hook')
+      ).toBe(false);
+    });
+
+    it('should reject IPv6 documentation address [2001:db8::1]', () => {
+      expect(validateWebhookUrl('https://[2001:db8::1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv6 6to4 (deprecated) [2002::1]', () => {
+      expect(validateWebhookUrl('https://[2002::1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv6 Teredo (deprecated) [2001::1]', () => {
+      expect(validateWebhookUrl('https://[2001::1]/hook')).toBe(false);
+    });
+
+    it('should reject IPv6 discard-only address [100::1]', () => {
+      expect(validateWebhookUrl('https://[100::1]/hook')).toBe(false);
+    });
+
+    it('should allow IPv6 global unicast [2606:4700:4700::1111]', () => {
+      expect(validateWebhookUrl('https://[2606:4700:4700::1111]/hook')).toBe(true);
+    });
+
     it('should reject 0.0.0.0', () => {
       expect(validateWebhookUrl('https://0.0.0.0/hook')).toBe(false);
     });
@@ -229,6 +283,34 @@ describe('validateWebhookUrl', () => {
       expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
     });
 
+    it('should reject when hostname resolves to IPv6 link-local', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['fe80::1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to IPv6 ULA (private)', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['fc00::1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to IPv6 multicast', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['ff02::1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
+    it('should reject when hostname resolves to IPv6 documentation address', async () => {
+      vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
+      vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['2001:db8::1']);
+
+      expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
+    });
+
     it('should reject when hostname resolves to IPv4-mapped IPv6 private address', async () => {
       vi.spyOn(dns.promises, 'resolve4').mockResolvedValue([]);
       vi.spyOn(dns.promises, 'resolve6').mockResolvedValue(['::ffff:127.0.0.1']);
@@ -236,9 +318,30 @@ describe('validateWebhookUrl', () => {
       expect(await validateDnsResolution('https://evil.example.com/hook')).toBe(false);
     });
 
-    it('should return true for IP-literal hostnames (already validated by sync check)', async () => {
-      // IP literals skip DNS resolution — sync validation handles them
+    it('should return true for public IPv4-literal hostnames', async () => {
+      // IP literals skip DNS resolution but are still validated against blocked ranges
       expect(await validateDnsResolution('https://8.8.8.8/hook')).toBe(true);
+    });
+
+    it('should return false for blocked IPv4-literal hostnames', async () => {
+      // IP literals are validated, not auto-accepted
+      expect(await validateDnsResolution('https://127.0.0.1/hook')).toBe(false);
+      expect(await validateDnsResolution('https://10.0.0.1/hook')).toBe(false);
+      expect(await validateDnsResolution('https://192.168.1.1/hook')).toBe(false);
+    });
+
+    it('should return true for public IPv6-literal hostnames', async () => {
+      expect(await validateDnsResolution('https://[2606:4700:4700::1111]/hook')).toBe(true);
+    });
+
+    it('should return false for blocked IPv6-literal hostnames', async () => {
+      // IPv6 literals are validated against blocked ranges
+      expect(await validateDnsResolution('https://[::1]/hook')).toBe(false);
+      expect(await validateDnsResolution('https://[::]/hook')).toBe(false);
+      expect(await validateDnsResolution('https://[fe80::1]/hook')).toBe(false);
+      expect(await validateDnsResolution('https://[fc00::1]/hook')).toBe(false);
+      expect(await validateDnsResolution('https://[ff00::1]/hook')).toBe(false);
+      expect(await validateDnsResolution('https://[2001:db8::1]/hook')).toBe(false);
     });
 
     it('should return false for invalid URLs', async () => {

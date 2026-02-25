@@ -88,6 +88,116 @@ function extractMappedIPv4(ipv6) {
 }
 
 /**
+ * Private/reserved IPv6 ranges that must be blocked.
+ * Each entry: [startBigInt, endBigInt]
+ *
+ * Covers:
+ * - ::/128 - Unspecified address
+ * - ::1/128 - Loopback
+ * - fc00::/7 - Unique Local Addresses (ULA)
+ * - fe80::/10 - Link-local unicast
+ * - ff00::/8 - Multicast
+ * - 2001:db8::/32 - Documentation
+ * - 2002::/16 - 6to4 (deprecated)
+ * - 64:ff9b::/96 - IPv4-IPv6 translation
+ * - 100::/64 - Discard-only
+ * - 2001::/23 - Teredo (deprecated)
+ */
+const BLOCKED_IPV6_RANGES = [
+  // ::/128 - Unspecified address (all zeros)
+  [BigInt(0), BigInt(0)],
+  // ::1/128 - Loopback
+  [BigInt(1), BigInt(1)],
+  // fc00::/7 - Unique Local Addresses (fc00:: - fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff)
+  [BigInt('0xfc000000000000000000000000000000'), BigInt('0xfdffffffffffffffffffffffffffffff')],
+  // fe80::/10 - Link-local unicast (fe80:: - febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff)
+  [BigInt('0xfe800000000000000000000000000000'), BigInt('0xfebfffffffffffffffffffffffffffff')],
+  // ff00::/8 - Multicast (ff00:: - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff)
+  [BigInt('0xff000000000000000000000000000000'), BigInt('0xffffffffffffffffffffffffffffffff')],
+  // 2001:db8::/32 - Documentation addresses
+  [BigInt('0x20010db8000000000000000000000000'), BigInt('0x20010db8ffffffffffffffffffffffff')],
+  // 2002::/16 - 6to4 (deprecated)
+  [BigInt('0x20020000000000000000000000000000'), BigInt('0x2002ffffffffffffffffffffffffffff')],
+  // 64:ff9b::/96 - IPv4-IPv6 translation (well-known prefix)
+  [BigInt('0x0064ff9b000000000000000000000000'), BigInt('0x0064ff9b000000000000ffffffffffff')],
+  // 100::/64 - Discard-only address block
+  [BigInt('0x01000000000000000000000000000000'), BigInt('0x0100000000000000ffffffffffffffff')],
+  // 2001::/23 - Teredo (deprecated, 2001:: - 2001:01ff:ffff:ffff:ffff:ffff:ffff:ffff)
+  [BigInt('0x20010000000000000000000000000000'), BigInt('0x200101ffffffffffffffffffffffffff')],
+];
+
+/**
+ * Expand an IPv6 address to its full 8-group form and convert to BigInt.
+ * Handles compressed forms with :: notation.
+ * @param {string} ip - IPv6 address (without brackets).
+ * @returns {BigInt|null} The 128-bit unsigned integer representation, or null if invalid.
+ */
+function ipv6ToBigInt(ip) {
+  // Handle :: compression
+  const parts = ip.split(':');
+  if (parts.length < 3 || parts.length > 8) return null;
+
+  // Find the :: position and expand
+  const emptyIndex = parts.indexOf('');
+  let expanded = [];
+
+  if (emptyIndex !== -1) {
+    // Count empty strings to handle :: at start, middle, or end
+    const beforeEmpty = parts.slice(0, emptyIndex);
+    const afterEmpty = parts.slice(emptyIndex + 1);
+
+    // Filter out additional empty strings from split
+    const nonEmptyBefore = beforeEmpty.filter((p) => p !== '');
+    const nonEmptyAfter = afterEmpty.filter((p) => p !== '');
+
+    const missingGroups = 8 - nonEmptyBefore.length - nonEmptyAfter.length;
+    if (missingGroups < 1) return null; // Invalid compression
+
+    expanded = [...nonEmptyBefore, ...Array(missingGroups).fill('0'), ...nonEmptyAfter];
+  } else {
+    expanded = parts;
+  }
+
+  if (expanded.length !== 8) return null;
+
+  // Convert each group to number and build BigInt
+  let result = BigInt(0);
+  for (const group of expanded) {
+    if (group.length > 4) return null;
+    const num = Number.parseInt(group, 16);
+    if (Number.isNaN(num) || num < 0 || num > 0xffff) return null;
+    result = (result << BigInt(16)) + BigInt(num);
+  }
+
+  return result;
+}
+
+/**
+ * Determine whether an IPv6 address is within a blocked or reserved range.
+ * Also blocks IPv4-mapped IPv6 addresses that map to blocked IPv4s.
+ * @param {string} ip - IPv6 address (without brackets).
+ * @returns {boolean} `true` if the IPv6 address falls within a blocked range, `false` otherwise.
+ */
+function isBlockedIPv6(ip) {
+  // Check IPv4-mapped IPv6 addresses first (::ffff:a.b.c.d or ::ffff:xxxx:xxxx)
+  // These can't be parsed by ipv6ToBigInt due to dotted-quad notation
+  const mappedIPv4 = extractMappedIPv4(ip);
+  if (mappedIPv4) {
+    return isBlockedIPv4(mappedIPv4);
+  }
+
+  const bigInt = ipv6ToBigInt(ip);
+  if (bigInt === null) return false;
+
+  // Check against blocked ranges
+  for (const [start, end] of BLOCKED_IPV6_RANGES) {
+    if (bigInt >= start && bigInt <= end) return true;
+  }
+
+  return false;
+}
+
+/**
  * Sanitize a URL for safe logging by removing userinfo and query string.
  * Prevents credential/token leakage in logs.
  * @param {string} url - The URL to sanitize.
@@ -105,9 +215,6 @@ function sanitizeUrlForLogging(url) {
 
 /** Blocked hostnames (case-insensitive check performed by caller). */
 const BLOCKED_HOSTNAMES = new Set(['localhost']);
-
-/** IPv6 loopback representations to block (URL.hostname strips brackets). */
-const BLOCKED_IPV6 = new Set(['::1', '0:0:0:0:0:0:0:1']);
 
 /**
  * Cache of previously validated URLs.
@@ -182,15 +289,11 @@ function _validateUrlUncached(url) {
   // Blocked hostnames
   if (BLOCKED_HOSTNAMES.has(hostname)) return false;
 
-  // IPv6 loopback
-  if (BLOCKED_IPV6.has(hostname)) return false;
+  // IPv6 blocked ranges (loopback, private, link-local, multicast, etc.)
+  if (isBlockedIPv6(hostname)) return false;
 
   // IPv4 private range check (hostname could be a raw IP)
   if (isBlockedIPv4(hostname)) return false;
-
-  // IPv4-mapped IPv6
-  const mappedIPv4 = extractMappedIPv4(hostname);
-  if (mappedIPv4 && isBlockedIPv4(mappedIPv4)) return false;
 
   return true;
 }
@@ -207,17 +310,35 @@ function _validateUrlUncached(url) {
  * @returns {Promise<boolean>} `true` if all resolved addresses are safe, `false` otherwise.
  */
 export async function validateDnsResolution(url) {
-  let hostname;
+  let rawHostname;
   try {
-    hostname = new URL(url).hostname.toLowerCase();
+    rawHostname = new URL(url).hostname.toLowerCase();
   } catch {
     return false;
   }
 
-  // IP-literal hostnames don't need DNS resolution — already checked by sync validation
-  if (isBlockedIPv4(hostname) || ipv4ToLong(hostname) !== null) return true;
-  if (BLOCKED_IPV6.has(hostname)) return true;
+  // Normalize IPv6 brackets (URL.hostname retains them for IPv6)
+  const hostname =
+    rawHostname.startsWith('[') && rawHostname.endsWith(']')
+      ? rawHostname.slice(1, -1)
+      : rawHostname;
 
+  // For IP-literal hostnames, validate against blocked ranges (no DNS resolution needed)
+  // This is the critical fix: IP-literals must be validated, not auto-accepted
+  const isIPv4Literal = ipv4ToLong(hostname) !== null;
+  const isIPv6Literal = ipv6ToBigInt(hostname) !== null;
+
+  if (isIPv4Literal) {
+    // IPv4 literal - check if blocked
+    return !isBlockedIPv4(hostname);
+  }
+
+  if (isIPv6Literal) {
+    // IPv6 literal - check if blocked
+    return !isBlockedIPv6(hostname);
+  }
+
+  // Hostname - need DNS resolution to check for DNS rebinding attacks
   try {
     // Track whether at least one address family resolved successfully.
     // If both fail, we reject as a precaution (unresolvable host).
@@ -251,16 +372,8 @@ export async function validateDnsResolution(url) {
     }
 
     for (const ip of ipv6s) {
-      if (BLOCKED_IPV6.has(ip)) {
+      if (isBlockedIPv6(ip)) {
         warn('Webhook hostname resolved to blocked IPv6 (possible DNS rebinding)', {
-          hostname,
-          ip,
-        });
-        return false;
-      }
-      const mappedV4 = extractMappedIPv4(ip);
-      if (mappedV4 && isBlockedIPv4(mappedV4)) {
-        warn('Webhook hostname resolved to blocked IPv4-mapped IPv6 (possible DNS rebinding)', {
           hostname,
           ip,
         });
