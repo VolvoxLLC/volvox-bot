@@ -79,12 +79,16 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
   const heapTotalMb = health ? health.memory.heapTotal / 1_048_576 : 0;
   const heapPct = heapTotalMb > 0 ? (heapUsedMb / heapTotalMb) * 100 : 0;
 
-  const cpuUser = health
-    ? (health.system.cpuUsage.user / 1_000_000).toFixed(1)
-    : "0";
-  const cpuSystem = health
-    ? (health.system.cpuUsage.system / 1_000_000).toFixed(1)
-    : "0";
+  // cpuUsage is cumulative microseconds from process.cpuUsage(), not a percentage.
+  // Display as total CPU seconds consumed since process start.
+  const cpuUserSec = health ? health.system.cpuUsage.user / 1_000_000 : 0;
+  const cpuSystemSec = health ? health.system.cpuUsage.system / 1_000_000 : 0;
+  const cpuTotalSec = cpuUserSec + cpuSystemSec;
+  // Show utilization estimate: total CPU time / wall-clock uptime
+  const cpuPct =
+    health && health.uptime > 0
+      ? ((cpuTotalSec / health.uptime) * 100).toFixed(1)
+      : "0.0";
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -197,7 +201,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardContent>
       </Card>
 
-      {/* CPU */}
+      {/* CPU — estimated utilisation from cumulative cpuUsage / uptime */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -207,11 +211,11 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span className="text-2xl font-bold">
-            {health ? `${cpuUser}s` : "—"}
+            {health ? `${cpuPct}%` : "—"}
           </span>
           {health ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              user {cpuUser}s / sys {cpuSystem}s
+              user {cpuUserSec.toFixed(1)}s / sys {cpuSystemSec.toFixed(1)}s
             </p>
           ) : null}
         </CardContent>
