@@ -83,7 +83,7 @@ export function HealthSection() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [router]);
 
   // Initial fetch
   useEffect(() => {
