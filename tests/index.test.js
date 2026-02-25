@@ -237,12 +237,14 @@ async function importIndex({
   });
   mocks.fs.mkdirSync.mockReset();
   mocks.fs.readdirSync.mockReset().mockReturnValue(readdirFiles);
-  mocks.fs.readFileSync
-    .mockReset()
-    .mockReturnValue(
+  mocks.fs.readFileSync.mockReset().mockImplementation((path) => {
+    // Return valid package.json for version reads regardless of other state
+    if (String(path).endsWith('package.json')) return JSON.stringify({ version: '1.0.0' });
+    return (
       stateRaw ??
-        JSON.stringify({ conversationHistory: [['ch1', [{ role: 'user', content: 'hi' }]]] }),
+      JSON.stringify({ conversationHistory: [['ch1', [{ role: 'user', content: 'hi' }]]] })
     );
+  });
   mocks.fs.writeFileSync.mockReset();
 
   mocks.logger.info.mockReset();

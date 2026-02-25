@@ -1,4 +1,4 @@
-# Task: WebSocket Log Streaming Server + Winston Transport
+# Task: Restart Tracker + DB Migration
 
 ## Parent
 - **Master Task:** task-001
@@ -7,67 +7,57 @@
 
 ## Context
 
-Build a WebSocket server that streams bot logs in real-time to dashboard clients.
-Hybrid approach: real-time via custom Winston transport + historical via existing `queryLogs()`.
+Track bot restarts in a PostgreSQL table so the dashboard can display restart history.
 
 ### Existing Code
-- `src/logger.js` — Winston logger (console + file rotation + PostgreSQL)
-- `src/transports/postgres.js` — PostgreSQL batch transport (reference pattern)
-- `src/utils/logQuery.js` — `queryLogs()` with level/search/since/until/pagination
-- `src/api/server.js` — Express HTTP server (attach WS here)
-- `src/api/middleware/auth.js` — `isValidSecret()` for API key validation
-
-## IMPORTANT — READ THIS FIRST
-- **Commit PROGRESSIVELY** — after EVERY file you create or major change
-- Do NOT spend 30 minutes thinking. Start writing code immediately.
-- This should follow this commit flow:
-  1. `npm install ws` → commit
-  2. Create `src/transports/websocket.js` → commit
-  3. Create `src/api/ws/logStream.js` → commit
-  4. Wire into `src/api/server.js` and `src/logger.js` → commit
-  5. Run tests → fix → commit
+- `src/db.js` — PostgreSQL pool (`getPool()`)
+- `src/transports/postgres.js` — Reference for DB interaction patterns
+- `src/index.js` or `src/bot.js` — Bot startup entry point (record restart here)
 
 ## Files to Create/Modify
 
 **Create:**
-- `src/transports/websocket.js` — Custom Winston transport that broadcasts to WS clients
-- `src/api/ws/logStream.js` — WebSocket server setup, auth, client management
+- `src/utils/restartTracker.js` — Record/query restarts
 
 **Modify:**
-- `src/api/server.js` — Attach WebSocket server to HTTP server
-- `src/logger.js` — Add WebSocketTransport after server starts
+- Bot entry point — Call `recordRestart()` on startup
+- Graceful shutdown handler — Update uptime on shutdown
 
 ## Requirements
 
-- [x] Install `ws` package
-- [x] Create `WebSocketTransport` extending `winston-transport`
-  - Broadcast log entries to all authenticated clients
-  - Per-client filtering (level, module, search)
-  - Zero overhead when no clients connected
-- [x] Create WebSocket server on path `/ws/logs`
-  - Attach to existing Express HTTP server
-  - Auth: first message `{ type: "auth", secret: "..." }` → validate via `isValidSecret()`
-  - On auth: send `{ type: "auth_ok" }` then last 100 logs via `queryLogs()` as `{ type: "history", logs: [...] }`
-  - Real-time: `{ type: "log", level, message, metadata, timestamp, module }`
-  - Client filter: `{ type: "filter", level?, module?, search? }`
-  - Heartbeat ping every 30s, clean dead connections
-  - Max 10 concurrent authenticated clients
-- [x] Wire into server.js and logger.js
-- [x] Tests pass, lint passes
+- [ ] Create `bot_restarts` table (auto-create if not exists):
+  ```sql
+  CREATE TABLE IF NOT EXISTS bot_restarts (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    reason TEXT NOT NULL DEFAULT 'startup',
+    version TEXT,
+    uptime_seconds NUMERIC
+  );
+  ```
+- [ ] `recordRestart(reason, version)` — Insert row on bot startup
+- [ ] `updateUptimeOnShutdown()` — Update last row with uptime on graceful shutdown
+- [ ] `getRestarts(limit)` — Query recent restarts (default 20)
+- [ ] `getLastRestart()` — Get most recent restart
+- [ ] Auto-create table if not exists (in `recordRestart`)
+- [ ] Tests pass
+- [ ] Lint passes
+
+## IMPORTANT
+- **Commit progressively** — commit after creating the file, after wiring in, after tests
+- Do NOT wait until everything is done to commit
+- This is a SMALL task — should take ~10 minutes
 
 ## Constraints
-- Do NOT touch frontend files
-- Do NOT touch health.js or restartTracker.js
-- Use `ws` library (not socket.io)
+- Do NOT touch WebSocket code
+- Do NOT touch health endpoint
+- Do NOT touch frontend
 
 ## Acceptance Criteria
-- [x] WebSocket server accepts connections on `/ws/logs`
-- [x] Auth required before receiving logs
-- [x] Historical logs sent on connect
-- [x] Real-time streaming works
-- [x] Per-client filtering works
-- [x] Heartbeat keeps connections alive
-- [x] Max client limit enforced
+- [x] `bot_restarts` table created on first startup
+- [x] Restart recorded on bot startup
+- [x] Uptime updated on graceful shutdown
+- [x] `getRestarts()` returns recent restart history
 - [x] All existing tests pass
 
 ## Results
@@ -75,26 +65,18 @@ Hybrid approach: real-time via custom Winston transport + historical via existin
 **Status:** ✅ Done
 
 **Commits:**
-- `044771c` feat: install ws package for WebSocket log streaming
-- `b173cdb` feat: add WebSocketTransport custom Winston transport
-- `96a063d` feat: add WebSocket log stream server with auth, filtering, and heartbeat
-- `9347543` feat: wire WebSocket transport into server.js and logger.js
-- `4fe40c4` feat: add WebSocket transport to startup sequence
-- `bae1dbd` test: add WebSocket transport and log stream tests
-- `36cef93` chore: fix import order in logStream.js (biome lint)
+- `739e385` feat: add restartTracker utility
+- `82d9a09` feat: wire restart tracking into startup and graceful shutdown
+- `dcbc76c` test: add restartTracker tests and fix index test mock for package.json reads
 
 **Changes:**
-- `package.json` / `pnpm-lock.yaml`: added `ws ^8.19.0`
-- `src/transports/websocket.js`: new — custom Winston transport that broadcasts to WS clients with per-client filtering (level, module, search) and zero overhead when no clients connected
-- `src/api/ws/logStream.js`: new — WebSocket server on `/ws/logs` with auth via `isValidSecret()`, history via `queryLogs()`, real-time streaming, per-client filters, heartbeat (30s), max 10 clients
-- `src/api/server.js`: imports `setupLogStream`/`stopLogStream`, wires WS server into `startServer()` via options param, cleans up in `stopServer()`
-- `src/logger.js`: imports `WebSocketTransport`, adds `addWebSocketTransport()` and `removeWebSocketTransport()` exports
-- `src/index.js`: calls `addWebSocketTransport()` before `startServer()`, passes transport via options
-- `tests/transports/websocket.test.js`: 18 tests — transport, filtering, broadcast, edge cases
-- `tests/api/ws/logStream.test.js`: 16 tests — auth flow, rejection, max clients, streaming, filtering, message handling, lifecycle, shutdown
+- `src/utils/restartTracker.js` — New utility: `recordRestart()`, `updateUptimeOnShutdown()`, `getRestarts()`, `getLastRestart()`, `getStartedAt()`, `_resetState()`. Auto-creates `bot_restarts` table via `ensureTable()` on first `recordRestart()` call.
+- `src/index.js` — Added `getPool` import, `BOT_VERSION` constant from package.json, `recordRestart()` call in `startup()` after DB init, `updateUptimeOnShutdown()` call in `gracefulShutdown()` before pool close. Biome import-sort applied.
+- `tests/utils/restartTracker.test.js` — 13 new tests covering all exported functions (happy path + error paths).
+- `tests/index.test.js` — Updated `readFileSync` mock to be path-aware so `package.json` reads return valid JSON regardless of `stateRaw` scenario.
 
-**Tests:** 1292 passing, 1 skipped (62 test files)
+**Tests:** 1271 passing | 1 skipped | 61 files
 
-**Lint:** All new files pass biome lint. Pre-existing lint issues in other files unchanged.
+**Lint:** Biome clean on all changed files
 
 **Blockers:** None
