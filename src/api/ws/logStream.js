@@ -6,9 +6,9 @@
  */
 
 import { WebSocketServer } from 'ws';
-import { isValidSecret } from '../middleware/auth.js';
+import { info, error as logError, warn } from '../../logger.js';
 import { queryLogs } from '../../utils/logQuery.js';
-import { info, warn, error as logError } from '../../logger.js';
+import { isValidSecret } from '../middleware/auth.js';
 
 /** Maximum number of concurrent authenticated clients */
 const MAX_CLIENTS = 10;
