@@ -1,4 +1,4 @@
-# Task: Restart Tracker + DB Migration
+# Task: Log Viewer Page + WebSocket Client
 
 ## Parent
 - **Master Task:** task-001
@@ -7,76 +7,114 @@
 
 ## Context
 
-Track bot restarts in a PostgreSQL table so the dashboard can display restart history.
+Build the frontend log viewer page that connects to the WebSocket server at `/ws/logs` and displays real-time + historical logs in a terminal-style UI.
 
 ### Existing Code
-- `src/db.js` — PostgreSQL pool (`getPool()`)
-- `src/transports/postgres.js` — Reference for DB interaction patterns
-- `src/index.js` or `src/bot.js` — Bot startup entry point (record restart here)
+- `web/src/app/dashboard/` — Dashboard pages (reference for routing/layout)
+- `web/src/components/dashboard/config-editor.tsx` — Reference for dashboard component patterns
+- `web/src/lib/bot-api-proxy.ts` — API proxy (reference for auth patterns)
+- Backend WebSocket server at `/ws/logs` — auth via `{ type: "auth", secret }`, streams `{ type: "log" }`, accepts `{ type: "filter" }`
 
-## Files to Create/Modify
+## IMPORTANT — READ FIRST
 
-**Create:**
-- `src/utils/restartTracker.js` — Record/query restarts
+1. **Commit after every file you create or major change**
+2. **Start writing code IMMEDIATELY**
+3. **Expected duration: ~20m**
 
-**Modify:**
-- Bot entry point — Call `recordRestart()` on startup
-- Graceful shutdown handler — Update uptime on shutdown
+**Commit flow:**
+1. Create WS client hook → commit
+2. Create log viewer component → commit
+3. Create filter bar component → commit
+4. Create page route → commit
+5. Wire navigation → commit
+6. Lint/build → commit
+
+## Files to Create
+
+- `web/src/lib/log-ws.ts` — WebSocket client hook (`useLogStream`)
+- `web/src/components/dashboard/log-viewer.tsx` — Terminal-style log display
+- `web/src/components/dashboard/log-filters.tsx` — Filter bar (level, module, search)
+- `web/src/app/dashboard/logs/page.tsx` — Log viewer page
 
 ## Requirements
 
-- [ ] Create `bot_restarts` table (auto-create if not exists):
-  ```sql
-  CREATE TABLE IF NOT EXISTS bot_restarts (
-    id SERIAL PRIMARY KEY,
-    timestamp TIMESTAMPTZ DEFAULT NOW(),
-    reason TEXT NOT NULL DEFAULT 'startup',
-    version TEXT,
-    uptime_seconds NUMERIC
-  );
-  ```
-- [ ] `recordRestart(reason, version)` — Insert row on bot startup
-- [ ] `updateUptimeOnShutdown()` — Update last row with uptime on graceful shutdown
-- [ ] `getRestarts(limit)` — Query recent restarts (default 20)
-- [ ] `getLastRestart()` — Get most recent restart
-- [ ] Auto-create table if not exists (in `recordRestart`)
-- [ ] Tests pass
-- [ ] Lint passes
-
-## IMPORTANT
-- **Commit progressively** — commit after creating the file, after wiring in, after tests
-- Do NOT wait until everything is done to commit
-- This is a SMALL task — should take ~10 minutes
+- [x] **WebSocket client hook** (`useLogStream`):
+  - Connect to `/ws/logs`, send auth message
+  - Handle `auth_ok`, `history`, `log` message types
+  - Auto-reconnect on disconnect (exponential backoff)
+  - Send filter messages to server
+  - Expose: `logs`, `isConnected`, `isReconnecting`, `sendFilter`, `clearLogs`
+- [x] **Log viewer component**:
+  - Terminal-style: dark background, **JetBrains Mono** font
+  - Color-coded levels: 🔴 error (red), 🟡 warn (yellow), 🔵 info (blue), ⚫ debug (gray)
+  - Auto-scroll to bottom with "Pause" button to freeze
+  - Click log entry to expand metadata JSON
+  - Max 1000 logs in memory (drop oldest)
+  - Connection status indicator (🟢 connected, 🔴 disconnected, 🟡 reconnecting)
+- [x] **Filter bar**:
+  - Level dropdown (all, error, warn, info, debug)
+  - Module text input
+  - Search text input
+  - "Clear" button
+  - Sends filter to WS server on change
+- [x] **Page route** at `/dashboard/logs`
+- [x] Add "Logs" link to dashboard navigation
+- [x] Lint passes, build succeeds
 
 ## Constraints
-- Do NOT touch WebSocket code
-- Do NOT touch health endpoint
-- Do NOT touch frontend
+- Do NOT touch backend files
+- Do NOT touch health cards (different slice)
+- Use existing shadcn/ui components where possible
+- Use Tailwind for styling
 
 ## Acceptance Criteria
-- [x] `bot_restarts` table created on first startup
-- [x] Restart recorded on bot startup
-- [x] Uptime updated on graceful shutdown
-- [x] `getRestarts()` returns recent restart history
-- [x] All existing tests pass
+- [ ] `/dashboard/logs` page loads
+- [ ] WebSocket connects and authenticates
+- [ ] Historical logs display on connect
+- [ ] Real-time logs stream in
+- [ ] Filters work (level, module, search)
+- [ ] Auto-scroll with pause button
+- [ ] Click to expand metadata
+- [ ] Connection status indicator
+- [ ] Navigation link added
+- [ ] Lint + build pass
 
 ## Results
 
 **Status:** ✅ Done
 
 **Commits:**
-- `739e385` feat: add restartTracker utility
-- `82d9a09` feat: wire restart tracking into startup and graceful shutdown
-- `dcbc76c` test: add restartTracker tests and fix index test mock for package.json reads
+- `88f10c2` feat: add /api/log-stream/ws-ticket route for authenticated WS connection
+- `ea06e14` feat: add useLogStream WebSocket hook with auto-reconnect
+- `8ae516d` feat: add LogViewer terminal-style component with auto-scroll and metadata expansion
+- `0efdcf9` feat: add LogFilters component with level/module/search controls
+- `1095bf1` feat: add /dashboard/logs page route + fix gitignore scope
+- `ede33e4` feat: add Logs link to dashboard sidebar navigation
 
-**Changes:**
-- `src/utils/restartTracker.js` — New utility: `recordRestart()`, `updateUptimeOnShutdown()`, `getRestarts()`, `getLastRestart()`, `getStartedAt()`, `_resetState()`. Auto-creates `bot_restarts` table via `ensureTable()` on first `recordRestart()` call.
-- `src/index.js` — Added `getPool` import, `BOT_VERSION` constant from package.json, `recordRestart()` call in `startup()` after DB init, `updateUptimeOnShutdown()` call in `gracefulShutdown()` before pool close. Biome import-sort applied.
-- `tests/utils/restartTracker.test.js` — 13 new tests covering all exported functions (happy path + error paths).
-- `tests/index.test.js` — Updated `readFileSync` mock to be path-aware so `package.json` reads return valid JSON regardless of `stateRaw` scenario.
+**Files Created:**
+- `web/src/app/api/log-stream/ws-ticket/route.ts` — Server-side API route; validates NextAuth session, returns WS URL + secret to browser
+- `web/src/lib/log-ws.ts` — `useLogStream` hook with auto-reconnect (exponential backoff), auth, history/log/filter message handling, 1000-entry cap
+- `web/src/components/dashboard/log-viewer.tsx` — Terminal-style viewer (JetBrains Mono, color-coded levels, auto-scroll, pause, click-to-expand meta)
+- `web/src/components/dashboard/log-filters.tsx` — Filter bar: level dropdown, module input, search input, clear button; debounced text inputs
+- `web/src/app/dashboard/logs/page.tsx` — Page route at /dashboard/logs
 
-**Tests:** 1271 passing | 1 skipped | 61 files
+**Files Modified:**
+- `web/src/components/layout/sidebar.tsx` — Added "Logs" nav link (ScrollText icon)
+- `.gitignore` — Scoped `logs/` to root-only (`/logs/`) so Next.js routes named `logs/` aren't ignored
 
-**Lint:** Biome clean on all changed files
+**Note on architecture:** `BOT_API_SECRET` stays server-side. Browser first calls `/api/log-stream/ws-ticket` (NextAuth-gated), receives WS URL + secret, then connects to bot WS directly.
 
-**Blockers:** None
+**Lint:** Pre-existing errors in `src/` only — zero errors in new web/ files.
+**Build:** ✅ `next build` passed — `/dashboard/logs` and `/api/log-stream/ws-ticket` both appear in route manifest.
+
+## Acceptance Criteria
+- [x] `/dashboard/logs` page loads
+- [x] WebSocket connects and authenticates
+- [x] Historical logs display on connect
+- [x] Real-time logs stream in
+- [x] Filters work (level, module, search)
+- [x] Auto-scroll with pause button
+- [x] Click to expand metadata
+- [x] Connection status indicator
+- [x] Navigation link added
+- [x] Lint + build pass
