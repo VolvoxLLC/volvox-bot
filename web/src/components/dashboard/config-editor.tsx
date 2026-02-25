@@ -24,6 +24,10 @@ import { DiscardChangesButton } from "./reset-defaults-button";
 /** Config sections exposed by the API — all fields optional for partial API responses. */
 type GuildConfig = DeepPartial<BotConfig>;
 
+/** Shared input styling for text inputs and textareas in the config editor. */
+const inputClasses =
+  "w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+
 /**
  * Type guard that checks whether a value is a guild configuration object returned by the API.
  *
@@ -56,9 +60,6 @@ function isGuildConfig(data: unknown): data is GuildConfig {
  * @returns The editor UI as JSX when a guild is selected and the draft config is available; `null` while no draft is present (or when rendering is handled by loading/error/no-selection states).
  */
 export function ConfigEditor() {
-  const inputClasses =
-    "w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
-
   const [guildId, setGuildId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -159,6 +160,8 @@ export function ConfigEditor() {
     return !deepEqual(savedConfig, draftConfig);
   }, [savedConfig, draftConfig]);
 
+  // Check for validation errors before allowing save.
+  // Currently only validates system prompt length; extend with additional checks as needed.
   const hasValidationErrors = useMemo(() => {
     if (!draftConfig) return false;
     const promptLength = draftConfig.ai?.systemPrompt?.length ?? 0;
@@ -205,6 +208,10 @@ export function ConfigEditor() {
 
     setSaving(true);
 
+    // Shared AbortController for all section saves - aborts all in-flight requests on 401
+    const saveAbortController = new AbortController();
+    const { signal } = saveAbortController;
+
     const failedSections: string[] = [];
 
     async function sendSection(sectionPatches: Array<{ path: string; value: unknown }>) {
@@ -216,10 +223,13 @@ export function ConfigEditor() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(patch),
             cache: "no-store",
+            signal,
           },
         );
 
         if (res.status === 401) {
+          // Abort all other in-flight requests before redirecting
+          saveAbortController.abort();
           window.location.href = "/login";
           return;
         }

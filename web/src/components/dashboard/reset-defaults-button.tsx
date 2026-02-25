@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-interface ResetDefaultsButtonProps {
+interface DiscardChangesButtonProps {
   /** Called when the user confirms the reset. */
   onReset: () => void;
   /** Whether the button is disabled. */
@@ -37,7 +37,7 @@ export function DiscardChangesButton({
   onReset,
   disabled = false,
   sectionLabel,
-}: ResetDefaultsButtonProps) {
+}: DiscardChangesButtonProps) {
   const [open, setOpen] = useState(false);
 
   function handleConfirm() {

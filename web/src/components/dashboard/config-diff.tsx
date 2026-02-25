@@ -105,14 +105,14 @@ export function ConfigDiff({
         >
           <pre className="p-4">
             {lines.map((line, i) => (
-              <div
+              <span
                 key={i}
                 className={
                   line.type === "added"
-                    ? "bg-green-500/15 text-green-400"
+                    ? "block bg-green-500/15 text-green-400"
                     : line.type === "removed"
-                      ? "bg-red-500/15 text-red-400"
-                      : "text-muted-foreground"
+                      ? "block bg-red-500/15 text-red-400"
+                      : "block text-muted-foreground"
                 }
               >
                 <span
@@ -126,7 +126,7 @@ export function ConfigDiff({
                       : " "}
                 </span>
                 {line.content}
-              </div>
+              </span>
             ))}
           </pre>
         </div>

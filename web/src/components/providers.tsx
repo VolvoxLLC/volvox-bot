@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
  * which signs out and redirects to /login.
  *
  * @returns A React element that renders a SessionProvider around `children` and mounts a Toaster
- *          positioned at the bottom-right with dark theme and rich colors enabled.
+ *          positioned at the bottom-right with system theme and rich colors enabled.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
