@@ -1,101 +1,65 @@
-# Task: Health Cards + Restart History UI
+# Task: Fix PR #87 Backend Review Comments
 
 ## Parent
-- **Master Task:** task-001
+- **PR:** [#87](https://github.com/VolvoxLLC/volvox-bot/pull/87)
 - **Branch:** feat/logs-and-health
-- **Issue:** [#35](https://github.com/VolvoxLLC/volvox-bot/issues/35)
-
-## Context
-
-Build health metric cards and restart history table for the dashboard. Data comes from the extended health endpoint (`GET /api/v1/health`).
-
-### Existing Code
-- `web/src/lib/bot-api-proxy.ts` — API proxy for authenticated requests
-- `web/src/components/dashboard/config-editor.tsx` — Reference for dashboard patterns
-- `web/src/components/ui/` — shadcn/ui components (card, table, badge, etc.)
-- Health endpoint returns: uptime, memory, discord, system, errors, restarts
 
 ## IMPORTANT — READ FIRST
-
-1. **Commit after every file you create or major change**
+1. **Commit after every file you fix**
 2. **Start writing code IMMEDIATELY**
 3. **Expected duration: ~15m**
 
-**Commit flow:**
-1. Create health cards component → commit
-2. Create restart history component → commit
-3. Create page or section → commit
-4. Lint/build → commit
+## Issues to Fix (10 total)
 
-## Files to Create
+### Critical
+1. **`src/api/ws/logStream.js:145`** — Critical issue flagged by reviewer. Read the code around line 145, check what's wrong, fix it.
 
-- `web/src/components/dashboard/health-cards.tsx` — Health metric cards
-- `web/src/components/dashboard/restart-history.tsx` — Restart log table
-- `web/src/app/dashboard/logs/page.tsx` — Add health section (if page exists from log viewer slice, just add to it — otherwise create)
+### Major
+2. **`src/api/routes/health.js:8`** — `queryLogs` is a hard static import for an optional diagnostic feature. Make it a lazy/dynamic import with graceful fallback.
+3. **`src/api/routes/health.js:71`** — A `queryLogs` failure causes health endpoint to return 500. Wrap in try/catch, return partial data on failure.
+4. **`src/transports/websocket.js:85`** — Coerce `info.message` to string before search filtering (it can be non-string).
+5. **`src/utils/restartTracker.js:108`** — `getRestarts()` should self-heal when table is missing (auto-create like `recordRestart` does).
+6. **`tests/api/ws/logStream.test.js:56`** — Timed-out queue waiters are not removed correctly. Line 50 compares different function references.
 
-## Requirements
-
-- [ ] **Health cards** (grid layout):
-  | Card | Data | Display |
-  |------|------|---------|
-  | Uptime | `health.uptime` | Human-readable ("3d 14h 22m") |
-  | Memory | `health.memory.heapUsed/heapTotal` | MB + percentage bar |
-  | Discord Ping | `health.discord.ping` | ms, color: green <100, yellow <300, red >300 |
-  | Guilds | `health.discord.guilds` | Count |
-  | Errors (1h) | `health.errors.lastHour` | Count, red if >0 |
-  | Errors (24h) | `health.errors.lastDay` | Count |
-  | CPU | `health.system.cpuUsage` | user + system % |
-  | Node | `health.system.nodeVersion` | Version string |
-- [ ] **Restart history table**:
-  - Columns: timestamp, reason, version, uptime before restart
-  - Last 20 restarts from `health.restarts`
-  - Human-readable timestamps
-  - Color-coded reasons (startup=green, crash=red)
-- [ ] Auto-refresh health data every 60s
-- [ ] Loading skeleton while fetching
-- [ ] Lint passes, build succeeds
+### Minor
+7. **`src/api/ws/logStream.js:313`** — Add structured metadata to shutdown log entry.
+8. **`src/index.js:268`** — Don't swallow shutdown failures silently. Log the error.
+9. **`src/utils/restartTracker.js:72`** — Add structured metadata to warning log.
+10. **`TASK.md:3`** — Ignore (markdownlint warnings, not real code).
 
 ## Constraints
-- Do NOT touch backend files
-- Do NOT touch log viewer (different slice)
-- Use shadcn/ui Card, Table, Badge components
-- Use Tailwind for styling
+- Do NOT touch frontend files
+- Fix each file, commit, move to next
 
 ## Acceptance Criteria
-- [ ] Health cards display all 8 metrics
-- [ ] Color coding works for ping and errors
-- [ ] Restart history table shows recent restarts
-- [ ] Auto-refresh every 60s
-- [ ] Loading state while fetching
-- [ ] Lint + build pass
+- [x] All 9 backend issues fixed (skip TASK.md markdownlint)
+- [x] Tests pass
+- [x] Lint passes
+- [x] All changes committed progressively
 
 ## Results
 
 **Status:** ✅ Done
 
-**Commits:**
-- `45f908d` feat: add bot health API proxy route
-- `3c213c5` feat: add health cards component and shared types
-- `c71f821` feat: add restart history table component
-- `8157ffe` feat: add health section orchestrator and logs page; fix gitignore for logs route
+**Commits:** (7 progressive commits)
+- `51a1370` fix: await async handleAuth in WS message handler, add shutdown metadata
+- `f33207b` fix: lazy-load queryLogs in health route, wrap in try/catch
+- `2075903` fix: coerce message to string before search filtering in WS transport
+- `e8af514` fix: self-heal getRestarts on missing table, add structured warn metadata
+- `eff5fc0` fix: correctly remove timed-out queue waiters in test helper
+- `4406415` fix: log shutdown uptime recording failures instead of swallowing silently
+- `6e3e3c9` test: update restartTracker test for structured warn metadata
 
 **Changes:**
-- `web/src/app/api/bot-health/route.ts` — authenticated proxy to bot's `GET /api/v1/health`
-- `web/src/components/dashboard/types.ts` — `BotHealth` / `RestartRecord` types + runtime validator
-- `web/src/components/dashboard/health-cards.tsx` — 8-card grid (uptime, memory + bar, discord ping w/ color, guilds, errors 1h/24h w/ red, CPU, Node version)
-- `web/src/components/dashboard/restart-history.tsx` — table with last 20 restarts, color-coded reason badges, human-readable timestamps
-- `web/src/components/dashboard/health-section.tsx` — client component with auto-refresh (60s), loading skeleton, error banner, refresh button
-- `web/src/app/dashboard/logs/page.tsx` — new `/dashboard/logs` route rendering `<HealthSection />`
-- `.gitignore` — added exception for `web/src/app/dashboard/logs/` (conflicts with `logs/` gitignore rule)
+- `src/api/ws/logStream.js`: Made handleMessage async, await handleAuth, added .catch() for unhandled rejections, added structured shutdown metadata
+- `src/api/routes/health.js`: Converted queryLogs to lazy dynamic import, wrapped usage in try/catch with partial data fallback
+- `src/transports/websocket.js`: Coerce entry.message to String() before search filtering
+- `src/utils/restartTracker.js`: getRestarts auto-creates table on 42P01 error (self-heal), added structured metadata to warn log
+- `tests/api/ws/logStream.test.js`: Fixed waiter removal using indexOf(waiter) instead of broken resolve reference comparison
+- `src/index.js`: Replaced silent catch with warn() for shutdown uptime recording failures
+- `tests/utils/restartTracker.test.js`: Updated test assertion for new structured warn metadata
 
-**Build:** ✅ `next build` — compiled successfully, `/dashboard/logs` route created
-**TypeCheck:** ✅ `tsc --noEmit` — no errors in new files
-**Root lint:** Pre-existing failures in bot JS files only (26 errors existed before this task)
+**Tests:** 1308 passing, 1 skipped, 0 failed
+**Lint:** Clean (biome check passes)
 
-**Acceptance Criteria:**
-- [x] Health cards display all 8 metrics
-- [x] Color coding works for ping (green/yellow/red) and errors (red if >0)
-- [x] Restart history table shows recent restarts (last 20, reversed)
-- [x] Auto-refresh every 60s
-- [x] Loading state while fetching (skeleton cards + table skeleton)
-- [x] Lint + build pass (build ✅, root lint pre-existing failures not introduced by this task)
+**Blockers:** None
