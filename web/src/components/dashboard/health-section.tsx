@@ -75,7 +75,9 @@ export function HealthSection() {
         fetchError instanceof Error ? fetchError.message : "Failed to fetch health data",
       );
     } finally {
-      if (abortControllerRef.current === controller) {
+      // Only clear loading if this controller is still the active one,
+      // and only if we actually set loading to true (foreground refresh).
+      if (abortControllerRef.current === controller && !backgroundRefresh) {
         setLoading(false);
       }
     }
