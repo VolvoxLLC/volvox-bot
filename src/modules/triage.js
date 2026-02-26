@@ -194,6 +194,13 @@ async function runResponder(
   );
   debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
 
+  // Add 🧠 or 💬 reaction: 🧠 when extended thinking is active, 💬 otherwise
+  const resolved = resolveTriageConfig(evalConfig.triage || {});
+  if (statusReactions && triggerMessageId) {
+    const emoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
+    addReaction(evalClient, channelId, triggerMessageId, emoji);
+  }
+
   // Detect WebSearch tool use mid-stream: send a typing indicator + count searches
   let searchNotified = false;
   let searchCount = 0;

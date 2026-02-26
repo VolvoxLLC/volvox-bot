@@ -1070,6 +1070,70 @@ describe('triage module', () => {
       expect(mockReact).not.toHaveBeenCalledWith('\uD83D\uDD0D');
     });
 
+    it('should add 💬 reaction when responder starts (no thinking tokens)', async () => {
+      const noThinkConfig = makeConfig({ triage: { thinkingTokens: 0 } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), noThinkConfig);
+      await evaluateNow('ch1', noThinkConfig, client, healthMonitor);
+
+      // 👀 fires on classify, 💬 fires on responder start (thinkingTokens defaults to 0)
+      const reactCalls = mockReact.mock.calls.map((c) => c[0]);
+      expect(reactCalls).toContain('\uD83D\uDC40');
+      expect(reactCalls).toContain('\uD83D\uDCAC');
+    });
+
+    it('should add 🧠 reaction when thinking tokens are configured', async () => {
+      const thinkConfig = makeConfig({ triage: { thinkingTokens: 1000 } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), thinkConfig);
+      await evaluateNow('ch1', thinkConfig, client, healthMonitor);
+
+      const reactCalls = mockReact.mock.calls.map((c) => c[0]);
+      expect(reactCalls).toContain('\uD83E\uDDE0');
+      expect(reactCalls).not.toContain('\uD83D\uDCAC');
+    });
+
+    it('should NOT add 💬 or 🧠 when statusReactions is false', async () => {
+      const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), noReactConfig);
+      await evaluateNow('ch1', noReactConfig, client, healthMonitor);
+
+      const reactCalls = mockReact.mock.calls.map((c) => c[0]);
+      expect(reactCalls).not.toContain('\uD83D\uDCAC');
+      expect(reactCalls).not.toContain('\uD83E\uDDE0');
+    });
+
     it('should not block response flow when reaction fails', async () => {
       // Make react throw to simulate permission failure
       mockReact.mockRejectedValue(new Error('Missing Permissions'));
