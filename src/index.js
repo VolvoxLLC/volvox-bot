@@ -11,6 +11,9 @@
  * - Structured logging
  */
 
+// Sentry must be imported before all other modules to instrument them
+import { Sentry, sentryEnabled } from './sentry.js';
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -219,6 +222,12 @@ client.on('interactionCreate', async (interaction) => {
     info('Command executed', { command: commandName, user: interaction.user.tag });
   } catch (err) {
     error('Command error', { command: commandName, error: err.message, stack: err.stack });
+    if (sentryEnabled) {
+      Sentry.captureException(err, {
+        tags: { source: 'slash_command', command: commandName },
+        user: { id: interaction.user.id, username: interaction.user.tag },
+      });
+    }
 
     const errorMessage = {
       content: '❌ An error occurred while executing this command.',
@@ -283,11 +292,16 @@ async function gracefulShutdown(signal) {
     error('Failed to close database pool', { error: err.message });
   }
 
-  // 5. Destroy Discord client
+  // 5. Flush Sentry events before exit
+  if (sentryEnabled) {
+    await Sentry.flush(2000).catch(() => {});
+  }
+
+  // 6. Destroy Discord client
   info('Disconnecting from Discord');
   client.destroy();
 
-  // 6. Log clean exit
+  // 7. Log clean exit
   info('Shutdown complete');
   process.exit(0);
 }
@@ -303,6 +317,21 @@ client.on('error', (err) => {
     stack: err.stack,
     code: err.code,
   });
+  if (sentryEnabled) {
+    Sentry.captureException(err, { tags: { source: 'discord_client' } });
+  }
+});
+
+client.on('shardDisconnect', (event, shardId) => {
+  if (event.code !== 1000) {
+    warn('Shard disconnected unexpectedly', { shardId, code: event.code });
+    if (sentryEnabled) {
+      Sentry.captureMessage(`Shard ${shardId} disconnected (code: ${event.code})`, {
+        level: 'warning',
+        tags: { source: 'discord_shard' },
+      });
+    }
+  }
 });
 
 // Start bot
@@ -420,6 +449,13 @@ async function startup() {
   // Load commands and login
   await loadCommands();
   await client.login(token);
+
+  // Set Sentry context now that we know the bot identity
+  if (sentryEnabled) {
+    Sentry.setTag('bot.username', client.user?.tag || 'unknown');
+    Sentry.setTag('bot.version', BOT_VERSION);
+    info('Sentry error monitoring enabled', { environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production' });
+  }
 
   // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
   {
