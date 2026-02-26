@@ -39,5 +39,7 @@ export async function GET(
   );
   if (upstream instanceof NextResponse) return upstream;
 
+  upstream.searchParams.set("guildId", guildId);
+
   return proxyToBotApi(upstream, config.secret, LOG_PREFIX, "Failed to fetch mod case");
 }
