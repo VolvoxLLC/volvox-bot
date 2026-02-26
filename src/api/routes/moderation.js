@@ -232,4 +232,94 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// ─── GET /user/:userId/history ────────────────────────────────────────────────
+
+/**
+ * Get full moderation history for a specific user in a guild.
+ *
+ * Query params:
+ *   guildId  (required) — Discord guild ID
+ *   page     (default 1)
+ *   limit    (default 25, max 100)
+ */
+router.get('/user/:userId/history', async (req, res) => {
+  const { userId } = req.params;
+  const { guildId } = req.query;
+
+  if (!guildId) {
+    return res.status(400).json({ error: 'guildId is required' });
+  }
+
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const offset = (page - 1) * limit;
+
+  try {
+    const pool = getPool();
+
+    const [casesResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT
+           id,
+           case_number,
+           action,
+           target_id,
+           target_tag,
+           moderator_id,
+           moderator_tag,
+           reason,
+           duration,
+           expires_at,
+           log_message_id,
+           created_at
+         FROM mod_cases
+         WHERE guild_id = $1 AND target_id = $2
+         ORDER BY created_at DESC
+         LIMIT $3 OFFSET $4`,
+        [guildId, userId, limit, offset],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::integer AS total FROM mod_cases
+         WHERE guild_id = $1 AND target_id = $2`,
+        [guildId, userId],
+      ),
+    ]);
+
+    const total = countResult.rows[0]?.total ?? 0;
+    const pages = Math.ceil(total / limit);
+
+    // Also grab a summary of actions for this user
+    const summaryResult = await pool.query(
+      `SELECT action, COUNT(*)::integer AS count
+       FROM mod_cases
+       WHERE guild_id = $1 AND target_id = $2
+       GROUP BY action`,
+      [guildId, userId],
+    );
+
+    const byAction = {};
+    for (const row of summaryResult.rows) {
+      byAction[row.action] = row.count;
+    }
+
+    info('User mod history fetched', { guildId, userId, page, limit, total });
+
+    return res.json({
+      userId,
+      cases: casesResult.rows,
+      total,
+      page,
+      pages,
+      byAction,
+    });
+  } catch (err) {
+    logError('Failed to fetch user mod history', { error: err.message, guildId, userId });
+    return res.status(500).json({ error: 'Failed to fetch user mod history' });
+  }
+});
+
 export default router;
