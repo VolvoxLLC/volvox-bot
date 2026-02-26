@@ -152,8 +152,8 @@ async function addReaction(evalClient, channelId, messageId, emoji) {
     const msg = await ch.messages.fetch(messageId).catch(() => null);
     if (!msg) return;
     await msg.react(emoji);
-  } catch {
-    // Swallow silently — reaction failure must never block response flow
+  } catch (err) {
+    debug('Status reaction failed', { channelId, messageId, emoji, error: err?.message });
   }
 }
 
@@ -172,8 +172,8 @@ async function removeReaction(evalClient, channelId, messageId, emoji) {
     const msg = await ch.messages.fetch(messageId).catch(() => null);
     if (!msg) return;
     await msg.reactions.cache.get(emoji)?.users.remove(evalClient.user.id);
-  } catch {
-    // Swallow silently — reaction removal must never block response flow
+  } catch (err) {
+    debug('Status reaction removal failed', { channelId, messageId, emoji, error: err?.message });
   }
 }
 
