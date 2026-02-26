@@ -59,6 +59,9 @@
 | `src/utils/splitMessage.js` | Message splitting for Discord's 2000-char limit |
 | `src/utils/debugFooter.js` | Debug stats footer builder and Discord embed wrapper for AI responses |
 | `src/utils/duration.js` | Duration parsing — "1h", "7d" ↔ ms with human-readable formatting |
+| `src/commands/announce.js` | Scheduled message command — `/announce` with create/list/delete subcommands (moderator-only); stores schedules to `scheduled_messages` table |
+| `src/modules/scheduler.js` | Scheduled message poller — cron expression parser (`parseCron`, `getNextCronRun`), due-message dispatcher via `safeSend`, 60s interval started/stopped via `startScheduler`/`stopScheduler` |
+| `migrations/002_scheduled-messages.cjs` | Migration — creates `scheduled_messages` table (id, guild_id, channel_id, content, cron_expression, next_run, is_one_time, created_by) |
 | `config.json` | Default configuration (seeded to DB on first run) |
 | `.env.example` | Environment variable template |
 
