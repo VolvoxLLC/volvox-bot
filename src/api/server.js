@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import { Sentry, sentryEnabled } from '../sentry.js';
 import { error, info, warn } from '../logger.js';
 import apiRouter from './index.js';
 import { rateLimit } from './middleware/rateLimit.js';
@@ -61,6 +62,11 @@ export function createApp(client, dbPool) {
 
   // Mount API routes under /api/v1
   app.use('/api/v1', apiRouter);
+
+  // Sentry error handler — must be before our custom error middleware
+  if (sentryEnabled) {
+    Sentry.setupExpressErrorHandler(app);
+  }
 
   // Error handling middleware
   app.use((err, _req, res, _next) => {
