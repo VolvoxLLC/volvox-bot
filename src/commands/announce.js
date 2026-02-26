@@ -120,8 +120,11 @@ export function parseTime(timeStr) {
     const day = Number.parseInt(isoMatch[3], 10);
     const hours = Number.parseInt(isoMatch[4], 10);
     const minutes = Number.parseInt(isoMatch[5], 10);
-    if (month < 1 || month > 12 || day < 1 || day > 31 || hours > 23 || minutes > 59) return null;
-    const d = new Date(Number.parseInt(isoMatch[1], 10), month - 1, day, hours, minutes);
+    const year = Number.parseInt(isoMatch[1], 10);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (month < 1 || month > 12 || day < 1 || day > daysInMonth || hours > 23 || minutes > 59)
+      return null;
+    const d = new Date(year, month - 1, day, hours, minutes);
     if (Number.isNaN(d.getTime())) return null;
     return d;
   }
