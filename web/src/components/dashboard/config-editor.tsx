@@ -28,11 +28,21 @@ type GuildConfig = DeepPartial<BotConfig>;
 const inputClasses =
   "w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
+/** Parse a number input value, enforcing optional min/max constraints. Returns undefined if invalid. */
+function parseNumberInput(raw: string, min?: number, max?: number): number | undefined {
+  if (raw === "") return undefined;
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return undefined;
+  if (min !== undefined && num < min) return min;
+  if (max !== undefined && num > max) return max;
+  return num;
+}
+
 /**
  * Type guard that checks whether a value is a guild configuration object returned by the API.
  *
  * @returns `true` if the value is an object containing at least one known top-level section
- *   (`ai`, `welcome`, `spam`, `moderation`, `triage`) and each present section is a plain object
+ *   (`ai`, `welcome`, `spam`, `moderation`, `triage`, `starboard`, `permissions`, `memory`) and each present section is a plain object
  *   (not an array or null). Returns `false` otherwise.
  */
 function isGuildConfig(data: unknown): data is GuildConfig {
@@ -1042,11 +1052,8 @@ export function ConfigEditor() {
                 min={1}
                 value={draftConfig.starboard?.threshold ?? 3}
                 onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === "") return;
-                  const num = Number(raw);
-                  if (!Number.isFinite(num)) return;
-                  updateStarboardField("threshold", num);
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) updateStarboardField("threshold", num);
                 }}
                 disabled={saving}
                 className={inputClasses}

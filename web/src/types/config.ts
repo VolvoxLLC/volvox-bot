@@ -117,9 +117,11 @@ export interface StarboardConfig {
 /** Permissions configuration. */
 export interface PermissionsConfig {
   enabled: boolean;
-  adminRoleId: string;
-  moderatorRoleId: string;
+  adminRoleId: string | null;
+  moderatorRoleId: string | null;
   botOwners: string[];
+  usePermissions: boolean;
+  allowedCommands: Record<string, string[]>;
 }
 
 /** Memory configuration. */
