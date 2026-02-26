@@ -14,6 +14,7 @@ import { getConfig } from './config.js';
 import { checkLinks } from './linkFilter.js';
 import { checkRateLimit } from './rateLimit.js';
 import { isSpam, sendSpamAlert } from './spam.js';
+import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 
@@ -55,6 +56,12 @@ export function registerReadyHandler(client, config, healthMonitor) {
     }
     if (config.moderation?.enabled) {
       info('Moderation enabled');
+    }
+    if (config.starboard?.enabled) {
+      info('Starboard enabled', {
+        channelId: config.starboard.channelId,
+        threshold: config.starboard.threshold,
+      });
     }
   });
 }
@@ -215,6 +222,70 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
 }
 
 /**
+ * Register reaction event handlers for the starboard feature.
+ * Listens to both MessageReactionAdd and MessageReactionRemove to
+ * post, update, or remove starboard embeds based on star count.
+ *
+ * @param {Client} client - Discord client instance
+ * @param {Object} _config - Unused (kept for API compatibility); handler resolves per-guild config via getConfig().
+ */
+export function registerReactionHandlers(client, _config) {
+  client.on(Events.MessageReactionAdd, async (reaction, user) => {
+    // Ignore bot reactions
+    if (user.bot) return;
+
+    // Fetch partial messages so we have full guild/channel data
+    if (reaction.message.partial) {
+      try {
+        await reaction.message.fetch();
+      } catch {
+        return;
+      }
+    }
+    const guildId = reaction.message.guild?.id;
+    if (!guildId) return;
+
+    const guildConfig = getConfig(guildId);
+    if (!guildConfig.starboard?.enabled) return;
+
+    try {
+      await handleReactionAdd(reaction, user, client, guildConfig);
+    } catch (err) {
+      logError('Starboard reaction add handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
+    }
+  });
+
+  client.on(Events.MessageReactionRemove, async (reaction, user) => {
+    if (user.bot) return;
+
+    if (reaction.message.partial) {
+      try {
+        await reaction.message.fetch();
+      } catch {
+        return;
+      }
+    }
+    const guildId = reaction.message.guild?.id;
+    if (!guildId) return;
+
+    const guildConfig = getConfig(guildId);
+    if (!guildConfig.starboard?.enabled) return;
+
+    try {
+      await handleReactionRemove(reaction, user, client, guildConfig);
+    } catch (err) {
+      logError('Starboard reaction remove handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
+    }
+  });
+}
+
+/**
  * Register error event handlers
  * @param {Client} client - Discord client
  */
@@ -241,5 +312,6 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerReadyHandler(client, config, healthMonitor);
   registerGuildMemberAddHandler(client, config);
   registerMessageCreateHandler(client, config, healthMonitor);
+  registerReactionHandlers(client, config);
   registerErrorHandlers(client);
 }

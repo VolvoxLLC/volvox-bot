@@ -17,7 +17,7 @@ import './sentry.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
 import { closeRedis } from './api/utils/redisClient.js';
@@ -104,7 +104,9 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessageReactions,
   ],
+  partials: [Partials.Message, Partials.Reaction],
   allowedMentions: { parse: ['users'] },
 });
 
