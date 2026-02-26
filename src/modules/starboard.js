@@ -15,7 +15,7 @@ export const STARBOARD_DEFAULTS = {
   enabled: false,
   channelId: null,
   threshold: 3,
-  emoji: '⭐',
+  emoji: '*',
   selfStarAllowed: false,
   ignoredChannels: [],
 };

@@ -99,7 +99,7 @@
     "enabled": false,
     "channelId": null,
     "threshold": 3,
-    "emoji": "⭐",
+    "emoji": "*",
     "selfStarAllowed": false,
     "ignoredChannels": []
   },
