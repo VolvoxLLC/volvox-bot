@@ -188,7 +188,7 @@ export async function getStarCount(message, emoji, selfStarAllowed) {
   if (!selfStarAllowed) {
     // Fetch users who reacted so we can check for self-star
     try {
-      const users = await reaction.users.fetch();
+      const users = await reaction.users.fetch({ limit: 100 });
       if (users.has(message.author.id)) {
         count -= 1;
       }
@@ -235,6 +235,9 @@ export async function handleReactionAdd(reaction, user, client, config) {
       return;
     }
   }
+
+  // Prevent feedback loop — don't star messages posted in the starboard channel itself
+  if (message.channel.id === sbConfig.channelId) return;
 
   // Only process the configured emoji
   if (reaction.emoji.name !== sbConfig.emoji) return;

@@ -18,7 +18,7 @@ exports.up = (pgm) => {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  pgm.sql('CREATE INDEX IF NOT EXISTS idx_starboard_source ON starboard_posts(source_message_id)');
+  // No explicit index needed — UNIQUE constraint on source_message_id creates one implicitly
 };
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */

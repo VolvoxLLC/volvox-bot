@@ -229,8 +229,7 @@ export function registerReactionHandlers(client, _config) {
     if (user.bot) return;
 
     // Resolve guild — reactions in DMs have no guild
-    const guild =
-      (reaction.message.guild ?? reaction.message.partial) ? null : reaction.message.guild;
+    const guild = reaction.message.guild;
     if (!guild && reaction.message.partial) {
       try {
         await reaction.message.fetch();
@@ -257,8 +256,7 @@ export function registerReactionHandlers(client, _config) {
   client.on(Events.MessageReactionRemove, async (reaction, user) => {
     if (user.bot) return;
 
-    const guild =
-      (reaction.message.guild ?? reaction.message.partial) ? null : reaction.message.guild;
+    const guild = reaction.message.guild;
     if (!guild && reaction.message.partial) {
       try {
         await reaction.message.fetch();
