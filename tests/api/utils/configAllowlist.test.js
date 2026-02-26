@@ -34,6 +34,7 @@ describe('configAllowlist', () => {
       expect(READABLE_CONFIG_KEYS).toContain('logging');
       expect(READABLE_CONFIG_KEYS).toContain('memory');
       expect(READABLE_CONFIG_KEYS).toContain('permissions');
+      expect(READABLE_CONFIG_KEYS).toContain('starboard');
     });
   });
 
