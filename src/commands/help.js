@@ -310,7 +310,7 @@ async function handleList(interaction) {
 
   for (const row of rows) {
     const preview = row.content.length > 80 ? `${row.content.slice(0, 77)}...` : row.content;
-    embed.addFields({ name: `${row.title} (\`${row.topic}\`)`, value: preview });
+    embed.addFields({ name: `${row.title} (\`${row.topic}\`)`.slice(0, 256), value: preview });
   }
 
   await safeEditReply(interaction, { embeds: [embed] });
@@ -367,7 +367,10 @@ export async function autocomplete(interaction) {
       [interaction.guild.id, `%${focused}%`],
     );
 
-    const filtered = rows.map((r) => ({ name: `${r.title} (${r.topic})`, value: r.topic }));
+    const filtered = rows.map((r) => ({
+      name: `${r.title} (${r.topic})`.slice(0, 100),
+      value: r.topic,
+    }));
 
     await interaction.respond(filtered);
   } catch (err) {
