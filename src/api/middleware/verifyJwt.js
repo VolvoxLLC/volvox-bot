@@ -4,6 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+import { error as logError } from '../../logger.js';
 import { getSessionToken } from '../utils/sessionStore.js';
 
 /**
@@ -34,11 +35,11 @@ function getSecret() {
  * Verify a JWT token and validate the associated server-side session.
  *
  * @param {string} token - The JWT Bearer token to verify
- * @returns {{ user: Object } | { error: string, status: number }}
+ * @returns {Promise<{ user: Object } | { error: string, status: number }>}
  *   On success: `{ user }` with the decoded JWT payload.
  *   On failure: `{ error, status }` with an error message and HTTP status code.
  */
-export function verifyJwtToken(token) {
+export async function verifyJwtToken(token) {
   let secret;
   try {
     secret = getSecret();
@@ -46,13 +47,23 @@ export function verifyJwtToken(token) {
     return { error: 'Session not configured', status: 500 };
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
-    if (!getSessionToken(decoded.userId)) {
-      return { error: 'Session expired or revoked', status: 401 };
-    }
-    return { user: decoded };
+    decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
   } catch {
     return { error: 'Invalid or expired token', status: 401 };
   }
+
+  let sessionToken;
+  try {
+    sessionToken = await getSessionToken(decoded.userId);
+  } catch (err) {
+    logError('Session lookup failed', { error: err.message, userId: decoded.userId });
+    return { error: 'Session lookup failed', status: 503 };
+  }
+
+  if (!sessionToken) {
+    return { error: 'Session expired or revoked', status: 401 };
+  }
+  return { user: decoded };
 }

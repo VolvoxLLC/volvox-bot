@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
+import { closeRedis } from './api/utils/redisClient.js';
 import {
   registerConfigListeners,
   removeLoggingTransport,
@@ -297,6 +298,13 @@ async function gracefulShutdown(signal) {
     await closeDb();
   } catch (err) {
     error('Failed to close database pool', { error: err.message });
+  }
+
+  // 4.5. Close Redis connection (no-op if Redis was never configured)
+  try {
+    await closeRedis();
+  } catch (err) {
+    error('Failed to close Redis connection', { error: err.message });
   }
 
   // 5. Flush Sentry events before exit (no-op if Sentry disabled)

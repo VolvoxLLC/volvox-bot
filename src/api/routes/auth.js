@@ -229,7 +229,7 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     // Store access token server-side (never in the JWT)
-    sessionStore.set(user.id, accessToken);
+    await sessionStore.set(user.id, accessToken);
 
     // Create JWT with user info only (no access token — stored server-side)
     const token = jwt.sign(
@@ -269,7 +269,14 @@ router.get('/discord/callback', async (req, res) => {
  */
 router.get('/me', requireOAuth(), async (req, res) => {
   const { userId, username, avatar } = req.user;
-  const accessToken = sessionStore.get(userId);
+
+  let accessToken;
+  try {
+    accessToken = await sessionStore.get(userId);
+  } catch (err) {
+    error('Redis error fetching session in /me', { error: err.message, userId });
+    return res.status(503).json({ error: 'Session store unavailable' });
+  }
 
   let guilds = [];
   if (accessToken) {
@@ -291,8 +298,16 @@ router.get('/me', requireOAuth(), async (req, res) => {
 /**
  * POST /logout — Invalidate the user's server-side session
  */
-router.post('/logout', requireOAuth(), (req, res) => {
-  sessionStore.delete(req.user.userId);
+router.post('/logout', requireOAuth(), async (req, res) => {
+  try {
+    await sessionStore.delete(req.user.userId);
+  } catch (err) {
+    error('Redis error deleting session on logout', {
+      error: err.message,
+      userId: req.user.userId,
+    });
+    // User's intent is to log out — succeed anyway
+  }
   res.json({ message: 'Logged out successfully' });
 });
 

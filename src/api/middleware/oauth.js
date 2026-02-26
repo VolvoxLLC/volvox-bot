@@ -12,7 +12,7 @@ import { handleOAuthJwt } from './oauthJwt.js';
  * @returns {import('express').RequestHandler} Express middleware function
  */
 export function requireOAuth() {
-  return (req, res, next) => {
-    return handleOAuthJwt(req, res, next, { missingTokenError: 'No token provided' });
+  return async (req, res, next) => {
+    await handleOAuthJwt(req, res, next, { missingTokenError: 'No token provided' });
   };
 }
