@@ -1,3 +1,5 @@
+# Project Rules
+
 ## Architecture
 
 This is a Discord bot (discord.js) with an Express API server and a Next.js web dashboard.

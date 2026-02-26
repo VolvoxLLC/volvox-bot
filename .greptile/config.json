@@ -10,7 +10,7 @@
     },
     {
       "id": "esm-only",
-      "rule": "This project uses ESM exclusively. Use import/export, not require/module.exports. Use node: prefix for builtins (e.g. node:path, node:fs).",
+      "rule": "This project uses ESM exclusively. Use import/export, not require/module.exports. Use node: prefix for builtins (e.g. node:path, node:fs). Exception: migration files in migrations/ use .cjs format.",
       "severity": "medium"
     },
     {
