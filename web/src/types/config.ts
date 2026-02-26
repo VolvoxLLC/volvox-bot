@@ -76,6 +76,22 @@ export interface ModerationLogging {
   channels: ModerationLogChannels;
 }
 
+/** Rate limiting configuration nested under moderation. */
+export interface RateLimitConfig {
+  enabled: boolean;
+  maxMessages: number;
+  windowSeconds: number;
+  muteAfterTriggers: number;
+  muteWindowSeconds: number;
+  muteDurationSeconds: number;
+}
+
+/** Link filtering configuration nested under moderation. */
+export interface LinkFilterConfig {
+  enabled: boolean;
+  blockedDomains: string[];
+}
+
 /** Moderation configuration. */
 export interface ModerationConfig {
   enabled: boolean;
@@ -84,6 +100,36 @@ export interface ModerationConfig {
   dmNotifications: ModerationDmNotifications;
   escalation: ModerationEscalation;
   logging: ModerationLogging;
+  rateLimit?: RateLimitConfig;
+  linkFilter?: LinkFilterConfig;
+}
+
+/** Starboard configuration. */
+export interface StarboardConfig {
+  enabled: boolean;
+  channelId: string;
+  threshold: number;
+  emoji: string;
+  selfStarAllowed: boolean;
+  ignoredChannels: string[];
+}
+
+/** Permissions configuration. */
+export interface PermissionsConfig {
+  enabled: boolean;
+  adminRoleId: string | null;
+  moderatorRoleId: string | null;
+  modRoles: string[];
+  botOwners: string[];
+  usePermissions: boolean;
+  allowedCommands: Record<string, string>;
+}
+
+/** Memory configuration. */
+export interface MemoryConfig {
+  enabled: boolean;
+  maxContextMemories: number;
+  autoExtract: boolean;
 }
 
 /** Triage configuration. */
@@ -112,6 +158,7 @@ export interface TriageConfig {
   debugFooter: boolean;
   debugFooterLevel: string;
   moderationLogChannel: string;
+  statusReactions: boolean;
 }
 
 /** Full bot config response from GET /api/guilds/:id/config. */
@@ -122,10 +169,13 @@ export interface BotConfig {
   spam: SpamConfig;
   moderation: ModerationConfig;
   triage?: TriageConfig;
+  starboard?: StarboardConfig;
+  permissions?: PermissionsConfig;
+  memory?: MemoryConfig;
 }
 
 /** All config sections shown in the editor. */
-export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";
+export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage" | "starboard" | "permissions" | "memory";
 
 /**
  * @deprecated Use {@link ConfigSection} directly.

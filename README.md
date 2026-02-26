@@ -201,6 +201,17 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 
 **Escalation thresholds** are objects with: `warns` (count), `withinDays` (window), `action` ("timeout" or "ban"), `duration` (for timeout, e.g. "1h").
 
+### Starboard (`starboard`)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `enabled` | boolean | Enable the starboard feature |
+| `channelId` | string | Channel ID where starred messages are reposted |
+| `threshold` | number | Reaction count required to star a message (default: 3) |
+| `emoji` | string | Emoji to watch for stars (default: `⭐`) |
+| `selfStarAllowed` | boolean | Allow users to star their own messages |
+| `ignoredChannels` | string[] | Channel IDs excluded from starboard tracking |
+
 ### Permissions (`permissions`)
 
 | Key | Type | Description |
@@ -208,6 +219,7 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `enabled` | boolean | Enable permission checks |
 | `adminRoleId` | string | Role ID for admin commands |
 | `moderatorRoleId` | string | Role ID for moderator commands |
+| `modRoles` | string[] | Additional role IDs or names that count as moderators (legacy/`modExempt` checks) |
 | `botOwners` | string[] | Discord user IDs that bypass all permission checks |
 | `allowedCommands` | object | Per-command permission levels (`everyone`, `moderator`, `admin`) |
 
