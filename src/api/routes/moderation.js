@@ -173,10 +173,9 @@ router.get('/stats', async (req, res) => {
     const [totalResult, last24hResult, last7dResult, byActionResult, topTargetsResult] =
       await Promise.all([
         // Total cases
-        pool.query(
-          'SELECT COUNT(*)::integer AS total FROM mod_cases WHERE guild_id = $1',
-          [guildId],
-        ),
+        pool.query('SELECT COUNT(*)::integer AS total FROM mod_cases WHERE guild_id = $1', [
+          guildId,
+        ]),
 
         // Last 24 hours
         pool.query(

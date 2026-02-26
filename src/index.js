@@ -26,7 +26,15 @@ import {
   setInitialTransport,
 } from './config-listeners.js';
 import { closeDb, getPool, initDb } from './db.js';
-import { addPostgresTransport, addWebSocketTransport, removeWebSocketTransport, debug, error, info, warn } from './logger.js';
+import {
+  addPostgresTransport,
+  addWebSocketTransport,
+  debug,
+  error,
+  info,
+  removeWebSocketTransport,
+  warn,
+} from './logger.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -221,7 +229,12 @@ client.on('interactionCreate', async (interaction) => {
     await command.execute(interaction);
     info('Command executed', { command: commandName, user: interaction.user.tag });
   } catch (err) {
-    error('Command error', { command: commandName, error: err.message, stack: err.stack, source: 'slash_command' });
+    error('Command error', {
+      command: commandName,
+      error: err.message,
+      stack: err.stack,
+      source: 'slash_command',
+    });
 
     const errorMessage = {
       content: '❌ An error occurred while executing this command.',
@@ -435,13 +448,17 @@ async function startup() {
   await client.login(token);
 
   // Set Sentry context now that we know the bot identity (no-op if disabled)
-  import('./sentry.js').then(({ Sentry, sentryEnabled }) => {
-    if (sentryEnabled) {
-      Sentry.setTag('bot.username', client.user?.tag || 'unknown');
-      Sentry.setTag('bot.version', BOT_VERSION);
-      info('Sentry error monitoring enabled', { environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production' });
-    }
-  }).catch(() => {});
+  import('./sentry.js')
+    .then(({ Sentry, sentryEnabled }) => {
+      if (sentryEnabled) {
+        Sentry.setTag('bot.username', client.user?.tag || 'unknown');
+        Sentry.setTag('bot.version', BOT_VERSION);
+        info('Sentry error monitoring enabled', {
+          environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
+        });
+      }
+    })
+    .catch(() => {});
 
   // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
   {
