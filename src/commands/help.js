@@ -47,7 +47,7 @@ export const data = new SlashCommandBuilder()
         opt.setName('topic').setDescription('Unique topic slug').setRequired(true),
       )
       .addStringOption((opt) =>
-        opt.setName('title').setDescription('Display title').setRequired(true),
+        opt.setName('title').setDescription('Display title').setMaxLength(256).setRequired(true),
       )
       .addStringOption((opt) =>
         opt.setName('content').setDescription('Topic content').setRequired(true),
@@ -64,7 +64,7 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .setAutocomplete(true),
       )
-      .addStringOption((opt) => opt.setName('title').setDescription('New title').setRequired(false))
+      .addStringOption((opt) => opt.setName('title').setDescription('New title').setMaxLength(256).setRequired(false))
       .addStringOption((opt) =>
         opt.setName('content').setDescription('New content').setRequired(false),
       ),
