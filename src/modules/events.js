@@ -11,6 +11,8 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // safe wrapper applies identically to either target type.
 import { safeReply } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
+import { checkLinks } from './linkFilter.js';
+import { checkRateLimit } from './rateLimit.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
@@ -92,6 +94,18 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
 
     // Resolve per-guild config so feature gates respect guild overrides
     const guildConfig = getConfig(message.guild.id);
+
+    // Rate limit check (delete + warn/mute on excess)
+    if (guildConfig.moderation?.enabled) {
+      const { limited } = await checkRateLimit(message, guildConfig);
+      if (limited) return;
+    }
+
+    // Link filter (delete + alert on blocked/phishing links)
+    if (guildConfig.moderation?.enabled) {
+      const { blocked } = await checkLinks(message, guildConfig);
+      if (blocked) return;
+    }
 
     // Spam detection
     if (guildConfig.moderation?.enabled && isSpam(message.content)) {
