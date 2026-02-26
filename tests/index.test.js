@@ -698,6 +698,7 @@ describe('index.js', () => {
       error: 'discord broke',
       stack: 'stack',
       code: 500,
+      source: 'discord_client',
     });
   });
 

@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { PostgresTransport } from './transports/postgres.js';
+import { sentryEnabled } from './sentry.js';
+import { SentryTransport } from './transports/sentry.js';
 import { WebSocketTransport } from './transports/websocket.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -202,6 +204,11 @@ if (fileOutputEnabled) {
       ),
     }),
   );
+}
+
+// Add Sentry transport if enabled — all error/warn logs automatically go to Sentry
+if (sentryEnabled) {
+  transports.push(new SentryTransport({ level: 'warn' }));
 }
 
 const logger = winston.createLogger({
