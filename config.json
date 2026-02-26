@@ -119,7 +119,8 @@
       "lock": "admin",
       "unlock": "admin",
       "slowmode": "admin",
-      "modlog": "moderator"
+      "modlog": "moderator",
+      "announce": "moderator"
     }
   }
 }
