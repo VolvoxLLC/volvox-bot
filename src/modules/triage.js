@@ -158,6 +158,26 @@ async function addReaction(evalClient, channelId, messageId, emoji) {
 }
 
 /**
+ * Remove the bot's own reaction from a message. Fire-and-forget; errors are swallowed.
+ *
+ * @param {import('discord.js').Client} evalClient - Discord client.
+ * @param {string} channelId - Channel containing the message.
+ * @param {string} messageId - Message to remove the reaction from.
+ * @param {string} emoji - Emoji to remove.
+ */
+async function removeReaction(evalClient, channelId, messageId, emoji) {
+  try {
+    const ch = await evalClient.channels.fetch(channelId).catch(() => null);
+    if (!ch) return;
+    const msg = await ch.messages.fetch(messageId).catch(() => null);
+    if (!msg) return;
+    await msg.reactions.cache.get(emoji)?.users.remove(evalClient.user.id);
+  } catch {
+    // Swallow silently — reaction removal must never block response flow
+  }
+}
+
+/**
  * Generate a response for a channel snapshot using the Sonnet responder.
  *
  * Builds and sends a respond prompt to the responder process, tracks mid-stream WebSearch tool usage
@@ -194,11 +214,12 @@ async function runResponder(
   );
   debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
 
-  // Add 🧠 or 💬 reaction: 🧠 when extended thinking is active, 💬 otherwise
+  // Transition: remove 👀, add 🧠 or 💬 (shows current stage)
   const resolved = resolveTriageConfig(evalConfig.triage || {});
+  const respondEmoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
   if (statusReactions && triggerMessageId) {
-    const emoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
-    addReaction(evalClient, channelId, triggerMessageId, emoji);
+    removeReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
+    addReaction(evalClient, channelId, triggerMessageId, respondEmoji);
   }
 
   // Detect WebSearch tool use mid-stream: send a typing indicator + count searches
@@ -349,6 +370,12 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     }
 
     await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
+
+    // Clean up status reactions — remove 💬/🧠 now that response is sent (🔍 stays as historical marker)
+    if (statusReactions && triggerMessageId) {
+      const respondEmoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
+      removeReaction(evalClient, channelId, triggerMessageId, respondEmoji);
+    }
 
     // Step 4: Extract memories (fire-and-forget)
     extractMemories(snapshot, parsed);
