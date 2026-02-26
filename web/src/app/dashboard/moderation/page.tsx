@@ -170,12 +170,11 @@ export default function ModerationPage() {
           throw new Error(msg);
         }
 
-        // Client-side sort by date (API returns DESC, we may want ASC)
         const data = payload as CaseListResponse;
+        // API always returns DESC; reverse if user wants ASC
         if (!desc) {
           data.cases = [...data.cases].reverse();
         }
-
         setCasesData(data);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -249,7 +248,17 @@ export default function ModerationPage() {
   useEffect(() => {
     if (!guildId) return;
     void fetchCases(guildId, page, sortDesc, actionFilter, userSearch);
-  }, [guildId, page, sortDesc, actionFilter, userSearch, fetchCases]);
+  }, [guildId, page, actionFilter, userSearch, fetchCases]); // sortDesc excluded — handled client-side
+
+  // Client-side sort toggle — no re-fetch needed since API always returns DESC
+  useEffect(() => {
+    if (!casesData) return;
+    setCasesData((prev) => {
+      if (!prev) return prev;
+      return { ...prev, cases: [...prev.cases].reverse() };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortDesc]);
 
   // Re-fetch user history when page changes
   useEffect(() => {
@@ -354,6 +363,7 @@ export default function ModerationPage() {
               sortDesc={sortDesc}
               actionFilter={actionFilter}
               userSearch={userSearch}
+              guildId={guildId}
               onPageChange={setPage}
               onSortToggle={() => setSortDesc((d) => !d)}
               onActionFilterChange={setActionFilter}

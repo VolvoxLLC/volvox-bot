@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Search, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, Search, X } from "lucide-react";
 import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,7 @@ interface CaseTableProps {
   sortDesc: boolean;
   actionFilter: string;
   userSearch: string;
+  guildId: string;
   onPageChange: (page: number) => void;
   onSortToggle: () => void;
   onActionFilterChange: (val: string) => void;
@@ -136,6 +137,7 @@ export function CaseTable({
   sortDesc,
   actionFilter,
   userSearch,
+  guildId,
   onPageChange,
   onSortToggle,
   onActionFilterChange,
@@ -143,10 +145,30 @@ export function CaseTable({
   onClearFilters,
 }: CaseTableProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedCase, setExpandedCase] = useState<ModCase | null>(null);
+  const [expandLoading, setExpandLoading] = useState(false);
 
-  const toggleExpand = useCallback((id: number) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  }, []);
+  const toggleExpand = useCallback(async (id: number, caseNumber: number) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      setExpandedCase(null);
+      return;
+    }
+    setExpandedId(id);
+    setExpandedCase(null);
+    setExpandLoading(true);
+    try {
+      const res = await fetch(`/api/moderation/cases/${caseNumber}?guildId=${encodeURIComponent(guildId)}`);
+      if (res.ok) {
+        const fullCase = await res.json() as ModCase;
+        setExpandedCase(fullCase);
+      }
+    } catch {
+      // Fall back to list data (no scheduledActions)
+    } finally {
+      setExpandLoading(false);
+    }
+  }, [expandedId, guildId]);
 
   if (error) {
     return (
@@ -229,7 +251,7 @@ export function CaseTable({
                   <TableRow
                     key={c.id}
                     className="cursor-pointer"
-                    onClick={() => toggleExpand(c.id)}
+                    onClick={() => toggleExpand(c.id, c.case_number)}
                   >
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       #{c.case_number}
@@ -254,7 +276,13 @@ export function CaseTable({
                   {expandedId === c.id && (
                     <TableRow key={`${c.id}-detail`}>
                       <TableCell colSpan={6} className="bg-muted/30 p-4">
-                        <CaseDetail modCase={c} />
+                        {expandLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <CaseDetail modCase={expandedCase ?? c} />
+                        )}
                       </TableCell>
                     </TableRow>
                   )}
