@@ -241,7 +241,7 @@ export function ConfigEditor() {
           // Abort all other in-flight requests before redirecting
           saveAbortController.abort();
           window.location.href = "/login";
-          return;
+          throw new Error('Unauthorized');
         }
 
         if (!res.ok) {
