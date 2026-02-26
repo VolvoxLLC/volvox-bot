@@ -182,7 +182,7 @@ async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
     if (Number.isNaN(permissions)) return false;
     return (permissions & anyOfFlags) !== 0;
   } catch (err) {
-    error('Redis error in hasOAuthGuildPermission', {
+    error('Error in hasOAuthGuildPermission (session lookup or guild fetch)', {
       error: err.message,
       userId: user?.userId,
       guildId,

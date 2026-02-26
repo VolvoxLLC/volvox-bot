@@ -4,6 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+import { error as logError } from '../../logger.js';
 import { getSessionToken } from '../utils/sessionStore.js';
 
 /**
@@ -56,7 +57,8 @@ export async function verifyJwtToken(token) {
   let sessionToken;
   try {
     sessionToken = await getSessionToken(decoded.userId);
-  } catch {
+  } catch (err) {
+    logError('Session lookup failed', { error: err.message, userId: decoded.userId });
     return { error: 'Session lookup failed', status: 503 };
   }
 
