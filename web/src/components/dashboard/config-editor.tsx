@@ -1028,14 +1028,31 @@ export function ConfigEditor() {
             </label>
             <label className="space-y-2">
               <span className="text-sm font-medium">Emoji</span>
-              <input
-                type="text"
-                value={draftConfig.starboard?.emoji ?? "⭐"}
-                onChange={(e) => updateStarboardField("emoji", e.target.value)}
-                disabled={saving}
-                className={inputClasses}
-                placeholder="⭐"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={draftConfig.starboard?.emoji ?? "⭐"}
+                  onChange={(e) => updateStarboardField("emoji", e.target.value.trim() || "⭐")}
+                  disabled={saving}
+                  className={inputClasses}
+                  placeholder="⭐"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateStarboardField("emoji", "*")}
+                  disabled={saving}
+                  className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                    draftConfig.starboard?.emoji === "*"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Any ✱
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Set a specific emoji (e.g. ⭐ 🔥 👍) or click <strong>Any</strong> to let any emoji trigger the starboard.
+              </p>
             </label>
           </div>
           <div className="flex items-center justify-between">
