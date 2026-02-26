@@ -105,8 +105,9 @@ router.get('/', async (req, res) => {
         const pool = getRestartPool();
         if (pool) {
           const rows = await getRestarts(pool, 20);
-          body.restarts = rows.map(r => ({
-            timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+          body.restarts = rows.map((r) => ({
+            timestamp:
+              r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
             reason: r.reason || 'unknown',
             version: r.version ?? null,
             uptimeBefore: r.uptime_seconds ?? null,

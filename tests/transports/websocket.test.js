@@ -61,7 +61,10 @@ describe('WebSocketTransport', () => {
       transport.addClient(ws);
 
       const callback = vi.fn();
-      transport.log({ level: 'info', message: 'hello world', timestamp: '2026-01-01T00:00:00Z' }, callback);
+      transport.log(
+        { level: 'info', message: 'hello world', timestamp: '2026-01-01T00:00:00Z' },
+        callback,
+      );
 
       expect(ws.send).toHaveBeenCalledOnce();
       const sent = JSON.parse(ws.send.mock.calls[0][0]);
@@ -96,7 +99,9 @@ describe('WebSocketTransport', () => {
 
     it('should handle send errors gracefully', () => {
       const ws = createMockWs();
-      ws.send.mockImplementation(() => { throw new Error('send failed'); });
+      ws.send.mockImplementation(() => {
+        throw new Error('send failed');
+      });
       transport.addClient(ws);
 
       const callback = vi.fn();
@@ -108,13 +113,16 @@ describe('WebSocketTransport', () => {
       const ws = createMockWs();
       transport.addClient(ws);
 
-      transport.log({
-        level: 'info',
-        message: 'test',
-        timestamp: '2026-01-01T00:00:00Z',
-        module: 'api',
-        userId: '123',
-      }, vi.fn());
+      transport.log(
+        {
+          level: 'info',
+          message: 'test',
+          timestamp: '2026-01-01T00:00:00Z',
+          module: 'api',
+          userId: '123',
+        },
+        vi.fn(),
+      );
 
       const sent = JSON.parse(ws.send.mock.calls[0][0]);
       expect(sent.metadata.module).toBe('api');
@@ -129,12 +137,15 @@ describe('WebSocketTransport', () => {
       const circular = {};
       circular.self = circular;
 
-      transport.log({
-        level: 'info',
-        message: 'test',
-        timestamp: '2026-01-01T00:00:00Z',
-        data: circular,
-      }, vi.fn());
+      transport.log(
+        {
+          level: 'info',
+          message: 'test',
+          timestamp: '2026-01-01T00:00:00Z',
+          data: circular,
+        },
+        vi.fn(),
+      );
 
       // Should still send — falls back to empty metadata
       expect(ws.send).toHaveBeenCalledOnce();
@@ -161,14 +172,20 @@ describe('WebSocketTransport', () => {
     it('should filter by module', () => {
       const filter = { module: 'api' };
 
-      expect(transport.passesFilter({ level: 'info', message: 'test', module: 'api' }, filter)).toBe(true);
-      expect(transport.passesFilter({ level: 'info', message: 'test', module: 'bot' }, filter)).toBe(false);
+      expect(
+        transport.passesFilter({ level: 'info', message: 'test', module: 'api' }, filter),
+      ).toBe(true);
+      expect(
+        transport.passesFilter({ level: 'info', message: 'test', module: 'bot' }, filter),
+      ).toBe(false);
     });
 
     it('should filter by search (case-insensitive)', () => {
       const filter = { search: 'ERROR' };
 
-      expect(transport.passesFilter({ level: 'info', message: 'An error occurred' }, filter)).toBe(true);
+      expect(transport.passesFilter({ level: 'info', message: 'An error occurred' }, filter)).toBe(
+        true,
+      );
       expect(transport.passesFilter({ level: 'info', message: 'All good' }, filter)).toBe(false);
     });
 
@@ -176,11 +193,17 @@ describe('WebSocketTransport', () => {
       const filter = { level: 'warn', module: 'api' };
 
       // Passes both
-      expect(transport.passesFilter({ level: 'error', message: 'test', module: 'api' }, filter)).toBe(true);
+      expect(
+        transport.passesFilter({ level: 'error', message: 'test', module: 'api' }, filter),
+      ).toBe(true);
       // Fails level
-      expect(transport.passesFilter({ level: 'info', message: 'test', module: 'api' }, filter)).toBe(false);
+      expect(
+        transport.passesFilter({ level: 'info', message: 'test', module: 'api' }, filter),
+      ).toBe(false);
       // Fails module
-      expect(transport.passesFilter({ level: 'error', message: 'test', module: 'bot' }, filter)).toBe(false);
+      expect(
+        transport.passesFilter({ level: 'error', message: 'test', module: 'bot' }, filter),
+      ).toBe(false);
     });
 
     it('should apply per-client filters during broadcast', () => {
@@ -194,13 +217,19 @@ describe('WebSocketTransport', () => {
       transport.addClient(wsErrorOnly);
 
       // Send an info-level log
-      transport.log({ level: 'info', message: 'info msg', timestamp: '2026-01-01T00:00:00Z' }, vi.fn());
+      transport.log(
+        { level: 'info', message: 'info msg', timestamp: '2026-01-01T00:00:00Z' },
+        vi.fn(),
+      );
 
       expect(wsAll.send).toHaveBeenCalledOnce();
       expect(wsErrorOnly.send).not.toHaveBeenCalled();
 
       // Send an error-level log
-      transport.log({ level: 'error', message: 'error msg', timestamp: '2026-01-01T00:00:00Z' }, vi.fn());
+      transport.log(
+        { level: 'error', message: 'error msg', timestamp: '2026-01-01T00:00:00Z' },
+        vi.fn(),
+      );
 
       expect(wsAll.send).toHaveBeenCalledTimes(2);
       expect(wsErrorOnly.send).toHaveBeenCalledOnce();

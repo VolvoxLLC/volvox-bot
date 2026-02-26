@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildStatsAndLog,
   fetchChannelContext,
@@ -557,7 +557,16 @@ describe('triage-respond', () => {
         },
       };
 
-      const result = await buildStatsAndLog({}, {}, {}, snapshot, classification, 0, mockClient, 'channel1');
+      const result = await buildStatsAndLog(
+        {},
+        {},
+        {},
+        snapshot,
+        classification,
+        0,
+        mockClient,
+        'channel1',
+      );
 
       expect(result.stats.userId).toBe(null);
     });
