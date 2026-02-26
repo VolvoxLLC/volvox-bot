@@ -49,8 +49,15 @@ function getSslConfig(connectionString) {
 }
 
 /**
- * Initialize the database connection pool and create schema
- * @returns {Promise<pg.Pool>} The connection pool
+ * Initialize the database connection pool and create the required schema.
+ *
+ * Creates a pg.Pool configured from DATABASE_URL and PG_POOL_SIZE, verifies connectivity,
+ * and creates/migrates all required tables and indexes. On schema setup failure the
+ * created pool is closed and the error is rethrown.
+ *
+ * @returns {pg.Pool} The initialized PostgreSQL connection pool.
+ * @throws {Error} If initDb is already in progress.
+ * @throws {Error} If the DATABASE_URL environment variable is not set.
  */
 export async function initDb() {
   if (initializing) {
@@ -76,7 +83,7 @@ export async function initDb() {
 
     // Prevent unhandled pool errors from crashing the process
     pool.on('error', (err) => {
-      logError('Unexpected database pool error', { error: err.message });
+      logError('Unexpected database pool error', { error: err.message, source: 'database_pool' });
     });
 
     try {
