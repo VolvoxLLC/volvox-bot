@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 1
 
       - name: Claude Code Review
-        uses: anthropics/claude-code-action@23ed4cb53d6eacddbc22ec16652c98bcc54e0476 # v1.0.48
+        uses: anthropics/claude-code-action
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: '*'
@@ -72,7 +72,7 @@ jobs:
             - No exploiting and/or getting around the sanitizer
 
             ## Discord-Specific
-            - 2000-char message limit handled (splitMessage utility)
+            - 2000-character message limit handled (splitMessage utility)
             - Proper intent declarations if new events are used
             - DM before action pattern for moderation (DM target before kick/ban)
             - Ephemeral replies for moderation commands
@@ -97,6 +97,11 @@ jobs:
             - Categorize findings by severity: 🔴 Critical, 🟡 Warning, 🔵 Nitpick
             - **ONLY report issues** — do NOT include praise, "what's good", positives, or compliments. No "great job", no "well done", no "nice pattern". The review output should contain ONLY things that need fixing. If there are zero issues, just approve with a one-line message.
             - Do NOT invent issues — only flag real problems
+
+            Top-LEVEL SUMMARY:
+            - Top-level summary should include a collapsible code block section to fix all issues with an AI prompt
+            - Include all issues, their files and line numbers, and instructions on how to fix them
+            - The goal is to be able to copy and paste it into an AI agent to fix all of them
 
             VERDICT (MANDATORY — do this LAST):
             After reviewing, submit a GitHub review verdict:
