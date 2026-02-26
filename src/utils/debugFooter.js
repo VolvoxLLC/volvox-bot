@@ -308,7 +308,7 @@ export function logAiUsage(guildId, channelId, stats) {
 
   pool
     .query(sql, [
-      guildId || 'unknown',
+      guildId || null,
       channelId,
       'classify',
       c.model || 'unknown',
@@ -325,7 +325,7 @@ export function logAiUsage(guildId, channelId, stats) {
 
   pool
     .query(sql, [
-      guildId || 'unknown',
+      guildId || null,
       channelId,
       'respond',
       r.model || 'unknown',

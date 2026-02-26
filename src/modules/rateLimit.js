@@ -208,6 +208,46 @@ export async function checkRateLimit(message, config) {
   return { limited: true, reason };
 }
 
+/** @type {ReturnType<typeof setInterval> | null} */
+let cleanupInterval = null;
+
+/**
+ * Start periodic cleanup of stale windowMap entries.
+ * Removes entries whose newest timestamp is older than the default window duration.
+ * Runs every 5 minutes.
+ */
+function startRateLimitCleanup() {
+  if (cleanupInterval) return;
+  const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  const DEFAULT_WINDOW_MS = 10 * 1000; // fallback window
+
+  cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of windowMap) {
+      const newest = entry.timestamps.length > 0
+        ? entry.timestamps[entry.timestamps.length - 1]
+        : 0;
+      if (now - newest > DEFAULT_WINDOW_MS) {
+        windowMap.delete(key);
+      }
+    }
+  }, CLEANUP_INTERVAL_MS);
+}
+
+// Auto-start cleanup when module loads
+startRateLimitCleanup();
+
+/**
+ * Stop the periodic windowMap cleanup interval.
+ * Call during graceful shutdown.
+ */
+export function stopRateLimitCleanup() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+}
+
 /**
  * Clear all rate limit state. Primarily for testing.
  */

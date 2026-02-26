@@ -43,7 +43,14 @@ import {
 // ── Module-level references (set by startTriage) ────────────────────────────
 /** @type {import('discord.js').Client|null} */
 let client = null;
-/** @type {Object|null} */
+/**
+ * getConfig() returns a mutable reference to the global config object.
+ * Module-level `config` captures this reference at startTriage() time.
+ * If the config object is ever *replaced* (as opposed to mutated in-place),
+ * this cached reference becomes stale. Currently setConfigValue() mutates
+ * in-place, so the reference stays valid — but this is a fragile contract.
+ * @type {Object|null}
+ */
 let config = null;
 /** @type {Object|null} */
 let healthMonitor = null;
@@ -533,6 +540,8 @@ export async function accumulateMessage(message, msgConfig) {
   scheduleEvaluation(channelId, msgConfig);
 }
 
+const MAX_REEVAL_DEPTH = 3;
+
 /**
  * Trigger an immediate triage evaluation for the given channel.
  *
@@ -540,8 +549,13 @@ export async function accumulateMessage(message, msgConfig) {
  * @param {Object} evalConfig - Bot configuration.
  * @param {import('discord.js').Client} evalClient - Discord client.
  * @param {Object} [evalMonitor] - Health monitor.
+ * @param {number} [depth=0] - Current recursion depth (guards against infinite re-evaluation loops).
  */
-export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor) {
+export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor, depth = 0) {
+  if (depth >= MAX_REEVAL_DEPTH) {
+    warn('evaluateNow recursion depth limit reached, skipping re-evaluation', { channelId, depth });
+    return;
+  }
   const buf = channelBuffers.get(channelId);
   if (!buf || buf.messages.length === 0) return;
 
@@ -597,6 +611,7 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
         config || evalConfig,
         evalClient || client,
         evalMonitor || healthMonitor,
+        depth + 1,
       ).catch((err) => {
         logError('Pending re-evaluation failed', { channelId, error: err.message });
       });
@@ -604,18 +619,3 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   }
 }
 
-/**
- * Handle an @mention or reply to the bot.
- * Accumulates the message and forces immediate evaluation.
- * Facade for events.js so it doesn't reach into buffer internals.
- *
- * @param {import('discord.js').Message} message - The triggering Discord message
- * @param {Object} mentionConfig - Bot configuration
- * @param {import('discord.js').Client} mentionClient - Discord client
- * @param {Object} [mentionMonitor] - Health monitor
- */
-export async function handleMention(message, mentionConfig, mentionClient, mentionMonitor) {
-  accumulateMessage(message, mentionConfig);
-  message.channel.sendTyping().catch(() => {});
-  await evaluateNow(message.channel.id, mentionConfig, mentionClient, mentionMonitor);
-}

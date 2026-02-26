@@ -15,10 +15,14 @@ const UNITS = {
 
 const DURATION_RE = /^\s*(\d+)\s*([smhdw])\s*$/i;
 
+/** Maximum allowed duration: 1 year in milliseconds. */
+const MAX_DURATION_MS = 365 * 24 * 60 * 60 * 1000;
+
 /**
  * Parse a duration string into milliseconds.
+ * Returns null if the parsed duration exceeds 1 year.
  * @param {string} str - Duration string (e.g. "30s", "5m", "1h", "7d", "2w")
- * @returns {number|null} Duration in milliseconds, or null if invalid
+ * @returns {number|null} Duration in milliseconds, or null if invalid or exceeds max
  */
 export function parseDuration(str) {
   if (typeof str !== 'string') return null;
@@ -32,6 +36,7 @@ export function parseDuration(str) {
   const unit = match[2].toLowerCase();
   const ms = value * UNITS[unit];
   if (!Number.isFinite(ms)) return null;
+  if (ms > MAX_DURATION_MS) return null;
   return ms;
 }
 
@@ -60,12 +65,16 @@ const UNIT_LIST = [
 export function formatDuration(ms) {
   if (typeof ms !== 'number' || ms <= 0) return '0 seconds';
 
+  const parts = [];
+  let remaining = ms;
+
   for (const unit of UNIT_LIST) {
-    if (ms >= unit.ms && ms % unit.ms === 0) {
-      const count = ms / unit.ms;
-      return `${count} ${count === 1 ? unit.singular : unit.plural}`;
+    if (remaining >= unit.ms) {
+      const count = Math.floor(remaining / unit.ms);
+      remaining -= count * unit.ms;
+      parts.push(`${count} ${count === 1 ? unit.singular : unit.plural}`);
     }
   }
 
-  return '0 seconds';
+  return parts.length > 0 ? parts.join(' ') : '0 seconds';
 }

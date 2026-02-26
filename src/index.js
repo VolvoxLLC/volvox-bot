@@ -48,6 +48,7 @@ import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
+import { stopRateLimitCleanup } from './modules/rateLimit.js';
 import { loadOptOuts } from './modules/optout.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { pruneOldLogs } from './transports/postgres.js';
@@ -261,10 +262,11 @@ client.on('interactionCreate', async (interaction) => {
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });
 
-  // 1. Stop triage, conversation cleanup timer, and tempban scheduler
+  // 1. Stop triage, conversation cleanup timer, tempban scheduler, and rate limit cleanup
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
+  stopRateLimitCleanup();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {

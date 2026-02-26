@@ -29,12 +29,11 @@ export async function execute(interaction) {
       if (!target) return { earlyReturn: '\u274C User is not in this server.' };
       return { target, targetId: target.id, targetTag: target.user.tag };
     },
-    afterCase: async (_caseData, inter, config) => {
-      const target = inter.options.getMember('user');
+    afterCase: async (caseData, inter, config) => {
       await checkEscalation(
         inter.client,
         inter.guild.id,
-        target.id,
+        caseData.target_id,
         inter.client.user.id,
         inter.client.user.tag,
         config,
