@@ -316,14 +316,14 @@ export function ConfigEditor() {
   const updateTriageEnabled = useCallback((enabled: boolean) => {
     setDraftConfig((prev) => {
       if (!prev) return prev;
-      return { ...prev, triage: { ...prev.triage, enabled } };
+      return { ...prev, triage: { ...prev.triage, enabled } } as typeof prev;
     });
   }, []);
 
   const updateTriageField = useCallback((field: string, value: unknown) => {
     setDraftConfig((prev) => {
       if (!prev) return prev;
-      return { ...prev, triage: { ...prev.triage, [field]: value } };
+      return { ...prev, triage: { ...prev.triage, [field]: value } } as typeof prev;
     });
   }, []);
 
