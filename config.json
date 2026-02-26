@@ -84,6 +84,14 @@
     "maxContextMemories": 5,
     "autoExtract": true
   },
+  "starboard": {
+    "enabled": false,
+    "channelId": "",
+    "threshold": 3,
+    "emoji": "⭐",
+    "selfStarAllowed": false,
+    "ignoredChannels": []
+  },
   "logging": {
     "level": "info",
     "fileOutput": true,

@@ -119,6 +119,7 @@ export interface PermissionsConfig {
   enabled: boolean;
   adminRoleId: string | null;
   moderatorRoleId: string | null;
+  modRoles: string[];
   botOwners: string[];
   usePermissions: boolean;
   allowedCommands: Record<string, string>;
