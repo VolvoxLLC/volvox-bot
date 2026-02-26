@@ -17,6 +17,9 @@ describe('configAllowlist', () => {
       expect(SAFE_CONFIG_KEYS.has('spam')).toBe(true);
       expect(SAFE_CONFIG_KEYS.has('moderation')).toBe(true);
       expect(SAFE_CONFIG_KEYS.has('triage')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('starboard')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('permissions')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('memory')).toBe(true);
     });
   });
 
