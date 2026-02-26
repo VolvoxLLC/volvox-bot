@@ -695,7 +695,7 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.maxMessages ?? 10}
                     onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 0);
+                      const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField("maxMessages", num);
                     }}
                     disabled={saving}
@@ -709,7 +709,7 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.windowSeconds ?? 10}
                     onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 0);
+                      const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField("windowSeconds", num);
                     }}
                     disabled={saving}
@@ -725,7 +725,7 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteAfterTriggers ?? 3}
                     onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 0);
+                      const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField("muteAfterTriggers", num);
                     }}
                     disabled={saving}
@@ -739,7 +739,7 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteWindowSeconds ?? 300}
                     onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 0);
+                      const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField("muteWindowSeconds", num);
                     }}
                     disabled={saving}
@@ -753,7 +753,7 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteDurationSeconds ?? 300}
                     onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 0);
+                      const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField("muteDurationSeconds", num);
                     }}
                     disabled={saving}
@@ -878,7 +878,7 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.defaultInterval ?? 3000}
                   onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 0);
+                    const num = parseNumberInput(e.target.value, 1);
                     if (num !== undefined) updateTriageField("defaultInterval", num);
                   }}
                   disabled={saving}
@@ -892,7 +892,7 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.timeout ?? 30000}
                   onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 0);
+                    const num = parseNumberInput(e.target.value, 1);
                     if (num !== undefined) updateTriageField("timeout", num);
                   }}
                   disabled={saving}
@@ -908,7 +908,7 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.contextMessages ?? 10}
                   onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 0);
+                    const num = parseNumberInput(e.target.value, 1);
                     if (num !== undefined) updateTriageField("contextMessages", num);
                   }}
                   disabled={saving}
@@ -922,7 +922,7 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.maxBufferSize ?? 30}
                   onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 0);
+                    const num = parseNumberInput(e.target.value, 1);
                     if (num !== undefined) updateTriageField("maxBufferSize", num);
                   }}
                   disabled={saving}
@@ -1107,7 +1107,7 @@ export function ConfigEditor() {
             <input
               type="text"
               value={draftConfig.permissions?.adminRoleId ?? ""}
-              onChange={(e) => updatePermissionsField("adminRoleId", e.target.value)}
+              onChange={(e) => updatePermissionsField("adminRoleId", e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Discord role ID for admins"
@@ -1118,7 +1118,7 @@ export function ConfigEditor() {
             <input
               type="text"
               value={draftConfig.permissions?.moderatorRoleId ?? ""}
-              onChange={(e) => updatePermissionsField("moderatorRoleId", e.target.value)}
+              onChange={(e) => updatePermissionsField("moderatorRoleId", e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Discord role ID for moderators"
@@ -1169,7 +1169,7 @@ export function ConfigEditor() {
               min={1}
               value={draftConfig.memory?.maxContextMemories ?? 10}
               onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 0);
+                const num = parseNumberInput(e.target.value, 1);
                 if (num !== undefined) updateMemoryField("maxContextMemories", num);
               }}
               disabled={saving}
