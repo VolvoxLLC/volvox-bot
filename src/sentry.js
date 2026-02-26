@@ -27,10 +27,13 @@ if (dsn) {
     environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
 
     // Performance monitoring — sample 10% of transactions by default
-    tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_RATE) || 0.1,
+    // Use ?? so SENTRY_TRACES_RATE=0 explicitly disables tracing
+    tracesSampleRate: (() => {
+      const parsed = parseFloat(process.env.SENTRY_TRACES_RATE);
+      return Number.isFinite(parsed) ? parsed : 0.1;
+    })(),
 
     // Automatically capture unhandled rejections and uncaught exceptions
-    // (Sentry v8 does this by default, but being explicit)
     autoSessionTracking: true,
 
     // Filter out noisy/expected errors

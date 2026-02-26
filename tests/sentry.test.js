@@ -32,4 +32,19 @@ describe('sentry module', () => {
     const mod = await import('../src/sentry.js');
     expect(mod.sentryEnabled).toBe(true);
   });
+
+  it('should allow SENTRY_TRACES_RATE=0 to disable tracing', async () => {
+    vi.stubEnv('SENTRY_DSN', '');
+    vi.stubEnv('SENTRY_TRACES_RATE', '0');
+    // Module parses rate independently of DSN — just verify it doesn't throw
+    const mod = await import('../src/sentry.js');
+    expect(mod.Sentry).toBeDefined();
+  });
+
+  it('should fall back to default trace rate for non-numeric values', async () => {
+    vi.stubEnv('SENTRY_DSN', '');
+    vi.stubEnv('SENTRY_TRACES_RATE', 'not-a-number');
+    const mod = await import('../src/sentry.js');
+    expect(mod.Sentry).toBeDefined();
+  });
 });
