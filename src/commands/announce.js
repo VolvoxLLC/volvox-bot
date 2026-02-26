@@ -11,7 +11,7 @@ import { info, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { getNextCronRun, parseCron } from '../modules/scheduler.js';
 import { getPermissionError, isModerator } from '../utils/permissions.js';
-import { safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('announce')
@@ -102,10 +102,13 @@ export function parseTime(timeStr) {
   // "tomorrow HH:MM" or "tomorrow HH"
   const tomorrowMatch = str.match(/^tomorrow\s+(\d{1,2}):?(\d{2})?$/);
   if (tomorrowMatch) {
+    const hours = Number.parseInt(tomorrowMatch[1], 10);
+    const minutes = Number.parseInt(tomorrowMatch[2] || '0', 10);
+    if (hours > 23 || minutes > 59) return null;
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    d.setHours(Number.parseInt(tomorrowMatch[1], 10));
-    d.setMinutes(Number.parseInt(tomorrowMatch[2] || '0', 10));
+    d.setHours(hours);
+    d.setMinutes(minutes);
     d.setSeconds(0, 0);
     return d;
   }
@@ -113,13 +116,12 @@ export function parseTime(timeStr) {
   // "YYYY-MM-DD HH:MM"
   const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})$/);
   if (isoMatch) {
-    const d = new Date(
-      Number.parseInt(isoMatch[1], 10),
-      Number.parseInt(isoMatch[2], 10) - 1,
-      Number.parseInt(isoMatch[3], 10),
-      Number.parseInt(isoMatch[4], 10),
-      Number.parseInt(isoMatch[5], 10),
-    );
+    const month = Number.parseInt(isoMatch[2], 10);
+    const day = Number.parseInt(isoMatch[3], 10);
+    const hours = Number.parseInt(isoMatch[4], 10);
+    const minutes = Number.parseInt(isoMatch[5], 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31 || hours > 23 || minutes > 59) return null;
+    const d = new Date(Number.parseInt(isoMatch[1], 10), month - 1, day, hours, minutes);
     if (Number.isNaN(d.getTime())) return null;
     return d;
   }
@@ -143,8 +145,14 @@ export async function execute(interaction) {
     return;
   }
 
+  await interaction.deferReply({ ephemeral: true });
+
   const subcommand = interaction.options.getSubcommand();
   const pool = getPool();
+  if (!pool) {
+    await safeEditReply(interaction, { content: '❌ Database is not available.' });
+    return;
+  }
 
   if (subcommand === 'once') {
     await handleOnce(interaction, pool);
@@ -167,7 +175,7 @@ async function handleOnce(interaction, pool) {
 
   const nextRun = parseTime(timeStr);
   if (!nextRun) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content:
         '❌ Could not parse time. Use formats like `in 2h`, `tomorrow 09:00`, or `2024-03-15 14:00`.',
       ephemeral: true,
@@ -176,7 +184,7 @@ async function handleOnce(interaction, pool) {
   }
 
   if (nextRun <= new Date()) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '❌ The scheduled time must be in the future.',
       ephemeral: true,
     });
@@ -197,7 +205,7 @@ async function handleOnce(interaction, pool) {
     nextRun: nextRun.toISOString(),
   });
 
-  await safeReply(interaction, {
+  await safeEditReply(interaction, {
     content: `✅ Scheduled message **#${rows[0].id}** to <#${channel.id}> at <t:${Math.floor(nextRun.getTime() / 1000)}:F>.`,
     ephemeral: true,
   });
@@ -215,7 +223,7 @@ async function handleRecurring(interaction, pool) {
   try {
     parseCron(cronExpr);
   } catch {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content:
         '❌ Invalid cron expression. Must be 5 fields: `minute hour day month weekday`.\nExamples: `0 9 * * *` (daily 9am), `0 9 * * 1` (Monday 9am)',
       ephemeral: true,
@@ -227,7 +235,7 @@ async function handleRecurring(interaction, pool) {
   try {
     nextRun = getNextCronRun(cronExpr, new Date());
   } catch {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '❌ Could not compute next run time from cron expression.',
       ephemeral: true,
     });
@@ -256,7 +264,7 @@ async function handleRecurring(interaction, pool) {
     nextRun: nextRun.toISOString(),
   });
 
-  await safeReply(interaction, {
+  await safeEditReply(interaction, {
     content: `✅ Recurring message **#${rows[0].id}** scheduled to <#${channel.id}>.\nCron: \`${cronExpr}\`\nNext run: <t:${Math.floor(nextRun.getTime() / 1000)}:F>`,
     ephemeral: true,
   });
@@ -275,22 +283,33 @@ async function handleList(interaction, pool) {
   );
 
   if (rows.length === 0) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '📭 No scheduled messages for this server.',
       ephemeral: true,
     });
     return;
   }
 
-  const lines = rows.map((row) => {
+  const header = `📋 **Scheduled Messages (${rows.length})**\n\n`;
+  const lines = [];
+  let totalLen = header.length;
+
+  for (const row of rows) {
     const type = row.one_time ? '⏰ Once' : `🔁 \`${row.cron_expression}\``;
     const ts = Math.floor(new Date(row.next_run).getTime() / 1000);
     const preview = row.content.length > 50 ? `${row.content.slice(0, 50)}…` : row.content;
-    return `**#${row.id}** — ${type} → <#${row.channel_id}> — <t:${ts}:R>\n> ${preview}`;
-  });
+    const line = `**#${row.id}** — ${type} → <#${row.channel_id}> — <t:${ts}:R>\n> ${preview}`;
 
-  await safeReply(interaction, {
-    content: `📋 **Scheduled Messages (${rows.length})**\n\n${lines.join('\n\n')}`,
+    if (totalLen + line.length + 2 > 1900) {
+      lines.push(`… and ${rows.length - lines.length} more`);
+      break;
+    }
+    lines.push(line);
+    totalLen += line.length + 2;
+  }
+
+  await safeEditReply(interaction, {
+    content: `${header}${lines.join('\n\n')}`,
     ephemeral: true,
   });
 }
@@ -302,12 +321,12 @@ async function handleCancel(interaction, pool) {
   const id = interaction.options.getInteger('id');
 
   const { rows } = await pool.query(
-    'SELECT id, author_id, guild_id FROM scheduled_messages WHERE id = $1 AND enabled = true',
-    [id],
+    'SELECT id, author_id, guild_id FROM scheduled_messages WHERE id = $1 AND guild_id = $2 AND enabled = true',
+    [id, interaction.guildId],
   );
 
   if (rows.length === 0) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: `❌ No active scheduled message with ID **#${id}** found.`,
       ephemeral: true,
     });
@@ -316,19 +335,10 @@ async function handleCancel(interaction, pool) {
 
   const msg = rows[0];
 
-  // Check guild match
-  if (msg.guild_id !== interaction.guildId) {
-    await safeReply(interaction, {
-      content: `❌ No active scheduled message with ID **#${id}** found.`,
-      ephemeral: true,
-    });
-    return;
-  }
-
   // Allow original author or admin to cancel
   const config = getConfig(interaction.guildId);
   if (msg.author_id !== interaction.user.id && !isModerator(interaction.member, config)) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '❌ You can only cancel your own scheduled messages unless you are a moderator.',
       ephemeral: true,
     });
@@ -343,7 +353,7 @@ async function handleCancel(interaction, pool) {
 
   info('Scheduled message cancelled', { id, cancelledBy: interaction.user.id });
 
-  await safeReply(interaction, {
+  await safeEditReply(interaction, {
     content: `✅ Scheduled message **#${id}** has been cancelled.`,
     ephemeral: true,
   });

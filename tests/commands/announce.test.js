@@ -115,6 +115,7 @@ function createMockInteraction(subcommand, options = {}) {
     },
     reply: vi.fn(),
     editReply: vi.fn(),
+    deferReply: vi.fn(),
   };
 }
 
@@ -172,7 +173,7 @@ describe('announce command', () => {
         expect.stringContaining('INSERT INTO scheduled_messages'),
         expect.arrayContaining(['guild-123', 'ch-789', 'Hello world!']),
       );
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Scheduled message **#1**'),
           ephemeral: true,
@@ -189,7 +190,7 @@ describe('announce command', () => {
 
       await execute(interaction);
 
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Could not parse time'),
           ephemeral: true,
@@ -215,7 +216,7 @@ describe('announce command', () => {
         expect.stringContaining('INSERT INTO scheduled_messages'),
         expect.arrayContaining(['guild-123', 'ch-789', 'Daily update!', '0 9 * * *']),
       );
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Recurring message **#2**'),
           ephemeral: true,
@@ -232,7 +233,7 @@ describe('announce command', () => {
 
       await execute(interaction);
 
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Invalid cron expression'),
           ephemeral: true,
@@ -263,7 +264,7 @@ describe('announce command', () => {
 
       await execute(interaction);
 
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Scheduled Messages (1)'),
           ephemeral: true,
@@ -278,7 +279,7 @@ describe('announce command', () => {
 
       await execute(interaction);
 
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('No scheduled messages'),
           ephemeral: true,
@@ -303,7 +304,7 @@ describe('announce command', () => {
         expect.stringContaining('UPDATE scheduled_messages SET enabled = false'),
         [5],
       );
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('has been cancelled'),
           ephemeral: true,
@@ -318,7 +319,7 @@ describe('announce command', () => {
 
       await execute(interaction);
 
-      expect(interaction.reply).toHaveBeenCalledWith(
+      expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('No active scheduled message'),
           ephemeral: true,
