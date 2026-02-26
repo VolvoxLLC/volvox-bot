@@ -20,10 +20,11 @@ RUN addgroup --system --gid 1001 botgroup && \
 # Copy production dependencies
 COPY --from=deps --chown=botuser:botgroup /app/node_modules ./node_modules
 
-# Copy application source and config
+# Copy application source, config, and migrations
 COPY --chown=botuser:botgroup package.json ./
 COPY --chown=botuser:botgroup config.json ./
 COPY --chown=botuser:botgroup src/ ./src/
+COPY --chown=botuser:botgroup migrations/ ./migrations/
 
 # Create data directory for state persistence
 RUN mkdir -p data && chown botuser:botgroup data

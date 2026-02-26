@@ -38,7 +38,7 @@ import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
 import { startTriage, stopTriage } from './modules/triage.js';
-import { initLogsTable, pruneOldLogs } from './transports/postgres.js';
+import { pruneOldLogs } from './transports/postgres.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
@@ -354,7 +354,6 @@ async function startup() {
     // Wire up PostgreSQL logging transport if enabled in config
     if (config.logging?.database?.enabled) {
       try {
-        await initLogsTable(dbPool);
         const transport = addPostgresTransport(dbPool, config.logging.database);
         setInitialTransport(transport);
         info('PostgreSQL logging transport enabled');

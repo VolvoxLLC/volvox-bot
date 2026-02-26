@@ -15,6 +15,9 @@
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "format": "biome format . --write",
+    "migrate": "node-pg-migrate up --migrations-dir migrations",
+    "migrate:down": "node-pg-migrate down --migrations-dir migrations",
+    "migrate:create": "node-pg-migrate create --migrations-dir migrations",
     "prepare": "git config core.hooksPath .hooks"
   },
   "dependencies": {
@@ -24,6 +27,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mem0ai": "^2.2.2",
+    "node-pg-migrate": "^8.0.4",
     "pg": "^8.18.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
@@ -36,7 +40,7 @@
     }
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.11.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",

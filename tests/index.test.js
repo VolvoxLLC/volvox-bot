@@ -50,7 +50,6 @@ const mocks = vi.hoisted(() => ({
   },
 
   postgres: {
-    initLogsTable: vi.fn(),
     pruneOldLogs: vi.fn(),
   },
 
@@ -170,7 +169,6 @@ vi.mock('../src/modules/config.js', () => ({
 }));
 
 vi.mock('../src/transports/postgres.js', () => ({
-  initLogsTable: mocks.postgres.initLogsTable,
   pruneOldLogs: mocks.postgres.pruneOldLogs,
 }));
 
@@ -264,7 +262,6 @@ async function importIndex({
   mocks.ai.stopConversationCleanup.mockReset();
 
   mocks.config.onConfigChangeCallbacks = {};
-  mocks.postgres.initLogsTable.mockReset().mockResolvedValue(undefined);
   mocks.postgres.pruneOldLogs.mockReset().mockResolvedValue(0);
 
   mocks.config.loadConfig.mockReset().mockImplementation(() => {
@@ -746,7 +743,6 @@ describe('index.js', () => {
       loggingConfig.logging.database.enabled = true;
       await invokeConfigCallback('logging.database.enabled', true);
 
-      expect(mocks.postgres.initLogsTable).toHaveBeenCalled();
       expect(mocks.logger.addPostgresTransport).toHaveBeenCalled();
       expect(mocks.logger.info).toHaveBeenCalledWith(
         'PostgreSQL logging transport enabled via config change',

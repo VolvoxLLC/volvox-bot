@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { initLogsTable } from '../src/transports/postgres.js';
 
 const pgMocks = vi.hoisted(() => ({
   poolConfig: null,
@@ -11,9 +10,13 @@ const pgMocks = vi.hoisted(() => ({
   clientRelease: vi.fn(),
 }));
 
-// Mock the postgres transport (imported by db.js for initLogsTable)
-vi.mock('../src/transports/postgres.js', () => ({
-  initLogsTable: vi.fn().mockResolvedValue(undefined),
+const migrationMocks = vi.hoisted(() => ({
+  runner: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock node-pg-migrate runner
+vi.mock('node-pg-migrate', () => ({
+  runner: migrationMocks.runner,
 }));
 
 vi.mock('pg', () => {
@@ -61,6 +64,7 @@ describe('db module', () => {
     pgMocks.poolEnd.mockReset().mockResolvedValue(undefined);
     pgMocks.clientQuery.mockReset().mockResolvedValue({});
     pgMocks.clientRelease.mockReset();
+    migrationMocks.runner.mockReset().mockResolvedValue(undefined);
 
     pgMocks.poolConnect.mockResolvedValue({
       query: pgMocks.clientQuery,
@@ -96,7 +100,7 @@ describe('db module', () => {
   });
 
   describe('initDb', () => {
-    it('should initialize database pool and create schema', async () => {
+    it('should initialize database pool and run migrations', async () => {
       const pool = await dbModule.initDb();
       expect(pool).toBeDefined();
 
@@ -104,34 +108,14 @@ describe('db module', () => {
       expect(pgMocks.clientQuery).toHaveBeenCalledWith('SELECT NOW()');
       expect(pgMocks.clientRelease).toHaveBeenCalled();
 
-      // Should have created tables and indexes
-      const queries = pgMocks.poolQuery.mock.calls.map((c) => c[0]);
-      expect(queries.some((q) => q.includes('CREATE TABLE IF NOT EXISTS config'))).toBe(true);
-      expect(queries.some((q) => q.includes('CREATE TABLE IF NOT EXISTS conversations'))).toBe(
-        true,
-      );
-      expect(queries.some((q) => q.includes('idx_conversations_channel_created'))).toBe(true);
-      expect(queries.some((q) => q.includes('idx_conversations_created_at'))).toBe(true);
-      expect(queries.some((q) => q.includes('idx_conversations_guild_id'))).toBe(true);
-
-      // Moderation tables
-      expect(queries.some((q) => q.includes('CREATE TABLE IF NOT EXISTS mod_cases'))).toBe(true);
-      expect(
-        queries.some((q) => q.includes('CREATE TABLE IF NOT EXISTS mod_scheduled_actions')),
-      ).toBe(true);
-      expect(queries.some((q) => q.includes('idx_mod_cases_guild_target'))).toBe(true);
-      expect(queries.some((q) => q.includes('idx_mod_scheduled_actions_pending'))).toBe(true);
-    });
-
-    it('should initialize the logs table during schema setup', async () => {
-      await dbModule.initDb();
-      expect(initLogsTable).toHaveBeenCalled();
-    });
-
-    it('should not fail startup if logs table initialization fails', async () => {
-      initLogsTable.mockRejectedValueOnce(new Error('logs table failed'));
-      const pool = await dbModule.initDb();
-      expect(pool).toBeDefined();
+      // Should have called the migration runner
+      expect(migrationMocks.runner).toHaveBeenCalledTimes(1);
+      const runnerOpts = migrationMocks.runner.mock.calls[0][0];
+      expect(runnerOpts.databaseUrl).toBe('postgresql://test:test@localhost:5432/testdb');
+      expect(runnerOpts.direction).toBe('up');
+      expect(runnerOpts.migrationsTable).toBe('pgmigrations');
+      expect(runnerOpts.dir).toContain('migrations');
+      expect(typeof runnerOpts.log).toBe('function');
     });
 
     it('should return existing pool on second call', async () => {
@@ -140,6 +124,7 @@ describe('db module', () => {
 
       expect(pool1).toBe(pool2);
       expect(pgMocks.poolConnect).toHaveBeenCalledTimes(1);
+      expect(migrationMocks.runner).toHaveBeenCalledTimes(1);
     });
 
     it('should reject concurrent initDb calls while initialization is in progress', async () => {
@@ -174,6 +159,12 @@ describe('db module', () => {
     it('should clean up pool on connection test failure', async () => {
       pgMocks.poolConnect.mockRejectedValueOnce(new Error('connection failed'));
       await expect(dbModule.initDb()).rejects.toThrow('connection failed');
+      expect(pgMocks.poolEnd).toHaveBeenCalled();
+    });
+
+    it('should clean up pool on migration failure', async () => {
+      migrationMocks.runner.mockRejectedValueOnce(new Error('migration failed'));
+      await expect(dbModule.initDb()).rejects.toThrow('migration failed');
       expect(pgMocks.poolEnd).toHaveBeenCalled();
     });
   });

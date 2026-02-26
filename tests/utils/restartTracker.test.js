@@ -47,7 +47,7 @@ describe('restartTracker', () => {
   // ---------------------------------------------------------------------------
 
   describe('recordRestart', () => {
-    it('creates the table then inserts a row, returns the new id', async () => {
+    it('inserts a row and returns the new id', async () => {
       const pool = makePool({
         'RETURNING id': { rows: [{ id: 42 }] },
       });
@@ -55,12 +55,9 @@ describe('restartTracker', () => {
       const id = await recordRestart(pool, 'startup', '1.0.0');
 
       expect(id).toBe(42);
-      // First call: CREATE TABLE IF NOT EXISTS
-      expect(pool.query.mock.calls[0][0]).toContain('CREATE TABLE IF NOT EXISTS bot_restarts');
-      // Second call: INSERT
-      const insertCall = pool.query.mock.calls[1];
-      expect(insertCall[0]).toContain('INSERT INTO bot_restarts');
-      expect(insertCall[1]).toEqual(['startup', '1.0.0']);
+      // Should directly INSERT (no ensureTable call)
+      expect(pool.query.mock.calls[0][0]).toContain('INSERT INTO bot_restarts');
+      expect(pool.query.mock.calls[0][1]).toEqual(['startup', '1.0.0']);
     });
 
     it('sets startedAt to a recent timestamp', async () => {
@@ -80,7 +77,7 @@ describe('restartTracker', () => {
 
       await recordRestart(pool);
 
-      const insertCall = pool.query.mock.calls[1];
+      const insertCall = pool.query.mock.calls[0];
       expect(insertCall[1]).toEqual(['startup', null]);
     });
 
@@ -194,70 +191,6 @@ describe('restartTracker', () => {
       expect(logError).toHaveBeenCalledWith(
         'Failed to query restarts',
         expect.objectContaining({ error: 'oops' }),
-      );
-    });
-
-    it('self-heals by creating table on 42P01 then retries successfully', async () => {
-      const rows = [
-        { id: 1, timestamp: new Date(), reason: 'startup', version: '1.0.0', uptime_seconds: 60 },
-      ];
-      let selectCallCount = 0;
-      const pool = {
-        query: vi.fn(async (sql) => {
-          if (sql.includes('FROM bot_restarts')) {
-            selectCallCount++;
-            if (selectCallCount === 1) {
-              const err = new Error('relation "bot_restarts" does not exist');
-              err.code = '42P01';
-              throw err;
-            }
-            // Retry SELECT succeeds
-            return { rows };
-          }
-          // CREATE TABLE call
-          if (sql.includes('CREATE TABLE')) {
-            return { rows: [], rowCount: 0 };
-          }
-          return { rows: [], rowCount: 0 };
-        }),
-      };
-
-      const result = await getRestarts(pool);
-
-      expect(result).toEqual(rows);
-      // Should have called: SELECT (fail), CREATE TABLE, SELECT (success)
-      expect(pool.query).toHaveBeenCalledTimes(3);
-    });
-
-    it('returns [] and logs error when retry SELECT also fails after 42P01 self-heal', async () => {
-      const { error: logError } = await import('../../src/logger.js');
-      let selectCallCount = 0;
-      const pool = {
-        query: vi.fn(async (sql) => {
-          if (sql.includes('FROM bot_restarts')) {
-            selectCallCount++;
-            if (selectCallCount === 1) {
-              const err = new Error('relation "bot_restarts" does not exist');
-              err.code = '42P01';
-              throw err;
-            }
-            // Retry also fails
-            throw new Error('still broken');
-          }
-          // CREATE TABLE succeeds
-          if (sql.includes('CREATE TABLE')) {
-            return { rows: [], rowCount: 0 };
-          }
-          return { rows: [], rowCount: 0 };
-        }),
-      };
-
-      const result = await getRestarts(pool);
-
-      expect(result).toEqual([]);
-      expect(logError).toHaveBeenCalledWith(
-        'Failed to query restarts after table creation',
-        expect.objectContaining({ error: 'still broken' }),
       );
     });
   });
