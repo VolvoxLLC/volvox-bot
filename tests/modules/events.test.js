@@ -34,6 +34,15 @@ vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({}),
 }));
 
+// Mock rate limit and link filter modules
+vi.mock('../../src/modules/rateLimit.js', () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ limited: false }),
+}));
+
+vi.mock('../../src/modules/linkFilter.js', () => ({
+  checkLinks: vi.fn().mockResolvedValue({ blocked: false }),
+}));
+
 import { getConfig } from '../../src/modules/config.js';
 import {
   registerErrorHandlers,
@@ -42,6 +51,8 @@ import {
   registerMessageCreateHandler,
   registerReadyHandler,
 } from '../../src/modules/events.js';
+import { checkLinks } from '../../src/modules/linkFilter.js';
+import { checkRateLimit } from '../../src/modules/rateLimit.js';
 import { isSpam, sendSpamAlert } from '../../src/modules/spam.js';
 import { accumulateMessage, evaluateNow } from '../../src/modules/triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from '../../src/modules/welcome.js';
@@ -166,6 +177,148 @@ describe('events module', () => {
       const message = { author: { bot: false }, guild: null };
       await onCallbacks.messageCreate(message);
       expect(isSpam).not.toHaveBeenCalled();
+    });
+
+    // ── Rate limiting ─────────────────────────────────────────────────
+
+    it('should call checkRateLimit when moderation is enabled', async () => {
+      setup({ moderation: { enabled: true } });
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'test message',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(checkRateLimit).toHaveBeenCalledWith(message, expect.objectContaining({
+        moderation: { enabled: true },
+      }));
+    });
+
+    it('should not call checkRateLimit when moderation is disabled', async () => {
+      setup({ moderation: { enabled: false } });
+      checkRateLimit.mockClear();
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'test message',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(checkRateLimit).not.toHaveBeenCalled();
+    });
+
+    it('should return early when rate limit is triggered', async () => {
+      setup({ moderation: { enabled: true } });
+      checkRateLimit.mockResolvedValueOnce({ limited: true, reason: 'Too many messages' });
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'spam spam spam',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      // Should not proceed to link filter, spam detection, or triage
+      expect(checkLinks).not.toHaveBeenCalled();
+      expect(isSpam).not.toHaveBeenCalled();
+      expect(accumulateMessage).not.toHaveBeenCalled();
+    });
+
+    // ── Link filtering ────────────────────────────────────────────────
+
+    it('should call checkLinks when moderation is enabled', async () => {
+      setup({ moderation: { enabled: true } });
+      checkRateLimit.mockResolvedValueOnce({ limited: false });
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'check out https://example.com',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(checkLinks).toHaveBeenCalledWith(message, expect.objectContaining({
+        moderation: { enabled: true },
+      }));
+    });
+
+    it('should not call checkLinks when moderation is disabled', async () => {
+      setup({ moderation: { enabled: false } });
+      checkLinks.mockClear();
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'check out https://example.com',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(checkLinks).not.toHaveBeenCalled();
+    });
+
+    it('should return early when link filter blocks a message', async () => {
+      setup({ moderation: { enabled: true } });
+      checkRateLimit.mockResolvedValueOnce({ limited: false });
+      checkLinks.mockResolvedValueOnce({ blocked: true, domain: 'evil.com' });
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'visit https://evil.com',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      // Should not proceed to spam detection or triage
+      expect(isSpam).not.toHaveBeenCalled();
+      expect(accumulateMessage).not.toHaveBeenCalled();
+    });
+
+    it('should process rate limit before link filter', async () => {
+      setup({ moderation: { enabled: true } });
+      const callOrder = [];
+      checkRateLimit.mockImplementationOnce(async () => {
+        callOrder.push('rateLimit');
+        return { limited: false };
+      });
+      checkLinks.mockImplementationOnce(async () => {
+        callOrder.push('linkFilter');
+        return { blocked: false };
+      });
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'test',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(callOrder).toEqual(['rateLimit', 'linkFilter']);
+    });
+
+    it('should not call link filter if rate limit triggered', async () => {
+      setup({ moderation: { enabled: true } });
+      checkRateLimit.mockResolvedValueOnce({ limited: true, reason: 'Too fast' });
+      checkLinks.mockClear();
+      const message = {
+        author: { bot: false, id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'rapid fire message',
+        channel: { id: 'c1' },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(checkLinks).not.toHaveBeenCalled();
     });
 
     // ── Spam detection ────────────────────────────────────────────────
