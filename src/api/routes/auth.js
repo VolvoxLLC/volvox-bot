@@ -269,7 +269,14 @@ router.get('/discord/callback', async (req, res) => {
  */
 router.get('/me', requireOAuth(), async (req, res) => {
   const { userId, username, avatar } = req.user;
-  const accessToken = await sessionStore.get(userId);
+
+  let accessToken;
+  try {
+    accessToken = await sessionStore.get(userId);
+  } catch (err) {
+    error('Redis error fetching session in /me', { error: err.message, userId });
+    return res.status(503).json({ error: 'Session store unavailable' });
+  }
 
   let guilds = [];
   if (accessToken) {
@@ -292,7 +299,15 @@ router.get('/me', requireOAuth(), async (req, res) => {
  * POST /logout — Invalidate the user's server-side session
  */
 router.post('/logout', requireOAuth(), async (req, res) => {
-  await sessionStore.delete(req.user.userId);
+  try {
+    await sessionStore.delete(req.user.userId);
+  } catch (err) {
+    error('Redis error deleting session on logout', {
+      error: err.message,
+      userId: req.user.userId,
+    });
+    // User's intent is to log out — succeed anyway
+  }
   res.json({ message: 'Logged out successfully' });
 });
 

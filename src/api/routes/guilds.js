@@ -172,14 +172,23 @@ function formatBucketLabel(bucket, interval) {
  * @returns {boolean} `true` if the user has any of the specified permission flags on the guild, `false` otherwise.
  */
 async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
-  const accessToken = await getSessionToken(user?.userId);
-  if (!accessToken) return false;
-  const guilds = await fetchUserGuilds(user.userId, accessToken);
-  const guild = guilds.find((g) => g.id === guildId);
-  if (!guild) return false;
-  const permissions = Number(guild.permissions);
-  if (Number.isNaN(permissions)) return false;
-  return (permissions & anyOfFlags) !== 0;
+  try {
+    const accessToken = await getSessionToken(user?.userId);
+    if (!accessToken) return false;
+    const guilds = await fetchUserGuilds(user.userId, accessToken);
+    const guild = guilds.find((g) => g.id === guildId);
+    if (!guild) return false;
+    const permissions = Number(guild.permissions);
+    if (Number.isNaN(permissions)) return false;
+    return (permissions & anyOfFlags) !== 0;
+  } catch (err) {
+    error('Redis error in hasOAuthGuildPermission', {
+      error: err.message,
+      userId: user?.userId,
+      guildId,
+    });
+    throw err;
+  }
 }
 
 /**
@@ -307,7 +316,16 @@ router.get('/', async (req, res) => {
       return res.json(ownerGuilds);
     }
 
-    const accessToken = await getSessionToken(req.user?.userId);
+    let accessToken;
+    try {
+      accessToken = await getSessionToken(req.user?.userId);
+    } catch (err) {
+      error('Redis error fetching session token in GET /guilds', {
+        error: err.message,
+        userId: req.user?.userId,
+      });
+      return res.status(503).json({ error: 'Session store unavailable' });
+    }
     if (!accessToken) {
       return res.status(401).json({ error: 'Missing access token' });
     }
