@@ -108,7 +108,7 @@ describe('starboard module', () => {
       });
       expect(result.enabled).toBe(true);
       expect(result.threshold).toBe(5);
-      expect(result.emoji).toBe('⭐');
+      expect(result.emoji).toBe('*');
     });
   });
 
@@ -255,7 +255,7 @@ describe('starboard module', () => {
       const message = makeMockMessage();
       const result = await getStarCount(message, '⭐', false);
       expect(result.count).toBe(0);
-      expect(result.emoji).toBe('⭐');
+      expect(result.emoji).toBe('*');
     });
 
     it('should return reaction count when selfStarAllowed', async () => {
@@ -277,7 +277,7 @@ describe('starboard module', () => {
 
       const result = await getStarCount(message, '⭐', true);
       expect(result.count).toBe(5);
-      expect(result.emoji).toBe('⭐');
+      expect(result.emoji).toBe('*');
     });
 
     it('should subtract self-star when not allowed', async () => {
@@ -353,7 +353,7 @@ describe('starboard module', () => {
       const message = makeMockMessage();
       const result = await getStarCount(message, '*', false);
       expect(result.count).toBe(0);
-      expect(result.emoji).toBe('⭐');
+      expect(result.emoji).toBe('*');
     });
   });
 

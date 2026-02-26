@@ -9,6 +9,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { debug, info, error as logError, warn } from '../logger.js';
+import { safeSend } from '../utils/safeSend.js';
 
 /** Default starboard configuration values */
 export const STARBOARD_DEFAULTS = {
@@ -297,7 +298,7 @@ export async function handleReactionAdd(reaction, user, client, config) {
       } catch (err) {
         warn('Failed to update starboard message, reposting', { error: err.message });
         // If the starboard message was deleted, repost
-        const newMsg = await starboardChannel.send({ content, embeds: [embed] });
+        const newMsg = await safeSend(starboardChannel, { content, embeds: [embed] });
         await insertStarboardPost({
           guildId: message.guild.id,
           sourceMessageId: message.id,
@@ -308,7 +309,7 @@ export async function handleReactionAdd(reaction, user, client, config) {
       }
     } else {
       // New starboard post
-      const newMsg = await starboardChannel.send({ content, embeds: [embed] });
+      const newMsg = await safeSend(starboardChannel, { content, embeds: [embed] });
       await insertStarboardPost({
         guildId: message.guild.id,
         sourceMessageId: message.id,
