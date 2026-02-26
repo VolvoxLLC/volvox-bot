@@ -57,6 +57,12 @@ export function registerReadyHandler(client, config, healthMonitor) {
     if (config.moderation?.enabled) {
       info('Moderation enabled');
     }
+    if (config.starboard?.enabled) {
+      info('Starboard enabled', {
+        channelId: config.starboard.channelId,
+        threshold: config.starboard.threshold,
+      });
+    }
   });
 }
 
@@ -228,9 +234,8 @@ export function registerReactionHandlers(client, _config) {
     // Ignore bot reactions
     if (user.bot) return;
 
-    // Resolve guild — reactions in DMs have no guild
-    const guild = reaction.message.guild;
-    if (!guild && reaction.message.partial) {
+    // Fetch partial messages so we have full guild/channel data
+    if (reaction.message.partial) {
       try {
         await reaction.message.fetch();
       } catch {
@@ -256,8 +261,7 @@ export function registerReactionHandlers(client, _config) {
   client.on(Events.MessageReactionRemove, async (reaction, user) => {
     if (user.bot) return;
 
-    const guild = reaction.message.guild;
-    if (!guild && reaction.message.partial) {
+    if (reaction.message.partial) {
       try {
         await reaction.message.fetch();
       } catch {
