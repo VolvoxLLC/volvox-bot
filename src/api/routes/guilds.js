@@ -172,7 +172,7 @@ function formatBucketLabel(bucket, interval) {
  * @returns {boolean} `true` if the user has any of the specified permission flags on the guild, `false` otherwise.
  */
 async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
-  const accessToken = getSessionToken(user?.userId);
+  const accessToken = await getSessionToken(user?.userId);
   if (!accessToken) return false;
   const guilds = await fetchUserGuilds(user.userId, accessToken);
   const guild = guilds.find((g) => g.id === guildId);
@@ -307,7 +307,7 @@ router.get('/', async (req, res) => {
       return res.json(ownerGuilds);
     }
 
-    const accessToken = getSessionToken(req.user?.userId);
+    const accessToken = await getSessionToken(req.user?.userId);
     if (!accessToken) {
       return res.status(401).json({ error: 'Missing access token' });
     }

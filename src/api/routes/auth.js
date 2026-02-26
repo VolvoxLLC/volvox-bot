@@ -229,7 +229,7 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     // Store access token server-side (never in the JWT)
-    sessionStore.set(user.id, accessToken);
+    await sessionStore.set(user.id, accessToken);
 
     // Create JWT with user info only (no access token — stored server-side)
     const token = jwt.sign(
@@ -269,7 +269,7 @@ router.get('/discord/callback', async (req, res) => {
  */
 router.get('/me', requireOAuth(), async (req, res) => {
   const { userId, username, avatar } = req.user;
-  const accessToken = sessionStore.get(userId);
+  const accessToken = await sessionStore.get(userId);
 
   let guilds = [];
   if (accessToken) {
@@ -291,8 +291,8 @@ router.get('/me', requireOAuth(), async (req, res) => {
 /**
  * POST /logout — Invalidate the user's server-side session
  */
-router.post('/logout', requireOAuth(), (req, res) => {
-  sessionStore.delete(req.user.userId);
+router.post('/logout', requireOAuth(), async (req, res) => {
+  await sessionStore.delete(req.user.userId);
   res.json({ message: 'Logged out successfully' });
 });
 
