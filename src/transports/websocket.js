@@ -5,8 +5,8 @@
  * WebSocket clients in real-time. Zero overhead when no clients are connected.
  */
 
-import WebSocket from 'ws';
 import Transport from 'winston-transport';
+import WebSocket from 'ws';
 
 /**
  * Log level severity ordering (lower = more severe).

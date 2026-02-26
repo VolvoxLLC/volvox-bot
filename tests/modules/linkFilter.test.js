@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  checkLinks,
-  extractUrls,
-  matchPhishingPattern,
-} from '../../src/modules/linkFilter.js';
+import { checkLinks, extractUrls, matchPhishingPattern } from '../../src/modules/linkFilter.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -212,7 +208,7 @@ describe('checkLinks — blocklist matching', () => {
 
   it('does NOT block when blockedDomains list is empty', async () => {
     const config = makeConfig({ blockedDomains: [] });
-    const msg = makeMessage({ content: 'https://anything.xyz/free-bitcoin' });
+    const _msg = makeMessage({ content: 'https://anything.xyz/free-bitcoin' });
 
     // phishing pattern will catch this one — let's use a clean domain
     const msg2 = makeMessage({ content: 'https://normalsite.org/page' });

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { checkRateLimit, clearRateLimitState, getTrackedCount } from '../../src/modules/rateLimit.js';
+import {
+  checkRateLimit,
+  clearRateLimitState,
+  getTrackedCount,
+} from '../../src/modules/rateLimit.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

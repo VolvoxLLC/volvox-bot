@@ -3,10 +3,10 @@
  * PostgreSQL connection pool and migration runner
  */
 
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import pg from 'pg';
+import { fileURLToPath } from 'node:url';
 import { runner } from 'node-pg-migrate';
+import pg from 'pg';
 import { info, error as logError } from './logger.js';
 
 const { Pool } = pg;

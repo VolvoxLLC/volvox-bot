@@ -5,7 +5,7 @@
  */
 
 import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
-import { warn, info } from '../logger.js';
+import { info, warn } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
 
 /** Maximum number of (userId:channelId) entries to track simultaneously. */
@@ -50,7 +50,9 @@ function isExempt(message, config) {
   const modRoles = config.permissions?.modRoles ?? [];
   if (modRoles.length === 0) return false;
 
-  return member.roles.cache.some((role) => modRoles.includes(role.id) || modRoles.includes(role.name));
+  return member.roles.cache.some(
+    (role) => modRoles.includes(role.id) || modRoles.includes(role.name),
+  );
 }
 
 /**
@@ -107,10 +109,12 @@ async function handleRepeatOffender(message, config, muteDurationMs) {
  * @param {number} windowSeconds
  */
 async function warnUser(message, maxMessages, windowSeconds) {
-  const reply = await message.reply(
-    `⚠️ <@${message.author.id}>, you're sending messages too fast! ` +
-    `Limit: ${maxMessages} messages per ${windowSeconds} seconds.`,
-  ).catch(() => null);
+  const reply = await message
+    .reply(
+      `⚠️ <@${message.author.id}>, you're sending messages too fast! ` +
+        `Limit: ${maxMessages} messages per ${windowSeconds} seconds.`,
+    )
+    .catch(() => null);
 
   // Auto-delete the warning after 10 seconds
   if (reply) {

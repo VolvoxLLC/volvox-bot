@@ -182,9 +182,7 @@ function validateTicket(ticket, secret) {
   if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return false;
 
   // Re-derive HMAC and compare with timing-safe equality
-  const expected = createHmac('sha256', secret)
-    .update(`${nonce}.${expiry}`)
-    .digest('hex');
+  const expected = createHmac('sha256', secret).update(`${nonce}.${expiry}`).digest('hex');
 
   try {
     return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hmac, 'hex'));

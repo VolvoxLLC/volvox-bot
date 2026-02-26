@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildStatsAndLog,
   fetchChannelContext,
@@ -14,7 +14,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn(async (ch, opts) => ({ id: 'sent123', content: opts.content || opts })),
+  safeSend: vi.fn(async (_ch, opts) => ({ id: 'sent123', content: opts.content || opts })),
 }));
 
 vi.mock('../../src/utils/splitMessage.js', () => ({
@@ -23,7 +23,7 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
 
 vi.mock('../../src/utils/debugFooter.js', () => ({
   buildDebugEmbed: vi.fn(() => ({ title: 'Debug' })),
-  extractStats: vi.fn((msg, model) => ({
+  extractStats: vi.fn((_msg, model) => ({
     model,
     promptTokens: 100,
     completionTokens: 50,
@@ -557,7 +557,16 @@ describe('triage-respond', () => {
         },
       };
 
-      const result = await buildStatsAndLog({}, {}, {}, snapshot, classification, 0, mockClient, 'channel1');
+      const result = await buildStatsAndLog(
+        {},
+        {},
+        {},
+        snapshot,
+        classification,
+        0,
+        mockClient,
+        'channel1',
+      );
 
       expect(result.stats.userId).toBe(null);
     });

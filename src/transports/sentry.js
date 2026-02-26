@@ -44,7 +44,10 @@ export class SentryTransport extends Transport {
     const tags = {};
     const extra = {};
     for (const [key, value] of Object.entries(meta)) {
-      if (SentryTransport.TAG_KEYS.has(key) && (typeof value === 'string' || typeof value === 'number')) {
+      if (
+        SentryTransport.TAG_KEYS.has(key) &&
+        (typeof value === 'string' || typeof value === 'number')
+      ) {
         tags[key] = String(value);
       } else if (key !== 'originalLevel' && key !== 'splat') {
         extra[key] = value;

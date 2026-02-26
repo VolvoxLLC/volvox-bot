@@ -2,8 +2,12 @@ import { createHmac, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
+import {
+  getAuthenticatedClientCount,
+  setupLogStream,
+  stopLogStream,
+} from '../../../src/api/ws/logStream.js';
 import { WebSocketTransport } from '../../../src/transports/websocket.js';
-import { setupLogStream, stopLogStream, getAuthenticatedClientCount } from '../../../src/api/ws/logStream.js';
 
 const TEST_SECRET = 'test-api-secret-for-ws';
 
@@ -199,7 +203,12 @@ describe('WebSocket Log Stream', () => {
       await authenticate(ws, mq);
 
       transport.log(
-        { level: 'info', message: 'real-time log', timestamp: '2026-01-01T00:00:00Z', module: 'test' },
+        {
+          level: 'info',
+          message: 'real-time log',
+          timestamp: '2026-01-01T00:00:00Z',
+          module: 'test',
+        },
         vi.fn(),
       );
 
@@ -230,7 +239,10 @@ describe('WebSocket Log Stream', () => {
       expect(filterOk.type).toBe('filter_ok');
       expect(filterOk.filter.level).toBe('error');
 
-      transport.log({ level: 'error', message: 'error log', timestamp: '2026-01-01T00:00:00Z' }, vi.fn());
+      transport.log(
+        { level: 'error', message: 'error log', timestamp: '2026-01-01T00:00:00Z' },
+        vi.fn(),
+      );
       const logMsg = await mq.next();
       expect(logMsg.level).toBe('error');
       expect(logMsg.message).toBe('error log');
@@ -244,8 +256,14 @@ describe('WebSocket Log Stream', () => {
       await mq.next(); // filter_ok
 
       // Info log should be filtered; send error right after to prove it works
-      transport.log({ level: 'info', message: 'filtered', timestamp: '2026-01-01T00:00:00Z' }, vi.fn());
-      transport.log({ level: 'error', message: 'arrives', timestamp: '2026-01-01T00:00:00Z' }, vi.fn());
+      transport.log(
+        { level: 'info', message: 'filtered', timestamp: '2026-01-01T00:00:00Z' },
+        vi.fn(),
+      );
+      transport.log(
+        { level: 'error', message: 'arrives', timestamp: '2026-01-01T00:00:00Z' },
+        vi.fn(),
+      );
 
       const logMsg = await mq.next();
       expect(logMsg.message).toBe('arrives');

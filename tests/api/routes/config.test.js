@@ -650,5 +650,3 @@ describe('validateSingleValue', () => {
     expect(errors[0]).toContain('must not be null');
   });
 });
-
-

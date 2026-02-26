@@ -13,7 +13,7 @@ import { safeSend } from '../utils/safeSend.js';
  * Matches http/https URLs and bare domain.tld patterns.
  */
 const URL_REGEX =
-  /https?:\/\/(?:www\.)?([a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)(\/[^\s]*)?|(?:^|\s)(?:www\.)?([a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)(\/[^\s]*)?/gi;
+  /https?:\/\/(?:www\.)?([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)(\/[^\s]*)?|(?:^|\s)(?:www\.)?([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)(\/[^\s]*)?/gi;
 
 /**
  * Phishing TLD patterns: .xyz links whose path/subdomain contains scam keywords.
@@ -39,7 +39,7 @@ export function extractUrls(content) {
   let match;
   const regex = new RegExp(URL_REGEX.source, URL_REGEX.flags);
 
-  while ((match = regex.exec(content)) !== null) {
+  for (match = regex.exec(content); match; match = regex.exec(content)) {
     // Group 1: hostname from http(s):// URL, Group 3: bare domain
     const hostname = (match[1] || match[3] || '').toLowerCase().replace(/^www\./, '');
     const fullUrl = match[0].trim();
@@ -102,7 +102,9 @@ async function alertModChannel(message, config, matchedDomain, reason) {
 
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
-    .setTitle(`🔗 Suspicious Link ${reason === 'phishing' ? '(Phishing Pattern)' : '(Blocklisted Domain)'} Detected`)
+    .setTitle(
+      `🔗 Suspicious Link ${reason === 'phishing' ? '(Phishing Pattern)' : '(Blocklisted Domain)'} Detected`,
+    )
     .addFields(
       { name: 'User', value: `<@${message.author.id}> (${message.author.tag})`, inline: true },
       { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },

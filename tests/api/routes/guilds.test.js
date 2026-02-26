@@ -314,9 +314,7 @@ describe('guilds routes', () => {
 
   describe('GET /:id/roles', () => {
     it('should return guild roles', async () => {
-      const res = await request(app)
-        .get('/api/v1/guilds/guild1/roles')
-        .set('x-api-secret', SECRET);
+      const res = await request(app).get('/api/v1/guilds/guild1/roles').set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
       expect(res.body).toBeInstanceOf(Array);
