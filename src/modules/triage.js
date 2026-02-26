@@ -210,7 +210,7 @@ async function runResponder(
             searchNotified = true;
             // Add 🔍 reaction to the trigger message to signal web search
             if (statusReactions && triggerMessageId) {
-              addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDD0D').catch(() => {});
+              addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDD0D');
             }
             const ch = await evalClient.channels.fetch(channelId).catch(() => null);
             if (ch) {
@@ -302,7 +302,7 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     const statusReactions = evalConfig.triage?.statusReactions !== false;
     const triggerMessageId = snapshot[snapshot.length - 1]?.messageId ?? null;
     if (statusReactions && triggerMessageId) {
-      addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40').catch(() => {});
+      addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
     }
 
     // Step 2: Respond
