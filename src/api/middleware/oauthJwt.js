@@ -25,9 +25,10 @@ export function getBearerToken(authHeader) {
  * @param {import('express').Response} res - Express response
  * @param {import('express').NextFunction} next - Express next callback
  * @param {{ missingTokenError?: string }} [options] - Behavior options
- * @returns {boolean} True if middleware chain has been handled, false if no Bearer token was provided and no missing-token error was requested
+ * @returns {Promise<boolean>} True if middleware chain has been handled, false if no Bearer token
+ *   was provided and no missing-token error was requested
  */
-export function handleOAuthJwt(req, res, next, options = {}) {
+export async function handleOAuthJwt(req, res, next, options = {}) {
   const token = getBearerToken(req.headers.authorization);
   if (!token) {
     if (options.missingTokenError) {
@@ -37,7 +38,7 @@ export function handleOAuthJwt(req, res, next, options = {}) {
     return false;
   }
 
-  const result = verifyJwtToken(token);
+  const result = await verifyJwtToken(token);
   if (result.error) {
     if (result.status === 500) {
       error('SESSION_SECRET not configured — cannot verify OAuth token', {

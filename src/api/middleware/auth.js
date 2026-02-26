@@ -34,7 +34,7 @@ export function isValidSecret(secret) {
  * @returns {import('express').RequestHandler} Express middleware function
  */
 export function requireAuth() {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     // Try API secret first
     const apiSecret = req.headers['x-api-secret'];
     if (apiSecret) {
@@ -59,7 +59,7 @@ export function requireAuth() {
     }
 
     // Try OAuth2 JWT
-    if (handleOAuthJwt(req, res, next)) {
+    if (await handleOAuthJwt(req, res, next)) {
       return;
     }
 
