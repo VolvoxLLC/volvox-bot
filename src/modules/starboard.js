@@ -374,7 +374,10 @@ export async function handleReactionRemove(reaction, _user, client, config) {
 
   try {
     const starboardChannel = await client.channels.fetch(sbConfig.channelId);
-    if (!starboardChannel) return;
+    if (!starboardChannel) {
+      warn('Starboard channel not found on reaction remove', { channelId: sbConfig.channelId });
+      return;
+    }
 
     if (starCount < sbConfig.threshold) {
       // Below threshold — remove from starboard
