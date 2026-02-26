@@ -3,28 +3,10 @@
 import { Calendar, Clock, Hash, MessageSquare, Shield, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionBadge } from "./action-badge";
 import { ACTION_META } from "./moderation-types";
-import type { ModCase, ModAction } from "./moderation-types";
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
-function ActionBadge({ action }: { action: ModAction }) {
-  const meta = ACTION_META[action];
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-        meta?.badge ?? "bg-muted text-muted-foreground"
-      }`}
-    >
-      {meta?.label ?? action}
-    </span>
-  );
-}
+import type { ModCase } from "./moderation-types";
+import { formatDate } from "@/lib/format-time";
 
 interface FieldRowProps {
   icon: React.ReactNode;
@@ -58,7 +40,7 @@ export function CaseDetail({ modCase }: CaseDetailProps) {
         <CardTitle className="flex items-center gap-2 text-base">
           <Hash className="h-4 w-4 text-muted-foreground" />
           Case #{modCase.case_number}
-          <ActionBadge action={modCase.action} />
+          <ActionBadge action={modCase.action} size="md" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1 divide-y divide-border">

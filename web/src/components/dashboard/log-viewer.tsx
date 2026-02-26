@@ -168,9 +168,9 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
       if (!next) {
         // Resume — scroll to bottom
         userScrolledRef.current = false;
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 50);
+        });
       }
       return next;
     });

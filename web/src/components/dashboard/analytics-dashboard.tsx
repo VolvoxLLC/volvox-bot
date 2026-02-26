@@ -33,10 +33,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useGuildSelection } from "@/hooks/use-guild-selection";
+import { isDashboardAnalyticsPayload } from "@/types/analytics-validators";
 import {
-  GUILD_SELECTED_EVENT,
-  SELECTED_GUILD_KEY,
-} from "@/lib/guild-selection";
+  endOfDayIso,
+  formatDateInput,
+  formatLastUpdatedTime,
+  formatNumber,
+  formatUsd,
+  startOfDayIso,
+} from "@/lib/analytics-utils";
 import type {
   AnalyticsRangePreset,
   DashboardAnalytics,
@@ -53,204 +59,27 @@ const PIE_COLORS = ["#5865F2", "#22C55E", "#F59E0B", "#A855F7", "#06B6D4"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-function formatDateInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseLocalDateInput(dateInput: string): {
-  year: number;
-  monthIndex: number;
-  day: number;
-} | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput);
-  if (!match) return null;
-
-  const year = Number.parseInt(match[1], 10);
-  const monthIndex = Number.parseInt(match[2], 10) - 1;
-  const day = Number.parseInt(match[3], 10);
-
-  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || !Number.isFinite(day)) {
-    return null;
-  }
-
-  return { year, monthIndex, day };
-}
-
-function startOfDayIso(dateInput: string): string {
-  const parsed = parseLocalDateInput(dateInput);
-  if (!parsed) return `${dateInput}T00:00:00.000Z`;
-
-  return new Date(
-    parsed.year,
-    parsed.monthIndex,
-    parsed.day,
-    0,
-    0,
-    0,
-    0,
-  ).toISOString();
-}
-
-function endOfDayIso(dateInput: string): string {
-  const parsed = parseLocalDateInput(dateInput);
-  if (!parsed) return `${dateInput}T23:59:59.999Z`;
-
-  return new Date(
-    parsed.year,
-    parsed.monthIndex,
-    parsed.day,
-    23,
-    59,
-    59,
-    999,
-  ).toISOString();
-}
-
-function formatUsd(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: value < 1 ? 4 : 2,
-    maximumFractionDigits: value < 1 ? 4 : 2,
-  }).format(value);
-}
-
-function formatNumber(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isAnalyticsRangePreset(value: unknown): value is AnalyticsRangePreset {
-  return value === "today" || value === "week" || value === "month" || value === "custom";
-}
-
-function isDashboardAnalyticsPayload(value: unknown): value is DashboardAnalytics {
-  if (!isRecord(value)) return false;
-
-  const range = value.range;
-  const kpis = value.kpis;
-  const realtime = value.realtime;
-  const aiUsage = value.aiUsage;
-
-  if (!isString(value.guildId)) return false;
-  if (!isRecord(range)) return false;
-  if (!isRecord(kpis)) return false;
-  if (!isRecord(realtime)) return false;
-  if (!isRecord(aiUsage)) return false;
-
-  if (!isAnalyticsRangePreset(range.type)) return false;
-  if (!isString(range.from) || !isString(range.to)) return false;
-  if (range.interval !== "hour" && range.interval !== "day") return false;
-  if (range.channelId !== null && !isString(range.channelId)) return false;
-
-  if (
-    !isFiniteNumber(kpis.totalMessages) ||
-    !isFiniteNumber(kpis.aiRequests) ||
-    !isFiniteNumber(kpis.aiCostUsd) ||
-    !isFiniteNumber(kpis.activeUsers) ||
-    !isFiniteNumber(kpis.newMembers)
-  ) {
-    return false;
-  }
-
-  if (
-    (realtime.onlineMembers !== null && !isFiniteNumber(realtime.onlineMembers)) ||
-    !isFiniteNumber(realtime.activeAiConversations)
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(value.messageVolume) ||
-    !value.messageVolume.every(
-      (point) =>
-        isRecord(point) &&
-        isString(point.bucket) &&
-        isString(point.label) &&
-        isFiniteNumber(point.messages) &&
-        isFiniteNumber(point.aiRequests),
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    !isRecord(aiUsage.tokens) ||
-    !isFiniteNumber(aiUsage.tokens.prompt) ||
-    !isFiniteNumber(aiUsage.tokens.completion)
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(aiUsage.byModel) ||
-    !aiUsage.byModel.every(
-      (entry) =>
-        isRecord(entry) &&
-        isString(entry.model) &&
-        isFiniteNumber(entry.requests) &&
-        isFiniteNumber(entry.promptTokens) &&
-        isFiniteNumber(entry.completionTokens) &&
-        isFiniteNumber(entry.costUsd),
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(value.channelActivity) ||
-    !value.channelActivity.every(
-      (entry) =>
-        isRecord(entry) &&
-        isString(entry.channelId) &&
-        isString(entry.name) &&
-        isFiniteNumber(entry.messages),
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(value.heatmap) ||
-    !value.heatmap.every(
-      (entry) =>
-        isRecord(entry) &&
-        isFiniteNumber(entry.dayOfWeek) &&
-        isFiniteNumber(entry.hour) &&
-        isFiniteNumber(entry.messages),
-    )
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-function formatLastUpdatedTime(value: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(value);
+function KpiSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function AnalyticsDashboard() {
   const [now] = useState(() => new Date());
-  const [guildId, setGuildId] = useState<string | null>(null);
+  const guildId = useGuildSelection({
+    onGuildChange: () => setChannelFilter(null),
+  });
   const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>("week");
   const [customFromDraft, setCustomFromDraft] = useState<string>(
     formatDateInput(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
@@ -268,46 +97,6 @@ export function AnalyticsDashboard() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    try {
-      const savedGuild = window.localStorage.getItem(SELECTED_GUILD_KEY);
-      if (savedGuild) {
-        setGuildId(savedGuild);
-      }
-    } catch {
-      // localStorage may be unavailable in strict browser contexts
-    }
-
-    const handleGuildSelect = (event: Event) => {
-      const selectedGuild = (event as CustomEvent<string>).detail;
-      if (!selectedGuild) return;
-      setGuildId(selectedGuild);
-      setChannelFilter(null);
-    };
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SELECTED_GUILD_KEY || !event.newValue) return;
-      setGuildId(event.newValue);
-      setChannelFilter(null);
-    };
-
-    window.addEventListener(
-      GUILD_SELECTED_EVENT,
-      handleGuildSelect as EventListener,
-    );
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener(
-        GUILD_SELECTED_EVENT,
-        handleGuildSelect as EventListener,
-      );
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, []);
-
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     params.set("range", rangePreset);
@@ -317,7 +106,6 @@ export function AnalyticsDashboard() {
       params.set("to", endOfDayIso(customToApplied));
     }
 
-    // Only set interval for non-custom ranges; let server auto-detect for custom ranges
     if (rangePreset !== "custom") {
       params.set("interval", rangePreset === "today" ? "hour" : "day");
     }
@@ -333,9 +121,6 @@ export function AnalyticsDashboard() {
     async (backgroundRefresh = false) => {
       if (!guildId) return;
 
-      // Abort any previous in-flight request before starting a new one.
-      // Always uses the ref-based controller so both the initial load
-      // and background refresh share a single cancellation path.
       abortControllerRef.current?.abort();
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -385,7 +170,6 @@ export function AnalyticsDashboard() {
         setAnalytics(payload);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {
-        // Don't treat aborted fetches as errors
         if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
         setError(
           fetchError instanceof Error
@@ -393,11 +177,6 @@ export function AnalyticsDashboard() {
             : "Failed to fetch analytics",
         );
       } finally {
-        // Only reset loading if this request is still the current one.
-        // When fetchAnalytics is called again, the previous request
-        // is aborted and a new controller replaces the ref. Without this
-        // guard the aborted request's finally block would set loading=false,
-        // cancelling out the new request's loading=true.
         if (abortControllerRef.current === controller) {
           setLoading(false);
         }
@@ -484,6 +263,7 @@ export function AnalyticsDashboard() {
   }
 
   const kpis = analytics?.kpis;
+  const showKpiSkeleton = loading && !analytics;
 
   return (
     <div className="space-y-6">
@@ -575,76 +355,83 @@ export function AnalyticsDashboard() {
         </Card>
       ) : null}
 
+      {/* KPI cards with loading skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total messages</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.totalMessages) : "—"}
-              </span>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+        {showKpiSkeleton ? (
+          Array.from({ length: 5 }).map((_, i) => <KpiSkeleton key={i} />)
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total messages</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.totalMessages) : "\u2014"}
+                  </span>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">AI requests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.aiRequests) : "—"}
-              </span>
-              <Bot className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">AI requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.aiRequests) : "\u2014"}
+                  </span>
+                  <Bot className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">AI cost (est.)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatUsd(kpis.aiCostUsd) : "—"}
-              </span>
-              <Coins className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">AI cost (est.)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatUsd(kpis.aiCostUsd) : "\u2014"}
+                  </span>
+                  <Coins className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.activeUsers) : "—"}
-              </span>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Active users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.activeUsers) : "\u2014"}
+                  </span>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">New members</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.newMembers) : "—"}
-              </span>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">New members</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.newMembers) : "\u2014"}
+                  </span>
+                  <UserPlus className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -663,7 +450,7 @@ export function AnalyticsDashboard() {
               </div>
               <p aria-label="Online members value" className="mt-2 text-2xl font-semibold">
                 {analytics == null
-                  ? "—"
+                  ? "\u2014"
                   : analytics.realtime.onlineMembers === null
                     ? "N/A"
                     : formatNumber(analytics.realtime.onlineMembers)}
@@ -679,7 +466,7 @@ export function AnalyticsDashboard() {
                 className="mt-2 text-2xl font-semibold"
               >
                 {loading || analytics == null
-                  ? "—"
+                  ? "\u2014"
                   : analytics.realtime.activeAiConversations === null
                     ? "N/A"
                     : formatNumber(analytics.realtime.activeAiConversations)}
@@ -895,7 +682,7 @@ export function AnalyticsDashboard() {
                       return (
                         <td key={`${day}-${hour}`}>
                           <div
-                            title={`${day} ${hour}:00 — ${value} messages`}
+                            title={`${day} ${hour}:00 \u2014 ${value} messages`}
                             className="h-4 rounded-sm border"
                             style={{
                               backgroundColor:

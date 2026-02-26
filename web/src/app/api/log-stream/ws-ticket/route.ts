@@ -1,7 +1,7 @@
 import { randomBytes, createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { authorizeGuildAdmin } from "@/lib/bot-api-proxy";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -29,22 +29,18 @@ function createTicket(secret: string): string {
 /**
  * Returns WebSocket connection info for the log stream.
  *
- * Validates the session, generates a short-lived HMAC ticket, and returns
- * the WS URL + ticket. The raw BOT_API_SECRET never leaves the server.
+ * Validates the session and guild-level authorization, generates a short-lived
+ * HMAC ticket, and returns the WS URL + ticket. The raw BOT_API_SECRET never
+ * leaves the server.
  */
 export async function GET(request: NextRequest) {
-  const token = await getToken({ req: request });
-
-  if (typeof token?.accessToken !== "string" || token.accessToken.length === 0) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guildId = request.nextUrl.searchParams.get("guildId");
+  if (!guildId) {
+    return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
   }
 
-  if (token.error === "RefreshTokenError") {
-    return NextResponse.json(
-      { error: "Token expired. Please sign in again." },
-      { status: 401 },
-    );
-  }
+  const authError = await authorizeGuildAdmin(request, guildId, "[api/logs/ws-ticket]");
+  if (authError) return authError;
 
   const botApiUrl = process.env.BOT_API_URL;
   const botApiSecret = process.env.BOT_API_SECRET;

@@ -2,7 +2,6 @@
 
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, Search, X } from "lucide-react";
 import { Fragment, useState, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,30 +20,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CaseDetail } from "./case-detail";
+import { ActionBadge } from "./action-badge";
 import { ACTION_META } from "./moderation-types";
-import type { ModCase, ModAction, CaseListResponse } from "./moderation-types";
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
-function ActionBadge({ action }: { action: ModAction }) {
-  const meta = ACTION_META[action];
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
-        meta?.badge ?? "bg-muted text-muted-foreground"
-      }`}
-    >
-      {meta?.label ?? action}
-    </span>
-  );
-}
+import type { ModCase, CaseListResponse } from "./moderation-types";
+import { formatDate } from "@/lib/format-time";
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
@@ -149,12 +128,21 @@ export function CaseTable({
   const [expandLoading, setExpandLoading] = useState(false);
 
   const toggleExpand = useCallback(async (c: ModCase) => {
-    if (expandedId === c.id) {
-      setExpandedId(null);
+    // Use functional updater to avoid stale closure over expandedId
+    let isCollapsing = false;
+    setExpandedId((prev) => {
+      if (prev === c.id) {
+        isCollapsing = true;
+        return null;
+      }
+      return c.id;
+    });
+
+    if (isCollapsing) {
       setExpandedCase(null);
       return;
     }
-    setExpandedId(c.id);
+
     setExpandedCase(null);
     setExpandLoading(true);
     try {
@@ -163,16 +151,14 @@ export function CaseTable({
         const fullCase = await res.json() as ModCase;
         setExpandedCase(fullCase);
       } else {
-        // Non-OK response — fall back to list data so CaseDetail still renders
         setExpandedCase(c);
       }
     } catch {
-      // Network error — fall back to list data (no scheduledActions)
       setExpandedCase(c);
     } finally {
       setExpandLoading(false);
     }
-  }, [expandedId, guildId]);
+  }, [guildId]);
 
   if (error) {
     return (
@@ -223,6 +209,7 @@ export function CaseTable({
                 <button
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                   onClick={onSortToggle}
+                  aria-label={sortDesc ? "Sort by date ascending" : "Sort by date descending"}
                 >
                   Date
                   {sortDesc ? (

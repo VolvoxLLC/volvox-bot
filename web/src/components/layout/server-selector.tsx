@@ -62,7 +62,14 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       if (!response.ok) throw new Error("Failed to fetch");
       const data: unknown = await response.json();
       if (!Array.isArray(data)) throw new Error("Invalid response: expected array");
-      const fetchedGuilds = data as MutualGuild[];
+      // Runtime shape check: each entry must have at minimum an id and name string
+      const fetchedGuilds = data.filter(
+        (g): g is MutualGuild =>
+          typeof g === "object" &&
+          g !== null &&
+          typeof (g as Record<string, unknown>).id === "string" &&
+          typeof (g as Record<string, unknown>).name === "string",
+      );
       setGuilds(fetchedGuilds);
 
       // Restore previously selected guild from localStorage
@@ -169,7 +176,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           <div className="flex items-center gap-2 truncate">
             {selectedGuild?.icon ? (
               <Image
-                src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 64)!}
+                src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 64) ?? ""}
                 alt={selectedGuild.name}
                 width={20}
                 height={20}
@@ -201,7 +208,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           >
             {guild.icon ? (
               <Image
-                src={getGuildIconUrl(guild.id, guild.icon, 64)!}
+                src={getGuildIconUrl(guild.id, guild.icon, 64) ?? ""}
                 alt={guild.name}
                 width={20}
                 height={20}
