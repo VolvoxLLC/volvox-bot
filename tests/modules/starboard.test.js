@@ -253,8 +253,9 @@ describe('starboard module', () => {
   describe('getStarCount', () => {
     it('should return 0 when no matching reaction', async () => {
       const message = makeMockMessage();
-      const count = await getStarCount(message, '⭐', false);
-      expect(count).toBe(0);
+      const result = await getStarCount(message, '⭐', false);
+      expect(result.count).toBe(0);
+      expect(result.emoji).toBe('⭐');
     });
 
     it('should return reaction count when selfStarAllowed', async () => {
@@ -274,8 +275,9 @@ describe('starboard module', () => {
         reactions: { cache: reactions },
       });
 
-      const count = await getStarCount(message, '⭐', true);
-      expect(count).toBe(5);
+      const result = await getStarCount(message, '⭐', true);
+      expect(result.count).toBe(5);
+      expect(result.emoji).toBe('⭐');
     });
 
     it('should subtract self-star when not allowed', async () => {
@@ -298,8 +300,8 @@ describe('starboard module', () => {
         reactions: { cache: reactions },
       });
 
-      const count = await getStarCount(message, '⭐', false);
-      expect(count).toBe(3);
+      const result = await getStarCount(message, '⭐', false);
+      expect(result.count).toBe(3);
     });
 
     it('should not go below 0', async () => {
@@ -322,8 +324,36 @@ describe('starboard module', () => {
         reactions: { cache: reactions },
       });
 
-      const count = await getStarCount(message, '⭐', false);
-      expect(count).toBe(0);
+      const result = await getStarCount(message, '⭐', false);
+      expect(result.count).toBe(0);
+    });
+
+    it('should match any emoji when wildcard "*" is used', async () => {
+      const reactions = new Map();
+      reactions.set('🔥', {
+        emoji: { name: '🔥' },
+        count: 3,
+        users: { fetch: vi.fn().mockResolvedValue(new Map()) },
+      });
+      reactions.set('👍', {
+        emoji: { name: '👍' },
+        count: 7,
+        users: { fetch: vi.fn().mockResolvedValue(new Map()) },
+      });
+      const message = makeMockMessage({
+        reactions: { cache: reactions },
+      });
+
+      const result = await getStarCount(message, '*', true);
+      expect(result.count).toBe(7);
+      expect(result.emoji).toBe('👍');
+    });
+
+    it('should return default emoji when wildcard has no reactions', async () => {
+      const message = makeMockMessage();
+      const result = await getStarCount(message, '*', false);
+      expect(result.count).toBe(0);
+      expect(result.emoji).toBe('⭐');
     });
   });
 

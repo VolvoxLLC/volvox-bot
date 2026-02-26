@@ -28,9 +28,10 @@ const STARBOARD_COLOR = 0xffd700;
  *
  * @param {import('discord.js').Message} message - The original message
  * @param {number} starCount - Current star count
+ * @param {string} [displayEmoji='⭐'] - Emoji to display in the Stars field
  * @returns {EmbedBuilder} The starboard embed
  */
-export function buildStarboardEmbed(message, starCount) {
+export function buildStarboardEmbed(message, starCount, displayEmoji = '⭐') {
   const embed = new EmbedBuilder()
     .setColor(STARBOARD_COLOR)
     .setAuthor({
@@ -40,7 +41,7 @@ export function buildStarboardEmbed(message, starCount) {
     .setTimestamp(message.createdAt)
     .addFields(
       { name: 'Source', value: `<#${message.channel.id}>`, inline: true },
-      { name: 'Stars', value: `⭐ ${starCount}`, inline: true },
+      { name: 'Stars', value: `${displayEmoji} ${starCount}`, inline: true },
       {
         name: 'Jump',
         value: `[Go to message](https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id})`,
@@ -166,27 +167,40 @@ export function resolveStarboardConfig(config) {
 /**
  * Get the star count for a specific emoji on a message.
  * Handles both unicode and custom emoji matching.
+ * When emoji is '*', finds the reaction with the highest count.
  *
  * @param {import('discord.js').Message} message - The message to check
- * @param {string} emoji - The emoji to count (e.g. '⭐')
+ * @param {string} emoji - The emoji to count (e.g. '⭐'), or '*' for any emoji
  * @param {boolean} selfStarAllowed - Whether to count the author's own reaction
- * @returns {Promise<number>} The star count
+ * @returns {Promise<{count: number, emoji: string}>} The star count and matched emoji
  */
 export async function getStarCount(message, emoji, selfStarAllowed) {
   let reaction = null;
-  for (const r of message.reactions.cache.values()) {
-    if (r.emoji.name === emoji) {
-      reaction = r;
-      break;
+
+  if (emoji === '*') {
+    // Wildcard: find the reaction with the highest count
+    let maxCount = 0;
+    for (const r of message.reactions.cache.values()) {
+      if (r.count > maxCount) {
+        maxCount = r.count;
+        reaction = r;
+      }
+    }
+  } else {
+    for (const r of message.reactions.cache.values()) {
+      if (r.emoji.name === emoji) {
+        reaction = r;
+        break;
+      }
     }
   }
 
-  if (!reaction) return 0;
+  if (!reaction) return { count: 0, emoji: emoji === '*' ? '⭐' : emoji };
 
+  const matchedEmoji = reaction.emoji.name ?? '⭐';
   let count = reaction.count;
 
   if (!selfStarAllowed) {
-    // Fetch users who reacted so we can check for self-star
     try {
       const users = await reaction.users.fetch({ limit: 100 });
       if (users.has(message.author.id)) {
@@ -200,7 +214,7 @@ export async function getStarCount(message, emoji, selfStarAllowed) {
     }
   }
 
-  return Math.max(0, count);
+  return { count: Math.max(0, count), emoji: matchedEmoji };
 }
 
 /**
@@ -239,8 +253,8 @@ export async function handleReactionAdd(reaction, user, client, config) {
   // Prevent feedback loop — don't star messages posted in the starboard channel itself
   if (message.channel.id === sbConfig.channelId) return;
 
-  // Only process the configured emoji
-  if (reaction.emoji.name !== sbConfig.emoji) return;
+  // Only process the configured emoji (skip check for wildcard '*')
+  if (sbConfig.emoji !== '*' && reaction.emoji.name !== sbConfig.emoji) return;
 
   // Ignore messages in ignored channels
   if (sbConfig.ignoredChannels.includes(message.channel.id)) return;
@@ -251,7 +265,11 @@ export async function handleReactionAdd(reaction, user, client, config) {
     return;
   }
 
-  const starCount = await getStarCount(message, sbConfig.emoji, sbConfig.selfStarAllowed);
+  const { count: starCount, emoji: displayEmoji } = await getStarCount(
+    message,
+    sbConfig.emoji,
+    sbConfig.selfStarAllowed,
+  );
 
   if (starCount < sbConfig.threshold) return;
 
@@ -264,8 +282,8 @@ export async function handleReactionAdd(reaction, user, client, config) {
       return;
     }
 
-    const embed = buildStarboardEmbed(message, starCount);
-    const content = `⭐ **${starCount}** | <#${message.channel.id}>`;
+    const embed = buildStarboardEmbed(message, starCount, displayEmoji);
+    const content = `${displayEmoji} **${starCount}** | <#${message.channel.id}>`;
 
     if (existing) {
       // Update existing starboard message
@@ -341,13 +359,17 @@ export async function handleReactionRemove(reaction, _user, client, config) {
     }
   }
 
-  // Only process the configured emoji
-  if (reaction.emoji.name !== sbConfig.emoji) return;
+  // Only process the configured emoji (skip check for wildcard '*')
+  if (sbConfig.emoji !== '*' && reaction.emoji.name !== sbConfig.emoji) return;
 
   const existing = await findStarboardPost(message.id);
   if (!existing) return; // Nothing to update
 
-  const starCount = await getStarCount(message, sbConfig.emoji, sbConfig.selfStarAllowed);
+  const { count: starCount, emoji: displayEmoji } = await getStarCount(
+    message,
+    sbConfig.emoji,
+    sbConfig.selfStarAllowed,
+  );
 
   try {
     const starboardChannel = await client.channels.fetch(sbConfig.channelId);
@@ -371,8 +393,8 @@ export async function handleReactionRemove(reaction, _user, client, config) {
         const starboardMessage = await starboardChannel.messages.fetch(
           existing.starboard_message_id,
         );
-        const embed = buildStarboardEmbed(message, starCount);
-        const content = `⭐ **${starCount}** | <#${message.channel.id}>`;
+        const embed = buildStarboardEmbed(message, starCount, displayEmoji);
+        const content = `${displayEmoji} **${starCount}** | <#${message.channel.id}>`;
         await starboardMessage.edit({ content, embeds: [embed] });
         await updateStarboardPostCount(message.id, starCount);
         debug('Starboard post updated on reaction remove', { messageId: message.id, starCount });
