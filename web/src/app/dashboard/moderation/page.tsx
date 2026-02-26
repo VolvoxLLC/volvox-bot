@@ -250,21 +250,22 @@ export default function ModerationPage() {
     void fetchCases(guildId, page, sortDesc, actionFilter, userSearch);
   }, [guildId, page, actionFilter, userSearch, fetchCases]); // sortDesc excluded — handled client-side
 
-  // Client-side sort toggle — no re-fetch needed since API always returns DESC
+  // Client-side sort toggle — no re-fetch needed since API always returns DESC.
+  // Only `sortDesc` is a dep: the functional updater reads prev state directly,
+  // and we intentionally skip `casesData` to avoid re-running on every fetch.
   useEffect(() => {
-    if (!casesData) return;
     setCasesData((prev) => {
       if (!prev) return prev;
       return { ...prev, cases: [...prev.cases].reverse() };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to sortDesc toggle
   }, [sortDesc]);
 
-  // Re-fetch user history when page changes
+  // Re-fetch user history when page or lookup target changes
   useEffect(() => {
     if (!guildId || !lookupUserId) return;
     void fetchUserHistory(guildId, lookupUserId, userHistoryPage);
-  }, [userHistoryPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [guildId, lookupUserId, userHistoryPage, fetchUserHistory]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -440,6 +441,7 @@ export default function ModerationPage() {
                   sortDesc={true}
                   actionFilter="all"
                   userSearch=""
+                  guildId={guildId}
                   onPageChange={(pg) => setUserHistoryPage(pg)}
                   onSortToggle={() => {}}
                   onActionFilterChange={() => {}}

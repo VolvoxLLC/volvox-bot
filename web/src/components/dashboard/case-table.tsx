@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, Search, X } from "lucide-react";
-import { useState, useCallback } from "react";
+import { Fragment, useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,23 +148,27 @@ export function CaseTable({
   const [expandedCase, setExpandedCase] = useState<ModCase | null>(null);
   const [expandLoading, setExpandLoading] = useState(false);
 
-  const toggleExpand = useCallback(async (id: number, caseNumber: number) => {
-    if (expandedId === id) {
+  const toggleExpand = useCallback(async (c: ModCase) => {
+    if (expandedId === c.id) {
       setExpandedId(null);
       setExpandedCase(null);
       return;
     }
-    setExpandedId(id);
+    setExpandedId(c.id);
     setExpandedCase(null);
     setExpandLoading(true);
     try {
-      const res = await fetch(`/api/moderation/cases/${caseNumber}?guildId=${encodeURIComponent(guildId)}`);
+      const res = await fetch(`/api/moderation/cases/${c.case_number}?guildId=${encodeURIComponent(guildId)}`);
       if (res.ok) {
         const fullCase = await res.json() as ModCase;
         setExpandedCase(fullCase);
+      } else {
+        // Non-OK response — fall back to list data so CaseDetail still renders
+        setExpandedCase(c);
       }
     } catch {
-      // Fall back to list data (no scheduledActions)
+      // Network error — fall back to list data (no scheduledActions)
+      setExpandedCase(c);
     } finally {
       setExpandLoading(false);
     }
@@ -212,6 +216,9 @@ export function CaseTable({
               <TableHead>Target</TableHead>
               <TableHead className="hidden md:table-cell">Moderator</TableHead>
               <TableHead className="hidden lg:table-cell">Reason</TableHead>
+              {/* NOTE: Sort toggle only reverses the current page client-side.
+                  The API always returns DESC; a full server-side sort would
+                  require a backend ORDER param — not worth it right now. */}
               <TableHead className="w-36">
                 <button
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -247,11 +254,10 @@ export function CaseTable({
               </TableRow>
             ) : (
               cases.map((c) => (
-                <>
+                <Fragment key={c.id}>
                   <TableRow
-                    key={c.id}
                     className="cursor-pointer"
-                    onClick={() => toggleExpand(c.id, c.case_number)}
+                    onClick={() => toggleExpand(c)}
                   >
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       #{c.case_number}
@@ -286,7 +292,7 @@ export function CaseTable({
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               ))
             )}
           </TableBody>

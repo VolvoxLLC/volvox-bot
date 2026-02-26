@@ -93,48 +93,47 @@ router.get('/cases', async (req, res) => {
   }
 });
 
-// ─── GET /cases/:id ───────────────────────────────────────────────────────────
+// ─── GET /cases/:caseNumber ────────────────────────────────────────────────────
 
 /**
- * Get a single mod case by ID, including any scheduled actions.
+ * Get a single mod case by case_number + guild, including any scheduled actions.
+ *
+ * Query params:
+ *   guildId (required) — scoped to prevent cross-guild data exposure
  */
-router.get('/cases/:id', async (req, res) => {
-  const caseId = parseInt(req.params.id, 10);
-  if (isNaN(caseId)) {
-    return res.status(400).json({ error: 'Invalid case ID' });
+router.get('/cases/:caseNumber', async (req, res) => {
+  const caseNumber = parseInt(req.params.caseNumber, 10);
+  if (isNaN(caseNumber)) {
+    return res.status(400).json({ error: 'Invalid case number' });
+  }
+
+  const { guildId } = req.query;
+  if (!guildId) {
+    return res.status(400).json({ error: 'guildId is required' });
   }
 
   try {
     const pool = getPool();
 
-    const [caseResult, scheduledResult] = await Promise.all([
-      pool.query(
-        `SELECT
-           id,
-           guild_id,
-           case_number,
-           action,
-           target_id,
-           target_tag,
-           moderator_id,
-           moderator_tag,
-           reason,
-           duration,
-           expires_at,
-           log_message_id,
-           created_at
-         FROM mod_cases
-         WHERE id = $1`,
-        [caseId],
-      ),
-      pool.query(
-        `SELECT id, action, target_id, execute_at, executed, created_at
-         FROM mod_scheduled_actions
-         WHERE case_id = $1
-         ORDER BY execute_at ASC`,
-        [caseId],
-      ),
-    ]);
+    const caseResult = await pool.query(
+      `SELECT
+         id,
+         guild_id,
+         case_number,
+         action,
+         target_id,
+         target_tag,
+         moderator_id,
+         moderator_tag,
+         reason,
+         duration,
+         expires_at,
+         log_message_id,
+         created_at
+       FROM mod_cases
+       WHERE case_number = $1 AND guild_id = $2`,
+      [caseNumber, guildId],
+    );
 
     if (caseResult.rows.length === 0) {
       return res.status(404).json({ error: 'Case not found' });
@@ -142,12 +141,20 @@ router.get('/cases/:id', async (req, res) => {
 
     const caseRow = caseResult.rows[0];
 
+    const scheduledResult = await pool.query(
+      `SELECT id, action, target_id, execute_at, executed, created_at
+       FROM mod_scheduled_actions
+       WHERE case_id = $1
+       ORDER BY execute_at ASC`,
+      [caseRow.id],
+    );
+
     return res.json({
       ...caseRow,
       scheduledActions: scheduledResult.rows,
     });
   } catch (err) {
-    logError('Failed to fetch mod case', { error: err.message, caseId });
+    logError('Failed to fetch mod case', { error: err.message, caseNumber, guildId });
     return res.status(500).json({ error: 'Failed to fetch mod case' });
   }
 });
@@ -260,7 +267,7 @@ router.get('/user/:userId/history', async (req, res) => {
   try {
     const pool = getPool();
 
-    const [casesResult, countResult] = await Promise.all([
+    const [casesResult, countResult, summaryResult] = await Promise.all([
       pool.query(
         `SELECT
            id,
@@ -286,19 +293,17 @@ router.get('/user/:userId/history', async (req, res) => {
          WHERE guild_id = $1 AND target_id = $2`,
         [guildId, userId],
       ),
+      pool.query(
+        `SELECT action, COUNT(*)::integer AS count
+         FROM mod_cases
+         WHERE guild_id = $1 AND target_id = $2
+         GROUP BY action`,
+        [guildId, userId],
+      ),
     ]);
 
     const total = countResult.rows[0]?.total ?? 0;
     const pages = Math.ceil(total / limit);
-
-    // Also grab a summary of actions for this user
-    const summaryResult = await pool.query(
-      `SELECT action, COUNT(*)::integer AS count
-       FROM mod_cases
-       WHERE guild_id = $1 AND target_id = $2
-       GROUP BY action`,
-      [guildId, userId],
-    );
 
     const byAction = {};
     for (const row of summaryResult.rows) {
