@@ -121,7 +121,7 @@ describe('validateConfigPatch', () => {
     });
 
     it('should reject paths exceeding 200 characters', () => {
-      const longPath = 'ai.' + 'a'.repeat(200);
+      const longPath = `ai.${'a'.repeat(200)}`;
       const body = {
         path: longPath,
         value: true,

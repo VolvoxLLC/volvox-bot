@@ -211,9 +211,7 @@ describe('configAllowlist', () => {
     });
 
     it('should not strip mask sentinel from non-sensitive fields', () => {
-      const writes = [
-        { path: 'ai.model', value: '••••••••' },
-      ];
+      const writes = [{ path: 'ai.model', value: '••••••••' }];
 
       const result = stripMaskedWrites(writes);
 

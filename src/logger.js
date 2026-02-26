@@ -13,8 +13,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { PostgresTransport } from './transports/postgres.js';
 import { sentryEnabled } from './sentry.js';
+import { PostgresTransport } from './transports/postgres.js';
 import { SentryTransport } from './transports/sentry.js';
 import { WebSocketTransport } from './transports/websocket.js';
 

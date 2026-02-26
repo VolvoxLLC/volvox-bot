@@ -137,7 +137,7 @@ describe('triage-prompt', () => {
 
       const result = buildConversationText(context, buffer);
 
-      expect(result).toContain('(replying to Alice: "' + 'a'.repeat(100) + '")');
+      expect(result).toContain(`(replying to Alice: "${'a'.repeat(100)}")`);
       expect(result).not.toContain('a'.repeat(150));
     });
 

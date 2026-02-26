@@ -189,7 +189,10 @@ async function runResponder(
               try {
                 await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
               } catch (notifyErr) {
-                warn('Failed to send WebSearch notification', { channelId, error: notifyErr?.message });
+                warn('Failed to send WebSearch notification', {
+                  channelId,
+                  error: notifyErr?.message,
+                });
               }
             }
           }
