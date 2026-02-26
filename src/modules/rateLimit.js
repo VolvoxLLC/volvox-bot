@@ -64,6 +64,10 @@ async function handleRepeatOffender(message, config, muteDurationMs) {
   if (!member) return;
 
   // Apply timeout
+  if (!member.guild.members.me?.permissions.has('ModerateMembers')) {
+    warn('Rate limit: bot lacks MODERATE_MEMBERS permission', { guildId: message.guild.id });
+    return;
+  }
   try {
     await member.timeout(muteDurationMs, 'Rate limit: repeated violations');
     info('Rate limit temp-mute applied', {

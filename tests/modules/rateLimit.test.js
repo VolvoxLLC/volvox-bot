@@ -241,16 +241,22 @@ describe('checkRateLimit — repeat offender mute', () => {
       muteDurationSeconds: 60,
     });
 
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { some: vi.fn().mockReturnValue(false) } },
       timeout: vi.fn().mockResolvedValue(undefined),
+      guild,
     };
 
     const msg = {
       author: { id: 'bad-user', tag: 'BadUser#0001' },
       channel: { id: 'chan1' },
-      guild: { id: 'guild1' },
+      guild,
       member,
       client: {
         channels: { fetch: vi.fn().mockResolvedValue({ send: vi.fn() }) },
