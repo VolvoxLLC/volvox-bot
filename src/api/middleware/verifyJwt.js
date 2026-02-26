@@ -53,7 +53,14 @@ export async function verifyJwtToken(token) {
     return { error: 'Invalid or expired token', status: 401 };
   }
 
-  if (!(await getSessionToken(decoded.userId))) {
+  let sessionToken;
+  try {
+    sessionToken = await getSessionToken(decoded.userId);
+  } catch {
+    return { error: 'Session lookup failed', status: 503 };
+  }
+
+  if (!sessionToken) {
     return { error: 'Session expired or revoked', status: 401 };
   }
   return { user: decoded };

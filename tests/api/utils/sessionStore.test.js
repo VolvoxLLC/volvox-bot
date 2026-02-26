@@ -78,13 +78,13 @@ describe('SessionStore — in-memory fallback (no REDIS_URL)', () => {
   });
 
   it('cleanup() purges expired entries', () => {
-    // Inject an already-expired entry directly via the underlying Map
-    Map.prototype.set.call(sessionStore, 'expired-user', {
-      accessToken: 'expired-tok',
-      expiresAt: Date.now() - 1000,
-    });
+    vi.useFakeTimers();
+    sessionStore.set('expired-user', 'expired-tok');
+    // Advance time beyond the session TTL (1 hour = 3600000ms)
+    vi.advanceTimersByTime(3_600_001);
     sessionStore.cleanup();
-    expect(Map.prototype.get.call(sessionStore, 'expired-user')).toBeUndefined();
+    expect(sessionStore.get('expired-user')).toBeUndefined();
+    vi.useRealTimers();
   });
 
   it('cleanup() leaves non-expired entries intact', () => {
@@ -93,13 +93,13 @@ describe('SessionStore — in-memory fallback (no REDIS_URL)', () => {
     expect(sessionStore.get('live-user')).toBe('live-tok');
   });
 
-  it('getSessionToken() returns the access token', () => {
+  it('getSessionToken() returns the access token', async () => {
     sessionStore.set('user4', 'tok4');
-    expect(getSessionToken('user4')).toBe('tok4');
+    expect(await getSessionToken('user4')).toBe('tok4');
   });
 
-  it('getSessionToken() returns undefined for missing session', () => {
-    expect(getSessionToken('missing')).toBeUndefined();
+  it('getSessionToken() returns undefined for missing session', async () => {
+    expect(await getSessionToken('missing')).toBeUndefined();
   });
 });
 

@@ -13,6 +13,6 @@ import { handleOAuthJwt } from './oauthJwt.js';
  */
 export function requireOAuth() {
   return async (req, res, next) => {
-    return handleOAuthJwt(req, res, next, { missingTokenError: 'No token provided' });
+    await handleOAuthJwt(req, res, next, { missingTokenError: 'No token provided' });
   };
 }
