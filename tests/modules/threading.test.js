@@ -598,8 +598,7 @@ describe('threading module', () => {
 
       const key = buildThreadKey('user1', 'ch1');
       const tracked = getActiveThreads().get(key);
-      expect(tracked).toBeDefined();
-      expect(tracked.threadId).toBe('new-thread-1');
+      expect(tracked).toHaveProperty('threadId', 'new-thread-1');
     });
 
     it('should store guildId in activeThreads entry', async () => {

@@ -57,7 +57,7 @@ describe('health route', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.discord).toEqual({ status: 0, ping: 42, guilds: 1 });
-    expect(res.body.memory).toBeDefined();
+    expect(res.body).toHaveProperty('memory');
     expect(res.body.memory.heapUsed).toBeTypeOf('number');
   });
 
@@ -90,10 +90,10 @@ describe('health route', () => {
     const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
 
     expect(res.status).toBe(200);
-    expect(res.body.system).toBeDefined();
+    expect(res.body).toHaveProperty('system');
     expect(res.body.system.platform).toBe(process.platform);
     expect(res.body.system.nodeVersion).toBe(process.version);
-    expect(res.body.system.cpuUsage).toBeDefined();
+    expect(res.body.system).toHaveProperty('cpuUsage');
     expect(res.body.system.cpuUsage.user).toBeTypeOf('number');
     expect(res.body.system.cpuUsage.system).toBeTypeOf('number');
   });
@@ -109,7 +109,7 @@ describe('health route', () => {
     const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
 
     expect(res.status).toBe(200);
-    expect(res.body.errors).toBeDefined();
+    expect(res.body).toHaveProperty('errors');
     expect(res.body.errors.lastHour).toBe(3);
     expect(res.body.errors.lastDay).toBe(15);
     expect(queryLogs).toHaveBeenCalledTimes(2);
@@ -125,7 +125,7 @@ describe('health route', () => {
     const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
 
     expect(res.status).toBe(200);
-    expect(res.body.errors).toBeDefined();
+    expect(res.body).toHaveProperty('errors');
     expect(res.body.errors.lastHour).toBeNull();
     expect(res.body.errors.lastDay).toBeNull();
     expect(res.body.errors.error).toBe('query failed');

@@ -230,7 +230,7 @@ describe('modlog command', () => {
       await execute(interaction);
 
       const collectHandler = interaction._collectHandlers.collect;
-      expect(collectHandler).toBeDefined();
+      expect(typeof collectHandler).toBe('function');
 
       const doneInteraction = {
         customId: 'modlog_done',
@@ -311,7 +311,7 @@ describe('modlog command', () => {
       await execute(interaction);
 
       const endHandler = interaction._collectHandlers.end;
-      expect(endHandler).toBeDefined();
+      expect(typeof endHandler).toBe('function');
 
       await endHandler([], 'time');
       expect(interaction.editReply).toHaveBeenCalledWith(

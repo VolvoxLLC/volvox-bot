@@ -118,31 +118,31 @@ describe('extractUrls', () => {
 
 describe('matchPhishingPattern', () => {
   it('detects discord-nitro.xyz domain', () => {
-    expect(matchPhishingPattern('claim at https://discord-nitro.xyz')).toBeTruthy();
+    expect(matchPhishingPattern('claim at https://discord-nitro.xyz')).not.toBeNull();
   });
 
   it('detects free-nitro.xyz domain', () => {
-    expect(matchPhishingPattern('https://free-nitro.xyz/claim')).toBeTruthy();
+    expect(matchPhishingPattern('https://free-nitro.xyz/claim')).not.toBeNull();
   });
 
   it('detects .xyz domain with nitro in path', () => {
-    expect(matchPhishingPattern('https://random.xyz/nitro-free')).toBeTruthy();
+    expect(matchPhishingPattern('https://random.xyz/nitro-free')).not.toBeNull();
   });
 
   it('detects .xyz domain with discord in URL', () => {
-    expect(matchPhishingPattern('https://discord.xyz/claim')).toBeTruthy();
+    expect(matchPhishingPattern('https://discord.xyz/claim')).not.toBeNull();
   });
 
   it('detects discord-nitro subdomain regardless of TLD', () => {
-    expect(matchPhishingPattern('https://discord-nitro.com/free')).toBeTruthy();
+    expect(matchPhishingPattern('https://discord-nitro.com/free')).not.toBeNull();
   });
 
   it('detects discordnitro subdomain', () => {
-    expect(matchPhishingPattern('https://discordnitro.tk/verify')).toBeTruthy();
+    expect(matchPhishingPattern('https://discordnitro.tk/verify')).not.toBeNull();
   });
 
   it('detects steamgift subdomain', () => {
-    expect(matchPhishingPattern('https://steamgift.com/win')).toBeTruthy();
+    expect(matchPhishingPattern('https://steamgift.com/win')).not.toBeNull();
   });
 
   it('does NOT flag legitimate .xyz domains', () => {

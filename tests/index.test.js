@@ -337,7 +337,7 @@ describe('index.js', () => {
 
   it('should configure allowedMentions to only parse users (Issue #61)', async () => {
     await importIndex({ token: 'abc', databaseUrl: null });
-    expect(mocks.clientOptions).toBeDefined();
+    expect(mocks.clientOptions).toHaveProperty('allowedMentions');
     expect(mocks.clientOptions.allowedMentions).toEqual({ parse: ['users'] });
   });
 
@@ -441,10 +441,11 @@ describe('index.js', () => {
     const interaction = {
       isAutocomplete: () => false,
       isChatInputCommand: () => false,
+      reply: vi.fn(),
     };
 
     await interactionHandler(interaction);
-    // no crash = pass
+    expect(interaction.reply).not.toHaveBeenCalled();
   });
 
   it('should deny command when user lacks permission', async () => {
@@ -686,7 +687,10 @@ describe('index.js', () => {
     });
   });
 
-  // Skipped: dynamic import() in vitest doesn't throw for missing files the same way Node does at runtime
+  // TODO: Un-skip when Vitest supports mocking dynamic import() failures.
+  // Skipped because dynamic import() in Vitest doesn't throw for missing
+  // files the same way Node does at runtime, making this scenario untestable
+  // in the current test harness.
   it.skip('should continue startup when command import fails', () => {});
 
   it('should log discord client error events', async () => {

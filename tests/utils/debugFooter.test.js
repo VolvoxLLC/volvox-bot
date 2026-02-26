@@ -318,7 +318,7 @@ describe('buildDebugEmbed', () => {
     it('should have no fields and a description instead', () => {
       const embed = buildDebugEmbed(classifyStats, respondStats, 'compact');
       expect(embed.data.fields).toBeUndefined();
-      expect(embed.data.description).toBeDefined();
+      expect(typeof embed.data.description).toBe('string');
     });
 
     it('should have 2-line description with model + tokens + cost', () => {

@@ -136,7 +136,7 @@ describe('PostgresTransport', () => {
       expect(transport.buffer[0].message).toBe('');
       expect(transport.buffer[0].metadata).toEqual({});
       // timestamp should be auto-generated
-      expect(transport.buffer[0].timestamp).toBeDefined();
+      expect(typeof transport.buffer[0].timestamp).toBe('string');
     });
   });
 

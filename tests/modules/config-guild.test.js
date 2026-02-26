@@ -59,7 +59,7 @@ describe('per-guild configuration', () => {
   describe('getConfig backward compatibility', () => {
     it('should return global config when called with no arguments', () => {
       const config = configModule.getConfig();
-      expect(config).toBeDefined();
+      expect(config).toHaveProperty('ai');
       expect(config.ai.model).toBe('claude-3');
       expect(config.ai.enabled).toBe(true);
     });

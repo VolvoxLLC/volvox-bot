@@ -22,7 +22,7 @@ describe('sentry module', () => {
   it('should export Sentry namespace', async () => {
     vi.stubEnv('SENTRY_DSN', '');
     const mod = await import('../src/sentry.js');
-    expect(mod.Sentry).toBeDefined();
+    expect(mod.Sentry).toHaveProperty('captureException');
     expect(typeof mod.Sentry.captureException).toBe('function');
     expect(typeof mod.Sentry.captureMessage).toBe('function');
   });
@@ -38,13 +38,13 @@ describe('sentry module', () => {
     vi.stubEnv('SENTRY_TRACES_RATE', '0');
     // Module parses rate independently of DSN — just verify it doesn't throw
     const mod = await import('../src/sentry.js');
-    expect(mod.Sentry).toBeDefined();
+    expect(mod.Sentry).toHaveProperty('captureException');
   });
 
   it('should fall back to default trace rate for non-numeric values', async () => {
     vi.stubEnv('SENTRY_DSN', '');
     vi.stubEnv('SENTRY_TRACES_RATE', 'not-a-number');
     const mod = await import('../src/sentry.js');
-    expect(mod.Sentry).toBeDefined();
+    expect(mod.Sentry).toHaveProperty('captureException');
   });
 });

@@ -444,8 +444,7 @@ describe('moderation module', () => {
         config,
       );
 
-      expect(result).toBeTruthy();
-      expect(result.action).toBe('timeout');
+      expect(result).toMatchObject({ action: 'timeout' });
       expect(mockMember.timeout).toHaveBeenCalled();
     });
 
@@ -506,7 +505,7 @@ describe('moderation module', () => {
         config,
       );
 
-      expect(result).toBeTruthy();
+      expect(result).toHaveProperty('action', 'ban');
       expect(mockGuild.members.ban).toHaveBeenCalledWith('user1', { reason: expect.any(String) });
     });
   });

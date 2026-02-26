@@ -59,7 +59,7 @@ describe('modules/config', () => {
   describe('loadConfigFromFile', () => {
     it('should load and parse config.json', () => {
       const config = configModule.loadConfigFromFile();
-      expect(config).toBeDefined();
+      expect(config).toHaveProperty('ai');
       expect(config.ai.enabled).toBe(true);
     });
 

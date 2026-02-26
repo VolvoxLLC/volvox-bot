@@ -25,13 +25,15 @@ describe('command files', () => {
       });
 
       it('should export data and execute', () => {
-        expect(mod.data).toBeDefined();
-        expect(mod.data.name).toBeTruthy();
+        expect(mod).toHaveProperty('data');
+        expect(typeof mod.data.name).toBe('string');
+        expect(mod.data.name.length).toBeGreaterThan(0);
         expect(typeof mod.execute).toBe('function');
       });
 
       it('should have a description on data', () => {
-        expect(mod.data.description).toBeTruthy();
+        expect(typeof mod.data.description).toBe('string');
+        expect(mod.data.description.length).toBeGreaterThan(0);
       });
     });
   }

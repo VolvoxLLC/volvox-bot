@@ -191,7 +191,7 @@ describe('config routes', () => {
 
       expect(res.status).toBe(200);
       expect(setConfigValue).toHaveBeenCalledWith('ai.enabled', false);
-      expect(res.body.ai).toBeDefined();
+      expect(res.body).toHaveProperty('ai');
     });
 
     it('should update multiple sections at once', async () => {
@@ -497,7 +497,7 @@ describe('config routes', () => {
       expect(res.body.results).toHaveLength(2);
       expect(res.body.results[0].status).toBe('success');
       expect(res.body.results[1].status).toBe('failed');
-      expect(res.body.config).toBeDefined();
+      expect(res.body).toHaveProperty('config');
     });
 
     it('should return 500 with results when all writes fail', async () => {

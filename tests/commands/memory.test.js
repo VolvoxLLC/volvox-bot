@@ -276,7 +276,8 @@ describe('memory command', () => {
   describe('data export', () => {
     it('should export command data with name "memory"', () => {
       expect(data.name).toBe('memory');
-      expect(data.description).toBeTruthy();
+      expect(typeof data.description).toBe('string');
+      expect(data.description.length).toBeGreaterThan(0);
     });
   });
 

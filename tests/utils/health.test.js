@@ -45,8 +45,8 @@ describe('HealthMonitor', () => {
     const monitor = HealthMonitor.getInstance();
     expect(monitor.lastAIRequest).toBeNull();
     monitor.recordAIRequest();
-    expect(monitor.lastAIRequest).toBeTruthy();
     expect(typeof monitor.lastAIRequest).toBe('number');
+    expect(monitor.lastAIRequest).toBeGreaterThan(0);
   });
 
   it('should set API status', () => {
@@ -54,7 +54,8 @@ describe('HealthMonitor', () => {
     expect(monitor.apiStatus).toBe('unknown');
     monitor.setAPIStatus('ok');
     expect(monitor.apiStatus).toBe('ok');
-    expect(monitor.lastAPICheck).toBeTruthy();
+    expect(typeof monitor.lastAPICheck).toBe('number');
+    expect(monitor.lastAPICheck).toBeGreaterThan(0);
 
     monitor.setAPIStatus('error');
     expect(monitor.apiStatus).toBe('error');
@@ -118,13 +119,16 @@ describe('HealthMonitor', () => {
 
     const status = monitor.getStatus();
     expect(status.uptime).toBeGreaterThanOrEqual(0);
-    expect(status.uptimeFormatted).toBeTruthy();
-    expect(status.memory.heapUsed).toBeDefined();
-    expect(status.memory.formatted).toBeTruthy();
+    expect(typeof status.uptimeFormatted).toBe('string');
+    expect(status.uptimeFormatted.length).toBeGreaterThan(0);
+    expect(typeof status.memory.heapUsed).toBe('number');
+    expect(typeof status.memory.formatted).toBe('string');
+    expect(status.memory.formatted.length).toBeGreaterThan(0);
     expect(status.api.status).toBe('ok');
-    expect(status.api.lastCheck).toBeTruthy();
-    expect(status.lastAIRequest).toBeTruthy();
-    expect(status.timestamp).toBeTruthy();
+    expect(typeof status.api.lastCheck).toBe('number');
+    expect(status.api.lastCheck).toBeGreaterThan(0);
+    expect(typeof status.lastAIRequest).toBe('number');
+    expect(typeof status.timestamp).toBe('number');
   });
 
   it('should return detailed status with process info', () => {
@@ -135,7 +139,8 @@ describe('HealthMonitor', () => {
     expect(status.process.platform).toBe(process.platform);
     expect(status.process.nodeVersion).toBe(process.version);
     expect(typeof status.process.uptime).toBe('number');
-    expect(status.memory.arrayBuffers).toBeDefined();
-    expect(status.cpu).toBeDefined();
+    expect(typeof status.memory.arrayBuffers).toBe('number');
+    expect(status.cpu).toHaveProperty('user');
+    expect(status.cpu).toHaveProperty('system');
   });
 });
