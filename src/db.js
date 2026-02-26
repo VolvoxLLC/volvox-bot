@@ -104,7 +104,7 @@ export async function initDb() {
 
     // Prevent unhandled pool errors from crashing the process
     pool.on('error', (err) => {
-      logError('Unexpected database pool error', { error: err.message });
+      logError('Unexpected database pool error', { error: err.message, source: 'database_pool' });
     });
 
     try {
