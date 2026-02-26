@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { warn } from '../../logger.js';
 
 export const WEBHOOK_TIMEOUT_MS = 5_000;
@@ -28,10 +29,21 @@ export function fireAndForgetWebhook(envVarName, payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 
+  const body = JSON.stringify(payload);
+  const headers = { 'Content-Type': 'application/json' };
+
+  // Sign payload with HMAC-SHA256 if SESSION_SECRET is available
+  const signingSecret = process.env.SESSION_SECRET;
+  if (signingSecret) {
+    headers['X-Webhook-Signature'] = createHmac('sha256', signingSecret)
+      .update(body)
+      .digest('hex');
+  }
+
   fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers,
+    body,
     signal: controller.signal,
   })
     .then((response) => {

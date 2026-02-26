@@ -33,6 +33,12 @@ export class SentryTransport extends Transport {
    */
   static TAG_KEYS = new Set(['source', 'command', 'module', 'code', 'shardId']);
 
+  /** Sensitive metadata keys to strip before forwarding to Sentry. */
+  static SENSITIVE_KEYS = new Set([
+    'ip', 'accessToken', 'secret', 'apiKey',
+    'authorization', 'password', 'token', 'stack', 'cookie',
+  ]);
+
   /**
    * @param {Object} info - Winston log info object
    * @param {Function} callback
@@ -40,10 +46,11 @@ export class SentryTransport extends Transport {
   log(info, callback) {
     const { level, message, timestamp, stack, ...meta } = info;
 
-    // Separate tags from extra context
+    // Separate tags from extra context, filtering out sensitive keys
     const tags = {};
     const extra = {};
     for (const [key, value] of Object.entries(meta)) {
+      if (SentryTransport.SENSITIVE_KEYS.has(key)) continue;
       if (
         SentryTransport.TAG_KEYS.has(key) &&
         (typeof value === 'string' || typeof value === 'number')

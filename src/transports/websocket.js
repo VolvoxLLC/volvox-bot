@@ -22,6 +22,12 @@ const LEVEL_SEVERITY = {
 /** Keys to exclude from metadata extraction — allocated once, not per log() call */
 const EXCLUDED_KEYS = new Set(['level', 'message', 'timestamp', 'splat']);
 
+/** Sensitive metadata keys to strip before broadcasting to clients */
+const SENSITIVE_KEYS = new Set([
+  'ip', 'accessToken', 'secret', 'apiKey',
+  'authorization', 'password', 'token', 'stack', 'cookie',
+]);
+
 /**
  * Custom Winston transport that broadcasts log entries to authenticated
  * WebSocket clients. Supports per-client filtering by level, module, and search.
@@ -111,10 +117,10 @@ export class WebSocketTransport extends Transport {
     const { level, message, timestamp } = info;
     const messageText = typeof message === 'string' ? message : String(message ?? '');
 
-    // Extract metadata (exclude Winston internal properties + splat symbol)
+    // Extract metadata (exclude Winston internal properties + splat symbol + sensitive keys)
     const metadata = {};
     for (const key of Object.keys(info)) {
-      if (!EXCLUDED_KEYS.has(key)) {
+      if (!EXCLUDED_KEYS.has(key) && !SENSITIVE_KEYS.has(key)) {
         metadata[key] = info[key];
       }
     }

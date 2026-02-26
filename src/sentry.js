@@ -36,12 +36,21 @@ if (dsn) {
     // Automatically capture unhandled rejections and uncaught exceptions
     autoSessionTracking: true,
 
-    // Filter out noisy/expected errors
+    // Filter out noisy/expected errors and scrub sensitive metadata
     beforeSend(event) {
       // Skip AbortError from intentional request cancellations
       const message = event.exception?.values?.[0]?.value || '';
       if (message.includes('AbortError') || message.includes('The operation was aborted')) {
         return null;
+      }
+      // Scrub sensitive keys from extra context
+      const sensitiveKeys = ['ip', 'accessToken', 'secret', 'apiKey', 'authorization', 'password', 'token', 'stack', 'cookie'];
+      if (event.extra) {
+        for (const key of sensitiveKeys) {
+          if (key in event.extra) {
+            delete event.extra[key];
+          }
+        }
       }
       return event;
     },

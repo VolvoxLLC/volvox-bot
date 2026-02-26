@@ -6,8 +6,24 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
+import { requireGuildModerator } from './guilds.js';
 
 const router = Router();
+
+/**
+ * Middleware: adapt query param guildId to path param for requireGuildModerator.
+ * Moderation routes use `?guildId=` instead of `/:id`, so we bridge the gap.
+ */
+function adaptGuildIdParam(req, _res, next) {
+  if (req.query.guildId) {
+    req.params.id = req.query.guildId;
+  }
+  next();
+}
+
+// Apply guild-scoped authorization to all moderation routes
+// (requireAuth is already applied at the router mount level in api/index.js)
+router.use(adaptGuildIdParam, requireGuildModerator);
 
 // ─── GET /cases ───────────────────────────────────────────────────────────────
 

@@ -36,31 +36,43 @@ const SESSION_KEY_PREFIX = 'session:';
  */
 class SessionStore extends Map {
   /**
-   * Store an access token for a user.
+   * Store session data for a user.
    *
    * @param {string} userId
-   * @param {string} accessToken
+   * @param {{ accessToken: string, jti: string }} sessionData - Session data with access token and JWT nonce
    * @returns {this | Promise<'OK'>}
    */
-  set(userId, accessToken) {
+  set(userId, sessionData) {
     const client = getRedisClient();
     if (client) {
-      return client.setex(`${SESSION_KEY_PREFIX}${userId}`, SESSION_TTL_SECONDS, accessToken);
+      return client.setex(
+        `${SESSION_KEY_PREFIX}${userId}`,
+        SESSION_TTL_SECONDS,
+        JSON.stringify(sessionData),
+      );
     }
-    return super.set(userId, { accessToken, expiresAt: Date.now() + SESSION_TTL_MS });
+    return super.set(userId, { ...sessionData, expiresAt: Date.now() + SESSION_TTL_MS });
   }
 
   /**
-   * Get the stored access token for a user.
+   * Get the stored session data for a user.
    * Returns undefined/null if not found or expired.
    *
    * @param {string} userId
-   * @returns {string | undefined | Promise<string | null>}
+   * @returns {{ accessToken: string, jti: string } | undefined | Promise<{ accessToken: string, jti: string } | null>}
    */
   get(userId) {
     const client = getRedisClient();
     if (client) {
-      return client.get(`${SESSION_KEY_PREFIX}${userId}`);
+      return client.get(`${SESSION_KEY_PREFIX}${userId}`).then((val) => {
+        if (!val) return null;
+        try {
+          return JSON.parse(val);
+        } catch {
+          // Legacy bare-token format — treat as accessToken-only
+          return { accessToken: val, jti: null };
+        }
+      });
     }
     const entry = super.get(userId);
     if (!entry) return undefined;
@@ -68,7 +80,7 @@ class SessionStore extends Map {
       super.delete(userId);
       return undefined;
     }
-    return entry.accessToken;
+    return { accessToken: entry.accessToken, jti: entry.jti };
   }
 
   /**
@@ -124,5 +136,22 @@ export const sessionStore = new SessionStore();
  * @returns {Promise<string | null | undefined> | string | undefined}
  */
 export function getSessionToken(userId) {
+  const result = sessionStore.get(userId);
+  // Handle both sync (in-memory) and async (Redis) backends
+  if (result && typeof result.then === 'function') {
+    return result.then((data) => data?.accessToken ?? null);
+  }
+  return result?.accessToken ?? undefined;
+}
+
+/**
+ * Get the full session data (including jti nonce) for a user.
+ *
+ * Always `await` the return value — it is a Promise when Redis is configured.
+ *
+ * @param {string} userId - Discord user ID
+ * @returns {Promise<{ accessToken: string, jti: string } | null | undefined> | { accessToken: string, jti: string } | undefined}
+ */
+export function getSession(userId) {
   return sessionStore.get(userId);
 }
