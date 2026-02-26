@@ -131,11 +131,13 @@ function makeMessage(channelId, content, extras = {}) {
   };
 }
 
-/** Shared mock for message.react — reset in beforeEach */
+/** Shared mocks for message.react and reaction removal — reset in beforeEach */
 let mockReact;
+let mockRemove;
 
 function makeClient() {
   mockReact = vi.fn().mockResolvedValue(undefined);
+  mockRemove = vi.fn().mockResolvedValue(undefined);
   return {
     channels: {
       fetch: vi.fn().mockResolvedValue({
@@ -144,7 +146,15 @@ function makeClient() {
         sendTyping: vi.fn().mockResolvedValue(undefined),
         send: vi.fn().mockResolvedValue(undefined),
         messages: {
-          fetch: vi.fn().mockResolvedValue({ id: 'msg-default', react: mockReact }),
+          fetch: vi.fn().mockResolvedValue({
+            id: 'msg-default',
+            react: mockReact,
+            reactions: {
+              cache: {
+                get: vi.fn().mockReturnValue({ users: { remove: mockRemove } }),
+              },
+            },
+          }),
         },
       }),
     },
@@ -1070,7 +1080,7 @@ describe('triage module', () => {
       expect(mockReact).not.toHaveBeenCalledWith('\uD83D\uDD0D');
     });
 
-    it('should add 💬 reaction when responder starts (no thinking tokens)', async () => {
+    it('should transition 👀 → 💬 → removed (no thinking tokens)', async () => {
       const noThinkConfig = makeConfig({ triage: { thinkingTokens: 0 } });
       const classResult = {
         classification: 'respond',
@@ -1086,13 +1096,15 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('ch1', 'hello'), noThinkConfig);
       await evaluateNow('ch1', noThinkConfig, client, healthMonitor);
 
-      // 👀 fires on classify, 💬 fires on responder start (thinkingTokens defaults to 0)
+      // 👀 added then removed, 💬 added then removed
       const reactCalls = mockReact.mock.calls.map((c) => c[0]);
       expect(reactCalls).toContain('\uD83D\uDC40');
       expect(reactCalls).toContain('\uD83D\uDCAC');
+      // 👀 and 💬 should both be removed after completion
+      expect(mockRemove).toHaveBeenCalledWith('bot-id');
     });
 
-    it('should add 🧠 reaction when thinking tokens are configured', async () => {
+    it('should transition 👀 → 🧠 → removed (thinking tokens configured)', async () => {
       const thinkConfig = makeConfig({ triage: { thinkingTokens: 1000 } });
       const classResult = {
         classification: 'respond',
@@ -1111,9 +1123,10 @@ describe('triage module', () => {
       const reactCalls = mockReact.mock.calls.map((c) => c[0]);
       expect(reactCalls).toContain('\uD83E\uDDE0');
       expect(reactCalls).not.toContain('\uD83D\uDCAC');
+      expect(mockRemove).toHaveBeenCalledWith('bot-id');
     });
 
-    it('should NOT add 💬 or 🧠 when statusReactions is false', async () => {
+    it('should NOT add or remove reactions when statusReactions is false', async () => {
       const noReactConfig = makeConfig({ triage: { statusReactions: false } });
       const classResult = {
         classification: 'respond',
@@ -1129,9 +1142,8 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('ch1', 'hello'), noReactConfig);
       await evaluateNow('ch1', noReactConfig, client, healthMonitor);
 
-      const reactCalls = mockReact.mock.calls.map((c) => c[0]);
-      expect(reactCalls).not.toContain('\uD83D\uDCAC');
-      expect(reactCalls).not.toContain('\uD83E\uDDE0');
+      expect(mockReact).not.toHaveBeenCalled();
+      expect(mockRemove).not.toHaveBeenCalled();
     });
 
     it('should not block response flow when reaction fails', async () => {
