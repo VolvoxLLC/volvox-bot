@@ -695,11 +695,8 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.maxMessages ?? 10}
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") return;
-                      const num = Number(raw);
-                      if (!Number.isFinite(num)) return;
-                      updateRateLimitField("maxMessages", num);
+                      const num = parseNumberInput(e.target.value, 0);
+                      if (num !== undefined) updateRateLimitField("maxMessages", num);
                     }}
                     disabled={saving}
                     className={inputClasses}
@@ -712,11 +709,8 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.windowSeconds ?? 10}
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") return;
-                      const num = Number(raw);
-                      if (!Number.isFinite(num)) return;
-                      updateRateLimitField("windowSeconds", num);
+                      const num = parseNumberInput(e.target.value, 0);
+                      if (num !== undefined) updateRateLimitField("windowSeconds", num);
                     }}
                     disabled={saving}
                     className={inputClasses}
@@ -731,11 +725,8 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteAfterTriggers ?? 3}
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") return;
-                      const num = Number(raw);
-                      if (!Number.isFinite(num)) return;
-                      updateRateLimitField("muteAfterTriggers", num);
+                      const num = parseNumberInput(e.target.value, 0);
+                      if (num !== undefined) updateRateLimitField("muteAfterTriggers", num);
                     }}
                     disabled={saving}
                     className={inputClasses}
@@ -748,11 +739,8 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteWindowSeconds ?? 300}
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") return;
-                      const num = Number(raw);
-                      if (!Number.isFinite(num)) return;
-                      updateRateLimitField("muteWindowSeconds", num);
+                      const num = parseNumberInput(e.target.value, 0);
+                      if (num !== undefined) updateRateLimitField("muteWindowSeconds", num);
                     }}
                     disabled={saving}
                     className={inputClasses}
@@ -765,11 +753,8 @@ export function ConfigEditor() {
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteDurationSeconds ?? 300}
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") return;
-                      const num = Number(raw);
-                      if (!Number.isFinite(num)) return;
-                      updateRateLimitField("muteDurationSeconds", num);
+                      const num = parseNumberInput(e.target.value, 0);
+                      if (num !== undefined) updateRateLimitField("muteDurationSeconds", num);
                     }}
                     disabled={saving}
                     className={inputClasses}
@@ -862,11 +847,8 @@ export function ConfigEditor() {
                   min={0}
                   value={draftConfig.triage?.classifyBudget ?? 0}
                   onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") return;
-                    const num = Number(raw);
-                    if (!Number.isFinite(num)) return;
-                    updateTriageField("classifyBudget", num);
+                    const num = parseNumberInput(e.target.value, 0);
+                    if (num !== undefined) updateTriageField("classifyBudget", num);
                   }}
                   disabled={saving}
                   className={inputClasses}
@@ -880,11 +862,8 @@ export function ConfigEditor() {
                   min={0}
                   value={draftConfig.triage?.respondBudget ?? 0}
                   onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") return;
-                    const num = Number(raw);
-                    if (!Number.isFinite(num)) return;
-                    updateTriageField("respondBudget", num);
+                    const num = parseNumberInput(e.target.value, 0);
+                    if (num !== undefined) updateTriageField("respondBudget", num);
                   }}
                   disabled={saving}
                   className={inputClasses}
@@ -899,11 +878,8 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.defaultInterval ?? 3000}
                   onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") return;
-                    const num = Number(raw);
-                    if (!Number.isFinite(num)) return;
-                    updateTriageField("defaultInterval", num);
+                    const num = parseNumberInput(e.target.value, 0);
+                    if (num !== undefined) updateTriageField("defaultInterval", num);
                   }}
                   disabled={saving}
                   className={inputClasses}
@@ -916,11 +892,8 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.timeout ?? 30000}
                   onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") return;
-                    const num = Number(raw);
-                    if (!Number.isFinite(num)) return;
-                    updateTriageField("timeout", num);
+                    const num = parseNumberInput(e.target.value, 0);
+                    if (num !== undefined) updateTriageField("timeout", num);
                   }}
                   disabled={saving}
                   className={inputClasses}
@@ -935,11 +908,8 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.contextMessages ?? 10}
                   onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") return;
-                    const num = Number(raw);
-                    if (!Number.isFinite(num)) return;
-                    updateTriageField("contextMessages", num);
+                    const num = parseNumberInput(e.target.value, 0);
+                    if (num !== undefined) updateTriageField("contextMessages", num);
                   }}
                   disabled={saving}
                   className={inputClasses}
@@ -952,11 +922,8 @@ export function ConfigEditor() {
                   min={1}
                   value={draftConfig.triage?.maxBufferSize ?? 30}
                   onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") return;
-                    const num = Number(raw);
-                    if (!Number.isFinite(num)) return;
-                    updateTriageField("maxBufferSize", num);
+                    const num = parseNumberInput(e.target.value, 0);
+                    if (num !== undefined) updateTriageField("maxBufferSize", num);
                   }}
                   disabled={saving}
                   className={inputClasses}
@@ -1185,11 +1152,8 @@ export function ConfigEditor() {
               min={1}
               value={draftConfig.memory?.maxContextMemories ?? 10}
               onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === "") return;
-                const num = Number(raw);
-                if (!Number.isFinite(num)) return;
-                updateMemoryField("maxContextMemories", num);
+                const num = parseNumberInput(e.target.value, 0);
+                if (num !== undefined) updateMemoryField("maxContextMemories", num);
               }}
               disabled={saving}
               className={inputClasses}

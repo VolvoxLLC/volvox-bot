@@ -121,7 +121,7 @@ export interface PermissionsConfig {
   moderatorRoleId: string | null;
   botOwners: string[];
   usePermissions: boolean;
-  allowedCommands: Record<string, string[]>;
+  allowedCommands: Record<string, string>;
 }
 
 /** Memory configuration. */

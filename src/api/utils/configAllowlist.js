@@ -4,9 +4,18 @@
  * can be read or written via the API.
  */
 
-export const SAFE_CONFIG_KEYS = new Set(['ai', 'welcome', 'spam', 'moderation', 'triage']);
+export const SAFE_CONFIG_KEYS = new Set([
+  'ai',
+  'welcome',
+  'spam',
+  'moderation',
+  'triage',
+  'starboard',
+  'permissions',
+  'memory',
+]);
 
-export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging', 'memory', 'permissions'];
+export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];
 
 /**
  * Dot-notation paths to config values that contain secrets (e.g. API keys).
