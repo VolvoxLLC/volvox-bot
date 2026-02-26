@@ -18,6 +18,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** Discord blurple colour used for help embeds. */
 const EMBED_COLOR = 0x5865f2;
 
+/** Valid topic slug: lowercase alphanumeric + hyphens, 2–50 chars. */
+const TOPIC_REGEX = /^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$/;
+
 /** Number of topics displayed per page in the list subcommand. */
 const TOPICS_PER_PAGE = 10;
 
@@ -138,12 +141,14 @@ async function handleView(interaction) {
 
   const row = rows[0];
 
+  const description = row.content.length > 4096 ? `${row.content.slice(0, 4093)}...` : row.content;
+
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
     .setTitle(row.title)
-    .setDescription(row.content)
+    .setDescription(description)
     .setFooter({
-      text: `Added by <@${row.author_id}> • ${new Date(row.created_at).toLocaleDateString()}`,
+      text: `Added by ${row.author_id} • ${new Date(row.created_at).toLocaleDateString()}`,
     })
     .setTimestamp(new Date(row.updated_at));
 
@@ -162,6 +167,14 @@ async function handleAdd(interaction) {
   const topic = interaction.options.getString('topic');
   const title = interaction.options.getString('title');
   const content = interaction.options.getString('content');
+
+  if (!TOPIC_REGEX.test(topic)) {
+    return await safeEditReply(
+      interaction,
+      '❌ Topic slug must be lowercase letters, numbers, or hyphens only, and 2–50 characters (e.g. `my-topic`).',
+    );
+  }
+
   const pool = getPool();
 
   try {
@@ -345,21 +358,16 @@ export async function execute(interaction) {
  * @param {import('discord.js').AutocompleteInteraction} interaction
  */
 export async function autocomplete(interaction) {
-  const focused = interaction.options.getFocused().toLowerCase();
+  const focused = interaction.options.getFocused();
 
   try {
     const pool = getPool();
     const { rows } = await pool.query(
-      'SELECT topic, title FROM help_topics WHERE guild_id = $1 ORDER BY topic ASC',
-      [interaction.guild.id],
+      'SELECT topic, title FROM help_topics WHERE guild_id = $1 AND (topic ILIKE $2 OR title ILIKE $2) ORDER BY topic ASC LIMIT 25',
+      [interaction.guild.id, `%${focused}%`],
     );
 
-    const filtered = rows
-      .filter(
-        (r) => r.topic.toLowerCase().includes(focused) || r.title.toLowerCase().includes(focused),
-      )
-      .slice(0, 25)
-      .map((r) => ({ name: `${r.title} (${r.topic})`, value: r.topic }));
+    const filtered = rows.map((r) => ({ name: `${r.title} (${r.topic})`, value: r.topic }));
 
     await interaction.respond(filtered);
   } catch (err) {

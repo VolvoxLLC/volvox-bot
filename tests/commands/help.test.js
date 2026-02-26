@@ -141,6 +141,44 @@ describe('help command', () => {
       expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('created'));
     });
 
+    it('should reject invalid topic slugs', async () => {
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
+      const invalidSlugs = ['UPPERCASE', 'has spaces', 'trailing-', '-leading', 'a', ''];
+      for (const slug of invalidSlugs) {
+        const interaction = createInteraction('add');
+        interaction.options._setString('topic', slug);
+        interaction.options._setString('title', 'Test');
+        interaction.options._setString('content', 'content');
+        await execute(interaction);
+
+        expect(interaction.editReply).toHaveBeenCalledWith(
+          expect.stringContaining('Topic slug must be'),
+        );
+        // Should NOT insert
+        expect(mockPool.query).not.toHaveBeenCalledWith(
+          expect.stringContaining('INSERT'),
+          expect.anything(),
+        );
+        vi.clearAllMocks();
+        isModerator.mockReturnValue(true);
+      }
+    });
+
+    it('should accept valid topic slugs', async () => {
+      const mockPool = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+      getPool.mockReturnValue(mockPool);
+
+      const interaction = createInteraction('add');
+      interaction.options._setString('topic', 'my-valid-topic');
+      interaction.options._setString('title', 'Valid');
+      interaction.options._setString('content', 'content');
+      await execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('created'));
+    });
+
     it('should return error for duplicate topic', async () => {
       const dupeError = new Error('duplicate key');
       dupeError.code = '23505';
@@ -354,14 +392,11 @@ describe('help command', () => {
   // ── autocomplete ───────────────────────────────────────────────
 
   describe('autocomplete', () => {
-    it('should return matching topics', async () => {
+    it('should query DB with ILIKE filter and return matching topics', async () => {
+      // DB returns only the rows that match the ILIKE filter (simulating SQL filtering)
       const mockPool = {
         query: vi.fn().mockResolvedValue({
-          rows: [
-            { topic: 'rules', title: 'Server Rules' },
-            { topic: 'roles', title: 'Roles' },
-            { topic: 'getting-started', title: 'Getting Started' },
-          ],
+          rows: [{ topic: 'rules', title: 'Server Rules' }],
         }),
       };
       getPool.mockReturnValue(mockPool);
@@ -370,10 +405,14 @@ describe('help command', () => {
       interaction.options.getFocused.mockReturnValue('rul');
       await autocomplete(interaction);
 
+      // Should have passed the ILIKE pattern to the query
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('ILIKE'), [
+        'guild1',
+        '%rul%',
+      ]);
       expect(interaction.respond).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ value: 'rules' })]),
       );
-      // Should NOT include non-matching entries
       const call = interaction.respond.mock.calls[0][0];
       expect(call.length).toBe(1);
     });
