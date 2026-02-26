@@ -1,0 +1,8 @@
+{
+  "files": [
+    { "path": "README.md", "description": "Project overview and setup instructions" },
+    { "path": "src/db.js", "description": "Database connection pool and migration runner" },
+    { "path": "src/logger.js", "description": "Winston logger configuration — all logging goes through this" },
+    { "path": "web/src/components/dashboard/types.ts", "description": "TypeScript types and type guards for the dashboard" }
+  ]
+}
