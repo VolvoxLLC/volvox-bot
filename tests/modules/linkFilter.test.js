@@ -242,6 +242,19 @@ describe('checkLinks — blocklist matching', () => {
     const result = await checkLinks(msg, config);
     expect(result.blocked).toBe(true);
   });
+
+  it('blocks when blockedDomains entry is mixed-case or has www. prefix', async () => {
+    // Config entries like "Evil.Com" or "www.Evil.Com" should still match
+    const config = makeConfig({ blockedDomains: ['Evil.Com', 'www.BAD.IO'] });
+    const msgEvil = makeMessage({ content: 'visit https://evil.com/page' });
+    const msgBad = makeMessage({ content: 'https://bad.io/link' });
+
+    const resultEvil = await checkLinks(msgEvil, config);
+    expect(resultEvil.blocked).toBe(true);
+
+    const resultBad = await checkLinks(msgBad, config);
+    expect(resultBad.blocked).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

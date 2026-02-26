@@ -6,10 +6,21 @@
 
 import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import { info, warn } from '../logger.js';
-import { safeSend } from '../utils/safeSend.js';
+import { isExempt } from '../utils/modExempt.js';
+import { safeReply, safeSend } from '../utils/safeSend.js';
+import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 
 /** Maximum number of (userId:channelId) entries to track simultaneously. */
-const MAX_TRACKED_USERS = 10_000;
+let _maxTrackedUsers = 10_000;
+
+/**
+ * Override the memory cap. **For tests only.**
+ * Call clearRateLimitState() after to reset tracking.
+ * @param {number} n
+ */
+export function setMaxTrackedUsers(n) {
+  _maxTrackedUsers = n;
+}
 
 /**
  * Per-user-per-channel sliding window state.
@@ -33,29 +44,6 @@ function evictOldest(count = 1) {
 }
 
 /**
- * Check whether a message author has mod/admin permissions.
- * Exempt if they hold any role listed in `permissions.modRoles`, or if they
- * have ADMINISTRATOR permission.
- * @param {import('discord.js').Message} message
- * @param {Object} config
- * @returns {boolean}
- */
-function isExempt(message, config) {
-  const member = message.member;
-  if (!member) return false;
-
-  // ADMINISTRATOR permission bypasses everything
-  if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
-
-  const modRoles = config.permissions?.modRoles ?? [];
-  if (modRoles.length === 0) return false;
-
-  return member.roles.cache.some(
-    (role) => modRoles.includes(role.id) || modRoles.includes(role.name),
-  );
-}
-
-/**
  * Send a temp-mute (timeout) to a repeat offender and alert the mod channel.
  * @param {import('discord.js').Message} message
  * @param {Object} config
@@ -65,8 +53,12 @@ async function handleRepeatOffender(message, config, muteDurationMs) {
   const member = message.member;
   if (!member) return;
 
-  // Apply timeout
-  if (!member.guild.members.me?.permissions.has('ModerateMembers')) {
+  const rlConfig = config.moderation?.rateLimit ?? {};
+  const muteThreshold = rlConfig.muteAfterTriggers ?? 3;
+  const muteWindowSeconds = rlConfig.muteWindowSeconds ?? 300;
+
+  // Apply timeout — use PermissionFlagsBits constant, not a string
+  if (!member.guild.members.me?.permissions.has(PermissionFlagsBits.ModerateMembers)) {
     warn('Rate limit: bot lacks MODERATE_MEMBERS permission', { guildId: message.guild.id });
     return;
   }
@@ -88,14 +80,23 @@ async function handleRepeatOffender(message, config, muteDurationMs) {
   const alertChannel = await message.client.channels.fetch(alertChannelId).catch(() => null);
   if (!alertChannel) return;
 
+  const muteWindowMinutes = Math.round(muteWindowSeconds / 60);
+  const reasonText =
+    `Repeated rate limit violations ` +
+    `(${muteThreshold} triggers in ${muteWindowMinutes} minute${muteWindowMinutes === 1 ? '' : 's'})`;
+
   const embed = new EmbedBuilder()
     .setColor(0xe67e22)
     .setTitle('⏱️ Rate Limit: Temp-Mute Applied')
     .addFields(
-      { name: 'User', value: `<@${message.author.id}> (${message.author.tag})`, inline: true },
+      {
+        name: 'User',
+        value: `<@${message.author.id}> (${sanitizeMentions(message.author.tag)})`,
+        inline: true,
+      },
       { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
       { name: 'Duration', value: `${Math.round(muteDurationMs / 60000)} minute(s)`, inline: true },
-      { name: 'Reason', value: 'Repeated rate limit violations (3 triggers in 5 minutes)' },
+      { name: 'Reason', value: reasonText },
     )
     .setTimestamp();
 
@@ -104,17 +105,17 @@ async function handleRepeatOffender(message, config, muteDurationMs) {
 
 /**
  * Send a rate-limit warning to the offending user in-channel.
+ * Uses safeReply to enforce allowedMentions and sanitization.
  * @param {import('discord.js').Message} message
  * @param {number} maxMessages
  * @param {number} windowSeconds
  */
 async function warnUser(message, maxMessages, windowSeconds) {
-  const reply = await message
-    .reply(
-      `⚠️ <@${message.author.id}>, you're sending messages too fast! ` +
-        `Limit: ${maxMessages} messages per ${windowSeconds} seconds.`,
-    )
-    .catch(() => null);
+  const reply = await safeReply(
+    message,
+    `⚠️ <@${message.author.id}>, you're sending messages too fast! ` +
+      `Limit: ${maxMessages} messages per ${windowSeconds} seconds.`,
+  ).catch(() => null);
 
   // Auto-delete the warning after 10 seconds
   if (reply) {
@@ -149,8 +150,8 @@ export async function checkRateLimit(message, config) {
   const now = Date.now();
 
   // Cap tracked users to avoid memory blowout
-  if (!windowMap.has(key) && windowMap.size >= MAX_TRACKED_USERS) {
-    evictOldest(Math.ceil(MAX_TRACKED_USERS * 0.1)); // evict 10%
+  if (!windowMap.has(key) && windowMap.size >= _maxTrackedUsers) {
+    evictOldest(Math.ceil(_maxTrackedUsers * 0.1)); // evict 10%
   }
 
   let entry = windowMap.get(key);
@@ -180,7 +181,7 @@ export async function checkRateLimit(message, config) {
   // Delete the excess message
   await message.delete().catch(() => {});
 
-  // Track trigger count for mute escalation (sliding 5-min window)
+  // Track trigger count for mute escalation (sliding window)
   const muteWindowMs = muteWindowSeconds * 1000;
   if (now - entry.triggerWindowStart > muteWindowMs) {
     // Reset trigger window
@@ -212,6 +213,7 @@ export async function checkRateLimit(message, config) {
  */
 export function clearRateLimitState() {
   windowMap.clear();
+  _maxTrackedUsers = 10_000;
 }
 
 /**

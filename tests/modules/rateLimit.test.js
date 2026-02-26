@@ -4,6 +4,7 @@ import {
   checkRateLimit,
   clearRateLimitState,
   getTrackedCount,
+  setMaxTrackedUsers,
 } from '../../src/modules/rateLimit.js';
 
 // ---------------------------------------------------------------------------
@@ -295,26 +296,32 @@ describe('checkRateLimit — repeat offender mute', () => {
 
 describe('checkRateLimit — memory cap', () => {
   it('evicts old entries when cap is reached', async () => {
+    const cap = 10;
+    setMaxTrackedUsers(cap);
+
     const config = makeConfig({ maxMessages: 100, windowSeconds: 60 });
 
-    // Fill slightly under limit to verify tracking
-    const initialUsers = 50;
-    for (let i = 0; i < initialUsers; i++) {
-      const msg = makeMessage({ userId: `user-${i}` });
+    // Fill exactly to the cap
+    for (let i = 0; i < cap; i++) {
+      const msg = makeMessage({ userId: `cap-user-${i}` });
       await checkRateLimit(msg, config);
     }
 
-    expect(getTrackedCount()).toBe(initialUsers);
+    expect(getTrackedCount()).toBe(cap);
 
-    // Fill up to and past the cap (MAX_TRACKED_USERS = 10_000)
-    // We won't actually create 10k users in the test — just verify the eviction
-    // logic doesn't throw and count stays bounded. We test the code path with
-    // a smaller internal limit by checking that getTrackedCount() never grows
-    // unboundedly — the actual cap enforcement is unit-tested via the module.
-    // This test simply validates the happy path tracking works correctly.
-    const msg = makeMessage({ userId: 'extra-user' });
-    await checkRateLimit(msg, config);
-    expect(getTrackedCount()).toBeLessThanOrEqual(initialUsers + 1);
+    // Add several more users beyond the cap.
+    // Each breach triggers eviction of 10% (1 entry at cap=10), then adds
+    // the new user — so size stays AT cap after each overflow, proving the
+    // eviction logic fired and the map never grows past the limit.
+    for (let i = 0; i < 5; i++) {
+      const overflow = makeMessage({ userId: `overflow-user-${i}` });
+      await checkRateLimit(overflow, config);
+      // Size must never exceed the cap — eviction keeps it bounded.
+      expect(getTrackedCount()).toBeLessThanOrEqual(cap);
+    }
+
+    // Sanity: the map is still actively tracking entries
+    expect(getTrackedCount()).toBeGreaterThan(0);
   });
 });
 
@@ -327,6 +334,9 @@ describe('checkRateLimit — warns user', () => {
     await checkRateLimit(msg, config);
     await checkRateLimit(msg, config); // trigger
 
-    expect(msg.reply).toHaveBeenCalledWith(expect.stringContaining('too fast'));
+    // safeReply passes an options object to message.reply (with allowedMentions etc.)
+    expect(msg.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('too fast') }),
+    );
   });
 });

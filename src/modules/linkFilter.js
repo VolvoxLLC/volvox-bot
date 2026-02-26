@@ -4,9 +4,11 @@
  * Also detects phishing TLD patterns (.xyz with suspicious keywords).
  */
 
-import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { warn } from '../logger.js';
+import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
+import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 
 /**
  * Regex to extract URLs from message content.
@@ -27,6 +29,18 @@ const PHISHING_PATTERNS = [
   // Common phishing subdomains regardless of TLD
   /(?:discord-nitro|discordnitro|free-nitro|steamgift)\.[a-z]{2,}(?:\/[^\s]*)?/i,
 ];
+
+/**
+ * Normalize a domain entry from the blocklist.
+ * Lowercases the value and strips a leading "www." so that blocklist entries
+ * are comparable to the already-normalized hostnames extracted by extractUrls().
+ *
+ * @param {string} domain
+ * @returns {string}
+ */
+function normalizeBlockedDomain(domain) {
+  return domain.toLowerCase().replace(/^www\./, '');
+}
 
 /**
  * Extract all hostnames/domains from a message string.
@@ -67,26 +81,6 @@ export function matchPhishingPattern(content) {
 }
 
 /**
- * Check whether a message author has mod/admin permissions.
- * @param {import('discord.js').Message} message
- * @param {Object} config
- * @returns {boolean}
- */
-function isExempt(message, config) {
-  const member = message.member;
-  if (!member) return false;
-
-  if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
-
-  const modRoles = config.permissions?.modRoles ?? [];
-  if (modRoles.length === 0) return false;
-
-  return member.roles.cache.some(
-    (role) => modRoles.includes(role.id) || modRoles.includes(role.name),
-  );
-}
-
-/**
  * Alert the mod channel about a blocked link.
  * @param {import('discord.js').Message} message
  * @param {Object} config
@@ -106,10 +100,14 @@ async function alertModChannel(message, config, matchedDomain, reason) {
       `🔗 Suspicious Link ${reason === 'phishing' ? '(Phishing Pattern)' : '(Blocklisted Domain)'} Detected`,
     )
     .addFields(
-      { name: 'User', value: `<@${message.author.id}> (${message.author.tag})`, inline: true },
+      {
+        name: 'User',
+        value: `<@${message.author.id}> (${sanitizeMentions(message.author.tag)})`,
+        inline: true,
+      },
       { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
       { name: 'Matched', value: `\`${matchedDomain}\``, inline: true },
-      { name: 'Content', value: message.content.slice(0, 1000) || '*empty*' },
+      { name: 'Content', value: sanitizeMentions(message.content.slice(0, 1000)) || '*empty*' },
     )
     .setTimestamp();
 
@@ -146,9 +144,13 @@ export async function checkLinks(message, config) {
     return { blocked: true, domain: phishingMatch };
   }
 
-  // 2. Check extracted URLs against the configurable domain blocklist
-  const blockedDomains = lfConfig.blockedDomains ?? [];
-  if (blockedDomains.length === 0) return { blocked: false };
+  // 2. Check extracted URLs against the configurable domain blocklist.
+  //    Normalize each blocklist entry (lowercase, strip www.) so that
+  //    mixed-case or www-prefixed config entries match correctly.
+  const rawBlockedDomains = lfConfig.blockedDomains ?? [];
+  if (rawBlockedDomains.length === 0) return { blocked: false };
+
+  const blockedDomains = rawBlockedDomains.map(normalizeBlockedDomain);
 
   const urls = extractUrls(content);
   for (const { hostname, fullUrl } of urls) {
