@@ -154,11 +154,22 @@ async function pollScheduledMessages(client) {
         if (msg.one_time) {
           await pool.query('UPDATE scheduled_messages SET enabled = false WHERE id = $1', [msg.id]);
         } else if (msg.cron_expression) {
-          const nextRun = getNextCronRun(msg.cron_expression, new Date());
-          await pool.query('UPDATE scheduled_messages SET next_run = $1 WHERE id = $2', [
-            nextRun.toISOString(),
-            msg.id,
-          ]);
+          try {
+            const nextRun = getNextCronRun(msg.cron_expression, new Date());
+            await pool.query('UPDATE scheduled_messages SET next_run = $1 WHERE id = $2', [
+              nextRun.toISOString(),
+              msg.id,
+            ]);
+          } catch (cronErr) {
+            logError('Invalid cron expression, disabling message', {
+              id: msg.id,
+              cron: msg.cron_expression,
+              error: cronErr.message,
+            });
+            await pool.query('UPDATE scheduled_messages SET enabled = false WHERE id = $1', [
+              msg.id,
+            ]);
+          }
         }
       } catch (err) {
         logError('Failed to send scheduled message', {
