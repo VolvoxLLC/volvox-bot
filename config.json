@@ -95,6 +95,14 @@
       "flushIntervalMs": 5000
     }
   },
+  "starboard": {
+    "enabled": false,
+    "channelId": null,
+    "threshold": 3,
+    "emoji": "⭐",
+    "selfStarAllowed": false,
+    "ignoredChannels": []
+  },
   "permissions": {
     "enabled": true,
     "adminRoleId": null,
