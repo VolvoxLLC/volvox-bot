@@ -50,7 +50,7 @@ export const data = new SlashCommandBuilder()
         opt.setName('title').setDescription('Display title').setMaxLength(256).setRequired(true),
       )
       .addStringOption((opt) =>
-        opt.setName('content').setDescription('Topic content').setRequired(true),
+        opt.setName('content').setDescription('Topic content').setMaxLength(4096).setRequired(true),
       ),
   )
   .addSubcommand((sub) =>
@@ -66,7 +66,7 @@ export const data = new SlashCommandBuilder()
       )
       .addStringOption((opt) => opt.setName('title').setDescription('New title').setMaxLength(256).setRequired(false))
       .addStringOption((opt) =>
-        opt.setName('content').setDescription('New content').setRequired(false),
+        opt.setName('content').setDescription('New content').setMaxLength(4096).setRequired(false),
       ),
   )
   .addSubcommand((sub) =>
@@ -148,7 +148,7 @@ async function handleView(interaction) {
     .setTitle(row.title)
     .setDescription(description)
     .setFooter({
-      text: `Added by ${row.author_id} • ${new Date(row.created_at).toLocaleDateString()}`,
+      text: `Topic #${row.topic} • ${new Date(row.created_at).toLocaleDateString()}`,
     })
     .setTimestamp(new Date(row.updated_at));
 
@@ -346,7 +346,7 @@ export async function execute(interaction) {
         break;
     }
   } catch (err) {
-    logError('Help command failed', { error: err.message, subcommand });
+    logError('Help command failed', { error: err.message, stack: err.stack, subcommand });
     await safeEditReply(interaction, '❌ Failed to execute help command.');
   }
 }
@@ -374,7 +374,7 @@ export async function autocomplete(interaction) {
 
     await interaction.respond(filtered);
   } catch (err) {
-    logError('Help autocomplete failed', { error: err.message });
+    logError('Help autocomplete failed', { error: err.message, stack: err.stack });
     await interaction.respond([]);
   }
 }
