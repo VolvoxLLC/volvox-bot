@@ -16,7 +16,6 @@ exports.up = (pgm) => {
       embed_json JSONB,
       cron_expression TEXT,
       next_run TIMESTAMPTZ NOT NULL,
-      timezone TEXT NOT NULL DEFAULT 'America/New_York',
       author_id TEXT NOT NULL,
       enabled BOOLEAN NOT NULL DEFAULT true,
       one_time BOOLEAN NOT NULL DEFAULT false,
