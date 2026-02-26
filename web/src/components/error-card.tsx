@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ErrorCardProps {
   title: string;
@@ -25,11 +19,7 @@ export function ErrorCard({ title, description, digest, actions }: ErrorCardProp
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-4">
-        {digest && (
-          <p className="text-xs text-muted-foreground">
-            Error ID: {digest}
-          </p>
-        )}
+        {digest && <p className="text-xs text-muted-foreground">Error ID: {digest}</p>}
         {actions}
       </CardContent>
     </Card>

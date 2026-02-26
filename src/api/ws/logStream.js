@@ -24,8 +24,15 @@ const HISTORY_LIMIT = 100;
 
 /** Sensitive metadata keys to strip before broadcasting */
 const SENSITIVE_KEYS = new Set([
-  'ip', 'accessToken', 'secret', 'apiKey',
-  'authorization', 'password', 'token', 'stack', 'cookie',
+  'ip',
+  'accessToken',
+  'secret',
+  'apiKey',
+  'authorization',
+  'password',
+  'token',
+  'stack',
+  'cookie',
 ]);
 
 /**

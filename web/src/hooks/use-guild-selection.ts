@@ -1,8 +1,5 @@
-import { useEffect, useState } from "react";
-import {
-  GUILD_SELECTED_EVENT,
-  SELECTED_GUILD_KEY,
-} from "@/lib/guild-selection";
+import { useEffect, useState } from 'react';
+import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 
 interface UseGuildSelectionOptions {
   onGuildChange?: () => void;
@@ -16,7 +13,7 @@ export function useGuildSelection(options?: UseGuildSelectionOptions): string | 
   const [guildId, setGuildId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
 
     try {
       const saved = window.localStorage.getItem(SELECTED_GUILD_KEY);
@@ -40,14 +37,12 @@ export function useGuildSelection(options?: UseGuildSelectionOptions): string | 
     };
 
     window.addEventListener(GUILD_SELECTED_EVENT, handleGuildSelect as EventListener);
-    window.addEventListener("storage", handleStorage);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
       window.removeEventListener(GUILD_SELECTED_EVENT, handleGuildSelect as EventListener);
-      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener('storage', handleStorage);
     };
-  // options is intentionally excluded — callers should memoize or use a stable ref
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return guildId;

@@ -1,40 +1,34 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Save } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useGuildSelection } from "@/hooks/use-guild-selection";
-import { SYSTEM_PROMPT_MAX_LENGTH } from "@/types/config";
-import { deepEqual, computePatches } from "@/lib/config-utils";
-import type { GuildConfig } from "@/lib/config-utils";
-import { ConfigDiff } from "./config-diff";
-import { DiscardChangesButton } from "./reset-defaults-button";
-import { AiSection } from "./config-sections/AiSection";
-import { WelcomeSection } from "./config-sections/WelcomeSection";
-import { ModerationSection } from "./config-sections/ModerationSection";
-import { TriageSection } from "./config-sections/TriageSection";
+import { Loader2, Save } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
+import type { GuildConfig } from '@/lib/config-utils';
+import { computePatches, deepEqual } from '@/lib/config-utils';
+import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
+import { ConfigDiff } from './config-diff';
+import { AiSection } from './config-sections/AiSection';
+import { ModerationSection } from './config-sections/ModerationSection';
+import { TriageSection } from './config-sections/TriageSection';
+import { WelcomeSection } from './config-sections/WelcomeSection';
+import { DiscardChangesButton } from './reset-defaults-button';
 
 /**
  * Type guard that checks whether a value is a guild configuration object returned by the API.
  */
 function isGuildConfig(data: unknown): data is GuildConfig {
-  if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const knownSections = ["ai", "welcome", "spam", "moderation", "triage"] as const;
+  const knownSections = ['ai', 'welcome', 'spam', 'moderation', 'triage'] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
   for (const key of knownSections) {
     if (key in obj) {
       const val = obj[key];
-      if (val !== undefined && (typeof val !== "object" || val === null || Array.isArray(val))) {
+      if (val !== undefined && (typeof val !== 'object' || val === null || Array.isArray(val))) {
         return false;
       }
     }
@@ -43,7 +37,7 @@ function isGuildConfig(data: unknown): data is GuildConfig {
 }
 
 export function ConfigEditor() {
-  const guildId = useGuildSelection() ?? "";
+  const guildId = useGuildSelection() ?? '';
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,53 +50,48 @@ export function ConfigEditor() {
   const abortRef = useRef<AbortController | null>(null);
 
   // ── Load config when guild changes ─────────────────────────────
-  const fetchConfig = useCallback(
-    async (id: string) => {
-      if (!id) return;
+  const fetchConfig = useCallback(async (id: string) => {
+    if (!id) return;
 
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const res = await fetch(`/api/guilds/${encodeURIComponent(id)}/config`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
+    try {
+      const res = await fetch(`/api/guilds/${encodeURIComponent(id)}/config`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      });
 
-        if (res.status === 401) {
-          window.location.href = "/login";
-          return;
-        }
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
-        }
-
-        const data: unknown = await res.json();
-        if (!isGuildConfig(data)) {
-          throw new Error("Invalid config response");
-        }
-
-        setSavedConfig(data);
-        setDraftConfig(structuredClone(data));
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        const msg = (err as Error).message || "Failed to load config";
-        setError(msg);
-        toast.error("Failed to load config", { description: msg });
-      } finally {
-        setLoading(false);
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
       }
-    },
-    [],
-  );
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+
+      const data: unknown = await res.json();
+      if (!isGuildConfig(data)) {
+        throw new Error('Invalid config response');
+      }
+
+      setSavedConfig(data);
+      setDraftConfig(structuredClone(data));
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
+      const msg = (err as Error).message || 'Failed to load config';
+      setError(msg);
+      toast.error('Failed to load config', { description: msg });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchConfig(guildId);
@@ -127,11 +116,11 @@ export function ConfigEditor() {
 
     function onBeforeUnload(e: BeforeUnloadEvent) {
       e.preventDefault();
-      e.returnValue = "";
+      e.returnValue = '';
     }
 
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasChanges]);
 
   // ── Save changes (batched: parallel PATCH per section) ─────────
@@ -139,23 +128,23 @@ export function ConfigEditor() {
     if (!guildId || !savedConfig || !draftConfig) return;
 
     if (hasValidationErrors) {
-      toast.error("Cannot save", {
-        description: "Fix validation errors before saving.",
+      toast.error('Cannot save', {
+        description: 'Fix validation errors before saving.',
       });
       return;
     }
 
     const patches = computePatches(savedConfig, draftConfig);
     if (patches.length === 0) {
-      toast.info("No changes to save.");
+      toast.info('No changes to save.');
       return;
     }
 
     const bySection = new Map<string, Array<{ path: string; value: unknown }>>();
     for (const patch of patches) {
-      const section = patch.path.split(".")[0];
+      const section = patch.path.split('.')[0];
       if (!bySection.has(section)) bySection.set(section, []);
-      bySection.get(section)!.push(patch);
+      bySection.get(section)?.push(patch);
     }
 
     setSaving(true);
@@ -167,28 +156,23 @@ export function ConfigEditor() {
 
     async function sendSection(sectionPatches: Array<{ path: string; value: unknown }>) {
       for (const patch of sectionPatches) {
-        const res = await fetch(
-          `/api/guilds/${encodeURIComponent(guildId)}/config`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(patch),
-            cache: "no-store",
-            signal,
-          },
-        );
+        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+          cache: 'no-store',
+          signal,
+        });
 
         if (res.status === 401) {
           saveAbortController.abort();
-          window.location.href = "/login";
+          window.location.href = '/login';
           return;
         }
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
+          throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
         }
       }
     }
@@ -205,7 +189,7 @@ export function ConfigEditor() {
         }),
       );
 
-      const hasFailures = results.some((r) => r.status === "rejected");
+      const hasFailures = results.some((r) => r.status === 'rejected');
 
       if (hasFailures) {
         const succeededSections = Array.from(bySection.keys()).filter(
@@ -217,22 +201,23 @@ export function ConfigEditor() {
             if (!prev) return prev;
             const updated = { ...prev };
             for (const section of succeededSections) {
-              (updated as Record<string, unknown>)[section] =
-                (snapshot as Record<string, unknown>)[section];
+              (updated as Record<string, unknown>)[section] = (snapshot as Record<string, unknown>)[
+                section
+              ];
             }
             return updated;
           });
         }
-        toast.error("Some sections failed to save", {
-          description: `Failed: ${failedSections.join(", ")}`,
+        toast.error('Some sections failed to save', {
+          description: `Failed: ${failedSections.join(', ')}`,
         });
       } else {
-        toast.success("Config saved successfully!");
+        toast.success('Config saved successfully!');
         await fetchConfig(guildId);
       }
     } catch (err) {
-      const msg = (err as Error).message || "Failed to save config";
-      toast.error("Failed to save config", { description: msg });
+      const msg = (err as Error).message || 'Failed to save config';
+      toast.error('Failed to save config', { description: msg });
     } finally {
       setSaving(false);
     }
@@ -241,22 +226,22 @@ export function ConfigEditor() {
   // ── Keyboard shortcut: Ctrl/Cmd+S to save ──────────────────────
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         if (hasChanges && !saving && !hasValidationErrors) {
           saveChanges();
         }
       }
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [hasChanges, saving, hasValidationErrors, saveChanges]);
 
   // ── Discard edits ──────────────────────────────────────────────
   const discardChanges = useCallback(() => {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
-    toast.success("Changes discarded.");
+    toast.success('Changes discarded.');
   }, [savedConfig]);
 
   // ── Draft updaters ─────────────────────────────────────────────
@@ -371,9 +356,7 @@ export function ConfigEditor() {
     return (
       <Card className="border-destructive/50" role="alert">
         <CardHeader>
-          <CardTitle className="text-destructive">
-            Failed to Load Config
-          </CardTitle>
+          <CardTitle className="text-destructive">Failed to Load Config</CardTitle>
           <CardDescription>{error}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -393,9 +376,7 @@ export function ConfigEditor() {
       {/* Header bar */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Bot Configuration
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Bot Configuration</h1>
           <p className="text-sm text-muted-foreground">
             Manage AI, welcome messages, and other settings.
           </p>
@@ -416,7 +397,7 @@ export function ConfigEditor() {
             ) : (
               <Save className="mr-2 h-4 w-4" aria-hidden="true" />
             )}
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>
@@ -427,10 +408,10 @@ export function ConfigEditor() {
           className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
           role="status"
         >
-          You have unsaved changes.{" "}
+          You have unsaved changes.{' '}
           <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
             Ctrl+S
-          </kbd>{" "}
+          </kbd>{' '}
           to save.
         </div>
       )}
@@ -470,9 +451,7 @@ export function ConfigEditor() {
       />
 
       {/* Diff view */}
-      {hasChanges && savedConfig && (
-        <ConfigDiff original={savedConfig} modified={draftConfig} />
-      )}
+      {hasChanges && savedConfig && <ConfigDiff original={savedConfig} modified={draftConfig} />}
     </div>
   );
 }

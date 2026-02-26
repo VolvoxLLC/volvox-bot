@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type LogLevel = "error" | "warn" | "info" | "debug";
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
 export interface LogEntry {
   /** Unique client-side ID (timestamp + index) */
@@ -18,12 +18,12 @@ export interface LogEntry {
 }
 
 export interface LogFilter {
-  level?: LogLevel | "all";
+  level?: LogLevel | 'all';
   module?: string;
   search?: string;
 }
 
-export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
+export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 
 export interface UseLogStreamResult {
   logs: LogEntry[];
@@ -46,27 +46,32 @@ function makeId(): string {
 }
 
 function normalizeLevel(raw: unknown): LogLevel {
-  const s = String(raw ?? "info").toLowerCase();
-  if (s === "error" || s === "warn" || s === "info" || s === "debug") return s;
-  return "info";
+  const s = String(raw ?? 'info').toLowerCase();
+  if (s === 'error' || s === 'warn' || s === 'info' || s === 'debug') return s;
+  return 'info';
 }
 
 function normalizeEntry(raw: unknown, id: string): LogEntry | null {
-  if (typeof raw !== "object" || raw === null) return null;
+  if (typeof raw !== 'object' || raw === null) return null;
   const r = raw as Record<string, unknown>;
 
-  const message = typeof r.message === "string" ? r.message : JSON.stringify(r.message ?? "");
-  const timestamp =
-    typeof r.timestamp === "string"
-      ? r.timestamp
-      : new Date().toISOString();
+  const message = typeof r.message === 'string' ? r.message : JSON.stringify(r.message ?? '');
+  const timestamp = typeof r.timestamp === 'string' ? r.timestamp : new Date().toISOString();
   const level = normalizeLevel(r.level);
-  const module = typeof r.module === "string" ? r.module : undefined;
+  const module = typeof r.module === 'string' ? r.module : undefined;
 
   // Flatten server `metadata` object into meta alongside other extra fields
-  const { message: _m, timestamp: _t, level: _l, module: _mod, type: _type, metadata: rawMeta, ...rest } = r;
+  const {
+    message: _m,
+    timestamp: _t,
+    level: _l,
+    module: _mod,
+    type: _type,
+    metadata: rawMeta,
+    ...rest
+  } = r;
   const flatMeta: Record<string, unknown> = {
-    ...(typeof rawMeta === "object" && rawMeta !== null && !Array.isArray(rawMeta)
+    ...(typeof rawMeta === 'object' && rawMeta !== null && !Array.isArray(rawMeta)
       ? (rawMeta as Record<string, unknown>)
       : {}),
     ...rest,
@@ -88,7 +93,7 @@ function normalizeEntry(raw: unknown, id: string): LogEntry | null {
  */
 export function useLogStream(enabled = true): UseLogStreamResult {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [status, setStatus] = useState<ConnectionStatus>("disconnected");
+  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
 
   const wsRef = useRef<WebSocket | null>(null);
   const backoffRef = useRef(INITIAL_BACKOFF_MS);
@@ -103,7 +108,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; ticket: string } | null> => {
     // Always fetch a fresh ticket — they're short-lived HMAC tokens
     try {
-      const res = await fetch("/api/log-stream/ws-ticket", { cache: "no-store" });
+      const res = await fetch('/api/log-stream/ws-ticket', { cache: 'no-store' });
       if (!res.ok) return null;
       const data = (await res.json()) as { wsUrl?: string; ticket?: string };
       if (!data.wsUrl || !data.ticket) return null;
@@ -132,7 +137,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
       connectingRef.current = false;
       // Ticket fetch failed — retry with backoff instead of giving up
       if (!unmountedRef.current) {
-        setStatus("reconnecting");
+        setStatus('reconnecting');
         const delay = backoffRef.current;
         backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
         reconnectTimerRef.current = setTimeout(() => {
@@ -156,7 +161,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
         ws.close();
         return;
       }
-      ws.send(JSON.stringify({ type: "auth", ticket: ticket.ticket }));
+      ws.send(JSON.stringify({ type: 'auth', ticket: ticket.ticket }));
     };
 
     ws.onmessage = (event: MessageEvent) => {
@@ -168,23 +173,23 @@ export function useLogStream(enabled = true): UseLogStreamResult {
         return;
       }
 
-      if (typeof msg !== "object" || msg === null) return;
+      if (typeof msg !== 'object' || msg === null) return;
       const m = msg as Record<string, unknown>;
 
       switch (m.type) {
-        case "auth_ok": {
-          setStatus("connected");
+        case 'auth_ok': {
+          setStatus('connected');
           backoffRef.current = INITIAL_BACKOFF_MS;
           connectingRef.current = false;
           // Re-apply active filter after reconnect
           const f = activeFilterRef.current;
           if (Object.keys(f).length > 0) {
-            ws.send(JSON.stringify({ type: "filter", ...f }));
+            ws.send(JSON.stringify({ type: 'filter', ...f }));
           }
           break;
         }
 
-        case "history": {
+        case 'history': {
           const entries = Array.isArray(m.logs) ? m.logs : [];
           const normalized = entries
             .map((e: unknown) => normalizeEntry(e, makeId()))
@@ -194,7 +199,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
           break;
         }
 
-        case "log": {
+        case 'log': {
           const entry = normalizeEntry(m, makeId());
           if (!entry) return;
           setLogs((prev) => {
@@ -216,7 +221,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     ws.onclose = () => {
       if (unmountedRef.current || attempt !== connectAttemptRef.current) return;
       connectingRef.current = false;
-      setStatus("reconnecting");
+      setStatus('reconnecting');
 
       const delay = backoffRef.current;
       backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
@@ -232,21 +237,21 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     unmountedRef.current = false;
 
     if (enabled) {
-      setStatus("reconnecting");
+      setStatus('reconnecting');
       connect();
     }
 
     return () => {
       unmountedRef.current = true;
       connectingRef.current = false;
-      connectAttemptRef.current++;  // Invalidate any in-flight connect
+      connectAttemptRef.current++; // Invalidate any in-flight connect
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (wsRef.current) {
         wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
-      setStatus("disconnected");
+      setStatus('disconnected');
     };
   }, [enabled, connect]);
 
@@ -254,7 +259,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   const sendFilter = useCallback((filter: LogFilter) => {
     activeFilterRef.current = filter;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "filter", ...filter }));
+      wsRef.current.send(JSON.stringify({ type: 'filter', ...filter }));
     }
   }, []);
 

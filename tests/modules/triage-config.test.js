@@ -59,7 +59,9 @@ describe('triage-config', () => {
     });
 
     it('should exclude channels in excludeChannels even if whitelisted', () => {
-      expect(isChannelEligible('ch-1', { channels: ['ch-1'], excludeChannels: ['ch-1'] })).toBe(false);
+      expect(isChannelEligible('ch-1', { channels: ['ch-1'], excludeChannels: ['ch-1'] })).toBe(
+        false,
+      );
     });
 
     it('should exclude from global pool when excludeChannels set with empty allow-list', () => {

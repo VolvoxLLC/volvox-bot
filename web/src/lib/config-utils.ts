@@ -1,4 +1,4 @@
-import type { BotConfig, DeepPartial } from "@/types/config";
+import type { BotConfig, DeepPartial } from '@/types/config';
 
 /** Config sections exposed by the API — all fields optional for partial API responses. */
 export type GuildConfig = DeepPartial<BotConfig>;
@@ -16,7 +16,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return a.every((item, i) => deepEqual(item, b[i]));
   }
 
-  if (typeof a === "object") {
+  if (typeof a === 'object') {
     const aObj = a as Record<string, unknown>;
     const bObj = b as Record<string, unknown>;
     const aKeys = Object.keys(aObj);
@@ -40,15 +40,11 @@ export function computePatches(
 ): Array<{ path: string; value: unknown }> {
   const patches: Array<{ path: string; value: unknown }> = [];
 
-  function walk(
-    origObj: Record<string, unknown>,
-    modObj: Record<string, unknown>,
-    prefix: string,
-  ) {
+  function walk(origObj: Record<string, unknown>, modObj: Record<string, unknown>, prefix: string) {
     const allKeys = new Set([...Object.keys(origObj), ...Object.keys(modObj)]);
 
     for (const key of allKeys) {
-      if (prefix === "" && key === "guildId") continue;
+      if (prefix === '' && key === 'guildId') continue;
 
       const fullPath = prefix ? `${prefix}.${key}` : key;
       const origVal = origObj[key];
@@ -57,18 +53,14 @@ export function computePatches(
       if (deepEqual(origVal, modVal)) continue;
 
       if (
-        typeof origVal === "object" &&
+        typeof origVal === 'object' &&
         origVal !== null &&
         !Array.isArray(origVal) &&
-        typeof modVal === "object" &&
+        typeof modVal === 'object' &&
         modVal !== null &&
         !Array.isArray(modVal)
       ) {
-        walk(
-          origVal as Record<string, unknown>,
-          modVal as Record<string, unknown>,
-          fullPath,
-        );
+        walk(origVal as Record<string, unknown>, modVal as Record<string, unknown>, fullPath);
       } else {
         patches.push({ path: fullPath, value: modVal });
       }
@@ -78,7 +70,7 @@ export function computePatches(
   walk(
     original as unknown as Record<string, unknown>,
     modified as unknown as Record<string, unknown>,
-    "",
+    '',
   );
 
   return patches;

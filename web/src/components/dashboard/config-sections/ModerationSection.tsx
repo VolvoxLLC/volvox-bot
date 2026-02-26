@@ -1,17 +1,11 @@
-"use client";
+'use client';
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { ToggleSwitch } from "@/components/dashboard/toggle-switch";
-import type { GuildConfig } from "@/lib/config-utils";
+import { ToggleSwitch } from '@/components/dashboard/toggle-switch';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { GuildConfig } from '@/lib/config-utils';
 
 const inputClasses =
-  "w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 interface ModerationSectionProps {
   draftConfig: GuildConfig;
@@ -55,8 +49,8 @@ export function ModerationSection({
           <span className="text-sm font-medium">Alert Channel ID</span>
           <input
             type="text"
-            value={draftConfig.moderation?.alertChannelId ?? ""}
-            onChange={(e) => onFieldChange("alertChannelId", e.target.value)}
+            value={draftConfig.moderation?.alertChannelId ?? ''}
+            onChange={(e) => onFieldChange('alertChannelId', e.target.value)}
             disabled={saving}
             className={inputClasses}
             placeholder="Channel ID for moderation alerts"
@@ -66,14 +60,14 @@ export function ModerationSection({
           <span className="text-sm font-medium">Auto-delete flagged messages</span>
           <ToggleSwitch
             checked={draftConfig.moderation?.autoDelete ?? false}
-            onChange={(v) => onFieldChange("autoDelete", v)}
+            onChange={(v) => onFieldChange('autoDelete', v)}
             disabled={saving}
             label="Auto Delete"
           />
         </div>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">DM Notifications</legend>
-          {(["warn", "timeout", "kick", "ban"] as const).map((action) => (
+          {(['warn', 'timeout', 'kick', 'ban'] as const).map((action) => (
             <div key={action} className="flex items-center justify-between">
               <span className="text-sm capitalize text-muted-foreground">{action}</span>
               <ToggleSwitch

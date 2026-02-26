@@ -72,7 +72,7 @@ export async function executeModAction(interaction, opts) {
 
     const { reason, ...rawExtraCaseData } = options;
     const extraCaseData = Object.fromEntries(
-      Object.entries(rawExtraCaseData).filter(([k]) => !k.startsWith('_'))
+      Object.entries(rawExtraCaseData).filter(([k]) => !k.startsWith('_')),
     );
 
     // Resolve target

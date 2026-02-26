@@ -35,8 +35,15 @@ export class SentryTransport extends Transport {
 
   /** Sensitive metadata keys to strip before forwarding to Sentry. */
   static SENSITIVE_KEYS = new Set([
-    'ip', 'accessToken', 'secret', 'apiKey',
-    'authorization', 'password', 'token', 'stack', 'cookie',
+    'ip',
+    'accessToken',
+    'secret',
+    'apiKey',
+    'authorization',
+    'password',
+    'token',
+    'stack',
+    'cookie',
   ]);
 
   /**

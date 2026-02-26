@@ -1,22 +1,19 @@
-import type {
-  AnalyticsRangePreset,
-  DashboardAnalytics,
-} from "@/types/analytics";
+import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 function isString(value: unknown): value is string {
-  return typeof value === "string";
+  return typeof value === 'string';
 }
 
 function isAnalyticsRangePreset(value: unknown): value is AnalyticsRangePreset {
-  return value === "today" || value === "week" || value === "month" || value === "custom";
+  return value === 'today' || value === 'week' || value === 'month' || value === 'custom';
 }
 
 export function isDashboardAnalyticsPayload(value: unknown): value is DashboardAnalytics {
@@ -35,7 +32,7 @@ export function isDashboardAnalyticsPayload(value: unknown): value is DashboardA
 
   if (!isAnalyticsRangePreset(range.type)) return false;
   if (!isString(range.from) || !isString(range.to)) return false;
-  if (range.interval !== "hour" && range.interval !== "day") return false;
+  if (range.interval !== 'hour' && range.interval !== 'day') return false;
   if (range.channelId !== null && !isString(range.channelId)) return false;
 
   if (

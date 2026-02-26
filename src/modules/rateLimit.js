@@ -224,9 +224,8 @@ function startRateLimitCleanup() {
   cleanupInterval = setInterval(() => {
     const now = Date.now();
     for (const [key, entry] of windowMap) {
-      const newest = entry.timestamps.length > 0
-        ? entry.timestamps[entry.timestamps.length - 1]
-        : 0;
+      const newest =
+        entry.timestamps.length > 0 ? entry.timestamps[entry.timestamps.length - 1] : 0;
       if (now - newest > DEFAULT_WINDOW_MS) {
         windowMap.delete(key);
       }

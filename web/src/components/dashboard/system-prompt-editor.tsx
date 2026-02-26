@@ -1,15 +1,9 @@
-"use client";
+'use client';
 
-import { useCallback, useId } from "react";
-import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { SYSTEM_PROMPT_MAX_LENGTH } from "@/types/config";
+import { useCallback, useId } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 
 /** Threshold (percentage of max) at which the counter turns to a warning color. */
 const WARNING_THRESHOLD = 0.9;
@@ -80,8 +74,8 @@ export function SystemPromptEditor({
           aria-describedby={`${descriptionId} ${counterId}`}
           aria-invalid={isOverLimit || undefined}
           className={cn(
-            "w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            isOverLimit && "border-destructive focus-visible:ring-destructive",
+            'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+            isOverLimit && 'border-destructive focus-visible:ring-destructive',
           )}
           placeholder="Enter the system prompt for your bot..."
         />
@@ -89,12 +83,12 @@ export function SystemPromptEditor({
           <span
             id={counterId}
             className={cn(
-              "tabular-nums",
+              'tabular-nums',
               isOverLimit
-                ? "font-medium text-destructive"
+                ? 'font-medium text-destructive'
                 : isNearLimit
-                  ? "text-yellow-500"
-                  : "text-muted-foreground",
+                  ? 'text-yellow-500'
+                  : 'text-muted-foreground',
             )}
             role="status"
             aria-live="off"

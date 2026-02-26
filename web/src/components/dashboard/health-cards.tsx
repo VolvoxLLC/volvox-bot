@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   Activity,
@@ -9,16 +9,11 @@ import {
   MemoryStick,
   Server,
   Wifi,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { BotHealth } from "./types";
-import { formatUptime } from "@/lib/format-time";
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatUptime } from '@/lib/format-time';
+import type { BotHealth } from './types';
 
 interface HealthCardsProps {
   health: BotHealth | null;
@@ -30,13 +25,13 @@ function formatBytes(bytes: number): string {
 }
 
 function pingColor(ping: number): string {
-  if (ping < 100) return "text-green-500";
-  if (ping <= 300) return "text-yellow-500";
-  return "text-red-500";
+  if (ping < 100) return 'text-green-500';
+  if (ping <= 300) return 'text-yellow-500';
+  return 'text-red-500';
 }
 
 function errorColor(count: number): string {
-  return count > 0 ? "text-red-500" : "text-foreground";
+  return count > 0 ? 'text-red-500' : 'text-foreground';
 }
 
 function SkeletonCard() {
@@ -74,9 +69,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
   const cpuTotalSec = cpuUserSec + cpuSystemSec;
   // Show utilization estimate: total CPU time / wall-clock uptime
   // Clamp to 0-100 to handle multi-core environments where raw value can exceed 100%
-  const rawPct = health && health.uptime > 0
-    ? (cpuTotalSec / health.uptime) * 100
-    : 0;
+  const rawPct = health && health.uptime > 0 ? (cpuTotalSec / health.uptime) * 100 : 0;
   const cpuPct = Math.min(Math.max(rawPct, 0), 100).toFixed(1);
 
   return (
@@ -90,9 +83,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">
-            {health ? formatUptime(health.uptime) : "—"}
-          </span>
+          <span className="text-2xl font-bold">{health ? formatUptime(health.uptime) : '—'}</span>
         </CardContent>
       </Card>
 
@@ -106,7 +97,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span className="text-2xl font-bold">
-            {health ? formatBytes(health.memory.heapUsed) : "—"}
+            {health ? formatBytes(health.memory.heapUsed) : '—'}
           </span>
           {health ? (
             <>
@@ -133,10 +124,8 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span
-            className={`text-2xl font-bold ${health ? pingColor(health.discord.ping) : ""}`}
-          >
-            {health ? `${health.discord.ping}ms` : "—"}
+          <span className={`text-2xl font-bold ${health ? pingColor(health.discord.ping) : ''}`}>
+            {health ? `${health.discord.ping}ms` : '—'}
           </span>
         </CardContent>
       </Card>
@@ -151,7 +140,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span className="text-2xl font-bold">
-            {health ? health.discord.guilds.toLocaleString() : "—"}
+            {health ? health.discord.guilds.toLocaleString() : '—'}
           </span>
         </CardContent>
       </Card>
@@ -166,9 +155,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span
-            className={`text-2xl font-bold ${health && health.errors.lastHour != null ? errorColor(health.errors.lastHour) : ""}`}
+            className={`text-2xl font-bold ${health && health.errors.lastHour != null ? errorColor(health.errors.lastHour) : ''}`}
           >
-            {health ? (health.errors.lastHour?.toLocaleString() ?? "—") : "—"}
+            {health ? (health.errors.lastHour?.toLocaleString() ?? '—') : '—'}
           </span>
         </CardContent>
       </Card>
@@ -183,9 +172,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         </CardHeader>
         <CardContent>
           <span
-            className={`text-2xl font-bold ${health && health.errors.lastDay != null ? errorColor(health.errors.lastDay) : ""}`}
+            className={`text-2xl font-bold ${health && health.errors.lastDay != null ? errorColor(health.errors.lastDay) : ''}`}
           >
-            {health ? (health.errors.lastDay?.toLocaleString() ?? "—") : "—"}
+            {health ? (health.errors.lastDay?.toLocaleString() ?? '—') : '—'}
           </span>
         </CardContent>
       </Card>
@@ -199,9 +188,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">
-            {health ? `${cpuPct}%` : "—"}
-          </span>
+          <span className="text-2xl font-bold">{health ? `${cpuPct}%` : '—'}</span>
           {health ? (
             <p className="mt-1 text-xs text-muted-foreground">
               user {cpuUserSec.toFixed(1)}s / sys {cpuSystemSec.toFixed(1)}s
@@ -219,9 +206,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">
-            {health ? health.system.nodeVersion : "—"}
-          </span>
+          <span className="text-2xl font-bold">{health ? health.system.nodeVersion : '—'}</span>
         </CardContent>
       </Card>
     </div>

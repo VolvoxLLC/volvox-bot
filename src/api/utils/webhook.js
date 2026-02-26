@@ -35,9 +35,7 @@ export function fireAndForgetWebhook(envVarName, payload) {
   // Sign payload with HMAC-SHA256 if SESSION_SECRET is available
   const signingSecret = process.env.SESSION_SECRET;
   if (signingSecret) {
-    headers['X-Webhook-Signature'] = createHmac('sha256', signingSecret)
-      .update(body)
-      .digest('hex');
+    headers['X-Webhook-Signature'] = createHmac('sha256', signingSecret).update(body).digest('hex');
   }
 
   fetch(url, {

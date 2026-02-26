@@ -125,7 +125,7 @@ export interface BotConfig {
 }
 
 /** All config sections shown in the editor. */
-export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage";
+export type ConfigSection = 'ai' | 'welcome' | 'spam' | 'moderation' | 'triage';
 
 /**
  * @deprecated Use {@link ConfigSection} directly.

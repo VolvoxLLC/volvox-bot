@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { ModStats } from "@/components/dashboard/moderation-types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ModStats } from '@/components/dashboard/moderation-types';
 
 interface UseModerationStatsOptions {
   guildId: string | null;
@@ -32,10 +32,10 @@ export function useModerationStats({
       setStatsError(null);
 
       try {
-        const res = await fetch(
-          `/api/moderation/stats?guildId=${encodeURIComponent(id)}`,
-          { cache: "no-store", signal: controller.signal },
-        );
+        const res = await fetch(`/api/moderation/stats?guildId=${encodeURIComponent(id)}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
 
         if (res.status === 401) {
           onUnauthorized();
@@ -45,19 +45,19 @@ export function useModerationStats({
         const payload: unknown = await res.json();
         if (!res.ok) {
           const msg =
-            typeof payload === "object" &&
+            typeof payload === 'object' &&
             payload !== null &&
-            "error" in payload &&
-            typeof (payload as Record<string, unknown>).error === "string"
+            'error' in payload &&
+            typeof (payload as Record<string, unknown>).error === 'string'
               ? (payload as Record<string, string>).error
-              : "Failed to fetch stats";
+              : 'Failed to fetch stats';
           throw new Error(msg);
         }
 
         setStats(payload as ModStats);
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setStatsError(err instanceof Error ? err.message : "Failed to fetch stats");
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setStatsError(err instanceof Error ? err.message : 'Failed to fetch stats');
       } finally {
         setStatsLoading(false);
       }

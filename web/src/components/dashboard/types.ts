@@ -33,45 +33,45 @@ export interface BotHealth {
 }
 
 export function isBotHealth(value: unknown): value is BotHealth {
-  if (typeof value !== "object" || value === null) return false;
+  if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
 
-  if (typeof v.uptime !== "number") return false;
+  if (typeof v.uptime !== 'number') return false;
 
   const mem = v.memory;
-  if (typeof mem !== "object" || mem === null) return false;
+  if (typeof mem !== 'object' || mem === null) return false;
   const m = mem as Record<string, unknown>;
-  if (typeof m.heapUsed !== "number" || typeof m.heapTotal !== "number") return false;
-  if (m.rss !== undefined && typeof m.rss !== "number") return false;
+  if (typeof m.heapUsed !== 'number' || typeof m.heapTotal !== 'number') return false;
+  if (m.rss !== undefined && typeof m.rss !== 'number') return false;
 
   const discord = v.discord;
-  if (typeof discord !== "object" || discord === null) return false;
+  if (typeof discord !== 'object' || discord === null) return false;
   const d = discord as Record<string, unknown>;
-  if (typeof d.ping !== "number" || typeof d.guilds !== "number") return false;
+  if (typeof d.ping !== 'number' || typeof d.guilds !== 'number') return false;
 
   const errors = v.errors;
-  if (typeof errors !== "object" || errors === null) return false;
+  if (typeof errors !== 'object' || errors === null) return false;
   const e = errors as Record<string, unknown>;
-  if (e.lastHour !== null && typeof e.lastHour !== "number") return false;
-  if (e.lastDay !== null && typeof e.lastDay !== "number") return false;
+  if (e.lastHour !== null && typeof e.lastHour !== 'number') return false;
+  if (e.lastDay !== null && typeof e.lastDay !== 'number') return false;
 
   const system = v.system;
-  if (typeof system !== "object" || system === null) return false;
+  if (typeof system !== 'object' || system === null) return false;
   const s = system as Record<string, unknown>;
-  if (typeof s.nodeVersion !== "string") return false;
+  if (typeof s.nodeVersion !== 'string') return false;
   const cpu = s.cpuUsage;
-  if (typeof cpu !== "object" || cpu === null) return false;
+  if (typeof cpu !== 'object' || cpu === null) return false;
   const c = cpu as Record<string, unknown>;
-  if (typeof c.user !== "number" || typeof c.system !== "number") return false;
+  if (typeof c.user !== 'number' || typeof c.system !== 'number') return false;
 
   if (!Array.isArray(v.restarts)) return false;
   for (const item of v.restarts) {
-    if (typeof item !== "object" || item === null) return false;
+    if (typeof item !== 'object' || item === null) return false;
     const r = item as Record<string, unknown>;
-    if (typeof r.timestamp !== "string") return false;
-    if (typeof r.reason !== "string") return false;
-    if (r.version !== null && typeof r.version !== "string") return false;
-    if (r.uptimeBefore !== null && typeof r.uptimeBefore !== "number") return false;
+    if (typeof r.timestamp !== 'string') return false;
+    if (typeof r.reason !== 'string') return false;
+    if (r.version !== null && typeof r.version !== 'string') return false;
+    if (r.uptimeBefore !== null && typeof r.uptimeBefore !== 'number') return false;
   }
 
   return true;

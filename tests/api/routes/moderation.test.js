@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/logger.js', () => ({
   info: vi.fn(),
@@ -18,8 +18,8 @@ vi.mock('../../../src/api/routes/guilds.js', () => ({
   requireGuildModerator: (_req, _res, next) => next(),
 }));
 
-import { getPool } from '../../../src/db.js';
 import moderationRouter from '../../../src/api/routes/moderation.js';
+import { getPool } from '../../../src/db.js';
 
 function buildApp(mockPool) {
   getPool.mockReturnValue(mockPool);

@@ -1,15 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Activity,
-  Bot,
-  Coins,
-  MessageSquare,
-  RefreshCw,
-  UserPlus,
-  Users,
-} from "lucide-react";
+import { Activity, Bot, Coins, MessageSquare, RefreshCw, UserPlus, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -24,17 +16,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useGuildSelection } from "@/hooks/use-guild-selection";
-import { isDashboardAnalyticsPayload } from "@/types/analytics-validators";
+} from 'recharts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 import {
   endOfDayIso,
   formatDateInput,
@@ -42,21 +27,19 @@ import {
   formatNumber,
   formatUsd,
   startOfDayIso,
-} from "@/lib/analytics-utils";
-import type {
-  AnalyticsRangePreset,
-  DashboardAnalytics,
-} from "@/types/analytics";
+} from '@/lib/analytics-utils';
+import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
+import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
 
 const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
-  { label: "Today", value: "today" },
-  { label: "Week", value: "week" },
-  { label: "Month", value: "month" },
-  { label: "Custom", value: "custom" },
+  { label: 'Today', value: 'today' },
+  { label: 'Week', value: 'week' },
+  { label: 'Month', value: 'month' },
+  { label: 'Custom', value: 'custom' },
 ];
 
-const PIE_COLORS = ["#5865F2", "#22C55E", "#F59E0B", "#A855F7", "#06B6D4"];
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const PIE_COLORS = ['#5865F2', '#22C55E', '#F59E0B', '#A855F7', '#06B6D4'];
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function KpiSkeleton() {
@@ -80,7 +63,7 @@ export function AnalyticsDashboard() {
   const guildId = useGuildSelection({
     onGuildChange: () => setChannelFilter(null),
   });
-  const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>("week");
+  const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>('week');
   const [customFromDraft, setCustomFromDraft] = useState<string>(
     formatDateInput(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
   );
@@ -99,19 +82,19 @@ export function AnalyticsDashboard() {
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    params.set("range", rangePreset);
+    params.set('range', rangePreset);
 
-    if (rangePreset === "custom") {
-      params.set("from", startOfDayIso(customFromApplied));
-      params.set("to", endOfDayIso(customToApplied));
+    if (rangePreset === 'custom') {
+      params.set('from', startOfDayIso(customFromApplied));
+      params.set('to', endOfDayIso(customToApplied));
     }
 
-    if (rangePreset !== "custom") {
-      params.set("interval", rangePreset === "today" ? "hour" : "day");
+    if (rangePreset !== 'custom') {
+      params.set('interval', rangePreset === 'today' ? 'hour' : 'day');
     }
 
     if (channelFilter) {
-      params.set("channelId", channelFilter);
+      params.set('channelId', channelFilter);
     }
 
     return params.toString();
@@ -132,16 +115,13 @@ export function AnalyticsDashboard() {
 
       try {
         const encodedGuildId = encodeURIComponent(guildId);
-        const response = await fetch(
-          `/api/guilds/${encodedGuildId}/analytics?${queryString}`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        const response = await fetch(`/api/guilds/${encodedGuildId}/analytics?${queryString}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
 
         if (response.status === 401) {
-          window.location.href = "/login";
+          window.location.href = '/login';
           return;
         }
 
@@ -154,28 +134,24 @@ export function AnalyticsDashboard() {
 
         if (!response.ok) {
           const message =
-            typeof payload === "object" &&
+            typeof payload === 'object' &&
             payload !== null &&
-            "error" in payload &&
-            typeof payload.error === "string"
+            'error' in payload &&
+            typeof payload.error === 'string'
               ? payload.error
-              : "Failed to fetch analytics";
+              : 'Failed to fetch analytics';
           throw new Error(message);
         }
 
         if (!isDashboardAnalyticsPayload(payload)) {
-          throw new Error("Invalid analytics payload from server");
+          throw new Error('Invalid analytics payload from server');
         }
 
         setAnalytics(payload);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {
-        if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Failed to fetch analytics",
-        );
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
+        setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch analytics');
       } finally {
         if (abortControllerRef.current === controller) {
           setLoading(false);
@@ -202,12 +178,12 @@ export function AnalyticsDashboard() {
 
   const applyCustomRange = () => {
     if (!customFromDraft || !customToDraft) {
-      setCustomRangeError("Select both a from and to date.");
+      setCustomRangeError('Select both a from and to date.');
       return;
     }
 
     if (customFromDraft > customToDraft) {
-      setCustomRangeError("\"From\" date must be on or before \"To\" date.");
+      setCustomRangeError('"From" date must be on or before "To" date.');
       return;
     }
 
@@ -241,7 +217,7 @@ export function AnalyticsDashboard() {
   const tokenBreakdownData = useMemo(
     () => [
       {
-        label: "Tokens",
+        label: 'Tokens',
         prompt: analytics?.aiUsage.tokens.prompt ?? 0,
         completion: analytics?.aiUsage.tokens.completion ?? 0,
       },
@@ -254,9 +230,7 @@ export function AnalyticsDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Select a server</CardTitle>
-          <CardDescription>
-            Choose a server from the sidebar to load analytics.
-          </CardDescription>
+          <CardDescription>Choose a server from the sidebar to load analytics.</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -284,11 +258,11 @@ export function AnalyticsDashboard() {
           {RANGE_PRESETS.map((preset) => (
             <Button
               key={preset.value}
-              variant={rangePreset === preset.value ? "default" : "outline"}
+              variant={rangePreset === preset.value ? 'default' : 'outline'}
               size="sm"
               onClick={() => {
                 setRangePreset(preset.value);
-                if (preset.value !== "custom") {
+                if (preset.value !== 'custom') {
                   setCustomRangeError(null);
                 }
               }}
@@ -297,7 +271,7 @@ export function AnalyticsDashboard() {
             </Button>
           ))}
 
-          {rangePreset === "custom" ? (
+          {rangePreset === 'custom' ? (
             <>
               <input
                 aria-label="From date"
@@ -337,7 +311,7 @@ export function AnalyticsDashboard() {
             onClick={() => void fetchAnalytics()}
             disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -368,7 +342,7 @@ export function AnalyticsDashboard() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.totalMessages) : "\u2014"}
+                    {kpis ? formatNumber(kpis.totalMessages) : '\u2014'}
                   </span>
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -382,7 +356,7 @@ export function AnalyticsDashboard() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.aiRequests) : "\u2014"}
+                    {kpis ? formatNumber(kpis.aiRequests) : '\u2014'}
                   </span>
                   <Bot className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -396,7 +370,7 @@ export function AnalyticsDashboard() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {kpis ? formatUsd(kpis.aiCostUsd) : "\u2014"}
+                    {kpis ? formatUsd(kpis.aiCostUsd) : '\u2014'}
                   </span>
                   <Coins className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -410,7 +384,7 @@ export function AnalyticsDashboard() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.activeUsers) : "\u2014"}
+                    {kpis ? formatNumber(kpis.activeUsers) : '\u2014'}
                   </span>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -424,7 +398,7 @@ export function AnalyticsDashboard() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.newMembers) : "\u2014"}
+                    {kpis ? formatNumber(kpis.newMembers) : '\u2014'}
                   </span>
                   <UserPlus className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -438,9 +412,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Real-time indicators</CardTitle>
-            <CardDescription>
-              Live status updates every 30 seconds.
-            </CardDescription>
+            <CardDescription>Live status updates every 30 seconds.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border p-4">
@@ -450,9 +422,9 @@ export function AnalyticsDashboard() {
               </div>
               <p aria-label="Online members value" className="mt-2 text-2xl font-semibold">
                 {analytics == null
-                  ? "\u2014"
+                  ? '\u2014'
                   : analytics.realtime.onlineMembers === null
-                    ? "N/A"
+                    ? 'N/A'
                     : formatNumber(analytics.realtime.onlineMembers)}
               </p>
             </div>
@@ -461,14 +433,11 @@ export function AnalyticsDashboard() {
                 <Bot className="h-4 w-4" />
                 Active AI conversations
               </div>
-              <p
-                aria-label="Active AI conversations value"
-                className="mt-2 text-2xl font-semibold"
-              >
+              <p aria-label="Active AI conversations value" className="mt-2 text-2xl font-semibold">
                 {loading || analytics == null
-                  ? "\u2014"
+                  ? '\u2014'
                   : analytics.realtime.activeAiConversations === null
-                    ? "N/A"
+                    ? 'N/A'
                     : formatNumber(analytics.realtime.activeAiConversations)}
               </p>
             </div>
@@ -478,14 +447,12 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Channel filter</CardTitle>
-            <CardDescription>
-              Click a channel in the chart to filter all metrics.
-            </CardDescription>
+            <CardDescription>Click a channel in the chart to filter all metrics.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant={channelFilter === null ? "default" : "outline"}
+              variant={channelFilter === null ? 'default' : 'outline'}
               onClick={() => setChannelFilter(null)}
             >
               All channels
@@ -494,7 +461,7 @@ export function AnalyticsDashboard() {
               <Button
                 key={channel.channelId}
                 size="sm"
-                variant={channelFilter === channel.channelId ? "default" : "outline"}
+                variant={channelFilter === channel.channelId ? 'default' : 'outline'}
                 onClick={() =>
                   setChannelFilter((current) =>
                     current === channel.channelId ? null : channel.channelId,
@@ -512,9 +479,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Message volume</CardTitle>
-            <CardDescription>
-              Messages and AI requests over the selected range.
-            </CardDescription>
+            <CardDescription>Messages and AI requests over the selected range.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[320px]">
@@ -550,9 +515,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>AI usage breakdown</CardTitle>
-            <CardDescription>
-              Request distribution by model and token usage.
-            </CardDescription>
+            <CardDescription>Request distribution by model and token usage.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
             <div className="h-[260px]">
@@ -582,11 +545,7 @@ export function AnalyticsDashboard() {
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="prompt" name="Prompt tokens" fill="#5865F2" />
-                  <Bar
-                    dataKey="completion"
-                    name="Completion tokens"
-                    fill="#22C55E"
-                  />
+                  <Bar dataKey="completion" name="Completion tokens" fill="#22C55E" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -598,9 +557,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Channel activity</CardTitle>
-            <CardDescription>
-              Most active channels in the selected period.
-            </CardDescription>
+            <CardDescription>Most active channels in the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[320px]">
@@ -621,19 +578,13 @@ export function AnalyticsDashboard() {
                     onClick={(_value, index) => {
                       const selected = analytics?.channelActivity[index]?.channelId;
                       if (!selected) return;
-                      setChannelFilter((current) =>
-                        current === selected ? null : selected,
-                      );
+                      setChannelFilter((current) => (current === selected ? null : selected));
                     }}
                   >
                     {(analytics?.channelActivity ?? []).map((channel) => (
                       <Cell
                         key={channel.channelId}
-                        fill={
-                          channel.channelId === channelFilter
-                            ? "#5865F2"
-                            : "#22C55E"
-                        }
+                        fill={channel.channelId === channelFilter ? '#5865F2' : '#22C55E'}
                       />
                     ))}
                   </Bar>
@@ -646,22 +597,22 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Activity heatmap</CardTitle>
-            <CardDescription>
-              Message density by day of week and hour of day.
-            </CardDescription>
+            <CardDescription>Message density by day of week and hour of day.</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-separate border-spacing-1 text-xs">
               <thead>
                 <tr>
-                  <th scope="col" className="w-14 text-left text-muted-foreground">Day</th>
+                  <th scope="col" className="w-14 text-left text-muted-foreground">
+                    Day
+                  </th>
                   {HOURS.map((hour) => (
                     <th
                       key={hour}
                       scope="col"
                       className="text-center text-[10px] text-muted-foreground"
                     >
-                      {hour % 3 === 0 ? hour : ""}
+                      {hour % 3 === 0 ? hour : ''}
                     </th>
                   ))}
                 </tr>
@@ -687,7 +638,7 @@ export function AnalyticsDashboard() {
                             style={{
                               backgroundColor:
                                 value === 0
-                                  ? "transparent"
+                                  ? 'transparent'
                                   : `rgba(88, 101, 242, ${alpha.toFixed(3)})`,
                             }}
                           />

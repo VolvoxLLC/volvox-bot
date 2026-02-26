@@ -1,6 +1,6 @@
-import { Header } from "./header";
-import { Sidebar } from "./sidebar";
-import { ServerSelector } from "./server-selector";
+import { Header } from './header';
+import { ServerSelector } from './server-selector';
+import { Sidebar } from './sidebar';
 
 interface DashboardShellProps {
   children: React.ReactNode;

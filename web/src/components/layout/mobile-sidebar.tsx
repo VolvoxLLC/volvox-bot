@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Sidebar } from "./sidebar";
-import { ServerSelector } from "./server-selector";
+import { Menu } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ServerSelector } from './server-selector';
+import { Sidebar } from './sidebar';
 
 /**
  * Client component that manages the mobile sidebar sheet toggle.

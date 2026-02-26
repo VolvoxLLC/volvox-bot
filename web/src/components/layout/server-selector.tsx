@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import Image from "next/image";
-import { ChevronsUpDown, Server, RefreshCw, Bot } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bot, ChevronsUpDown, RefreshCw, Server } from 'lucide-react';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,14 +11,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import type { MutualGuild } from "@/types/discord";
-import { getBotInviteUrl, getGuildIconUrl } from "@/lib/discord";
-import {
-  broadcastSelectedGuild,
-  SELECTED_GUILD_KEY,
-} from "@/lib/guild-selection";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dropdown-menu';
+import { getBotInviteUrl, getGuildIconUrl } from '@/lib/discord';
+import { broadcastSelectedGuild, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
+import { cn } from '@/lib/utils';
+import type { MutualGuild } from '@/types/discord';
 
 interface ServerSelectorProps {
   className?: string;
@@ -53,22 +50,22 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     setLoading(true);
     setError(false);
     try {
-      const response = await fetch("/api/guilds", { signal: controller.signal });
+      const response = await fetch('/api/guilds', { signal: controller.signal });
       if (response.status === 401) {
         // Auth failure — redirect to login instead of showing a misleading retry
-        window.location.href = "/login";
+        window.location.href = '/login';
         return;
       }
-      if (!response.ok) throw new Error("Failed to fetch");
+      if (!response.ok) throw new Error('Failed to fetch');
       const data: unknown = await response.json();
-      if (!Array.isArray(data)) throw new Error("Invalid response: expected array");
+      if (!Array.isArray(data)) throw new Error('Invalid response: expected array');
       // Runtime shape check: each entry must have at minimum an id and name string
       const fetchedGuilds = data.filter(
         (g): g is MutualGuild =>
-          typeof g === "object" &&
+          typeof g === 'object' &&
           g !== null &&
-          typeof (g as Record<string, unknown>).id === "string" &&
-          typeof (g as Record<string, unknown>).name === "string",
+          typeof (g as Record<string, unknown>).id === 'string' &&
+          typeof (g as Record<string, unknown>).name === 'string',
       );
       setGuilds(fetchedGuilds);
 
@@ -92,7 +89,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       }
     } catch (err) {
       // Don't treat aborted fetches as errors
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setError(true);
     } finally {
       // Only reset loading if this request is still the current one.
@@ -125,12 +122,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     return (
       <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
         <span>Failed to load servers</span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1"
-          onClick={() => loadGuilds()}
-        >
+        <Button variant="outline" size="sm" className="gap-1" onClick={() => loadGuilds()}>
           <RefreshCw className="h-3 w-3" />
           Retry
         </Button>
@@ -145,9 +137,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground text-center">
         <Bot className="h-5 w-5" />
         <span className="font-medium">No mutual servers</span>
-        <span className="text-xs">
-          Bill Bot isn&apos;t in any of your Discord servers yet.
-        </span>
+        <span className="text-xs">Bill Bot isn&apos;t in any of your Discord servers yet.</span>
         {inviteUrl ? (
           <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
             <Button variant="discord" size="sm" className="gap-1">
@@ -157,9 +147,9 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           </a>
         ) : (
           <span className="text-xs">
-            Ask a server admin to add the bot, or check that{" "}
-            <code className="text-[0.7rem]">NEXT_PUBLIC_DISCORD_CLIENT_ID</code>{" "}
-            is set for the invite link.
+            Ask a server admin to add the bot, or check that{' '}
+            <code className="text-[0.7rem]">NEXT_PUBLIC_DISCORD_CLIENT_ID</code> is set for the
+            invite link.
           </span>
         )}
       </div>
@@ -169,14 +159,11 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn("w-full justify-between", className)}
-        >
+        <Button variant="outline" className={cn('w-full justify-between', className)}>
           <div className="flex items-center gap-2 truncate">
             {selectedGuild?.icon ? (
               <Image
-                src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 64) ?? ""}
+                src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 64) ?? ''}
                 alt={selectedGuild.name}
                 width={20}
                 height={20}
@@ -185,9 +172,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
             ) : (
               <Server className="h-4 w-4 shrink-0" />
             )}
-            <span className="truncate">
-              {selectedGuild?.name ?? "Select server"}
-            </span>
+            <span className="truncate">{selectedGuild?.name ?? 'Select server'}</span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -208,7 +193,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           >
             {guild.icon ? (
               <Image
-                src={getGuildIconUrl(guild.id, guild.icon, 64) ?? ""}
+                src={getGuildIconUrl(guild.id, guild.icon, 64) ?? ''}
                 alt={guild.name}
                 width={20}
                 height={20}

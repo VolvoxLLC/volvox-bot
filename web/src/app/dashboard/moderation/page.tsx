@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
-import { RefreshCw, Search, Shield, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { CaseTable } from "@/components/dashboard/case-table";
-import { ModerationStats } from "@/components/dashboard/moderation-stats";
-import { useGuildSelection } from "@/hooks/use-guild-selection";
-import { useModerationCases } from "@/hooks/use-moderation-cases";
-import { useModerationStats } from "@/hooks/use-moderation-stats";
-import { useUserHistory } from "@/hooks/use-user-history";
+import { RefreshCw, Search, Shield, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
+import { CaseTable } from '@/components/dashboard/case-table';
+import { ModerationStats } from '@/components/dashboard/moderation-stats';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { useModerationCases } from '@/hooks/use-moderation-cases';
+import { useModerationStats } from '@/hooks/use-moderation-stats';
+import { useUserHistory } from '@/hooks/use-user-history';
 
 export default function ModerationPage() {
   const router = useRouter();
@@ -18,29 +18,37 @@ export default function ModerationPage() {
   // Filters & pagination
   const [page, setPage] = useState(1);
   const [sortDesc, setSortDesc] = useState(true);
-  const [actionFilter, setActionFilter] = useState("all");
-  const [userSearch, setUserSearch] = useState("");
+  const [actionFilter, setActionFilter] = useState('all');
+  const [userSearch, setUserSearch] = useState('');
 
   // User history lookup
-  const [userHistoryInput, setUserHistoryInput] = useState("");
+  const [userHistoryInput, setUserHistoryInput] = useState('');
   const [lookupUserId, setLookupUserId] = useState<string | null>(null);
   const [userHistoryPage, setUserHistoryPage] = useState(1);
 
   const onGuildChange = useCallback(() => {
     setPage(1);
     setLookupUserId(null);
-    setUserHistoryInput("");
+    setUserHistoryInput('');
   }, []);
 
   const guildId = useGuildSelection({ onGuildChange });
 
-  const onUnauthorized = useCallback(() => router.replace("/login"), [router]);
+  const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
-  const { stats, statsLoading, statsError, refetch: refetchStats } =
-    useModerationStats({ guildId, onUnauthorized });
+  const {
+    stats,
+    statsLoading,
+    statsError,
+    refetch: refetchStats,
+  } = useModerationStats({ guildId, onUnauthorized });
 
-  const { casesData, casesLoading, casesError, refetch: refetchCases } =
-    useModerationCases({ guildId, page, sortDesc, actionFilter, userSearch, onUnauthorized });
+  const {
+    casesData,
+    casesLoading,
+    casesError,
+    refetch: refetchCases,
+  } = useModerationCases({ guildId, page, sortDesc, actionFilter, userSearch, onUnauthorized });
 
   const {
     userHistoryData,
@@ -58,8 +66,8 @@ export default function ModerationPage() {
   }, [refetchStats, refetchCases, lookupUserId, guildId, fetchUserHistory, userHistoryPage]);
 
   const handleClearFilters = useCallback(() => {
-    setActionFilter("all");
-    setUserSearch("");
+    setActionFilter('all');
+    setUserSearch('');
     setPage(1);
   }, []);
 
@@ -80,7 +88,7 @@ export default function ModerationPage() {
     setLookupUserId(null);
     setUserHistoryData(null);
     setUserHistoryError(null);
-    setUserHistoryInput("");
+    setUserHistoryInput('');
   }, [setUserHistoryData, setUserHistoryError]);
 
   return (
@@ -104,9 +112,7 @@ export default function ModerationPage() {
           onClick={handleRefresh}
           disabled={!guildId || statsLoading || casesLoading}
         >
-          <RefreshCw
-            className={`h-4 w-4 ${statsLoading || casesLoading ? "animate-spin" : ""}`}
-          />
+          <RefreshCw className={`h-4 w-4 ${statsLoading || casesLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -192,16 +198,13 @@ export default function ModerationPage() {
             {lookupUserId && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  History for{" "}
-                  <span className="font-mono font-semibold text-foreground">
-                    {lookupUserId}
-                  </span>
+                  History for{' '}
+                  <span className="font-mono font-semibold text-foreground">{lookupUserId}</span>
                   {userHistoryData && (
                     <>
-                      {" "}
-                      &mdash;{" "}
-                      <span className="font-semibold">{userHistoryData.total}</span>{" "}
-                      {userHistoryData.total === 1 ? "case" : "cases"} total
+                      {' '}
+                      &mdash; <span className="font-semibold">{userHistoryData.total}</span>{' '}
+                      {userHistoryData.total === 1 ? 'case' : 'cases'} total
                     </>
                   )}
                 </p>

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { CaseListResponse } from "@/components/dashboard/moderation-types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CaseListResponse } from '@/components/dashboard/moderation-types';
 
 const PAGE_LIMIT = 25;
 
@@ -47,11 +47,11 @@ export function useModerationCases({
           page: String(currentPage),
           limit: String(PAGE_LIMIT),
         });
-        if (action !== "all") params.set("action", action);
-        if (search.trim()) params.set("targetId", search.trim());
+        if (action !== 'all') params.set('action', action);
+        if (search.trim()) params.set('targetId', search.trim());
 
         const res = await fetch(`/api/moderation/cases?${params.toString()}`, {
-          cache: "no-store",
+          cache: 'no-store',
           signal: controller.signal,
         });
 
@@ -63,12 +63,12 @@ export function useModerationCases({
         const payload: unknown = await res.json();
         if (!res.ok) {
           const msg =
-            typeof payload === "object" &&
+            typeof payload === 'object' &&
             payload !== null &&
-            "error" in payload &&
-            typeof (payload as Record<string, unknown>).error === "string"
+            'error' in payload &&
+            typeof (payload as Record<string, unknown>).error === 'string'
               ? (payload as Record<string, string>).error
-              : "Failed to fetch cases";
+              : 'Failed to fetch cases';
           throw new Error(msg);
         }
 
@@ -78,8 +78,8 @@ export function useModerationCases({
         }
         setCasesData(data);
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setCasesError(err instanceof Error ? err.message : "Failed to fetch cases");
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setCasesError(err instanceof Error ? err.message : 'Failed to fetch cases');
       } finally {
         setCasesLoading(false);
       }
@@ -90,7 +90,7 @@ export function useModerationCases({
   useEffect(() => {
     if (!guildId) return;
     void fetchCases(guildId, page, sortDesc, actionFilter, userSearch);
-  }, [guildId, page, actionFilter, userSearch, fetchCases]); // sortDesc excluded — handled client-side
+  }, [guildId, page, actionFilter, userSearch, fetchCases]);
 
   // Client-side sort toggle
   useEffect(() => {
@@ -98,7 +98,6 @@ export function useModerationCases({
       if (!prev) return prev;
       return { ...prev, cases: [...prev.cases].reverse() };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to sortDesc toggle
   }, [sortDesc]);
 
   useEffect(() => {

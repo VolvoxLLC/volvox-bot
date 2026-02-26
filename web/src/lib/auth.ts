@@ -1,6 +1,6 @@
-import type { AuthOptions } from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
-import { logger } from "@/lib/logger";
+import type { AuthOptions } from 'next-auth';
+import DiscordProvider from 'next-auth/providers/discord';
+import { logger } from '@/lib/logger';
 
 // --- Runtime validation (deferred to request time, not module load / build) ---
 
@@ -11,26 +11,26 @@ function validateEnv(): void {
   if (envValidated) return;
   envValidated = true;
 
-  const secret = process.env.NEXTAUTH_SECRET ?? "";
+  const secret = process.env.NEXTAUTH_SECRET ?? '';
   if (secret.length < 32 || PLACEHOLDER_PATTERN.test(secret)) {
     throw new Error(
-      "[auth] NEXTAUTH_SECRET must be at least 32 characters and not a placeholder value. " +
-        "Generate one with: openssl rand -base64 48",
+      '[auth] NEXTAUTH_SECRET must be at least 32 characters and not a placeholder value. ' +
+        'Generate one with: openssl rand -base64 48',
     );
   }
 
   if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
     throw new Error(
-      "[auth] DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET must be set. " +
-        "Create an OAuth2 application at https://discord.com/developers/applications",
+      '[auth] DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET must be set. ' +
+        'Create an OAuth2 application at https://discord.com/developers/applications',
     );
   }
 
   if (process.env.BOT_API_URL && !process.env.BOT_API_SECRET) {
     logger.warn(
-      "[auth] BOT_API_URL is set but BOT_API_SECRET is missing. " +
-        "Requests to the bot API will be unauthenticated. " +
-        "Set BOT_API_SECRET to secure bot API communication.",
+      '[auth] BOT_API_URL is set but BOT_API_SECRET is missing. ' +
+        'Requests to the bot API will be unauthenticated. ' +
+        'Set BOT_API_SECRET to secure bot API communication.',
     );
   }
 }
@@ -40,7 +40,7 @@ function validateEnv(): void {
  * - identify: basic user info (id, username, avatar)
  * - guilds: list of guilds the user is in
  */
-const DISCORD_SCOPES = "identify guilds";
+const DISCORD_SCOPES = 'identify guilds';
 
 /**
  * Refresh a Discord OAuth2 access token using the refresh token.
@@ -48,54 +48,55 @@ const DISCORD_SCOPES = "identify guilds";
  *
  * Exported for testing; not intended for direct use outside auth callbacks.
  */
-export async function refreshDiscordToken(token: Record<string, unknown>): Promise<Record<string, unknown>> {
-  if (!token.refreshToken || typeof token.refreshToken !== "string") {
-    logger.warn("[auth] Cannot refresh Discord token: refreshToken is missing or invalid");
-    return { ...token, error: "RefreshTokenError" };
+export async function refreshDiscordToken(
+  token: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  if (!token.refreshToken || typeof token.refreshToken !== 'string') {
+    logger.warn('[auth] Cannot refresh Discord token: refreshToken is missing or invalid');
+    return { ...token, error: 'RefreshTokenError' };
   }
 
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID!,
     client_secret: process.env.DISCORD_CLIENT_SECRET!,
-    grant_type: "refresh_token",
+    grant_type: 'refresh_token',
     refresh_token: token.refreshToken as string,
   });
 
   let response: Response;
   try {
-    response = await fetch("https://discord.com/api/v10/oauth2/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    response = await fetch('https://discord.com/api/v10/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString(),
     });
   } catch (error) {
-    logger.error("[auth] Network error refreshing Discord token:", error);
-    return { ...token, error: "RefreshTokenError" };
+    logger.error('[auth] Network error refreshing Discord token:', error);
+    return { ...token, error: 'RefreshTokenError' };
   }
 
   if (!response.ok) {
     logger.error(
       `[auth] Failed to refresh Discord token: ${response.status} ${response.statusText}`,
     );
-    return { ...token, error: "RefreshTokenError" };
+    return { ...token, error: 'RefreshTokenError' };
   }
 
   let refreshed: unknown;
   try {
     refreshed = await response.json();
   } catch {
-    logger.error("[auth] Discord returned non-JSON response during token refresh");
-    return { ...token, error: "RefreshTokenError" };
+    logger.error('[auth] Discord returned non-JSON response during token refresh');
+    return { ...token, error: 'RefreshTokenError' };
   }
 
   // Validate response shape before using
   const parsed = refreshed as Record<string, unknown>;
-  if (
-    typeof parsed?.access_token !== "string" ||
-    typeof parsed?.expires_in !== "number"
-  ) {
-    logger.error("[auth] Discord refresh response missing required fields (access_token, expires_in)");
-    return { ...token, error: "RefreshTokenError" };
+  if (typeof parsed?.access_token !== 'string' || typeof parsed?.expires_in !== 'number') {
+    logger.error(
+      '[auth] Discord refresh response missing required fields (access_token, expires_in)',
+    );
+    return { ...token, error: 'RefreshTokenError' };
   }
 
   return {
@@ -104,9 +105,7 @@ export async function refreshDiscordToken(token: Record<string, unknown>): Promi
     accessTokenExpires: Date.now() + parsed.expires_in * 1000,
     // Discord may rotate the refresh token
     refreshToken:
-      typeof parsed.refresh_token === "string"
-        ? parsed.refresh_token
-        : token.refreshToken,
+      typeof parsed.refresh_token === 'string' ? parsed.refresh_token : token.refreshToken,
     error: undefined,
   };
 }
@@ -162,7 +161,7 @@ export function getAuthOptions(): AuthOptions {
         }
 
         // No refresh token available — cannot recover; flag as error
-        return { ...token, error: "RefreshTokenError" };
+        return { ...token, error: 'RefreshTokenError' };
       },
       async session({ session, token }) {
         // Only expose user ID to the client session.
@@ -180,10 +179,10 @@ export function getAuthOptions(): AuthOptions {
       },
     },
     pages: {
-      signIn: "/login",
+      signIn: '/login',
     },
     session: {
-      strategy: "jwt",
+      strategy: 'jwt',
       maxAge: 7 * 24 * 60 * 60, // 7 days
     },
     secret: process.env.NEXTAUTH_SECRET,

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { SessionProvider } from "next-auth/react";
-import { Toaster } from "sonner";
-import type { ReactNode } from "react";
+import { SessionProvider } from 'next-auth/react';
+import type { ReactNode } from 'react';
+import { Toaster } from 'sonner';
 
 /**
  * Wraps application UI with NextAuth session context and a global toast container.

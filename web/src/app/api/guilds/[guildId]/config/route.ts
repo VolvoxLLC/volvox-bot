@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   authorizeGuildAdmin,
-  getBotApiConfig,
   buildUpstreamUrl,
+  getBotApiConfig,
   proxyToBotApi,
-} from "@/lib/bot-api-proxy";
+} from '@/lib/bot-api-proxy';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const LOG_PREFIX = "[api/guilds/:guildId/config]";
+const LOG_PREFIX = '[api/guilds/:guildId/config]';
 
 /**
  * Retrieve the configuration for a guild identified by the route `guildId`.
@@ -24,7 +24,7 @@ export async function GET(
 ) {
   const { guildId } = await params;
   if (!guildId) {
-    return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
   const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
@@ -40,7 +40,7 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, "Failed to fetch config");
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch config');
 }
 
 /**
@@ -62,7 +62,7 @@ export async function PATCH(
 ) {
   const { guildId } = await params;
   if (!guildId) {
-    return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
   const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
@@ -75,19 +75,19 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
   // Validate PATCH body shape: must have { path: string, value: unknown }
   if (
-    typeof body !== "object" ||
+    typeof body !== 'object' ||
     body === null ||
-    typeof (body as Record<string, unknown>).path !== "string" ||
+    typeof (body as Record<string, unknown>).path !== 'string' ||
     !(body as Record<string, unknown>).path ||
-    !("value" in (body as Record<string, unknown>))
+    !('value' in (body as Record<string, unknown>))
   ) {
     return NextResponse.json(
-      { error: "Invalid patch: expected { path: string, value: unknown }" },
+      { error: 'Invalid patch: expected { path: string, value: unknown }' },
       { status: 400 },
     );
   }
@@ -99,9 +99,9 @@ export async function PATCH(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, "Failed to update config", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to update config', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 }

@@ -16,7 +16,11 @@ import {
 describe('triage-parse', () => {
   describe('parseSDKResult', () => {
     it('should parse valid JSON string', () => {
-      const result = parseSDKResult('{"classification":"respond","reasoning":"test"}', 'ch-1', 'Test');
+      const result = parseSDKResult(
+        '{"classification":"respond","reasoning":"test"}',
+        'ch-1',
+        'Test',
+      );
       expect(result).toEqual({ classification: 'respond', reasoning: 'test' });
     });
 

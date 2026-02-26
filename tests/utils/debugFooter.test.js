@@ -462,7 +462,7 @@ describe('logAiUsage', () => {
     logAiUsage(null, 'ch-1', { classify: {}, respond: {} });
 
     const classifyArgs = mockQuery.mock.calls[0][1];
-    expect(classifyArgs[0]).toBe('unknown');
+    expect(classifyArgs[0]).toBeNull();
   });
 
   it('should catch and log query errors without throwing', async () => {

@@ -1,69 +1,54 @@
-import Link from "next/link";
-import {
-  Bot,
-  MessageSquare,
-  Shield,
-  Sparkles,
-  Users,
-  Zap,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { getBotInviteUrl } from "@/lib/discord";
+import { Bot, MessageSquare, Shield, Sparkles, Users, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getBotInviteUrl } from '@/lib/discord';
 
 const features = [
   {
     icon: MessageSquare,
-    title: "AI Chat",
+    title: 'AI Chat',
     description:
-      "Powered by Claude via the Anthropic Agent SDK — natural conversations, context-aware responses, and intelligent triage-based model selection.",
+      'Powered by Claude via the Anthropic Agent SDK — natural conversations, context-aware responses, and intelligent triage-based model selection.',
   },
   {
     icon: Shield,
-    title: "Moderation",
+    title: 'Moderation',
     description:
-      "Comprehensive moderation toolkit — warns, kicks, bans, timeouts, tempbans with full case tracking and mod logs.",
+      'Comprehensive moderation toolkit — warns, kicks, bans, timeouts, tempbans with full case tracking and mod logs.',
   },
   {
     icon: Users,
-    title: "Welcome Messages",
-    description:
-      "Dynamic, AI-generated welcome messages that make every new member feel special.",
+    title: 'Welcome Messages',
+    description: 'Dynamic, AI-generated welcome messages that make every new member feel special.',
   },
   {
     icon: Zap,
-    title: "Spam Detection",
-    description:
-      "Automatic spam and scam detection to keep your community safe.",
+    title: 'Spam Detection',
+    description: 'Automatic spam and scam detection to keep your community safe.',
   },
   {
     icon: Sparkles,
-    title: "Runtime Config",
+    title: 'Runtime Config',
     description:
-      "Configure everything on the fly — no restarts needed. Database-backed config with slash command management.",
+      'Configure everything on the fly — no restarts needed. Database-backed config with slash command management.',
   },
   {
     icon: Bot,
-    title: "Web Dashboard",
+    title: 'Web Dashboard',
     description:
-      "This dashboard — manage your bot settings, view mod logs, and configure your server from any device.",
+      'This dashboard — manage your bot settings, view mod logs, and configure your server from any device.',
   },
 ];
 
 /** Render an "Add to Server" button — disabled/hidden when CLIENT_ID is unset. */
-function InviteButton({ size = "sm", className }: { size?: "sm" | "lg"; className?: string }) {
+function InviteButton({ size = 'sm', className }: { size?: 'sm' | 'lg'; className?: string }) {
   const url = getBotInviteUrl();
   if (!url) return null;
   return (
     <Button variant="discord" size={size} className={className} asChild>
       <a href={url} target="_blank" rel="noopener noreferrer">
-        {size === "lg" && <Bot className="mr-2 h-5 w-5" />}
+        {size === 'lg' && <Bot className="mr-2 h-5 w-5" />}
         Add to Server
       </a>
     </Button>
@@ -96,13 +81,10 @@ export default function LandingPage() {
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-discord text-white font-bold text-3xl shadow-lg">
           B
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
-          Bill Bot
-        </h1>
+        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">Bill Bot</h1>
         <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
-          The AI-powered Discord bot for the Volvox community. Moderation, AI
-          chat, dynamic welcomes, spam detection, and a fully configurable web
-          dashboard.
+          The AI-powered Discord bot for the Volvox community. Moderation, AI chat, dynamic
+          welcomes, spam detection, and a fully configurable web dashboard.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
           <InviteButton size="lg" className="gap-2" />
@@ -115,9 +97,7 @@ export default function LandingPage() {
       {/* Features */}
       <section className="container py-16 md:py-24">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Everything you need
-          </h2>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Everything you need</h2>
           <p className="mt-4 text-muted-foreground text-lg">
             A full-featured Discord bot with a modern web dashboard.
           </p>
@@ -144,12 +124,9 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="border-t bg-muted/50">
         <div className="container flex flex-col items-center gap-6 py-16 md:py-24 text-center">
-          <h2 className="text-3xl font-bold tracking-tight">
-            Ready to get started?
-          </h2>
+          <h2 className="text-3xl font-bold tracking-tight">Ready to get started?</h2>
           <p className="max-w-[32rem] text-muted-foreground">
-            Add Bill Bot to your Discord server and manage everything from this
-            dashboard.
+            Add Bill Bot to your Discord server and manage everything from this dashboard.
           </p>
           <InviteButton size="lg" className="gap-2" />
         </div>
@@ -159,8 +136,7 @@ export default function LandingPage() {
       <footer className="border-t py-6">
         <div className="container flex flex-col items-center justify-between gap-4 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Bill Bot. Built for the Volvox
-            community.
+            © {new Date().getFullYear()} Bill Bot. Built for the Volvox community.
           </p>
           <nav className="flex gap-4">
             <a

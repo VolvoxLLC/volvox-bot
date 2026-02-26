@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { PermissionFlagsBits, PermissionsBitField } from 'discord.js';
+import { describe, expect, it } from 'vitest';
 import { isExempt } from '../../src/utils/modExempt.js';
 
 /**
@@ -20,7 +20,10 @@ class FakeCollection extends Map {
 function createMessage({ permissions = [], roleIds = [], roleNames = [] } = {}) {
   const permBits = new PermissionsBitField(permissions);
   const rolesCache = new FakeCollection();
-  roleIds.forEach((id, i) => rolesCache.set(id, { id, name: roleNames[i] || `role-${id}` }));
+  for (let i = 0; i < roleIds.length; i++) {
+    const id = roleIds[i];
+    rolesCache.set(id, { id, name: roleNames[i] || `role-${id}` });
+  }
   return {
     member: {
       permissions: permBits,

@@ -1,14 +1,8 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { diffLines } from "diff";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { diffLines } from 'diff';
+import { useMemo } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ConfigDiffProps {
   /** Original config JSON (before changes). */
@@ -21,7 +15,7 @@ interface ConfigDiffProps {
 
 interface DiffLine {
   content: string;
-  type: "added" | "removed" | "unchanged";
+  type: 'added' | 'removed' | 'unchanged';
 }
 
 /**
@@ -36,11 +30,7 @@ interface DiffLine {
  * @param title - Optional title for the card; defaults to "Pending Changes".
  * @returns A React element containing either a "no changes" card or a color-coded, line-by-line diff view with added/removed counts.
  */
-export function ConfigDiff({
-  original,
-  modified,
-  title = "Pending Changes",
-}: ConfigDiffProps) {
+export function ConfigDiff({ original, modified, title = 'Pending Changes' }: ConfigDiffProps) {
   const { lines, addedCount, removedCount } = useMemo(() => {
     const originalText = JSON.stringify(original, null, 2);
     const modifiedText = JSON.stringify(modified, null, 2);
@@ -53,16 +43,16 @@ export function ConfigDiff({
     let removed = 0;
 
     for (const change of changes) {
-      const changeLines = change.value.replace(/\n$/, "").split("\n");
+      const changeLines = change.value.replace(/\n$/, '').split('\n');
       for (const line of changeLines) {
         if (change.added) {
-          result.push({ content: line, type: "added" });
+          result.push({ content: line, type: 'added' });
           added++;
         } else if (change.removed) {
-          result.push({ content: line, type: "removed" });
+          result.push({ content: line, type: 'removed' });
           removed++;
         } else {
-          result.push({ content: line, type: "unchanged" });
+          result.push({ content: line, type: 'unchanged' });
         }
       }
     }
@@ -87,9 +77,7 @@ export function ConfigDiff({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base">{title}</CardTitle>
-            <CardDescription>
-              Review your changes before saving.
-            </CardDescription>
+            <CardDescription>Review your changes before saving.</CardDescription>
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="text-green-400">+{addedCount}</span>
@@ -108,22 +96,18 @@ export function ConfigDiff({
               <span
                 key={i}
                 className={
-                  line.type === "added"
-                    ? "block bg-green-500/15 text-green-400"
-                    : line.type === "removed"
-                      ? "block bg-red-500/15 text-red-400"
-                      : "block text-muted-foreground"
+                  line.type === 'added'
+                    ? 'block bg-green-500/15 text-green-400'
+                    : line.type === 'removed'
+                      ? 'block bg-red-500/15 text-red-400'
+                      : 'block text-muted-foreground'
                 }
               >
                 <span
                   className="mr-2 inline-block w-4 select-none text-right opacity-60"
                   aria-hidden="true"
                 >
-                  {line.type === "added"
-                    ? "+"
-                    : line.type === "removed"
-                      ? "-"
-                      : " "}
+                  {line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}
                 </span>
                 {line.content}
               </span>

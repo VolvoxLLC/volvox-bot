@@ -1,5 +1,5 @@
-export const SELECTED_GUILD_KEY = "volvox-bot-selected-guild";
-export const GUILD_SELECTED_EVENT = "volvox-bot:guild-selected";
+export const SELECTED_GUILD_KEY = 'volvox-bot-selected-guild';
+export const GUILD_SELECTED_EVENT = 'volvox-bot:guild-selected';
 
 /**
  * Persist and broadcast guild selection changes so dashboard views can react immediately.
@@ -7,7 +7,7 @@ export const GUILD_SELECTED_EVENT = "volvox-bot:guild-selected";
  * This helper writes to localStorage before dispatching the in-tab custom event.
  */
 export function broadcastSelectedGuild(guildId: string): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
 
   const normalizedGuildId = guildId.trim();
   if (!normalizedGuildId) return;

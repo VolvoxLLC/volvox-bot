@@ -7,18 +7,17 @@ vi.mock('../../src/logger.js', () => ({
   debug: vi.fn(),
 }));
 
+import { warn } from '../../src/logger.js';
 import {
+  CHANNEL_INACTIVE_MS,
   channelBuffers,
-  clearChannelState,
   clearEvaluatedMessages,
   consumePendingReeval,
-  CHANNEL_INACTIVE_MS,
   evictInactiveChannels,
   getBuffer,
   MAX_TRACKED_CHANNELS,
   pushToBuffer,
 } from '../../src/modules/triage-buffer.js';
-import { warn } from '../../src/logger.js';
 
 describe('triage-buffer', () => {
   beforeEach(() => {
@@ -62,7 +61,10 @@ describe('triage-buffer', () => {
       expect(buf.messages).toHaveLength(2);
       expect(buf.messages[0].messageId).toBe('m2');
       expect(buf.messages[1].messageId).toBe('m3');
-      expect(warn).toHaveBeenCalledWith('Buffer truncation dropping messages', expect.objectContaining({ dropped: 1 }));
+      expect(warn).toHaveBeenCalledWith(
+        'Buffer truncation dropping messages',
+        expect.objectContaining({ dropped: 1 }),
+      );
     });
   });
 
@@ -90,8 +92,16 @@ describe('triage-buffer', () => {
 
   describe('clearEvaluatedMessages', () => {
     it('should remove messages with matching IDs and keep the rest', () => {
-      pushToBuffer('ch-1', { author: 'A', content: 'a', userId: 'u1', messageId: 'm1', timestamp: 1 }, 10);
-      pushToBuffer('ch-1', { author: 'B', content: 'b', userId: 'u2', messageId: 'm2', timestamp: 2 }, 10);
+      pushToBuffer(
+        'ch-1',
+        { author: 'A', content: 'a', userId: 'u1', messageId: 'm1', timestamp: 1 },
+        10,
+      );
+      pushToBuffer(
+        'ch-1',
+        { author: 'B', content: 'b', userId: 'u2', messageId: 'm2', timestamp: 2 },
+        10,
+      );
 
       clearEvaluatedMessages('ch-1', new Set(['m1']));
 

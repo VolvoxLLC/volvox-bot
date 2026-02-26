@@ -9,8 +9,8 @@ export function getBotApiBaseUrl(): string | null {
   const raw = process.env.BOT_API_URL;
   if (!raw) return null;
 
-  const trimmed = raw.replace(/\/+$/, "");
-  if (trimmed.endsWith("/api/v1")) {
+  const trimmed = raw.replace(/\/+$/, '');
+  if (trimmed.endsWith('/api/v1')) {
     return trimmed;
   }
 

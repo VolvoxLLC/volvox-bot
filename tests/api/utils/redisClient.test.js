@@ -7,7 +7,11 @@ vi.mock('../../../src/logger.js', () => ({
   debug: vi.fn(),
 }));
 
-import { _resetRedisClient, closeRedis, getRedisClient } from '../../../src/api/utils/redisClient.js';
+import {
+  _resetRedisClient,
+  closeRedis,
+  getRedisClient,
+} from '../../../src/api/utils/redisClient.js';
 
 describe('redisClient', () => {
   beforeEach(() => {

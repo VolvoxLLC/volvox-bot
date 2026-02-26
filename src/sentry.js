@@ -44,7 +44,17 @@ if (dsn) {
         return null;
       }
       // Scrub sensitive keys from extra context
-      const sensitiveKeys = ['ip', 'accessToken', 'secret', 'apiKey', 'authorization', 'password', 'token', 'stack', 'cookie'];
+      const sensitiveKeys = [
+        'ip',
+        'accessToken',
+        'secret',
+        'apiKey',
+        'authorization',
+        'password',
+        'token',
+        'stack',
+        'cookie',
+      ];
       if (event.extra) {
         for (const key of sensitiveKeys) {
           if (key in event.extra) {

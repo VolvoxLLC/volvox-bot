@@ -1,5 +1,5 @@
-export type AnalyticsRangePreset = "today" | "week" | "month" | "custom";
-export type AnalyticsInterval = "hour" | "day";
+export type AnalyticsRangePreset = 'today' | 'week' | 'month' | 'custom';
+export type AnalyticsInterval = 'hour' | 'day';
 
 export interface AnalyticsRange {
   type: AnalyticsRangePreset;

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { ErrorCard } from "@/components/error-card";
-import { logger } from "@/lib/logger";
+import { useEffect } from 'react';
+import { ErrorCard } from '@/components/error-card';
+import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 
 export default function RootError({
   error,
@@ -13,7 +13,7 @@ export default function RootError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error("[error-boundary]", error);
+    logger.error('[error-boundary]', error);
   }, [error]);
 
   return (

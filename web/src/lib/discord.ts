@@ -1,4 +1,4 @@
-const DISCORD_CDN = "https://cdn.discordapp.com";
+const DISCORD_CDN = 'https://cdn.discordapp.com';
 
 /**
  * Minimal permissions the bot needs:
@@ -13,7 +13,7 @@ const DISCORD_CDN = "https://cdn.discordapp.com";
  *
  * Verified: (1n<<1n)|(1n<<2n)|(1n<<10n)|(1n<<11n)|(1n<<13n)|(1n<<16n)|(1n<<40n) === 1099511704582n
  */
-const BOT_PERMISSIONS = "1099511704582";
+const BOT_PERMISSIONS = '1099511704582';
 
 /**
  * Build the bot OAuth2 invite URL, or return null when
@@ -36,6 +36,6 @@ export function getGuildIconUrl(
   size = 128,
 ): string | null {
   if (!iconHash) return null;
-  const ext = iconHash.startsWith("a_") ? "gif" : "webp";
+  const ext = iconHash.startsWith('a_') ? 'gif' : 'webp';
   return `${DISCORD_CDN}/icons/${guildId}/${iconHash}.${ext}?size=${size}`;
 }

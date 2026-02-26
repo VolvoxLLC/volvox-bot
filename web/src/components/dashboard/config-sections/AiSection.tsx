@@ -1,15 +1,10 @@
-"use client";
+'use client';
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { ToggleSwitch } from "@/components/dashboard/toggle-switch";
-import { SystemPromptEditor } from "@/components/dashboard/system-prompt-editor";
-import { SYSTEM_PROMPT_MAX_LENGTH } from "@/types/config";
-import type { GuildConfig } from "@/lib/config-utils";
+import { SystemPromptEditor } from '@/components/dashboard/system-prompt-editor';
+import { ToggleSwitch } from '@/components/dashboard/toggle-switch';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { GuildConfig } from '@/lib/config-utils';
+import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 
 interface AiSectionProps {
   draftConfig: GuildConfig;
@@ -18,7 +13,12 @@ interface AiSectionProps {
   onSystemPromptChange: (value: string) => void;
 }
 
-export function AiSection({ draftConfig, saving, onEnabledChange, onSystemPromptChange }: AiSectionProps) {
+export function AiSection({
+  draftConfig,
+  saving,
+  onEnabledChange,
+  onSystemPromptChange,
+}: AiSectionProps) {
   return (
     <>
       <Card>
@@ -26,9 +26,7 @@ export function AiSection({ draftConfig, saving, onEnabledChange, onSystemPrompt
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">AI Chat</CardTitle>
-              <CardDescription>
-                Configure the AI assistant behavior.
-              </CardDescription>
+              <CardDescription>Configure the AI assistant behavior.</CardDescription>
             </div>
             <ToggleSwitch
               checked={draftConfig.ai?.enabled ?? false}
@@ -41,7 +39,7 @@ export function AiSection({ draftConfig, saving, onEnabledChange, onSystemPrompt
       </Card>
 
       <SystemPromptEditor
-        value={draftConfig.ai?.systemPrompt ?? ""}
+        value={draftConfig.ai?.systemPrompt ?? ''}
         onChange={onSystemPromptChange}
         disabled={saving}
         maxLength={SYSTEM_PROMPT_MAX_LENGTH}

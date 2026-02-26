@@ -119,7 +119,7 @@ router.get('/cases', async (req, res) => {
  */
 router.get('/cases/:caseNumber', async (req, res) => {
   const caseNumber = parseInt(req.params.caseNumber, 10);
-  if (isNaN(caseNumber)) {
+  if (Number.isNaN(caseNumber)) {
     return res.status(400).json({ error: 'Invalid case number' });
   }
 

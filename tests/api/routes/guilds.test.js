@@ -119,11 +119,13 @@ describe('guilds routes', () => {
    * Helper: create a JWT and populate the server-side session store
    */
   function createOAuthToken(secret = 'jwt-test-secret', userId = '123') {
-    sessionStore.set(userId, 'discord-access-token');
+    const jti = `test-jti-${userId}`;
+    sessionStore.set(userId, { accessToken: 'discord-access-token', jti });
     return jwt.sign(
       {
         userId,
         username: 'testuser',
+        jti,
       },
       secret,
       { algorithm: 'HS256' },

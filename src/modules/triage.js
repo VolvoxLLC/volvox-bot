@@ -618,4 +618,3 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
     }
   }
 }
-

@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   authorizeGuildAdmin,
-  getBotApiConfig,
   buildUpstreamUrl,
+  getBotApiConfig,
   proxyToBotApi,
-} from "@/lib/bot-api-proxy";
+} from '@/lib/bot-api-proxy';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const LOG_PREFIX = "[api/guilds/:guildId/roles]";
+const LOG_PREFIX = '[api/guilds/:guildId/roles]';
 
 /**
  * Handle GET requests to return a guild's roles after verifying the requester has owner or administrator permissions.
@@ -23,7 +23,7 @@ export async function GET(
 ) {
   const { guildId } = await params;
   if (!guildId) {
-    return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
   const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
@@ -39,5 +39,5 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, "Failed to fetch roles");
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch roles');
 }

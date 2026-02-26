@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { BotHealth, RestartRecord } from "./types";
-import { formatUptime } from "@/lib/format-time";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatUptime } from '@/lib/format-time';
+import type { BotHealth, RestartRecord } from './types';
 
 interface RestartHistoryProps {
   health: BotHealth | null;
@@ -15,12 +15,12 @@ const MAX_RESTARTS = 20;
 function formatTimestamp(iso: string): string {
   try {
     return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
     }).format(new Date(iso));
   } catch {
     return iso;
@@ -38,27 +38,51 @@ function reasonStyle(reason: string): ReasonStyle {
 
   // Check crash/restart before startup to avoid "restart" matching "start"
   if (
-    normalized.includes("crash") ||
-    normalized.includes("error") ||
-    normalized.includes("uncaught") ||
-    normalized.includes("unhandled")
+    normalized.includes('crash') ||
+    normalized.includes('error') ||
+    normalized.includes('uncaught') ||
+    normalized.includes('unhandled')
   ) {
-    return { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400", label: reason };
+    return {
+      bg: 'bg-red-100 dark:bg-red-900/30',
+      text: 'text-red-700 dark:text-red-400',
+      label: reason,
+    };
   }
-  if (normalized.includes("restart")) {
-    return { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", label: reason };
+  if (normalized.includes('restart')) {
+    return {
+      bg: 'bg-yellow-100 dark:bg-yellow-900/30',
+      text: 'text-yellow-700 dark:text-yellow-400',
+      label: reason,
+    };
   }
-  if (normalized.includes("startup") || normalized.startsWith("start")) {
-    return { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", label: reason };
+  if (normalized.includes('startup') || normalized.startsWith('start')) {
+    return {
+      bg: 'bg-green-100 dark:bg-green-900/30',
+      text: 'text-green-700 dark:text-green-400',
+      label: reason,
+    };
   }
-  if (normalized.includes("deploy") || normalized.includes("update")) {
-    return { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", label: reason };
+  if (normalized.includes('deploy') || normalized.includes('update')) {
+    return {
+      bg: 'bg-blue-100 dark:bg-blue-900/30',
+      text: 'text-blue-700 dark:text-blue-400',
+      label: reason,
+    };
   }
-  if (normalized.includes("shutdown") || normalized.includes("sigterm") || normalized.includes("sigint")) {
-    return { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", label: reason };
+  if (
+    normalized.includes('shutdown') ||
+    normalized.includes('sigterm') ||
+    normalized.includes('sigint')
+  ) {
+    return {
+      bg: 'bg-yellow-100 dark:bg-yellow-900/30',
+      text: 'text-yellow-700 dark:text-yellow-400',
+      label: reason,
+    };
   }
 
-  return { bg: "bg-muted", text: "text-muted-foreground", label: reason };
+  return { bg: 'bg-muted', text: 'text-muted-foreground', label: reason };
 }
 
 function ReasonBadge({ reason }: { reason: string }) {
@@ -100,7 +124,7 @@ export function RestartHistory({ health, loading }: RestartHistoryProps) {
           <TableSkeleton />
         ) : restarts.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            {health ? "No restarts recorded." : "No data available."}
+            {health ? 'No restarts recorded.' : 'No data available.'}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -125,11 +149,9 @@ export function RestartHistory({ health, loading }: RestartHistoryProps) {
                     <td className="py-2.5 pr-4">
                       <ReasonBadge reason={restart.reason} />
                     </td>
-                    <td className="py-2.5 pr-4 font-mono text-xs">
-                      {restart.version ?? "—"}
-                    </td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">{restart.version ?? '—'}</td>
                     <td className="py-2.5 text-muted-foreground">
-                      {restart.uptimeBefore != null ? formatUptime(restart.uptimeBefore) : "—"}
+                      {restart.uptimeBefore != null ? formatUptime(restart.uptimeBefore) : '—'}
                     </td>
                   </tr>
                 ))}

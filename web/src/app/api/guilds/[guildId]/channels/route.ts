@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   authorizeGuildAdmin,
-  getBotApiConfig,
   buildUpstreamUrl,
+  getBotApiConfig,
   proxyToBotApi,
-} from "@/lib/bot-api-proxy";
+} from '@/lib/bot-api-proxy';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const LOG_PREFIX = "[api/guilds/:guildId/channels]";
+const LOG_PREFIX = '[api/guilds/:guildId/channels]';
 
 /**
  * Proxy a request to the Bot API to retrieve channels for the specified guild.
@@ -24,7 +24,7 @@ export async function GET(
 ) {
   const { guildId } = await params;
   if (!guildId) {
-    return NextResponse.json({ error: "Missing guildId" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
   const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
@@ -40,5 +40,5 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, "Failed to fetch channels");
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch channels');
 }

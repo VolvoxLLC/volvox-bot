@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   authorizeGuildAdmin,
-  getBotApiConfig,
   buildUpstreamUrl,
+  getBotApiConfig,
   proxyToBotApi,
-} from "@/lib/bot-api-proxy";
+} from '@/lib/bot-api-proxy';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const LOG_PREFIX = "[api/moderation/user/:userId/history]";
+const LOG_PREFIX = '[api/moderation/user/:userId/history]';
 
 /**
  * GET /api/moderation/user/[userId]/history
@@ -20,9 +20,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> },
 ): Promise<NextResponse> {
-  const guildId = request.nextUrl.searchParams.get("guildId");
+  const guildId = request.nextUrl.searchParams.get('guildId');
   if (!guildId) {
-    return NextResponse.json({ error: "guildId is required" }, { status: 400 });
+    return NextResponse.json({ error: 'guildId is required' }, { status: 400 });
   }
 
   const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
@@ -39,18 +39,13 @@ export async function GET(
   );
   if (upstream instanceof NextResponse) return upstream;
 
-  upstream.searchParams.set("guildId", guildId);
+  upstream.searchParams.set('guildId', guildId);
 
-  const page = request.nextUrl.searchParams.get("page");
-  if (page !== null) upstream.searchParams.set("page", page);
+  const page = request.nextUrl.searchParams.get('page');
+  if (page !== null) upstream.searchParams.set('page', page);
 
-  const limit = request.nextUrl.searchParams.get("limit");
-  if (limit !== null) upstream.searchParams.set("limit", limit);
+  const limit = request.nextUrl.searchParams.get('limit');
+  if (limit !== null) upstream.searchParams.set('limit', limit);
 
-  return proxyToBotApi(
-    upstream,
-    config.secret,
-    LOG_PREFIX,
-    "Failed to fetch user mod history",
-  );
+  return proxyToBotApi(upstream, config.secret, LOG_PREFIX, 'Failed to fetch user mod history');
 }

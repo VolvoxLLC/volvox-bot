@@ -3,8 +3,8 @@
  */
 export function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "short",
-    timeStyle: "short",
+    dateStyle: 'short',
+    timeStyle: 'short',
   }).format(new Date(iso));
 }
 
@@ -23,5 +23,5 @@ export function formatUptime(seconds: number): string {
   if (h > 0) parts.push(`${h}h`);
   if (m > 0 || parts.length === 0) parts.push(`${m}m`);
 
-  return parts.join(" ");
+  return parts.join(' ');
 }

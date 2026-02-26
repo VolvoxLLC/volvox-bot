@@ -1,7 +1,7 @@
 export function formatDateInput(date: Date): string {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
@@ -28,49 +28,33 @@ export function startOfDayIso(dateInput: string): string {
   const parsed = parseLocalDateInput(dateInput);
   if (!parsed) return `${dateInput}T00:00:00.000Z`;
 
-  return new Date(
-    parsed.year,
-    parsed.monthIndex,
-    parsed.day,
-    0,
-    0,
-    0,
-    0,
-  ).toISOString();
+  return new Date(parsed.year, parsed.monthIndex, parsed.day, 0, 0, 0, 0).toISOString();
 }
 
 export function endOfDayIso(dateInput: string): string {
   const parsed = parseLocalDateInput(dateInput);
   if (!parsed) return `${dateInput}T23:59:59.999Z`;
 
-  return new Date(
-    parsed.year,
-    parsed.monthIndex,
-    parsed.day,
-    23,
-    59,
-    59,
-    999,
-  ).toISOString();
+  return new Date(parsed.year, parsed.monthIndex, parsed.day, 23, 59, 59, 999).toISOString();
 }
 
 export function formatUsd(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: value < 1 ? 4 : 2,
     maximumFractionDigits: value < 1 ? 4 : 2,
   }).format(value);
 }
 
 export function formatNumber(value: number): string {
-  return value.toLocaleString("en-US");
+  return value.toLocaleString('en-US');
 }
 
 export function formatLastUpdatedTime(value: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
   }).format(value);
 }

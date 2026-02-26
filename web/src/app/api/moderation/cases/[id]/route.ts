@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   authorizeGuildAdmin,
-  getBotApiConfig,
   buildUpstreamUrl,
+  getBotApiConfig,
   proxyToBotApi,
-} from "@/lib/bot-api-proxy";
+} from '@/lib/bot-api-proxy';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const LOG_PREFIX = "[api/moderation/cases/:id]";
+const LOG_PREFIX = '[api/moderation/cases/:id]';
 
 /**
  * GET /api/moderation/cases/:id
@@ -20,9 +20,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  const guildId = request.nextUrl.searchParams.get("guildId");
+  const guildId = request.nextUrl.searchParams.get('guildId');
   if (!guildId) {
-    return NextResponse.json({ error: "guildId is required" }, { status: 400 });
+    return NextResponse.json({ error: 'guildId is required' }, { status: 400 });
   }
 
   const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
@@ -39,7 +39,7 @@ export async function GET(
   );
   if (upstream instanceof NextResponse) return upstream;
 
-  upstream.searchParams.set("guildId", guildId);
+  upstream.searchParams.set('guildId', guildId);
 
-  return proxyToBotApi(upstream, config.secret, LOG_PREFIX, "Failed to fetch mod case");
+  return proxyToBotApi(upstream, config.secret, LOG_PREFIX, 'Failed to fetch mod case');
 }

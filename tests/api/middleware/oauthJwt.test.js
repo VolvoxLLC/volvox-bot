@@ -69,7 +69,11 @@ describe('oauthJwt', () => {
 
     it('should return error status when token verification fails', async () => {
       verifyJwtToken.mockResolvedValue({ error: 'Invalid', status: 401 });
-      const req = { headers: { authorization: 'Bearer bad-token' }, ip: '127.0.0.1', path: '/test' };
+      const req = {
+        headers: { authorization: 'Bearer bad-token' },
+        ip: '127.0.0.1',
+        path: '/test',
+      };
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
       const next = vi.fn();
 
@@ -81,7 +85,11 @@ describe('oauthJwt', () => {
 
     it('should log when SESSION_SECRET is not configured (500 status)', async () => {
       verifyJwtToken.mockResolvedValue({ error: 'Session not configured', status: 500 });
-      const req = { headers: { authorization: 'Bearer some-token' }, ip: '127.0.0.1', path: '/test' };
+      const req = {
+        headers: { authorization: 'Bearer some-token' },
+        ip: '127.0.0.1',
+        path: '/test',
+      };
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
       const next = vi.fn();
 

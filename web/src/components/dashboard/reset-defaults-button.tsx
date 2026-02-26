@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Undo2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Undo2 } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
 interface DiscardChangesButtonProps {
   /** Called when the user confirms the reset. */
@@ -59,7 +59,7 @@ export function DiscardChangesButton({
           <DialogDescription>
             {sectionLabel
               ? `This will discard ${sectionLabel}. Your configuration will revert to the last saved state.`
-              : "This will discard all unsaved changes. Your configuration will revert to the last saved state."}
+              : 'This will discard all unsaved changes. Your configuration will revert to the last saved state.'}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { CaseListResponse } from "@/components/dashboard/moderation-types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CaseListResponse } from '@/components/dashboard/moderation-types';
 
 const PAGE_LIMIT = 25;
 
@@ -48,7 +48,7 @@ export function useUserHistory({
 
         const res = await fetch(
           `/api/moderation/user/${encodeURIComponent(userId)}/history?${params.toString()}`,
-          { cache: "no-store", signal: controller.signal },
+          { cache: 'no-store', signal: controller.signal },
         );
 
         if (res.status === 401) {
@@ -59,21 +59,19 @@ export function useUserHistory({
         const payload: unknown = await res.json();
         if (!res.ok) {
           const msg =
-            typeof payload === "object" &&
+            typeof payload === 'object' &&
             payload !== null &&
-            "error" in payload &&
-            typeof (payload as Record<string, unknown>).error === "string"
+            'error' in payload &&
+            typeof (payload as Record<string, unknown>).error === 'string'
               ? (payload as Record<string, string>).error
-              : "Failed to fetch user history";
+              : 'Failed to fetch user history';
           throw new Error(msg);
         }
 
         setUserHistoryData(payload as CaseListResponse);
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setUserHistoryError(
-          err instanceof Error ? err.message : "Failed to fetch user history",
-        );
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setUserHistoryError(err instanceof Error ? err.message : 'Failed to fetch user history');
       } finally {
         setUserHistoryLoading(false);
       }

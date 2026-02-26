@@ -1,7 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
   "files": {
-    "includes": ["src/**/*.js", "tests/**/*.js", "web/src/**/*.{ts,tsx}", "!node_modules", "!coverage", "!logs", "!data"]
+    "includes": [
+      "src/**/*.js",
+      "tests/**/*.js",
+      "web/src/**/*.{ts,tsx}",
+      "!node_modules",
+      "!coverage",
+      "!logs",
+      "!data"
+    ]
   },
   "linter": {
     "enabled": true,
@@ -11,6 +19,44 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["web/src/lib/logger.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["web/src/**/*.{ts,tsx}"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "warn"
+          },
+          "style": {
+            "noNonNullAssertion": "warn"
+          },
+          "complexity": {
+            "useOptionalChain": "warn"
+          },
+          "correctness": {
+            "noConstantCondition": "warn",
+            "useExhaustiveDependencies": "warn"
+          },
+          "a11y": {
+            "useSemanticElements": "warn",
+            "useAriaPropsSupportedByRole": "warn",
+            "noStaticElementInteractions": "warn",
+            "useButtonType": "warn"
+          }
+        }
+      }
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

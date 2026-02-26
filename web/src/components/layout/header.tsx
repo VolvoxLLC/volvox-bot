@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
-import { LogOut, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ExternalLink, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
+import { useEffect, useRef } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,9 +13,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
-import { MobileSidebar } from "./mobile-sidebar";
+} from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { MobileSidebar } from './mobile-sidebar';
 
 export function Header() {
   const { data: session, status } = useSession();
@@ -28,9 +28,9 @@ export function Header() {
   // The signingOut guard prevents duplicate sign-out attempts when the session
   // refetches and re-triggers this effect.
   useEffect(() => {
-    if (session?.error === "RefreshTokenError" && !signingOut.current) {
+    if (session?.error === 'RefreshTokenError' && !signingOut.current) {
       signingOut.current = true;
-      signOut({ callbackUrl: "/login" });
+      signOut({ callbackUrl: '/login' });
     }
   }, [session?.error]);
 
@@ -42,16 +42,14 @@ export function Header() {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-discord text-white font-bold text-sm">
           B
         </div>
-        <span className="font-semibold hidden sm:inline-block">
-          Bill Bot Dashboard
-        </span>
+        <span className="font-semibold hidden sm:inline-block">Bill Bot Dashboard</span>
       </div>
 
       <div className="ml-auto flex items-center gap-4">
-        {status === "loading" && (
+        {status === 'loading' && (
           <Skeleton className="h-8 w-8 rounded-full" data-testid="header-skeleton" />
         )}
-        {status === "unauthenticated" && (
+        {status === 'unauthenticated' && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/login">Sign in</Link>
           </Button>
@@ -63,10 +61,10 @@ export function Header() {
                 <Avatar className="h-8 w-8">
                   <AvatarImage
                     src={session.user.image ?? undefined}
-                    alt={session.user.name ?? "User"}
+                    alt={session.user.name ?? 'User'}
                   />
                   <AvatarFallback>
-                    {session.user.name?.charAt(0)?.toUpperCase() ?? "U"}
+                    {session.user.name?.charAt(0)?.toUpperCase() ?? 'U'}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -74,9 +72,7 @@ export function Header() {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {session.user.name}
-                  </p>
+                  <p className="text-sm font-medium leading-none">{session.user.name}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -94,7 +90,7 @@ export function Header() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="cursor-pointer text-destructive focus:text-destructive"
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={() => signOut({ callbackUrl: '/' })}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign out
