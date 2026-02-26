@@ -105,6 +105,12 @@ export async function initDb() {
     // Prevent unhandled pool errors from crashing the process
     pool.on('error', (err) => {
       logError('Unexpected database pool error', { error: err.message });
+      // Lazy import to avoid circular dependency (sentry.js → db.js)
+      import('./sentry.js').then(({ Sentry, sentryEnabled }) => {
+        if (sentryEnabled) {
+          Sentry.captureException(err, { tags: { source: 'database_pool' } });
+        }
+      }).catch(() => {});
     });
 
     try {
