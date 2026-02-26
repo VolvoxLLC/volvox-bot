@@ -1031,11 +1031,11 @@ export function ConfigEditor() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={draftConfig.starboard?.emoji ?? "⭐"}
-                  onChange={(e) => updateStarboardField("emoji", e.target.value.trim() || "⭐")}
+                  value={draftConfig.starboard?.emoji ?? "*"}
+                  onChange={(e) => updateStarboardField("emoji", e.target.value.trim() || "*")}
                   disabled={saving}
                   className={inputClasses}
-                  placeholder="⭐"
+                  placeholder="*"
                 />
                 <button
                   type="button"
