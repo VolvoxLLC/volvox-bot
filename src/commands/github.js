@@ -8,7 +8,7 @@
 import { ChannelType, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info } from '../logger.js';
-import { getConfig } from '../modules/config.js';
+import { getConfig, setConfigValue } from '../modules/config.js';
 import { isAdmin } from '../utils/permissions.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
@@ -125,7 +125,7 @@ export async function execute(interaction) {
  * @param {import('pg').Pool} pool
  * @param {object} config
  */
-async function handleAdd(interaction, pool, config) {
+async function handleAdd(interaction, _pool, config) {
   const repo = interaction.options.getString('repo');
 
   if (!isValidRepo(repo)) {
@@ -144,15 +144,9 @@ async function handleAdd(interaction, pool, config) {
     return;
   }
 
-  // Persist by updating config in DB
+  // Persist by updating config via setConfigValue
   repos.push(repo);
-
-  await pool.query(
-    `INSERT INTO guild_config (guild_id, key, value)
-     VALUES ($1, 'github.feed.repos', $2)
-     ON CONFLICT (guild_id, key) DO UPDATE SET value = $2`,
-    [interaction.guildId, JSON.stringify(repos)],
-  );
+  await setConfigValue('github.feed.repos', repos, interaction.guildId);
 
   info('GitHub feed: repo added', { guildId: interaction.guildId, repo });
 
@@ -181,13 +175,7 @@ async function handleRemove(interaction, pool, config) {
   }
 
   const updated = repos.filter((r) => r !== repo);
-
-  await pool.query(
-    `INSERT INTO guild_config (guild_id, key, value)
-     VALUES ($1, 'github.feed.repos', $2)
-     ON CONFLICT (guild_id, key) DO UPDATE SET value = $2`,
-    [interaction.guildId, JSON.stringify(updated)],
-  );
+  await setConfigValue('github.feed.repos', updated, interaction.guildId);
 
   // Remove state row from DB so next add starts fresh
   await pool.query('DELETE FROM github_feed_state WHERE guild_id = $1 AND repo = $2', [
@@ -233,17 +221,10 @@ async function handleList(interaction, config) {
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  * @param {object} config
  */
-async function handleChannel(interaction, config) {
+async function handleChannel(interaction, _config) {
   const channel = interaction.options.getChannel('channel');
 
-  const pool = getPool();
-
-  await pool.query(
-    `INSERT INTO guild_config (guild_id, key, value)
-     VALUES ($1, 'github.feed.channelId', $2)
-     ON CONFLICT (guild_id, key) DO UPDATE SET value = $2`,
-    [interaction.guildId, JSON.stringify(channel.id)],
-  );
+  await setConfigValue('github.feed.channelId', channel.id, interaction.guildId);
 
   info('GitHub feed: channel set', { guildId: interaction.guildId, channelId: channel.id });
 

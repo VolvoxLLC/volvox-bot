@@ -116,7 +116,7 @@ describe('fetchRepoEvents', () => {
     expect(result).toEqual(fakeEvents);
     expect(execFile).toHaveBeenCalledWith(
       'gh',
-      ['api', 'repos/VolvoxLLC/volvox-bot/events', '--paginate', '-q', '.[0:10]'],
+      ['api', 'repos/VolvoxLLC/volvox-bot/events?per_page=10'],
       { timeout: 30_000 },
       expect.any(Function),
     );

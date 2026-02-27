@@ -146,7 +146,8 @@
       "modlog": "moderator",
       "announce": "moderator",
       "tldr": "everyone",
-      "afk": "everyone"
+      "afk": "everyone",
+      "github": "admin"
     }
   },
   "help": {
