@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -13,7 +14,7 @@ import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
 
 /** Config sections exposed by the API — all fields optional for partial API responses. */
-type GuildConfig = DeepPartial<BotConfig>;
+type GuildConfig = DeepPartial<BotConfig> & Record<string, any>;
 
 /** Shared input styling for text inputs and textareas in the config editor. */
 const inputClasses =
@@ -93,6 +94,10 @@ export function ConfigEditor() {
   const [draftConfig, setDraftConfig] = useState<GuildConfig | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+
+  const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
+    updateDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
+  }, []);
 
   // ── Guild selection ────────────────────────────────────────────
   useEffect(() => {
@@ -327,49 +332,49 @@ export function ConfigEditor() {
 
   // ── Draft updaters ─────────────────────────────────────────────
   const updateSystemPrompt = useCallback((value: string) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, ai: { ...prev.ai, systemPrompt: value } } as GuildConfig;
     });
   }, []);
 
   const updateAiEnabled = useCallback((enabled: boolean) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, ai: { ...prev.ai, enabled } } as GuildConfig;
     });
   }, []);
 
   const updateWelcomeEnabled = useCallback((enabled: boolean) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, welcome: { ...prev.welcome, enabled } } as GuildConfig;
     });
   }, []);
 
   const updateWelcomeMessage = useCallback((message: string) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, welcome: { ...prev.welcome, message } } as GuildConfig;
     });
   }, []);
 
   const updateModerationEnabled = useCallback((enabled: boolean) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, moderation: { ...prev.moderation, enabled } } as GuildConfig;
     });
   }, []);
 
   const updateModerationField = useCallback((field: string, value: unknown) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, moderation: { ...prev.moderation, [field]: value } } as GuildConfig;
     });
   }, []);
 
   const updateModerationDmNotification = useCallback((action: string, value: boolean) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -382,7 +387,7 @@ export function ConfigEditor() {
   }, []);
 
   const updateModerationEscalation = useCallback((enabled: boolean) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -395,28 +400,28 @@ export function ConfigEditor() {
   }, []);
 
   const updateTriageEnabled = useCallback((enabled: boolean) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, triage: { ...prev.triage, enabled } } as GuildConfig;
     });
   }, []);
 
   const updateTriageField = useCallback((field: string, value: unknown) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, triage: { ...prev.triage, [field]: value } } as GuildConfig;
     });
   }, []);
 
   const updateStarboardField = useCallback((field: string, value: unknown) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, starboard: { ...prev.starboard, [field]: value } } as GuildConfig;
     });
   }, []);
 
   const updateRateLimitField = useCallback((field: string, value: unknown) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -429,7 +434,7 @@ export function ConfigEditor() {
   }, []);
 
   const updateLinkFilterField = useCallback((field: string, value: unknown) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -442,14 +447,14 @@ export function ConfigEditor() {
   }, []);
 
   const updatePermissionsField = useCallback((field: string, value: unknown) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, permissions: { ...prev.permissions, [field]: value } } as GuildConfig;
     });
   }, []);
 
   const updateMemoryField = useCallback((field: string, value: unknown) => {
-    setDraftConfig((prev) => {
+    updateDraftConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, memory: { ...prev.memory, [field]: value } } as GuildConfig;
     });
@@ -1236,7 +1241,7 @@ export function ConfigEditor() {
               <ToggleSwitch
                 checked={draftConfig[key]?.enabled ?? false}
                 onChange={(v) => {
-                  setDraftConfig((prev) => ({
+                  updateDraftConfig((prev) => ({
                     ...prev,
                     [key]: { ...prev[key], enabled: v },
                   }));
@@ -1284,7 +1289,7 @@ export function ConfigEditor() {
                     ...badges[i],
                     days: Math.max(0, parseInt(e.target.value, 10) || 0),
                   };
-                  setDraftConfig((prev) => ({
+                  updateDraftConfig((prev) => ({
                     ...prev,
                     engagement: { ...prev.engagement, activityBadges: badges },
                   }));
@@ -1305,7 +1310,7 @@ export function ConfigEditor() {
                     ]),
                   ];
                   badges[i] = { ...badges[i], label: e.target.value };
-                  setDraftConfig((prev) => ({
+                  updateDraftConfig((prev) => ({
                     ...prev,
                     engagement: { ...prev.engagement, activityBadges: badges },
                   }));
@@ -1319,7 +1324,7 @@ export function ConfigEditor() {
                   const badges = [...(draftConfig.engagement?.activityBadges ?? [])].filter(
                     (_, idx) => idx !== i,
                   );
-                  setDraftConfig((prev) => ({
+                  updateDraftConfig((prev) => ({
                     ...prev,
                     engagement: { ...prev.engagement, activityBadges: badges },
                   }));
@@ -1338,7 +1343,7 @@ export function ConfigEditor() {
                 ...(draftConfig.engagement?.activityBadges ?? []),
                 { days: 0, label: '🌟 New Badge' },
               ];
-              setDraftConfig((prev) => ({
+              updateDraftConfig((prev) => ({
                 ...prev,
                 engagement: { ...prev.engagement, activityBadges: badges },
               }));
@@ -1358,7 +1363,7 @@ export function ConfigEditor() {
             <ToggleSwitch
               checked={draftConfig.reputation?.enabled ?? false}
               onChange={(v) =>
-                setDraftConfig((prev) => ({
+                updateDraftConfig((prev) => ({
                   ...prev,
                   reputation: { ...prev.reputation, enabled: v },
                 }))
@@ -1380,7 +1385,7 @@ export function ConfigEditor() {
                   if (num !== undefined) {
                     const range = draftConfig.reputation?.xpPerMessage ?? [5, 15];
                     const newMax = num > range[1] ? num : range[1];
-                    setDraftConfig((prev) => ({
+                    updateDraftConfig((prev) => ({
                       ...prev,
                       reputation: { ...prev.reputation, xpPerMessage: [num, newMax] },
                     }));
@@ -1402,7 +1407,7 @@ export function ConfigEditor() {
                   if (num !== undefined) {
                     const range = draftConfig.reputation?.xpPerMessage ?? [5, 15];
                     const newMin = num < range[0] ? num : range[0];
-                    setDraftConfig((prev) => ({
+                    updateDraftConfig((prev) => ({
                       ...prev,
                       reputation: { ...prev.reputation, xpPerMessage: [newMin, num] },
                     }));
@@ -1421,7 +1426,7 @@ export function ConfigEditor() {
                 onChange={(e) => {
                   const num = parseNumberInput(e.target.value, 0);
                   if (num !== undefined)
-                    setDraftConfig((prev) => ({
+                    updateDraftConfig((prev) => ({
                       ...prev,
                       reputation: { ...prev.reputation, xpCooldownSeconds: num },
                     }));
@@ -1436,7 +1441,7 @@ export function ConfigEditor() {
                 type="text"
                 value={draftConfig.reputation?.announceChannelId ?? ''}
                 onChange={(e) =>
-                  setDraftConfig((prev) => ({
+                  updateDraftConfig((prev) => ({
                     ...prev,
                     reputation: {
                       ...prev.reputation,
@@ -1468,7 +1473,7 @@ export function ConfigEditor() {
                   .filter((n) => Number.isFinite(n) && n > 0);
                 if (nums.length > 0) {
                   const sorted = [...nums].sort((a, b) => a - b);
-                  setDraftConfig((prev) => ({
+                  updateDraftConfig((prev) => ({
                     ...prev,
                     reputation: { ...prev.reputation, levelThresholds: sorted },
                   }));
@@ -1493,7 +1498,7 @@ export function ConfigEditor() {
             <ToggleSwitch
               checked={draftConfig.challenges?.enabled ?? false}
               onChange={(v) =>
-                setDraftConfig(
+                updateDraftConfig(
                   (prev) =>
                     ({ ...prev, challenges: { ...prev.challenges, enabled: v } }) as GuildConfig,
                 )
@@ -1512,7 +1517,7 @@ export function ConfigEditor() {
                 type="text"
                 value={draftConfig.challenges?.channelId ?? ''}
                 onChange={(e) =>
-                  setDraftConfig(
+                  updateDraftConfig(
                     (prev) =>
                       ({
                         ...prev,
@@ -1534,7 +1539,7 @@ export function ConfigEditor() {
                 type="text"
                 value={draftConfig.challenges?.postTime ?? '09:00'}
                 onChange={(e) =>
-                  setDraftConfig(
+                  updateDraftConfig(
                     (prev) =>
                       ({
                         ...prev,
@@ -1553,7 +1558,7 @@ export function ConfigEditor() {
                 type="text"
                 value={draftConfig.challenges?.timezone ?? 'America/New_York'}
                 onChange={(e) =>
-                  setDraftConfig(
+                  updateDraftConfig(
                     (prev) =>
                       ({
                         ...prev,
@@ -1581,7 +1586,7 @@ export function ConfigEditor() {
             <ToggleSwitch
               checked={draftConfig.github?.feed?.enabled ?? false}
               onChange={(v) =>
-                setDraftConfig((prev) => ({
+                updateDraftConfig((prev) => ({
                   ...prev,
                   github: { ...prev.github, feed: { ...prev.github?.feed, enabled: v } },
                 }))
@@ -1597,7 +1602,7 @@ export function ConfigEditor() {
                 type="text"
                 value={draftConfig.github?.feed?.channelId ?? ''}
                 onChange={(e) =>
-                  setDraftConfig((prev) => ({
+                  updateDraftConfig((prev) => ({
                     ...prev,
                     github: {
                       ...prev.github,
@@ -1619,7 +1624,7 @@ export function ConfigEditor() {
                 onChange={(e) => {
                   const num = parseNumberInput(e.target.value, 1);
                   if (num !== undefined)
-                    setDraftConfig((prev) => ({
+                    updateDraftConfig((prev) => ({
                       ...prev,
                       github: {
                         ...prev.github,
