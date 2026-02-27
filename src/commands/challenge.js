@@ -200,7 +200,8 @@ async function handleLeaderboard(interaction) {
     return rows
       .map((row, i) => {
         const prefix = medals[i] ?? `**${i + 1}.**`;
-        return `${prefix} <@${row.user_id}> — **${row.total}** solve${row.total !== 1 ? 's' : ''}`;
+        const total = Number(row.total);
+        return `${prefix} <@${row.user_id}> — **${total}** solve${total !== 1 ? 's' : ''}`;
       })
       .join('\n');
   };

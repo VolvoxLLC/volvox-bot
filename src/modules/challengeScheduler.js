@@ -292,6 +292,12 @@ export async function checkDailyChallenge(client) {
  * @returns {Promise<void>}
  */
 export async function handleSolveButton(interaction, challengeIndex) {
+  const challenge = CHALLENGES[challengeIndex];
+  if (!challenge) {
+    await interaction.reply({ content: '❌ Challenge not found.', ephemeral: true });
+    return;
+  }
+
   const pool = getPool();
   if (!pool) {
     await interaction.reply({ content: '❌ Database unavailable.', ephemeral: true });
@@ -301,11 +307,12 @@ export async function handleSolveButton(interaction, challengeIndex) {
   const { guildId } = interaction;
   const userId = interaction.user.id;
 
-  // Upsert the solve record (no-op on duplicate)
+  // Upsert the solve record — no-op if already solved today (PK includes solved_date
+  // so each daily occurrence of a recycled challenge_index is tracked independently).
   await pool.query(
-    `INSERT INTO challenge_solves (guild_id, challenge_index, user_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (guild_id, challenge_index, user_id) DO NOTHING`,
+    `INSERT INTO challenge_solves (guild_id, challenge_index, user_id, solved_date)
+     VALUES ($1, $2, $3, CURRENT_DATE)
+     ON CONFLICT (guild_id, challenge_index, user_id, solved_date) DO NOTHING`,
     [guildId, challengeIndex, userId],
   );
 
