@@ -363,8 +363,10 @@ export function registerShowcaseButtonHandler(client) {
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('showcase_upvote_')) return;
 
-    const pool = (await import('../db.js')).getPool();
-    if (!pool) {
+    let pool;
+    try {
+      pool = (await import('../db.js')).getPool();
+    } catch {
       try {
         await safeReply(interaction, {
           content: '❌ Database is not available.',
@@ -410,8 +412,10 @@ export function registerShowcaseModalHandler(client) {
     if (!interaction.isModalSubmit()) return;
     if (interaction.customId !== 'showcase_submit_modal') return;
 
-    const pool = (await import('../db.js')).getPool();
-    if (!pool) {
+    let pool;
+    try {
+      pool = (await import('../db.js')).getPool();
+    } catch {
       try {
         await safeReply(interaction, {
           content: '❌ Database is not available.',
