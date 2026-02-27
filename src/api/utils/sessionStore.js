@@ -39,7 +39,7 @@ class SessionStore extends Map {
    * Store session data for a user.
    *
    * @param {string} userId
-   * @param {{ accessToken: string, jti: string }} sessionData - Session data with access token and JWT nonce
+   * @param {{ accessToken: string, jti: string | null }} sessionData - Session data with access token and JWT nonce
    * @returns {this | Promise<'OK'>}
    */
   set(userId, sessionData) {
@@ -59,7 +59,7 @@ class SessionStore extends Map {
    * Returns undefined/null if not found or expired.
    *
    * @param {string} userId
-   * @returns {{ accessToken: string, jti: string } | undefined | Promise<{ accessToken: string, jti: string } | null>}
+   * @returns {{ accessToken: string, jti: string | null } | undefined | Promise<{ accessToken: string, jti: string | null } | null>}
    */
   get(userId) {
     const client = getRedisClient();
@@ -150,7 +150,7 @@ export function getSessionToken(userId) {
  * Always `await` the return value — it is a Promise when Redis is configured.
  *
  * @param {string} userId - Discord user ID
- * @returns {Promise<{ accessToken: string, jti: string } | null | undefined> | { accessToken: string, jti: string } | undefined}
+ * @returns {Promise<{ accessToken: string, jti: string | null } | null | undefined> | { accessToken: string, jti: string | null } | undefined}
  */
 export function getSession(userId) {
   return sessionStore.get(userId);
