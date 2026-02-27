@@ -18,6 +18,7 @@ export const SAFE_CONFIG_KEYS = new Set([
   'snippet',
   'poll',
   'tldr',
+  'afk',
 ]);
 
 export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];

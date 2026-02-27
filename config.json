@@ -145,7 +145,8 @@
       "slowmode": "admin",
       "modlog": "moderator",
       "announce": "moderator",
-      "tldr": "everyone"
+      "tldr": "everyone",
+      "afk": "everyone"
     }
   },
   "help": {
@@ -165,5 +166,8 @@
     "defaultMessages": 50,
     "maxMessages": 200,
     "cooldownSeconds": 300
+  },
+  "afk": {
+    "enabled": false
   }
 }

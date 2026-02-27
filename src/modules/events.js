@@ -10,6 +10,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // Both accept the same options shape including allowedMentions, so the
 // safe wrapper applies identically to either target type.
 import { safeReply } from '../utils/safeSend.js';
+import { handleAfkMentions } from './afkHandler.js';
 import { getConfig } from './config.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
@@ -102,6 +103,17 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
 
     // Resolve per-guild config so feature gates respect guild overrides
     const guildConfig = getConfig(message.guild.id);
+
+    // AFK handler — check if sender is AFK or if any mentioned user is AFK
+    try {
+      await handleAfkMentions(message);
+    } catch (afkErr) {
+      logError('AFK handler failed', {
+        channelId: message.channel.id,
+        userId: message.author.id,
+        error: afkErr?.message,
+      });
+    }
 
     // Rate limit + link filter — both gated on moderation.enabled.
     // Each check is isolated so a failure in one doesn't prevent the other from running.
