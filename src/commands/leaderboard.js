@@ -7,6 +7,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
+import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
@@ -69,7 +70,6 @@ export async function execute(interaction) {
 
     await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
-    const { error: logError } = await import('../logger.js');
     logError('Leaderboard command failed', { error: err.message, stack: err.stack });
     await safeEditReply(interaction, {
       content: '❌ Something went wrong fetching the leaderboard.',

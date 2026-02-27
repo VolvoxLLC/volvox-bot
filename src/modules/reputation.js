@@ -55,7 +55,7 @@ export function computeLevel(xp, thresholds) {
  * @returns {string} e.g. "▓▓▓▓▓▓░░░░ 60%"
  */
 export function buildProgressBar(current, needed, width = 10) {
-  if (needed <= 0) return '▓'.repeat(width) + ' 100%';
+  if (needed <= 0) return `${'▓'.repeat(width)} 100%`;
   const pct = Math.min(1, current / needed);
   const filled = Math.round(pct * width);
   const empty = width - filled;
@@ -70,6 +70,7 @@ export function buildProgressBar(current, needed, width = 10) {
  * @param {import('discord.js').Message} message
  */
 export async function handleXpGain(message) {
+  if (!message.guild) return;
   const repCfg = getRepConfig(message.guild.id);
   if (!repCfg.enabled) return;
 
@@ -153,7 +154,7 @@ export async function handleXpGain(message) {
               `${message.author} reached **Level ${newLevel}**!${roleId ? ' 🏅 Role reward assigned!' : ''}`,
             ),
           )
-          .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+          .setThumbnail(message.author.displayAvatarURL())
           .addFields({ name: 'Total XP', value: String(newXp), inline: true })
           .setTimestamp();
 

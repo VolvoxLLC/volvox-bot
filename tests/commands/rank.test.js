@@ -153,6 +153,19 @@ describe('/rank command', () => {
     );
   });
 
+  it('replies with disabled message when reputation is not enabled', async () => {
+    const { getConfig } = await import('../../src/modules/config.js');
+    getConfig.mockReturnValueOnce({ reputation: { enabled: false } });
+
+    const interaction = makeInteraction();
+    await execute(interaction);
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.objectContaining({ content: 'Reputation system is not enabled.' }),
+    );
+  });
+
   it('looks up specified user', async () => {
     const pool = {
       query: vi

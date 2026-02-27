@@ -7,6 +7,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
+import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { buildProgressBar, computeLevel } from '../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../modules/reputationDefaults.js';
@@ -55,7 +56,7 @@ export async function execute(interaction) {
     const xpInLevel = xp - currentThreshold;
     const xpNeeded = nextThreshold !== null ? nextThreshold - currentThreshold : 0;
     const progressBar =
-      nextThreshold !== null ? buildProgressBar(xpInLevel, xpNeeded) : '▓'.repeat(10) + ' MAX';
+      nextThreshold !== null ? buildProgressBar(xpInLevel, xpNeeded) : `${'▓'.repeat(10)} MAX`;
 
     // Rank position in guild
     const rankRow = await pool.query(
@@ -73,7 +74,7 @@ export async function execute(interaction) {
       .setColor(0x5865f2)
       .setAuthor({
         name: target.displayName ?? target.username,
-        iconURL: target.displayAvatarURL({ dynamic: true }),
+        iconURL: target.displayAvatarURL(),
       })
       .setTitle(`🏆 ${levelLabel}`)
       .addFields(
@@ -86,12 +87,11 @@ export async function execute(interaction) {
           inline: false,
         },
       )
-      .setThumbnail(target.displayAvatarURL({ dynamic: true }))
+      .setThumbnail(target.displayAvatarURL())
       .setTimestamp();
 
     await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
-    const { error: logError } = await import('../logger.js');
     logError('Rank command failed', { error: err.message, stack: err.stack });
     await safeEditReply(interaction, { content: '❌ Something went wrong fetching your rank.' });
   }

@@ -122,6 +122,19 @@ describe('/leaderboard command', () => {
     );
   });
 
+  it('replies with disabled message when reputation is not enabled', async () => {
+    const { getConfig } = await import('../../src/modules/config.js');
+    getConfig.mockReturnValueOnce({ reputation: { enabled: false } });
+
+    const interaction = makeInteraction();
+    await execute(interaction);
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.objectContaining({ content: 'Reputation system is not enabled.' }),
+    );
+  });
+
   it('handles member fetch failure gracefully', async () => {
     const rows = [{ user_id: 'leftUser', xp: 500, level: 3 }];
     const pool = { query: vi.fn().mockResolvedValue({ rows }) };
