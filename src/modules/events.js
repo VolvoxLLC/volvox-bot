@@ -4,6 +4,7 @@
  */
 
 import { Client, Events } from 'discord.js';
+import { handleShowcaseUpvote } from '../commands/showcase.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
 // safeReply works with both Interactions (.reply()) and Messages (.reply()).
@@ -352,6 +353,101 @@ export function registerPollButtonHandler(client) {
 }
 
 /**
+ * Register an interactionCreate handler for showcase upvote buttons.
+ * Listens for button clicks with customId matching `showcase_upvote_<id>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerShowcaseButtonHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith('showcase_upvote_')) return;
+
+    const pool = (await import('../db.js')).getPool();
+    if (!pool) {
+      try {
+        await safeReply(interaction, {
+          content: '❌ Database is not available.',
+          ephemeral: true,
+        });
+      } catch {
+        // Ignore
+      }
+      return;
+    }
+
+    try {
+      await handleShowcaseUpvote(interaction, pool);
+    } catch (err) {
+      logError('Showcase upvote handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your upvote.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Register an interactionCreate handler for showcase modal submissions.
+ * Listens for modal submits with customId `showcase_submit_modal`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerShowcaseModalHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isModalSubmit()) return;
+    if (interaction.customId !== 'showcase_submit_modal') return;
+
+    const pool = (await import('../db.js')).getPool();
+    if (!pool) {
+      try {
+        await safeReply(interaction, {
+          content: '❌ Database is not available.',
+          ephemeral: true,
+        });
+      } catch {
+        // Ignore
+      }
+      return;
+    }
+
+    const { handleShowcaseModalSubmit } = await import('../commands/showcase.js');
+
+    try {
+      await handleShowcaseModalSubmit(interaction, pool);
+    } catch (err) {
+      logError('Showcase modal submit handler failed', {
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Failed to submit your project.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
  * Register error event handlers
  * @param {Client} client - Discord client
  */
@@ -380,5 +476,7 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerMessageCreateHandler(client, config, healthMonitor);
   registerReactionHandlers(client, config);
   registerPollButtonHandler(client);
+  registerShowcaseButtonHandler(client);
+  registerShowcaseModalHandler(client);
   registerErrorHandlers(client);
 }
