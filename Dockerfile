@@ -29,13 +29,6 @@ COPY --chown=botuser:botgroup migrations/ ./migrations/
 # Create data directory for state persistence
 RUN mkdir -p data && chown botuser:botgroup data
 
-# Pre-seed Claude Code config with cached GrowthBook feature flags so the CLI
-# does not attempt a slow/hanging network fetch on first invocation inside Docker.
-# The userID and firstStartTime are placeholders; the CLI updates them at runtime.
-RUN mkdir -p /home/botuser/.claude
-COPY --chown=botuser:botgroup docker/claude-features.json /home/botuser/.claude.json
-RUN chmod 600 /home/botuser/.claude.json
-
 USER botuser
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
