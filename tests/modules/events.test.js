@@ -28,6 +28,15 @@ vi.mock('../../src/modules/welcome.js', () => ({
 vi.mock('../../src/utils/errors.js', () => ({
   getUserFriendlyMessage: vi.fn().mockReturnValue('Something went wrong. Try again!'),
 }));
+vi.mock('../../src/modules/starboard.js', () => ({
+  handleReactionAdd: vi.fn().mockResolvedValue(undefined),
+  handleReactionRemove: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/modules/pollHandler.js', () => ({
+  handlePollVote: vi.fn().mockResolvedValue(undefined),
+  createPoll: vi.fn(),
+}));
 
 // Mock config module — getConfig returns per-guild config
 vi.mock('../../src/modules/config.js', () => ({
@@ -40,9 +49,12 @@ import {
   registerEventHandlers,
   registerGuildMemberAddHandler,
   registerMessageCreateHandler,
+  registerPollButtonHandler,
+  registerReactionHandlers,
   registerReadyHandler,
 } from '../../src/modules/events.js';
 import { isSpam, sendSpamAlert } from '../../src/modules/spam.js';
+import { handleReactionAdd, handleReactionRemove } from '../../src/modules/starboard.js';
 import { accumulateMessage, evaluateNow } from '../../src/modules/triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from '../../src/modules/welcome.js';
 import { getUserFriendlyMessage } from '../../src/utils/errors.js';
@@ -404,6 +416,88 @@ describe('events module', () => {
     });
   });
 
+  // ── registerReactionHandlers ───────────────────────────────────────────
+
+  describe('registerReactionHandlers', () => {
+    let onCallbacks;
+    let client;
+
+    function setup(configOverrides = {}) {
+      onCallbacks = {};
+      client = {
+        on: vi.fn((event, cb) => {
+          // Support multiple handlers per event
+          if (!onCallbacks[event]) onCallbacks[event] = [];
+          onCallbacks[event].push(cb);
+        }),
+      };
+      getConfig.mockReturnValue({
+        starboard: { enabled: true, channelId: 'sb-ch', threshold: 3, emoji: '⭐' },
+        ...configOverrides,
+      });
+      registerReactionHandlers(client, {});
+    }
+
+    it('should register messageReactionAdd and messageReactionRemove', () => {
+      setup();
+      const events = client.on.mock.calls.map((c) => c[0]);
+      expect(events).toContain('messageReactionAdd');
+      expect(events).toContain('messageReactionRemove');
+    });
+
+    it('should ignore bot reactions', async () => {
+      setup();
+      const addCb = onCallbacks.messageReactionAdd[0];
+      const reaction = { message: { guild: { id: 'g1' }, partial: false } };
+      await addCb(reaction, { bot: true, id: 'bot-1' });
+      expect(handleReactionAdd).not.toHaveBeenCalled();
+    });
+
+    it('should skip when starboard is not enabled', async () => {
+      setup();
+      getConfig.mockReturnValue({ starboard: { enabled: false } });
+      const addCb = onCallbacks.messageReactionAdd[0];
+      const reaction = { message: { guild: { id: 'g1' }, partial: false } };
+      await addCb(reaction, { bot: false, id: 'user-1' });
+      expect(handleReactionAdd).not.toHaveBeenCalled();
+    });
+
+    it('should call handleReactionAdd when starboard is enabled', async () => {
+      setup();
+      const addCb = onCallbacks.messageReactionAdd[0];
+      const reaction = { message: { guild: { id: 'g1' }, partial: false } };
+      await addCb(reaction, { bot: false, id: 'user-1' });
+      expect(handleReactionAdd).toHaveBeenCalledWith(
+        reaction,
+        { bot: false, id: 'user-1' },
+        client,
+        expect.objectContaining({ starboard: expect.any(Object) }),
+      );
+    });
+
+    it('should call handleReactionRemove on reaction remove', async () => {
+      setup();
+      const removeCb = onCallbacks.messageReactionRemove[0];
+      const reaction = { message: { guild: { id: 'g1' }, partial: false } };
+      await removeCb(reaction, { bot: false, id: 'user-1' });
+      expect(handleReactionRemove).toHaveBeenCalledWith(
+        reaction,
+        { bot: false, id: 'user-1' },
+        client,
+        expect.objectContaining({ starboard: expect.any(Object) }),
+      );
+    });
+
+    it('should handle errors in handleReactionAdd gracefully', async () => {
+      setup();
+      handleReactionAdd.mockRejectedValueOnce(new Error('starboard boom'));
+      const addCb = onCallbacks.messageReactionAdd[0];
+      const reaction = { message: { guild: { id: 'g1' }, id: 'msg-1', partial: false } };
+      // Should not throw
+      await addCb(reaction, { bot: false, id: 'user-1' });
+    });
+  });
+
   // ── registerErrorHandlers ─────────────────────────────────────────────
 
   describe('registerErrorHandlers', () => {
@@ -431,6 +525,151 @@ describe('events module', () => {
     });
   });
 
+  // ── registerPollButtonHandler ──────────────────────────────────────────
+
+  describe('registerPollButtonHandler', () => {
+    it('should ignore non-button interactions', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      // Non-button interaction → early return
+      const interaction = { isButton: () => false };
+      await handler(interaction);
+
+      expect(handlePollVote).not.toHaveBeenCalled();
+    });
+
+    it('should ignore buttons with wrong customId prefix', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const interaction = {
+        isButton: () => true,
+        customId: 'other_button_id',
+      };
+      await handler(interaction);
+
+      expect(handlePollVote).not.toHaveBeenCalled();
+    });
+
+    it('should call handlePollVote for poll_vote_ interactions', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+      };
+      await handler(interaction);
+
+      expect(handlePollVote).toHaveBeenCalledWith(interaction);
+    });
+
+    it('should handle errors from handlePollVote and reply with error message', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      handlePollVote.mockRejectedValueOnce(new Error('Vote failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const reply = vi.fn().mockResolvedValue(undefined);
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+        replied: false,
+        deferred: false,
+        reply,
+      };
+      await handler(interaction);
+
+      expect(reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true }));
+    });
+
+    it('should skip reply when already replied after handlePollVote error', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      handlePollVote.mockRejectedValueOnce(new Error('Vote failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const reply = vi.fn();
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+        replied: true, // already replied
+        deferred: false,
+        reply,
+      };
+      await handler(interaction);
+
+      expect(reply).not.toHaveBeenCalled();
+    });
+
+    it('should catch inner safeReply errors gracefully', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      handlePollVote.mockRejectedValueOnce(new Error('Vote failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+        replied: false,
+        deferred: false,
+        reply: vi.fn().mockRejectedValueOnce(new Error('reply also failed')),
+      };
+      // Should not throw
+      await expect(handler(interaction)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('registerReactionHandlers - handleReactionRemove error', () => {
+    it('should catch errors from handleReactionRemove', async () => {
+      const { handleReactionRemove } = await import('../../src/modules/starboard.js');
+      handleReactionRemove.mockRejectedValueOnce(new Error('Reaction remove failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+      registerReactionHandlers(client);
+
+      const handler = handlers.get('messageReactionRemove');
+      const reaction = {
+        message: { id: 'msg1', partial: false },
+        partial: false,
+        emoji: { name: '⭐' },
+      };
+      const user = { bot: false, id: 'u1', partial: false };
+
+      await expect(handler(reaction, user)).resolves.toBeUndefined();
+    });
+  });
+
   // ── registerEventHandlers ─────────────────────────────────────────────
 
   describe('registerEventHandlers', () => {
@@ -452,6 +691,8 @@ describe('events module', () => {
       expect(once).toHaveBeenCalledWith('clientReady', expect.any(Function));
       expect(on).toHaveBeenCalledWith('guildMemberAdd', expect.any(Function));
       expect(on).toHaveBeenCalledWith('messageCreate', expect.any(Function));
+      expect(on).toHaveBeenCalledWith('messageReactionAdd', expect.any(Function));
+      expect(on).toHaveBeenCalledWith('messageReactionRemove', expect.any(Function));
       expect(on).toHaveBeenCalledWith('error', expect.any(Function));
 
       processOnSpy.mockRestore();

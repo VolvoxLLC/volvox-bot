@@ -17,7 +17,7 @@ import './sentry.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
 import { closeRedis } from './api/utils/redisClient.js';
@@ -46,10 +46,11 @@ import {
 } from './modules/ai.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
+import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
-import { stopRateLimitCleanup } from './modules/rateLimit.js';
+import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { HealthMonitor } from './utils/health.js';
@@ -105,7 +106,9 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessageReactions,
   ],
+  partials: [Partials.Message, Partials.Reaction],
   allowedMentions: { parse: ['users'] },
 });
 
@@ -262,11 +265,12 @@ client.on('interactionCreate', async (interaction) => {
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });
 
-  // 1. Stop triage, conversation cleanup timer, tempban scheduler, and rate limit cleanup
+  // 1. Stop triage, conversation cleanup timer, tempban scheduler, announcement scheduler, and GitHub feed
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
-  stopRateLimitCleanup();
+  stopScheduler();
+  stopGithubFeed();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -451,6 +455,8 @@ async function startup() {
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {
     startTempbanScheduler(client);
+    startScheduler(client);
+    startGithubFeed(client);
   }
 
   // Load commands and login

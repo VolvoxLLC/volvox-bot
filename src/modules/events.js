@@ -4,16 +4,24 @@
  */
 
 import { Client, Events } from 'discord.js';
+import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../commands/showcase.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
 // safeReply works with both Interactions (.reply()) and Messages (.reply()).
 // Both accept the same options shape including allowedMentions, so the
 // safe wrapper applies identically to either target type.
-import { safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
+import { handleAfkMentions } from './afkHandler.js';
+import { handleHintButton, handleSolveButton } from './challengeScheduler.js';
 import { getConfig } from './config.js';
+import { trackMessage, trackReaction } from './engagement.js';
 import { checkLinks } from './linkFilter.js';
+import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';
+import { handleXpGain } from './reputation.js';
+import { handleReviewClaim } from './reviewHandler.js';
 import { isSpam, sendSpamAlert } from './spam.js';
+import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 
@@ -56,6 +64,12 @@ export function registerReadyHandler(client, config, healthMonitor) {
     if (config.moderation?.enabled) {
       info('Moderation enabled');
     }
+    if (config.starboard?.enabled) {
+      info('Starboard enabled', {
+        channelId: config.starboard.channelId,
+        threshold: config.starboard.threshold,
+      });
+    }
   });
 }
 
@@ -95,6 +109,17 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Resolve per-guild config so feature gates respect guild overrides
     const guildConfig = getConfig(message.guild.id);
 
+    // AFK handler — check if sender is AFK or if any mentioned user is AFK
+    try {
+      await handleAfkMentions(message);
+    } catch (afkErr) {
+      logError('AFK handler failed', {
+        channelId: message.channel.id,
+        userId: message.author.id,
+        error: afkErr?.message,
+      });
+    }
+
     // Rate limit + link filter — both gated on moderation.enabled.
     // Each check is isolated so a failure in one doesn't prevent the other from running.
     if (guildConfig.moderation?.enabled) {
@@ -130,6 +155,18 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
 
     // Feed welcome-context activity tracker
     recordCommunityActivity(message, guildConfig);
+
+    // Engagement tracking (fire-and-forget, non-blocking)
+    trackMessage(message).catch(() => {});
+
+    // XP gain (fire-and-forget, non-blocking)
+    handleXpGain(message).catch((err) => {
+      logError('XP gain handler failed', {
+        userId: message.author.id,
+        guildId: message.guild.id,
+        error: err?.message,
+      });
+    });
 
     // AI chat — @mention or reply to bot → instant triage evaluation
     if (guildConfig.ai?.enabled) {
@@ -215,6 +252,232 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
 }
 
 /**
+ * Register reaction event handlers for the starboard feature.
+ * Listens to both MessageReactionAdd and MessageReactionRemove to
+ * post, update, or remove starboard embeds based on star count.
+ *
+ * @param {Client} client - Discord client instance
+ * @param {Object} _config - Unused (kept for API compatibility); handler resolves per-guild config via getConfig().
+ */
+export function registerReactionHandlers(client, _config) {
+  client.on(Events.MessageReactionAdd, async (reaction, user) => {
+    // Ignore bot reactions
+    if (user.bot) return;
+
+    // Fetch partial messages so we have full guild/channel data
+    if (reaction.message.partial) {
+      try {
+        await reaction.message.fetch();
+      } catch {
+        return;
+      }
+    }
+    const guildId = reaction.message.guild?.id;
+    if (!guildId) return;
+
+    const guildConfig = getConfig(guildId);
+
+    // Engagement tracking (fire-and-forget)
+    trackReaction(reaction, user).catch(() => {});
+
+    if (!guildConfig.starboard?.enabled) return;
+
+    try {
+      await handleReactionAdd(reaction, user, client, guildConfig);
+    } catch (err) {
+      logError('Starboard reaction add handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
+    }
+  });
+
+  client.on(Events.MessageReactionRemove, async (reaction, user) => {
+    if (user.bot) return;
+
+    if (reaction.message.partial) {
+      try {
+        await reaction.message.fetch();
+      } catch {
+        return;
+      }
+    }
+    const guildId = reaction.message.guild?.id;
+    if (!guildId) return;
+
+    const guildConfig = getConfig(guildId);
+    if (!guildConfig.starboard?.enabled) return;
+
+    try {
+      await handleReactionRemove(reaction, user, client, guildConfig);
+    } catch (err) {
+      logError('Starboard reaction remove handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
+    }
+  });
+}
+
+/**
+ * Register an interactionCreate handler for poll vote buttons.
+ * Listens for button clicks with customId matching `poll_vote_<pollId>_<optionIndex>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerPollButtonHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith('poll_vote_')) return;
+
+    try {
+      await handlePollVote(interaction);
+    } catch (err) {
+      logError('Poll vote handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      // Try to send an ephemeral error if we haven't replied yet
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your vote.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Register an interactionCreate handler for review claim buttons.
+ * Listens for button clicks with customId matching `review_claim_<id>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerReviewClaimHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith('review_claim_')) return;
+
+    // Gate on review feature being enabled for this guild
+    const guildConfig = getConfig(interaction.guildId);
+    if (!guildConfig.review?.enabled) return;
+
+    try {
+      await handleReviewClaim(interaction);
+    } catch (err) {
+      logError('Review claim handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your claim.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Register an interactionCreate handler for showcase upvote buttons.
+ * Listens for button clicks with customId matching `showcase_upvote_<id>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerShowcaseButtonHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith('showcase_upvote_')) return;
+
+    let pool;
+    try {
+      pool = (await import('../db.js')).getPool();
+    } catch {
+      try {
+        await safeReply(interaction, {
+          content: '❌ Database is not available.',
+          ephemeral: true,
+        });
+      } catch {
+        // Ignore
+      }
+      return;
+    }
+
+    try {
+      await handleShowcaseUpvote(interaction, pool);
+    } catch (err) {
+      logError('Showcase upvote handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your upvote.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Register an interactionCreate handler for showcase modal submissions.
+ * Listens for modal submits with customId `showcase_submit_modal`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerShowcaseModalHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isModalSubmit()) return;
+    if (interaction.customId !== 'showcase_submit_modal') return;
+
+    let pool;
+    try {
+      pool = (await import('../db.js')).getPool();
+    } catch {
+      try {
+        await safeReply(interaction, {
+          content: '❌ Database is not available.',
+          ephemeral: true,
+        });
+      } catch {
+        // Ignore
+      }
+      return;
+    }
+
+    try {
+      await handleShowcaseModalSubmit(interaction, pool);
+    } catch (err) {
+      logError('Showcase modal error', { error: err.message });
+      const reply = interaction.deferred ? safeEditReply : safeReply;
+      await reply(interaction, { content: '❌ Something went wrong.' });
+    }
+  });
+}
+
+/**
  * Register error event handlers
  * @param {Client} client - Discord client
  */
@@ -235,6 +498,56 @@ export function registerErrorHandlers(client) {
 }
 
 /**
+ * Register an interactionCreate handler for challenge solve and hint buttons.
+ * Listens for button clicks with customId matching `challenge_solve_<index>` or `challenge_hint_<index>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerChallengeButtonHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    const isSolve = interaction.customId.startsWith('challenge_solve_');
+    const isHint = interaction.customId.startsWith('challenge_hint_');
+    if (!isSolve && !isHint) return;
+
+    const prefix = isSolve ? 'challenge_solve_' : 'challenge_hint_';
+    const indexStr = interaction.customId.slice(prefix.length);
+    const challengeIndex = Number.parseInt(indexStr, 10);
+
+    if (Number.isNaN(challengeIndex)) {
+      warn('Invalid challenge button customId', { customId: interaction.customId });
+      return;
+    }
+
+    try {
+      if (isSolve) {
+        await handleSolveButton(interaction, challengeIndex);
+      } else {
+        await handleHintButton(interaction, challengeIndex);
+      }
+    } catch (err) {
+      logError('Challenge button handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong. Please try again.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore
+        }
+      }
+    }
+  });
+}
+
+/**
  * Register all event handlers
  * @param {Object} client - Discord client
  * @param {Object} config - Bot configuration
@@ -244,5 +557,11 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerReadyHandler(client, config, healthMonitor);
   registerGuildMemberAddHandler(client, config);
   registerMessageCreateHandler(client, config, healthMonitor);
+  registerReactionHandlers(client, config);
+  registerPollButtonHandler(client);
+  registerChallengeButtonHandler(client);
+  registerReviewClaimHandler(client);
+  registerShowcaseButtonHandler(client);
+  registerShowcaseModalHandler(client);
   registerErrorHandlers(client);
 }

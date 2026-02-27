@@ -127,6 +127,11 @@ vi.mock('discord.js', () => {
       MessageContent: 3,
       GuildMembers: 4,
       GuildVoiceStates: 5,
+      GuildMessageReactions: 6,
+    },
+    Partials: {
+      Message: 0,
+      Reaction: 2,
     },
   };
 });

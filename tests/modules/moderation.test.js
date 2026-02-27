@@ -144,6 +144,15 @@ describe('moderation module', () => {
         expect.arrayContaining(['guild1', 'unban', 'user1', 10]),
       );
     });
+
+    it('should use null for caseId when not provided', async () => {
+      mockPool.query.mockResolvedValue({ rows: [{ id: 2, action: 'unban' }] });
+
+      await scheduleAction('guild1', 'unban', 'user1', undefined, new Date());
+
+      const call = mockPool.query.mock.calls[0];
+      expect(call[1][3]).toBeNull(); // caseId || null = null when undefined
+    });
   });
 
   describe('sendDmNotification', () => {
@@ -171,6 +180,19 @@ describe('moderation module', () => {
       const member = { send: vi.fn().mockRejectedValue(new Error('DMs disabled')) };
 
       await sendDmNotification(member, 'ban', 'reason', 'Server');
+    });
+
+    it('should use action as past tense when action is not in ACTION_PAST_TENSE', async () => {
+      const mockSend = vi.fn().mockResolvedValue(undefined);
+      const member = { send: mockSend };
+
+      await sendDmNotification(member, 'unknown_action', 'reason', 'Server');
+
+      expect(mockSend).toHaveBeenCalled();
+      // The embed title should contain 'unknown_action' since it's not in ACTION_PAST_TENSE
+      const embed = mockSend.mock.calls[0][0].embeds[0];
+      const title = embed.toJSON().title;
+      expect(title).toContain('unknown_action');
     });
   });
 

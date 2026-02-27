@@ -1134,5 +1134,34 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(500);
     });
+
+    it('should return 403 when authenticated via OAuth (not API secret)', async () => {
+      // Use a bot-owner OAuth user so requireGuildAdmin passes through,
+      // allowing us to hit the authMethod !== 'api-secret' check in the route handler.
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      vi.stubEnv('BOT_OWNER_IDS', 'bot-owner-oauth-user');
+      const token = createOAuthToken('jwt-test-secret', 'bot-owner-oauth-user');
+
+      // Mock the fetch used internally by fetchUserGuilds (for JWT auth guild lookup)
+      mockFetchGuilds([{ id: 'guild1', owner: true }]);
+
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/actions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ action: 'sendMessage', channelId: 'ch1', content: 'Hello' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('API secret');
+    });
+
+    it('should return 400 when content is not a string', async () => {
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/actions')
+        .set('x-api-secret', SECRET)
+        .send({ action: 'sendMessage', channelId: 'ch1', content: 12345 });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/string/i);
+    });
   });
 });

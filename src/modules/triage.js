@@ -145,6 +145,46 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
 }
 
 /**
+ * Add an emoji reaction to a Discord message by ID. Fire-and-forget; all errors are swallowed.
+ *
+ * @param {import('discord.js').Client} evalClient - Discord client.
+ * @param {string} channelId - ID of the channel containing the message.
+ * @param {string} messageId - ID of the message to react to.
+ * @param {string} emoji - Emoji string to react with (e.g. '👀').
+ */
+async function addReaction(evalClient, channelId, messageId, emoji) {
+  try {
+    const ch = await evalClient.channels.fetch(channelId).catch(() => null);
+    if (!ch) return;
+    const msg = await ch.messages.fetch(messageId).catch(() => null);
+    if (!msg) return;
+    await msg.react(emoji);
+  } catch (err) {
+    debug('Status reaction failed', { channelId, messageId, emoji, error: err?.message });
+  }
+}
+
+/**
+ * Remove the bot's own reaction from a message. Fire-and-forget; errors are swallowed.
+ *
+ * @param {import('discord.js').Client} evalClient - Discord client.
+ * @param {string} channelId - Channel containing the message.
+ * @param {string} messageId - Message to remove the reaction from.
+ * @param {string} emoji - Emoji to remove.
+ */
+async function removeReaction(evalClient, channelId, messageId, emoji) {
+  try {
+    const ch = await evalClient.channels.fetch(channelId).catch(() => null);
+    if (!ch) return;
+    const msg = await ch.messages.fetch(messageId).catch(() => null);
+    if (!msg) return;
+    await msg.reactions.cache.get(emoji)?.users.remove(evalClient.user.id);
+  } catch (err) {
+    debug('Status reaction removal failed', { channelId, messageId, emoji, error: err?.message });
+  }
+}
+
+/**
  * Generate a response for a channel snapshot using the Sonnet responder.
  *
  * Builds and sends a respond prompt to the responder process, tracks mid-stream WebSearch tool usage
@@ -157,6 +197,8 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
  * @param {string} memoryContext - Concatenated memory context for target users (may be empty).
  * @param {Object} evalConfig - Bot configuration used to construct the respond prompt.
  * @param {Object} evalClient - Discord client instance for sending typing notifications.
+ * @param {string|null} [triggerMessageId] - ID of the trigger message to add 🔍 reaction when WebSearch is detected.
+ * @param {boolean} [statusReactions] - Whether to add emoji status reactions.
  * @returns {{parsed: Object, respondMessage: Object, searchCount: number}|null} An object containing the parsed responder output (`parsed`), the raw responder message including metadata and cost (`respondMessage`), and the number of `WebSearch` tool uses observed (`searchCount`); returns `null` if no responses were produced.
  */
 async function runResponder(
@@ -167,6 +209,8 @@ async function runResponder(
   memoryContext,
   evalConfig,
   evalClient,
+  triggerMessageId = null,
+  statusReactions = true,
 ) {
   const respondPrompt = buildRespondPrompt(
     context,
@@ -176,6 +220,14 @@ async function runResponder(
     memoryContext,
   );
   debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
+
+  // Transition: remove 👀, add 🧠 or 💬 (shows current stage)
+  const resolved = resolveTriageConfig(evalConfig.triage || {});
+  const respondEmoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
+  if (statusReactions && triggerMessageId) {
+    removeReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
+    addReaction(evalClient, channelId, triggerMessageId, respondEmoji);
+  }
 
   // Detect WebSearch tool use mid-stream: send a typing indicator + count searches
   let searchNotified = false;
@@ -191,6 +243,10 @@ async function runResponder(
           searchCount += searches.length;
           if (!searchNotified) {
             searchNotified = true;
+            // Add 🔍 reaction to the trigger message to signal web search
+            if (statusReactions && triggerMessageId) {
+              addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDD0D');
+            }
             const ch = await evalClient.channels.fetch(channelId).catch(() => null);
             if (ch) {
               try {
@@ -277,6 +333,13 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
 
     const { classification, classifyMessage, context, memoryContext } = classResult;
 
+    // Add 👀 reaction to trigger message as visual "I'm on it" signal (fire-and-forget)
+    const statusReactions = evalConfig.triage?.statusReactions !== false;
+    const triggerMessageId = snapshot[snapshot.length - 1]?.messageId ?? null;
+    if (statusReactions && triggerMessageId) {
+      addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
+    }
+
     // Step 2: Respond
     const respResult = await runResponder(
       channelId,
@@ -286,6 +349,8 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
       memoryContext,
       evalConfig,
       evalClient,
+      triggerMessageId,
+      statusReactions,
     );
     if (!respResult) return;
 
@@ -312,6 +377,12 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     }
 
     await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
+
+    // Clean up status reactions — remove 💬/🧠 now that response is sent (🔍 stays as historical marker)
+    if (statusReactions && triggerMessageId) {
+      const respondEmoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
+      removeReaction(evalClient, channelId, triggerMessageId, respondEmoji);
+    }
 
     // Step 4: Extract memories (fire-and-forget)
     extractMemories(snapshot, parsed);

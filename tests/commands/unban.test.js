@@ -123,4 +123,22 @@ describe('unban command', () => {
       expect.stringContaining('An error occurred'),
     );
   });
+
+  it('should unban with undefined reason when reason is not provided', async () => {
+    const interaction = createInteraction();
+    // Override getString to return null for reason
+    interaction.options.getString.mockImplementation((name) => {
+      if (name === 'user_id') return '123456789';
+      if (name === 'reason') return null;
+      return null;
+    });
+
+    await execute(interaction);
+
+    // unban called with undefined instead of null for reason
+    expect(interaction.guild.members.unban).toHaveBeenCalledWith('123456789', undefined);
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('has been unbanned'),
+    );
+  });
 });

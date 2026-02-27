@@ -1,0 +1,17 @@
+[
+  {
+    "topic": "getting-started",
+    "title": "Getting Started",
+    "content": "Welcome to the server! Here's how to get started:\n\n1. Read the rules in the rules channel\n2. Pick your roles in the roles channel\n3. Introduce yourself in the introductions channel\n4. Start chatting and have fun!"
+  },
+  {
+    "topic": "rules",
+    "title": "Server Rules",
+    "content": "1. Be respectful to all members\n2. No spam or self-promotion\n3. Keep conversations in the appropriate channels\n4. No NSFW content outside designated channels\n5. Follow Discord's Terms of Service\n6. Listen to moderators"
+  },
+  {
+    "topic": "roles",
+    "title": "Roles",
+    "content": "Here's how our role system works:\n\n• **Member** — Granted automatically when you join\n• **Moderator** — Server staff who enforce rules\n• **Admin** — Server administrators\n\nSome roles may be self-assignable in the roles channel."
+  }
+]

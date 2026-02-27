@@ -129,4 +129,16 @@ describe('warn command', () => {
       expect.stringContaining('An error occurred'),
     );
   });
+
+  it('should return early with error when target member is not in server', async () => {
+    const interaction = createInteraction();
+    interaction.options.getMember.mockReturnValueOnce(null);
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('not in this server'),
+    );
+    expect(createCase).not.toHaveBeenCalled();
+  });
 });

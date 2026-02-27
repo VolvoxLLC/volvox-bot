@@ -15,6 +15,7 @@ AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community.
 - **⚔️ Moderation Suite** — Full-featured mod toolkit: warn, kick, ban, tempban, softban, timeout, purge, lock/unlock, slowmode. Includes case management, mod log routing, DM notifications, auto-escalation, and tempban scheduling.
 - **⚙️ Config Management** — All settings stored in PostgreSQL with live `/config` slash command for runtime changes.
 - **📊 Health Monitoring** — Built-in health checks and `/status` command for uptime, memory, and latency stats.
+- **💤 AFK System** — Members can set an AFK status with `/afk set [reason]`; the bot notifies mentioners inline and DMs a ping summary on return.
 - **🎤 Voice Activity Tracking** — Tracks voice channel activity for community insights.
 - **🌐 Web Dashboard** — Next.js-based admin dashboard with Discord OAuth2 login, server selector, and guild management UI.
 
@@ -201,6 +202,30 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 
 **Escalation thresholds** are objects with: `warns` (count), `withinDays` (window), `action` ("timeout" or "ban"), `duration` (for timeout, e.g. "1h").
 
+### Starboard (`starboard`)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `enabled` | boolean | Enable the starboard feature |
+| `channelId` | string | Channel ID where starred messages are reposted |
+| `threshold` | number | Reaction count required to star a message (default: 3) |
+| `emoji` | string | Emoji to watch for stars (default: `⭐`) |
+| `selfStarAllowed` | boolean | Allow users to star their own messages |
+| `ignoredChannels` | string[] | Channel IDs excluded from starboard tracking |
+
+### Reputation (`reputation`)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `enabled` | boolean | Enable the XP / leveling system |
+| `xpPerMessage` | [number, number] | Random XP range awarded per message `[min, max]` (default: `[5, 15]`) |
+| `xpCooldownSeconds` | number | Minimum seconds between XP awards per user (default: `60`) |
+| `announceChannelId` | string\|null | Channel ID for level-up announcements (null = DM user) |
+| `levelThresholds` | number[] | Cumulative XP required for each level (L1, L2, …). Must be strictly ascending. (default: `[100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000]`) |
+| `roleRewards` | object | Map of level number → role ID to auto-assign on level-up (e.g. `{ "5": "123456789" }`) |
+
+**Commands:** `/rank [user]` — show XP, level, and progress bar. `/leaderboard` — top 10 users by XP.
+
 ### Permissions (`permissions`)
 
 | Key | Type | Description |
@@ -208,6 +233,7 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `enabled` | boolean | Enable permission checks |
 | `adminRoleId` | string | Role ID for admin commands |
 | `moderatorRoleId` | string | Role ID for moderator commands |
+| `modRoles` | string[] | Additional role IDs or names that count as moderators (legacy/`modExempt` checks) |
 | `botOwners` | string[] | Discord user IDs that bypass all permission checks |
 | `allowedCommands` | object | Per-command permission levels (`everyone`, `moderator`, `admin`) |
 

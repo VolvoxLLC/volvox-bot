@@ -141,4 +141,26 @@ describe('health route', () => {
     expect(Array.isArray(res.body.restarts)).toBe(true);
     expect(res.body.restarts).toHaveLength(0);
   });
+
+  it('should return connecting status when client.ws is not yet available', async () => {
+    const client = { guilds: { cache: new Map() }, ws: null };
+    const app = createApp(client, null);
+
+    const res = await request(app).get('/api/v1/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.discord.ws.status).toBe('connecting');
+  });
+
+  it('should return connecting status when client itself is falsy', async () => {
+    const client = null;
+    const app = createApp(client, null);
+
+    const res = await request(app).get('/api/v1/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.discord.ws.status).toBe('connecting');
+  });
 });

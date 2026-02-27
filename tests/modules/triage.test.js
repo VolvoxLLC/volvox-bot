@@ -131,7 +131,13 @@ function makeMessage(channelId, content, extras = {}) {
   };
 }
 
+/** Shared mocks for message.react and reaction removal — reset in beforeEach */
+let mockReact;
+let mockRemove;
+
 function makeClient() {
+  mockReact = vi.fn().mockResolvedValue(undefined);
+  mockRemove = vi.fn().mockResolvedValue(undefined);
   return {
     channels: {
       fetch: vi.fn().mockResolvedValue({
@@ -139,6 +145,17 @@ function makeClient() {
         guildId: 'guild-1',
         sendTyping: vi.fn().mockResolvedValue(undefined),
         send: vi.fn().mockResolvedValue(undefined),
+        messages: {
+          fetch: vi.fn().mockResolvedValue({
+            id: 'msg-default',
+            react: mockReact,
+            reactions: {
+              cache: {
+                get: vi.fn().mockReturnValue({ users: { remove: mockRemove } }),
+              },
+            },
+          }),
+        },
       }),
     },
     user: { id: 'bot-id' },
@@ -960,6 +977,195 @@ describe('triage module', () => {
 
       const prompt = mockClassifierSend.mock.calls[0][0];
       expect(prompt).toContain('[msg-42] alice (<@u42>): hello world');
+    });
+  });
+
+  // ── Emoji status reactions ──────────────────────────────────────────
+
+  describe('emoji status reactions', () => {
+    it('should add 👀 reaction when classification is non-ignore', async () => {
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'user asked a question',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(mockReact).toHaveBeenCalledWith('\uD83D\uDC40');
+    });
+
+    it('should NOT add 👀 reaction when statusReactions is false', async () => {
+      const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), noReactConfig);
+      await evaluateNow('ch1', noReactConfig, client, healthMonitor);
+
+      expect(mockReact).not.toHaveBeenCalledWith('\uD83D\uDC40');
+    });
+
+    it('should add 🔍 reaction when WebSearch tool is detected mid-stream', async () => {
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'needs search',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [
+          { targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Found it!' },
+        ],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+
+      // Simulate onEvent being called with a WebSearch tool_use, then return the result
+      mockResponderSend.mockImplementation(async (_prompt, _opts, { onEvent } = {}) => {
+        if (onEvent) {
+          await onEvent({
+            message: {
+              content: [{ type: 'tool_use', name: 'WebSearch', input: { query: 'test' } }],
+            },
+          });
+        }
+        return mockRespondResult(respondResult);
+      });
+
+      accumulateMessage(makeMessage('ch1', 'search for something'), config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(mockReact).toHaveBeenCalledWith('\uD83D\uDD0D');
+    });
+
+    it('should NOT add 🔍 reaction when statusReactions is false', async () => {
+      const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Done!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+
+      mockResponderSend.mockImplementation(async (_prompt, _opts, { onEvent } = {}) => {
+        if (onEvent) {
+          await onEvent({
+            message: {
+              content: [{ type: 'tool_use', name: 'WebSearch', input: { query: 'test' } }],
+            },
+          });
+        }
+        return mockRespondResult(respondResult);
+      });
+
+      accumulateMessage(makeMessage('ch1', 'search'), noReactConfig);
+      await evaluateNow('ch1', noReactConfig, client, healthMonitor);
+
+      expect(mockReact).not.toHaveBeenCalledWith('\uD83D\uDD0D');
+    });
+
+    it('should transition 👀 → 💬 → removed (no thinking tokens)', async () => {
+      const noThinkConfig = makeConfig({ triage: { thinkingTokens: 0 } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), noThinkConfig);
+      await evaluateNow('ch1', noThinkConfig, client, healthMonitor);
+
+      // 👀 added then removed, 💬 added then removed
+      const reactCalls = mockReact.mock.calls.map((c) => c[0]);
+      expect(reactCalls).toContain('\uD83D\uDC40');
+      expect(reactCalls).toContain('\uD83D\uDCAC');
+      // 👀 and 💬 should both be removed after completion
+      expect(mockRemove).toHaveBeenCalledWith('bot-id');
+    });
+
+    it('should transition 👀 → 🧠 → removed (thinking tokens configured)', async () => {
+      const thinkConfig = makeConfig({ triage: { thinkingTokens: 1000 } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), thinkConfig);
+      await evaluateNow('ch1', thinkConfig, client, healthMonitor);
+
+      const reactCalls = mockReact.mock.calls.map((c) => c[0]);
+      expect(reactCalls).toContain('\uD83E\uDDE0');
+      expect(reactCalls).not.toContain('\uD83D\uDCAC');
+      expect(mockRemove).toHaveBeenCalledWith('bot-id');
+    });
+
+    it('should NOT add or remove reactions when statusReactions is false', async () => {
+      const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), noReactConfig);
+      await evaluateNow('ch1', noReactConfig, client, healthMonitor);
+
+      expect(mockReact).not.toHaveBeenCalled();
+      expect(mockRemove).not.toHaveBeenCalled();
+    });
+
+    it('should not block response flow when reaction fails', async () => {
+      // Make react throw to simulate permission failure
+      mockReact.mockRejectedValue(new Error('Missing Permissions'));
+
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'test',
+        targetMessageIds: ['msg-default'],
+      };
+      const respondResult = {
+        responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
+      };
+      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+
+      accumulateMessage(makeMessage('ch1', 'hello'), config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      // Response should still be sent despite reaction failure
+      expect(safeSend).toHaveBeenCalledWith(expect.anything(), contentWith('Hi!', 'msg-default'));
     });
   });
 

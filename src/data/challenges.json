@@ -1,0 +1,398 @@
+[
+  {
+    "title": "Two Sum",
+    "description": "Given an array of integers `nums` and an integer `target`, return the indices of the two numbers that add up to `target`. You may assume each input has exactly one solution, and you may not use the same element twice.",
+    "difficulty": "easy",
+    "hints": [
+      "Try using a hash map to store values you've seen so far.",
+      "For each element, check if `target - element` is already in the map."
+    ],
+    "sampleInput": "nums = [2, 7, 11, 15], target = 9",
+    "sampleOutput": "[0, 1]",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "FizzBuzz",
+    "description": "Print numbers from 1 to n. For multiples of 3, print \"Fizz\". For multiples of 5, print \"Buzz\". For multiples of both, print \"FizzBuzz\".",
+    "difficulty": "easy",
+    "hints": [
+      "Check divisibility with the modulo operator `%`.",
+      "Check for FizzBuzz (divisible by both) before checking individually."
+    ],
+    "sampleInput": "n = 15",
+    "sampleOutput": "1, 2, Fizz, 4, Buzz, Fizz, 7, 8, Fizz, Buzz, 11, Fizz, 13, 14, FizzBuzz",
+    "languages": ["javascript", "python", "typescript", "go", "rust"]
+  },
+  {
+    "title": "Palindrome Check",
+    "description": "Given a string `s`, return `true` if it is a palindrome (reads the same forwards and backwards), and `false` otherwise. Ignore non-alphanumeric characters and treat uppercase and lowercase letters as the same.",
+    "difficulty": "easy",
+    "hints": [
+      "Strip non-alphanumeric characters and convert to lowercase first.",
+      "Compare the string with its reverse."
+    ],
+    "sampleInput": "s = \"A man, a plan, a canal: Panama\"",
+    "sampleOutput": "true",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Reverse a String",
+    "description": "Write a function that reverses a string. The input string is given as an array of characters `s`. You must do this in-place with O(1) extra memory.",
+    "difficulty": "easy",
+    "hints": [
+      "Use two pointers — one at the start and one at the end.",
+      "Swap characters at the two pointers, then move them toward each other."
+    ],
+    "sampleInput": "s = ['h','e','l','l','o']",
+    "sampleOutput": "['o','l','l','e','h']",
+    "languages": ["javascript", "python", "typescript", "java", "c++"]
+  },
+  {
+    "title": "Fibonacci Sequence",
+    "description": "Return the nth Fibonacci number. The sequence starts with F(0) = 0, F(1) = 1, and each subsequent number is the sum of the two preceding ones.",
+    "difficulty": "easy",
+    "hints": [
+      "Start with a simple recursive approach, then think about efficiency.",
+      "Memoization or an iterative approach avoids redundant calculations."
+    ],
+    "sampleInput": "n = 10",
+    "sampleOutput": "55",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Valid Parentheses",
+    "description": "Given a string `s` containing only the characters `(`, `)`, `{`, `}`, `[`, and `]`, determine if the input string is valid. A string is valid if every open bracket is closed by the same type of bracket in the correct order.",
+    "difficulty": "easy",
+    "hints": [
+      "Use a stack data structure.",
+      "Push opening brackets onto the stack. When you see a closing bracket, check if it matches the top of the stack."
+    ],
+    "sampleInput": "s = \"()[{}]\"",
+    "sampleOutput": "true",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Maximum Subarray",
+    "description": "Given an integer array `nums`, find the contiguous subarray (containing at least one number) which has the largest sum and return its sum.",
+    "difficulty": "easy",
+    "hints": [
+      "This is Kadane's Algorithm.",
+      "Track the current running sum, and reset it to 0 if it goes negative."
+    ],
+    "sampleInput": "nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]",
+    "sampleOutput": "6",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Count Vowels",
+    "description": "Given a string, return the number of vowels (a, e, i, o, u — both upper and lowercase) in the string.",
+    "difficulty": "easy",
+    "hints": [
+      "Iterate over each character and check if it's a vowel.",
+      "Use a Set containing all vowels for O(1) lookup."
+    ],
+    "sampleInput": "s = \"Hello, World!\"",
+    "sampleOutput": "3",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Find the Duplicate",
+    "description": "Given an array of `n + 1` integers where each integer is between 1 and n inclusive, find the duplicate number. You must not modify the array and use only O(1) extra space.",
+    "difficulty": "easy",
+    "hints": [
+      "Think of the array as a linked list where index -> value is like a pointer.",
+      "Floyd's cycle detection algorithm works here."
+    ],
+    "sampleInput": "nums = [1, 3, 4, 2, 2]",
+    "sampleOutput": "2",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Single Number",
+    "description": "Given a non-empty array of integers `nums`, every element appears twice except for one. Find that single element. Your solution must use O(1) extra memory.",
+    "difficulty": "easy",
+    "hints": [
+      "XOR of a number with itself is 0.",
+      "XOR all elements together — the duplicate pairs cancel out."
+    ],
+    "sampleInput": "nums = [4, 1, 2, 1, 2]",
+    "sampleOutput": "4",
+    "languages": ["javascript", "python", "typescript", "go", "rust"]
+  },
+  {
+    "title": "Binary Search",
+    "description": "Given a sorted array of integers `nums` and a target value, return the index of `target` if it exists, or `-1` if it doesn't. Your algorithm must run in O(log n) time.",
+    "difficulty": "medium",
+    "hints": [
+      "Divide the search space in half each iteration.",
+      "Maintain `left` and `right` pointers. Compute `mid = Math.floor((left + right) / 2)`."
+    ],
+    "sampleInput": "nums = [-1, 0, 3, 5, 9, 12], target = 9",
+    "sampleOutput": "4",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Merge Two Sorted Lists",
+    "description": "Merge two sorted linked lists and return the result as a sorted list. The list should be made by splicing together the nodes of the first two lists.",
+    "difficulty": "medium",
+    "hints": [
+      "Compare the heads of both lists and pick the smaller one.",
+      "Recursion works elegantly here — or use an iterative approach with a dummy head node."
+    ],
+    "sampleInput": "l1 = [1, 2, 4], l2 = [1, 3, 4]",
+    "sampleOutput": "[1, 1, 2, 3, 4, 4]",
+    "languages": ["javascript", "python", "typescript", "java"]
+  },
+  {
+    "title": "Linked List Cycle",
+    "description": "Given a linked list, determine if it has a cycle in it. Can you solve it using O(1) memory?",
+    "difficulty": "medium",
+    "hints": [
+      "Use two pointers — a slow one and a fast one.",
+      "If there's a cycle, the fast pointer will eventually catch the slow pointer (Floyd's algorithm)."
+    ],
+    "sampleInput": "head = [3, 2, 0, -4], pos = 1 (tail connects to index 1)",
+    "sampleOutput": "true",
+    "languages": ["javascript", "python", "typescript", "java"]
+  },
+  {
+    "title": "Climbing Stairs",
+    "description": "You are climbing a staircase. It takes `n` steps to reach the top. Each time you can climb 1 or 2 steps. In how many distinct ways can you climb to the top?",
+    "difficulty": "medium",
+    "hints": [
+      "This follows the Fibonacci pattern.",
+      "The number of ways to reach step n = ways to reach (n-1) + ways to reach (n-2)."
+    ],
+    "sampleInput": "n = 5",
+    "sampleOutput": "8",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Number of Islands",
+    "description": "Given a 2D grid of '1's (land) and '0's (water), count the number of islands. An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically.",
+    "difficulty": "medium",
+    "hints": [
+      "Use DFS or BFS starting from each unvisited '1'.",
+      "Mark visited cells as '0' to avoid counting them twice."
+    ],
+    "sampleInput": "grid = [[\"1\",\"1\",\"0\"],[\"0\",\"1\",\"0\"],[\"0\",\"0\",\"1\"]]",
+    "sampleOutput": "2",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Longest Common Prefix",
+    "description": "Write a function to find the longest common prefix string amongst an array of strings. If there is no common prefix, return an empty string.",
+    "difficulty": "medium",
+    "hints": [
+      "Sort the array — the common prefix of the first and last strings is the answer.",
+      "Or compare character by character across all strings."
+    ],
+    "sampleInput": "strs = [\"flower\", \"flow\", \"flight\"]",
+    "sampleOutput": "\"fl\"",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Product of Array Except Self",
+    "description": "Given an integer array `nums`, return an array `answer` such that `answer[i]` is equal to the product of all elements of `nums` except `nums[i]`. Solve it in O(n) time without using division.",
+    "difficulty": "medium",
+    "hints": [
+      "Use prefix products (left pass) and suffix products (right pass).",
+      "For each index i: answer[i] = prefix_product[i-1] * suffix_product[i+1]."
+    ],
+    "sampleInput": "nums = [1, 2, 3, 4]",
+    "sampleOutput": "[24, 12, 8, 6]",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Rotate Array",
+    "description": "Given an array, rotate it to the right by `k` steps, where `k` is non-negative. Try to do it in-place with O(1) extra space.",
+    "difficulty": "medium",
+    "hints": [
+      "Reverse the whole array, then reverse the first k elements, then reverse the rest.",
+      "Use `k = k % n` to handle cases where k > n."
+    ],
+    "sampleInput": "nums = [1, 2, 3, 4, 5, 6, 7], k = 3",
+    "sampleOutput": "[5, 6, 7, 1, 2, 3, 4]",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Group Anagrams",
+    "description": "Given an array of strings `strs`, group the anagrams together. Return the groups in any order.",
+    "difficulty": "medium",
+    "hints": [
+      "Two words are anagrams if their sorted characters are identical.",
+      "Use a hash map keyed on the sorted string."
+    ],
+    "sampleInput": "strs = [\"eat\", \"tea\", \"tan\", \"ate\", \"nat\", \"bat\"]",
+    "sampleOutput": "[[\"bat\"], [\"nat\", \"tan\"], [\"ate\", \"eat\", \"tea\"]]",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Maximum Depth of Binary Tree",
+    "description": "Given the root of a binary tree, return its maximum depth. The maximum depth is the number of nodes along the longest path from the root node to the farthest leaf node.",
+    "difficulty": "medium",
+    "hints": [
+      "Use recursion — the depth of a node is 1 + max(depth(left), depth(right)).",
+      "BFS level-by-level also works."
+    ],
+    "sampleInput": "root = [3, 9, 20, null, null, 15, 7]",
+    "sampleOutput": "3",
+    "languages": ["javascript", "python", "typescript", "java"]
+  },
+  {
+    "title": "Coin Change",
+    "description": "You are given an integer array `coins` representing coins of different denominations and an integer `amount`. Return the fewest number of coins needed to make up that amount. Return -1 if it cannot be made.",
+    "difficulty": "medium",
+    "hints": [
+      "Classic dynamic programming problem.",
+      "Build up a DP array where dp[i] = fewest coins to make amount i."
+    ],
+    "sampleInput": "coins = [1, 5, 11], amount = 15",
+    "sampleOutput": "3",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Longest Substring Without Repeating Characters",
+    "description": "Given a string `s`, find the length of the longest substring without repeating characters.",
+    "difficulty": "medium",
+    "hints": [
+      "Use the sliding window technique.",
+      "Maintain a set of characters in the current window. Expand right, shrink left when a duplicate is found."
+    ],
+    "sampleInput": "s = \"abcabcbb\"",
+    "sampleOutput": "3",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Spiral Matrix",
+    "description": "Given an `m x n` matrix, return all elements in spiral order (clockwise from the top-left).",
+    "difficulty": "hard",
+    "hints": [
+      "Track four boundaries: top, bottom, left, right.",
+      "Traverse right → down → left → up, shrinking the boundaries after each direction."
+    ],
+    "sampleInput": "matrix = [[1,2,3],[4,5,6],[7,8,9]]",
+    "sampleOutput": "[1, 2, 3, 6, 9, 8, 7, 4, 5]",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Word Search",
+    "description": "Given an `m x n` grid of characters and a string `word`, return true if the word exists in the grid. The word can be constructed from sequentially adjacent cells (horizontally or vertically) where each cell may only be used once.",
+    "difficulty": "hard",
+    "hints": [
+      "Use backtracking DFS from every cell.",
+      "Mark cells as visited temporarily (e.g., replace with '#') and restore them after the recursive call."
+    ],
+    "sampleInput": "board = [[\"A\",\"B\",\"C\"],[\"S\",\"F\",\"C\"],[\"A\",\"D\",\"E\"]], word = \"ABCCED\"",
+    "sampleOutput": "true",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "LRU Cache",
+    "description": "Design a data structure that follows the Least Recently Used (LRU) cache eviction policy. Implement `get(key)` (return -1 if not found) and `put(key, value)` (evict the LRU item if capacity is exceeded). Both operations must be O(1).",
+    "difficulty": "hard",
+    "hints": [
+      "Combine a hash map with a doubly linked list.",
+      "The map gives O(1) access; the linked list maintains insertion/access order for eviction."
+    ],
+    "sampleInput": "LRUCache(2) → put(1,1) → put(2,2) → get(1) → put(3,3) → get(2) → get(3)",
+    "sampleOutput": "1, -1, 3",
+    "languages": ["javascript", "python", "typescript", "java"]
+  },
+  {
+    "title": "Serialize and Deserialize Binary Tree",
+    "description": "Design an algorithm to serialize and deserialize a binary tree. Serialization is the process of converting a tree to a string; deserialization is the reverse. There is no restriction on how you do it as long as the pair of functions are inverse of each other.",
+    "difficulty": "hard",
+    "hints": [
+      "BFS (level-order) traversal is a straightforward approach.",
+      "Use a sentinel (like 'null') to represent missing children during serialization."
+    ],
+    "sampleInput": "root = [1, 2, 3, null, null, 4, 5]",
+    "sampleOutput": "\"1,2,3,null,null,4,5\"",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Median of Two Sorted Arrays",
+    "description": "Given two sorted arrays `nums1` and `nums2`, return the median of the two sorted arrays. The solution must run in O(log(m + n)) time.",
+    "difficulty": "hard",
+    "hints": [
+      "Binary search on the smaller array to find the correct partition.",
+      "Ensure that elements on the left of the partition in both arrays are ≤ elements on the right."
+    ],
+    "sampleInput": "nums1 = [1, 3], nums2 = [2]",
+    "sampleOutput": "2.0",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Trapping Rain Water",
+    "description": "Given `n` non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.",
+    "difficulty": "hard",
+    "hints": [
+      "For each position, water = min(max_left, max_right) - height.",
+      "Use two-pointer approach to achieve O(n) time and O(1) space."
+    ],
+    "sampleInput": "height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]",
+    "sampleOutput": "6",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Regular Expression Matching",
+    "description": "Implement regular expression matching with support for `.` (matches any single character) and `*` (matches zero or more of the preceding element). The matching should cover the entire input string.",
+    "difficulty": "hard",
+    "hints": [
+      "Use dynamic programming with a 2D table dp[i][j] = does s[0..i] match p[0..j]?",
+      "Handle the `*` case carefully: it can match zero occurrences or extend a match."
+    ],
+    "sampleInput": "s = \"aab\", p = \"c*a*b\"",
+    "sampleOutput": "true",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Alien Dictionary",
+    "description": "Given a list of words sorted according to rules of an alien language, derive the order of characters in that language. If the order is invalid, return an empty string.",
+    "difficulty": "hard",
+    "hints": [
+      "Build a directed graph from adjacent word pairs.",
+      "Use topological sort (Kahn's algorithm or DFS with cycle detection) to derive the order."
+    ],
+    "sampleInput": "words = [\"wrt\", \"wrf\", \"er\", \"ett\", \"rftt\"]",
+    "sampleOutput": "\"wertf\"",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "Sliding Window Maximum",
+    "description": "Given an integer array `nums` and a sliding window of size `k`, return an array of the maximum value in each window position as the window slides from left to right.",
+    "difficulty": "hard",
+    "hints": [
+      "Use a monotonic deque (double-ended queue) that stores indices.",
+      "Remove indices that are out of the window's range from the front; pop smaller values from the back."
+    ],
+    "sampleInput": "nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3",
+    "sampleOutput": "[3, 3, 5, 5, 6, 7]",
+    "languages": ["javascript", "python", "typescript", "go"]
+  },
+  {
+    "title": "Count and Say",
+    "description": "The count-and-say sequence is defined as: 1 → \"1\", 2 → \"11\", 3 → \"21\", 4 → \"1211\", etc. Each term is generated by reading off the digits of the previous term. Return the nth term.",
+    "difficulty": "medium",
+    "hints": [
+      "Iterate n-1 times, generating each term from the previous.",
+      "Group consecutive digits and count their occurrences."
+    ],
+    "sampleInput": "n = 4",
+    "sampleOutput": "\"1211\"",
+    "languages": ["javascript", "python", "typescript"]
+  },
+  {
+    "title": "3Sum",
+    "description": "Given an integer array `nums`, return all the unique triplets [nums[i], nums[j], nums[k]] such that i, j, k are distinct and their sum is zero.",
+    "difficulty": "medium",
+    "hints": [
+      "Sort the array first.",
+      "For each element, use a two-pointer approach on the remaining elements to find pairs that sum to the negation of the current element."
+    ],
+    "sampleInput": "nums = [-1, 0, 1, 2, -1, -4]",
+    "sampleOutput": "[[-1, -1, 2], [-1, 0, 1]]",
+    "languages": ["javascript", "python", "typescript"]
+  }
+]

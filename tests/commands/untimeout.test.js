@@ -114,4 +114,29 @@ describe('untimeout command', () => {
       expect.stringContaining('An error occurred'),
     );
   });
+
+  it('should return early when target member is not in server', async () => {
+    const { interaction, mockMember } = createInteraction();
+    interaction.options.getMember.mockReturnValueOnce(null);
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('not in this server'),
+    );
+    expect(mockMember.timeout).not.toHaveBeenCalled();
+  });
+
+  it('should untimeout with undefined reason when reason is null', async () => {
+    const { interaction, mockMember } = createInteraction();
+    interaction.options.getString.mockImplementation((name) => {
+      if (name === 'reason') return null;
+      return null;
+    });
+
+    await execute(interaction);
+
+    // timeout(null, reason || undefined) → timeout(null, undefined)
+    expect(mockMember.timeout).toHaveBeenCalledWith(null, undefined);
+  });
 });

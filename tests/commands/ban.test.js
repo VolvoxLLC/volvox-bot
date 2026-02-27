@@ -144,4 +144,20 @@ describe('ban command', () => {
       expect.stringContaining('An error occurred'),
     );
   });
+
+  it('should ban with undefined reason when reason is null', async () => {
+    const interaction = createInteraction();
+    interaction.options.getString.mockImplementation((name) => {
+      if (name === 'reason') return null;
+      return null;
+    });
+
+    await execute(interaction);
+
+    // ban called with reason=undefined (not null)
+    expect(interaction.guild.members.ban).toHaveBeenCalledWith(
+      mockUser.id,
+      expect.objectContaining({ reason: undefined }),
+    );
+  });
 });

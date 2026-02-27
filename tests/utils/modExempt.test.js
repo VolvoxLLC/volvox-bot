@@ -1,64 +1,103 @@
-import { PermissionFlagsBits, PermissionsBitField } from 'discord.js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('discord.js', () => ({
+  PermissionFlagsBits: { Administrator: 8n },
+}));
+
 import { isExempt } from '../../src/utils/modExempt.js';
 
 /**
- * Create a mock message with configurable member permissions and roles.
+ * Build a minimal fake message with configurable member properties.
  */
-/**
- * Minimal Collection-like Map with .some() and .has() for Discord role cache.
- */
-class FakeCollection extends Map {
-  some(fn) {
-    for (const value of this.values()) {
-      if (fn(value)) return true;
-    }
-    return false;
-  }
-}
+function makeMessage({ hasMember = true, isAdmin = false, roleIds = [], roleNames = [] } = {}) {
+  if (!hasMember) return { member: null };
 
-function createMessage({ permissions = [], roleIds = [], roleNames = [] } = {}) {
-  const permBits = new PermissionsBitField(permissions);
-  const rolesCache = new FakeCollection();
-  for (let i = 0; i < roleIds.length; i++) {
-    const id = roleIds[i];
-    rolesCache.set(id, { id, name: roleNames[i] || `role-${id}` });
-  }
+  const roles = new Map([
+    ...roleIds.map((id) => [id, { id, name: `role-${id}` }]),
+    ...roleNames.map((name) => [`id-${name}`, { id: `id-${name}`, name }]),
+  ]);
+
   return {
     member: {
-      permissions: permBits,
-      roles: { cache: rolesCache },
+      permissions: {
+        has: vi.fn().mockReturnValue(isAdmin),
+      },
+      roles: {
+        cache: {
+          has: vi.fn((id) => roles.has(id)),
+          some: vi.fn((fn) => [...roles.values()].some(fn)),
+        },
+      },
     },
   };
 }
 
-describe('modExempt', () => {
-  it('should exempt members with ADMINISTRATOR permission', () => {
-    const msg = createMessage({ permissions: [PermissionFlagsBits.Administrator] });
-    expect(isExempt(msg, { permissions: {} })).toBe(true);
+describe('isExempt', () => {
+  it('should return false when member is null', () => {
+    const msg = makeMessage({ hasMember: false });
+    expect(isExempt(msg, {})).toBe(false);
   });
 
-  it('should exempt members with adminRoleId', () => {
-    const msg = createMessage({ roleIds: ['admin-role'] });
-    expect(isExempt(msg, { permissions: { adminRoleId: 'admin-role' } })).toBe(true);
+  it('should return true when member has ADMINISTRATOR permission', () => {
+    const msg = makeMessage({ isAdmin: true });
+    expect(isExempt(msg, {})).toBe(true);
   });
 
-  it('should exempt members with moderatorRoleId', () => {
-    const msg = createMessage({ roleIds: ['mod-role'] });
-    expect(isExempt(msg, { permissions: { moderatorRoleId: 'mod-role' } })).toBe(true);
+  it('should return false when member has no roles and no perms', () => {
+    const msg = makeMessage({ isAdmin: false });
+    expect(isExempt(msg, {})).toBe(false);
   });
 
-  it('should exempt members with a role name in modRoles array', () => {
-    const msg = createMessage({ roleIds: ['r1'], roleNames: ['Moderator'] });
-    expect(isExempt(msg, { permissions: { modRoles: ['Moderator'] } })).toBe(true);
+  it('should return true when member has adminRoleId', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['admin-role-id'] });
+    const config = { permissions: { adminRoleId: 'admin-role-id' } };
+    expect(isExempt(msg, config)).toBe(true);
   });
 
-  it('should return false for non-exempt members', () => {
-    const msg = createMessage({ roleIds: ['regular'] });
-    expect(isExempt(msg, { permissions: { adminRoleId: 'admin', modRoles: [] } })).toBe(false);
+  it('should return false when adminRoleId is set but member does not have it', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['other-role'] });
+    const config = { permissions: { adminRoleId: 'admin-role-id' } };
+    expect(isExempt(msg, config)).toBe(false);
   });
 
-  it('should return false when message has no member', () => {
-    expect(isExempt({ member: null }, { permissions: {} })).toBe(false);
+  it('should return true when member has moderatorRoleId', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['mod-role-id'] });
+    const config = { permissions: { moderatorRoleId: 'mod-role-id' } };
+    expect(isExempt(msg, config)).toBe(true);
+  });
+
+  it('should return false when moderatorRoleId is set but member does not have it', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: [] });
+    const config = { permissions: { moderatorRoleId: 'mod-role-id' } };
+    expect(isExempt(msg, config)).toBe(false);
+  });
+
+  it('should return true when member has a role ID in modRoles array', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['custom-mod'] });
+    const config = { permissions: { modRoles: ['custom-mod'] } };
+    expect(isExempt(msg, config)).toBe(true);
+  });
+
+  it('should return true when member has a role NAME in modRoles array', () => {
+    const msg = makeMessage({ isAdmin: false, roleNames: ['Moderator'] });
+    const config = { permissions: { modRoles: ['Moderator'] } };
+    expect(isExempt(msg, config)).toBe(true);
+  });
+
+  it('should return false when modRoles is empty array', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['some-role'] });
+    const config = { permissions: { modRoles: [] } };
+    expect(isExempt(msg, config)).toBe(false);
+  });
+
+  it('should return false when member has no matching role in modRoles', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['other-role'] });
+    const config = { permissions: { modRoles: ['custom-mod', 'Moderator'] } };
+    expect(isExempt(msg, config)).toBe(false);
+  });
+
+  it('should return false when config has no permissions key', () => {
+    const msg = makeMessage({ isAdmin: false });
+    expect(isExempt(msg, {})).toBe(false);
   });
 });
