@@ -25,7 +25,7 @@ const RATE_LIMIT_MS = 5 * 60 * 1000;
  * Check and update the rate limit for an AFK notice.
  * Returns true if a notice should be sent, false if rate-limited.
  *
- * Also evicts expired entries on every write to prevent unbounded Map growth.
+ * Entries are auto-evicted via setTimeout to prevent unbounded Map growth.
  *
  * @param {string} guildId
  * @param {string} afkUserId
@@ -42,13 +42,7 @@ function checkNoticeRateLimit(guildId, afkUserId, channelId) {
   }
 
   afkNoticeRateLimit.set(key, now);
-
-  // Evict expired entries to prevent unbounded Map growth.
-  for (const [k, ts] of afkNoticeRateLimit) {
-    if (now - ts >= RATE_LIMIT_MS) {
-      afkNoticeRateLimit.delete(k);
-    }
-  }
+  setTimeout(() => afkNoticeRateLimit.delete(key), RATE_LIMIT_MS + 1000);
 
   return true;
 }
@@ -135,13 +129,13 @@ export async function handleAfkMentions(message) {
 
   // ── 2. Check mentioned users for AFK status ────────────────────────────
 
-  const mentionedUsers = message.mentions.users;
-  if (mentionedUsers.size === 0) return;
+  const mentionedMembers = message.mentions.members;
+  if (!mentionedMembers || mentionedMembers.size === 0) return;
 
-  for (const [userId, user] of mentionedUsers) {
+  for (const [userId, member] of mentionedMembers) {
     // Don't notify if the person mentioning themselves or a bot
     if (userId === message.author.id) continue;
-    if (user.bot) continue;
+    if (member.user.bot) continue;
 
     try {
       const { rows } = await pool.query(
@@ -154,6 +148,14 @@ export async function handleAfkMentions(message) {
       const afk = rows[0];
       const setAtUnix = Math.floor(new Date(afk.set_at).getTime() / 1000);
 
+      // Track this ping (always, even if notice is rate-limited)
+      const preview = message.content?.slice(0, 100) || null;
+      await pool.query(
+        `INSERT INTO afk_pings (guild_id, afk_user_id, pinger_id, channel_id, message_preview)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [message.guild.id, userId, message.author.id, message.channel.id, preview],
+      );
+
       // Rate-limit AFK notices to prevent channel spam
       if (!checkNoticeRateLimit(message.guild.id, userId, message.channel.id)) {
         continue;
@@ -161,16 +163,8 @@ export async function handleAfkMentions(message) {
 
       // Reply inline with AFK notice
       await safeSend(message.channel, {
-        content: `💤 **${user.displayName ?? user.username}** is AFK: *${afk.reason}* (since <t:${setAtUnix}:R>)`,
+        content: `💤 **${member.displayName}** is AFK: *${afk.reason}* (since <t:${setAtUnix}:R>)`,
       });
-
-      // Track this ping
-      const preview = message.content?.slice(0, 100) || null;
-      await pool.query(
-        `INSERT INTO afk_pings (guild_id, afk_user_id, pinger_id, channel_id, message_preview)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [message.guild.id, userId, message.author.id, message.channel.id, preview],
-      );
 
       info('AFK ping tracked', {
         guildId: message.guild.id,

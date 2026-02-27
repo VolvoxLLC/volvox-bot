@@ -46,7 +46,7 @@ function makeMessage(overrides = {}) {
     channel: { id: 'ch1', send: vi.fn() },
     content: 'hello world',
     mentions: {
-      users: new Map(),
+      members: new Map(),
     },
     ...overrides,
   };
@@ -133,7 +133,7 @@ describe('afkHandler', () => {
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ author, mentions: { users: new Map() } });
+      const message = makeMessage({ author, mentions: { members: new Map() } });
       await handleAfkMentions(message);
 
       // Should delete AFK status
@@ -169,7 +169,7 @@ describe('afkHandler', () => {
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ author, mentions: { users: new Map() } });
+      const message = makeMessage({ author, mentions: { members: new Map() } });
       // Should NOT throw
       await expect(handleAfkMentions(message)).resolves.toBeUndefined();
     });
@@ -185,7 +185,7 @@ describe('afkHandler', () => {
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ mentions: { users: new Map() } });
+      const message = makeMessage({ mentions: { members: new Map() } });
       await handleAfkMentions(message);
 
       expect(pool.query).not.toHaveBeenCalledWith(
@@ -201,13 +201,11 @@ describe('afkHandler', () => {
     it('sends inline AFK notice when an AFK user is mentioned', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const afkUser = {
-        id: 'afkUser1',
-        bot: false,
+      const afkMember = {
+        user: { id: 'afkUser1', bot: false },
         displayName: 'AFK Person',
-        username: 'afkperson',
       };
-      const mentions = new Map([['afkUser1', afkUser]]);
+      const mentions = new Map([['afkUser1', afkMember]]);
 
       const pool = {
         query: vi
@@ -224,7 +222,7 @@ describe('afkHandler', () => {
       getPool.mockReturnValue(pool);
 
       const channel = { id: 'ch1', send: vi.fn() };
-      const message = makeMessage({ channel, mentions: { users: mentions } });
+      const message = makeMessage({ channel, mentions: { members: mentions } });
       await handleAfkMentions(message);
 
       expect(safeSend).toHaveBeenCalledWith(
@@ -240,8 +238,8 @@ describe('afkHandler', () => {
     it('tracks ping in afk_pings table', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const afkUser = { id: 'afkUser1', bot: false, displayName: 'Test', username: 'test' };
-      const mentions = new Map([['afkUser1', afkUser]]);
+      const afkMember = { user: { id: 'afkUser1', bot: false }, displayName: 'Test' };
+      const mentions = new Map([['afkUser1', afkMember]]);
 
       const pool = {
         query: vi
@@ -254,7 +252,7 @@ describe('afkHandler', () => {
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ mentions: { users: mentions } });
+      const message = makeMessage({ mentions: { members: mentions } });
       await handleAfkMentions(message);
 
       expect(pool.query).toHaveBeenCalledWith(
@@ -266,8 +264,8 @@ describe('afkHandler', () => {
     it('does not notify for non-AFK users', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const user = { id: 'user2', bot: false, displayName: 'RegularUser', username: 'regular' };
-      const mentions = new Map([['user2', user]]);
+      const member = { user: { id: 'user2', bot: false }, displayName: 'RegularUser' };
+      const mentions = new Map([['user2', member]]);
 
       const pool = {
         query: vi
@@ -277,7 +275,7 @@ describe('afkHandler', () => {
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ mentions: { users: mentions } });
+      const message = makeMessage({ mentions: { members: mentions } });
       await handleAfkMentions(message);
 
       expect(safeSend).not.toHaveBeenCalled();
@@ -286,15 +284,15 @@ describe('afkHandler', () => {
     it('skips bot users in mentions', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const botUser = { id: 'bot1', bot: true, displayName: 'MyBot', username: 'mybot' };
-      const mentions = new Map([['bot1', botUser]]);
+      const botMember = { user: { id: 'bot1', bot: true }, displayName: 'MyBot' };
+      const mentions = new Map([['bot1', botMember]]);
 
       const pool = {
         query: vi.fn().mockResolvedValueOnce({ rows: [] }), // sender not AFK
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ mentions: { users: mentions } });
+      const message = makeMessage({ mentions: { members: mentions } });
       await handleAfkMentions(message);
 
       // Only one query (sender check), no mention query for bot
@@ -304,15 +302,15 @@ describe('afkHandler', () => {
     it('skips self-mentions', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const selfUser = { id: 'sender1', bot: false, displayName: 'Me', username: 'me' };
-      const mentions = new Map([['sender1', selfUser]]);
+      const selfMember = { user: { id: 'sender1', bot: false }, displayName: 'Me' };
+      const mentions = new Map([['sender1', selfMember]]);
 
       const pool = {
         query: vi.fn().mockResolvedValueOnce({ rows: [] }), // sender not AFK
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ mentions: { users: mentions } });
+      const message = makeMessage({ mentions: { members: mentions } });
       await handleAfkMentions(message);
 
       expect(pool.query).toHaveBeenCalledTimes(1);
@@ -326,8 +324,8 @@ describe('afkHandler', () => {
     it('only sends one AFK notice per user per channel within 5 minutes', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const afkUser = { id: 'afkUser1', bot: false, displayName: 'Away', username: 'away' };
-      const mentions = new Map([['afkUser1', afkUser]]);
+      const afkMember = { user: { id: 'afkUser1', bot: false }, displayName: 'Away' };
+      const mentions = new Map([['afkUser1', afkMember]]);
 
       const pool = {
         query: vi
@@ -338,15 +336,16 @@ describe('afkHandler', () => {
             rows: [{ id: 1, user_id: 'afkUser1', reason: 'BRB', set_at: new Date() }],
           })
           .mockResolvedValueOnce({ rows: [] })
-          // Round 2: sender not AFK, user IS AFK (rate limited — no ping insert)
+          // Round 2: sender not AFK, user IS AFK, ping insert (notice rate-limited)
           .mockResolvedValueOnce({ rows: [] })
           .mockResolvedValueOnce({
             rows: [{ id: 1, user_id: 'afkUser1', reason: 'BRB', set_at: new Date() }],
-          }),
+          })
+          .mockResolvedValueOnce({ rows: [] }),
       };
       getPool.mockReturnValue(pool);
 
-      const message = makeMessage({ mentions: { users: mentions } });
+      const message = makeMessage({ mentions: { members: mentions } });
 
       // First message — should send notice
       await handleAfkMentions(message);

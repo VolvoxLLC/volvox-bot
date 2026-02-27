@@ -90,9 +90,19 @@ function makeInteraction(subcommand, opts = {}) {
   };
 }
 
+function makeClient(queryImpl) {
+  return {
+    query: queryImpl ?? vi.fn().mockResolvedValue({ rows: [] }),
+    release: vi.fn(),
+  };
+}
+
 function makePool(overrides = {}) {
+  const client = makeClient(overrides.clientQuery);
   return {
     query: vi.fn().mockResolvedValue({ rows: [] }),
+    connect: vi.fn().mockResolvedValue(client),
+    _client: client,
     ...overrides,
   };
 }
@@ -213,18 +223,13 @@ describe('afk command', () => {
         },
       ];
 
-      const pool = {
-        query: vi
-          .fn()
-          // 1st call: SELECT afk_status → found
-          .mockResolvedValueOnce({ rows: [{ id: 1, reason: 'Lunch' }] })
-          // 2nd call: SELECT afk_pings
-          .mockResolvedValueOnce({ rows: pings })
-          // 3rd call: DELETE afk_status
-          .mockResolvedValueOnce({ rows: [] })
-          // 4th call: DELETE afk_pings
-          .mockResolvedValueOnce({ rows: [] }),
-      };
+      const pool = makePool();
+      pool.query
+        // 1st call: SELECT afk_status → found
+        .mockResolvedValueOnce({ rows: [{ id: 1, reason: 'Lunch' }] })
+        // 2nd call: SELECT afk_pings
+        .mockResolvedValueOnce({ rows: pings });
+      // DELETEs go through client (transaction)
       getPool.mockReturnValue(pool);
 
       const interaction = makeInteraction('clear');
@@ -242,22 +247,20 @@ describe('afk command', () => {
     it('deletes both afk_status and afk_pings rows on clear', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const pool = {
-        query: vi
-          .fn()
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-          .mockResolvedValueOnce({ rows: [] })
-          .mockResolvedValueOnce({ rows: [] })
-          .mockResolvedValueOnce({ rows: [] }),
-      };
+      const pool = makePool();
+      pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] }).mockResolvedValueOnce({ rows: [] });
       getPool.mockReturnValue(pool);
 
       const interaction = makeInteraction('clear');
       await execute(interaction);
 
-      const calls = pool.query.mock.calls;
-      expect(calls.some(([q]) => q.includes('DELETE FROM afk_status'))).toBe(true);
-      expect(calls.some(([q]) => q.includes('DELETE FROM afk_pings'))).toBe(true);
+      // DELETEs go through the transaction client, not pool directly
+      const clientCalls = pool._client.query.mock.calls;
+      expect(clientCalls.some(([q]) => q.includes('DELETE FROM afk_status'))).toBe(true);
+      expect(clientCalls.some(([q]) => q.includes('DELETE FROM afk_pings'))).toBe(true);
+      expect(clientCalls.some(([q]) => q === 'BEGIN')).toBe(true);
+      expect(clientCalls.some(([q]) => q === 'COMMIT')).toBe(true);
+      expect(pool._client.release).toHaveBeenCalled();
     });
   });
 

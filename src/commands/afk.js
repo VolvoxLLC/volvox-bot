@@ -75,15 +75,25 @@ async function handleClear(interaction) {
     [interaction.guildId, interaction.user.id],
   );
 
-  // Delete AFK record and pings
-  await pool.query('DELETE FROM afk_status WHERE guild_id = $1 AND user_id = $2', [
-    interaction.guildId,
-    interaction.user.id,
-  ]);
-  await pool.query('DELETE FROM afk_pings WHERE guild_id = $1 AND afk_user_id = $2', [
-    interaction.guildId,
-    interaction.user.id,
-  ]);
+  // Delete AFK record and pings atomically
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM afk_status WHERE guild_id = $1 AND user_id = $2', [
+      interaction.guildId,
+      interaction.user.id,
+    ]);
+    await client.query('DELETE FROM afk_pings WHERE guild_id = $1 AND afk_user_id = $2', [
+      interaction.guildId,
+      interaction.user.id,
+    ]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   info('AFK cleared (manual)', { guildId: interaction.guildId, userId: interaction.user.id });
 
