@@ -89,6 +89,13 @@ describe('trackMessage', () => {
     expect(pool.query).not.toHaveBeenCalled();
   });
 
+  it('does nothing when message author is a bot', async () => {
+    const pool = makePool();
+    getPool.mockReturnValue(pool);
+    await trackMessage({ author: { id: 'bot1', bot: true }, guild: { id: 'guild1' } });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
   it('logs error and re-throws on db failure', async () => {
     getPool.mockReturnValue({
       query: vi.fn().mockRejectedValue(new Error('connection refused')),
@@ -141,6 +148,23 @@ describe('trackReaction', () => {
     const reaction = { message: { guild: null, author: { id: 'a1' } } };
     await trackReaction(reaction, makeUser());
     expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when reactor user is a bot', async () => {
+    const pool = makePool();
+    getPool.mockReturnValue(pool);
+    await trackReaction(makeReaction(), { id: 'bot1', bot: true });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('skips reactions_received when message author is a bot', async () => {
+    const pool = makePool();
+    getPool.mockReturnValue(pool);
+    const reaction = {
+      message: { guild: { id: 'guild1' }, author: { id: 'botAuthor', bot: true } },
+    };
+    await trackReaction(reaction, makeUser('reactor1'));
+    expect(pool.query).toHaveBeenCalledTimes(1); // only reactions_given
   });
 
   it('logs error and re-throws on db failure', async () => {

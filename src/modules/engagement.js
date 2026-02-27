@@ -88,14 +88,16 @@ export async function trackReaction(reaction, user) {
       [guildId, user.id, now.toISOString()],
     );
 
-    // Increment reactions_received for message author (skip if author is the reactor)
-    const authorId = reaction.message.author?.id;
-    if (authorId && authorId !== user.id) {
+    // Increment reactions_received for message author (skip if author is the reactor or a bot)
+    const messageAuthor = reaction.message.author;
+    const authorId = messageAuthor?.id;
+    if (authorId && authorId !== user.id && !messageAuthor?.bot) {
       await pool.query(
-        `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen)
-         VALUES ($1, $2, 1, NOW())
+        `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen, last_active)
+         VALUES ($1, $2, 1, NOW(), NOW())
          ON CONFLICT (guild_id, user_id) DO UPDATE
-           SET reactions_received = user_stats.reactions_received + 1`,
+           SET reactions_received = user_stats.reactions_received + 1,
+               last_active = NOW()`,
         [guildId, authorId],
       );
     }
