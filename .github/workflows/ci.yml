@@ -17,6 +17,8 @@ jobs:
   lint-and-test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -43,6 +45,8 @@ jobs:
   web:
     name: Web — Lint, Typecheck & Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout

@@ -25,9 +25,6 @@ function adaptGuildIdParam(req, _res, next) {
   next();
 }
 
-// Apply a route-specific limiter before auth/handlers for defense-in-depth.
-router.use(moderationRateLimit);
-
 // Apply guild-scoped authorization to all moderation routes
 // (requireAuth is already applied at the router mount level in api/index.js)
 router.use(adaptGuildIdParam, requireGuildModerator);
@@ -44,7 +41,7 @@ router.use(adaptGuildIdParam, requireGuildModerator);
  *   page     (default 1)
  *   limit    (default 25, max 100)
  */
-router.get('/cases', async (req, res) => {
+router.get('/cases', moderationRateLimit, async (req, res) => {
   const { guildId, targetId, action } = req.query;
 
   if (!guildId) {
@@ -124,7 +121,7 @@ router.get('/cases', async (req, res) => {
  * Query params:
  *   guildId (required) — scoped to prevent cross-guild data exposure
  */
-router.get('/cases/:caseNumber', async (req, res) => {
+router.get('/cases/:caseNumber', moderationRateLimit, async (req, res) => {
   const caseNumber = parseInt(req.params.caseNumber, 10);
   if (Number.isNaN(caseNumber)) {
     return res.status(400).json({ error: 'Invalid case number' });
@@ -190,7 +187,7 @@ router.get('/cases/:caseNumber', async (req, res) => {
  * Query params:
  *   guildId (required)
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', moderationRateLimit, async (req, res) => {
   const { guildId } = req.query;
 
   if (!guildId) {
@@ -271,7 +268,7 @@ router.get('/stats', async (req, res) => {
  *   page     (default 1)
  *   limit    (default 25, max 100)
  */
-router.get('/user/:userId/history', async (req, res) => {
+router.get('/user/:userId/history', moderationRateLimit, async (req, res) => {
   const { userId } = req.params;
   const { guildId } = req.query;
 
