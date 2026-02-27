@@ -89,15 +89,25 @@ export async function handleAfkMentions(message) {
         [message.guild.id, message.author.id],
       );
 
-      // Delete AFK record and associated pings
-      await pool.query('DELETE FROM afk_status WHERE guild_id = $1 AND user_id = $2', [
-        message.guild.id,
-        message.author.id,
-      ]);
-      await pool.query('DELETE FROM afk_pings WHERE guild_id = $1 AND afk_user_id = $2', [
-        message.guild.id,
-        message.author.id,
-      ]);
+      // Delete AFK record and associated pings atomically
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('DELETE FROM afk_status WHERE guild_id = $1 AND user_id = $2', [
+          message.guild.id,
+          message.author.id,
+        ]);
+        await client.query('DELETE FROM afk_pings WHERE guild_id = $1 AND afk_user_id = $2', [
+          message.guild.id,
+          message.author.id,
+        ]);
+        await client.query('COMMIT');
+      } catch (txErr) {
+        await client.query('ROLLBACK');
+        throw txErr;
+      } finally {
+        client.release();
+      }
 
       info('AFK auto-cleared on message', {
         guildId: message.guild.id,

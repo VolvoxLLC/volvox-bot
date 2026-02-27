@@ -119,28 +119,37 @@ describe('afkHandler', () => {
         createDM: vi.fn().mockResolvedValue(dm),
       };
 
+      const client = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        release: vi.fn(),
+      };
       const pool = {
         query: vi
           .fn()
           // SELECT afk_status (sender is AFK)
           .mockResolvedValueOnce({ rows: [{ id: 1, reason: 'Sleeping' }] })
           // SELECT afk_pings
-          .mockResolvedValueOnce({ rows: [] })
-          // DELETE afk_status
-          .mockResolvedValueOnce({ rows: [] })
-          // DELETE afk_pings
           .mockResolvedValueOnce({ rows: [] }),
+        connect: vi.fn().mockResolvedValue(client),
       };
       getPool.mockReturnValue(pool);
 
       const message = makeMessage({ author, mentions: { members: new Map() } });
       await handleAfkMentions(message);
 
-      // Should delete AFK status
-      expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM afk_status'), [
+      // Should delete AFK status and pings in a transaction
+      expect(pool.connect).toHaveBeenCalled();
+      expect(client.query).toHaveBeenCalledWith('BEGIN');
+      expect(client.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM afk_status'), [
         'guild1',
         'sender1',
       ]);
+      expect(client.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM afk_pings'), [
+        'guild1',
+        'sender1',
+      ]);
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+      expect(client.release).toHaveBeenCalled();
 
       // Should DM user
       expect(author.createDM).toHaveBeenCalled();
@@ -159,13 +168,16 @@ describe('afkHandler', () => {
         createDM: vi.fn().mockRejectedValue(new Error('DM closed')),
       };
 
+      const client = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        release: vi.fn(),
+      };
       const pool = {
         query: vi
           .fn()
           .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-          .mockResolvedValueOnce({ rows: [] })
-          .mockResolvedValueOnce({ rows: [] })
           .mockResolvedValueOnce({ rows: [] }),
+        connect: vi.fn().mockResolvedValue(client),
       };
       getPool.mockReturnValue(pool);
 
