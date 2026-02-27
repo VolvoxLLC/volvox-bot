@@ -18,10 +18,28 @@ import {
 import { getPool } from '../db.js';
 import { info, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
-import { safeEditReply, safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply, safeSend } from '../utils/safeSend.js';
 
 /** Embed colour for showcase responses. */
 const EMBED_COLOR = 0x5865f2;
+
+// ── Validation helpers ─────────────────────────────────────────────
+
+/**
+ * Basic URL validation — returns true for empty/null (optional fields).
+ *
+ * @param {string|null} str
+ * @returns {boolean}
+ */
+function isValidUrl(str) {
+  if (!str) return true; // optional fields
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Number of showcases per page in browse view. */
 const SHOWCASES_PER_PAGE = 5;
@@ -71,7 +89,8 @@ export function buildShowcaseEmbed(showcase) {
     .setColor(EMBED_COLOR)
     .setTitle(showcase.name.slice(0, 256))
     .setDescription(showcase.description.slice(0, 4096))
-    .setFooter({ text: `ID: ${showcase.id} • Submitted <t:${submittedTs}:R>` });
+    .setFooter({ text: `ID: ${showcase.id}` })
+    .addFields({ name: 'Submitted', value: `<t:${submittedTs}:R>`, inline: true });
 
   if (showcase.tech_stack && showcase.tech_stack.length > 0) {
     embed.addFields({ name: 'Tech Stack', value: showcase.tech_stack.join(', ').slice(0, 1024) });
@@ -204,6 +223,22 @@ export async function handleShowcaseModalSubmit(interaction, pool) {
         .filter((t) => t.length > 0)
     : [];
 
+  if (!isValidUrl(repoUrl)) {
+    await safeReply(interaction, {
+      content: '❌ Invalid Repo URL. Please provide a valid URL (e.g. https://github.com/...).',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (!isValidUrl(liveUrl)) {
+    await safeReply(interaction, {
+      content: '❌ Invalid Live URL. Please provide a valid URL (e.g. https://myapp.com).',
+      ephemeral: true,
+    });
+    return;
+  }
+
   await interaction.deferReply({ ephemeral: true });
 
   const { rows } = await pool.query(
@@ -226,7 +261,12 @@ export async function handleShowcaseModalSubmit(interaction, pool) {
   const embed = buildShowcaseEmbed(showcase);
   const row = buildUpvoteRow(showcase.id, 0);
 
-  const msg = await interaction.channel.send({ embeds: [embed], components: [row] });
+  if (!interaction.channel) {
+    await safeEditReply(interaction, { content: '❌ Cannot post in this channel.' });
+    return;
+  }
+
+  const msg = await safeSend(interaction.channel, { embeds: [embed], components: [row] });
 
   // Store message_id for future updates
   await pool.query('UPDATE showcases SET message_id = $1 WHERE id = $2', [msg.id, showcase.id]);
@@ -468,6 +508,13 @@ export async function execute(interaction) {
  */
 export async function handleShowcaseUpvote(interaction, pool) {
   const showcaseId = parseInt(interaction.customId.replace('showcase_upvote_', ''), 10);
+
+  // Guard against malformed customId
+  if (Number.isNaN(showcaseId)) {
+    await interaction.reply({ content: '❌ Invalid showcase ID.', flags: 64 });
+    return;
+  }
+
   const userId = interaction.user.id;
   const guildId = interaction.guildId;
 
@@ -479,7 +526,7 @@ export async function handleShowcaseUpvote(interaction, pool) {
     return;
   }
 
-  // Fetch the showcase
+  // Fetch the showcase (outside transaction — read-only pre-check)
   const { rows: showcaseRows } = await pool.query(
     'SELECT * FROM showcases WHERE id = $1 AND guild_id = $2',
     [showcaseId, guildId],
@@ -501,46 +548,61 @@ export async function handleShowcaseUpvote(interaction, pool) {
     return;
   }
 
-  // Check if user already voted
-  const { rows: voteRows } = await pool.query(
-    'SELECT 1 FROM showcase_votes WHERE guild_id = $1 AND showcase_id = $2 AND user_id = $3',
-    [guildId, showcaseId, userId],
-  );
-
+  // Atomically toggle vote using a transaction
   let newUpvotes;
+  let removed;
 
-  if (voteRows.length > 0) {
-    // Toggle off — remove vote
-    await pool.query(
-      'DELETE FROM showcase_votes WHERE guild_id = $1 AND showcase_id = $2 AND user_id = $3',
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: voteRows } = await client.query(
+      'SELECT 1 FROM showcase_votes WHERE guild_id = $1 AND showcase_id = $2 AND user_id = $3',
       [guildId, showcaseId, userId],
     );
-    const { rows: updated } = await pool.query(
-      'UPDATE showcases SET upvotes = upvotes - 1 WHERE id = $1 RETURNING upvotes',
-      [showcaseId],
-    );
-    newUpvotes = updated[0].upvotes;
 
+    if (voteRows.length > 0) {
+      // Toggle off — remove vote
+      await client.query(
+        'DELETE FROM showcase_votes WHERE guild_id = $1 AND showcase_id = $2 AND user_id = $3',
+        [guildId, showcaseId, userId],
+      );
+      const { rows: updated } = await client.query(
+        'UPDATE showcases SET upvotes = upvotes - 1 WHERE id = $1 RETURNING upvotes',
+        [showcaseId],
+      );
+      newUpvotes = updated[0].upvotes;
+      removed = true;
+    } else {
+      // Add vote
+      await client.query(
+        'INSERT INTO showcase_votes (guild_id, showcase_id, user_id) VALUES ($1, $2, $3)',
+        [guildId, showcaseId, userId],
+      );
+      const { rows: updated } = await client.query(
+        'UPDATE showcases SET upvotes = upvotes + 1 WHERE id = $1 RETURNING upvotes',
+        [showcaseId],
+      );
+      newUpvotes = updated[0].upvotes;
+      removed = false;
+    }
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  if (removed) {
     info('Showcase upvote removed', { showcaseId, userId, guildId, newUpvotes });
-
     await safeReply(interaction, {
       content: `👎 Removed your upvote from **${showcase.name}**.`,
       ephemeral: true,
     });
   } else {
-    // Add vote
-    await pool.query(
-      'INSERT INTO showcase_votes (guild_id, showcase_id, user_id) VALUES ($1, $2, $3)',
-      [guildId, showcaseId, userId],
-    );
-    const { rows: updated } = await pool.query(
-      'UPDATE showcases SET upvotes = upvotes + 1 WHERE id = $1 RETURNING upvotes',
-      [showcaseId],
-    );
-    newUpvotes = updated[0].upvotes;
-
     info('Showcase upvoted', { showcaseId, userId, guildId, newUpvotes });
-
     await safeReply(interaction, { content: `👍 Upvoted **${showcase.name}**!`, ephemeral: true });
   }
 

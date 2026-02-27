@@ -18,7 +18,7 @@ exports.up = (pgm) => {
       live_url TEXT,
       message_id TEXT,
       channel_id TEXT,
-      upvotes INTEGER DEFAULT 0,
+      upvotes INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);

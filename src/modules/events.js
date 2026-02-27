@@ -4,7 +4,7 @@
  */
 
 import { Client, Events } from 'discord.js';
-import { handleShowcaseUpvote } from '../commands/showcase.js';
+import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../commands/showcase.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
 // safeReply works with both Interactions (.reply()) and Messages (.reply()).
@@ -422,8 +422,6 @@ export function registerShowcaseModalHandler(client) {
       }
       return;
     }
-
-    const { handleShowcaseModalSubmit } = await import('../commands/showcase.js');
 
     try {
       await handleShowcaseModalSubmit(interaction, pool);

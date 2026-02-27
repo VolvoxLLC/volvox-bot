@@ -19,7 +19,7 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn(),
+  safeSend: (channel, opts) => channel.send(opts),
   safeReply: (t, opts) => t.reply(opts),
   safeEditReply: (t, opts) => t.editReply(opts),
 }));
@@ -732,10 +732,31 @@ describe('showcase view subcommand', () => {
 
 describe('handleShowcaseUpvote', () => {
   let mockPool;
+  let mockClient;
 
-  beforeEach(() => {
-    mockPool = { query: vi.fn() };
-  });
+  /** Build a pool mock with a transactional client. */
+  function makePool(poolQueryResponses = [], clientQueryResponses = []) {
+    mockClient = {
+      query: vi.fn(),
+      release: vi.fn(),
+    };
+
+    // Wire up client query responses
+    let clientIdx = 0;
+    mockClient.query.mockImplementation(async (sql) => {
+      // BEGIN / COMMIT / ROLLBACK always succeed
+      if (/^(BEGIN|COMMIT|ROLLBACK)$/i.test(sql)) return { rows: [] };
+      const res = clientQueryResponses[clientIdx++];
+      return res ?? { rows: [] };
+    });
+
+    const pool = { query: vi.fn(), connect: vi.fn().mockResolvedValue(mockClient) };
+    let poolIdx = 0;
+    pool.query.mockImplementation(async () => {
+      return poolQueryResponses[poolIdx++] ?? { rows: [] };
+    });
+    return pool;
+  }
 
   afterEach(() => vi.clearAllMocks());
 
@@ -747,7 +768,7 @@ describe('handleShowcaseUpvote', () => {
       name: 'My Project',
       upvotes: 3,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [showcase] });
+    mockPool = makePool([{ rows: [showcase] }]);
 
     const interaction = createMockButtonInteraction('showcase_upvote_1', 'voter-001');
     await handleShowcaseUpvote(interaction, mockPool);
@@ -758,7 +779,7 @@ describe('handleShowcaseUpvote', () => {
   });
 
   it('should reject when project does not exist', async () => {
-    mockPool.query.mockResolvedValueOnce({ rows: [] });
+    mockPool = makePool([{ rows: [] }]);
 
     const interaction = createMockButtonInteraction('showcase_upvote_999', 'voter-001');
     await handleShowcaseUpvote(interaction, mockPool);
@@ -777,11 +798,12 @@ describe('handleShowcaseUpvote', () => {
       upvotes: 4,
     };
 
-    mockPool.query
-      .mockResolvedValueOnce({ rows: [showcase] }) // SELECT showcase
-      .mockResolvedValueOnce({ rows: [] }) // SELECT vote (none)
-      .mockResolvedValueOnce({ rows: [] }) // INSERT vote
-      .mockResolvedValueOnce({ rows: [{ upvotes: 5 }] }); // UPDATE upvotes
+    // pool.query: SELECT showcase
+    // client.query (non-BEGIN/COMMIT): SELECT vote (none), INSERT vote, UPDATE upvotes
+    mockPool = makePool(
+      [{ rows: [showcase] }],
+      [{ rows: [] }, { rows: [] }, { rows: [{ upvotes: 5 }] }],
+    );
 
     const interaction = createMockButtonInteraction('showcase_upvote_2', 'voter-001');
     await handleShowcaseUpvote(interaction, mockPool);
@@ -804,11 +826,12 @@ describe('handleShowcaseUpvote', () => {
       upvotes: 6,
     };
 
-    mockPool.query
-      .mockResolvedValueOnce({ rows: [showcase] }) // SELECT showcase
-      .mockResolvedValueOnce({ rows: [{ 1: 1 }] }) // SELECT vote (exists)
-      .mockResolvedValueOnce({ rows: [] }) // DELETE vote
-      .mockResolvedValueOnce({ rows: [{ upvotes: 5 }] }); // UPDATE upvotes
+    // pool.query: SELECT showcase
+    // client.query (non-BEGIN/COMMIT): SELECT vote (exists), DELETE vote, UPDATE upvotes
+    mockPool = makePool(
+      [{ rows: [showcase] }],
+      [{ rows: [{ 1: 1 }] }, { rows: [] }, { rows: [{ upvotes: 5 }] }],
+    );
 
     const interaction = createMockButtonInteraction('showcase_upvote_3', 'voter-001');
     await handleShowcaseUpvote(interaction, mockPool);
@@ -816,8 +839,8 @@ describe('handleShowcaseUpvote', () => {
     expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({ content: expect.stringContaining('Removed your upvote') }),
     );
-    // Should call DELETE
-    expect(mockPool.query).toHaveBeenCalledWith(
+    // Should call DELETE inside the transaction client
+    expect(mockClient.query).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM showcase_votes'),
       expect.any(Array),
     );
@@ -832,22 +855,24 @@ describe('handleShowcaseUpvote', () => {
       upvotes: 0,
     };
 
-    mockPool.query
-      .mockResolvedValueOnce({ rows: [showcase] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ upvotes: 1 }] });
+    // pool.query: SELECT showcase
+    // client.query (non-BEGIN/COMMIT): SELECT vote (none), INSERT vote, UPDATE upvotes
+    mockPool = makePool(
+      [{ rows: [showcase] }],
+      [{ rows: [] }, { rows: [] }, { rows: [{ upvotes: 1 }] }],
+    );
 
     const interaction = createMockButtonInteraction('showcase_upvote_4', 'voter-002');
     await handleShowcaseUpvote(interaction, mockPool);
 
-    expect(mockPool.query).toHaveBeenCalledWith(
+    expect(mockClient.query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE showcases SET upvotes = upvotes + 1'),
       expect.arrayContaining([4]),
     );
   });
 
   it('should reject when no guild', async () => {
+    mockPool = makePool();
     const interaction = createMockButtonInteraction('showcase_upvote_1', 'voter-001');
     interaction.guildId = null;
     await handleShowcaseUpvote(interaction, mockPool);
