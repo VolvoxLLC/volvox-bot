@@ -35,10 +35,7 @@ export const data = new SlashCommandBuilder()
           .setName('remove')
           .setDescription('Remove a tracked repo (Admin only)')
           .addStringOption((opt) =>
-            opt
-              .setName('repo')
-              .setDescription('Repo in owner/repo format')
-              .setRequired(true),
+            opt.setName('repo').setDescription('Repo in owner/repo format').setRequired(true),
           ),
       )
       .addSubcommand((sub) => sub.setName('list').setDescription('List tracked repos'))
@@ -193,10 +190,10 @@ async function handleRemove(interaction, pool, config) {
   );
 
   // Remove state row from DB so next add starts fresh
-  await pool.query(
-    'DELETE FROM github_feed_state WHERE guild_id = $1 AND repo = $2',
-    [interaction.guildId, repo],
-  );
+  await pool.query('DELETE FROM github_feed_state WHERE guild_id = $1 AND repo = $2', [
+    interaction.guildId,
+    repo,
+  ]);
 
   info('GitHub feed: repo removed', { guildId: interaction.guildId, repo });
 

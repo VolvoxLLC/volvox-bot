@@ -46,10 +46,10 @@ import {
 } from './modules/ai.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
+import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
-import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { pruneOldLogs } from './transports/postgres.js';
