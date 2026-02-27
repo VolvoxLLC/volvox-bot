@@ -12,6 +12,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 import { safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
 import { getConfig } from './config.js';
+import { trackMessage, trackReaction } from './engagement.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';
@@ -152,6 +153,9 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Feed welcome-context activity tracker
     recordCommunityActivity(message, guildConfig);
 
+    // Engagement tracking (fire-and-forget, non-blocking)
+    trackMessage(message).catch(() => {});
+
     // XP gain (fire-and-forget, non-blocking)
     handleXpGain(message).catch((err) => {
       logError('XP gain handler failed', {
@@ -269,6 +273,10 @@ export function registerReactionHandlers(client, _config) {
     if (!guildId) return;
 
     const guildConfig = getConfig(guildId);
+
+    // Engagement tracking (fire-and-forget)
+    trackReaction(reaction, user).catch(() => {});
+
     if (!guildConfig.starboard?.enabled) return;
 
     try {

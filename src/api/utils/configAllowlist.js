@@ -20,6 +20,7 @@ export const SAFE_CONFIG_KEYS = new Set([
   'tldr',
   'afk',
   'reputation',
+  'engagement',
   'github',
 ]);
 

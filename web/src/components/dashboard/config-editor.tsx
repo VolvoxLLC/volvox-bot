@@ -48,7 +48,7 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "github"] as const;
+  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "engagement", "github"] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
   for (const key of knownSections) {
@@ -1202,6 +1202,7 @@ export function ConfigEditor() {
             { key: "poll", label: "Polls", desc: "/poll for community voting" },
             { key: "tldr", label: "TL;DR Summaries", desc: "/tldr for AI channel summaries" },
             { key: "afk", label: "AFK System", desc: "/afk auto-respond when members are away" },
+            { key: "engagement", label: "Engagement Tracking", desc: "/profile stats — messages, reactions, days active" },
           ] as const).map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between">
               <div>

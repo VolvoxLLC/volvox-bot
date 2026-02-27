@@ -149,7 +149,8 @@
       "afk": "everyone",
       "github": "everyone",
       "rank": "everyone",
-      "leaderboard": "everyone"
+      "leaderboard": "everyone",
+      "profile": "everyone"
     }
   },
   "help": {
@@ -180,6 +181,11 @@
   },
   "afk": {
     "enabled": false
+  },
+  "engagement": {
+    "enabled": false,
+    "trackMessages": true,
+    "trackReactions": true
   },
   "reputation": {
     "enabled": false,
