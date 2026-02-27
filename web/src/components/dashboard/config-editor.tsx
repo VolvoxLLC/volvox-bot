@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -14,7 +13,7 @@ import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
 
 /** Config sections exposed by the API — all fields optional for partial API responses. */
-type GuildConfig = DeepPartial<BotConfig> & Record<string, any>;
+type GuildConfig = DeepPartial<BotConfig> & Record<string, unknown>;
 
 /** Shared input styling for text inputs and textareas in the config editor. */
 const inputClasses =
@@ -96,7 +95,7 @@ export function ConfigEditor() {
   const abortRef = useRef<AbortController | null>(null);
 
   const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
-    updateDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
+    setDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
   }, []);
 
   // ── Guild selection ────────────────────────────────────────────
