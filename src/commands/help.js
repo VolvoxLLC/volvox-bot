@@ -11,7 +11,7 @@ import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { isModerator } from '../utils/permissions.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -325,6 +325,15 @@ async function handleList(interaction) {
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
+  const config = getConfig(interaction.guildId);
+  if (!config.help?.enabled) {
+    await safeReply(interaction, {
+      content: '❌ The /help command is not enabled on this server.',
+      ephemeral: true,
+    });
+    return;
+  }
+
   await interaction.deferReply({ ephemeral: true });
 
   const subcommand = interaction.options.getSubcommand();

@@ -13,6 +13,11 @@ export const SAFE_CONFIG_KEYS = new Set([
   'starboard',
   'permissions',
   'memory',
+  'help',
+  'announce',
+  'snippet',
+  'poll',
+  'tldr',
 ]);
 
 export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];

@@ -13,6 +13,7 @@ vi.mock('../../src/logger.js', () => ({
 
 vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({
+    announce: { enabled: true },
     permissions: { enabled: true, adminRoleId: null, usePermissions: true },
   }),
 }));
