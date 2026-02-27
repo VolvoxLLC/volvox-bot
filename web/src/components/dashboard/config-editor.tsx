@@ -48,7 +48,7 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "engagement", "github"] as const;
+  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "engagement", "github", "challenges"] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
   for (const key of knownSections) {
@@ -1370,6 +1370,46 @@ export function ConfigEditor() {
               disabled={saving} className={inputClasses} placeholder="100, 300, 600, 1000, ..." />
             <p className="text-xs text-muted-foreground">XP required for each level (L1, L2, L3, ...). Add more values for more levels.</p>
           </label>
+        </CardContent>
+      </Card>
+
+      {/* ═══ Daily Coding Challenges ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Daily Coding Challenges</CardTitle>
+            <ToggleSwitch
+              checked={draftConfig.challenges?.enabled ?? false}
+              onChange={(v) => setDraftConfig((prev) => ({ ...prev, challenges: { ...prev.challenges, enabled: v } } as GuildConfig))}
+              disabled={saving}
+              label="Challenges"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">Auto-post a daily coding challenge with hint and solve tracking.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Challenge Channel ID</span>
+              <input type="text"
+                value={draftConfig.challenges?.channelId ?? ""}
+                onChange={(e) => setDraftConfig((prev) => ({ ...prev, challenges: { ...prev.challenges, channelId: e.target.value.trim() || null } } as GuildConfig))}
+                disabled={saving} className={inputClasses} placeholder="Channel ID for daily challenges" />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Post Time (HH:MM)</span>
+              <input type="text"
+                value={draftConfig.challenges?.postTime ?? "09:00"}
+                onChange={(e) => setDraftConfig((prev) => ({ ...prev, challenges: { ...prev.challenges, postTime: e.target.value } } as GuildConfig))}
+                disabled={saving} className={inputClasses} placeholder="09:00" />
+            </label>
+            <label className="space-y-2 col-span-2">
+              <span className="text-sm font-medium">Timezone</span>
+              <input type="text"
+                value={draftConfig.challenges?.timezone ?? "America/New_York"}
+                onChange={(e) => setDraftConfig((prev) => ({ ...prev, challenges: { ...prev.challenges, timezone: e.target.value } } as GuildConfig))}
+                disabled={saving} className={inputClasses} placeholder="America/New_York" />
+              <p className="text-xs text-muted-foreground">IANA timezone (e.g. America/Chicago, Europe/London)</p>
+            </label>
+          </div>
         </CardContent>
       </Card>
 

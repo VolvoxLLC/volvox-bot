@@ -150,7 +150,8 @@
       "github": "everyone",
       "rank": "everyone",
       "leaderboard": "everyone",
-      "profile": "everyone"
+      "profile": "everyone",
+      "challenge": "everyone"
     }
   },
   "help": {
@@ -200,5 +201,11 @@
     "announceChannelId": null,
     "levelThresholds": [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000],
     "roleRewards": {}
+  },
+  "challenges": {
+    "enabled": false,
+    "channelId": null,
+    "postTime": "09:00",
+    "timezone": "America/New_York"
   }
 }

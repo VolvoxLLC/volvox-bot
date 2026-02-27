@@ -22,6 +22,7 @@ export const SAFE_CONFIG_KEYS = new Set([
   'reputation',
   'engagement',
   'github',
+  'challenges',
 ]);
 
 export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];
