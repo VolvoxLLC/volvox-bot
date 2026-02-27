@@ -175,7 +175,15 @@ export interface BotConfig {
 }
 
 /** All config sections shown in the editor. */
-export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage" | "starboard" | "permissions" | "memory";
+export type ConfigSection =
+  | 'ai'
+  | 'welcome'
+  | 'spam'
+  | 'moderation'
+  | 'triage'
+  | 'starboard'
+  | 'permissions'
+  | 'memory';
 
 /**
  * @deprecated Use {@link ConfigSection} directly.
