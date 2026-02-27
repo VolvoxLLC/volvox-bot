@@ -187,4 +187,47 @@ describe('/rank command', () => {
     // Should query with target user's ID
     expect(pool.query).toHaveBeenCalledWith(expect.any(String), expect.arrayContaining(['user2']));
   });
+
+  it('shows MAX LEVEL state when xp exceeds all thresholds', async () => {
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 15000, level: 10, messages_count: 999 }] })
+        .mockResolvedValueOnce({ rows: [{ rank: 1 }] }),
+    };
+    getPool.mockReturnValue(pool);
+
+    const interaction = makeInteraction();
+    await execute(interaction);
+
+    // safeEditReply should be called with an embed (not an error message)
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.objectContaining({ embeds: expect.any(Array) }),
+    );
+  });
+
+  it('falls back to username when displayName is null', async () => {
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 200, level: 1, messages_count: 5 }] })
+        .mockResolvedValueOnce({ rows: [{ rank: 2 }] }),
+    };
+    getPool.mockReturnValue(pool);
+
+    const targetUser = {
+      id: 'user3',
+      username: 'FallbackUser',
+      displayName: null,
+      displayAvatarURL: vi.fn().mockReturnValue('http://avatar3'),
+    };
+    const interaction = makeInteraction({ targetUser });
+    await execute(interaction);
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.objectContaining({ embeds: expect.any(Array) }),
+    );
+  });
 });
