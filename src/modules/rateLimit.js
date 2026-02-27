@@ -156,6 +156,7 @@ export async function checkRateLimit(message, config) {
   // Temp-mute config
   const muteThreshold = rlConfig.muteAfterTriggers ?? 3;
   const muteWindowSeconds = rlConfig.muteWindowSeconds ?? 300; // 5 minutes
+  const muteWindowMs = muteWindowSeconds * 1000;
   const muteDurationMs = (rlConfig.muteDurationSeconds ?? 300) * 1000; // 5 minutes
 
   const key = `${message.author.id}:${message.channel.id}`;
@@ -203,8 +204,6 @@ export async function checkRateLimit(message, config) {
   // Delete the excess message
   await message.delete().catch(() => {});
 
-  // Track trigger count for mute escalation (sliding window)
-  const muteWindowMs = muteWindowSeconds * 1000;
   if (now - entry.triggerWindowStart > muteWindowMs) {
     // Reset trigger window
     entry.triggerCount = 1;

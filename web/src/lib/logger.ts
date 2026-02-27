@@ -33,9 +33,11 @@ function writeServerLog(level: LogLevel, args: unknown[]): void {
   stream.write(line);
 }
 
-const makeServerLogger = (level: LogLevel) => (...args: unknown[]) => {
-  writeServerLog(level, args);
-};
+const makeServerLogger =
+  (level: LogLevel) =>
+  (...args: unknown[]) => {
+    writeServerLog(level, args);
+  };
 
 export const logger = isBrowser
   ? {
