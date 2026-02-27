@@ -1225,6 +1225,78 @@ export function ConfigEditor() {
         </CardContent>
       </Card>
 
+      {/* ═══ Engagement / Activity Badges ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <CardTitle className="text-base">Activity Badges</CardTitle>
+          <p className="text-xs text-muted-foreground">Configure the badge tiers shown on /profile. Each badge requires a minimum number of active days.</p>
+          {(draftConfig.engagement?.activityBadges ?? [
+            { days: 90, label: "👑 Legend" },
+            { days: 30, label: "🌳 Veteran" },
+            { days: 7, label: "🌿 Regular" },
+            { days: 0, label: "🌱 Newcomer" },
+          ]).map((badge: { days: number; label: string }, i: number) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                className="w-20"
+                type="number"
+                min={0}
+                value={badge.days}
+                onChange={(e) => {
+                  const badges = [...(draftConfig.engagement?.activityBadges ?? [
+                    { days: 90, label: "👑 Legend" },
+                    { days: 30, label: "🌳 Veteran" },
+                    { days: 7, label: "🌿 Regular" },
+                    { days: 0, label: "🌱 Newcomer" },
+                  ])];
+                  badges[i] = { ...badges[i], days: Math.max(0, parseInt(e.target.value, 10) || 0) };
+                  setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+                }}
+                disabled={saving}
+              />
+              <span className="text-xs text-muted-foreground">days →</span>
+              <Input
+                className="flex-1"
+                value={badge.label}
+                onChange={(e) => {
+                  const badges = [...(draftConfig.engagement?.activityBadges ?? [
+                    { days: 90, label: "👑 Legend" },
+                    { days: 30, label: "🌳 Veteran" },
+                    { days: 7, label: "🌿 Regular" },
+                    { days: 0, label: "🌱 Newcomer" },
+                  ])];
+                  badges[i] = { ...badges[i], label: e.target.value };
+                  setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+                }}
+                disabled={saving}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const badges = [...(draftConfig.engagement?.activityBadges ?? [])].filter((_, idx) => idx !== i);
+                  setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+                }}
+                disabled={saving || (draftConfig.engagement?.activityBadges ?? []).length <= 1}
+              >
+                ✕
+              </Button>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const badges = [...(draftConfig.engagement?.activityBadges ?? []), { days: 0, label: "🌟 New Badge" }];
+              setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+            }}
+            disabled={saving}
+          >
+            + Add Badge
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* ═══ Reputation / XP Settings ═══ */}
       <Card>
         <CardContent className="space-y-4 pt-6">

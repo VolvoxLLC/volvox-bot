@@ -11,17 +11,27 @@ import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
+/** Default activity badge tiers (threshold in days → emoji + label). */
+const DEFAULT_BADGES = [
+  { days: 90, label: '👑 Legend' },
+  { days: 30, label: '🌳 Veteran' },
+  { days: 7, label: '🌿 Regular' },
+  { days: 0, label: '🌱 Newcomer' },
+];
+
 /**
- * Return an activity badge based on days_active.
+ * Return an activity badge based on days_active and config.
  *
  * @param {number} daysActive
+ * @param {Array<{days: number, label: string}>} [badges] - Custom badge tiers from config, sorted descending by days.
  * @returns {string}
  */
-export function getActivityBadge(daysActive) {
-  if (daysActive >= 90) return '👑 Legend';
-  if (daysActive >= 30) return '🌳 Veteran';
-  if (daysActive >= 7) return '🌿 Regular';
-  return '🌱 Newcomer';
+export function getActivityBadge(daysActive, badges) {
+  const tiers = badges?.length ? [...badges].sort((a, b) => b.days - a.days) : DEFAULT_BADGES;
+  for (const tier of tiers) {
+    if (daysActive >= tier.days) return tier.label;
+  }
+  return tiers[tiers.length - 1]?.label ?? '🌱 Newcomer';
 }
 
 export const data = new SlashCommandBuilder()
@@ -70,7 +80,7 @@ export async function execute(interaction) {
       last_active: null,
     };
 
-    const badge = getActivityBadge(stats.days_active);
+    const badge = getActivityBadge(stats.days_active, config.engagement?.activityBadges);
 
     const formatDate = (d) =>
       d ? new Date(d).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Never';

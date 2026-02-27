@@ -111,6 +111,30 @@ describe('getActivityBadge', () => {
     expect(getActivityBadge(90)).toBe('👑 Legend');
     expect(getActivityBadge(200)).toBe('👑 Legend');
   });
+
+  it('uses custom badges from config', () => {
+    const custom = [
+      { days: 365, label: '🏆 OG' },
+      { days: 14, label: '⭐ Active' },
+      { days: 0, label: '🆕 Fresh' },
+    ];
+    expect(getActivityBadge(400, custom)).toBe('🏆 OG');
+    expect(getActivityBadge(14, custom)).toBe('⭐ Active');
+    expect(getActivityBadge(5, custom)).toBe('🆕 Fresh');
+  });
+
+  it('handles unsorted custom badges', () => {
+    const unsorted = [
+      { days: 0, label: '🆕 New' },
+      { days: 50, label: '🔥 Hot' },
+    ];
+    expect(getActivityBadge(50, unsorted)).toBe('🔥 Hot');
+    expect(getActivityBadge(3, unsorted)).toBe('🆕 New');
+  });
+
+  it('falls back to defaults when custom badges is empty', () => {
+    expect(getActivityBadge(90, [])).toBe('👑 Legend');
+  });
 });
 
 describe('/profile execute', () => {

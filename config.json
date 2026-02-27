@@ -185,7 +185,13 @@
   "engagement": {
     "enabled": false,
     "trackMessages": true,
-    "trackReactions": true
+    "trackReactions": true,
+    "activityBadges": [
+      { "days": 90, "label": "👑 Legend" },
+      { "days": 30, "label": "🌳 Veteran" },
+      { "days": 7, "label": "🌿 Regular" },
+      { "days": 0, "label": "🌱 Newcomer" }
+    ]
   },
   "reputation": {
     "enabled": false,
