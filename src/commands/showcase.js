@@ -512,7 +512,7 @@ export async function handleShowcaseUpvote(interaction, pool) {
 
   // Guard against malformed customId
   if (Number.isNaN(showcaseId)) {
-    await interaction.reply({ content: '❌ Invalid showcase ID.', flags: 64 });
+    await safeReply(interaction, { content: '❌ Invalid showcase ID.', ephemeral: true });
     return;
   }
 
@@ -522,6 +522,15 @@ export async function handleShowcaseUpvote(interaction, pool) {
   if (!guildId) {
     await safeReply(interaction, {
       content: '❌ This can only be used in a server.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const guildConfig = getConfig(guildId);
+  if (guildConfig.showcase?.enabled === false) {
+    await safeReply(interaction, {
+      content: '❌ The showcase feature is disabled in this server.',
       ephemeral: true,
     });
     return;
