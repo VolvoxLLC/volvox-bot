@@ -85,10 +85,10 @@ vi.mock('discord.js', () => {
   };
 });
 
+import { data, execute, isValidRepo } from '../../src/commands/github.js';
 import { getPool } from '../../src/db.js';
 import { getConfig } from '../../src/modules/config.js';
 import { isAdmin } from '../../src/utils/permissions.js';
-import { data, execute, isValidRepo } from '../../src/commands/github.js';
 
 /** Build a mock interaction */
 function makeInteraction(subcommandGroup, subcommand, options = {}) {

@@ -11,10 +11,13 @@ vi.mock('node:util', async (importOriginal) => {
     ...actual,
     promisify: (fn) => {
       // Return a promisified version that defers to our mock
-      return (...args) => new Promise((resolve, reject) => fn(...args, (err, result) => {
-        if (err) reject(err);
-        else resolve(result);
-      }));
+      return (...args) =>
+        new Promise((resolve, reject) =>
+          fn(...args, (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+          }),
+        );
     },
   };
 });
@@ -77,7 +80,6 @@ vi.mock('discord.js', () => {
 import { execFile } from 'node:child_process';
 import { getPool } from '../../src/db.js';
 import { getConfig } from '../../src/modules/config.js';
-import { safeSend } from '../../src/utils/safeSend.js';
 import {
   buildEmbed,
   buildIssueEmbed,
@@ -88,6 +90,7 @@ import {
   startGithubFeed,
   stopGithubFeed,
 } from '../../src/modules/githubFeed.js';
+import { safeSend } from '../../src/utils/safeSend.js';
 
 /** Helper: build a base GitHub event object */
 function makeEvent(overrides = {}) {
@@ -368,7 +371,10 @@ describe('buildEmbed', () => {
   it('should dispatch IssuesEvent', () => {
     const event = makeEvent({
       type: 'IssuesEvent',
-      payload: { action: 'opened', issue: { number: 1, title: 'T', html_url: 'https://x.com', labels: [] } },
+      payload: {
+        action: 'opened',
+        issue: { number: 1, title: 'T', html_url: 'https://x.com', labels: [] },
+      },
     });
     expect(buildEmbed(event, enabledAll)).not.toBeNull();
   });

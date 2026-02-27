@@ -9,9 +9,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { error as logError, info, warn as logWarn } from '../logger.js';
-import { getConfig } from './config.js';
+import { info, error as logError, warn as logWarn } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
+import { getConfig } from './config.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -31,7 +31,7 @@ let pollInFlight = false;
 export async function fetchRepoEvents(owner, repo) {
   const { stdout } = await execFileAsync(
     'gh',
-    ['api', `repos/${owner}/${repo}/events`, '--paginate', '-q', '.[0:10]'],
+    ['api', `repos/${owner}/${repo}/events?per_page=30`, '--jq', '.[0:10]'],
     { timeout: 30_000 },
   );
   const text = stdout.trim();
@@ -270,7 +270,7 @@ async function pollGuildFeed(client, guildId, feedConfig) {
 
       // Filter to events newer than last seen (events are newest-first)
       const newEvents = lastEventId
-        ? events.filter((e) => e.id > lastEventId)
+        ? events.filter((e) => Number(e.id) > Number(lastEventId))
         : events.slice(0, 1); // first run: only latest to avoid spam
 
       if (newEvents.length === 0) {
@@ -301,7 +301,7 @@ async function pollGuildFeed(client, guildId, feedConfig) {
           });
         }
         // Track newest ID regardless of whether we posted (skip unsupported types)
-        if (!newestId || event.id > newestId) {
+        if (!newestId || Number(event.id) > Number(newestId)) {
           newestId = event.id;
         }
       }
