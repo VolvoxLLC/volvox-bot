@@ -48,7 +48,7 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "github"] as const;
+  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "engagement", "github"] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
   for (const key of knownSections) {
@@ -1202,6 +1202,7 @@ export function ConfigEditor() {
             { key: "poll", label: "Polls", desc: "/poll for community voting" },
             { key: "tldr", label: "TL;DR Summaries", desc: "/tldr for AI channel summaries" },
             { key: "afk", label: "AFK System", desc: "/afk auto-respond when members are away" },
+            { key: "engagement", label: "Engagement Tracking", desc: "/profile stats — messages, reactions, days active" },
           ] as const).map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between">
               <div>
@@ -1221,6 +1222,78 @@ export function ConfigEditor() {
               />
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* ═══ Engagement / Activity Badges ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <CardTitle className="text-base">Activity Badges</CardTitle>
+          <p className="text-xs text-muted-foreground">Configure the badge tiers shown on /profile. Each badge requires a minimum number of active days.</p>
+          {(draftConfig.engagement?.activityBadges ?? [
+            { days: 90, label: "👑 Legend" },
+            { days: 30, label: "🌳 Veteran" },
+            { days: 7, label: "🌿 Regular" },
+            { days: 0, label: "🌱 Newcomer" },
+          ]).map((badge: { days: number; label: string }, i: number) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                className="w-20"
+                type="number"
+                min={0}
+                value={badge.days}
+                onChange={(e) => {
+                  const badges = [...(draftConfig.engagement?.activityBadges ?? [
+                    { days: 90, label: "👑 Legend" },
+                    { days: 30, label: "🌳 Veteran" },
+                    { days: 7, label: "🌿 Regular" },
+                    { days: 0, label: "🌱 Newcomer" },
+                  ])];
+                  badges[i] = { ...badges[i], days: Math.max(0, parseInt(e.target.value, 10) || 0) };
+                  setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+                }}
+                disabled={saving}
+              />
+              <span className="text-xs text-muted-foreground">days →</span>
+              <Input
+                className="flex-1"
+                value={badge.label}
+                onChange={(e) => {
+                  const badges = [...(draftConfig.engagement?.activityBadges ?? [
+                    { days: 90, label: "👑 Legend" },
+                    { days: 30, label: "🌳 Veteran" },
+                    { days: 7, label: "🌿 Regular" },
+                    { days: 0, label: "🌱 Newcomer" },
+                  ])];
+                  badges[i] = { ...badges[i], label: e.target.value };
+                  setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+                }}
+                disabled={saving}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const badges = [...(draftConfig.engagement?.activityBadges ?? [])].filter((_, idx) => idx !== i);
+                  setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+                }}
+                disabled={saving || (draftConfig.engagement?.activityBadges ?? []).length <= 1}
+              >
+                ✕
+              </Button>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const badges = [...(draftConfig.engagement?.activityBadges ?? []), { days: 0, label: "🌟 New Badge" }];
+              setDraftConfig((prev) => ({ ...prev, engagement: { ...prev.engagement, activityBadges: badges } }));
+            }}
+            disabled={saving}
+          >
+            + Add Badge
+          </Button>
         </CardContent>
       </Card>
 
