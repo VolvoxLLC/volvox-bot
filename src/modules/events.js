@@ -15,10 +15,10 @@ import { getConfig } from './config.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';
+import { handleXpGain } from './reputation.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
-import { handleXpGain } from './reputation.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 
 /** @type {boolean} Guard against duplicate process-level handler registration */

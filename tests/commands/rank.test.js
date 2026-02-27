@@ -37,29 +37,53 @@ vi.mock('discord.js', () => {
   }
 
   class MockSlashCommandBuilder {
-    setName() { return this; }
-    setDescription() { return this; }
-    addUserOption(fn) { fn(chainable()); return this; }
+    setName() {
+      return this;
+    }
+    setDescription() {
+      return this;
+    }
+    addUserOption(fn) {
+      fn(chainable());
+      return this;
+    }
   }
 
   class MockEmbedBuilder {
-    setColor() { return this; }
-    setAuthor() { return this; }
-    setTitle() { return this; }
-    addFields() { return this; }
-    setThumbnail() { return this; }
-    setTimestamp() { return this; }
+    setColor() {
+      return this;
+    }
+    setAuthor() {
+      return this;
+    }
+    setTitle() {
+      return this;
+    }
+    addFields() {
+      return this;
+    }
+    setThumbnail() {
+      return this;
+    }
+    setTimestamp() {
+      return this;
+    }
   }
 
   return { SlashCommandBuilder: MockSlashCommandBuilder, EmbedBuilder: MockEmbedBuilder };
 });
 
+import { execute } from '../../src/commands/rank.js';
 import { getPool } from '../../src/db.js';
 import { safeEditReply } from '../../src/utils/safeSend.js';
-import { execute } from '../../src/commands/rank.js';
 
 function makeInteraction({ userId = 'user1', targetUser = null, guildId = 'guild1' } = {}) {
-  const user = { id: userId, username: 'TestUser', displayName: 'TestUser', displayAvatarURL: vi.fn().mockReturnValue('http://avatar') };
+  const user = {
+    id: userId,
+    username: 'TestUser',
+    displayName: 'TestUser',
+    displayAvatarURL: vi.fn().mockReturnValue('http://avatar'),
+  };
   const target = targetUser ?? user;
   return {
     deferReply: vi.fn().mockResolvedValue(undefined),
@@ -146,9 +170,6 @@ describe('/rank command', () => {
     await execute(interaction);
 
     // Should query with target user's ID
-    expect(pool.query).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.arrayContaining(['user2']),
-    );
+    expect(pool.query).toHaveBeenCalledWith(expect.any(String), expect.arrayContaining(['user2']));
   });
 });

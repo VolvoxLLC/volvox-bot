@@ -16,24 +16,38 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 
 vi.mock('discord.js', () => {
   class MockSlashCommandBuilder {
-    setName() { return this; }
-    setDescription() { return this; }
+    setName() {
+      return this;
+    }
+    setDescription() {
+      return this;
+    }
   }
 
   class MockEmbedBuilder {
-    setColor() { return this; }
-    setTitle() { return this; }
-    setDescription() { return this; }
-    setFooter() { return this; }
-    setTimestamp() { return this; }
+    setColor() {
+      return this;
+    }
+    setTitle() {
+      return this;
+    }
+    setDescription() {
+      return this;
+    }
+    setFooter() {
+      return this;
+    }
+    setTimestamp() {
+      return this;
+    }
   }
 
   return { SlashCommandBuilder: MockSlashCommandBuilder, EmbedBuilder: MockEmbedBuilder };
 });
 
+import { execute } from '../../src/commands/leaderboard.js';
 import { getPool } from '../../src/db.js';
 import { safeEditReply } from '../../src/utils/safeSend.js';
-import { execute } from '../../src/commands/leaderboard.js';
 
 function makeInteraction({ guildId = 'guild1' } = {}) {
   return {
@@ -41,9 +55,7 @@ function makeInteraction({ guildId = 'guild1' } = {}) {
     guildId,
     guild: {
       members: {
-        fetch: vi.fn().mockImplementation((id) =>
-          Promise.resolve({ displayName: `User_${id}` }),
-        ),
+        fetch: vi.fn().mockImplementation((id) => Promise.resolve({ displayName: `User_${id}` })),
       },
     },
   };
@@ -84,10 +96,7 @@ describe('/leaderboard command', () => {
       expect.stringContaining('ORDER BY xp DESC'),
       expect.any(Array),
     );
-    expect(pool.query).toHaveBeenCalledWith(
-      expect.stringContaining('LIMIT 10'),
-      expect.any(Array),
-    );
+    expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('LIMIT 10'), expect.any(Array));
 
     expect(safeEditReply).toHaveBeenCalledWith(
       interaction,

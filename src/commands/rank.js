@@ -9,10 +9,8 @@ import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { getConfig } from '../modules/config.js';
 import { buildProgressBar, computeLevel } from '../modules/reputation.js';
+import { REPUTATION_DEFAULTS } from '../modules/reputationDefaults.js';
 import { safeEditReply } from '../utils/safeSend.js';
-
-/** Default level thresholds (mirrors reputation.js defaults) */
-const DEFAULT_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
 
 export const data = new SlashCommandBuilder()
   .setName('rank')
@@ -37,8 +35,8 @@ export async function execute(interaction) {
 
   const target = interaction.options.getUser('user') ?? interaction.user;
   const cfg = getConfig(interaction.guildId);
-  const repCfg = { levelThresholds: DEFAULT_THRESHOLDS, ...cfg.reputation };
-  const thresholds = repCfg.levelThresholds ?? DEFAULT_THRESHOLDS;
+  const repCfg = { ...REPUTATION_DEFAULTS, ...cfg.reputation };
+  const thresholds = repCfg.levelThresholds;
 
   // Fetch reputation row
   const { rows } = await pool.query(
@@ -57,9 +55,7 @@ export async function execute(interaction) {
   const xpInLevel = xp - currentThreshold;
   const xpNeeded = nextThreshold !== null ? nextThreshold - currentThreshold : 0;
   const progressBar =
-    nextThreshold !== null
-      ? buildProgressBar(xpInLevel, xpNeeded)
-      : '▓'.repeat(10) + ' MAX';
+    nextThreshold !== null ? buildProgressBar(xpInLevel, xpNeeded) : '▓'.repeat(10) + ' MAX';
 
   // Rank position in guild
   const rankRow = await pool.query(
@@ -71,8 +67,7 @@ export async function execute(interaction) {
   const rank = Number(rankRow.rows[0]?.rank ?? 1);
 
   const levelLabel = `Level ${level}`;
-  const xpLabel =
-    nextThreshold !== null ? `${xp} / ${nextThreshold} XP` : `${xp} XP (Max Level)`;
+  const xpLabel = nextThreshold !== null ? `${xp} / ${nextThreshold} XP` : `${xp} XP (Max Level)`;
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)

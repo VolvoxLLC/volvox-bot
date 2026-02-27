@@ -20,6 +20,8 @@ export const SAFE_CONFIG_KEYS = new Set([
   'tldr',
   'afk',
   'reputation',
+  'afk',
+  'github',
 ]);
 
 export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];

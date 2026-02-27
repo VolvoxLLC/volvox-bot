@@ -20,24 +20,32 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 
 vi.mock('discord.js', () => {
   class MockEmbedBuilder {
-    setColor() { return this; }
-    setTitle() { return this; }
-    setDescription() { return this; }
-    setThumbnail() { return this; }
-    addFields() { return this; }
-    setTimestamp() { return this; }
+    setColor() {
+      return this;
+    }
+    setTitle() {
+      return this;
+    }
+    setDescription() {
+      return this;
+    }
+    setThumbnail() {
+      return this;
+    }
+    addFields() {
+      return this;
+    }
+    setTimestamp() {
+      return this;
+    }
   }
   return { EmbedBuilder: MockEmbedBuilder };
 });
 
 import { getPool } from '../../src/db.js';
 import { getConfig } from '../../src/modules/config.js';
+import { buildProgressBar, computeLevel, handleXpGain } from '../../src/modules/reputation.js';
 import { safeSend } from '../../src/utils/safeSend.js';
-import {
-  buildProgressBar,
-  computeLevel,
-  handleXpGain,
-} from '../../src/modules/reputation.js';
 
 const DEFAULT_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
 
@@ -51,7 +59,11 @@ function makeMessage({
 } = {}) {
   return {
     content,
-    author: { bot: botAuthor, id: userId, displayAvatarURL: vi.fn().mockReturnValue('http://avatar') },
+    author: {
+      bot: botAuthor,
+      id: userId,
+      displayAvatarURL: vi.fn().mockReturnValue('http://avatar'),
+    },
     guild: {
       id: guildId,
       channels: { cache: channelCache },
@@ -62,7 +74,10 @@ function makeMessage({
 
 function makePool({ xp = 50, level = 0 } = {}) {
   return {
-    query: vi.fn().mockResolvedValueOnce({ rows: [{ xp, level, messages_count: 1 }] }).mockResolvedValue({ rows: [] }),
+    query: vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ xp, level, messages_count: 1 }] })
+      .mockResolvedValue({ rows: [] }),
   };
 }
 
@@ -253,7 +268,10 @@ describe('handleXpGain', () => {
 
     await handleXpGain(message);
 
-    expect(safeSend).toHaveBeenCalledWith(announceChannel, expect.objectContaining({ embeds: expect.any(Array) }));
+    expect(safeSend).toHaveBeenCalledWith(
+      announceChannel,
+      expect.objectContaining({ embeds: expect.any(Array) }),
+    );
   });
 
   it('assigns role reward on level-up when configured', async () => {
@@ -269,7 +287,7 @@ describe('handleXpGain', () => {
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: { '1': roleId },
+        roleRewards: { 1: roleId },
         announceChannelId,
       },
     });

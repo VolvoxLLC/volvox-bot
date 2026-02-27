@@ -7,18 +7,13 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { error as logError, info } from '../logger.js';
+import { info, error as logError } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
+import { REPUTATION_DEFAULTS } from './reputationDefaults.js';
 
 /** In-memory cooldown map: `${guildId}:${userId}` → Date of last XP gain */
 const cooldowns = new Map();
-
-/**
- * Default level XP thresholds (index = level - 1).
- * @type {number[]}
- */
-const DEFAULT_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
 
 /**
  * Resolve the reputation config for a guild, merging defaults.
@@ -28,15 +23,7 @@ const DEFAULT_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 1
  */
 function getRepConfig(guildId) {
   const cfg = getConfig(guildId);
-  return {
-    enabled: false,
-    xpPerMessage: [5, 15],
-    xpCooldownSeconds: 60,
-    announceChannelId: null,
-    levelThresholds: DEFAULT_THRESHOLDS,
-    roleRewards: {},
-    ...cfg.reputation,
-  };
+  return { ...REPUTATION_DEFAULTS, ...cfg.reputation };
 }
 
 /**
@@ -121,10 +108,11 @@ export async function handleXpGain(message) {
 
   if (newLevel > currentLevel) {
     // Update stored level
-    await pool.query(
-      'UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3',
-      [newLevel, message.guild.id, message.author.id],
-    );
+    await pool.query('UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3', [
+      newLevel,
+      message.guild.id,
+      message.author.id,
+    ]);
 
     info('User leveled up', {
       userId: message.author.id,
