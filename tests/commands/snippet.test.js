@@ -98,13 +98,15 @@ describe('snippet command', () => {
       interaction.options._setString('code', 'console.log("Hello!");');
       await execute(interaction);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO snippets'),
-        ['guild1', 'hello-world', 'js', 'console.log("Hello!");', null, 'user1'],
-      );
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('✅'),
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO snippets'), [
+        'guild1',
+        'hello-world',
+        'js',
+        'console.log("Hello!");',
+        null,
+        'user1',
+      ]);
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('✅'));
     });
 
     it('should reject duplicate names', async () => {
@@ -119,9 +121,7 @@ describe('snippet command', () => {
       interaction.options._setString('code', 'console.log("Hello!");');
       await execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('already exists'),
-      );
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('already exists'));
     });
 
     it('should save snippet with description', async () => {
@@ -135,10 +135,14 @@ describe('snippet command', () => {
       interaction.options._setString('description', 'A python snippet');
       await execute(interaction);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO snippets'),
-        ['guild1', 'my-snippet', 'python', 'print("hi")', 'A python snippet', 'user1'],
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO snippets'), [
+        'guild1',
+        'my-snippet',
+        'python',
+        'print("hi")',
+        'A python snippet',
+        'user1',
+      ]);
     });
   });
 
@@ -159,10 +163,15 @@ describe('snippet command', () => {
       await execute(interaction);
 
       expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('```js'),
-      );
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining(mockSnippet.code),
+        expect.objectContaining({
+          embeds: expect.arrayContaining([
+            expect.objectContaining({
+              data: expect.objectContaining({
+                description: expect.stringContaining('```js'),
+              }),
+            }),
+          ]),
+        }),
       );
     });
 
@@ -193,9 +202,7 @@ describe('snippet command', () => {
       interaction.options._setString('name', 'nonexistent');
       await execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('❌'),
-      );
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('❌'));
     });
   });
 
@@ -212,10 +219,10 @@ describe('snippet command', () => {
       interaction.options._setString('query', 'hello');
       await execute(interaction);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('ILIKE'),
-        ['guild1', '%hello%'],
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('ILIKE'), [
+        'guild1',
+        '%hello%',
+      ]);
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ embeds: expect.any(Array) }),
       );
@@ -231,10 +238,10 @@ describe('snippet command', () => {
       interaction.options._setString('query', 'simple');
       await execute(interaction);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('description ILIKE'),
-        ['guild1', '%simple%'],
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('description ILIKE'), [
+        'guild1',
+        '%simple%',
+      ]);
     });
 
     it('should return not found when no results', async () => {
@@ -247,9 +254,7 @@ describe('snippet command', () => {
       interaction.options._setString('query', 'zzznomatch');
       await execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('❌'),
-      );
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('❌'));
     });
   });
 
@@ -282,9 +287,7 @@ describe('snippet command', () => {
       const interaction = createInteraction('list');
       await execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('No snippets'),
-      );
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('No snippets'));
     });
 
     it('should sort by popular when requested', async () => {
@@ -326,13 +329,10 @@ describe('snippet command', () => {
       interaction.options._setString('name', 'hello-world');
       await execute(interaction);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM snippets'),
-        [mockSnippet.id],
-      );
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('✅'),
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM snippets'), [
+        mockSnippet.id,
+      ]);
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('✅'));
     });
 
     it('should allow moderator to delete any snippet', async () => {
@@ -353,13 +353,10 @@ describe('snippet command', () => {
       interaction.options._setString('name', 'hello-world');
       await execute(interaction);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM snippets'),
-        [mockSnippet.id],
-      );
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('✅'),
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM snippets'), [
+        mockSnippet.id,
+      ]);
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('✅'));
     });
 
     it('should deny non-author non-mod from deleting', async () => {
@@ -377,13 +374,9 @@ describe('snippet command', () => {
       interaction.options._setString('name', 'hello-world');
       await execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.stringContaining('❌'),
-      );
+      expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('❌'));
       // Should NOT call DELETE
-      const deleteCalls = mockPool.query.mock.calls.filter((c) =>
-        c[0].includes('DELETE'),
-      );
+      const deleteCalls = mockPool.query.mock.calls.filter((c) => c[0].includes('DELETE'));
       expect(deleteCalls.length).toBe(0);
     });
   });
@@ -410,10 +403,10 @@ describe('snippet command', () => {
 
       await autocomplete(interaction);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('ILIKE'),
-        ['guild1', '%hello%'],
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('ILIKE'), [
+        'guild1',
+        '%hello%',
+      ]);
       expect(interaction.respond).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ value: 'hello-world' })]),
       );

@@ -7,7 +7,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { error as logError, info } from '../logger.js';
+import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { isModerator } from '../utils/permissions.js';
 import { safeEditReply } from '../utils/safeSend.js';
@@ -99,10 +99,7 @@ export const data = new SlashCommandBuilder()
       .setName('search')
       .setDescription('Search snippets by name, description, or code')
       .addStringOption((opt) =>
-        opt
-          .setName('query')
-          .setDescription('Search query')
-          .setRequired(true),
+        opt.setName('query').setDescription('Search query').setRequired(true),
       ),
   )
   .addSubcommand((sub) =>
@@ -114,10 +111,7 @@ export const data = new SlashCommandBuilder()
           .setName('sort')
           .setDescription('Sort order (default: recent)')
           .setRequired(false)
-          .addChoices(
-            { name: 'Recent', value: 'recent' },
-            { name: 'Popular', value: 'popular' },
-          ),
+          .addChoices({ name: 'Recent', value: 'recent' }, { name: 'Popular', value: 'popular' }),
       )
       .addIntegerOption((opt) =>
         opt.setName('page').setDescription('Page number').setRequired(false),
@@ -189,10 +183,10 @@ async function handleGet(interaction) {
   const name = interaction.options.getString('name');
   const pool = getPool();
 
-  const { rows } = await pool.query(
-    'SELECT * FROM snippets WHERE guild_id = $1 AND name = $2',
-    [interaction.guild.id, name],
-  );
+  const { rows } = await pool.query('SELECT * FROM snippets WHERE guild_id = $1 AND name = $2', [
+    interaction.guild.id,
+    name,
+  ]);
 
   if (rows.length === 0) {
     return await safeEditReply(interaction, `❌ No snippet found named \`${name}\`.`);
@@ -207,15 +201,27 @@ async function handleGet(interaction) {
   );
 
   const codeBlock = `\`\`\`${row.language}\n${row.code}\n\`\`\``;
-  const header = row.description ? `**${row.name}** — ${row.description}\n` : `**${row.name}**\n`;
+  const embed = new EmbedBuilder()
+    .setColor(EMBED_COLOR)
+    .setTitle(row.name.slice(0, 256))
+    .setDescription(codeBlock.slice(0, 4096))
+    .setFooter({
+      text: `${row.language} • Used ${row.usage_count + 1} time${row.usage_count + 1 !== 1 ? 's' : ''}`,
+    })
+    .setTimestamp();
 
-  await safeEditReply(interaction, `${header}${codeBlock}`);
+  if (row.description) {
+    embed.addFields({ name: 'Description', value: row.description.slice(0, 1024) });
+  }
+
+  await safeEditReply(interaction, { embeds: [embed] });
 }
 
 async function handleSearch(interaction) {
   const query = interaction.options.getString('query');
   const pool = getPool();
 
+  const safeQuery = query.replace(/[%_\\]/g, '\\$&');
   const { rows } = await pool.query(
     `SELECT name, language, description, code
      FROM snippets
@@ -223,7 +229,7 @@ async function handleSearch(interaction) {
        AND (name ILIKE $2 OR description ILIKE $2 OR code ILIKE $2)
      ORDER BY usage_count DESC
      LIMIT 10`,
-    [interaction.guild.id, `%${query}%`],
+    [interaction.guild.id, `%${safeQuery}%`],
   );
 
   if (rows.length === 0) {
@@ -238,8 +244,13 @@ async function handleSearch(interaction) {
 
   for (const row of rows) {
     const preview = row.code.length > 80 ? `${row.code.slice(0, 77)}...` : row.code;
-    const desc = row.description ? `${row.description}\n\`\`\`${row.language}\n${preview}\n\`\`\`` : `\`\`\`${row.language}\n${preview}\n\`\`\``;
-    embed.addFields({ name: `${row.name} (${row.language})`.slice(0, 256), value: desc.slice(0, 1024) });
+    const desc = row.description
+      ? `${row.description}\n\`\`\`${row.language}\n${preview}\n\`\`\``
+      : `\`\`\`${row.language}\n${preview}\n\`\`\``;
+    embed.addFields({
+      name: `${row.name} (${row.language})`.slice(0, 256),
+      value: desc.slice(0, 1024),
+    });
   }
 
   await safeEditReply(interaction, { embeds: [embed] });
@@ -278,7 +289,9 @@ async function handleList(interaction) {
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
     .setTitle('📋 Code Snippets')
-    .setFooter({ text: `Page ${safePage} of ${totalPages} • ${total} snippet(s) • sorted by ${sort}` })
+    .setFooter({
+      text: `Page ${safePage} of ${totalPages} • ${total} snippet(s) • sorted by ${sort}`,
+    })
     .setTimestamp();
 
   for (const row of rows) {
@@ -294,10 +307,10 @@ async function handleDelete(interaction) {
   const name = interaction.options.getString('name');
   const pool = getPool();
 
-  const { rows } = await pool.query(
-    'SELECT * FROM snippets WHERE guild_id = $1 AND name = $2',
-    [interaction.guild.id, name],
-  );
+  const { rows } = await pool.query('SELECT * FROM snippets WHERE guild_id = $1 AND name = $2', [
+    interaction.guild.id,
+    name,
+  ]);
 
   if (rows.length === 0) {
     return await safeEditReply(interaction, `❌ No snippet found named \`${name}\`.`);
@@ -334,9 +347,8 @@ async function handleDelete(interaction) {
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
-
   const subcommand = interaction.options.getSubcommand();
+  await interaction.deferReply({ ephemeral: subcommand !== 'get' });
 
   try {
     switch (subcommand) {
