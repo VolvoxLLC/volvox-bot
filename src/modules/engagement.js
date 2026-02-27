@@ -74,7 +74,7 @@ export async function trackReaction(reaction, user) {
     const now = new Date();
 
     // Increment reactions_given for the reactor
-    await pool.query(
+    const givenQuery = pool.query(
       `INSERT INTO user_stats (guild_id, user_id, reactions_given, days_active, first_seen, last_active)
        VALUES ($1, $2, 1, 1, NOW(), NOW())
        ON CONFLICT (guild_id, user_id) DO UPDATE
@@ -91,15 +91,24 @@ export async function trackReaction(reaction, user) {
     // Increment reactions_received for message author (skip if author is the reactor or a bot)
     const messageAuthor = reaction.message.author;
     const authorId = messageAuthor?.id;
-    if (authorId && authorId !== user.id && !messageAuthor?.bot) {
-      await pool.query(
-        `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen)
-         VALUES ($1, $2, 1, NOW())
-         ON CONFLICT (guild_id, user_id) DO UPDATE
-           SET reactions_received = user_stats.reactions_received + 1`,
-        [guildId, authorId],
-      );
-    }
+    const receivedQuery =
+      authorId && authorId !== user.id && !messageAuthor?.bot
+        ? pool.query(
+            `INSERT INTO user_stats (guild_id, user_id, reactions_received, days_active, first_seen, last_active)
+             VALUES ($1, $2, 1, 1, NOW(), NOW())
+             ON CONFLICT (guild_id, user_id) DO UPDATE
+               SET reactions_received = user_stats.reactions_received + 1,
+                   days_active = CASE
+                     WHEN user_stats.days_active = 0 OR user_stats.last_active::date < $3::date
+                     THEN user_stats.days_active + 1
+                     ELSE user_stats.days_active
+                   END,
+                   last_active = NOW()`,
+            [guildId, authorId, now.toISOString()],
+          )
+        : null;
+
+    await Promise.all([givenQuery, receivedQuery].filter(Boolean));
   } catch (err) {
     logError('Failed to track reaction engagement', {
       userId: user.id,
