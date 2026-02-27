@@ -1245,7 +1245,8 @@ export function ConfigEditor() {
                   const num = parseNumberInput(e.target.value, 1, 100);
                   if (num !== undefined) {
                     const range = draftConfig.reputation?.xpPerMessage ?? [5, 15];
-                    setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, xpPerMessage: [num, range[1]] } }));
+                    const newMax = num > range[1] ? num : range[1];
+                    setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, xpPerMessage: [num, newMax] } }));
                   }
                 }}
                 disabled={saving} className={inputClasses} />
@@ -1258,7 +1259,8 @@ export function ConfigEditor() {
                   const num = parseNumberInput(e.target.value, 1, 100);
                   if (num !== undefined) {
                     const range = draftConfig.reputation?.xpPerMessage ?? [5, 15];
-                    setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, xpPerMessage: [range[0], num] } }));
+                    const newMin = num < range[0] ? num : range[0];
+                    setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, xpPerMessage: [newMin, num] } }));
                   }
                 }}
                 disabled={saving} className={inputClasses} />
@@ -1287,7 +1289,10 @@ export function ConfigEditor() {
               value={(draftConfig.reputation?.levelThresholds ?? [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000]).join(", ")}
               onChange={(e) => {
                 const nums = e.target.value.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0);
-                if (nums.length > 0) setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, levelThresholds: nums } }));
+                if (nums.length > 0) {
+                  const sorted = [...nums].sort((a, b) => a - b);
+                  setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, levelThresholds: sorted } }));
+                }
               }}
               disabled={saving} className={inputClasses} placeholder="100, 300, 600, 1000, ..." />
             <p className="text-xs text-muted-foreground">XP required for each level (L1, L2, L3, ...). Add more values for more levels.</p>

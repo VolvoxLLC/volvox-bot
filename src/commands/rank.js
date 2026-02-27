@@ -28,6 +28,10 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   await interaction.deferReply();
 
+  if (!interaction.guildId) {
+    return safeEditReply(interaction, { content: '❌ This command can only be used in a server.' });
+  }
+
   const cfg = getConfig(interaction.guildId);
   if (!cfg?.reputation?.enabled) {
     return safeEditReply(interaction, { content: 'Reputation system is not enabled.' });

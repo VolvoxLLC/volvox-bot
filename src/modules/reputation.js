@@ -16,16 +16,16 @@ import { REPUTATION_DEFAULTS } from './reputationDefaults.js';
 /** In-memory cooldown map: `${guildId}:${userId}` → Date of last XP gain */
 const cooldowns = new Map();
 
+/** Evict stale cooldown entries (exported for testability). */
+export function sweepCooldowns() {
+  const now = Date.now();
+  for (const [key, ts] of cooldowns) {
+    if (now - ts > 120_000) cooldowns.delete(key);
+  }
+}
+
 // Periodic sweep — evict stale cooldown entries instead of one setTimeout per user.
-setInterval(
-  () => {
-    const now = Date.now();
-    for (const [key, ts] of cooldowns) {
-      if (now - ts > 120_000) cooldowns.delete(key);
-    }
-  },
-  5 * 60 * 1000,
-).unref();
+setInterval(sweepCooldowns, 5 * 60 * 1000).unref();
 
 /**
  * Resolve the reputation config for a guild, merging defaults.
@@ -122,11 +122,20 @@ export async function handleXpGain(message) {
 
   if (newLevel > currentLevel) {
     // Update stored level
-    await pool.query('UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3', [
-      newLevel,
-      message.guild.id,
-      message.author.id,
-    ]);
+    try {
+      await pool.query('UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3', [
+        newLevel,
+        message.guild.id,
+        message.author.id,
+      ]);
+    } catch (err) {
+      logError('Failed to update level', {
+        userId: message.author.id,
+        guildId: message.guild.id,
+        error: err.message,
+      });
+      return; // Don't proceed with role/announcement if level update failed
+    }
 
     info('User leveled up', {
       userId: message.author.id,

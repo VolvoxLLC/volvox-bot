@@ -44,7 +44,12 @@ vi.mock('discord.js', () => {
 
 import { getPool } from '../../src/db.js';
 import { getConfig } from '../../src/modules/config.js';
-import { buildProgressBar, computeLevel, handleXpGain } from '../../src/modules/reputation.js';
+import {
+  buildProgressBar,
+  computeLevel,
+  handleXpGain,
+  sweepCooldowns,
+} from '../../src/modules/reputation.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 const DEFAULT_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
@@ -496,5 +501,139 @@ describe('handleXpGain', () => {
       'Failed to send level-up announcement',
       expect.objectContaining({ error: 'Cannot send messages' }),
     );
+  });
+
+  it('logs error and returns early when level UPDATE query throws', async () => {
+    const { error: logError } = await import('../../src/logger.js');
+    const announceChannelId = 'announce-ch-update-err';
+    const announceChannel = { id: announceChannelId };
+    const channelCache = new Map([[announceChannelId, announceChannel]]);
+
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId,
+      },
+    });
+
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] }) // upsert — triggers level-up
+        .mockRejectedValueOnce(new Error('DB write failed')), // UPDATE level fails
+    };
+    getPool.mockReturnValue(pool);
+
+    const message = makeMessage({
+      userId: 'levelUpdateErrUser',
+      guildId: 'levelUpdateErrGuild',
+      channelCache,
+    });
+
+    await expect(handleXpGain(message)).resolves.not.toThrow();
+    expect(logError).toHaveBeenCalledWith(
+      'Failed to update level',
+      expect.objectContaining({ error: 'DB write failed' }),
+    );
+    // safeSend should NOT be called since we returned early
+    expect(safeSend).not.toHaveBeenCalled();
+  });
+});
+
+describe('sweepCooldowns', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('removes entries older than 120 seconds', async () => {
+    // Prime the cooldowns map by triggering handleXpGain for a user
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId: null,
+      },
+    });
+    const pool = makePool({ xp: 5, level: 0 });
+    getPool.mockReturnValue(pool);
+    const message = makeMessage({ userId: 'sweepOldUser', guildId: 'sweepGuild' });
+
+    await handleXpGain(message);
+
+    // Advance time past the 120-second stale threshold
+    vi.advanceTimersByTime(121_000);
+
+    sweepCooldowns();
+
+    // After sweep, cooldown should be gone — next XP gain should go through
+    vi.clearAllMocks();
+    const pool2 = makePool({ xp: 10, level: 0 });
+    getPool.mockReturnValue(pool2);
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId: null,
+      },
+    });
+
+    await handleXpGain(message);
+    expect(pool2.query).toHaveBeenCalled();
+  });
+
+  it('keeps entries newer than 120 seconds', async () => {
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId: null,
+      },
+    });
+    const pool = makePool({ xp: 5, level: 0 });
+    getPool.mockReturnValue(pool);
+    const message = makeMessage({ userId: 'sweepFreshUser', guildId: 'sweepFreshGuild' });
+
+    await handleXpGain(message);
+
+    // Advance time to just under the 120-second stale threshold (but still within 60s XP cooldown)
+    vi.advanceTimersByTime(30_000);
+
+    sweepCooldowns();
+
+    // Cooldown should still be active — second call should be blocked
+    vi.clearAllMocks();
+    const pool2 = makePool({ xp: 10, level: 0 });
+    getPool.mockReturnValue(pool2);
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId: null,
+      },
+    });
+
+    await handleXpGain(message);
+    // Still within the 60s XP cooldown window — no second DB call
+    expect(pool2.query).not.toHaveBeenCalled();
   });
 });

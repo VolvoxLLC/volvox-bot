@@ -59,7 +59,18 @@ function makeInteraction({ guildId = 'guild1' } = {}) {
     guildId,
     guild: {
       members: {
-        fetch: vi.fn().mockImplementation((id) => Promise.resolve({ displayName: `User_${id}` })),
+        fetch: vi.fn().mockImplementation((opts) => {
+          if (opts?.user) {
+            // Batch fetch — return a Map (mirrors guild.members.fetch({ user: [...] }))
+            const map = new Map();
+            for (const id of opts.user) {
+              map.set(id, { displayName: `User_${id}` });
+            }
+            return Promise.resolve(map);
+          }
+          // Single fetch fallback
+          return Promise.resolve({ displayName: `User_${opts}` });
+        }),
       },
     },
   };
