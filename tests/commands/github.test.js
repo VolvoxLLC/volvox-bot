@@ -12,6 +12,7 @@ vi.mock('../../src/logger.js', () => ({
 
 vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn(),
+  setConfigValue: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../src/utils/permissions.js', () => ({
@@ -87,7 +88,7 @@ vi.mock('discord.js', () => {
 
 import { data, execute, isValidRepo } from '../../src/commands/github.js';
 import { getPool } from '../../src/db.js';
-import { getConfig } from '../../src/modules/config.js';
+import { getConfig, setConfigValue } from '../../src/modules/config.js';
 import { isAdmin } from '../../src/utils/permissions.js';
 
 /** Build a mock interaction */
@@ -235,9 +236,10 @@ describe('github command', () => {
     it('should add a valid repo', async () => {
       const interaction = makeInteraction('feed', 'add', { repo: 'VolvoxLLC/volvox-bot' });
       await execute(interaction);
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO guild_config'),
-        expect.arrayContaining(['guild-123', expect.stringContaining('VolvoxLLC/volvox-bot')]),
+      expect(setConfigValue).toHaveBeenCalledWith(
+        'github.feed.repos',
+        expect.arrayContaining(['VolvoxLLC/volvox-bot']),
+        'guild-123',
       );
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('Now tracking') }),
@@ -290,10 +292,7 @@ describe('github command', () => {
       });
       const interaction = makeInteraction('feed', 'remove', { repo: 'VolvoxLLC/volvox-bot' });
       await execute(interaction);
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO guild_config'),
-        expect.any(Array),
-      );
+      expect(setConfigValue).toHaveBeenCalledWith('github.feed.repos', [], 'guild-123');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('Stopped tracking') }),
       );
@@ -347,10 +346,7 @@ describe('github command', () => {
         channel: { id: 'ch-new' },
       });
       await execute(interaction);
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO guild_config'),
-        expect.arrayContaining(['guild-123', JSON.stringify('ch-new')]),
-      );
+      expect(setConfigValue).toHaveBeenCalledWith('github.feed.channelId', 'ch-new', 'guild-123');
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('ch-new'),

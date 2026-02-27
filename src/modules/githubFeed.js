@@ -18,6 +18,9 @@ const execFileAsync = promisify(execFile);
 /** @type {ReturnType<typeof setInterval> | null} */
 let feedInterval = null;
 
+/** @type {ReturnType<typeof setTimeout> | null} */
+let firstPollTimeout = null;
+
 /** Re-entrancy guard */
 let pollInFlight = false;
 
@@ -31,7 +34,7 @@ let pollInFlight = false;
 export async function fetchRepoEvents(owner, repo) {
   const { stdout } = await execFileAsync(
     'gh',
-    ['api', `repos/${owner}/${repo}/events?per_page=30`, '--jq', '.[0:10]'],
+    ['api', `repos/${owner}/${repo}/events?per_page=10`],
     { timeout: 30_000 },
   );
   const text = stdout.trim();
@@ -362,47 +365,35 @@ export function startGithubFeed(client) {
 
   // We read interval from the first guild's config as a reasonable default.
   // If no guild has it configured, use 5 minutes.
-  let intervalMs = defaultMinutes * 60_000;
+  const intervalMs = defaultMinutes * 60_000;
 
   // Kick off first poll after bot is settled (5s delay)
-  const firstPoll = setTimeout(() => {
+  firstPollTimeout = setTimeout(() => {
+    firstPollTimeout = null;
     pollAllFeeds(client).catch((err) => {
       logError('GitHub feed: initial poll failed', { error: err.message });
     });
   }, 5_000);
 
-  // Re-read interval dynamically each tick from the first enabled guild
+  // Note: intervalMs is captured at setInterval creation time and does not change dynamically.
   feedInterval = setInterval(() => {
-    // Try to find a configured interval from any guild
-    let minutes = defaultMinutes;
-    for (const [guildId] of client.guilds.cache) {
-      const cfg = getConfig(guildId);
-      if (cfg?.github?.feed?.enabled) {
-        minutes = cfg.github.feed.pollIntervalMinutes ?? defaultMinutes;
-        break;
-      }
-    }
-    intervalMs = minutes * 60_000;
-
     pollAllFeeds(client).catch((err) => {
       logError('GitHub feed: poll failed', { error: err.message });
     });
   }, intervalMs);
 
   info('GitHub feed started');
-
-  // Store firstPoll ref so stopGithubFeed can cancel it
-  feedInterval._firstPoll = firstPoll;
 }
 
 /**
  * Stop the GitHub feed polling interval.
  */
 export function stopGithubFeed() {
+  if (firstPollTimeout) {
+    clearTimeout(firstPollTimeout);
+    firstPollTimeout = null;
+  }
   if (feedInterval) {
-    if (feedInterval._firstPoll) {
-      clearTimeout(feedInterval._firstPoll);
-    }
     clearInterval(feedInterval);
     feedInterval = null;
     info('GitHub feed stopped');
