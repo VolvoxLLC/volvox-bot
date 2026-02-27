@@ -145,7 +145,7 @@ export function buildChallengeEmbed(challenge, dayNumber, solveCount = 0) {
       },
     )
     .setFooter({
-      text: `${solveCount} solver${solveCount !== 1 ? 's' : ''} so far • React ✅ or click Mark Solved when you've got it!`,
+      text: `${solveCount} solver${solveCount !== 1 ? 's' : ''} so far • Click "Mark Solved" when you've got it!`,
     })
     .setTimestamp();
 }
@@ -256,8 +256,8 @@ export async function checkDailyChallengeForGuild(client, guildId) {
   // Check if we've already posted today
   if (lastPostedDate.get(guildId) === todayStr) return;
 
-  // Check if it's time to post (match HH:MM)
-  if (currentTime !== postTime) return;
+  // Check if it's time to post — use >= so a delayed poll loop doesn't miss the window
+  if (currentTime < postTime) return;
 
   try {
     await postDailyChallenge(client, guildId);
@@ -292,10 +292,9 @@ export async function checkDailyChallenge(client) {
  * @returns {Promise<void>}
  */
 export async function handleSolveButton(interaction, challengeIndex) {
-  const challenge = CHALLENGES[challengeIndex];
-  if (!challenge) {
-    await interaction.reply({ content: '❌ Challenge not found.', ephemeral: true });
-    return;
+  // Bounds validation — prevents out-of-range indices from causing DB errors
+  if (challengeIndex < 0 || challengeIndex >= CHALLENGES.length) {
+    return interaction.reply({ content: '❌ Invalid challenge.', flags: 64 });
   }
 
   const pool = getPool();
@@ -307,13 +306,19 @@ export async function handleSolveButton(interaction, challengeIndex) {
   const { guildId } = interaction;
   const userId = interaction.user.id;
 
-  // Upsert the solve record — no-op if already solved today (PK includes solved_date
-  // so each daily occurrence of a recycled challenge_index is tracked independently).
+  // Resolve today's date in the guild's configured timezone so the stored date
+  // matches what the guild considers "today" rather than UTC midnight.
+  const config = getConfig(guildId);
+  const timezone = config.challenges?.timezone ?? 'America/New_York';
+  const challengeDate = getLocalDateString(new Date(), timezone);
+
+  // Upsert the solve record — PK is (guild_id, challenge_date, user_id) so the
+  // same user can solve challenge index 0 again when the cycle repeats.
   await pool.query(
-    `INSERT INTO challenge_solves (guild_id, challenge_index, user_id, solved_date)
-     VALUES ($1, $2, $3, CURRENT_DATE)
-     ON CONFLICT (guild_id, challenge_index, user_id, solved_date) DO NOTHING`,
-    [guildId, challengeIndex, userId],
+    `INSERT INTO challenge_solves (guild_id, challenge_date, challenge_index, user_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (guild_id, challenge_date, user_id) DO NOTHING`,
+    [guildId, challengeDate, challengeIndex, userId],
   );
 
   // Get total solves for this user in this guild
@@ -321,14 +326,15 @@ export async function handleSolveButton(interaction, challengeIndex) {
     'SELECT COUNT(*) AS total FROM challenge_solves WHERE guild_id = $1 AND user_id = $2',
     [guildId, userId],
   );
-  const totalSolves = Number.parseInt(totalRows[0].total, 10);
+  // COUNT(*) returns bigint → pg driver serialises as string; cast explicitly
+  const totalSolves = Number(totalRows[0].total);
 
-  // Get total solvers for this challenge
+  // Get total solvers for today's challenge (filter by date, not index)
   const { rows: solveRows } = await pool.query(
-    'SELECT COUNT(*) AS total FROM challenge_solves WHERE guild_id = $1 AND challenge_index = $2',
-    [guildId, challengeIndex],
+    'SELECT COUNT(*) AS total FROM challenge_solves WHERE guild_id = $1 AND challenge_date = $2',
+    [guildId, challengeDate],
   );
-  const solveCount = Number.parseInt(solveRows[0].total, 10);
+  const solveCount = Number(solveRows[0].total);
 
   // Update the embed footer with new solve count
   try {
@@ -336,7 +342,7 @@ export async function handleSolveButton(interaction, challengeIndex) {
     if (msg.embeds.length > 0) {
       const oldEmbed = msg.embeds[0];
       const updatedEmbed = EmbedBuilder.from(oldEmbed).setFooter({
-        text: `${solveCount} solver${solveCount !== 1 ? 's' : ''} so far • React ✅ or click Mark Solved when you've got it!`,
+        text: `${solveCount} solver${solveCount !== 1 ? 's' : ''} so far • Click "Mark Solved" when you've got it!`,
       });
       await msg.edit({ embeds: [updatedEmbed], components: msg.components });
     }

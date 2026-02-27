@@ -11,6 +11,7 @@ import { info } from '../logger.js';
 import {
   buildChallengeButtons,
   buildChallengeEmbed,
+  getLocalDateString,
   selectTodaysChallenge,
 } from '../modules/challengeScheduler.js';
 import { getConfig } from '../modules/config.js';
@@ -67,14 +68,16 @@ async function handleToday(interaction, challengesCfg) {
   const now = new Date();
   const { challenge, index, dayNumber } = selectTodaysChallenge(now, timezone);
 
-  // Get current solve count
+  // Get current solve count for today's challenge
   let solveCount = 0;
   if (pool) {
+    const dateStr = getLocalDateString(now, timezone);
     const { rows } = await pool.query(
-      'SELECT COUNT(*) AS total FROM challenge_solves WHERE guild_id = $1 AND challenge_index = $2',
-      [interaction.guildId, index],
+      'SELECT COUNT(*) AS total FROM challenge_solves WHERE guild_id = $1 AND challenge_date = $2',
+      [interaction.guildId, dateStr],
     );
-    solveCount = Number.parseInt(rows[0].total, 10);
+    // COUNT(*) returns bigint → pg driver serialises as string; cast explicitly
+    solveCount = Number(rows[0].total);
   }
 
   const embed = buildChallengeEmbed(challenge, dayNumber, solveCount);
@@ -110,27 +113,41 @@ async function handleStreak(interaction) {
     'SELECT COUNT(*) AS total FROM challenge_solves WHERE guild_id = $1 AND user_id = $2',
     [guildId, userId],
   );
-  const totalSolves = Number.parseInt(totalRows[0].total, 10);
+  // COUNT(*) returns bigint → pg driver serialises as string; cast explicitly
+  const totalSolves = Number(totalRows[0].total);
 
-  // All solved challenge indices ordered by index to compute streak
+  // Get all solved dates ordered newest-first to compute consecutive-day streak
   const { rows: solvedRows } = await pool.query(
-    `SELECT challenge_index, solved_at
-     FROM challenge_solves
+    `SELECT challenge_date FROM challenge_solves
      WHERE guild_id = $1 AND user_id = $2
-     ORDER BY challenge_index DESC`,
+     ORDER BY challenge_date DESC`,
     [guildId, userId],
   );
 
-  // Compute streak: consecutive challenge indices ending at most-recent
+  // Compute streak: count consecutive days backwards from today (or yesterday).
+  // pg returns DATE columns as JS Date objects at UTC midnight.
   let streak = 0;
   if (solvedRows.length > 0) {
-    const indices = solvedRows.map((r) => r.challenge_index);
-    streak = 1;
-    for (let i = 0; i < indices.length - 1; i++) {
-      if (indices[i] - indices[i + 1] === 1) {
-        streak++;
-      } else {
-        break;
+    const todayUTC = new Date();
+    const todayStr = todayUTC.toISOString().slice(0, 10);
+    const yesterdayUTC = new Date(todayUTC);
+    yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+    const yesterdayStr = yesterdayUTC.toISOString().slice(0, 10);
+
+    const dates = solvedRows.map((r) => new Date(r.challenge_date).toISOString().slice(0, 10));
+    const mostRecent = dates[0];
+
+    // Only count a streak if the user solved today or yesterday
+    if (mostRecent === todayStr || mostRecent === yesterdayStr) {
+      streak = 1;
+      for (let i = 1; i < dates.length; i++) {
+        const prevDate = new Date(dates[i - 1]);
+        prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+        if (dates[i] === prevDate.toISOString().slice(0, 10)) {
+          streak++;
+        } else {
+          break;
+        }
       }
     }
   }

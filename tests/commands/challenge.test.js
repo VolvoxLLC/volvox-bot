@@ -104,6 +104,7 @@ vi.mock('../../src/modules/challengeScheduler.js', () => ({
   buildChallengeEmbed: vi.fn(() => ({ mock: 'embed' })),
   buildChallengeButtons: vi.fn(() => ({ mock: 'buttons' })),
   getChallenges: vi.fn(() => []),
+  getLocalDateString: vi.fn(() => '2024-01-10'),
 }));
 
 // ─── Imports ─────────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ import { getPool } from '../../src/db.js';
 import {
   buildChallengeButtons,
   buildChallengeEmbed,
+  getLocalDateString,
   selectTodaysChallenge,
 } from '../../src/modules/challengeScheduler.js';
 import { getConfig } from '../../src/modules/config.js';
@@ -223,15 +225,21 @@ describe('/challenge command', () => {
 
   describe('/challenge streak', () => {
     it('should show streak and total solves', async () => {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const dayBefore = new Date(today);
+      dayBefore.setUTCDate(dayBefore.getUTCDate() - 2);
+
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total: '5' }] }) // total solves
         .mockResolvedValueOnce({
           rows: [
-            { challenge_index: 10, solved_at: new Date() },
-            { challenge_index: 9, solved_at: new Date() },
-            { challenge_index: 8, solved_at: new Date() },
+            { challenge_date: today },
+            { challenge_date: yesterday },
+            { challenge_date: dayBefore },
           ],
-        }); // solved list
+        }); // solved dates (consecutive → streak = 3)
 
       const interaction = makeInteraction('streak');
       await execute(interaction);
@@ -261,11 +269,15 @@ describe('/challenge command', () => {
       );
     });
 
-    it('should compute streak correctly for non-consecutive indices', async () => {
+    it('should compute streak correctly for non-consecutive dates', async () => {
+      const today = new Date();
+      const weekAgo = new Date(today);
+      weekAgo.setUTCDate(weekAgo.getUTCDate() - 7); // gap → streak resets after today
+
       mockPool.query.mockResolvedValueOnce({ rows: [{ total: '2' }] }).mockResolvedValueOnce({
         rows: [
-          { challenge_index: 10, solved_at: new Date() },
-          { challenge_index: 5, solved_at: new Date() }, // gap → streak breaks
+          { challenge_date: today },
+          { challenge_date: weekAgo }, // gap → streak breaks at 1
         ],
       });
 

@@ -434,11 +434,28 @@ describe('challengeScheduler', () => {
         .mockResolvedValueOnce({ rows: [{ total: '2' }] }); // challenge solve count
     });
 
+    it('should reject out-of-bounds challenge index', async () => {
+      await handleSolveButton(interaction, 9999);
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Invalid challenge') }),
+      );
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
+    it('should reject negative challenge index', async () => {
+      await handleSolveButton(interaction, -1);
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Invalid challenge') }),
+      );
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
     it('should record the solve and reply ephemerally', async () => {
       await handleSolveButton(interaction, 0);
+      // INSERT now includes challenge_date as $2 (a YYYY-MM-DD string)
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO challenge_solves'),
-        ['guild-1', 0, 'user-1'],
+        ['guild-1', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), 0, 'user-1'],
       );
       expect(interaction.reply).toHaveBeenCalledWith(
         expect.objectContaining({
