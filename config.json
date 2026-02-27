@@ -161,6 +161,15 @@
   "poll": {
     "enabled": false
   },
+  "github": {
+    "feed": {
+      "enabled": false,
+      "channelId": null,
+      "repos": [],
+      "events": ["pr", "issue", "release", "push"],
+      "pollIntervalMinutes": 5
+    }
+  },
   "tldr": {
     "enabled": false,
     "defaultMessages": 50,
