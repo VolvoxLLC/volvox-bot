@@ -115,6 +115,13 @@ describe('buildProgressBar', () => {
     const bar = buildProgressBar(0, 100);
     expect(bar).toContain('0%');
   });
+
+  it('returns full bar when needed is zero (division guard)', () => {
+    // Covers the `if (needed <= 0)` true branch (line 58)
+    const bar = buildProgressBar(5, 0);
+    expect(bar).toContain('100%');
+    expect(bar).not.toContain('NaN');
+  });
 });
 
 describe('handleXpGain', () => {
@@ -125,6 +132,18 @@ describe('handleXpGain', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('returns early when message has no guild (DM context)', async () => {
+    // Covers the `if (!message.guild) return;` true branch (line 73)
+    const pool = makePool();
+    getPool.mockReturnValue(pool);
+    const message = makeMessage();
+    message.guild = null;
+
+    await handleXpGain(message);
+
+    expect(pool.query).not.toHaveBeenCalled();
   });
 
   it('does nothing when reputation is disabled', async () => {
@@ -310,5 +329,172 @@ describe('handleXpGain', () => {
     await handleXpGain(message);
 
     expect(roleAdd).toHaveBeenCalledWith(roleId);
+  });
+
+  it('logs error but does not crash when role add throws on level-up', async () => {
+    const { error: logError } = await import('../../src/logger.js');
+    const announceChannelId = 'announce-ch-role-err';
+    const announceChannel = { id: announceChannelId };
+    const channelCache = new Map([[announceChannelId, announceChannel]]);
+    const roleId = 'role-level-1-err';
+    const roleAdd = vi.fn().mockRejectedValue(new Error('Missing Permissions'));
+
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: { 1: roleId },
+        announceChannelId,
+      },
+    });
+
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] })
+        .mockResolvedValue({ rows: [] }),
+    };
+    getPool.mockReturnValue(pool);
+
+    const message = makeMessage({
+      userId: 'roleErrUser',
+      guildId: 'roleErrGuild',
+      roleAdd,
+      channelCache,
+    });
+
+    await expect(handleXpGain(message)).resolves.not.toThrow();
+    expect(logError).toHaveBeenCalledWith(
+      'Failed to assign role reward',
+      expect.objectContaining({ error: 'Missing Permissions' }),
+    );
+  });
+
+  it('uses default xpCooldownSeconds and xpPerMessage when not configured', async () => {
+    // Covers the `?? 60` and `?? [5, 15]` branches (lines 82, 88)
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        // xpCooldownSeconds intentionally omitted → uses ?? 60
+        // xpPerMessage intentionally omitted → uses ?? [5, 15]
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId: null,
+      },
+    });
+
+    const pool = makePool({ xp: 5, level: 0 });
+    getPool.mockReturnValue(pool);
+    const message = makeMessage({ userId: 'defaultCfgUser', guildId: 'defaultCfgGuild' });
+
+    await handleXpGain(message);
+
+    expect(pool.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO reputation'),
+      expect.any(Array),
+    );
+  });
+
+  it('does not crash on level-up when announceChannelId is not configured', async () => {
+    // Covers the `if (announceChannelId)` false branch (line 146)
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId: null, // explicitly null → false branch
+      },
+    });
+
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] })
+        .mockResolvedValue({ rows: [] }),
+    };
+    getPool.mockReturnValue(pool);
+    const message = makeMessage({ userId: 'noAnnounceUser', guildId: 'noAnnounceGuild' });
+
+    await expect(handleXpGain(message)).resolves.not.toThrow();
+    // No safeSend should be called
+    expect(safeSend).not.toHaveBeenCalled();
+  });
+
+  it('does not crash on level-up when announce channel is not in guild cache', async () => {
+    // Covers the `if (announceChannel)` false branch (line 148)
+    const announceChannelId = 'missing-channel-id';
+    const channelCache = new Map(); // empty — channel not in cache
+
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId,
+      },
+    });
+
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] })
+        .mockResolvedValue({ rows: [] }),
+    };
+    getPool.mockReturnValue(pool);
+    const message = makeMessage({
+      userId: 'missingChanUser',
+      guildId: 'missingChanGuild',
+      channelCache,
+    });
+
+    await expect(handleXpGain(message)).resolves.not.toThrow();
+    expect(safeSend).not.toHaveBeenCalled();
+  });
+
+  it('logs error but does not crash when level-up announcement send throws', async () => {
+    const { error: logError } = await import('../../src/logger.js');
+    const { safeSend: mockSafeSend } = await import('../../src/utils/safeSend.js');
+    const announceChannelId = 'announce-ch-send-err';
+    const announceChannel = { id: announceChannelId };
+    const channelCache = new Map([[announceChannelId, announceChannel]]);
+
+    getConfig.mockReturnValue({
+      reputation: {
+        enabled: true,
+        xpPerMessage: [5, 5],
+        xpCooldownSeconds: 60,
+        levelThresholds: DEFAULT_THRESHOLDS,
+        roleRewards: {},
+        announceChannelId,
+      },
+    });
+
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] })
+        .mockResolvedValue({ rows: [] }),
+    };
+    getPool.mockReturnValue(pool);
+
+    mockSafeSend.mockRejectedValueOnce(new Error('Cannot send messages'));
+
+    const message = makeMessage({
+      userId: 'sendErrUser',
+      guildId: 'sendErrGuild',
+      channelCache,
+    });
+
+    await expect(handleXpGain(message)).resolves.not.toThrow();
+    expect(logError).toHaveBeenCalledWith(
+      'Failed to send level-up announcement',
+      expect.objectContaining({ error: 'Cannot send messages' }),
+    );
   });
 });

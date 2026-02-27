@@ -46,20 +46,21 @@ export async function execute(interaction) {
       return;
     }
 
+    // Batch-fetch all members in a single API call
+    const memberMap = new Map();
+    try {
+      const members = await interaction.guild.members.fetch({ user: rows.map((r) => r.user_id) });
+      for (const [id, member] of members) memberMap.set(id, member.displayName);
+    } catch {
+      // Fall back — entries will use mention format
+    }
+
     // Resolve display names
-    const lines = await Promise.all(
-      rows.map(async (row, i) => {
-        let displayName = `<@${row.user_id}>`;
-        try {
-          const member = await interaction.guild.members.fetch(row.user_id);
-          displayName = member.displayName;
-        } catch {
-          // User may have left — fall back to mention
-        }
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `**${i + 1}.**`;
-        return `${medal} ${displayName} — Level ${row.level} • ${row.xp} XP`;
-      }),
-    );
+    const lines = rows.map((row, i) => {
+      const displayName = memberMap.get(row.user_id) ?? `<@${row.user_id}>`;
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `**${i + 1}.**`;
+      return `${medal} ${displayName} — Level ${row.level} • ${row.xp} XP`;
+    });
 
     const embed = new EmbedBuilder()
       .setColor(0xfee75c)

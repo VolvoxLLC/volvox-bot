@@ -16,6 +16,17 @@ import { REPUTATION_DEFAULTS } from './reputationDefaults.js';
 /** In-memory cooldown map: `${guildId}:${userId}` → Date of last XP gain */
 const cooldowns = new Map();
 
+// Periodic sweep — evict stale cooldown entries instead of one setTimeout per user.
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, ts] of cooldowns) {
+      if (now - ts > 120_000) cooldowns.delete(key);
+    }
+  },
+  5 * 60 * 1000,
+).unref();
+
 /**
  * Resolve the reputation config for a guild, merging defaults.
  *
@@ -102,9 +113,8 @@ export async function handleXpGain(message) {
     [message.guild.id, message.author.id, xpGained],
   );
 
-  // Set cooldown AFTER successful DB write
+  // Set cooldown AFTER successful DB write (sweep interval handles eviction)
   cooldowns.set(key, now);
-  setTimeout(() => cooldowns.delete(key), cooldownMs + 1000);
 
   const { xp: newXp, level: currentLevel } = rows[0];
   const thresholds = repCfg.levelThresholds;

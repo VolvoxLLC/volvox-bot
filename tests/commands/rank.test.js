@@ -207,6 +207,45 @@ describe('/rank command', () => {
     );
   });
 
+  it('defaults to interaction.user when no target user option is provided', async () => {
+    // Covers the `?? interaction.user` branch at line 38
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 150, level: 1, messages_count: 7 }] })
+        .mockResolvedValueOnce({ rows: [{ rank: 2 }] }),
+    };
+    getPool.mockReturnValue(pool);
+
+    const interaction = makeInteraction();
+    interaction.options.getUser = vi.fn().mockReturnValue(null); // no user option → falls back
+    await execute(interaction);
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.objectContaining({ embeds: expect.any(Array) }),
+    );
+  });
+
+  it('defaults rank to 1 when rank query returns empty rows', async () => {
+    // Covers the `?? 1` branch at line 68 (rankRow.rows[0]?.rank ?? 1)
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 200, level: 1, messages_count: 3 }] })
+        .mockResolvedValueOnce({ rows: [] }), // empty rank result → ?? 1
+    };
+    getPool.mockReturnValue(pool);
+
+    const interaction = makeInteraction();
+    await execute(interaction);
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.objectContaining({ embeds: expect.any(Array) }),
+    );
+  });
+
   it('falls back to username when displayName is null', async () => {
     const pool = {
       query: vi
