@@ -115,12 +115,35 @@ export async function execute(interaction) {
 }
 
 /**
+ * Basic URL validity check.
+ *
+ * @param {string} str
+ * @returns {boolean}
+ */
+function isValidUrl(str) {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Handle /review request
  */
 async function handleRequest(interaction, pool, guildConfig) {
   const url = interaction.options.getString('url');
   const description = interaction.options.getString('description');
   const language = interaction.options.getString('language');
+
+  if (!isValidUrl(url)) {
+    await safeEditReply(interaction, {
+      content:
+        '❌ The URL you provided is not valid. Please provide a full URL (e.g. `https://github.com/...`).',
+    });
+    return;
+  }
 
   const { rows } = await pool.query(
     `INSERT INTO reviews (guild_id, requester_id, url, description, language)
@@ -248,9 +271,24 @@ async function handleComplete(interaction, pool, guildConfig) {
 
   const review = rows[0];
 
+  // Guard on status before checking reviewer — gives more actionable error messages.
+  if (review.status === 'open') {
+    await safeEditReply(interaction, {
+      content: `❌ Review **#${reviewId}** hasn't been claimed yet.`,
+    });
+    return;
+  }
+
   if (review.status === 'completed') {
     await safeEditReply(interaction, {
       content: `❌ Review **#${reviewId}** is already completed.`,
+    });
+    return;
+  }
+
+  if (review.status === 'stale') {
+    await safeEditReply(interaction, {
+      content: `❌ Review **#${reviewId}** has expired.`,
     });
     return;
   }

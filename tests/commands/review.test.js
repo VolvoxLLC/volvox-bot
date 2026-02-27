@@ -581,8 +581,9 @@ describe('handleReviewClaim', () => {
     const claimed = makeReview({ status: 'claimed', reviewer_id: 'claimer-001' });
 
     pool.query
-      .mockResolvedValueOnce({ rows: [review] }) // SELECT
-      .mockResolvedValueOnce({ rows: [claimed] }); // UPDATE
+      .mockResolvedValueOnce({ rows: [review] }) // SELECT to check for self-claim
+      .mockResolvedValueOnce({ rowCount: 1 }) // atomic UPDATE succeeds (status was 'open')
+      .mockResolvedValueOnce({ rows: [claimed] }); // SELECT to fetch updated row
 
     const interaction = makeButtonInteraction();
     await handleReviewClaim(interaction);
@@ -610,37 +611,43 @@ describe('handleReviewClaim', () => {
 
   it('prevents double-claim on already claimed review', async () => {
     const review = makeReview({ status: 'claimed', reviewer_id: 'someone-else' });
-    pool.query.mockResolvedValueOnce({ rows: [review] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [review] }) // SELECT (status=claimed)
+      .mockResolvedValueOnce({ rowCount: 0 }); // atomic UPDATE fails (status != 'open')
 
     const interaction = makeButtonInteraction();
     await handleReviewClaim(interaction);
 
     expect(interaction.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('already been claimed') }),
+      expect.objectContaining({ content: expect.stringContaining('no longer available') }),
     );
   });
 
   it('prevents claiming a completed review', async () => {
     const review = makeReview({ status: 'completed', reviewer_id: 'someone-else' });
-    pool.query.mockResolvedValueOnce({ rows: [review] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [review] }) // SELECT (status=completed)
+      .mockResolvedValueOnce({ rowCount: 0 }); // atomic UPDATE fails (status != 'open')
 
     const interaction = makeButtonInteraction();
     await handleReviewClaim(interaction);
 
     expect(interaction.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('already been claimed') }),
+      expect.objectContaining({ content: expect.stringContaining('no longer available') }),
     );
   });
 
   it('prevents claiming a stale review', async () => {
     const review = makeReview({ status: 'stale' });
-    pool.query.mockResolvedValueOnce({ rows: [review] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [review] }) // SELECT (status=stale)
+      .mockResolvedValueOnce({ rowCount: 0 }); // atomic UPDATE fails (status != 'open')
 
     const interaction = makeButtonInteraction();
     await handleReviewClaim(interaction);
 
     expect(interaction.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('stale') }),
+      expect.objectContaining({ content: expect.stringContaining('no longer available') }),
     );
   });
 
@@ -686,7 +693,8 @@ describe('expireStaleReviews', () => {
   });
 
   it('does nothing when no stale reviews', async () => {
-    pool.query.mockResolvedValueOnce({ rows: [] });
+    // New impl first queries for guilds with open reviews; empty means nothing to expire.
+    pool.query.mockResolvedValueOnce({ rows: [] }); // SELECT DISTINCT guild_id → no guilds
     const client = { channels: { fetch: vi.fn() } };
     await expireStaleReviews(client);
     expect(client.channels.fetch).not.toHaveBeenCalled();
@@ -697,7 +705,10 @@ describe('expireStaleReviews', () => {
       makeReview({ id: 1, status: 'stale', guild_id: 'guild-123', channel_id: 'ch-456' }),
       makeReview({ id: 2, status: 'stale', guild_id: 'guild-123', channel_id: 'ch-456' }),
     ];
-    pool.query.mockResolvedValueOnce({ rows: staleReviews });
+    // New impl: 1st query = SELECT DISTINCT guild_id, 2nd = per-guild UPDATE RETURNING
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ guild_id: 'guild-123' }] }) // SELECT DISTINCT
+      .mockResolvedValueOnce({ rows: staleReviews }); // per-guild UPDATE
 
     getConfig.mockReturnValue({
       review: { enabled: true, channelId: 'review-ch-001', staleAfterDays: 7, xpReward: 50 },
@@ -720,8 +731,11 @@ describe('expireStaleReviews', () => {
   });
 
   it('skips nudge when no review channelId configured', async () => {
-    const staleReviews = [makeReview({ status: 'stale' })];
-    pool.query.mockResolvedValueOnce({ rows: staleReviews });
+    const staleReviews = [makeReview({ status: 'stale', guild_id: 'guild-123' })];
+    // New impl: SELECT DISTINCT then per-guild UPDATE
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ guild_id: 'guild-123' }] }) // SELECT DISTINCT
+      .mockResolvedValueOnce({ rows: staleReviews }); // per-guild UPDATE
 
     getConfig.mockReturnValue({ review: { enabled: true, channelId: null } });
 

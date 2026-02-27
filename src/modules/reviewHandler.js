@@ -154,7 +154,7 @@ export async function handleReviewClaim(interaction) {
     return;
   }
 
-  // Fetch review
+  // Fetch review (needed for self-claim check before attempting atomic claim)
   const { rows } = await pool.query('SELECT * FROM reviews WHERE id = $1 AND guild_id = $2', [
     reviewId,
     interaction.guildId,
@@ -184,34 +184,29 @@ export async function handleReviewClaim(interaction) {
     return;
   }
 
-  // Prevent double-claim (already claimed or completed)
-  if (review.status === 'claimed' || review.status === 'completed') {
-    const claimedBy = review.reviewer_id ? `<@${review.reviewer_id}>` : 'someone';
-    await safeReply(interaction, {
-      content: `❌ This review has already been claimed by ${claimedBy}.`,
-      ephemeral: true,
-    });
-    return;
-  }
-
-  if (review.status === 'stale') {
-    await safeReply(interaction, {
-      content: '❌ This review request has gone stale and is no longer active.',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  // Claim the review
-  const { rows: updated } = await pool.query(
+  // Atomic claim: only succeeds if the review is still 'open' at the moment of UPDATE.
+  // This prevents two simultaneous clicks both succeeding (TOCTOU race condition).
+  const { rowCount } = await pool.query(
     `UPDATE reviews
-     SET status = 'claimed', reviewer_id = $1, claimed_at = NOW()
-     WHERE id = $2
-     RETURNING *`,
-    [interaction.user.id, reviewId],
+     SET reviewer_id = $1, status = 'claimed', claimed_at = NOW()
+     WHERE id = $2 AND guild_id = $3 AND status = 'open'`,
+    [interaction.user.id, reviewId, interaction.guildId],
   );
 
-  const claimedReview = updated[0];
+  if (rowCount === 0) {
+    // Either the review was already claimed/completed/stale between our SELECT and here,
+    // or it has gone stale. Surface a clean message either way.
+    await safeReply(interaction, {
+      content: '❌ This review is no longer available.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // Fetch the freshly-updated row so we have accurate data for the embed.
+  const { rows: updatedRows } = await pool.query('SELECT * FROM reviews WHERE id = $1', [reviewId]);
+
+  const claimedReview = updatedRows[0];
 
   // Optionally create a discussion thread
   let threadId = null;
@@ -264,22 +259,39 @@ export async function expireStaleReviews(client) {
   if (!pool) return;
 
   try {
-    // Mark open reviews older than 7 days as stale
-    const { rows: staleReviews } = await pool.query(
-      `UPDATE reviews
-       SET status = 'stale'
-       WHERE status = 'open'
-         AND created_at < NOW() - INTERVAL '7 days'
-       RETURNING *`,
+    // Collect all guild IDs that have open reviews so we can apply per-guild staleAfterDays.
+    const { rows: openGuilds } = await pool.query(
+      `SELECT DISTINCT guild_id FROM reviews WHERE status = 'open'`,
     );
 
-    if (staleReviews.length === 0) return;
+    if (openGuilds.length === 0) return;
 
-    info('Stale reviews expired', { count: staleReviews.length });
+    const allStaleReviews = [];
+
+    for (const { guild_id: guildId } of openGuilds) {
+      const config = getConfig(guildId);
+      const staleDays = config?.review?.staleAfterDays ?? 7;
+
+      const { rows } = await pool.query(
+        `UPDATE reviews
+         SET status = 'stale'
+         WHERE status = 'open'
+           AND guild_id = $1
+           AND created_at < NOW() - ($2 || ' days')::INTERVAL
+         RETURNING *`,
+        [guildId, staleDays],
+      );
+
+      allStaleReviews.push(...rows);
+    }
+
+    if (allStaleReviews.length === 0) return;
+
+    info('Stale reviews expired', { count: allStaleReviews.length });
 
     // Group by guild so we can post nudges per server
     const byGuild = new Map();
-    for (const review of staleReviews) {
+    for (const review of allStaleReviews) {
       if (!byGuild.has(review.guild_id)) byGuild.set(review.guild_id, []);
       byGuild.get(review.guild_id).push(review);
     }
@@ -287,6 +299,7 @@ export async function expireStaleReviews(client) {
     for (const [guildId, reviews] of byGuild) {
       const guildConfig = getConfig(guildId);
       const reviewChannelId = guildConfig.review?.channelId;
+      const staleDays = guildConfig?.review?.staleAfterDays ?? 7;
       if (!reviewChannelId) continue;
 
       try {
@@ -295,7 +308,7 @@ export async function expireStaleReviews(client) {
 
         const ids = reviews.map((r) => `#${r.id}`).join(', ');
         await safeSend(channel, {
-          content: `⏰ The following review request${reviews.length > 1 ? 's have' : ' has'} gone stale (no reviewer after 7 days): **${ids}**\n> Re-request if you still need a review!`,
+          content: `⏰ The following review request${reviews.length > 1 ? 's have' : ' has'} gone stale (no reviewer after ${staleDays} days): **${ids}**\n> Re-request if you still need a review!`,
         });
       } catch (nudgeErr) {
         warn('Failed to send stale review nudge', { guildId, error: nudgeErr.message });
