@@ -64,7 +64,7 @@ export function isValidRepo(repo) {
   const parts = repo.split('/');
   if (parts.length !== 2) return false;
   const [owner, name] = parts;
-  return owner.length > 0 && name.length > 0;
+  return /^[a-zA-Z0-9._-]+$/.test(owner) && /^[a-zA-Z0-9._-]+$/.test(name);
 }
 
 /**
@@ -99,17 +99,11 @@ export async function execute(interaction) {
 
   await interaction.deferReply({ ephemeral: true });
 
-  const pool = getPool();
-  if (!pool) {
-    await safeEditReply(interaction, { content: '❌ Database is not available.' });
-    return;
-  }
-
   if (subcommandGroup === 'feed') {
     if (subcommand === 'add') {
-      await handleAdd(interaction, pool, config);
+      await handleAdd(interaction, config);
     } else if (subcommand === 'remove') {
-      await handleRemove(interaction, pool, config);
+      await handleRemove(interaction, config);
     } else if (subcommand === 'list') {
       await handleList(interaction, config);
     } else if (subcommand === 'channel') {
@@ -122,10 +116,9 @@ export async function execute(interaction) {
  * Handle /github feed add
  *
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {import('pg').Pool} pool
  * @param {object} config
  */
-async function handleAdd(interaction, _pool, config) {
+async function handleAdd(interaction, config) {
   const repo = interaction.options.getString('repo');
 
   if (!isValidRepo(repo)) {
@@ -159,10 +152,10 @@ async function handleAdd(interaction, _pool, config) {
  * Handle /github feed remove
  *
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {import('pg').Pool} pool
  * @param {object} config
  */
-async function handleRemove(interaction, pool, config) {
+async function handleRemove(interaction, config) {
+  const pool = getPool();
   const repo = interaction.options.getString('repo');
 
   const repos = config.github.feed.repos || [];
