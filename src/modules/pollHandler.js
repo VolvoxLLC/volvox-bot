@@ -56,8 +56,10 @@ export function buildPollEmbed(poll) {
   }
   footer += ` • ${voterCount} voter${voterCount !== 1 ? 's' : ''}`;
 
+  const titleQuestion =
+    poll.question.length > 253 ? `${poll.question.slice(0, 250)}...` : poll.question;
   const embed = new EmbedBuilder()
-    .setTitle(`📊 ${poll.question}`)
+    .setTitle(`📊 ${titleQuestion}`)
     .setDescription(description)
     .setColor(POLL_COLOR)
     .setFooter({ text: footer });
@@ -87,11 +89,13 @@ export function buildPollButtons(pollId, options, disabled = false) {
       currentRow = new ActionRowBuilder();
     }
 
-    const label = options[i].length > 80 ? `${options[i].slice(0, 77)}...` : options[i];
+    const prefix = `${i + 1}. `;
+    const maxLen = 80 - prefix.length;
+    const label = options[i].length > maxLen ? `${options[i].slice(0, maxLen - 3)}...` : options[i];
     currentRow.addComponents(
       new ButtonBuilder()
         .setCustomId(`poll_vote_${pollId}_${i}`)
-        .setLabel(`${i + 1}. ${label}`)
+        .setLabel(`${prefix}${label}`)
         .setStyle(ButtonStyle.Primary)
         .setDisabled(disabled),
     );
@@ -114,62 +118,94 @@ export async function handlePollVote(interaction) {
   const optionIndex = Number.parseInt(match[2], 10);
 
   const pool = getPool();
+  const client = await pool.connect();
 
-  // Fetch poll
-  const { rows } = await pool.query('SELECT * FROM polls WHERE id = $1', [pollId]);
-  if (rows.length === 0) {
-    await safeReply(interaction, {
-      content: '❌ This poll no longer exists.',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const poll = rows[0];
-
-  if (poll.closed) {
-    await safeReply(interaction, {
-      content: '❌ This poll is closed.',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  if (optionIndex < 0 || optionIndex >= poll.options.length) {
-    await safeReply(interaction, {
-      content: '❌ Invalid option.',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const userId = interaction.user.id;
-  const votes = poll.votes || {};
-  const userVotes = votes[userId] || [];
-  const optionName = poll.options[optionIndex];
+  let poll;
+  let votes;
   let removed = false;
+  let optionName;
 
-  if (poll.multi_vote) {
-    // Toggle the option
-    if (userVotes.includes(optionIndex)) {
-      votes[userId] = userVotes.filter((i) => i !== optionIndex);
-      if (votes[userId].length === 0) delete votes[userId];
-      removed = true;
-    } else {
-      votes[userId] = [...userVotes, optionIndex];
+  try {
+    await client.query('BEGIN');
+
+    // Lock the row to prevent concurrent vote modifications
+    const { rows } = await client.query(
+      'SELECT * FROM polls WHERE id = $1 AND guild_id = $2 FOR UPDATE',
+      [pollId, interaction.guildId],
+    );
+
+    if (rows.length === 0) {
+      await client.query('ROLLBACK');
+      await safeReply(interaction, {
+        content: '❌ This poll no longer exists.',
+        ephemeral: true,
+      });
+      return;
     }
-  } else {
-    // Single vote: clicking same option removes, clicking different replaces
-    if (userVotes.includes(optionIndex)) {
-      delete votes[userId];
-      removed = true;
-    } else {
-      votes[userId] = [optionIndex];
+
+    poll = rows[0];
+
+    if (poll.closed) {
+      await client.query('ROLLBACK');
+      await safeReply(interaction, {
+        content: '❌ This poll is closed.',
+        ephemeral: true,
+      });
+      return;
     }
+
+    // Reject votes after closes_at
+    if (poll.closes_at && new Date(poll.closes_at) <= new Date()) {
+      await client.query('ROLLBACK');
+      await safeReply(interaction, {
+        content: '❌ This poll has expired.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (optionIndex < 0 || optionIndex >= poll.options.length) {
+      await client.query('ROLLBACK');
+      await safeReply(interaction, {
+        content: '❌ Invalid option.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const userId = interaction.user.id;
+    votes = poll.votes || {};
+    const userVotes = votes[userId] || [];
+    optionName = poll.options[optionIndex];
+
+    if (poll.multi_vote) {
+      if (userVotes.includes(optionIndex)) {
+        votes[userId] = userVotes.filter((i) => i !== optionIndex);
+        if (votes[userId].length === 0) delete votes[userId];
+        removed = true;
+      } else {
+        votes[userId] = [...userVotes, optionIndex];
+      }
+    } else {
+      if (userVotes.includes(optionIndex)) {
+        delete votes[userId];
+        removed = true;
+      } else {
+        votes[userId] = [optionIndex];
+      }
+    }
+
+    await client.query('UPDATE polls SET votes = $1 WHERE id = $2', [
+      JSON.stringify(votes),
+      pollId,
+    ]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
   }
-
-  // Update votes in DB
-  await pool.query('UPDATE polls SET votes = $1 WHERE id = $2', [JSON.stringify(votes), pollId]);
 
   // Update the poll object for embed rebuild
   poll.votes = votes;
@@ -194,7 +230,7 @@ export async function handlePollVote(interaction) {
 
   info('Poll vote recorded', {
     pollId,
-    userId,
+    userId: interaction.user.id,
     optionIndex,
     removed,
     anonymous: poll.anonymous,

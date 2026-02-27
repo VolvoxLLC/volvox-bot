@@ -560,10 +560,16 @@ describe('poll command', () => {
 
 describe('poll vote handling', () => {
   let mockPool;
+  let mockClient;
 
   beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      release: vi.fn(),
+    };
     mockPool = {
       query: vi.fn().mockResolvedValue({ rows: [] }),
+      connect: vi.fn().mockResolvedValue(mockClient),
     };
     getPool.mockReturnValue(mockPool);
   });
@@ -575,6 +581,7 @@ describe('poll vote handling', () => {
   function createMockButtonInteraction(customId, userId = 'voter-1') {
     return {
       customId,
+      guildId: 'guild-1',
       user: { id: userId },
       message: {
         edit: vi.fn(),
@@ -598,15 +605,18 @@ describe('poll vote handling', () => {
       closed: false,
       closes_at: null,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [poll] }); // SELECT
-    mockPool.query.mockResolvedValueOnce({ rows: [] }); // UPDATE
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [poll] }) // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
     const interaction = createMockButtonInteraction('poll_vote_1_0');
 
     await handlePollVote(interaction);
 
     // Should have updated votes with user voting for option 0
-    expect(mockPool.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
+    expect(mockClient.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
       JSON.stringify({ 'voter-1': [0] }),
       1,
     ]);
@@ -631,14 +641,17 @@ describe('poll vote handling', () => {
       closed: false,
       closes_at: null,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [poll] });
-    mockPool.query.mockResolvedValueOnce({ rows: [] });
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [poll] }) // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
     const interaction = createMockButtonInteraction('poll_vote_2_0');
 
     await handlePollVote(interaction);
 
-    expect(mockPool.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
+    expect(mockClient.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
       JSON.stringify({}),
       2,
     ]);
@@ -662,14 +675,17 @@ describe('poll vote handling', () => {
       closed: false,
       closes_at: null,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [poll] });
-    mockPool.query.mockResolvedValueOnce({ rows: [] });
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [poll] }) // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
     const interaction = createMockButtonInteraction('poll_vote_3_1');
 
     await handlePollVote(interaction);
 
-    expect(mockPool.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
+    expect(mockClient.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
       JSON.stringify({ 'voter-1': [1] }),
       3,
     ]);
@@ -693,15 +709,18 @@ describe('poll vote handling', () => {
       closed: false,
       closes_at: null,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [poll] });
-    mockPool.query.mockResolvedValueOnce({ rows: [] });
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [poll] }) // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
     // Vote for B (index 1) — should add to existing [0]
     const interaction = createMockButtonInteraction('poll_vote_4_1');
 
     await handlePollVote(interaction);
 
-    expect(mockPool.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
+    expect(mockClient.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
       JSON.stringify({ 'voter-1': [0, 1] }),
       4,
     ]);
@@ -725,15 +744,18 @@ describe('poll vote handling', () => {
       closed: false,
       closes_at: null,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [poll] });
-    mockPool.query.mockResolvedValueOnce({ rows: [] });
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [poll] }) // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
     // Remove vote for A (index 0)
     const interaction = createMockButtonInteraction('poll_vote_5_0');
 
     await handlePollVote(interaction);
 
-    expect(mockPool.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
+    expect(mockClient.query).toHaveBeenCalledWith('UPDATE polls SET votes = $1 WHERE id = $2', [
       JSON.stringify({ 'voter-1': [1] }),
       5,
     ]);
@@ -753,7 +775,9 @@ describe('poll vote handling', () => {
       votes: {},
       closed: true,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [poll] });
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [poll] }); // SELECT FOR UPDATE
 
     const interaction = createMockButtonInteraction('poll_vote_6_0');
 
@@ -770,7 +794,9 @@ describe('poll vote handling', () => {
   it('should reject vote on non-existent poll', async () => {
     const { handlePollVote } = await import('../../src/modules/pollHandler.js');
 
-    mockPool.query.mockResolvedValueOnce({ rows: [] });
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [] }); // SELECT FOR UPDATE (no rows)
 
     const interaction = createMockButtonInteraction('poll_vote_999_0');
 

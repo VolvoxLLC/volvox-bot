@@ -64,7 +64,9 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .setAutocomplete(true),
       )
-      .addStringOption((opt) => opt.setName('title').setDescription('New title').setMaxLength(256).setRequired(false))
+      .addStringOption((opt) =>
+        opt.setName('title').setDescription('New title').setMaxLength(256).setRequired(false),
+      )
       .addStringOption((opt) =>
         opt.setName('content').setDescription('New content').setMaxLength(4096).setRequired(false),
       ),
