@@ -363,8 +363,7 @@ export function startGithubFeed(client) {
 
   const defaultMinutes = 5;
 
-  // We read interval from the first guild's config as a reasonable default.
-  // If no guild has it configured, use 5 minutes.
+  // Poll interval is hardcoded; per-guild config override is not yet implemented.
   const intervalMs = defaultMinutes * 60_000;
 
   // Kick off first poll after bot is settled (5s delay)

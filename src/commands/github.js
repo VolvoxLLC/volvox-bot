@@ -128,7 +128,7 @@ async function handleAdd(interaction, config) {
     return;
   }
 
-  const repos = config.github.feed.repos || [];
+  const repos = [...(config.github?.feed?.repos ?? [])];
 
   if (repos.includes(repo)) {
     await safeEditReply(interaction, {
