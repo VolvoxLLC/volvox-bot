@@ -6,11 +6,11 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/46
  */
 
+import { buildPingSummary } from '../commands/afk.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
-import { getConfig } from './config.js';
 import { safeSend } from '../utils/safeSend.js';
-import { buildPingSummary } from '../commands/afk.js';
+import { getConfig } from './config.js';
 
 /**
  * In-memory rate limit store: maps `${guildId}:${afkUserId}:${channelId}` → timestamp (ms).
@@ -24,6 +24,8 @@ const RATE_LIMIT_MS = 5 * 60 * 1000;
 /**
  * Check and update the rate limit for an AFK notice.
  * Returns true if a notice should be sent, false if rate-limited.
+ *
+ * Also evicts expired entries on every write to prevent unbounded Map growth.
  *
  * @param {string} guildId
  * @param {string} afkUserId
@@ -40,6 +42,14 @@ function checkNoticeRateLimit(guildId, afkUserId, channelId) {
   }
 
   afkNoticeRateLimit.set(key, now);
+
+  // Evict expired entries to prevent unbounded Map growth.
+  for (const [k, ts] of afkNoticeRateLimit) {
+    if (now - ts >= RATE_LIMIT_MS) {
+      afkNoticeRateLimit.delete(k);
+    }
+  }
+
   return true;
 }
 

@@ -15,6 +15,7 @@ AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community.
 - **⚔️ Moderation Suite** — Full-featured mod toolkit: warn, kick, ban, tempban, softban, timeout, purge, lock/unlock, slowmode. Includes case management, mod log routing, DM notifications, auto-escalation, and tempban scheduling.
 - **⚙️ Config Management** — All settings stored in PostgreSQL with live `/config` slash command for runtime changes.
 - **📊 Health Monitoring** — Built-in health checks and `/status` command for uptime, memory, and latency stats.
+- **💤 AFK System** — Members can set an AFK status with `/afk set [reason]`; the bot notifies mentioners inline and DMs a ping summary on return.
 - **🎤 Voice Activity Tracking** — Tracks voice channel activity for community insights.
 - **🌐 Web Dashboard** — Next.js-based admin dashboard with Discord OAuth2 login, server selector, and guild management UI.
 

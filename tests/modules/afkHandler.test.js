@@ -29,9 +29,9 @@ vi.mock('../../src/commands/afk.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
+import { clearRateLimitCache, handleAfkMentions } from '../../src/modules/afkHandler.js';
 import { getConfig } from '../../src/modules/config.js';
 import { safeSend } from '../../src/utils/safeSend.js';
-import { clearRateLimitCache, handleAfkMentions } from '../../src/modules/afkHandler.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -137,14 +137,17 @@ describe('afkHandler', () => {
       await handleAfkMentions(message);
 
       // Should delete AFK status
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM afk_status'),
-        ['guild1', 'sender1'],
-      );
+      expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM afk_status'), [
+        'guild1',
+        'sender1',
+      ]);
 
       // Should DM user
       expect(author.createDM).toHaveBeenCalled();
-      expect(safeSend).toHaveBeenCalledWith(dm, expect.objectContaining({ content: expect.stringContaining('Welcome back') }));
+      expect(safeSend).toHaveBeenCalledWith(
+        dm,
+        expect.objectContaining({ content: expect.stringContaining('Welcome back') }),
+      );
     });
 
     it('does not crash if DM fails', async () => {
@@ -198,7 +201,12 @@ describe('afkHandler', () => {
     it('sends inline AFK notice when an AFK user is mentioned', async () => {
       getConfig.mockReturnValue({ afk: { enabled: true } });
 
-      const afkUser = { id: 'afkUser1', bot: false, displayName: 'AFK Person', username: 'afkperson' };
+      const afkUser = {
+        id: 'afkUser1',
+        bot: false,
+        displayName: 'AFK Person',
+        username: 'afkperson',
+      };
       const mentions = new Map([['afkUser1', afkUser]]);
 
       const pool = {
@@ -282,9 +290,7 @@ describe('afkHandler', () => {
       const mentions = new Map([['bot1', botUser]]);
 
       const pool = {
-        query: vi
-          .fn()
-          .mockResolvedValueOnce({ rows: [] }), // sender not AFK
+        query: vi.fn().mockResolvedValueOnce({ rows: [] }), // sender not AFK
       };
       getPool.mockReturnValue(pool);
 
@@ -302,9 +308,7 @@ describe('afkHandler', () => {
       const mentions = new Map([['sender1', selfUser]]);
 
       const pool = {
-        query: vi
-          .fn()
-          .mockResolvedValueOnce({ rows: [] }), // sender not AFK
+        query: vi.fn().mockResolvedValueOnce({ rows: [] }), // sender not AFK
       };
       getPool.mockReturnValue(pool);
 
@@ -330,11 +334,15 @@ describe('afkHandler', () => {
           .fn()
           // Round 1: sender not AFK, user IS AFK, ping insert
           .mockResolvedValueOnce({ rows: [] })
-          .mockResolvedValueOnce({ rows: [{ id: 1, user_id: 'afkUser1', reason: 'BRB', set_at: new Date() }] })
+          .mockResolvedValueOnce({
+            rows: [{ id: 1, user_id: 'afkUser1', reason: 'BRB', set_at: new Date() }],
+          })
           .mockResolvedValueOnce({ rows: [] })
           // Round 2: sender not AFK, user IS AFK (rate limited — no ping insert)
           .mockResolvedValueOnce({ rows: [] })
-          .mockResolvedValueOnce({ rows: [{ id: 1, user_id: 'afkUser1', reason: 'BRB', set_at: new Date() }] }),
+          .mockResolvedValueOnce({
+            rows: [{ id: 1, user_id: 'afkUser1', reason: 'BRB', set_at: new Date() }],
+          }),
       };
       getPool.mockReturnValue(pool);
 

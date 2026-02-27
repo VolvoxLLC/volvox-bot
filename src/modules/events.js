@@ -10,8 +10,8 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // Both accept the same options shape including allowedMentions, so the
 // safe wrapper applies identically to either target type.
 import { safeReply } from '../utils/safeSend.js';
-import { getConfig } from './config.js';
 import { handleAfkMentions } from './afkHandler.js';
+import { getConfig } from './config.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';

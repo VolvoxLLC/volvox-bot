@@ -145,7 +145,8 @@
       "slowmode": "admin",
       "modlog": "moderator",
       "announce": "moderator",
-      "tldr": "everyone"
+      "tldr": "everyone",
+      "afk": "everyone"
     }
   },
   "help": {

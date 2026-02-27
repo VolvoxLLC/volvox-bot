@@ -49,7 +49,12 @@ vi.mock('discord.js', () => {
           setDescription: () => ({
             addStringOption: (f) => {
               f(chainable());
-              return { addStringOption: (f2) => { f2(chainable()); return {}; } };
+              return {
+                addStringOption: (f2) => {
+                  f2(chainable());
+                  return {};
+                },
+              };
             },
           }),
         }),
@@ -64,10 +69,10 @@ vi.mock('discord.js', () => {
   return { SlashCommandBuilder: MockSlashCommandBuilder };
 });
 
+import { buildPingSummary, execute } from '../../src/commands/afk.js';
 import { getPool } from '../../src/db.js';
 import { getConfig } from '../../src/modules/config.js';
 import { safeReply } from '../../src/utils/safeSend.js';
-import { buildPingSummary, execute } from '../../src/commands/afk.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -142,10 +147,11 @@ describe('afk command', () => {
       const interaction = makeInteraction('set', { reason: 'On a walk' });
       await execute(interaction);
 
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO afk_status'),
-        ['guild1', 'user1', 'On a walk'],
-      );
+      expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO afk_status'), [
+        'guild1',
+        'user1',
+        'On a walk',
+      ]);
     });
 
     it('uses default reason "AFK" when no reason given', async () => {
@@ -156,10 +162,11 @@ describe('afk command', () => {
       const interaction = makeInteraction('set', { reason: null });
       await execute(interaction);
 
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO afk_status'),
-        ['guild1', 'user1', 'AFK'],
-      );
+      expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO afk_status'), [
+        'guild1',
+        'user1',
+        'AFK',
+      ]);
     });
 
     it('replies ephemerally after setting AFK', async () => {
@@ -190,7 +197,7 @@ describe('afk command', () => {
 
       expect(safeReply).toHaveBeenCalledWith(
         interaction,
-        expect.objectContaining({ content: expect.stringContaining("not AFK") }),
+        expect.objectContaining({ content: expect.stringContaining('not AFK') }),
       );
     });
 
