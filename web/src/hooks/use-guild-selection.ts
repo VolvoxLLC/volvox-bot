@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 
 interface UseGuildSelectionOptions {
@@ -11,6 +11,11 @@ interface UseGuildSelectionOptions {
  */
 export function useGuildSelection(options?: UseGuildSelectionOptions): string | null {
   const [guildId, setGuildId] = useState<string | null>(null);
+  const onGuildChangeRef = useRef(options?.onGuildChange);
+
+  useEffect(() => {
+    onGuildChangeRef.current = options?.onGuildChange;
+  }, [options?.onGuildChange]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -26,14 +31,14 @@ export function useGuildSelection(options?: UseGuildSelectionOptions): string | 
       const selected = (event as CustomEvent<string>).detail;
       if (selected) {
         setGuildId(selected);
-        options?.onGuildChange?.();
+        onGuildChangeRef.current?.();
       }
     };
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== SELECTED_GUILD_KEY || !event.newValue) return;
       setGuildId(event.newValue);
-      options?.onGuildChange?.();
+      onGuildChangeRef.current?.();
     };
 
     window.addEventListener(GUILD_SELECTED_EVENT, handleGuildSelect as EventListener);
