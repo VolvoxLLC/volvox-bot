@@ -27,43 +27,51 @@ export async function execute(interaction) {
     return;
   }
 
-  const { rows } = await pool.query(
-    `SELECT user_id, xp, level
+  try {
+    const { rows } = await pool.query(
+      `SELECT user_id, xp, level
      FROM reputation
      WHERE guild_id = $1
      ORDER BY xp DESC
      LIMIT 10`,
-    [interaction.guildId],
-  );
+      [interaction.guildId],
+    );
 
-  if (rows.length === 0) {
+    if (rows.length === 0) {
+      await safeEditReply(interaction, {
+        content: '📭 No one has earned XP yet. Start chatting!',
+      });
+      return;
+    }
+
+    // Resolve display names
+    const lines = await Promise.all(
+      rows.map(async (row, i) => {
+        let displayName = `<@${row.user_id}>`;
+        try {
+          const member = await interaction.guild.members.fetch(row.user_id);
+          displayName = member.displayName;
+        } catch {
+          // User may have left — fall back to mention
+        }
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `**${i + 1}.**`;
+        return `${medal} ${displayName} — Level ${row.level} • ${row.xp} XP`;
+      }),
+    );
+
+    const embed = new EmbedBuilder()
+      .setColor(0xfee75c)
+      .setTitle('🏆 XP Leaderboard')
+      .setDescription(lines.join('\n'))
+      .setFooter({ text: `Top ${rows.length} members` })
+      .setTimestamp();
+
+    await safeEditReply(interaction, { embeds: [embed] });
+  } catch (err) {
+    const { error: logError } = await import('../logger.js');
+    logError('Leaderboard command failed', { error: err.message, stack: err.stack });
     await safeEditReply(interaction, {
-      content: '📭 No one has earned XP yet. Start chatting!',
+      content: '❌ Something went wrong fetching the leaderboard.',
     });
-    return;
   }
-
-  // Resolve display names
-  const lines = await Promise.all(
-    rows.map(async (row, i) => {
-      let displayName = `<@${row.user_id}>`;
-      try {
-        const member = await interaction.guild.members.fetch(row.user_id);
-        displayName = member.displayName;
-      } catch {
-        // User may have left — fall back to mention
-      }
-      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `**${i + 1}.**`;
-      return `${medal} ${displayName} — Level ${row.level} • ${row.xp} XP`;
-    }),
-  );
-
-  const embed = new EmbedBuilder()
-    .setColor(0xfee75c)
-    .setTitle('🏆 XP Leaderboard')
-    .setDescription(lines.join('\n'))
-    .setFooter({ text: `Top ${rows.length} members` })
-    .setTimestamp();
-
-  await safeEditReply(interaction, { embeds: [embed] });
 }

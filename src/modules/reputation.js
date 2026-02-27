@@ -103,7 +103,7 @@ export async function handleXpGain(message) {
   );
 
   const { xp: newXp, level: currentLevel } = rows[0];
-  const thresholds = repCfg.levelThresholds ?? DEFAULT_THRESHOLDS;
+  const thresholds = repCfg.levelThresholds;
   const newLevel = computeLevel(newXp, thresholds);
 
   if (newLevel > currentLevel) {
