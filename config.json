@@ -151,6 +151,7 @@
       "rank": "everyone",
       "leaderboard": "everyone",
       "profile": "everyone",
+      "review": "everyone",
       "showcase": "everyone"
     }
   },
@@ -204,5 +205,11 @@
     "announceChannelId": null,
     "levelThresholds": [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000],
     "roleRewards": {}
+  },
+  "review": {
+    "enabled": false,
+    "channelId": null,
+    "staleAfterDays": 7,
+    "xpReward": 50
   }
 }
