@@ -19,7 +19,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 }));
 
 // Mock @anthropic-ai/sdk
-const mockCreate = vi.fn();
+const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
 vi.mock('@anthropic-ai/sdk', () => {
   const MockAnthropic = function MockAnthropic() {
     return { messages: { create: mockCreate } };

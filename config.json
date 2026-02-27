@@ -144,7 +144,8 @@
       "unlock": "admin",
       "slowmode": "admin",
       "modlog": "moderator",
-      "announce": "moderator"
+      "announce": "moderator",
+      "tldr": "everyone"
     }
   },
   "tldr": {

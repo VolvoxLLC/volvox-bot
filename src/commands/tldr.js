@@ -25,6 +25,9 @@ const MAX_MESSAGE_COUNT = 200;
 /** Cooldown tracking: channelId → last-used timestamp (ms) */
 const cooldownMap = new Map();
 
+/** Shared Anthropic client (connection pooling, auth caching). */
+const anthropicClient = new Anthropic();
+
 /** Claude model for cost-efficient summarization */
 const SUMMARIZE_MODEL = 'claude-haiku-4-5';
 
@@ -64,9 +67,20 @@ function checkCooldown(channelId, cooldownSeconds) {
   const last = cooldownMap.get(channelId);
   if (!last) return { onCooldown: false, remainingSeconds: 0 };
   const elapsed = (Date.now() - last) / 1000;
-  if (elapsed >= cooldownSeconds) return { onCooldown: false, remainingSeconds: 0 };
+  if (elapsed >= cooldownSeconds) {
+    cooldownMap.delete(channelId);
+    return { onCooldown: false, remainingSeconds: 0 };
+  }
   return { onCooldown: true, remainingSeconds: Math.ceil(cooldownSeconds - elapsed) };
 }
+
+// Evict stale cooldown entries every 10 minutes (prevent unbounded growth)
+setInterval(() => {
+  const cutoff = Date.now() - 3_600_000; // 1 hour
+  for (const [id, ts] of cooldownMap) {
+    if (ts < cutoff) cooldownMap.delete(id);
+  }
+}, 600_000).unref();
 
 /**
  * Format a Date as HH:MM in UTC.
@@ -121,10 +135,9 @@ async function fetchAndFormatMessages(channel, opts) {
  * @returns {Promise<string>} Raw summary text from Claude
  */
 async function summarizeWithAI(conversationText) {
-  const client = new Anthropic();
   const truncated = conversationText.slice(0, MAX_INPUT_CHARS);
 
-  const response = await client.messages.create({
+  const response = await anthropicClient.messages.create({
     model: SUMMARIZE_MODEL,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
@@ -252,15 +265,15 @@ export async function execute(interaction) {
 
     info('TLDR summarizing', { guildId, channelId, messageCount });
 
-    // Mark cooldown before AI call
-    cooldownMap.set(channelId, Date.now());
-
     // Call AI
     const summary = await summarizeWithAI(conversationText);
 
     if (!summary) {
       return await safeEditReply(interaction, '❌ Failed to generate summary.');
     }
+
+    // Mark cooldown only after successful AI response
+    cooldownMap.set(channelId, Date.now());
 
     // Build embed
     const embed = buildEmbed(summary, messageCount, channel.name ?? channelId);
