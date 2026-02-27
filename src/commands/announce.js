@@ -140,6 +140,14 @@ export function parseTime(timeStr) {
 export async function execute(interaction) {
   const config = getConfig(interaction.guildId);
 
+  if (!config.announce?.enabled) {
+    await safeReply(interaction, {
+      content: '❌ The /announce command is not enabled on this server.',
+      ephemeral: true,
+    });
+    return;
+  }
+
   if (!isModerator(interaction.member, config)) {
     await safeReply(interaction, {
       content: getPermissionError('announce', 'moderator'),

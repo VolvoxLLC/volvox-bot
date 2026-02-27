@@ -48,7 +48,7 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory"] as const;
+  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr"] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
   for (const key of knownSections) {
@@ -1185,6 +1185,41 @@ export function ConfigEditor() {
               label="Auto-Extract"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ═══ Community Feature Toggles ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Community Features</CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground">Enable or disable community commands per guild.</p>
+          {([
+            { key: "help", label: "Help / FAQ", desc: "/help command for server knowledge base" },
+            { key: "announce", label: "Announcements", desc: "/announce for scheduled messages" },
+            { key: "snippet", label: "Code Snippets", desc: "/snippet for saving and sharing code" },
+            { key: "poll", label: "Polls", desc: "/poll for community voting" },
+            { key: "tldr", label: "TL;DR Summaries", desc: "/tldr for AI channel summaries" },
+          ] as const).map(({ key, label, desc }) => (
+            <div key={key} className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium">{label}</span>
+                <p className="text-xs text-muted-foreground">{desc}</p>
+              </div>
+              <ToggleSwitch
+                checked={draftConfig[key]?.enabled ?? false}
+                onChange={(v) => {
+                  setDraftConfig((prev) => ({
+                    ...prev,
+                    [key]: { ...prev[key], enabled: v },
+                  }));
+                }}
+                disabled={saving}
+                label={label}
+              />
+            </div>
+          ))}
         </CardContent>
       </Card>
 

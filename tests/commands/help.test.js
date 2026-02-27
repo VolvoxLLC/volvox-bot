@@ -10,7 +10,7 @@ vi.mock('../../src/db.js', () => ({
   getPool: vi.fn(),
 }));
 vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn().mockReturnValue({}),
+  getConfig: vi.fn().mockReturnValue({ help: { enabled: true } }),
 }));
 vi.mock('../../src/utils/permissions.js', () => ({
   isModerator: vi.fn().mockReturnValue(true),

@@ -148,6 +148,18 @@
       "tldr": "everyone"
     }
   },
+  "help": {
+    "enabled": false
+  },
+  "announce": {
+    "enabled": false
+  },
+  "snippet": {
+    "enabled": false
+  },
+  "poll": {
+    "enabled": false
+  },
   "tldr": {
     "enabled": false,
     "defaultMessages": 50,
