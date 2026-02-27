@@ -94,17 +94,11 @@ export async function trackReaction(reaction, user) {
     const receivedQuery =
       authorId && authorId !== user.id && !messageAuthor?.bot
         ? pool.query(
-            `INSERT INTO user_stats (guild_id, user_id, reactions_received, days_active, first_seen, last_active)
-             VALUES ($1, $2, 1, 1, NOW(), NOW())
+            `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen)
+             VALUES ($1, $2, 1, NOW())
              ON CONFLICT (guild_id, user_id) DO UPDATE
-               SET reactions_received = user_stats.reactions_received + 1,
-                   days_active = CASE
-                     WHEN user_stats.days_active = 0 OR user_stats.last_active::date < $3::date
-                     THEN user_stats.days_active + 1
-                     ELSE user_stats.days_active
-                   END,
-                   last_active = NOW()`,
-            [guildId, authorId, now.toISOString()],
+               SET reactions_received = user_stats.reactions_received + 1`,
+            [guildId, authorId],
           )
         : null;
 
