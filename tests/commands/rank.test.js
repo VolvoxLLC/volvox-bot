@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/db.js', () => ({
   getPool: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn().mockReturnValue({ reputation: {} }),
+  getConfig: vi.fn().mockReturnValue({ reputation: { enabled: true } }),
 }));
 
 vi.mock('../../src/modules/reputation.js', async (importOriginal) => {
@@ -140,7 +140,9 @@ describe('/rank command', () => {
   });
 
   it('shows error when DB unavailable', async () => {
-    getPool.mockReturnValue(null);
+    getPool.mockImplementation(() => {
+      throw new Error('Database not available');
+    });
 
     const interaction = makeInteraction();
     await execute(interaction);

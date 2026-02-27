@@ -147,7 +147,9 @@
       "announce": "moderator",
       "tldr": "everyone",
       "afk": "everyone",
-      "github": "everyone"
+      "github": "everyone",
+      "rank": "everyone",
+      "leaderboard": "everyone"
     }
   },
   "help": {

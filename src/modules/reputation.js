@@ -9,6 +9,7 @@ import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
+import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 import { getConfig } from './config.js';
 import { REPUTATION_DEFAULTS } from './reputationDefaults.js';
 
@@ -86,8 +87,6 @@ export async function handleXpGain(message) {
   const [minXp, maxXp] = repCfg.xpPerMessage ?? [5, 15];
   const xpGained = Math.floor(Math.random() * (maxXp - minXp + 1)) + minXp;
 
-  cooldowns.set(key, now);
-
   const pool = getPool();
 
   // Upsert reputation row
@@ -101,6 +100,10 @@ export async function handleXpGain(message) {
      RETURNING xp, level`,
     [message.guild.id, message.author.id, xpGained],
   );
+
+  // Set cooldown AFTER successful DB write
+  cooldowns.set(key, now);
+  setTimeout(() => cooldowns.delete(key), cooldownMs + 1000);
 
   const { xp: newXp, level: currentLevel } = rows[0];
   const thresholds = repCfg.levelThresholds;
@@ -146,7 +149,9 @@ export async function handleXpGain(message) {
           .setColor(0x57f287)
           .setTitle('🎉 Level Up!')
           .setDescription(
-            `${message.author} reached **Level ${newLevel}**!${roleId ? ` 🏅 Role reward assigned!` : ''}`,
+            sanitizeMentions(
+              `${message.author} reached **Level ${newLevel}**!${roleId ? ' 🏅 Role reward assigned!' : ''}`,
+            ),
           )
           .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
           .addFields({ name: 'Total XP', value: String(newXp), inline: true })

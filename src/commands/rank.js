@@ -27,15 +27,14 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   await interaction.deferReply();
 
-  const pool = getPool();
-  if (!pool) {
-    await safeEditReply(interaction, { content: '❌ Database is not available.' });
-    return;
+  const cfg = getConfig(interaction.guildId);
+  if (!cfg?.reputation?.enabled) {
+    return safeEditReply(interaction, { content: 'Reputation system is not enabled.' });
   }
 
   try {
+    const pool = getPool();
     const target = interaction.options.getUser('user') ?? interaction.user;
-    const cfg = getConfig(interaction.guildId);
     const repCfg = { ...REPUTATION_DEFAULTS, ...cfg.reputation };
     const thresholds = repCfg.levelThresholds;
 

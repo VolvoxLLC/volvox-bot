@@ -10,6 +10,10 @@ vi.mock('../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({ reputation: { enabled: true } }),
+}));
+
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn(),
 }));
@@ -105,7 +109,9 @@ describe('/leaderboard command', () => {
   });
 
   it('shows error when DB unavailable', async () => {
-    getPool.mockReturnValue(null);
+    getPool.mockImplementation(() => {
+      throw new Error('Database not available');
+    });
 
     const interaction = makeInteraction();
     await execute(interaction);

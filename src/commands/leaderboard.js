@@ -7,6 +7,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
+import { getConfig } from '../modules/config.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
@@ -21,13 +22,13 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   await interaction.deferReply();
 
-  const pool = getPool();
-  if (!pool) {
-    await safeEditReply(interaction, { content: '❌ Database is not available.' });
-    return;
+  const cfg = getConfig(interaction.guildId);
+  if (!cfg?.reputation?.enabled) {
+    return safeEditReply(interaction, { content: 'Reputation system is not enabled.' });
   }
 
   try {
+    const pool = getPool();
     const { rows } = await pool.query(
       `SELECT user_id, xp, level
      FROM reputation
