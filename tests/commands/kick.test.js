@@ -115,4 +115,29 @@ describe('kick command', () => {
       expect.stringContaining('An error occurred'),
     );
   });
+
+  it('should return early with error message when target member is not in server', async () => {
+    const { interaction } = createInteraction();
+    // Override getMember to return null (user not in server)
+    interaction.options.getMember.mockReturnValueOnce(null);
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('not in this server'),
+    );
+  });
+
+  it('should kick with undefined reason when reason is null', async () => {
+    const { interaction, mockMember } = createInteraction();
+    interaction.options.getString.mockImplementation((name) => {
+      if (name === 'reason') return null;
+      return null;
+    });
+
+    await execute(interaction);
+
+    // kick should be called with undefined reason (null || undefined → undefined)
+    expect(mockMember.kick).toHaveBeenCalledWith(undefined);
+  });
 });

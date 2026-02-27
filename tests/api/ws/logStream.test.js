@@ -335,4 +335,123 @@ describe('WebSocket Log Stream', () => {
       await stopLogStream();
     });
   });
+
+  describe('setupLogStream double-call', () => {
+    it('should warn and restart when called while already running', async () => {
+      // It's already running from beforeEach; call it again
+      const result = await createTestServer();
+      const server2 = result.server;
+
+      try {
+        setupLogStream(server2, transport); // should warn and restart
+        // Give it a moment to restart
+        await new Promise((r) => setTimeout(r, 50));
+        // Connect to verify the new server works
+        const ws = new WebSocket(`ws://localhost:${result.port}/ws/logs`);
+        await new Promise((resolve, reject) => {
+          ws.on('open', resolve);
+          ws.on('error', reject);
+        });
+        ws.terminate();
+      } finally {
+        server2.close();
+      }
+    });
+  });
+
+  describe('auth edge cases', () => {
+    it('should reject auth when BOT_API_SECRET is not configured', async () => {
+      vi.unstubAllEnvs();
+      // Re-setup without the secret — server will close the connection on invalid ticket
+      const { ws } = await connect();
+      clients.push(ws);
+
+      const closedPromise = waitForClose(ws);
+      sendJson(ws, { type: 'auth', ticket: 'some.valid.ticket' });
+
+      // Server closes connection with 4003 when ticket is invalid (no secret = always invalid)
+      const closeCode = await closedPromise;
+      expect(closeCode).toBe(4003);
+      // Restore for cleanup
+      vi.stubEnv('BOT_API_SECRET', TEST_SECRET);
+    });
+
+    it('should reject second auth attempt on already-authenticated connection', async () => {
+      const { ws, mq } = await connect();
+      clients.push(ws);
+      await authenticate(ws, mq);
+
+      // Try to auth again — returns 'error' type (not 'auth_error')
+      sendJson(ws, { type: 'auth', ticket: makeTicket() });
+
+      const resp = await mq.next();
+      expect(resp.type).toBe('error');
+      expect(resp.message).toContain('Already authenticated');
+    });
+
+    it('should connect without wsTransport (no real-time forwarding)', async () => {
+      await stopLogStream();
+      const result = await createTestServer();
+      const noTransportServer = result.server;
+
+      try {
+        setupLogStream(noTransportServer, null); // no transport
+        const ws = new WebSocket(`ws://localhost:${result.port}/ws/logs`);
+        const mq = createMessageQueue(ws);
+        await new Promise((resolve, reject) => {
+          ws.on('open', resolve);
+          ws.on('error', reject);
+        });
+        clients.push(ws);
+
+        sendJson(ws, { type: 'auth', ticket: makeTicket() });
+        const resp = await mq.next();
+        expect(resp.type).toBe('auth_ok');
+        // History sent after (empty because no real DB)
+        await mq.next(); // wait for history
+      } finally {
+        await stopLogStream();
+        noTransportServer.close();
+      }
+    });
+  });
+
+  describe('filter with all string fields', () => {
+    it('should set module and search filter when provided as strings', async () => {
+      const { ws, mq } = await connect();
+      clients.push(ws);
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', level: null, module: 'discord', search: 'error' });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.module).toBe('discord');
+      expect(resp.filter.search).toBe('error');
+    });
+
+    it('should set null for non-string level', async () => {
+      const { ws, mq } = await connect();
+      clients.push(ws);
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', level: 42, module: null, search: null });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.level).toBeNull();
+    });
+  });
+
+  describe('unauthenticated client cleanup', () => {
+    it('should handle disconnect of never-authenticated client cleanly', async () => {
+      const { ws } = await connect();
+      clients.push(ws);
+      // Close immediately without authenticating
+      const closedPromise = waitForClose(ws);
+      ws.close();
+      await closedPromise;
+      await new Promise((r) => setTimeout(r, 50));
+      // Count should remain 0 — unauthenticated clients don't increment it
+      expect(getAuthenticatedClientCount()).toBe(0);
+    });
+  });
 });

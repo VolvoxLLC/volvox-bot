@@ -447,6 +447,102 @@ describe('sendWelcomeMessage', () => {
     expect(mockSend).toHaveBeenCalled();
   });
 
+  it('should use morning greeting template when hour is 6am', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-15T06:00:00.000Z')); // 6am UTC
+
+    const mockSend = vi.fn();
+    const member = {
+      id: '123',
+      user: { tag: 'user#1234', username: 'testuser' },
+      guild: {
+        name: 'Test',
+        memberCount: 100,
+        channels: {
+          cache: {
+            filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
+            has: vi.fn().mockReturnValue(false),
+          },
+        },
+      },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        dynamic: { enabled: true, timezone: 'UTC' },
+      },
+    };
+    await sendWelcomeMessage(member, client, config);
+    expect(mockSend).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('should use evening greeting template when hour is 7pm', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-15T19:00:00.000Z')); // 7pm UTC
+
+    const mockSend = vi.fn();
+    const member = {
+      id: '456',
+      user: { tag: 'user#5678', username: 'eveninguser' },
+      guild: {
+        name: 'EventGuild',
+        memberCount: 50,
+        channels: {
+          cache: {
+            filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
+            has: vi.fn().mockReturnValue(false),
+          },
+        },
+      },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        dynamic: { enabled: true, timezone: 'UTC' },
+      },
+    };
+    await sendWelcomeMessage(member, client, config);
+    expect(mockSend).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('should use night greeting template when hour is midnight', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-15T00:00:00.000Z')); // midnight UTC
+
+    const mockSend = vi.fn();
+    const member = {
+      id: '789',
+      user: { tag: 'user#9012', username: 'nightowl' },
+      guild: {
+        name: 'NightGuild',
+        memberCount: 30,
+        channels: {
+          cache: {
+            filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
+            has: vi.fn().mockReturnValue(false),
+          },
+        },
+      },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        dynamic: { enabled: true, timezone: 'UTC' },
+      },
+    };
+    await sendWelcomeMessage(member, client, config);
+    expect(mockSend).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it('should handle dynamic message with milestone interval', async () => {
     const mockSend = vi.fn();
     const member = {

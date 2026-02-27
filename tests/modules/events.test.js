@@ -33,6 +33,11 @@ vi.mock('../../src/modules/starboard.js', () => ({
   handleReactionRemove: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../src/modules/pollHandler.js', () => ({
+  handlePollVote: vi.fn().mockResolvedValue(undefined),
+  createPoll: vi.fn(),
+}));
+
 // Mock config module — getConfig returns per-guild config
 vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({}),
@@ -44,6 +49,7 @@ import {
   registerEventHandlers,
   registerGuildMemberAddHandler,
   registerMessageCreateHandler,
+  registerPollButtonHandler,
   registerReactionHandlers,
   registerReadyHandler,
 } from '../../src/modules/events.js';
@@ -516,6 +522,151 @@ describe('events module', () => {
       rejectionCallback(new Error('rejection'));
 
       processOnSpy.mockRestore();
+    });
+  });
+
+  // ── registerPollButtonHandler ──────────────────────────────────────────
+
+  describe('registerPollButtonHandler', () => {
+    it('should ignore non-button interactions', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      // Non-button interaction → early return
+      const interaction = { isButton: () => false };
+      await handler(interaction);
+
+      expect(handlePollVote).not.toHaveBeenCalled();
+    });
+
+    it('should ignore buttons with wrong customId prefix', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const interaction = {
+        isButton: () => true,
+        customId: 'other_button_id',
+      };
+      await handler(interaction);
+
+      expect(handlePollVote).not.toHaveBeenCalled();
+    });
+
+    it('should call handlePollVote for poll_vote_ interactions', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+      };
+      await handler(interaction);
+
+      expect(handlePollVote).toHaveBeenCalledWith(interaction);
+    });
+
+    it('should handle errors from handlePollVote and reply with error message', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      handlePollVote.mockRejectedValueOnce(new Error('Vote failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const reply = vi.fn().mockResolvedValue(undefined);
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+        replied: false,
+        deferred: false,
+        reply,
+      };
+      await handler(interaction);
+
+      expect(reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true }));
+    });
+
+    it('should skip reply when already replied after handlePollVote error', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      handlePollVote.mockRejectedValueOnce(new Error('Vote failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const reply = vi.fn();
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+        replied: true, // already replied
+        deferred: false,
+        reply,
+      };
+      await handler(interaction);
+
+      expect(reply).not.toHaveBeenCalled();
+    });
+
+    it('should catch inner safeReply errors gracefully', async () => {
+      const { handlePollVote } = await import('../../src/modules/pollHandler.js');
+      handlePollVote.mockRejectedValueOnce(new Error('Vote failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+
+      registerPollButtonHandler(client);
+      const handler = handlers.get('interactionCreate');
+
+      const interaction = {
+        isButton: () => true,
+        customId: 'poll_vote_opt1',
+        user: { id: 'u1' },
+        replied: false,
+        deferred: false,
+        reply: vi.fn().mockRejectedValueOnce(new Error('reply also failed')),
+      };
+      // Should not throw
+      await expect(handler(interaction)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('registerReactionHandlers - handleReactionRemove error', () => {
+    it('should catch errors from handleReactionRemove', async () => {
+      const { handleReactionRemove } = await import('../../src/modules/starboard.js');
+      handleReactionRemove.mockRejectedValueOnce(new Error('Reaction remove failed'));
+
+      const handlers = new Map();
+      const client = { on: (event, fn) => handlers.set(event, fn) };
+      registerReactionHandlers(client);
+
+      const handler = handlers.get('messageReactionRemove');
+      const reaction = {
+        message: { id: 'msg1', partial: false },
+        partial: false,
+        emoji: { name: '⭐' },
+      };
+      const user = { bot: false, id: 'u1', partial: false };
+
+      await expect(handler(reaction, user)).resolves.toBeUndefined();
     });
   });
 
