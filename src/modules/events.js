@@ -12,6 +12,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 import { safeReply } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
 import { checkLinks } from './linkFilter.js';
+import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
@@ -286,6 +287,41 @@ export function registerReactionHandlers(client, _config) {
 }
 
 /**
+ * Register an interactionCreate handler for poll vote buttons.
+ * Listens for button clicks with customId matching `poll_vote_<pollId>_<optionIndex>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerPollButtonHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith('poll_vote_')) return;
+
+    try {
+      await handlePollVote(interaction);
+    } catch (err) {
+      logError('Poll vote handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      // Try to send an ephemeral error if we haven't replied yet
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your vote.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
  * Register error event handlers
  * @param {Client} client - Discord client
  */
@@ -313,5 +349,6 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerGuildMemberAddHandler(client, config);
   registerMessageCreateHandler(client, config, healthMonitor);
   registerReactionHandlers(client, config);
+  registerPollButtonHandler(client);
   registerErrorHandlers(client);
 }
