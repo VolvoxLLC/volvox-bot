@@ -522,4 +522,48 @@ describe('startGithubFeed / stopGithubFeed', () => {
 
     expect(safeSend).not.toHaveBeenCalled();
   });
+
+  it('should correctly dedup with numeric ordering (9 < 10)', async () => {
+    // String comparison: '9' > '10' (lexicographic) — would incorrectly suppress the event
+    // BigInt comparison: 10n > 9n — correctly passes the event through
+    mockPool.query
+      .mockResolvedValueOnce({ rows: [{ last_event_id: '9' }] }) // SELECT → last seen is '9'
+      .mockResolvedValueOnce({ rows: [] }); // upsert
+
+    execFile.mockImplementation((_cmd, _args, _opts, cb) => {
+      cb(null, {
+        stdout: JSON.stringify([
+          {
+            id: '10',
+            type: 'PushEvent',
+            created_at: '2026-01-01T00:00:01Z',
+            actor: { login: 'dev', avatar_url: 'https://example.com/avatar.png' },
+            repo: { name: 'owner/repo' },
+            payload: {
+              ref: 'refs/heads/main',
+              commits: [{ sha: 'abc1234', message: 'fix: something' }],
+            },
+          },
+        ]),
+      });
+    });
+
+    getConfig.mockReturnValue({
+      github: {
+        feed: {
+          enabled: true,
+          channelId: 'ch-1',
+          repos: ['owner/repo'],
+          events: ['pr', 'issue', 'release', 'push'],
+        },
+      },
+    });
+
+    startGithubFeed(mockClient);
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    // Event id '10' > last_event_id '9' numerically — safeSend should be called
+    expect(safeSend).toHaveBeenCalledTimes(1);
+    stopGithubFeed();
+  });
 });

@@ -167,8 +167,7 @@
       "enabled": false,
       "channelId": null,
       "repos": [],
-      "events": ["pr", "issue", "release", "push"],
-      "pollIntervalMinutes": 5
+      "events": ["pr", "issue", "release", "push"]
     }
   },
   "tldr": {
