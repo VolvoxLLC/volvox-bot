@@ -47,6 +47,7 @@ export function computePatches(
       if (prefix === '' && key === 'guildId') continue;
 
       const fullPath = prefix ? `${prefix}.${key}` : key;
+      const modHasKey = Object.hasOwn(modObj, key);
       const origVal = origObj[key];
       const modVal = modObj[key];
 
@@ -62,7 +63,8 @@ export function computePatches(
       ) {
         walk(origVal as Record<string, unknown>, modVal as Record<string, unknown>, fullPath);
       } else {
-        patches.push({ path: fullPath, value: modVal });
+        const patchValue = !modHasKey || modVal === undefined ? null : modVal;
+        patches.push({ path: fullPath, value: patchValue });
       }
     }
   }
