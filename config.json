@@ -151,7 +151,9 @@
       "rank": "everyone",
       "leaderboard": "everyone",
       "profile": "everyone",
-      "challenge": "everyone"
+      "challenge": "everyone",
+      "review": "everyone",
+      "showcase": "everyone"
     }
   },
   "help": {
@@ -164,6 +166,9 @@
     "enabled": false
   },
   "poll": {
+    "enabled": false
+  },
+  "showcase": {
     "enabled": false
   },
   "github": {
@@ -207,5 +212,11 @@
     "channelId": null,
     "postTime": "09:00",
     "timezone": "America/New_York"
+  },
+  "review": {
+    "enabled": false,
+    "channelId": null,
+    "staleAfterDays": 7,
+    "xpReward": 50
   }
 }

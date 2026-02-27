@@ -17,12 +17,14 @@ export const SAFE_CONFIG_KEYS = new Set([
   'announce',
   'snippet',
   'poll',
+  'showcase',
   'tldr',
   'afk',
   'reputation',
   'engagement',
   'github',
   'challenges',
+  'review',
 ]);
 
 export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];
