@@ -96,8 +96,7 @@ export async function trackReaction(reaction, user) {
         `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen, last_active)
          VALUES ($1, $2, 1, NOW(), NOW())
          ON CONFLICT (guild_id, user_id) DO UPDATE
-           SET reactions_received = user_stats.reactions_received + 1,
-               last_active = NOW()`,
+           SET reactions_received = user_stats.reactions_received + 1`,
         [guildId, authorId],
       );
     }
