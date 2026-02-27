@@ -34,7 +34,8 @@
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "winston-transport": "^4.9.0",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "@anthropic-ai/sdk": "^0.78.0"
   },
   "pnpm": {
     "overrides": {

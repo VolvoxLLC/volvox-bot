@@ -102,9 +102,9 @@
   },
   "starboard": {
     "enabled": false,
-    "channelId": "",
+    "channelId": null,
     "threshold": 3,
-    "emoji": "⭐",
+    "emoji": "*",
     "selfStarAllowed": false,
     "ignoredChannels": []
   },
@@ -118,14 +118,6 @@
       "batchSize": 10,
       "flushIntervalMs": 5000
     }
-  },
-  "starboard": {
-    "enabled": false,
-    "channelId": null,
-    "threshold": 3,
-    "emoji": "*",
-    "selfStarAllowed": false,
-    "ignoredChannels": []
   },
   "permissions": {
     "enabled": true,
@@ -154,5 +146,11 @@
       "modlog": "moderator",
       "announce": "moderator"
     }
+  },
+  "tldr": {
+    "enabled": false,
+    "defaultMessages": 50,
+    "maxMessages": 200,
+    "cooldownSeconds": 300
   }
 }
