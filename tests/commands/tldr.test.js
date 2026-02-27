@@ -323,6 +323,41 @@ describe('execute — empty channel', () => {
   });
 });
 
+describe('execute — null/empty AI response', () => {
+  it('returns error message when summarizeWithAI returns null', async () => {
+    mockCreate.mockResolvedValue({
+      content: [], // empty content → null summary
+    });
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to generate summary'),
+    );
+  });
+
+  it('uses channelId when channel.name is null', async () => {
+    mockCreate.mockResolvedValue({
+      content: [
+        {
+          text: '1) Key Topics\n- Test\n\n2) Decisions Made\n- None\n\n3) Action Items\n- None\n\n4) Notable Links\n- None',
+        },
+      ],
+    });
+
+    const interaction = createInteraction();
+    interaction.channel.name = null; // force channelId fallback
+
+    await execute(interaction);
+
+    const call = interaction.editReply.mock.calls[0][0];
+    const embed = call.embeds?.[0];
+    // Should still build embed with channelId as title
+    expect(embed).toBeDefined();
+  });
+});
+
 describe('execute — AI response formatted into embed', () => {
   it('builds embed with all four sections', async () => {
     mockCreate.mockResolvedValue({

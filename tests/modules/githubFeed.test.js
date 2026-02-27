@@ -567,3 +567,85 @@ describe('startGithubFeed / stopGithubFeed', () => {
     stopGithubFeed();
   });
 });
+
+// ── Additional coverage tests ──────────────────────────────────────────────
+
+const makeBaseEvent = (type, payload) => ({
+  type,
+  actor: null, // no actor
+  repo: null, // no repo
+  payload,
+  created_at: new Date().toISOString(),
+});
+
+describe('buildPrEmbed - missing actor/repo', () => {
+  it('should use "unknown" for missing actor login', () => {
+    const event = makeBaseEvent('PullRequestEvent', {
+      action: 'opened',
+      pull_request: { number: 1, title: 'test', html_url: 'https://x.com', merged: false },
+    });
+    const embed = buildPrEmbed(event);
+    expect(embed).not.toBeNull();
+    expect(embed._data.author.name).toBe('unknown');
+  });
+
+  it('should use "unknown" for missing repo name', () => {
+    const event = makeBaseEvent('PullRequestEvent', {
+      action: 'opened',
+      pull_request: { number: 1, title: 'test', html_url: 'https://x.com', merged: false },
+    });
+    const embed = buildPrEmbed(event);
+    expect(embed._data.fields.find((f) => f.name === 'Repo')?.value).toBe('unknown');
+  });
+});
+
+describe('buildIssueEmbed - missing issue', () => {
+  it('should return null when issue is missing', () => {
+    const event = makeBaseEvent('IssuesEvent', { action: 'opened', issue: null });
+    expect(buildIssueEmbed(event)).toBeNull();
+  });
+
+  it('should use "unknown" for missing actor', () => {
+    const event = makeBaseEvent('IssuesEvent', {
+      action: 'opened',
+      issue: { number: 1, title: 'Bug', html_url: 'https://x.com', labels: [] },
+    });
+    const embed = buildIssueEmbed(event);
+    expect(embed).not.toBeNull();
+    expect(embed._data.author.name).toBe('unknown');
+  });
+});
+
+describe('buildReleaseEmbed - missing actor/repo', () => {
+  it('should use "unknown" for missing actor in release', () => {
+    const event = makeBaseEvent('ReleaseEvent', {
+      action: 'published',
+      release: { tag_name: 'v1.0', html_url: 'https://x.com', body: null },
+    });
+    const embed = buildReleaseEmbed(event);
+    expect(embed).not.toBeNull();
+    expect(embed._data.author.name).toBe('unknown');
+  });
+});
+
+describe('buildPushEmbed - edge cases', () => {
+  it('should use "unknown" branch when ref is null', () => {
+    const event = makeBaseEvent('PushEvent', {
+      ref: null,
+      commits: [{ sha: 'abc1234', message: 'fix: something' }],
+    });
+    const embed = buildPushEmbed(event);
+    expect(embed).not.toBeNull();
+    expect(embed._data.title).toContain('unknown');
+  });
+
+  it('should handle missing sha in commits', () => {
+    const event = makeBaseEvent('PushEvent', {
+      ref: 'refs/heads/main',
+      commits: [{ sha: null, message: 'fix: no sha' }],
+    });
+    const embed = buildPushEmbed(event);
+    expect(embed).not.toBeNull();
+    expect(embed._data.fields.find((f) => f.name === 'Commits')?.value).toContain('???????');
+  });
+});

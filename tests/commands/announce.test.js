@@ -144,6 +144,37 @@ describe('announce command', () => {
     expect(mod.adminOnly).toBe(true);
   });
 
+  it('should return early when announce is not enabled', async () => {
+    const { getConfig } = await import('../../src/modules/config.js');
+    getConfig.mockReturnValueOnce({ announce: { enabled: false } });
+
+    const interaction = createMockInteraction('once', {});
+    await execute(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('not enabled'),
+        ephemeral: true,
+      }),
+    );
+  });
+
+  it('should return early when pool is unavailable', async () => {
+    getPool.mockReturnValueOnce(null);
+
+    const interaction = createMockInteraction('once', {
+      time: 'in 1h',
+      content: 'Test message',
+      channel: null,
+    });
+    isModerator.mockReturnValueOnce(true);
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('Database') }),
+    );
+  });
+
   it('should deny non-moderators', async () => {
     isModerator.mockReturnValueOnce(false);
     const interaction = createMockInteraction('list');
@@ -389,5 +420,34 @@ describe('parseTime', () => {
     expect(parseTime('whenever')).toBeNull();
     expect(parseTime('next tuesday')).toBeNull();
     expect(parseTime('')).toBeNull();
+  });
+
+  it('should return null for "in 0h 0m" (zero time)', () => {
+    expect(parseTime('in 0h')).toBeNull();
+    expect(parseTime('in 0m')).toBeNull();
+  });
+
+  it('should parse "tomorrow HH" (no minutes → defaults to 0)', () => {
+    const result = parseTime('tomorrow 14');
+    expect(result).toBeInstanceOf(Date);
+    expect(result.getHours()).toBe(14);
+    expect(result.getMinutes()).toBe(0);
+  });
+
+  it('should return null for invalid time in tomorrow format', () => {
+    expect(parseTime('tomorrow 25:00')).toBeNull();
+    expect(parseTime('tomorrow 10:60')).toBeNull();
+  });
+
+  it('should return null for invalid ISO date (bad month)', () => {
+    expect(parseTime('2026-13-01 00:00')).toBeNull();
+  });
+
+  it('should return null for invalid ISO date (bad day)', () => {
+    expect(parseTime('2026-02-30 12:00')).toBeNull();
+  });
+
+  it('should return null for invalid ISO date (bad hour)', () => {
+    expect(parseTime('2026-06-15 25:00')).toBeNull();
   });
 });

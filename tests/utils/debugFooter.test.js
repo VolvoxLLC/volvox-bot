@@ -148,6 +148,85 @@ describe('extractStats', () => {
     expect(stats.inputTokens).toBe(500);
     expect(stats.outputTokens).toBe(100);
   });
+
+  it('should fall back to modelUsage when usage has no tokens', () => {
+    const result = {
+      total_cost_usd: 0.003,
+      duration_ms: 150,
+      usage: {},
+      modelUsage: {
+        'claude-sonnet': {
+          inputTokens: 300,
+          outputTokens: 150,
+          cacheCreationInputTokens: 50,
+          cacheReadInputTokens: 200,
+        },
+        'claude-haiku': {
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheCreationInputTokens: 10,
+          cacheReadInputTokens: 0,
+        },
+      },
+    };
+    const stats = extractStats(result, 'multi-model');
+    expect(stats.inputTokens).toBe(400);
+    expect(stats.outputTokens).toBe(200);
+    expect(stats.cacheCreation).toBe(60);
+    expect(stats.cacheRead).toBe(200);
+  });
+
+  it('should handle empty modelUsage object gracefully', () => {
+    const result = {
+      total_cost_usd: 0.001,
+      duration_ms: 100,
+      usage: {},
+      modelUsage: {}, // empty - no entries
+    };
+    const stats = extractStats(result, 'test-model');
+    expect(stats.inputTokens).toBe(0);
+    expect(stats.outputTokens).toBe(0);
+  });
+
+  it('should use modelUsage when input_tokens is undefined (not in usage)', () => {
+    // When usage has no input_tokens at all (undefined), falls through to modelUsage
+    const result = {
+      total_cost_usd: 0,
+      duration_ms: 0,
+      usage: {}, // no input_tokens or inputTokens → falls back to modelUsage
+      modelUsage: {
+        'claude-haiku': {
+          inputTokens: 200,
+          outputTokens: 100,
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+        },
+      },
+    };
+    const stats = extractStats(result, 'model');
+    expect(stats.inputTokens).toBe(200);
+    expect(stats.outputTokens).toBe(100);
+  });
+
+  it('should use mu.cacheCreation when cache_creation_input_tokens is absent', () => {
+    // When usage has no cache fields, falls back to mu.cacheCreationInputTokens
+    const result = {
+      total_cost_usd: 0,
+      duration_ms: 0,
+      usage: {}, // no cache tokens in usage
+      modelUsage: {
+        model1: {
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheCreationInputTokens: 30,
+          cacheReadInputTokens: 10,
+        },
+      },
+    };
+    const stats = extractStats(result, 'model');
+    expect(stats.cacheCreation).toBe(30);
+    expect(stats.cacheRead).toBe(10);
+  });
 });
 
 // ── buildDebugFooter (text version) ─────────────────────────────────────────

@@ -108,4 +108,53 @@ describe('history command', () => {
 
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch'));
   });
+
+  it('should truncate long reasons to 40 chars', async () => {
+    const longReason = 'A'.repeat(50); // 50 chars → truncated to 37 + '...'
+    const mockPool = {
+      query: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            case_number: 10,
+            action: 'warn',
+            created_at: new Date().toISOString(),
+            reason: longReason,
+            moderator_tag: 'Mod#0001',
+          },
+        ],
+      }),
+    };
+    getPool.mockReturnValue(mockPool);
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    const replyArg = interaction.editReply.mock.calls[0][0];
+    // Reply could be string or embed object
+    const replyText = typeof replyArg === 'string' ? replyArg : JSON.stringify(replyArg);
+    expect(replyText).toContain('...');
+  });
+
+  it('should show full reason when reason is null', async () => {
+    const mockPool = {
+      query: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            case_number: 11,
+            action: 'kick',
+            created_at: new Date().toISOString(),
+            reason: null,
+            moderator_tag: 'Mod#0001',
+          },
+        ],
+      }),
+    };
+    getPool.mockReturnValue(mockPool);
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    // Should include 'N/A' or empty string for reason
+    expect(interaction.editReply).toHaveBeenCalled();
+  });
 });

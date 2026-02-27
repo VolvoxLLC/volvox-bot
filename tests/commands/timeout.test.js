@@ -144,4 +144,30 @@ describe('timeout command', () => {
       expect.stringContaining('An error occurred'),
     );
   });
+
+  it('should return early when target member is not in server', async () => {
+    const interaction = createInteraction();
+    interaction.options.getMember.mockReturnValueOnce(null);
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('not in this server'),
+    );
+    expect(mockMember.timeout).not.toHaveBeenCalled();
+  });
+
+  it('should timeout with undefined reason when reason is null', async () => {
+    const interaction = createInteraction();
+    interaction.options.getString.mockImplementation((name) => {
+      if (name === 'duration') return '1h';
+      if (name === 'reason') return null;
+      return null;
+    });
+
+    await execute(interaction);
+
+    // Verify timeout was called with undefined for reason
+    expect(mockMember.timeout).toHaveBeenCalledWith(expect.any(Number), undefined);
+  });
 });

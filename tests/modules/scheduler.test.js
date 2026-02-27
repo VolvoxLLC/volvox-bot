@@ -99,6 +99,48 @@ describe('scheduler module', () => {
       expect(() => parseCron('60 * * * *')).toThrow('Invalid cron value');
       expect(() => parseCron('* 25 * * *')).toThrow('Invalid cron value');
     });
+
+    it('should parse comma-separated values', () => {
+      const result = parseCron('0,30 9,17 * * *');
+      expect(result.minute).toEqual([0, 30]);
+      expect(result.hour).toEqual([9, 17]);
+    });
+
+    it('should parse range values with -', () => {
+      const result = parseCron('0 9-17 * * 1-5');
+      expect(result.hour).toEqual([9, 10, 11, 12, 13, 14, 15, 16, 17]);
+      expect(result.weekday).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('should parse step values with /', () => {
+      const result = parseCron('*/15 * * * *');
+      expect(result.minute).toEqual([0, 15, 30, 45]);
+    });
+
+    it('should parse step values with a base other than *', () => {
+      const result = parseCron('0/20 * * * *');
+      expect(result.minute).toEqual([0, 20, 40]);
+    });
+
+    it('should throw on invalid comma values (out of range)', () => {
+      expect(() => parseCron('0,60 * * * *')).toThrow('Invalid cron value');
+    });
+
+    it('should throw on invalid range (start > end)', () => {
+      expect(() => parseCron('0 17-9 * * *')).toThrow('Invalid cron range');
+    });
+
+    it('should throw on invalid range (out of bounds)', () => {
+      expect(() => parseCron('0 * * * 0-7')).toThrow('Invalid cron range');
+    });
+
+    it('should throw on invalid step (step <= 0)', () => {
+      expect(() => parseCron('*/0 * * * *')).toThrow('Invalid cron step');
+    });
+
+    it('should throw on invalid step (NaN step)', () => {
+      expect(() => parseCron('*/abc * * * *')).toThrow('Invalid cron step');
+    });
   });
 
   describe('getNextCronRun', () => {
@@ -248,6 +290,119 @@ describe('scheduler module', () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('enabled = true'));
+    });
+
+    it('should skip channel when fetch returns null', async () => {
+      const dueMessage = {
+        id: 3,
+        channel_id: 'missing-channel',
+        content: 'Hi',
+        one_time: false,
+        cron_expression: null,
+      };
+
+      mockPool.query.mockResolvedValueOnce({ rows: [dueMessage] });
+      mockClient.channels.fetch.mockResolvedValueOnce(null);
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(safeSend).not.toHaveBeenCalled();
+    });
+
+    it('should disable message when cron_expression is invalid', async () => {
+      const dueMessage = {
+        id: 4,
+        channel_id: 'ch-789',
+        content: 'Bad cron',
+        one_time: false,
+        cron_expression: 'not-a-valid-cron',
+      };
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [dueMessage] }) // SELECT
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE disable
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE scheduled_messages SET enabled = false'),
+        [4],
+      );
+    });
+
+    it('should not update DB when message is not one_time and has no cron_expression', async () => {
+      const dueMessage = {
+        id: 5,
+        channel_id: 'ch-789',
+        content: 'No cron, not one_time',
+        one_time: false,
+        cron_expression: null,
+      };
+
+      mockPool.query.mockResolvedValueOnce({ rows: [dueMessage] });
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Only the initial SELECT query is made, no UPDATE
+      const updateCalls = mockPool.query.mock.calls.filter((c) =>
+        c[0].includes('UPDATE scheduled_messages'),
+      );
+      expect(updateCalls).toHaveLength(0);
+    });
+
+    it('should not start again when already running', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      startScheduler(mockClient);
+      startScheduler(mockClient); // second call — no-op
+
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Only one initial poll (second startScheduler is a no-op)
+      const selectCalls = mockPool.query.mock.calls.filter((c) =>
+        c[0].includes('SELECT * FROM scheduled_messages'),
+      );
+      expect(selectCalls.length).toBe(1);
+    });
+
+    it('should handle safeSend error gracefully', async () => {
+      const { safeSend: mockSafeSend } = await import('../../src/utils/safeSend.js');
+      mockSafeSend.mockRejectedValueOnce(new Error('send failed'));
+
+      const dueMessage = {
+        id: 6,
+        channel_id: 'ch-789',
+        content: 'Will fail',
+        one_time: false,
+        cron_expression: null,
+      };
+
+      mockPool.query.mockResolvedValueOnce({ rows: [dueMessage] });
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Should not throw - error is caught internally
+      expect(mockPool.query).toHaveBeenCalled();
+    });
+
+    it('should handle DB query failure gracefully', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('DB down'));
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Should not throw
+      expect(getPool).toHaveBeenCalled();
     });
   });
 });
