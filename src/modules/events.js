@@ -15,6 +15,7 @@ import { getConfig } from './config.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';
+import { handleXpGain } from './reputation.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
@@ -150,6 +151,15 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
 
     // Feed welcome-context activity tracker
     recordCommunityActivity(message, guildConfig);
+
+    // XP gain (fire-and-forget, non-blocking)
+    handleXpGain(message).catch((err) => {
+      logError('XP gain handler failed', {
+        userId: message.author.id,
+        guildId: message.guild.id,
+        error: err?.message,
+      });
+    });
 
     // AI chat — @mention or reply to bot → instant triage evaluation
     if (guildConfig.ai?.enabled) {

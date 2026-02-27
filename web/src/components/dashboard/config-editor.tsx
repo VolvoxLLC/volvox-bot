@@ -48,7 +48,7 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr"] as const;
+  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "github"] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
   for (const key of knownSections) {
@@ -1201,6 +1201,7 @@ export function ConfigEditor() {
             { key: "snippet", label: "Code Snippets", desc: "/snippet for saving and sharing code" },
             { key: "poll", label: "Polls", desc: "/poll for community voting" },
             { key: "tldr", label: "TL;DR Summaries", desc: "/tldr for AI channel summaries" },
+            { key: "afk", label: "AFK System", desc: "/afk auto-respond when members are away" },
           ] as const).map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between">
               <div>
@@ -1220,6 +1221,116 @@ export function ConfigEditor() {
               />
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* ═══ Reputation / XP Settings ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Reputation / XP</CardTitle>
+            <ToggleSwitch
+              checked={draftConfig.reputation?.enabled ?? false}
+              onChange={(v) => setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, enabled: v } }))}
+              disabled={saving}
+              label="Reputation"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">XP per Message (min)</span>
+              <input type="number" min={1} max={100}
+                value={draftConfig.reputation?.xpPerMessage?.[0] ?? 5}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1, 100);
+                  if (num !== undefined) {
+                    const range = draftConfig.reputation?.xpPerMessage ?? [5, 15];
+                    const newMax = num > range[1] ? num : range[1];
+                    setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, xpPerMessage: [num, newMax] } }));
+                  }
+                }}
+                disabled={saving} className={inputClasses} />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">XP per Message (max)</span>
+              <input type="number" min={1} max={100}
+                value={draftConfig.reputation?.xpPerMessage?.[1] ?? 15}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1, 100);
+                  if (num !== undefined) {
+                    const range = draftConfig.reputation?.xpPerMessage ?? [5, 15];
+                    const newMin = num < range[0] ? num : range[0];
+                    setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, xpPerMessage: [newMin, num] } }));
+                  }
+                }}
+                disabled={saving} className={inputClasses} />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">XP Cooldown (seconds)</span>
+              <input type="number" min={0}
+                value={draftConfig.reputation?.xpCooldownSeconds ?? 60}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 0);
+                  if (num !== undefined) setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, xpCooldownSeconds: num } }));
+                }}
+                disabled={saving} className={inputClasses} />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Announce Channel ID</span>
+              <input type="text"
+                value={draftConfig.reputation?.announceChannelId ?? ""}
+                onChange={(e) => setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, announceChannelId: e.target.value.trim() || null } }))}
+                disabled={saving} className={inputClasses} placeholder="Channel ID for level-up announcements" />
+            </label>
+          </div>
+          <label className="space-y-2">
+            <span className="text-sm font-medium">Level Thresholds (comma-separated XP values)</span>
+            <input type="text"
+              value={(draftConfig.reputation?.levelThresholds ?? [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000]).join(", ")}
+              onChange={(e) => {
+                const nums = e.target.value.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0);
+                if (nums.length > 0) {
+                  const sorted = [...nums].sort((a, b) => a - b);
+                  setDraftConfig((prev) => ({ ...prev, reputation: { ...prev.reputation, levelThresholds: sorted } }));
+                }
+              }}
+              disabled={saving} className={inputClasses} placeholder="100, 300, 600, 1000, ..." />
+            <p className="text-xs text-muted-foreground">XP required for each level (L1, L2, L3, ...). Add more values for more levels.</p>
+          </label>
+        </CardContent>
+      </Card>
+
+      {/* ═══ GitHub Feed Settings ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">GitHub Activity Feed</CardTitle>
+            <ToggleSwitch
+              checked={draftConfig.github?.feed?.enabled ?? false}
+              onChange={(v) => setDraftConfig((prev) => ({ ...prev, github: { ...prev.github, feed: { ...prev.github?.feed, enabled: v } } }))}
+              disabled={saving}
+              label="GitHub Feed"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Feed Channel ID</span>
+              <input type="text"
+                value={draftConfig.github?.feed?.channelId ?? ""}
+                onChange={(e) => setDraftConfig((prev) => ({ ...prev, github: { ...prev.github, feed: { ...prev.github?.feed, channelId: e.target.value.trim() || null } } }))}
+                disabled={saving} className={inputClasses} placeholder="Channel ID for GitHub updates" />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Poll Interval (minutes)</span>
+              <input type="number" min={1}
+                value={draftConfig.github?.feed?.pollIntervalMinutes ?? 5}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) setDraftConfig((prev) => ({ ...prev, github: { ...prev.github, feed: { ...prev.github?.feed, pollIntervalMinutes: num } } }));
+                }}
+                disabled={saving} className={inputClasses} />
+            </label>
+          </div>
         </CardContent>
       </Card>
 

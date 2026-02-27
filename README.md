@@ -213,6 +213,19 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `selfStarAllowed` | boolean | Allow users to star their own messages |
 | `ignoredChannels` | string[] | Channel IDs excluded from starboard tracking |
 
+### Reputation (`reputation`)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `enabled` | boolean | Enable the XP / leveling system |
+| `xpPerMessage` | [number, number] | Random XP range awarded per message `[min, max]` (default: `[5, 15]`) |
+| `xpCooldownSeconds` | number | Minimum seconds between XP awards per user (default: `60`) |
+| `announceChannelId` | string\|null | Channel ID for level-up announcements (null = DM user) |
+| `levelThresholds` | number[] | Cumulative XP required for each level (L1, L2, …). Must be strictly ascending. (default: `[100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000]`) |
+| `roleRewards` | object | Map of level number → role ID to auto-assign on level-up (e.g. `{ "5": "123456789" }`) |
+
+**Commands:** `/rank [user]` — show XP, level, and progress bar. `/leaderboard` — top 10 users by XP.
+
 ### Permissions (`permissions`)
 
 | Key | Type | Description |
