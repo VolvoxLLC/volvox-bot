@@ -49,6 +49,7 @@ import { registerEventHandlers } from './modules/events.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { pruneOldLogs } from './transports/postgres.js';
@@ -264,11 +265,12 @@ client.on('interactionCreate', async (interaction) => {
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });
 
-  // 1. Stop triage, conversation cleanup timer, tempban scheduler, and announcement scheduler
+  // 1. Stop triage, conversation cleanup timer, tempban scheduler, announcement scheduler, and GitHub feed
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
   stopScheduler();
+  stopGithubFeed();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -454,6 +456,7 @@ async function startup() {
   if (dbPool) {
     startTempbanScheduler(client);
     startScheduler(client);
+    startGithubFeed(client);
   }
 
   // Load commands and login
