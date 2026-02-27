@@ -25,6 +25,10 @@ function adaptGuildIdParam(req, _res, next) {
   next();
 }
 
+// Apply a global rate limiter first so static analysis and runtime behavior
+// both see all moderation routes protected before authz and DB access.
+router.use(moderationRateLimit);
+
 // Apply guild-scoped authorization to all moderation routes
 // (requireAuth is already applied at the router mount level in api/index.js)
 router.use(adaptGuildIdParam, requireGuildModerator);
