@@ -7,7 +7,7 @@
 
 import { ChannelType, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { info } from '../logger.js';
+import { info, warn } from '../logger.js';
 import { getConfig, setConfigValue } from '../modules/config.js';
 import { isAdmin } from '../utils/permissions.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
@@ -138,8 +138,8 @@ async function handleAdd(interaction, config) {
   }
 
   // Persist by updating config via setConfigValue
-  repos.push(repo);
-  await setConfigValue('github.feed.repos', repos, interaction.guildId);
+  const updated = [...repos, repo];
+  await setConfigValue('github.feed.repos', updated, interaction.guildId);
 
   info('GitHub feed: repo added', { guildId: interaction.guildId, repo });
 
@@ -155,7 +155,14 @@ async function handleAdd(interaction, config) {
  * @param {object} config
  */
 async function handleRemove(interaction, config) {
-  const pool = getPool();
+  let pool;
+  try {
+    pool = getPool();
+  } catch {
+    await safeEditReply(interaction, { content: '❌ Database is not available.' });
+    return;
+  }
+
   const repo = interaction.options.getString('repo');
 
   const repos = config.github.feed.repos || [];
@@ -171,10 +178,18 @@ async function handleRemove(interaction, config) {
   await setConfigValue('github.feed.repos', updated, interaction.guildId);
 
   // Remove state row from DB so next add starts fresh
-  await pool.query('DELETE FROM github_feed_state WHERE guild_id = $1 AND repo = $2', [
-    interaction.guildId,
-    repo,
-  ]);
+  try {
+    await pool.query('DELETE FROM github_feed_state WHERE guild_id = $1 AND repo = $2', [
+      interaction.guildId,
+      repo,
+    ]);
+  } catch (err) {
+    warn('GitHub feed: failed to clean up state row', {
+      guildId: interaction.guildId,
+      repo,
+      error: err.message,
+    });
+  }
 
   info('GitHub feed: repo removed', { guildId: interaction.guildId, repo });
 

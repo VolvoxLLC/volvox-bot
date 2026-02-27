@@ -273,7 +273,7 @@ async function pollGuildFeed(client, guildId, feedConfig) {
 
       // Filter to events newer than last seen (events are newest-first)
       const newEvents = lastEventId
-        ? events.filter((e) => Number(e.id) > Number(lastEventId))
+        ? events.filter((e) => BigInt(e.id) > BigInt(lastEventId))
         : events.slice(0, 1); // first run: only latest to avoid spam
 
       if (newEvents.length === 0) {
@@ -304,7 +304,7 @@ async function pollGuildFeed(client, guildId, feedConfig) {
           });
         }
         // Track newest ID regardless of whether we posted (skip unsupported types)
-        if (!newestId || Number(event.id) > Number(newestId)) {
+        if (!newestId || BigInt(event.id) > BigInt(newestId)) {
           newestId = event.id;
         }
       }
@@ -363,7 +363,7 @@ export function startGithubFeed(client) {
 
   const defaultMinutes = 5;
 
-  // Poll interval is hardcoded; per-guild config override is not yet implemented.
+  // Fixed 5-minute poll interval.
   const intervalMs = defaultMinutes * 60_000;
 
   // Kick off first poll after bot is settled (5s delay)
