@@ -7,8 +7,8 @@ WORKDIR /app
 
 # Build context is web/ (Railway root directory).
 # No monorepo workspace files — install directly from package.json.
-COPY package.json ./
-RUN pnpm install
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # --- Builder ---
 FROM node:22-alpine AS builder

@@ -22,6 +22,36 @@ const AUTH_TIMEOUT_MS = 10_000;
 /** Number of historical log entries to send on connect */
 const HISTORY_LIMIT = 100;
 
+/** Sensitive metadata keys to strip before broadcasting */
+const SENSITIVE_KEYS = new Set([
+  'ip',
+  'accessToken',
+  'secret',
+  'apiKey',
+  'authorization',
+  'password',
+  'token',
+  'stack',
+  'cookie',
+]);
+
+/**
+ * Strip sensitive keys from a metadata object.
+ *
+ * @param {Object} metadata - Raw metadata from log entry
+ * @returns {Object} Sanitized metadata with sensitive keys removed
+ */
+function sanitizeMetadata(metadata) {
+  if (!metadata || typeof metadata !== 'object') return {};
+  const sanitized = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (!SENSITIVE_KEYS.has(key)) {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 /**
  * @type {WebSocketServer | null}
  */
@@ -234,13 +264,16 @@ async function handleAuth(ws, msg) {
   try {
     const { rows } = await queryLogs({ limit: HISTORY_LIMIT });
     // Reverse so oldest comes first (queryLogs returns DESC order)
-    const logs = rows.reverse().map((row) => ({
-      level: row.level,
-      message: row.message,
-      metadata: row.metadata || {},
-      timestamp: row.timestamp,
-      module: row.metadata?.module || null,
-    }));
+    const logs = rows.reverse().map((row) => {
+      const meta = sanitizeMetadata(row.metadata);
+      return {
+        level: row.level,
+        message: row.message,
+        metadata: meta,
+        timestamp: row.timestamp,
+        module: meta.module || null,
+      };
+    });
     sendJson(ws, { type: 'history', logs });
   } catch (err) {
     logError('Failed to send historical logs', { error: err.message });

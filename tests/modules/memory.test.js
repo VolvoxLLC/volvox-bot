@@ -84,12 +84,12 @@ describe('memory module', () => {
     // Reset optout mock
     isOptedOut.mockReturnValue(false);
     // Set up env for tests
-    delete process.env.MEM0_API_KEY;
+    vi.stubEnv('MEM0_API_KEY', '');
   });
 
   afterEach(() => {
     _setClient(null);
-    delete process.env.MEM0_API_KEY;
+    vi.unstubAllEnvs();
   });
 
   describe('getMemoryConfig', () => {
@@ -414,7 +414,7 @@ describe('memory module', () => {
 
   describe('checkMem0Health', () => {
     it('should mark as available when API key is set and SDK connectivity verified', async () => {
-      process.env.MEM0_API_KEY = 'test-api-key';
+      vi.stubEnv('MEM0_API_KEY', 'test-api-key');
       const mockClient = createMockClient({
         search: vi.fn().mockResolvedValue({ results: [], relations: [] }),
       });
@@ -447,7 +447,7 @@ describe('memory module', () => {
     });
 
     it('should fail health check when SDK connectivity check throws', async () => {
-      process.env.MEM0_API_KEY = 'test-api-key';
+      vi.stubEnv('MEM0_API_KEY', 'test-api-key');
       // Explicitly mock a client whose search method throws — simulates a client
       // that was created successfully but cannot reach the mem0 platform
       const brokenClient = createMockClient({
@@ -462,7 +462,7 @@ describe('memory module', () => {
     });
 
     it('should mark as unavailable when SDK connectivity check fails', async () => {
-      process.env.MEM0_API_KEY = 'test-api-key';
+      vi.stubEnv('MEM0_API_KEY', 'test-api-key');
       const mockClient = createMockClient({
         search: vi.fn().mockRejectedValue(new Error('Connection refused')),
       });
@@ -474,7 +474,7 @@ describe('memory module', () => {
     });
 
     it('should not call markAvailable when signal is already aborted', async () => {
-      process.env.MEM0_API_KEY = 'test-api-key';
+      vi.stubEnv('MEM0_API_KEY', 'test-api-key');
       const mockClient = createMockClient({
         search: vi.fn().mockResolvedValue({ results: [], relations: [] }),
       });

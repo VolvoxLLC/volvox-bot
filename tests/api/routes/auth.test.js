@@ -126,16 +126,29 @@ describe('auth routes', () => {
       );
 
       expect(res.status).toBe(302);
-      expect(res.headers.location).toMatch(/^http:\/\/localhost:3000#token=.+/);
+      expect(res.headers.location).toBe('http://localhost:3000');
 
-      // Verify session was stored server-side
-      expect(sessionStore.get('999')).toBe('discord-access-token');
+      // Verify JWT was set as httpOnly cookie
+      const cookies = res.headers['set-cookie'];
+      expect(cookies).toBeDefined();
+      const tokenCookie = Array.isArray(cookies)
+        ? cookies.find((c) => c.startsWith('token='))
+        : cookies;
+      expect(tokenCookie).toContain('token=');
+      expect(tokenCookie).toContain('HttpOnly');
 
-      // Verify the JWT in the redirect contains user info
-      const token = res.headers.location.split('#token=')[1];
-      const decoded = jwt.verify(token, 'test-session-secret', { algorithms: ['HS256'] });
+      // Verify session was stored server-side with accessToken and jti
+      const session = sessionStore.get('999');
+      expect(session).toBeDefined();
+      expect(session.accessToken).toBe('discord-access-token');
+      expect(session.jti).toBeTypeOf('string');
+
+      // Verify the JWT in the cookie contains user info and jti
+      const cookieToken = tokenCookie.split('token=')[1].split(';')[0];
+      const decoded = jwt.verify(cookieToken, 'test-session-secret', { algorithms: ['HS256'] });
       expect(decoded.userId).toBe('999');
       expect(decoded.username).toBe('newuser');
+      expect(decoded.jti).toBe(session.jti);
     });
 
     it('should return 401 when token exchange response is non-OK', async () => {
@@ -270,14 +283,15 @@ describe('auth routes', () => {
         json: async () => mockGuilds,
       });
 
-      // Store access token server-side (no longer in JWT)
-      sessionStore.set('123', 'discord-access-token');
+      // Store session data server-side with matching jti
+      sessionStore.set('123', { accessToken: 'discord-access-token', jti: 'test-jti-me' });
 
       const token = jwt.sign(
         {
           userId: '123',
           username: 'testuser',
           avatar: 'abc123',
+          jti: 'test-jti-me',
         },
         'test-session-secret',
         { algorithm: 'HS256' },
@@ -297,14 +311,15 @@ describe('auth routes', () => {
 
       vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
 
-      // Store access token server-side (no longer in JWT)
-      sessionStore.set('123', 'discord-access-token');
+      // Store session data server-side with matching jti
+      sessionStore.set('123', { accessToken: 'discord-access-token', jti: 'test-jti-fail' });
 
       const token = jwt.sign(
         {
           userId: '123',
           username: 'testuser',
           avatar: 'abc123',
+          jti: 'test-jti-fail',
         },
         'test-session-secret',
         { algorithm: 'HS256' },
@@ -371,10 +386,14 @@ describe('auth routes', () => {
     it('should delete session and return success when authenticated', async () => {
       vi.stubEnv('SESSION_SECRET', 'test-session-secret');
 
-      sessionStore.set('123', 'discord-access-token');
-      const token = jwt.sign({ userId: '123', username: 'testuser' }, 'test-session-secret', {
-        algorithm: 'HS256',
-      });
+      sessionStore.set('123', { accessToken: 'discord-access-token', jti: 'test-jti-logout' });
+      const token = jwt.sign(
+        { userId: '123', username: 'testuser', jti: 'test-jti-logout' },
+        'test-session-secret',
+        {
+          algorithm: 'HS256',
+        },
+      );
 
       const res = await request(app)
         .post('/api/v1/auth/logout')

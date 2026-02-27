@@ -271,7 +271,7 @@ const requireGuildAdmin = requireGuildPermission(
 );
 
 /** Middleware: verify OAuth2 users are guild moderators. API-secret users pass through. */
-const requireGuildModerator = requireGuildPermission(
+export const requireGuildModerator = requireGuildPermission(
   isOAuthGuildModerator,
   'You do not have moderator access to this guild',
 );
@@ -476,7 +476,9 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
     await setConfigValue(path, value, req.params.id);
     const effectiveConfig = getConfig(req.params.id);
     const effectiveSection = effectiveConfig[topLevelKey] || {};
-    info('Config updated via API', { path, value, guild: req.params.id });
+    const sensitivePattern = /key|secret|token|password/i;
+    const logValue = sensitivePattern.test(path) ? '[REDACTED]' : value;
+    info('Config updated via API', { path, value: logValue, guild: req.params.id });
     fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
       event: 'config.updated',
       guildId: req.params.id,

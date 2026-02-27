@@ -18,7 +18,7 @@
     "migrate": "node-pg-migrate up --migrations-dir migrations",
     "migrate:down": "node-pg-migrate down --migrations-dir migrations",
     "migrate:create": "node-pg-migrate create --migrations-dir migrations",
-    "prepare": "git config core.hooksPath .hooks"
+    "prepare": "[ -d .git ] && git config core.hooksPath .hooks || true"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.44",
@@ -28,7 +28,7 @@
     "express": "^5.2.1",
     "ioredis": "^5.9.3",
     "jsonwebtoken": "^9.0.3",
-    "mem0ai": "^2.2.2",
+    "mem0ai": "^2.2.3",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.18.0",
     "winston": "^3.19.0",
@@ -39,11 +39,13 @@
   },
   "pnpm": {
     "overrides": {
-      "undici": ">=6.23.0 <7.0.0"
+      "axios": ">=1.13.5",
+      "tar": ">=7.5.8",
+      "langsmith": ">=0.4.6"
     }
   },
   "engines": {
-    "node": ">=20.11.0"
+    "node": ">=22.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",

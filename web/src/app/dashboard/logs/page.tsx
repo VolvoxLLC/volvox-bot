@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { LogViewer } from "@/components/dashboard/log-viewer";
-import { LogFilters } from "@/components/dashboard/log-filters";
-import { HealthSection } from "@/components/dashboard/health-section";
-import { useLogStream } from "@/lib/log-ws";
+import { HealthSection } from '@/components/dashboard/health-section';
+import { LogFilters } from '@/components/dashboard/log-filters';
+import { LogViewer } from '@/components/dashboard/log-viewer';
+import { useLogStream } from '@/lib/log-ws';
 
 /**
  * /dashboard/logs — Real-time log viewer and health monitoring page.
@@ -25,16 +25,11 @@ export default function LogsPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-xl font-semibold">Log Stream</h1>
-            <p className="text-sm text-muted-foreground">
-              Real-time logs from the bot API
-            </p>
+            <p className="text-sm text-muted-foreground">Real-time logs from the bot API</p>
           </div>
         </div>
 
-        <LogFilters
-          onFilterChange={sendFilter}
-          disabled={status !== "connected"}
-        />
+        <LogFilters onFilterChange={sendFilter} disabled={status !== 'connected'} />
 
         <div className="flex-1 min-h-0">
           <LogViewer logs={logs} status={status} onClear={clearLogs} />

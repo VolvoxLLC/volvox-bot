@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { HealthCards } from "./health-cards";
-import { RestartHistory } from "./restart-history";
-import { isBotHealth, type BotHealth } from "./types";
+import { RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { HealthCards } from './health-cards';
+import { RestartHistory } from './restart-history';
+import { type BotHealth, isBotHealth } from './types';
 
 const AUTO_REFRESH_MS = 60_000;
 
 function formatLastUpdated(date: Date): string {
   return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
   }).format(date);
 }
 
@@ -26,64 +26,65 @@ export function HealthSection() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchHealth = useCallback(async (backgroundRefresh = false) => {
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    const didSetLoading = !backgroundRefresh;
+  const fetchHealth = useCallback(
+    async (backgroundRefresh = false) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const didSetLoading = !backgroundRefresh;
 
-    if (!backgroundRefresh) {
-      setLoading(true);
-      setError(null);
-    }
-
-    try {
-      const response = await fetch("/api/bot-health", {
-        cache: "no-store",
-        signal: controller.signal,
-      });
-
-      if (response.status === 401) {
-        router.replace("/login");
-        return;
+      if (!backgroundRefresh) {
+        setLoading(true);
+        setError(null);
       }
 
-      let payload: unknown = null;
       try {
-        payload = await response.json();
-      } catch {
-        payload = null;
-      }
+        const response = await fetch('/api/bot-health', {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
 
-      if (!response.ok) {
-        const message =
-          typeof payload === "object" &&
-          payload !== null &&
-          "error" in payload &&
-          typeof payload.error === "string"
-            ? payload.error
-            : "Failed to fetch health data";
-        throw new Error(message);
-      }
+        if (response.status === 401) {
+          router.replace('/login');
+          return;
+        }
 
-      if (!isBotHealth(payload)) {
-        throw new Error("Invalid health payload from server");
-      }
+        let payload: unknown = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
 
-      setHealth(payload);
-      setError(null);
-      setLastUpdatedAt(new Date());
-    } catch (fetchError) {
-      if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
-      setError(
-        fetchError instanceof Error ? fetchError.message : "Failed to fetch health data",
-      );
-    } finally {
-      if (didSetLoading) {
-        setLoading(false);
+        if (!response.ok) {
+          const message =
+            typeof payload === 'object' &&
+            payload !== null &&
+            'error' in payload &&
+            typeof payload.error === 'string'
+              ? payload.error
+              : 'Failed to fetch health data';
+          throw new Error(message);
+        }
+
+        if (!isBotHealth(payload)) {
+          throw new Error('Invalid health payload from server');
+        }
+
+        setHealth(payload);
+        setError(null);
+        setLastUpdatedAt(new Date());
+      } catch (fetchError) {
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
+        setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch health data');
+      } finally {
+        if (didSetLoading) {
+          setLoading(false);
+        }
       }
-    }
-  }, [router]);
+    },
+    [router],
+  );
 
   // Initial fetch
   useEffect(() => {
@@ -121,7 +122,7 @@ export function HealthSection() {
           onClick={() => void fetchHealth()}
           disabled={loading}
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -132,12 +133,7 @@ export function HealthSection() {
           className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
         >
           <strong>Failed to load health data:</strong> {error}
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-4"
-            onClick={() => void fetchHealth()}
-          >
+          <Button variant="outline" size="sm" className="ml-4" onClick={() => void fetchHealth()}>
             Try again
           </Button>
         </div>

@@ -233,7 +233,7 @@ describe('config command', () => {
         const embed = mockReply.mock.calls[0][0].embeds[0];
         const fields = embed.toJSON().fields;
         const truncatedField = fields.find((f) => f.name === '⚠️ Truncated');
-        expect(truncatedField).toBeDefined();
+        expect(truncatedField).toHaveProperty('name', '⚠️ Truncated');
       });
 
       it('should handle getConfig throwing an error', async () => {

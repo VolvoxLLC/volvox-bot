@@ -7,7 +7,9 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: (t, opts) => t.editReply(opts),
 }));
 vi.mock('../../src/modules/moderation.js', () => ({
-  createCase: vi.fn().mockResolvedValue({ case_number: 1, action: 'warn', id: 1 }),
+  createCase: vi
+    .fn()
+    .mockResolvedValue({ case_number: 1, action: 'warn', id: 1, target_id: 'user1' }),
   sendDmNotification: vi.fn().mockResolvedValue(undefined),
   sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
   checkEscalation: vi.fn().mockResolvedValue(null),

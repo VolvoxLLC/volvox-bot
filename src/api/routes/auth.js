@@ -20,7 +20,7 @@ const router = Router();
 /** CSRF state store: state → expiry timestamp */
 const oauthStates = new Map();
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_OAUTH_STATES = 10_000;
+const MAX_OAUTH_STATES = 1_000;
 
 /**
  * Seed an OAuth state for testing purposes.
@@ -32,6 +32,9 @@ const MAX_OAUTH_STATES = 10_000;
 export function _seedOAuthState(state) {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('_seedOAuthState is not available in production');
+  }
+  if (!process.env.VITEST) {
+    throw new Error('_seedOAuthState is only available in test environments');
   }
   oauthStates.set(state, Date.now() + STATE_TTL_MS);
 }
@@ -121,10 +124,15 @@ router.get('/discord', oauthRateLimit, (_req, res) => {
 
   const state = crypto.randomUUID();
   oauthStates.set(state, Date.now() + STATE_TTL_MS);
-  // Cap state store size to prevent unbounded memory growth
+  // Cap state store size to prevent unbounded memory growth — evict 10% oldest on overflow
   if (oauthStates.size > MAX_OAUTH_STATES) {
-    const oldest = oauthStates.keys().next().value;
-    oauthStates.delete(oldest);
+    const evictCount = Math.ceil(MAX_OAUTH_STATES * 0.1);
+    const iter = oauthStates.keys();
+    for (let i = 0; i < evictCount; i++) {
+      const { value, done } = iter.next();
+      if (done) break;
+      oauthStates.delete(value);
+    }
   }
 
   const params = new URLSearchParams({
@@ -228,15 +236,19 @@ router.get('/discord/callback', async (req, res) => {
       return res.status(502).json({ error: 'Invalid response from Discord' });
     }
 
-    // Store access token server-side (never in the JWT)
-    await sessionStore.set(user.id, accessToken);
+    // Generate session nonce for JWT binding
+    const jti = crypto.randomUUID();
 
-    // Create JWT with user info only (no access token — stored server-side)
+    // Store access token and session nonce server-side (never in the JWT)
+    await sessionStore.set(user.id, { accessToken, jti });
+
+    // Create JWT with user info and session nonce (no access token — stored server-side)
     const token = jwt.sign(
       {
         userId: user.id,
         username: user.username,
         avatar: user.avatar,
+        jti,
       },
       sessionSecret,
       { algorithm: 'HS256', expiresIn: '1h' },
@@ -254,9 +266,16 @@ router.get('/discord/callback', async (req, res) => {
         dashboardUrl: process.env.DASHBOARD_URL,
       });
     }
-    // Strip existing fragment to avoid collision, then append token
+    // Set JWT as httpOnly cookie instead of exposing in URL fragment
     const redirectBase = dashboardUrl.includes('#') ? dashboardUrl.split('#')[0] : dashboardUrl;
-    res.redirect(`${redirectBase}#token=${token}`);
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 3600000,
+      path: '/',
+    });
+    res.redirect(redirectBase);
   } catch (err) {
     error('OAuth2 callback error', { error: err.message });
     res.status(500).json({ error: 'Authentication failed' });
@@ -272,7 +291,8 @@ router.get('/me', requireOAuth(), async (req, res) => {
 
   let accessToken;
   try {
-    accessToken = await sessionStore.get(userId);
+    const session = await sessionStore.get(userId);
+    accessToken = session?.accessToken;
   } catch (err) {
     error('Redis error fetching session in /me', { error: err.message, userId });
     return res.status(503).json({ error: 'Session store unavailable' });
@@ -308,6 +328,12 @@ router.post('/logout', requireOAuth(), async (req, res) => {
     });
     // User's intent is to log out — succeed anyway
   }
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  });
   res.json({ message: 'Logged out successfully' });
 });
 

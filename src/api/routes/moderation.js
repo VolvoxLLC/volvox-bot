@@ -6,8 +6,32 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+import { requireGuildModerator } from './guilds.js';
 
 const router = Router();
+
+/** Rate limiter for moderation API endpoints — 120 requests / 15 min per IP. */
+const moderationRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
+
+/**
+ * Middleware: adapt query param guildId to path param for requireGuildModerator.
+ * Moderation routes use `?guildId=` instead of `/:id`, so we bridge the gap.
+ */
+function adaptGuildIdParam(req, _res, next) {
+  if (req.query.guildId) {
+    req.params.id = req.query.guildId;
+  }
+  next();
+}
+
+// Apply a global rate limiter first so static analysis and runtime behavior
+// both see all moderation routes protected before authz and DB access.
+router.use(moderationRateLimit);
+
+// Apply guild-scoped authorization to all moderation routes
+// (requireAuth is already applied at the router mount level in api/index.js)
+router.use(adaptGuildIdParam, requireGuildModerator);
 
 // ─── GET /cases ───────────────────────────────────────────────────────────────
 
@@ -21,7 +45,7 @@ const router = Router();
  *   page     (default 1)
  *   limit    (default 25, max 100)
  */
-router.get('/cases', async (req, res) => {
+router.get('/cases', moderationRateLimit, async (req, res) => {
   const { guildId, targetId, action } = req.query;
 
   if (!guildId) {
@@ -101,7 +125,7 @@ router.get('/cases', async (req, res) => {
  * Query params:
  *   guildId (required) — scoped to prevent cross-guild data exposure
  */
-router.get('/cases/:caseNumber', async (req, res) => {
+router.get('/cases/:caseNumber', moderationRateLimit, async (req, res) => {
   const caseNumber = parseInt(req.params.caseNumber, 10);
   if (Number.isNaN(caseNumber)) {
     return res.status(400).json({ error: 'Invalid case number' });
@@ -167,7 +191,7 @@ router.get('/cases/:caseNumber', async (req, res) => {
  * Query params:
  *   guildId (required)
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', moderationRateLimit, async (req, res) => {
   const { guildId } = req.query;
 
   if (!guildId) {
@@ -248,7 +272,7 @@ router.get('/stats', async (req, res) => {
  *   page     (default 1)
  *   limit    (default 25, max 100)
  */
-router.get('/user/:userId/history', async (req, res) => {
+router.get('/user/:userId/history', moderationRateLimit, async (req, res) => {
   const { userId } = req.params;
   const { guildId } = req.query;
 

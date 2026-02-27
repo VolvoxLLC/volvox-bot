@@ -5,7 +5,7 @@
 
 import jwt from 'jsonwebtoken';
 import { error as logError } from '../../logger.js';
-import { getSessionToken } from '../utils/sessionStore.js';
+import { getSession } from '../utils/sessionStore.js';
 
 /**
  * Lazily cached SESSION_SECRET — read from env on first call, then reused.
@@ -54,16 +54,22 @@ export async function verifyJwtToken(token) {
     return { error: 'Invalid or expired token', status: 401 };
   }
 
-  let sessionToken;
+  let session;
   try {
-    sessionToken = await getSessionToken(decoded.userId);
+    session = await getSession(decoded.userId);
   } catch (err) {
     logError('Session lookup failed', { error: err.message, userId: decoded.userId });
     return { error: 'Session lookup failed', status: 503 };
   }
 
-  if (!sessionToken) {
+  if (!session) {
     return { error: 'Session expired or revoked', status: 401 };
   }
+
+  // Validate JWT nonce against stored session nonce
+  if (session.jti && decoded.jti !== session.jti) {
+    return { error: 'Session expired or revoked', status: 401 };
+  }
+
   return { user: decoded };
 }

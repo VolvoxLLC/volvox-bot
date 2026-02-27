@@ -54,8 +54,8 @@ describe('SessionStore — in-memory fallback (no REDIS_URL)', () => {
   });
 
   it('set() stores a token and get() returns it', () => {
-    sessionStore.set('user1', 'tok1');
-    expect(sessionStore.get('user1')).toBe('tok1');
+    sessionStore.set('user1', { accessToken: 'tok1', jti: 'jti1' });
+    expect(sessionStore.get('user1')).toEqual({ accessToken: 'tok1', jti: 'jti1' });
   });
 
   it('get() returns undefined for unknown user', () => {
@@ -63,7 +63,7 @@ describe('SessionStore — in-memory fallback (no REDIS_URL)', () => {
   });
 
   it('has() returns true when a session exists', () => {
-    sessionStore.set('user2', 'tok2');
+    sessionStore.set('user2', { accessToken: 'tok2', jti: 'jti2' });
     expect(sessionStore.has('user2')).toBe(true);
   });
 
@@ -72,14 +72,14 @@ describe('SessionStore — in-memory fallback (no REDIS_URL)', () => {
   });
 
   it('delete() removes a session', () => {
-    sessionStore.set('user3', 'tok3');
+    sessionStore.set('user3', { accessToken: 'tok3', jti: 'jti3' });
     sessionStore.delete('user3');
     expect(sessionStore.get('user3')).toBeUndefined();
   });
 
   it('cleanup() purges expired entries', () => {
     vi.useFakeTimers();
-    sessionStore.set('expired-user', 'expired-tok');
+    sessionStore.set('expired-user', { accessToken: 'expired-tok', jti: 'jti-exp' });
     // Advance time beyond the session TTL (1 hour = 3600000ms)
     vi.advanceTimersByTime(3_600_001);
     sessionStore.cleanup();
@@ -88,13 +88,13 @@ describe('SessionStore — in-memory fallback (no REDIS_URL)', () => {
   });
 
   it('cleanup() leaves non-expired entries intact', () => {
-    sessionStore.set('live-user', 'live-tok');
+    sessionStore.set('live-user', { accessToken: 'live-tok', jti: 'jti-live' });
     sessionStore.cleanup();
-    expect(sessionStore.get('live-user')).toBe('live-tok');
+    expect(sessionStore.get('live-user')).toEqual({ accessToken: 'live-tok', jti: 'jti-live' });
   });
 
   it('getSessionToken() returns the access token', async () => {
-    sessionStore.set('user4', 'tok4');
+    sessionStore.set('user4', { accessToken: 'tok4', jti: 'jti4' });
     expect(await getSessionToken('user4')).toBe('tok4');
   });
 
@@ -132,15 +132,19 @@ describe('SessionStore — Redis backend (REDIS_URL configured)', () => {
   });
 
   it('set() calls redis.setex with the correct key and TTL', async () => {
-    await sessionStore.set('u1', 'access-tok');
-    expect(redisMock.setex).toHaveBeenCalledWith('session:u1', 3600, 'access-tok');
+    await sessionStore.set('u1', { accessToken: 'access-tok', jti: 'jti-u1' });
+    expect(redisMock.setex).toHaveBeenCalledWith(
+      'session:u1',
+      3600,
+      JSON.stringify({ accessToken: 'access-tok', jti: 'jti-u1' }),
+    );
   });
 
-  it('get() calls redis.get and returns the token', async () => {
-    redisMock.get.mockResolvedValue('stored-tok');
+  it('get() calls redis.get and returns the session data', async () => {
+    redisMock.get.mockResolvedValue(JSON.stringify({ accessToken: 'stored-tok', jti: 'jti-u2' }));
     const result = await sessionStore.get('u2');
     expect(redisMock.get).toHaveBeenCalledWith('session:u2');
-    expect(result).toBe('stored-tok');
+    expect(result).toEqual({ accessToken: 'stored-tok', jti: 'jti-u2' });
   });
 
   it('get() returns null for a missing key', async () => {
@@ -174,7 +178,7 @@ describe('SessionStore — Redis backend (REDIS_URL configured)', () => {
   });
 
   it('getSessionToken() returns the token from Redis', async () => {
-    redisMock.get.mockResolvedValue('redis-tok');
+    redisMock.get.mockResolvedValue(JSON.stringify({ accessToken: 'redis-tok', jti: 'jti-u5' }));
     const result = await getSessionToken('u5');
     expect(result).toBe('redis-tok');
   });

@@ -105,7 +105,7 @@ describe('API server', () => {
       vi.stubEnv('BOT_API_PORT', '0');
       const server = await startServer(client, null);
 
-      expect(server).toBeDefined();
+      expect(server).not.toBeNull();
       expect(server.listening).toBe(true);
 
       await stopServer();

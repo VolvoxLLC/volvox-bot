@@ -490,6 +490,9 @@ export function registerErrorHandlers(client) {
     process.on('unhandledRejection', (err) => {
       logError('Unhandled rejection', { error: err?.message || String(err), stack: err?.stack });
     });
+    process.on('uncaughtException', (err) => {
+      logError('Uncaught exception', { error: err.message, stack: err.stack });
+    });
     processHandlersRegistered = true;
   }
 }

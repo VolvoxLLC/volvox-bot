@@ -1,291 +1,73 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { RefreshCw, Search, Shield, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { CaseTable } from "@/components/dashboard/case-table";
-import { ModerationStats } from "@/components/dashboard/moderation-stats";
-import {
-  GUILD_SELECTED_EVENT,
-  SELECTED_GUILD_KEY,
-} from "@/lib/guild-selection";
-import type { CaseListResponse, ModStats } from "@/components/dashboard/moderation-types";
-
-const PAGE_LIMIT = 25;
+import { RefreshCw, Search, Shield, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
+import { CaseTable } from '@/components/dashboard/case-table';
+import { ModerationStats } from '@/components/dashboard/moderation-stats';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { useModerationCases } from '@/hooks/use-moderation-cases';
+import { useModerationStats } from '@/hooks/use-moderation-stats';
+import { useUserHistory } from '@/hooks/use-user-history';
 
 export default function ModerationPage() {
   const router = useRouter();
 
-  // Guild selection (mirrors pattern from analytics-dashboard)
-  const [guildId, setGuildId] = useState<string | null>(null);
-
-  // Stats state
-  const [stats, setStats] = useState<ModStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsError, setStatsError] = useState<string | null>(null);
-
-  // Cases state
-  const [casesData, setCasesData] = useState<CaseListResponse | null>(null);
-  const [casesLoading, setCasesLoading] = useState(false);
-  const [casesError, setCasesError] = useState<string | null>(null);
-
   // Filters & pagination
   const [page, setPage] = useState(1);
   const [sortDesc, setSortDesc] = useState(true);
-  const [actionFilter, setActionFilter] = useState("all");
-  const [userSearch, setUserSearch] = useState("");
+  const [actionFilter, setActionFilter] = useState('all');
+  const [userSearch, setUserSearch] = useState('');
 
   // User history lookup
-  const [userHistoryInput, setUserHistoryInput] = useState("");
+  const [userHistoryInput, setUserHistoryInput] = useState('');
   const [lookupUserId, setLookupUserId] = useState<string | null>(null);
-  const [userHistoryData, setUserHistoryData] = useState<CaseListResponse | null>(null);
   const [userHistoryPage, setUserHistoryPage] = useState(1);
-  const [userHistoryLoading, setUserHistoryLoading] = useState(false);
-  const [userHistoryError, setUserHistoryError] = useState<string | null>(null);
 
-  const statsAbortRef = useRef<AbortController | null>(null);
-  const casesAbortRef = useRef<AbortController | null>(null);
-  const historyAbortRef = useRef<AbortController | null>(null);
-
-  // ── Guild selection from localStorage ──────────────────────────────────────
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    try {
-      const saved = window.localStorage.getItem(SELECTED_GUILD_KEY);
-      if (saved) setGuildId(saved);
-    } catch {
-      // localStorage unavailable
-    }
-
-    const handleGuildSelect = (event: Event) => {
-      const selected = (event as CustomEvent<string>).detail;
-      if (selected) {
-        setGuildId(selected);
-        setPage(1);
-        setLookupUserId(null);
-        setUserHistoryData(null);
-      }
-    };
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SELECTED_GUILD_KEY || !event.newValue) return;
-      setGuildId(event.newValue);
-      setPage(1);
-    };
-
-    window.addEventListener(GUILD_SELECTED_EVENT, handleGuildSelect as EventListener);
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener(GUILD_SELECTED_EVENT, handleGuildSelect as EventListener);
-      window.removeEventListener("storage", handleStorage);
-    };
+  const onGuildChange = useCallback(() => {
+    setPage(1);
+    setLookupUserId(null);
+    setUserHistoryInput('');
   }, []);
 
-  // ── Fetch stats ──────────────────────────────────────────────────────────────
-  const fetchStats = useCallback(
-    async (id: string) => {
-      statsAbortRef.current?.abort();
-      const controller = new AbortController();
-      statsAbortRef.current = controller;
+  const guildId = useGuildSelection({ onGuildChange });
 
-      setStatsLoading(true);
-      setStatsError(null);
+  const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
-      try {
-        const res = await fetch(
-          `/api/moderation/stats?guildId=${encodeURIComponent(id)}`,
-          { cache: "no-store", signal: controller.signal },
-        );
+  const {
+    stats,
+    statsLoading,
+    statsError,
+    refetch: refetchStats,
+  } = useModerationStats({ guildId, onUnauthorized });
 
-        if (res.status === 401) {
-          router.replace("/login");
-          return;
-        }
+  const {
+    casesData,
+    casesLoading,
+    casesError,
+    refetch: refetchCases,
+  } = useModerationCases({ guildId, page, sortDesc, actionFilter, userSearch, onUnauthorized });
 
-        const payload: unknown = await res.json();
-        if (!res.ok) {
-          const msg =
-            typeof payload === "object" &&
-            payload !== null &&
-            "error" in payload &&
-            typeof (payload as Record<string, unknown>).error === "string"
-              ? (payload as Record<string, string>).error
-              : "Failed to fetch stats";
-          throw new Error(msg);
-        }
-
-        setStats(payload as ModStats);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setStatsError(err instanceof Error ? err.message : "Failed to fetch stats");
-      } finally {
-        setStatsLoading(false);
-      }
-    },
-    [router],
-  );
-
-  // ── Fetch cases ──────────────────────────────────────────────────────────────
-  const fetchCases = useCallback(
-    async (id: string, currentPage: number, desc: boolean, action: string, search: string) => {
-      casesAbortRef.current?.abort();
-      const controller = new AbortController();
-      casesAbortRef.current = controller;
-
-      setCasesLoading(true);
-      setCasesError(null);
-
-      try {
-        const params = new URLSearchParams({
-          guildId: id,
-          page: String(currentPage),
-          limit: String(PAGE_LIMIT),
-        });
-        if (action !== "all") params.set("action", action);
-        if (search.trim()) params.set("targetId", search.trim());
-
-        const res = await fetch(`/api/moderation/cases?${params.toString()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (res.status === 401) {
-          router.replace("/login");
-          return;
-        }
-
-        const payload: unknown = await res.json();
-        if (!res.ok) {
-          const msg =
-            typeof payload === "object" &&
-            payload !== null &&
-            "error" in payload &&
-            typeof (payload as Record<string, unknown>).error === "string"
-              ? (payload as Record<string, string>).error
-              : "Failed to fetch cases";
-          throw new Error(msg);
-        }
-
-        const data = payload as CaseListResponse;
-        // API always returns DESC; reverse if user wants ASC
-        if (!desc) {
-          data.cases = [...data.cases].reverse();
-        }
-        setCasesData(data);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setCasesError(err instanceof Error ? err.message : "Failed to fetch cases");
-      } finally {
-        setCasesLoading(false);
-      }
-    },
-    [router],
-  );
-
-  // ── Fetch user history ───────────────────────────────────────────────────────
-  const fetchUserHistory = useCallback(
-    async (id: string, userId: string, histPage: number) => {
-      historyAbortRef.current?.abort();
-      const controller = new AbortController();
-      historyAbortRef.current = controller;
-
-      setUserHistoryLoading(true);
-      setUserHistoryError(null);
-
-      try {
-        const params = new URLSearchParams({
-          guildId: id,
-          page: String(histPage),
-          limit: String(PAGE_LIMIT),
-        });
-
-        const res = await fetch(
-          `/api/moderation/user/${encodeURIComponent(userId)}/history?${params.toString()}`,
-          { cache: "no-store", signal: controller.signal },
-        );
-
-        if (res.status === 401) {
-          router.replace("/login");
-          return;
-        }
-
-        const payload: unknown = await res.json();
-        if (!res.ok) {
-          const msg =
-            typeof payload === "object" &&
-            payload !== null &&
-            "error" in payload &&
-            typeof (payload as Record<string, unknown>).error === "string"
-              ? (payload as Record<string, string>).error
-              : "Failed to fetch user history";
-          throw new Error(msg);
-        }
-
-        // The user history response has the same shape as CaseListResponse
-        setUserHistoryData(payload as CaseListResponse);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setUserHistoryError(
-          err instanceof Error ? err.message : "Failed to fetch user history",
-        );
-      } finally {
-        setUserHistoryLoading(false);
-      }
-    },
-    [router],
-  );
-
-  // Trigger fetches when guildId or filter params change
-  useEffect(() => {
-    if (!guildId) return;
-    void fetchStats(guildId);
-  }, [guildId, fetchStats]);
-
-  useEffect(() => {
-    if (!guildId) return;
-    void fetchCases(guildId, page, sortDesc, actionFilter, userSearch);
-  }, [guildId, page, actionFilter, userSearch, fetchCases]); // sortDesc excluded — handled client-side
-
-  // Client-side sort toggle — no re-fetch needed since API always returns DESC.
-  // Only `sortDesc` is a dep: the functional updater reads prev state directly,
-  // and we intentionally skip `casesData` to avoid re-running on every fetch.
-  useEffect(() => {
-    setCasesData((prev) => {
-      if (!prev) return prev;
-      return { ...prev, cases: [...prev.cases].reverse() };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to sortDesc toggle
-  }, [sortDesc]);
-
-  // Re-fetch user history when page or lookup target changes
-  useEffect(() => {
-    if (!guildId || !lookupUserId) return;
-    void fetchUserHistory(guildId, lookupUserId, userHistoryPage);
-  }, [guildId, lookupUserId, userHistoryPage, fetchUserHistory]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      statsAbortRef.current?.abort();
-      casesAbortRef.current?.abort();
-      historyAbortRef.current?.abort();
-    };
-  }, []);
+  const {
+    userHistoryData,
+    userHistoryLoading,
+    userHistoryError,
+    setUserHistoryData,
+    setUserHistoryError,
+    fetchUserHistory,
+  } = useUserHistory({ guildId, lookupUserId, page: userHistoryPage, onUnauthorized });
 
   const handleRefresh = useCallback(() => {
-    if (!guildId) return;
-    void fetchStats(guildId);
-    void fetchCases(guildId, page, sortDesc, actionFilter, userSearch);
-    if (lookupUserId) void fetchUserHistory(guildId, lookupUserId, userHistoryPage);
-  }, [guildId, page, sortDesc, actionFilter, userSearch, lookupUserId, userHistoryPage, fetchStats, fetchCases, fetchUserHistory]);
+    refetchStats();
+    refetchCases();
+    if (lookupUserId && guildId) fetchUserHistory(guildId, lookupUserId, userHistoryPage);
+  }, [refetchStats, refetchCases, lookupUserId, guildId, fetchUserHistory, userHistoryPage]);
 
   const handleClearFilters = useCallback(() => {
-    setActionFilter("all");
-    setUserSearch("");
+    setActionFilter('all');
+    setUserSearch('');
     setPage(1);
   }, []);
 
@@ -299,17 +81,16 @@ export default function ModerationPage() {
       setUserHistoryData(null);
       void fetchUserHistory(guildId, trimmed, 1);
     },
-    [guildId, userHistoryInput, fetchUserHistory],
+    [guildId, userHistoryInput, fetchUserHistory, setUserHistoryData],
   );
 
   const handleClearUserHistory = useCallback(() => {
     setLookupUserId(null);
     setUserHistoryData(null);
     setUserHistoryError(null);
-    setUserHistoryInput("");
-  }, []);
+    setUserHistoryInput('');
+  }, [setUserHistoryData, setUserHistoryError]);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -331,9 +112,7 @@ export default function ModerationPage() {
           onClick={handleRefresh}
           disabled={!guildId || statsLoading || casesLoading}
         >
-          <RefreshCw
-            className={`h-4 w-4 ${statsLoading || casesLoading ? "animate-spin" : ""}`}
-          />
+          <RefreshCw className={`h-4 w-4 ${statsLoading || casesLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -419,16 +198,13 @@ export default function ModerationPage() {
             {lookupUserId && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  History for{" "}
-                  <span className="font-mono font-semibold text-foreground">
-                    {lookupUserId}
-                  </span>
+                  History for{' '}
+                  <span className="font-mono font-semibold text-foreground">{lookupUserId}</span>
                   {userHistoryData && (
                     <>
-                      {" "}
-                      —{" "}
-                      <span className="font-semibold">{userHistoryData.total}</span>{" "}
-                      {userHistoryData.total === 1 ? "case" : "cases"} total
+                      {' '}
+                      &mdash; <span className="font-semibold">{userHistoryData.total}</span>{' '}
+                      {userHistoryData.total === 1 ? 'case' : 'cases'} total
                     </>
                   )}
                 </p>

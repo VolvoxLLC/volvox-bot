@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
-import { ConfigEditor } from "@/components/dashboard/config-editor";
+import type { Metadata } from 'next';
+import { ConfigEditor } from '@/components/dashboard/config-editor';
 
 export const metadata: Metadata = {
-  title: "Config Editor",
-  description: "Manage your bot configuration settings.",
+  title: 'Config Editor',
+  description: 'Manage your bot configuration settings.',
 };
 
 /**

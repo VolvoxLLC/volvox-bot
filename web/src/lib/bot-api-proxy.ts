@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { getBotApiBaseUrl } from "@/lib/bot-api";
-import { getMutualGuilds } from "@/lib/discord.server";
-import { logger } from "@/lib/logger";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+import { getBotApiBaseUrl } from '@/lib/bot-api';
+import { getMutualGuilds } from '@/lib/discord.server';
+import { logger } from '@/lib/logger';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const ADMINISTRATOR_PERMISSION = 0x8n;
@@ -41,15 +41,12 @@ export async function authorizeGuildAdmin(
 ): Promise<NextResponse | null> {
   const token = await getToken({ req: request });
 
-  if (typeof token?.accessToken !== "string" || token.accessToken.length === 0) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (typeof token?.accessToken !== 'string' || token.accessToken.length === 0) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (token.error === "RefreshTokenError") {
-    return NextResponse.json(
-      { error: "Token expired. Please sign in again." },
-      { status: 401 },
-    );
+  if (token.error === 'RefreshTokenError') {
+    return NextResponse.json({ error: 'Token expired. Please sign in again.' }, { status: 401 });
   }
 
   let mutualGuilds: Awaited<ReturnType<typeof getMutualGuilds>>;
@@ -59,22 +56,13 @@ export async function authorizeGuildAdmin(
       AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     );
   } catch (error) {
-    logger.error(
-      `${logPrefix} Failed to verify guild permissions:`,
-      error,
-    );
-    return NextResponse.json(
-      { error: "Failed to verify guild permissions" },
-      { status: 502 },
-    );
+    logger.error(`${logPrefix} Failed to verify guild permissions:`, error);
+    return NextResponse.json({ error: 'Failed to verify guild permissions' }, { status: 502 });
   }
 
   const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
-  if (
-    !targetGuild ||
-    !(targetGuild.owner || hasAdministratorPermission(targetGuild.permissions))
-  ) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!targetGuild || !(targetGuild.owner || hasAdministratorPermission(targetGuild.permissions))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   return null; // authorized
@@ -97,10 +85,7 @@ export function getBotApiConfig(logPrefix: string): BotApiConfig | NextResponse 
 
   if (!botApiBaseUrl || !botApiSecret) {
     logger.error(`${logPrefix} BOT_API_URL and BOT_API_SECRET are required`);
-    return NextResponse.json(
-      { error: "Bot API is not configured" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Bot API is not configured' }, { status: 500 });
   }
 
   return { baseUrl: botApiBaseUrl, secret: botApiSecret };
@@ -118,15 +103,12 @@ export function buildUpstreamUrl(
   logPrefix: string,
 ): URL | NextResponse {
   try {
-    const normalizedBase = baseUrl.replace(/\/+$/, "");
-    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const normalizedBase = baseUrl.replace(/\/+$/, '');
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return new URL(`${normalizedBase}${normalizedPath}`);
   } catch {
     logger.error(`${logPrefix} Invalid BOT_API_URL`, { baseUrl });
-    return NextResponse.json(
-      { error: "Bot API is not configured correctly" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Bot API is not configured correctly' }, { status: 500 });
   }
 }
 
@@ -162,36 +144,33 @@ export async function proxyToBotApi(
     // can never be overridden by values smuggled through options.headers.
     const mergedHeaders: Record<string, string> = {
       ...options?.headers,
-      "x-api-secret": secret,
+      'x-api-secret': secret,
     };
     const response = await fetch(upstreamUrl.toString(), {
-      method: options?.method ?? "GET",
+      method: options?.method ?? 'GET',
       headers: mergedHeaders,
       body: options?.body,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      cache: "no-store",
+      cache: 'no-store',
     });
 
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
       const data: unknown = await response.json();
       return NextResponse.json(data, { status: response.status });
     }
 
     const text = await response.text();
     return NextResponse.json(
-      { error: text || "Unexpected response from bot API" },
+      { error: text || 'Unexpected response from bot API' },
       { status: response.status },
     );
   } catch (error) {
-    if ((error as Error).name === "AbortError" || (error as Error).name === "TimeoutError") {
+    if ((error as Error).name === 'AbortError' || (error as Error).name === 'TimeoutError') {
       logger.error(`${logPrefix} ${errorMessage}: request timed out`);
       return NextResponse.json({ error: errorMessage }, { status: 504 });
     }
     logger.error(`${logPrefix} ${errorMessage}:`, error);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

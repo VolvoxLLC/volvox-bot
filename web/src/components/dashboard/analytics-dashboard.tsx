@@ -1,15 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Activity,
-  Bot,
-  Coins,
-  MessageSquare,
-  RefreshCw,
-  UserPlus,
-  Users,
-} from "lucide-react";
+import { Activity, Bot, Coins, MessageSquare, RefreshCw, UserPlus, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -24,234 +16,54 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
-import { Button } from "@/components/ui/button";
+} from 'recharts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  GUILD_SELECTED_EVENT,
-  SELECTED_GUILD_KEY,
-} from "@/lib/guild-selection";
-import type {
-  AnalyticsRangePreset,
-  DashboardAnalytics,
-} from "@/types/analytics";
+  endOfDayIso,
+  formatDateInput,
+  formatLastUpdatedTime,
+  formatNumber,
+  formatUsd,
+  startOfDayIso,
+} from '@/lib/analytics-utils';
+import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
+import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
 
 const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
-  { label: "Today", value: "today" },
-  { label: "Week", value: "week" },
-  { label: "Month", value: "month" },
-  { label: "Custom", value: "custom" },
+  { label: 'Today', value: 'today' },
+  { label: 'Week', value: 'week' },
+  { label: 'Month', value: 'month' },
+  { label: 'Custom', value: 'custom' },
 ];
 
-const PIE_COLORS = ["#5865F2", "#22C55E", "#F59E0B", "#A855F7", "#06B6D4"];
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const PIE_COLORS = ['#5865F2', '#22C55E', '#F59E0B', '#A855F7', '#06B6D4'];
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-function formatDateInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseLocalDateInput(dateInput: string): {
-  year: number;
-  monthIndex: number;
-  day: number;
-} | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput);
-  if (!match) return null;
-
-  const year = Number.parseInt(match[1], 10);
-  const monthIndex = Number.parseInt(match[2], 10) - 1;
-  const day = Number.parseInt(match[3], 10);
-
-  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || !Number.isFinite(day)) {
-    return null;
-  }
-
-  return { year, monthIndex, day };
-}
-
-function startOfDayIso(dateInput: string): string {
-  const parsed = parseLocalDateInput(dateInput);
-  if (!parsed) return `${dateInput}T00:00:00.000Z`;
-
-  return new Date(
-    parsed.year,
-    parsed.monthIndex,
-    parsed.day,
-    0,
-    0,
-    0,
-    0,
-  ).toISOString();
-}
-
-function endOfDayIso(dateInput: string): string {
-  const parsed = parseLocalDateInput(dateInput);
-  if (!parsed) return `${dateInput}T23:59:59.999Z`;
-
-  return new Date(
-    parsed.year,
-    parsed.monthIndex,
-    parsed.day,
-    23,
-    59,
-    59,
-    999,
-  ).toISOString();
-}
-
-function formatUsd(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: value < 1 ? 4 : 2,
-    maximumFractionDigits: value < 1 ? 4 : 2,
-  }).format(value);
-}
-
-function formatNumber(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isAnalyticsRangePreset(value: unknown): value is AnalyticsRangePreset {
-  return value === "today" || value === "week" || value === "month" || value === "custom";
-}
-
-function isDashboardAnalyticsPayload(value: unknown): value is DashboardAnalytics {
-  if (!isRecord(value)) return false;
-
-  const range = value.range;
-  const kpis = value.kpis;
-  const realtime = value.realtime;
-  const aiUsage = value.aiUsage;
-
-  if (!isString(value.guildId)) return false;
-  if (!isRecord(range)) return false;
-  if (!isRecord(kpis)) return false;
-  if (!isRecord(realtime)) return false;
-  if (!isRecord(aiUsage)) return false;
-
-  if (!isAnalyticsRangePreset(range.type)) return false;
-  if (!isString(range.from) || !isString(range.to)) return false;
-  if (range.interval !== "hour" && range.interval !== "day") return false;
-  if (range.channelId !== null && !isString(range.channelId)) return false;
-
-  if (
-    !isFiniteNumber(kpis.totalMessages) ||
-    !isFiniteNumber(kpis.aiRequests) ||
-    !isFiniteNumber(kpis.aiCostUsd) ||
-    !isFiniteNumber(kpis.activeUsers) ||
-    !isFiniteNumber(kpis.newMembers)
-  ) {
-    return false;
-  }
-
-  if (
-    (realtime.onlineMembers !== null && !isFiniteNumber(realtime.onlineMembers)) ||
-    !isFiniteNumber(realtime.activeAiConversations)
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(value.messageVolume) ||
-    !value.messageVolume.every(
-      (point) =>
-        isRecord(point) &&
-        isString(point.bucket) &&
-        isString(point.label) &&
-        isFiniteNumber(point.messages) &&
-        isFiniteNumber(point.aiRequests),
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    !isRecord(aiUsage.tokens) ||
-    !isFiniteNumber(aiUsage.tokens.prompt) ||
-    !isFiniteNumber(aiUsage.tokens.completion)
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(aiUsage.byModel) ||
-    !aiUsage.byModel.every(
-      (entry) =>
-        isRecord(entry) &&
-        isString(entry.model) &&
-        isFiniteNumber(entry.requests) &&
-        isFiniteNumber(entry.promptTokens) &&
-        isFiniteNumber(entry.completionTokens) &&
-        isFiniteNumber(entry.costUsd),
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(value.channelActivity) ||
-    !value.channelActivity.every(
-      (entry) =>
-        isRecord(entry) &&
-        isString(entry.channelId) &&
-        isString(entry.name) &&
-        isFiniteNumber(entry.messages),
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(value.heatmap) ||
-    !value.heatmap.every(
-      (entry) =>
-        isRecord(entry) &&
-        isFiniteNumber(entry.dayOfWeek) &&
-        isFiniteNumber(entry.hour) &&
-        isFiniteNumber(entry.messages),
-    )
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-function formatLastUpdatedTime(value: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(value);
+function KpiSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function AnalyticsDashboard() {
   const [now] = useState(() => new Date());
-  const [guildId, setGuildId] = useState<string | null>(null);
-  const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>("week");
+  const guildId = useGuildSelection({
+    onGuildChange: () => setChannelFilter(null),
+  });
+  const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>('week');
   const [customFromDraft, setCustomFromDraft] = useState<string>(
     formatDateInput(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
   );
@@ -268,62 +80,21 @@ export function AnalyticsDashboard() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    try {
-      const savedGuild = window.localStorage.getItem(SELECTED_GUILD_KEY);
-      if (savedGuild) {
-        setGuildId(savedGuild);
-      }
-    } catch {
-      // localStorage may be unavailable in strict browser contexts
-    }
-
-    const handleGuildSelect = (event: Event) => {
-      const selectedGuild = (event as CustomEvent<string>).detail;
-      if (!selectedGuild) return;
-      setGuildId(selectedGuild);
-      setChannelFilter(null);
-    };
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SELECTED_GUILD_KEY || !event.newValue) return;
-      setGuildId(event.newValue);
-      setChannelFilter(null);
-    };
-
-    window.addEventListener(
-      GUILD_SELECTED_EVENT,
-      handleGuildSelect as EventListener,
-    );
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener(
-        GUILD_SELECTED_EVENT,
-        handleGuildSelect as EventListener,
-      );
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, []);
-
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    params.set("range", rangePreset);
+    params.set('range', rangePreset);
 
-    if (rangePreset === "custom") {
-      params.set("from", startOfDayIso(customFromApplied));
-      params.set("to", endOfDayIso(customToApplied));
+    if (rangePreset === 'custom') {
+      params.set('from', startOfDayIso(customFromApplied));
+      params.set('to', endOfDayIso(customToApplied));
     }
 
-    // Only set interval for non-custom ranges; let server auto-detect for custom ranges
-    if (rangePreset !== "custom") {
-      params.set("interval", rangePreset === "today" ? "hour" : "day");
+    if (rangePreset !== 'custom') {
+      params.set('interval', rangePreset === 'today' ? 'hour' : 'day');
     }
 
     if (channelFilter) {
-      params.set("channelId", channelFilter);
+      params.set('channelId', channelFilter);
     }
 
     return params.toString();
@@ -333,9 +104,6 @@ export function AnalyticsDashboard() {
     async (backgroundRefresh = false) => {
       if (!guildId) return;
 
-      // Abort any previous in-flight request before starting a new one.
-      // Always uses the ref-based controller so both the initial load
-      // and background refresh share a single cancellation path.
       abortControllerRef.current?.abort();
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -347,16 +115,13 @@ export function AnalyticsDashboard() {
 
       try {
         const encodedGuildId = encodeURIComponent(guildId);
-        const response = await fetch(
-          `/api/guilds/${encodedGuildId}/analytics?${queryString}`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        const response = await fetch(`/api/guilds/${encodedGuildId}/analytics?${queryString}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
 
         if (response.status === 401) {
-          window.location.href = "/login";
+          window.location.href = '/login';
           return;
         }
 
@@ -369,35 +134,25 @@ export function AnalyticsDashboard() {
 
         if (!response.ok) {
           const message =
-            typeof payload === "object" &&
+            typeof payload === 'object' &&
             payload !== null &&
-            "error" in payload &&
-            typeof payload.error === "string"
+            'error' in payload &&
+            typeof payload.error === 'string'
               ? payload.error
-              : "Failed to fetch analytics";
+              : 'Failed to fetch analytics';
           throw new Error(message);
         }
 
         if (!isDashboardAnalyticsPayload(payload)) {
-          throw new Error("Invalid analytics payload from server");
+          throw new Error('Invalid analytics payload from server');
         }
 
         setAnalytics(payload);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {
-        // Don't treat aborted fetches as errors
-        if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Failed to fetch analytics",
-        );
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
+        setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch analytics');
       } finally {
-        // Only reset loading if this request is still the current one.
-        // When fetchAnalytics is called again, the previous request
-        // is aborted and a new controller replaces the ref. Without this
-        // guard the aborted request's finally block would set loading=false,
-        // cancelling out the new request's loading=true.
         if (abortControllerRef.current === controller) {
           setLoading(false);
         }
@@ -423,12 +178,12 @@ export function AnalyticsDashboard() {
 
   const applyCustomRange = () => {
     if (!customFromDraft || !customToDraft) {
-      setCustomRangeError("Select both a from and to date.");
+      setCustomRangeError('Select both a from and to date.');
       return;
     }
 
     if (customFromDraft > customToDraft) {
-      setCustomRangeError("\"From\" date must be on or before \"To\" date.");
+      setCustomRangeError('"From" date must be on or before "To" date.');
       return;
     }
 
@@ -462,7 +217,7 @@ export function AnalyticsDashboard() {
   const tokenBreakdownData = useMemo(
     () => [
       {
-        label: "Tokens",
+        label: 'Tokens',
         prompt: analytics?.aiUsage.tokens.prompt ?? 0,
         completion: analytics?.aiUsage.tokens.completion ?? 0,
       },
@@ -475,15 +230,14 @@ export function AnalyticsDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Select a server</CardTitle>
-          <CardDescription>
-            Choose a server from the sidebar to load analytics.
-          </CardDescription>
+          <CardDescription>Choose a server from the sidebar to load analytics.</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
   const kpis = analytics?.kpis;
+  const showKpiSkeleton = loading && !analytics;
 
   return (
     <div className="space-y-6">
@@ -504,11 +258,11 @@ export function AnalyticsDashboard() {
           {RANGE_PRESETS.map((preset) => (
             <Button
               key={preset.value}
-              variant={rangePreset === preset.value ? "default" : "outline"}
+              variant={rangePreset === preset.value ? 'default' : 'outline'}
               size="sm"
               onClick={() => {
                 setRangePreset(preset.value);
-                if (preset.value !== "custom") {
+                if (preset.value !== 'custom') {
                   setCustomRangeError(null);
                 }
               }}
@@ -517,7 +271,7 @@ export function AnalyticsDashboard() {
             </Button>
           ))}
 
-          {rangePreset === "custom" ? (
+          {rangePreset === 'custom' ? (
             <>
               <input
                 aria-label="From date"
@@ -557,7 +311,7 @@ export function AnalyticsDashboard() {
             onClick={() => void fetchAnalytics()}
             disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -575,85 +329,90 @@ export function AnalyticsDashboard() {
         </Card>
       ) : null}
 
+      {/* KPI cards with loading skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total messages</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.totalMessages) : "—"}
-              </span>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+        {showKpiSkeleton ? (
+          Array.from({ length: 5 }).map((_, i) => <KpiSkeleton key={i} />)
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total messages</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.totalMessages) : '\u2014'}
+                  </span>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">AI requests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.aiRequests) : "—"}
-              </span>
-              <Bot className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">AI requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.aiRequests) : '\u2014'}
+                  </span>
+                  <Bot className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">AI cost (est.)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatUsd(kpis.aiCostUsd) : "—"}
-              </span>
-              <Coins className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">AI cost (est.)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatUsd(kpis.aiCostUsd) : '\u2014'}
+                  </span>
+                  <Coins className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.activeUsers) : "—"}
-              </span>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Active users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.activeUsers) : '\u2014'}
+                  </span>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">New members</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {kpis ? formatNumber(kpis.newMembers) : "—"}
-              </span>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">New members</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">
+                    {kpis ? formatNumber(kpis.newMembers) : '\u2014'}
+                  </span>
+                  <UserPlus className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Real-time indicators</CardTitle>
-            <CardDescription>
-              Live status updates every 30 seconds.
-            </CardDescription>
+            <CardDescription>Live status updates every 30 seconds.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border p-4">
@@ -663,9 +422,9 @@ export function AnalyticsDashboard() {
               </div>
               <p aria-label="Online members value" className="mt-2 text-2xl font-semibold">
                 {analytics == null
-                  ? "—"
+                  ? '\u2014'
                   : analytics.realtime.onlineMembers === null
-                    ? "N/A"
+                    ? 'N/A'
                     : formatNumber(analytics.realtime.onlineMembers)}
               </p>
             </div>
@@ -674,14 +433,11 @@ export function AnalyticsDashboard() {
                 <Bot className="h-4 w-4" />
                 Active AI conversations
               </div>
-              <p
-                aria-label="Active AI conversations value"
-                className="mt-2 text-2xl font-semibold"
-              >
+              <p aria-label="Active AI conversations value" className="mt-2 text-2xl font-semibold">
                 {loading || analytics == null
-                  ? "—"
+                  ? '\u2014'
                   : analytics.realtime.activeAiConversations === null
-                    ? "N/A"
+                    ? 'N/A'
                     : formatNumber(analytics.realtime.activeAiConversations)}
               </p>
             </div>
@@ -691,14 +447,12 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Channel filter</CardTitle>
-            <CardDescription>
-              Click a channel in the chart to filter all metrics.
-            </CardDescription>
+            <CardDescription>Click a channel in the chart to filter all metrics.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant={channelFilter === null ? "default" : "outline"}
+              variant={channelFilter === null ? 'default' : 'outline'}
               onClick={() => setChannelFilter(null)}
             >
               All channels
@@ -707,7 +461,7 @@ export function AnalyticsDashboard() {
               <Button
                 key={channel.channelId}
                 size="sm"
-                variant={channelFilter === channel.channelId ? "default" : "outline"}
+                variant={channelFilter === channel.channelId ? 'default' : 'outline'}
                 onClick={() =>
                   setChannelFilter((current) =>
                     current === channel.channelId ? null : channel.channelId,
@@ -725,9 +479,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Message volume</CardTitle>
-            <CardDescription>
-              Messages and AI requests over the selected range.
-            </CardDescription>
+            <CardDescription>Messages and AI requests over the selected range.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[320px]">
@@ -763,9 +515,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>AI usage breakdown</CardTitle>
-            <CardDescription>
-              Request distribution by model and token usage.
-            </CardDescription>
+            <CardDescription>Request distribution by model and token usage.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
             <div className="h-[260px]">
@@ -795,11 +545,7 @@ export function AnalyticsDashboard() {
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="prompt" name="Prompt tokens" fill="#5865F2" />
-                  <Bar
-                    dataKey="completion"
-                    name="Completion tokens"
-                    fill="#22C55E"
-                  />
+                  <Bar dataKey="completion" name="Completion tokens" fill="#22C55E" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -811,9 +557,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Channel activity</CardTitle>
-            <CardDescription>
-              Most active channels in the selected period.
-            </CardDescription>
+            <CardDescription>Most active channels in the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[320px]">
@@ -834,19 +578,13 @@ export function AnalyticsDashboard() {
                     onClick={(_value, index) => {
                       const selected = analytics?.channelActivity[index]?.channelId;
                       if (!selected) return;
-                      setChannelFilter((current) =>
-                        current === selected ? null : selected,
-                      );
+                      setChannelFilter((current) => (current === selected ? null : selected));
                     }}
                   >
                     {(analytics?.channelActivity ?? []).map((channel) => (
                       <Cell
                         key={channel.channelId}
-                        fill={
-                          channel.channelId === channelFilter
-                            ? "#5865F2"
-                            : "#22C55E"
-                        }
+                        fill={channel.channelId === channelFilter ? '#5865F2' : '#22C55E'}
                       />
                     ))}
                   </Bar>
@@ -859,22 +597,22 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Activity heatmap</CardTitle>
-            <CardDescription>
-              Message density by day of week and hour of day.
-            </CardDescription>
+            <CardDescription>Message density by day of week and hour of day.</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-separate border-spacing-1 text-xs">
               <thead>
                 <tr>
-                  <th scope="col" className="w-14 text-left text-muted-foreground">Day</th>
+                  <th scope="col" className="w-14 text-left text-muted-foreground">
+                    Day
+                  </th>
                   {HOURS.map((hour) => (
                     <th
                       key={hour}
                       scope="col"
                       className="text-center text-[10px] text-muted-foreground"
                     >
-                      {hour % 3 === 0 ? hour : ""}
+                      {hour % 3 === 0 ? hour : ''}
                     </th>
                   ))}
                 </tr>
@@ -895,12 +633,12 @@ export function AnalyticsDashboard() {
                       return (
                         <td key={`${day}-${hour}`}>
                           <div
-                            title={`${day} ${hour}:00 — ${value} messages`}
+                            title={`${day} ${hour}:00 \u2014 ${value} messages`}
                             className="h-4 rounded-sm border"
                             style={{
                               backgroundColor:
                                 value === 0
-                                  ? "transparent"
+                                  ? 'transparent'
                                   : `rgba(88, 101, 242, ${alpha.toFixed(3)})`,
                             }}
                           />

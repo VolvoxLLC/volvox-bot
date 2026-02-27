@@ -36,11 +36,16 @@ export function createApp(client, dbPool) {
 
   // CORS - must come BEFORE body parser so error responses include CORS headers
   const dashboardUrl = process.env.DASHBOARD_URL;
+  if (dashboardUrl === '*') {
+    warn('DASHBOARD_URL is set to wildcard "*" — this is insecure; set a specific origin');
+  }
   app.use((req, res, next) => {
     if (!dashboardUrl) return next();
     res.set('Access-Control-Allow-Origin', dashboardUrl);
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, x-api-secret, Authorization');
+    res.set('Access-Control-Allow-Credentials', 'true');
+    res.set('Vary', 'Origin');
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
     }
@@ -159,17 +164,23 @@ export async function stopServer() {
   const closing = server;
 
   return new Promise((resolve, reject) => {
+    let settled = false;
+
     const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
       warn('API server close timed out, forcing connections closed');
       if (typeof closing.closeAllConnections === 'function') {
         closing.closeAllConnections();
       }
       server = null;
-      resolve(); // Ensure shutdown completes even on timeout
+      resolve();
     }, SHUTDOWN_TIMEOUT_MS);
 
     closing.close((err) => {
       clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
       server = null;
       if (err) {
         error('Error closing API server', { error: err.message });

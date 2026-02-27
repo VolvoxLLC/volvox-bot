@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import type { LogFilter, LogLevel } from "@/lib/log-ws";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import type { LogFilter, LogLevel } from '@/lib/log-ws';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const LEVEL_OPTIONS: Array<{ value: LogFilter["level"]; label: string }> = [
-  { value: "all", label: "All levels" },
-  { value: "error", label: "🔴 Error" },
-  { value: "warn", label: "🟡 Warn" },
-  { value: "info", label: "🔵 Info" },
-  { value: "debug", label: "⚫ Debug" },
+const LEVEL_OPTIONS: Array<{ value: LogFilter['level']; label: string }> = [
+  { value: 'all', label: 'All levels' },
+  { value: 'error', label: '🔴 Error' },
+  { value: 'warn', label: '🟡 Warn' },
+  { value: 'info', label: '🔵 Info' },
+  { value: 'debug', label: '⚫ Debug' },
 ];
 
 const DEBOUNCE_MS = 300;
@@ -30,9 +30,9 @@ interface LogFiltersProps {
  * Debounces text inputs and sends consolidated filter to WS server.
  */
 export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps) {
-  const [level, setLevel] = useState<LogFilter["level"]>("all");
-  const [module, setModule] = useState("");
-  const [search, setSearch] = useState("");
+  const [level, setLevel] = useState<LogFilter['level']>('all');
+  const [module, setModule] = useState('');
+  const [search, setSearch] = useState('');
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onFilterChangeRef = useRef(onFilterChange);
@@ -40,9 +40,9 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
 
   // Build and emit filter, debouncing text fields
   const emitFilter = useCallback(
-    (opts: { level: LogFilter["level"]; module: string; search: string }) => {
+    (opts: { level: LogFilter['level']; module: string; search: string }) => {
       const filter: LogFilter = {};
-      if (opts.level && opts.level !== "all") filter.level = opts.level as LogLevel;
+      if (opts.level && opts.level !== 'all') filter.level = opts.level as LogLevel;
       if (opts.module.trim()) filter.module = opts.module.trim();
       if (opts.search.trim()) filter.search = opts.search.trim();
       onFilterChangeRef.current(filter);
@@ -51,7 +51,7 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
   );
 
   const scheduleEmit = useCallback(
-    (opts: { level: LogFilter["level"]; module: string; search: string }) => {
+    (opts: { level: LogFilter['level']; module: string; search: string }) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => emitFilter(opts), DEBOUNCE_MS);
     },
@@ -61,7 +61,7 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
   // Level change is instant (no debounce)
   const handleLevelChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const newLevel = e.target.value as LogFilter["level"];
+      const newLevel = e.target.value as LogFilter['level'];
       setLevel(newLevel);
       // Cancel any pending debounce and emit immediately
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -89,11 +89,11 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
   );
 
   const handleClear = useCallback(() => {
-    setLevel("all");
-    setModule("");
-    setSearch("");
+    setLevel('all');
+    setModule('');
+    setSearch('');
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    emitFilter({ level: "all", module: "", search: "" });
+    emitFilter({ level: 'all', module: '', search: '' });
   }, [emitFilter]);
 
   // Cleanup debounce on unmount
@@ -104,20 +104,20 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
   }, []);
 
   const inputCls =
-    "h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+    'h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Level selector */}
       <select
-        value={level ?? "all"}
+        value={level ?? 'all'}
         onChange={handleLevelChange}
         disabled={disabled}
         aria-label="Filter by log level"
         className={inputCls}
       >
         {LEVEL_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value ?? "all"}>
+          <option key={opt.value} value={opt.value ?? 'all'}>
             {opt.label}
           </option>
         ))}

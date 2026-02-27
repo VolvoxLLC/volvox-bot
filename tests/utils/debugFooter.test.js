@@ -397,7 +397,7 @@ describe('buildDebugEmbed', () => {
     it('should have no fields and a description instead', () => {
       const embed = buildDebugEmbed(classifyStats, respondStats, 'compact');
       expect(embed.data.fields).toBeUndefined();
-      expect(embed.data.description).toBeDefined();
+      expect(typeof embed.data.description).toBe('string');
     });
 
     it('should have 2-line description with model + tokens + cost', () => {
@@ -541,7 +541,7 @@ describe('logAiUsage', () => {
     logAiUsage(null, 'ch-1', { classify: {}, respond: {} });
 
     const classifyArgs = mockQuery.mock.calls[0][1];
-    expect(classifyArgs[0]).toBe('unknown');
+    expect(classifyArgs[0]).toBeNull();
   });
 
   it('should catch and log query errors without throwing', async () => {

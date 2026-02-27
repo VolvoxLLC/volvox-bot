@@ -25,8 +25,20 @@ export function setMaxTrackedUsers(n) {
 /**
  * Per-user-per-channel sliding window state.
  * Key: `${userId}:${channelId}`
- * Value: { timestamps: number[], triggerCount: number, triggerWindowStart: number }
- * @type {Map<string, { timestamps: number[], triggerCount: number, triggerWindowStart: number }>}
+ * Value: {
+ *   timestamps: number[],
+ *   triggerCount: number,
+ *   triggerWindowStart: number,
+ *   windowMs: number,
+ *   muteWindowMs: number,
+ * }
+ * @type {Map<string, {
+ *   timestamps: number[],
+ *   triggerCount: number,
+ *   triggerWindowStart: number,
+ *   windowMs: number,
+ *   muteWindowMs: number,
+ * }>}
  */
 const windowMap = new Map();
 
@@ -144,6 +156,7 @@ export async function checkRateLimit(message, config) {
   // Temp-mute config
   const muteThreshold = rlConfig.muteAfterTriggers ?? 3;
   const muteWindowSeconds = rlConfig.muteWindowSeconds ?? 300; // 5 minutes
+  const muteWindowMs = muteWindowSeconds * 1000;
   const muteDurationMs = (rlConfig.muteDurationSeconds ?? 300) * 1000; // 5 minutes
 
   const key = `${message.author.id}:${message.channel.id}`;
@@ -156,9 +169,19 @@ export async function checkRateLimit(message, config) {
 
   let entry = windowMap.get(key);
   if (!entry) {
-    entry = { timestamps: [], triggerCount: 0, triggerWindowStart: now };
+    entry = {
+      timestamps: [],
+      triggerCount: 0,
+      triggerWindowStart: now,
+      windowMs,
+      muteWindowMs,
+    };
     windowMap.set(key, entry);
   }
+
+  // Keep the most recently-seen retention windows for cleanup safety.
+  entry.windowMs = windowMs;
+  entry.muteWindowMs = muteWindowMs;
 
   // Slide the window: drop timestamps older than windowMs
   const cutoff = now - windowMs;
@@ -181,8 +204,6 @@ export async function checkRateLimit(message, config) {
   // Delete the excess message
   await message.delete().catch(() => {});
 
-  // Track trigger count for mute escalation (sliding window)
-  const muteWindowMs = muteWindowSeconds * 1000;
   if (now - entry.triggerWindowStart > muteWindowMs) {
     // Reset trigger window
     entry.triggerCount = 1;
@@ -206,6 +227,52 @@ export async function checkRateLimit(message, config) {
   }
 
   return { limited: true, reason };
+}
+
+/** @type {ReturnType<typeof setInterval> | null} */
+let cleanupInterval = null;
+
+/**
+ * Start periodic cleanup of stale windowMap entries.
+ * Removes entries when the latest activity is older than the tracked retention window.
+ * Runs every 5 minutes.
+ */
+function startRateLimitCleanup() {
+  if (cleanupInterval) return;
+  const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  const DEFAULT_WINDOW_MS = 10 * 1000; // fallback window
+
+  cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of windowMap) {
+      const newestTimestamp =
+        entry.timestamps.length > 0 ? entry.timestamps[entry.timestamps.length - 1] : 0;
+      const newestActivity = Math.max(newestTimestamp, entry.triggerWindowStart ?? 0);
+      const retentionMs = Math.max(
+        entry.windowMs ?? DEFAULT_WINDOW_MS,
+        entry.muteWindowMs ?? DEFAULT_WINDOW_MS,
+      );
+
+      if (now - newestActivity > retentionMs) {
+        windowMap.delete(key);
+      }
+    }
+  }, CLEANUP_INTERVAL_MS);
+  cleanupInterval.unref?.();
+}
+
+// Auto-start cleanup when module loads
+startRateLimitCleanup();
+
+/**
+ * Stop the periodic windowMap cleanup interval.
+ * Call during graceful shutdown.
+ */
+export function stopRateLimitCleanup() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
 }
 
 /**

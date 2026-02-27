@@ -517,9 +517,9 @@ describe('triage-respond', () => {
         'channel1',
       );
 
-      expect(result.stats).toBeDefined();
-      expect(result.stats.classify).toBeDefined();
-      expect(result.stats.respond).toBeDefined();
+      expect(result).toHaveProperty('stats');
+      expect(result.stats).toHaveProperty('classify');
+      expect(result.stats).toHaveProperty('respond');
       expect(result.stats.userId).toBe('user1');
       expect(result.stats.searchCount).toBe(0);
       expect(result.channel).toBe(mockChannel);

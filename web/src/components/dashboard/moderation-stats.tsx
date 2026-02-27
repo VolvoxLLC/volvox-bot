@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { AlertTriangle, Ban, Clock, Shield, TrendingUp, UserX } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ACTION_META } from "./moderation-types";
-import type { ModStats } from "./moderation-types";
+import { AlertTriangle, Ban, Clock, Shield, TrendingUp, UserX } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { ModStats } from './moderation-types';
+import { ACTION_META } from './moderation-types';
 
 interface StatCardProps {
   title: string;
@@ -27,9 +27,7 @@ function StatCard({ title, value, icon, description, loading }: StatCardProps) {
         ) : (
           <div className="text-2xl font-bold">{value}</div>
         )}
-        {description && (
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        )}
+        {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
       </CardContent>
     </Card>
   );
@@ -113,7 +111,7 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                 {topActions.map(([action, count]) => {
                   const meta = ACTION_META[action as keyof typeof ACTION_META];
                   const label = meta?.label ?? action;
-                  const badgeCls = meta?.badge ?? "bg-muted text-muted-foreground";
+                  const badgeCls = meta?.badge ?? 'bg-muted text-muted-foreground';
                   return (
                     <li key={action} className="flex items-center justify-between text-sm">
                       <span
@@ -152,9 +150,7 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
               <ul className="space-y-2">
                 {stats.topTargets.map(({ userId, tag, count }) => (
                   <li key={userId} className="flex items-center justify-between text-sm">
-                    <span className="truncate text-muted-foreground font-mono text-xs">
-                      {tag}
-                    </span>
+                    <span className="truncate text-muted-foreground font-mono text-xs">{tag}</span>
                     <span className="ml-2 flex shrink-0 items-center gap-1 text-destructive font-semibold tabular-nums">
                       <Ban className="h-3 w-3" />
                       {count}

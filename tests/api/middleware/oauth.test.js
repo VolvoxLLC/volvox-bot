@@ -97,8 +97,7 @@ describe('requireOAuth middleware', () => {
     await middleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(req.user).toBeDefined();
-    expect(req.user.userId).toBe('123');
+    expect(req.user).toHaveProperty('userId', '123');
     expect(req.user.username).toBe('testuser');
     expect(req.authMethod).toBe('oauth');
   });

@@ -102,7 +102,7 @@ describe('db module', () => {
   describe('initDb', () => {
     it('should initialize database pool and run migrations', async () => {
       const pool = await dbModule.initDb();
-      expect(pool).toBeDefined();
+      expect(pool).not.toBeNull();
 
       expect(pgMocks.poolConnect).toHaveBeenCalled();
       expect(pgMocks.clientQuery).toHaveBeenCalledWith('SELECT NOW()');
@@ -146,7 +146,7 @@ describe('db module', () => {
       });
 
       const pool = await firstInit;
-      expect(pool).toBeDefined();
+      expect(pool).not.toBeNull();
     });
 
     it('should throw if DATABASE_URL is not set', async () => {
@@ -176,7 +176,7 @@ describe('db module', () => {
 
     it('should return pool after init', async () => {
       await dbModule.initDb();
-      expect(dbModule.getPool()).toBeDefined();
+      expect(dbModule.getPool()).not.toBeNull();
     });
   });
 

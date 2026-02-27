@@ -52,7 +52,8 @@ function createMockInteraction(overrides = {}) {
 describe('ping command', () => {
   it('should export data with name and description', () => {
     expect(data.name).toBe('ping');
-    expect(data.description).toBeTruthy();
+    expect(typeof data.description).toBe('string');
+    expect(data.description.length).toBeGreaterThan(0);
   });
 
   it('should reply with pong and latency info', async () => {

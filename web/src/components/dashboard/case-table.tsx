@@ -1,17 +1,24 @@
-"use client";
+'use client';
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, Search, X } from "lucide-react";
-import { Fragment, useState, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Loader2,
+  Search,
+  X,
+} from 'lucide-react';
+import { Fragment, useCallback, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -19,32 +26,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { CaseDetail } from "./case-detail";
-import { ACTION_META } from "./moderation-types";
-import type { ModCase, ModAction, CaseListResponse } from "./moderation-types";
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
-function ActionBadge({ action }: { action: ModAction }) {
-  const meta = ACTION_META[action];
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
-        meta?.badge ?? "bg-muted text-muted-foreground"
-      }`}
-    >
-      {meta?.label ?? action}
-    </span>
-  );
-}
+} from '@/components/ui/table';
+import { formatDate } from '@/lib/format-time';
+import { ActionBadge } from './action-badge';
+import { CaseDetail } from './case-detail';
+import type { CaseListResponse, ModCase } from './moderation-types';
+import { ACTION_META } from './moderation-types';
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
@@ -57,7 +44,7 @@ interface FilterBarProps {
 }
 
 const ACTION_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "all", label: "All actions" },
+  { value: 'all', label: 'All actions' },
   ...Object.entries(ACTION_META).map(([value, meta]) => ({
     value,
     label: meta.label,
@@ -71,7 +58,7 @@ function FilterBar({
   onUserSearchChange,
   onClear,
 }: FilterBarProps) {
-  const hasFilters = actionFilter !== "all" || userSearch.trim().length > 0;
+  const hasFilters = actionFilter !== 'all' || userSearch.trim().length > 0;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -148,31 +135,43 @@ export function CaseTable({
   const [expandedCase, setExpandedCase] = useState<ModCase | null>(null);
   const [expandLoading, setExpandLoading] = useState(false);
 
-  const toggleExpand = useCallback(async (c: ModCase) => {
-    if (expandedId === c.id) {
-      setExpandedId(null);
-      setExpandedCase(null);
-      return;
-    }
-    setExpandedId(c.id);
-    setExpandedCase(null);
-    setExpandLoading(true);
-    try {
-      const res = await fetch(`/api/moderation/cases/${c.case_number}?guildId=${encodeURIComponent(guildId)}`);
-      if (res.ok) {
-        const fullCase = await res.json() as ModCase;
-        setExpandedCase(fullCase);
-      } else {
-        // Non-OK response — fall back to list data so CaseDetail still renders
-        setExpandedCase(c);
+  const toggleExpand = useCallback(
+    async (c: ModCase) => {
+      // Use functional updater to avoid stale closure over expandedId
+      let isCollapsing = false;
+      setExpandedId((prev) => {
+        if (prev === c.id) {
+          isCollapsing = true;
+          return null;
+        }
+        return c.id;
+      });
+
+      if (isCollapsing) {
+        setExpandedCase(null);
+        return;
       }
-    } catch {
-      // Network error — fall back to list data (no scheduledActions)
-      setExpandedCase(c);
-    } finally {
-      setExpandLoading(false);
-    }
-  }, [expandedId, guildId]);
+
+      setExpandedCase(null);
+      setExpandLoading(true);
+      try {
+        const res = await fetch(
+          `/api/moderation/cases/${c.case_number}?guildId=${encodeURIComponent(guildId)}`,
+        );
+        if (res.ok) {
+          const fullCase = (await res.json()) as ModCase;
+          setExpandedCase(fullCase);
+        } else {
+          setExpandedCase(c);
+        }
+      } catch {
+        setExpandedCase(c);
+      } finally {
+        setExpandLoading(false);
+      }
+    },
+    [guildId],
+  );
 
   if (error) {
     return (
@@ -223,6 +222,7 @@ export function CaseTable({
                 <button
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                   onClick={onSortToggle}
+                  aria-label={sortDesc ? 'Sort by date ascending' : 'Sort by date descending'}
                 >
                   Date
                   {sortDesc ? (
@@ -255,19 +255,14 @@ export function CaseTable({
             ) : (
               cases.map((c) => (
                 <Fragment key={c.id}>
-                  <TableRow
-                    className="cursor-pointer"
-                    onClick={() => toggleExpand(c)}
-                  >
+                  <TableRow className="cursor-pointer" onClick={() => toggleExpand(c)}>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       #{c.case_number}
                     </TableCell>
                     <TableCell>
                       <ActionBadge action={c.action} />
                     </TableCell>
-                    <TableCell className="max-w-[140px] truncate text-sm">
-                      {c.target_tag}
-                    </TableCell>
+                    <TableCell className="max-w-[140px] truncate text-sm">{c.target_tag}</TableCell>
                     <TableCell className="hidden max-w-[140px] truncate text-sm md:table-cell">
                       {c.moderator_tag}
                     </TableCell>

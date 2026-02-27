@@ -15,19 +15,19 @@ describe('config.json', () => {
   });
 
   it('should be valid JSON', () => {
-    expect(config).toBeDefined();
     expect(typeof config).toBe('object');
+    expect(config).not.toBeNull();
   });
 
   it('should have an ai section', () => {
-    expect(config.ai).toBeDefined();
+    expect(config).toHaveProperty('ai');
     expect(typeof config.ai.enabled).toBe('boolean');
     expect(typeof config.ai.systemPrompt).toBe('string');
     expect(Array.isArray(config.ai.channels)).toBe(true);
   });
 
   it('should have a triage section', () => {
-    expect(config.triage).toBeDefined();
+    expect(config).toHaveProperty('triage');
     expect(typeof config.triage.enabled).toBe('boolean');
     expect(typeof config.triage.defaultInterval).toBe('number');
     expect(typeof config.triage.maxBufferSize).toBe('number');
@@ -43,25 +43,25 @@ describe('config.json', () => {
   });
 
   it('should have a welcome section', () => {
-    expect(config.welcome).toBeDefined();
+    expect(config).toHaveProperty('welcome');
     expect(typeof config.welcome.enabled).toBe('boolean');
     expect(typeof config.welcome.channelId).toBe('string');
   });
 
   it('should have a moderation section', () => {
-    expect(config.moderation).toBeDefined();
+    expect(config).toHaveProperty('moderation');
     expect(typeof config.moderation.enabled).toBe('boolean');
     expect(typeof config.moderation.alertChannelId).toBe('string');
   });
 
   it('should have a permissions section', () => {
-    expect(config.permissions).toBeDefined();
+    expect(config).toHaveProperty('permissions');
     expect(typeof config.permissions.enabled).toBe('boolean');
-    expect(config.permissions.allowedCommands).toBeDefined();
+    expect(config.permissions).toHaveProperty('allowedCommands');
   });
 
   it('should have a logging section', () => {
-    expect(config.logging).toBeDefined();
+    expect(config).toHaveProperty('logging');
     expect(typeof config.logging.level).toBe('string');
   });
 });

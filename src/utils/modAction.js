@@ -70,7 +70,10 @@ export async function executeModAction(interaction, opts) {
       return await safeEditReply(interaction, options.earlyReturn);
     }
 
-    const { reason, ...extraCaseData } = options;
+    const { reason, ...rawExtraCaseData } = options;
+    const extraCaseData = Object.fromEntries(
+      Object.entries(rawExtraCaseData).filter(([k]) => !k.startsWith('_')),
+    );
 
     // Resolve target
     const targetResult = getTarget(interaction, config);

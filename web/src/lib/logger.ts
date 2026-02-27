@@ -1,24 +1,54 @@
-// ⚠️ INTENTIONAL console.* usage — do NOT flag as a lint violation.
-//
-// AGENTS.md and Biome rules ban console.* in the main bot codebase (src/),
-// but this file is part of the **web dashboard** package (web/). The web
-// dashboard intentionally wraps console methods behind a thin logger
-// abstraction so every call-site can be migrated to a structured provider
-// (e.g. pino, winston) later without a mass find-and-replace. The
-// eslint-disable below is deliberate for the same reason.
-
 /**
- * Simple logger utility for the web dashboard.
+ * Dashboard logger shim.
  *
- * Wraps console methods so logging can be swapped to a structured provider
- * (e.g. pino, winston) later without touching every call-site.
+ * Browser runtime: no-op to keep client bundles free of direct logging.
+ * Server runtime: lightweight stderr/stdout logger.
  */
 
-/* eslint-disable no-console */
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-export const logger = {
-  debug: (...args: unknown[]) => console.debug(...args),
-  info: (...args: unknown[]) => console.info(...args),
-  warn: (...args: unknown[]) => console.warn(...args),
-  error: (...args: unknown[]) => console.error(...args),
-};
+const noop = (..._args: unknown[]) => {};
+const isBrowser = typeof window !== 'undefined';
+
+function formatArg(arg: unknown): string {
+  if (typeof arg === 'string') return arg;
+
+  try {
+    return JSON.stringify(arg);
+  } catch {
+    return String(arg);
+  }
+}
+
+function writeServerLog(level: LogLevel, args: unknown[]): void {
+  if (isBrowser || typeof process === 'undefined') return;
+
+  const stream = level === 'warn' || level === 'error' ? process.stderr : process.stdout;
+  if (!stream?.write) return;
+
+  const line = `[${new Date().toISOString()}] [${level.toUpperCase()}] ${args
+    .map(formatArg)
+    .join(' ')}\n`;
+
+  stream.write(line);
+}
+
+const makeServerLogger =
+  (level: LogLevel) =>
+  (...args: unknown[]) => {
+    writeServerLog(level, args);
+  };
+
+export const logger = isBrowser
+  ? {
+      debug: noop,
+      info: noop,
+      warn: noop,
+      error: noop,
+    }
+  : {
+      debug: makeServerLogger('debug'),
+      info: makeServerLogger('info'),
+      warn: makeServerLogger('warn'),
+      error: makeServerLogger('error'),
+    };

@@ -58,7 +58,7 @@ describe('logger module', () => {
     expect(typeof logger.default.info).toBe('function');
     expect(typeof logger.default.warn).toBe('function');
     expect(typeof logger.default.error).toBe('function');
-    expect(logger.default.logger).toBeDefined();
+    expect(logger.default).toHaveProperty('logger');
   });
 
   it('should call log functions without errors', async () => {
@@ -194,7 +194,7 @@ describe('logger module', () => {
       const mockPool = { query: vi.fn(), connect: vi.fn() };
       const transport = logger.addPostgresTransport(mockPool);
 
-      expect(transport).toBeDefined();
+      expect(transport).not.toBeNull();
       expect(typeof transport.log).toBe('function');
       expect(typeof transport.close).toBe('function');
       expect(addSpy).toHaveBeenCalledWith(transport);

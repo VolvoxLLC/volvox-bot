@@ -1,39 +1,39 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { ConnectionStatus, LogEntry, LogLevel } from "@/lib/log-ws";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import type { ConnectionStatus, LogEntry, LogLevel } from '@/lib/log-ws';
+import { cn } from '@/lib/utils';
 
 // ─── Level styling ────────────────────────────────────────────────────────────
 
 const LEVEL_STYLES: Record<LogLevel, { badge: string; row: string; label: string }> = {
   error: {
-    badge: "text-red-400 font-bold",
-    row: "hover:bg-red-950/30",
-    label: "ERR ",
+    badge: 'text-red-400 font-bold',
+    row: 'hover:bg-red-950/30',
+    label: 'ERR ',
   },
   warn: {
-    badge: "text-yellow-400 font-bold",
-    row: "hover:bg-yellow-950/30",
-    label: "WARN",
+    badge: 'text-yellow-400 font-bold',
+    row: 'hover:bg-yellow-950/30',
+    label: 'WARN',
   },
   info: {
-    badge: "text-blue-400",
-    row: "hover:bg-blue-950/20",
-    label: "INFO",
+    badge: 'text-blue-400',
+    row: 'hover:bg-blue-950/20',
+    label: 'INFO',
   },
   debug: {
-    badge: "text-gray-500",
-    row: "hover:bg-gray-800/30",
-    label: "DBUG",
+    badge: 'text-gray-500',
+    row: 'hover:bg-gray-800/30',
+    label: 'DBUG',
   },
 };
 
 const STATUS_STYLES: Record<ConnectionStatus, { dot: string; label: string }> = {
-  connected: { dot: "bg-green-500", label: "Connected" },
-  disconnected: { dot: "bg-red-500", label: "Disconnected" },
-  reconnecting: { dot: "bg-yellow-500 animate-pulse", label: "Reconnecting…" },
+  connected: { dot: 'bg-green-500', label: 'Connected' },
+  disconnected: { dot: 'bg-red-500', label: 'Disconnected' },
+  reconnecting: { dot: 'bg-yellow-500 animate-pulse', label: 'Reconnecting…' },
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ function StatusIndicator({ status }: { status: ConnectionStatus }) {
   const s = STATUS_STYLES[status];
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span className={cn("h-2 w-2 rounded-full shrink-0", s.dot)} />
+      <span className={cn('h-2 w-2 rounded-full shrink-0', s.dot)} />
       <span>{s.label}</span>
     </div>
   );
@@ -58,18 +58,18 @@ function LogRow({
   onToggle: () => void;
 }) {
   const level = LEVEL_STYLES[entry.level];
-  const time = new Date(entry.timestamp).toLocaleTimeString("en-US", {
+  const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
     hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
   });
 
   const hasMeta = entry.meta && Object.keys(entry.meta).length > 0;
 
   const handleKeyDown = hasMeta
     ? (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onToggle();
         }
@@ -79,11 +79,11 @@ function LogRow({
   return (
     <div
       className={cn(
-        "group border-b border-gray-800/50 px-3 py-1 font-mono text-xs transition-colors",
+        'group border-b border-gray-800/50 px-3 py-1 font-mono text-xs transition-colors',
         level.row,
-        hasMeta && "cursor-pointer",
+        hasMeta && 'cursor-pointer',
       )}
-      role={hasMeta ? "button" : undefined}
+      role={hasMeta ? 'button' : undefined}
       tabIndex={hasMeta ? 0 : undefined}
       aria-expanded={hasMeta ? isExpanded : undefined}
       onClick={hasMeta ? onToggle : undefined}
@@ -95,13 +95,11 @@ function LogRow({
         <span className="shrink-0 text-gray-600 select-none">{time}</span>
 
         {/* Level badge */}
-        <span className={cn("shrink-0 min-w-[3rem] select-none", level.badge)}>{level.label}</span>
+        <span className={cn('shrink-0 min-w-[3rem] select-none', level.badge)}>{level.label}</span>
 
         {/* Module */}
         {entry.module && (
-          <span className="shrink-0 text-purple-400 max-w-[120px] truncate">
-            [{entry.module}]
-          </span>
+          <span className="shrink-0 text-purple-400 max-w-[120px] truncate">[{entry.module}]</span>
         )}
 
         {/* Message */}
@@ -110,7 +108,7 @@ function LogRow({
         {/* Expand indicator */}
         {hasMeta && (
           <span className="ml-auto shrink-0 text-gray-600 select-none">
-            {isExpanded ? "▲" : "▼"}
+            {isExpanded ? '▲' : '▼'}
           </span>
         )}
       </div>
@@ -151,7 +149,7 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
   // Auto-scroll to bottom when new logs arrive (unless paused/user scrolled)
   useEffect(() => {
     if (paused || userScrolledRef.current) return;
-    bottomRef.current?.scrollIntoView({ behavior: "instant" });
+    bottomRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [logs, paused]);
 
   // Detect manual scroll to pause auto-scroll
@@ -168,9 +166,9 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
       if (!next) {
         // Resume — scroll to bottom
         userScrolledRef.current = false;
-        setTimeout(() => {
-          bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 50);
+        requestAnimationFrame(() => {
+          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
       }
       return next;
     });
@@ -199,12 +197,12 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
             size="sm"
             variant="outline"
             className={cn(
-              "h-6 px-2 text-xs border-gray-700 hover:bg-gray-800",
-              paused && "border-yellow-600 text-yellow-400 hover:bg-yellow-950/30",
+              'h-6 px-2 text-xs border-gray-700 hover:bg-gray-800',
+              paused && 'border-yellow-600 text-yellow-400 hover:bg-yellow-950/30',
             )}
             onClick={togglePause}
           >
-            {paused ? "▶ Resume" : "⏸ Pause"}
+            {paused ? '▶ Resume' : '⏸ Pause'}
           </Button>
           <Button
             size="sm"
@@ -226,11 +224,11 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
       >
         {logs.length === 0 ? (
           <div className="flex h-32 items-center justify-center text-xs text-gray-600">
-            {status === "connected"
-              ? "Waiting for logs…"
-              : status === "reconnecting"
-                ? "Connecting to log stream…"
-                : "Not connected"}
+            {status === 'connected'
+              ? 'Waiting for logs…'
+              : status === 'reconnecting'
+                ? 'Connecting to log stream…'
+                : 'Not connected'}
           </div>
         ) : (
           logs.map((entry) => (

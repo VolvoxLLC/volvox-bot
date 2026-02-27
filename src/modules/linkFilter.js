@@ -51,9 +51,9 @@ export function extractUrls(content) {
   const results = [];
   const seen = new Set();
   let match;
-  const regex = new RegExp(URL_REGEX.source, URL_REGEX.flags);
+  URL_REGEX.lastIndex = 0;
 
-  for (match = regex.exec(content); match; match = regex.exec(content)) {
+  for (match = URL_REGEX.exec(content); match; match = URL_REGEX.exec(content)) {
     // Group 1: hostname from http(s):// URL, Group 3: bare domain
     const hostname = (match[1] || match[3] || '').toLowerCase().replace(/^www\./, '');
     const fullUrl = match[0].trim();

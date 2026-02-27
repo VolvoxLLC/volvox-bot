@@ -290,7 +290,7 @@ describe('CLIProcess — short-lived mode', () => {
     await tick();
     proc.emit('exit', 0, null);
 
-    await expect(sendP).resolves.toBeDefined();
+    await expect(sendP).resolves.toHaveProperty('type', 'result');
   });
 
   it('should apply per-call overrides to flags in short-lived mode', async () => {
@@ -469,7 +469,7 @@ describe('CLIProcess — long-lived mode', () => {
     });
 
     const result = await sendP;
-    expect(result).toBeDefined();
+    expect(result).toHaveProperty('type', 'result');
 
     // Allow the non-blocking recycle to run
     await tick();
@@ -510,7 +510,7 @@ describe('CLIProcess — long-lived mode', () => {
     const stdinErrorHandler = fakeProc.stdin.on.mock.calls.find(
       ([event]) => event === 'error',
     )?.[1];
-    expect(stdinErrorHandler).toBeDefined();
+    expect(typeof stdinErrorHandler).toBe('function');
 
     stdinErrorHandler(new Error('write EPIPE'));
     expect(cli.alive).toBe(false);
@@ -647,7 +647,7 @@ describe('CLIProcess — restart with exponential backoff', () => {
     // At attempt=5 it rethrows instead of retrying, capping total attempts at 6 (0..5).
     // This is verified by the source at cli-process.js restart() method:
     //   if (attempt < 5) { await this.restart(attempt + 1); } else { throw err; }
-    expect(cli.restart).toBeDefined();
+    expect(typeof cli.restart).toBe('function');
   });
 });
 

@@ -1,30 +1,12 @@
-"use client";
+'use client';
 
-import { Calendar, Clock, Hash, MessageSquare, Shield, User } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ACTION_META } from "./moderation-types";
-import type { ModCase, ModAction } from "./moderation-types";
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
-function ActionBadge({ action }: { action: ModAction }) {
-  const meta = ACTION_META[action];
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-        meta?.badge ?? "bg-muted text-muted-foreground"
-      }`}
-    >
-      {meta?.label ?? action}
-    </span>
-  );
-}
+import { Calendar, Clock, Hash, MessageSquare, Shield, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDate } from '@/lib/format-time';
+import { ActionBadge } from './action-badge';
+import type { ModCase } from './moderation-types';
+import { ACTION_META } from './moderation-types';
 
 interface FieldRowProps {
   icon: React.ReactNode;
@@ -53,12 +35,15 @@ export function CaseDetail({ modCase }: CaseDetailProps) {
   const executedScheduled = modCase.scheduledActions?.filter((a) => a.executed) ?? [];
 
   return (
-    <Card className="border-l-4" style={{ borderLeftColor: ACTION_META[modCase.action]?.color ?? "#6366F1" }}>
+    <Card
+      className="border-l-4"
+      style={{ borderLeftColor: ACTION_META[modCase.action]?.color ?? '#6366F1' }}
+    >
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Hash className="h-4 w-4 text-muted-foreground" />
           Case #{modCase.case_number}
-          <ActionBadge action={modCase.action} />
+          <ActionBadge action={modCase.action} size="md" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1 divide-y divide-border">
@@ -67,7 +52,7 @@ export function CaseDetail({ modCase }: CaseDetailProps) {
           label="Target"
           value={
             <span className="font-mono text-sm">
-              {modCase.target_tag}{" "}
+              {modCase.target_tag}{' '}
               <span className="text-muted-foreground text-xs">({modCase.target_id})</span>
             </span>
           }
@@ -78,7 +63,7 @@ export function CaseDetail({ modCase }: CaseDetailProps) {
           label="Moderator"
           value={
             <span className="font-mono text-sm">
-              {modCase.moderator_tag}{" "}
+              {modCase.moderator_tag}{' '}
               <span className="text-muted-foreground text-xs">({modCase.moderator_id})</span>
             </span>
           }
@@ -88,8 +73,8 @@ export function CaseDetail({ modCase }: CaseDetailProps) {
           icon={<MessageSquare className="h-4 w-4" />}
           label="Reason"
           value={
-            <span className={modCase.reason ? "" : "italic text-muted-foreground"}>
-              {modCase.reason ?? "No reason provided"}
+            <span className={modCase.reason ? '' : 'italic text-muted-foreground'}>
+              {modCase.reason ?? 'No reason provided'}
             </span>
           }
         />
@@ -127,8 +112,8 @@ export function CaseDetail({ modCase }: CaseDetailProps) {
                     <ActionBadge action={sa.action} />
                     <span className="text-muted-foreground">{formatDate(sa.execute_at)}</span>
                   </span>
-                  <Badge variant={sa.executed ? "secondary" : "outline"} className="text-xs">
-                    {sa.executed ? "Executed" : "Pending"}
+                  <Badge variant={sa.executed ? 'secondary' : 'outline'} className="text-xs">
+                    {sa.executed ? 'Executed' : 'Pending'}
                   </Badge>
                 </li>
               ))}

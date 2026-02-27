@@ -1,10 +1,10 @@
-import "server-only";
+import 'server-only';
 
-import type { BotGuild, DiscordGuild, MutualGuild } from "@/types/discord";
-import { getBotApiBaseUrl } from "@/lib/bot-api";
-import { logger } from "@/lib/logger";
+import { getBotApiBaseUrl } from '@/lib/bot-api';
+import { logger } from '@/lib/logger';
+import type { BotGuild, DiscordGuild, MutualGuild } from '@/types/discord';
 
-const DISCORD_API_BASE = "https://discord.com/api/v10";
+const DISCORD_API_BASE = 'https://discord.com/api/v10';
 
 /** Maximum number of retry attempts for rate-limited requests. */
 const MAX_RETRIES = 3;
@@ -17,10 +17,7 @@ const GUILDS_PER_PAGE = 200;
  * When Discord returns 429 Too Many Requests, waits for the indicated
  * retry-after duration and retries up to MAX_RETRIES times.
  */
-export async function fetchWithRateLimit(
-  url: string,
-  init?: RequestInit,
-): Promise<Response> {
+export async function fetchWithRateLimit(url: string, init?: RequestInit): Promise<Response> {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const response = await fetch(url, init);
 
@@ -29,7 +26,7 @@ export async function fetchWithRateLimit(
     }
 
     // Rate limited — parse retry-after header (seconds)
-    const retryAfter = response.headers.get("retry-after");
+    const retryAfter = response.headers.get('retry-after');
     const parsed = retryAfter ? Number.parseFloat(retryAfter) : NaN;
     const waitMs = Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : 1000;
 
@@ -52,15 +49,15 @@ export async function fetchWithRateLimit(
         reject(signal!.reason);
       };
       const timer = setTimeout(() => {
-        signal?.removeEventListener("abort", onAbort);
+        signal?.removeEventListener('abort', onAbort);
         resolve();
       }, waitMs);
-      signal?.addEventListener("abort", onAbort, { once: true });
+      signal?.addEventListener('abort', onAbort, { once: true });
     });
   }
 
   // Should never reach here, but satisfies TypeScript
-  throw new Error("Unexpected end of rate limit retry loop");
+  throw new Error('Unexpected end of rate limit retry loop');
 }
 
 /**
@@ -77,9 +74,9 @@ export async function fetchUserGuilds(
 
   do {
     const url = new URL(`${DISCORD_API_BASE}/users/@me/guilds`);
-    url.searchParams.set("limit", String(GUILDS_PER_PAGE));
+    url.searchParams.set('limit', String(GUILDS_PER_PAGE));
     if (after) {
-      url.searchParams.set("after", after);
+      url.searchParams.set('after', after);
     }
 
     // Note: Next.js skips the Data Cache for requests with Authorization
@@ -91,26 +88,22 @@ export async function fetchUserGuilds(
         Authorization: `Bearer ${accessToken}`,
       },
       signal,
-      cache: "no-store",
+      cache: 'no-store',
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch user guilds: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Failed to fetch user guilds: ${response.status} ${response.statusText}`);
     }
 
     let data: unknown;
     try {
       data = await response.json();
     } catch {
-      throw new Error(
-        "Discord returned non-JSON response for user guilds",
-      );
+      throw new Error('Discord returned non-JSON response for user guilds');
     }
     if (!Array.isArray(data)) {
       throw new Error(
-        "Discord returned unexpected response shape for user guilds (expected array)",
+        'Discord returned unexpected response shape for user guilds (expected array)',
       );
     }
     const page: DiscordGuild[] = data;
@@ -145,8 +138,8 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
 
   if (!botApiBaseUrl) {
     logger.warn(
-      "[discord] BOT_API_URL is not set — cannot filter guilds by bot presence. " +
-        "Set BOT_API_URL to enable mutual guild filtering.",
+      '[discord] BOT_API_URL is not set — cannot filter guilds by bot presence. ' +
+        'Set BOT_API_URL to enable mutual guild filtering.',
     );
     return { available: false, guilds: [] };
   }
@@ -154,8 +147,8 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
   const botApiSecret = process.env.BOT_API_SECRET;
   if (!botApiSecret) {
     logger.warn(
-      "[discord] BOT_API_SECRET is missing while BOT_API_URL is set. " +
-        "Skipping bot guild fetch — refusing to send unauthenticated request.",
+      '[discord] BOT_API_SECRET is missing while BOT_API_URL is set. ' +
+        'Skipping bot guild fetch — refusing to send unauthenticated request.',
     );
     return { available: false, guilds: [] };
   }
@@ -163,16 +156,16 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
   try {
     const response = await fetchWithRateLimit(`${botApiBaseUrl}/guilds`, {
       headers: {
-        "x-api-secret": botApiSecret,
+        'x-api-secret': botApiSecret,
       },
       signal,
-      cache: "no-store",
+      cache: 'no-store',
     });
 
     if (!response.ok) {
       logger.warn(
         `[discord] Bot API returned ${response.status} ${response.statusText} — ` +
-          "continuing without bot guild filtering.",
+          'continuing without bot guild filtering.',
       );
       return { available: false, guilds: [] };
     }
@@ -180,15 +173,15 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
     const data: unknown = await response.json();
     if (!Array.isArray(data)) {
       logger.warn(
-        "[discord] Bot API returned unexpected response shape (expected array) — " +
-          "continuing without bot guild filtering.",
+        '[discord] Bot API returned unexpected response shape (expected array) — ' +
+          'continuing without bot guild filtering.',
       );
       return { available: false, guilds: [] as BotGuild[] };
     }
     return { available: true, guilds: data as BotGuild[] };
   } catch (error) {
     logger.warn(
-      "[discord] Bot API is unreachable — continuing without bot guild filtering.",
+      '[discord] Bot API is unreachable — continuing without bot guild filtering.',
       error,
     );
     return { available: false, guilds: [] as BotGuild[] };
@@ -210,7 +203,7 @@ export async function getMutualGuilds(
     // wrap at the Promise.all level so an unexpected throw can never break
     // the entire guild fetch — gracefully degrade to showing all user guilds.
     fetchBotGuilds(signal).catch((err) => {
-      logger.warn("[discord] Unexpected error fetching bot guilds — degrading gracefully.", err);
+      logger.warn('[discord] Unexpected error fetching bot guilds — degrading gracefully.', err);
       return { available: false, guilds: [] } as BotGuildResult;
     }),
   ]);
