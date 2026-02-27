@@ -4,12 +4,13 @@
  */
 
 import { Client, Events } from 'discord.js';
+import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../commands/showcase.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
 // safeReply works with both Interactions (.reply()) and Messages (.reply()).
 // Both accept the same options shape including allowedMentions, so the
 // safe wrapper applies identically to either target type.
-import { safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
 import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
@@ -363,6 +364,10 @@ export function registerReviewClaimHandler(client) {
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('review_claim_')) return;
 
+    // Gate on review feature being enabled for this guild
+    const guildConfig = getConfig(interaction.guildId);
+    if (!guildConfig.review?.enabled) return;
+
     try {
       await handleReviewClaim(interaction);
     } catch (err) {
@@ -382,6 +387,91 @@ export function registerReviewClaimHandler(client) {
           // Ignore — we tried
         }
       }
+    }
+  });
+}
+
+/**
+ * Register an interactionCreate handler for showcase upvote buttons.
+ * Listens for button clicks with customId matching `showcase_upvote_<id>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerShowcaseButtonHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith('showcase_upvote_')) return;
+
+    let pool;
+    try {
+      pool = (await import('../db.js')).getPool();
+    } catch {
+      try {
+        await safeReply(interaction, {
+          content: '❌ Database is not available.',
+          ephemeral: true,
+        });
+      } catch {
+        // Ignore
+      }
+      return;
+    }
+
+    try {
+      await handleShowcaseUpvote(interaction, pool);
+    } catch (err) {
+      logError('Showcase upvote handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your upvote.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Register an interactionCreate handler for showcase modal submissions.
+ * Listens for modal submits with customId `showcase_submit_modal`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerShowcaseModalHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isModalSubmit()) return;
+    if (interaction.customId !== 'showcase_submit_modal') return;
+
+    let pool;
+    try {
+      pool = (await import('../db.js')).getPool();
+    } catch {
+      try {
+        await safeReply(interaction, {
+          content: '❌ Database is not available.',
+          ephemeral: true,
+        });
+      } catch {
+        // Ignore
+      }
+      return;
+    }
+
+    try {
+      await handleShowcaseModalSubmit(interaction, pool);
+    } catch (err) {
+      logError('Showcase modal error', { error: err.message });
+      const reply = interaction.deferred ? safeEditReply : safeReply;
+      await reply(interaction, { content: '❌ Something went wrong.' });
     }
   });
 }
@@ -416,5 +506,7 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerReactionHandlers(client, config);
   registerPollButtonHandler(client);
   registerReviewClaimHandler(client);
+  registerShowcaseButtonHandler(client);
+  registerShowcaseModalHandler(client);
   registerErrorHandlers(client);
 }

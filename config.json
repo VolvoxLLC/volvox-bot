@@ -151,7 +151,8 @@
       "rank": "everyone",
       "leaderboard": "everyone",
       "profile": "everyone",
-      "review": "everyone"
+      "review": "everyone",
+      "showcase": "everyone"
     }
   },
   "help": {
@@ -164,6 +165,9 @@
     "enabled": false
   },
   "poll": {
+    "enabled": false
+  },
+  "showcase": {
     "enabled": false
   },
   "github": {
