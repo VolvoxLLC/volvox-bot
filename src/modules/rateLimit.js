@@ -25,8 +25,20 @@ export function setMaxTrackedUsers(n) {
 /**
  * Per-user-per-channel sliding window state.
  * Key: `${userId}:${channelId}`
- * Value: { timestamps: number[], triggerCount: number, triggerWindowStart: number }
- * @type {Map<string, { timestamps: number[], triggerCount: number, triggerWindowStart: number }>}
+ * Value: {
+ *   timestamps: number[],
+ *   triggerCount: number,
+ *   triggerWindowStart: number,
+ *   windowMs: number,
+ *   muteWindowMs: number,
+ * }
+ * @type {Map<string, {
+ *   timestamps: number[],
+ *   triggerCount: number,
+ *   triggerWindowStart: number,
+ *   windowMs: number,
+ *   muteWindowMs: number,
+ * }>}
  */
 const windowMap = new Map();
 
@@ -156,9 +168,19 @@ export async function checkRateLimit(message, config) {
 
   let entry = windowMap.get(key);
   if (!entry) {
-    entry = { timestamps: [], triggerCount: 0, triggerWindowStart: now };
+    entry = {
+      timestamps: [],
+      triggerCount: 0,
+      triggerWindowStart: now,
+      windowMs,
+      muteWindowMs,
+    };
     windowMap.set(key, entry);
   }
+
+  // Keep the most recently-seen retention windows for cleanup safety.
+  entry.windowMs = windowMs;
+  entry.muteWindowMs = muteWindowMs;
 
   // Slide the window: drop timestamps older than windowMs
   const cutoff = now - windowMs;
@@ -213,7 +235,7 @@ let cleanupInterval = null;
 
 /**
  * Start periodic cleanup of stale windowMap entries.
- * Removes entries whose newest timestamp is older than the default window duration.
+ * Removes entries when the latest activity is older than the tracked retention window.
  * Runs every 5 minutes.
  */
 function startRateLimitCleanup() {
@@ -224,13 +246,20 @@ function startRateLimitCleanup() {
   cleanupInterval = setInterval(() => {
     const now = Date.now();
     for (const [key, entry] of windowMap) {
-      const newest =
+      const newestTimestamp =
         entry.timestamps.length > 0 ? entry.timestamps[entry.timestamps.length - 1] : 0;
-      if (now - newest > DEFAULT_WINDOW_MS) {
+      const newestActivity = Math.max(newestTimestamp, entry.triggerWindowStart ?? 0);
+      const retentionMs = Math.max(
+        entry.windowMs ?? DEFAULT_WINDOW_MS,
+        entry.muteWindowMs ?? DEFAULT_WINDOW_MS,
+      );
+
+      if (now - newestActivity > retentionMs) {
         windowMap.delete(key);
       }
     }
   }, CLEANUP_INTERVAL_MS);
+  cleanupInterval.unref?.();
 }
 
 // Auto-start cleanup when module loads
