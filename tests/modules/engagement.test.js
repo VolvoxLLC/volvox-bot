@@ -11,7 +11,9 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn().mockReturnValue({ engagement: { enabled: true } }),
+  getConfig: vi.fn().mockReturnValue({
+    engagement: { enabled: true, trackMessages: true, trackReactions: true },
+  }),
 }));
 
 import { getPool } from '../../src/db.js';
@@ -45,7 +47,9 @@ function makePool() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfig.mockReturnValue({ engagement: { enabled: true } });
+  getConfig.mockReturnValue({
+    engagement: { enabled: true, trackMessages: true, trackReactions: true },
+  });
 });
 
 describe('trackMessage', () => {
@@ -62,6 +66,16 @@ describe('trackMessage', () => {
 
   it('does nothing when engagement is disabled', async () => {
     getConfig.mockReturnValue({ engagement: { enabled: false } });
+    const pool = makePool();
+    getPool.mockReturnValue(pool);
+    await trackMessage(makeMessage());
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when trackMessages is false', async () => {
+    getConfig.mockReturnValue({
+      engagement: { enabled: true, trackMessages: false, trackReactions: true },
+    });
     const pool = makePool();
     getPool.mockReturnValue(pool);
     await trackMessage(makeMessage());
@@ -105,6 +119,16 @@ describe('trackReaction', () => {
 
   it('does nothing when engagement is disabled', async () => {
     getConfig.mockReturnValue({ engagement: { enabled: false } });
+    const pool = makePool();
+    getPool.mockReturnValue(pool);
+    await trackReaction(makeReaction(), makeUser());
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when trackReactions is false', async () => {
+    getConfig.mockReturnValue({
+      engagement: { enabled: true, trackMessages: true, trackReactions: false },
+    });
     const pool = makePool();
     getPool.mockReturnValue(pool);
     await trackReaction(makeReaction(), makeUser());

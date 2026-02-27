@@ -21,6 +21,7 @@ export async function trackMessage(message) {
 
   const config = getConfig(message.guild.id);
   if (!config?.engagement?.enabled) return;
+  if (!config.engagement.trackMessages) return;
 
   try {
     const pool = getPool();
@@ -63,6 +64,7 @@ export async function trackReaction(reaction, user) {
 
   const config = getConfig(guildId);
   if (!config?.engagement?.enabled) return;
+  if (!config.engagement.trackReactions) return;
 
   try {
     const pool = getPool();
