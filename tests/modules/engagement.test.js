@@ -89,11 +89,11 @@ describe('trackMessage', () => {
     expect(pool.query).not.toHaveBeenCalled();
   });
 
-  it('logs error and does not throw on db failure', async () => {
+  it('logs error and re-throws on db failure', async () => {
     getPool.mockReturnValue({
       query: vi.fn().mockRejectedValue(new Error('connection refused')),
     });
-    await expect(trackMessage(makeMessage())).resolves.not.toThrow();
+    await expect(trackMessage(makeMessage())).rejects.toThrow('connection refused');
     expect(logError).toHaveBeenCalled();
   });
 });
@@ -143,11 +143,11 @@ describe('trackReaction', () => {
     expect(pool.query).not.toHaveBeenCalled();
   });
 
-  it('logs error and does not throw on db failure', async () => {
+  it('logs error and re-throws on db failure', async () => {
     getPool.mockReturnValue({
       query: vi.fn().mockRejectedValue(new Error('timeout')),
     });
-    await expect(trackReaction(makeReaction(), makeUser())).resolves.not.toThrow();
+    await expect(trackReaction(makeReaction(), makeUser())).rejects.toThrow('timeout');
     expect(logError).toHaveBeenCalled();
   });
 });

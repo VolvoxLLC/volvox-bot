@@ -18,6 +18,7 @@ import { getConfig } from './config.js';
  */
 export async function trackMessage(message) {
   if (!message.guild) return;
+  if (message.author?.bot) return;
 
   const config = getConfig(message.guild.id);
   if (!config?.engagement?.enabled) return;
@@ -46,6 +47,7 @@ export async function trackMessage(message) {
       guildId: message.guild.id,
       error: err.message,
     });
+    throw err;
   }
 }
 
@@ -61,6 +63,7 @@ export async function trackMessage(message) {
 export async function trackReaction(reaction, user) {
   const guildId = reaction.message.guild?.id;
   if (!guildId) return;
+  if (user.bot) return;
 
   const config = getConfig(guildId);
   if (!config?.engagement?.enabled) return;
@@ -89,8 +92,8 @@ export async function trackReaction(reaction, user) {
     const authorId = reaction.message.author?.id;
     if (authorId && authorId !== user.id) {
       await pool.query(
-        `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen, last_active)
-         VALUES ($1, $2, 1, NOW(), NOW())
+        `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen)
+         VALUES ($1, $2, 1, NOW())
          ON CONFLICT (guild_id, user_id) DO UPDATE
            SET reactions_received = user_stats.reactions_received + 1`,
         [guildId, authorId],
@@ -102,5 +105,6 @@ export async function trackReaction(reaction, user) {
       guildId,
       error: err.message,
     });
+    throw err;
   }
 }
