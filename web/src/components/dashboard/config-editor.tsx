@@ -20,6 +20,13 @@ type GuildConfig = DeepPartial<BotConfig> & Record<string, any>;
 const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
+const DEFAULT_ACTIVITY_BADGES = [
+  { days: 90, label: '👑 Legend' },
+  { days: 30, label: '🌳 Veteran' },
+  { days: 7, label: '🌿 Regular' },
+  { days: 0, label: '🌱 Newcomer' },
+] as const;
+
 /** Parse a number input value, enforcing optional min/max constraints. Returns undefined if invalid. */
 function parseNumberInput(raw: string, min?: number, max?: number): number | undefined {
   if (raw === '') return undefined;
@@ -331,134 +338,179 @@ export function ConfigEditor() {
   }, [savedConfig]);
 
   // ── Draft updaters ─────────────────────────────────────────────
-  const updateSystemPrompt = useCallback((value: string) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, ai: { ...prev.ai, systemPrompt: value } } as GuildConfig;
-    });
-  }, []);
+  const updateSystemPrompt = useCallback(
+    (value: string) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, ai: { ...prev.ai, systemPrompt: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateAiEnabled = useCallback((enabled: boolean) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, ai: { ...prev.ai, enabled } } as GuildConfig;
-    });
-  }, []);
+  const updateAiEnabled = useCallback(
+    (enabled: boolean) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, ai: { ...prev.ai, enabled } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateWelcomeEnabled = useCallback((enabled: boolean) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, welcome: { ...prev.welcome, enabled } } as GuildConfig;
-    });
-  }, []);
+  const updateWelcomeEnabled = useCallback(
+    (enabled: boolean) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, welcome: { ...prev.welcome, enabled } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateWelcomeMessage = useCallback((message: string) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, welcome: { ...prev.welcome, message } } as GuildConfig;
-    });
-  }, []);
+  const updateWelcomeMessage = useCallback(
+    (message: string) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, welcome: { ...prev.welcome, message } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateModerationEnabled = useCallback((enabled: boolean) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, moderation: { ...prev.moderation, enabled } } as GuildConfig;
-    });
-  }, []);
+  const updateModerationEnabled = useCallback(
+    (enabled: boolean) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, moderation: { ...prev.moderation, enabled } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateModerationField = useCallback((field: string, value: unknown) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, moderation: { ...prev.moderation, [field]: value } } as GuildConfig;
-    });
-  }, []);
+  const updateModerationField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, moderation: { ...prev.moderation, [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateModerationDmNotification = useCallback((action: string, value: boolean) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        moderation: {
-          ...prev.moderation,
-          dmNotifications: { ...prev.moderation?.dmNotifications, [action]: value },
-        },
-      } as GuildConfig;
-    });
-  }, []);
+  const updateModerationDmNotification = useCallback(
+    (action: string, value: boolean) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          moderation: {
+            ...prev.moderation,
+            dmNotifications: { ...prev.moderation?.dmNotifications, [action]: value },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateModerationEscalation = useCallback((enabled: boolean) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        moderation: {
-          ...prev.moderation,
-          escalation: { ...prev.moderation?.escalation, enabled },
-        },
-      } as GuildConfig;
-    });
-  }, []);
+  const updateModerationEscalation = useCallback(
+    (enabled: boolean) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          moderation: {
+            ...prev.moderation,
+            escalation: { ...prev.moderation?.escalation, enabled },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateTriageEnabled = useCallback((enabled: boolean) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, triage: { ...prev.triage, enabled } } as GuildConfig;
-    });
-  }, []);
+  const updateTriageEnabled = useCallback(
+    (enabled: boolean) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, triage: { ...prev.triage, enabled } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateTriageField = useCallback((field: string, value: unknown) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, triage: { ...prev.triage, [field]: value } } as GuildConfig;
-    });
-  }, []);
+  const updateTriageField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, triage: { ...prev.triage, [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateStarboardField = useCallback((field: string, value: unknown) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, starboard: { ...prev.starboard, [field]: value } } as GuildConfig;
-    });
-  }, []);
+  const updateStarboardField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, starboard: { ...prev.starboard, [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateRateLimitField = useCallback((field: string, value: unknown) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        moderation: {
-          ...prev.moderation,
-          rateLimit: { ...prev.moderation?.rateLimit, [field]: value },
-        },
-      } as GuildConfig;
-    });
-  }, []);
+  const updateRateLimitField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          moderation: {
+            ...prev.moderation,
+            rateLimit: { ...prev.moderation?.rateLimit, [field]: value },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateLinkFilterField = useCallback((field: string, value: unknown) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        moderation: {
-          ...prev.moderation,
-          linkFilter: { ...prev.moderation?.linkFilter, [field]: value },
-        },
-      } as GuildConfig;
-    });
-  }, []);
+  const updateLinkFilterField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          moderation: {
+            ...prev.moderation,
+            linkFilter: { ...prev.moderation?.linkFilter, [field]: value },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updatePermissionsField = useCallback((field: string, value: unknown) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, permissions: { ...prev.permissions, [field]: value } } as GuildConfig;
-    });
-  }, []);
+  const updatePermissionsField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, permissions: { ...prev.permissions, [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
-  const updateMemoryField = useCallback((field: string, value: unknown) => {
-    updateDraftConfig((prev) => {
-      if (!prev) return prev;
-      return { ...prev, memory: { ...prev.memory, [field]: value } } as GuildConfig;
-    });
-  }, []);
+  const updateMemoryField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, memory: { ...prev.memory, [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
 
   // ── No guild selected ──────────────────────────────────────────
   if (!guildId) {
@@ -1262,85 +1314,73 @@ export function ConfigEditor() {
             Configure the badge tiers shown on /profile. Each badge requires a minimum number of
             active days.
           </p>
-          {(
-            draftConfig.engagement?.activityBadges ?? [
-              { days: 90, label: '👑 Legend' },
-              { days: 30, label: '🌳 Veteran' },
-              { days: 7, label: '🌿 Regular' },
-              { days: 0, label: '🌱 Newcomer' },
-            ]
-          ).map((badge: { days: number; label: string }, i: number) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input
-                className="w-20"
-                type="number"
-                min={0}
-                value={badge.days}
-                onChange={(e) => {
-                  const badges = [
-                    ...(draftConfig.engagement?.activityBadges ?? [
-                      { days: 90, label: '👑 Legend' },
-                      { days: 30, label: '🌳 Veteran' },
-                      { days: 7, label: '🌿 Regular' },
-                      { days: 0, label: '🌱 Newcomer' },
-                    ]),
-                  ];
-                  badges[i] = {
-                    ...badges[i],
-                    days: Math.max(0, parseInt(e.target.value, 10) || 0),
-                  };
-                  updateDraftConfig((prev) => ({
-                    ...prev,
-                    engagement: { ...prev.engagement, activityBadges: badges },
-                  }));
-                }}
-                disabled={saving}
-              />
-              <span className="text-xs text-muted-foreground">days →</span>
-              <Input
-                className="flex-1"
-                value={badge.label}
-                onChange={(e) => {
-                  const badges = [
-                    ...(draftConfig.engagement?.activityBadges ?? [
-                      { days: 90, label: '👑 Legend' },
-                      { days: 30, label: '🌳 Veteran' },
-                      { days: 7, label: '🌿 Regular' },
-                      { days: 0, label: '🌱 Newcomer' },
-                    ]),
-                  ];
-                  badges[i] = { ...badges[i], label: e.target.value };
-                  updateDraftConfig((prev) => ({
-                    ...prev,
-                    engagement: { ...prev.engagement, activityBadges: badges },
-                  }));
-                }}
-                disabled={saving}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const badges = [...(draftConfig.engagement?.activityBadges ?? [])].filter(
-                    (_, idx) => idx !== i,
-                  );
-                  updateDraftConfig((prev) => ({
-                    ...prev,
-                    engagement: { ...prev.engagement, activityBadges: badges },
-                  }));
-                }}
-                disabled={saving || (draftConfig.engagement?.activityBadges ?? []).length <= 1}
-              >
-                ✕
-              </Button>
-            </div>
-          ))}
+          {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
+            (badge: { days: number; label: string }, i: number) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input
+                  className="w-20"
+                  type="number"
+                  min={0}
+                  value={badge.days}
+                  onChange={(e) => {
+                    const badges = [
+                      ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
+                    ];
+                    badges[i] = {
+                      ...badges[i],
+                      days: Math.max(0, parseInt(e.target.value, 10) || 0),
+                    };
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      engagement: { ...prev.engagement, activityBadges: badges },
+                    }));
+                  }}
+                  disabled={saving}
+                />
+                <span className="text-xs text-muted-foreground">days →</span>
+                <Input
+                  className="flex-1"
+                  value={badge.label}
+                  onChange={(e) => {
+                    const badges = [
+                      ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
+                    ];
+                    badges[i] = { ...badges[i], label: e.target.value };
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      engagement: { ...prev.engagement, activityBadges: badges },
+                    }));
+                  }}
+                  disabled={saving}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const badges = [...(draftConfig.engagement?.activityBadges ?? [])].filter(
+                      (_, idx) => idx !== i,
+                    );
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      engagement: { ...prev.engagement, activityBadges: badges },
+                    }));
+                  }}
+                  disabled={
+                    saving ||
+                    (draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).length <= 1
+                  }
+                >
+                  ✕
+                </Button>
+              </div>
+            ),
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
               const badges = [
-                ...(draftConfig.engagement?.activityBadges ?? []),
+                ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
                 { days: 0, label: '🌟 New Badge' },
               ];
               updateDraftConfig((prev) => ({
