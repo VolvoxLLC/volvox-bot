@@ -17,6 +17,7 @@ import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';
 import { handleXpGain } from './reputation.js';
+import { handleReviewClaim } from './reviewHandler.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
@@ -352,6 +353,40 @@ export function registerPollButtonHandler(client) {
 }
 
 /**
+ * Register an interactionCreate handler for review claim buttons.
+ * Listens for button clicks with customId matching `review_claim_<id>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerReviewClaimHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith('review_claim_')) return;
+
+    try {
+      await handleReviewClaim(interaction);
+    } catch (err) {
+      logError('Review claim handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your claim.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore — we tried
+        }
+      }
+    }
+  });
+}
+
+/**
  * Register error event handlers
  * @param {Client} client - Discord client
  */
@@ -380,5 +415,6 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerMessageCreateHandler(client, config, healthMonitor);
   registerReactionHandlers(client, config);
   registerPollButtonHandler(client);
+  registerReviewClaimHandler(client);
   registerErrorHandlers(client);
 }

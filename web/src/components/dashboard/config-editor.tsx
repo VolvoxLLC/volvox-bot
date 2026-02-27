@@ -48,7 +48,7 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "engagement", "github"] as const;
+  const knownSections = ["ai", "welcome", "spam", "moderation", "triage", "starboard", "permissions", "memory", "help", "announce", "snippet", "poll", "tldr", "reputation", "afk", "engagement", "github", "review"] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
   for (const key of knownSections) {
@@ -1200,6 +1200,7 @@ export function ConfigEditor() {
             { key: "announce", label: "Announcements", desc: "/announce for scheduled messages" },
             { key: "snippet", label: "Code Snippets", desc: "/snippet for saving and sharing code" },
             { key: "poll", label: "Polls", desc: "/poll for community voting" },
+            { key: "review", label: "Code Reviews", desc: "/review peer code review requests with claim workflow" },
             { key: "tldr", label: "TL;DR Summaries", desc: "/tldr for AI channel summaries" },
             { key: "afk", label: "AFK System", desc: "/afk auto-respond when members are away" },
             { key: "engagement", label: "Engagement Tracking", desc: "/profile stats — messages, reactions, days active" },
@@ -1404,6 +1405,53 @@ export function ConfigEditor() {
                 disabled={saving} className={inputClasses} />
             </label>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ═══ Code Review Settings ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Code Review Settings</CardTitle>
+            <ToggleSwitch
+              checked={draftConfig.review?.enabled ?? false}
+              onChange={(v) => setDraftConfig((prev) => ({ ...prev, review: { ...prev.review, enabled: v } }))}
+              disabled={saving}
+              label="Code Reviews"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Review Channel ID</span>
+              <input type="text"
+                value={draftConfig.review?.channelId ?? ""}
+                onChange={(e) => setDraftConfig((prev) => ({ ...prev, review: { ...prev.review, channelId: e.target.value.trim() || null } }))}
+                disabled={saving} className={inputClasses} placeholder="Channel ID for review requests" />
+              <p className="text-xs text-muted-foreground">Where review embeds are posted. Defaults to current channel.</p>
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Stale After (days)</span>
+              <input type="number" min={1} max={90}
+                value={draftConfig.review?.staleAfterDays ?? 7}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) setDraftConfig((prev) => ({ ...prev, review: { ...prev.review, staleAfterDays: num } }));
+                }}
+                disabled={saving} className={inputClasses} />
+              <p className="text-xs text-muted-foreground">Open reviews older than this are marked stale.</p>
+            </label>
+          </div>
+          <label className="space-y-2">
+            <span className="text-sm font-medium">XP Reward for Reviewer</span>
+            <input type="number" min={0} max={1000}
+              value={draftConfig.review?.xpReward ?? 50}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 0);
+                if (num !== undefined) setDraftConfig((prev) => ({ ...prev, review: { ...prev.review, xpReward: num } }));
+              }}
+              disabled={saving} className={inputClasses} />
+            <p className="text-xs text-muted-foreground">XP granted to reviewer on completion (requires Reputation enabled). Set to 0 to disable.</p>
+          </label>
         </CardContent>
       </Card>
 

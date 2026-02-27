@@ -9,6 +9,7 @@ import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
 import { closeExpiredPolls } from './pollHandler.js';
+import { expireStaleReviews } from './reviewHandler.js';
 
 /** @type {ReturnType<typeof setInterval> | null} */
 let schedulerInterval = null;
@@ -181,6 +182,8 @@ async function pollScheduledMessages(client) {
     }
     // Close expired polls
     await closeExpiredPolls(client);
+    // Expire stale review requests
+    await expireStaleReviews(client);
   } catch (err) {
     logError('Scheduler poll error', { error: err.message });
   } finally {
