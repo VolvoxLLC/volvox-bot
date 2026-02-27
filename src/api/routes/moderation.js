@@ -6,9 +6,13 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildModerator } from './guilds.js';
 
 const router = Router();
+
+/** Rate limiter for moderation API endpoints — 120 requests / 15 min per IP. */
+const moderationRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
 /**
  * Middleware: adapt query param guildId to path param for requireGuildModerator.
@@ -20,6 +24,9 @@ function adaptGuildIdParam(req, _res, next) {
   }
   next();
 }
+
+// Apply a route-specific limiter before auth/handlers for defense-in-depth.
+router.use(moderationRateLimit);
 
 // Apply guild-scoped authorization to all moderation routes
 // (requireAuth is already applied at the router mount level in api/index.js)

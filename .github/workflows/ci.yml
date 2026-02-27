@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint-and-test:
     name: Lint & Test
@@ -59,7 +62,7 @@ jobs:
         run: pnpm --prefix web install
 
       - name: Typecheck
-        run: pnpm --prefix web typecheck
+        run: pnpm --prefix web run typecheck
 
       - name: Lint (Biome)
         run: pnpm --prefix web lint
