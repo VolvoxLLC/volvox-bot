@@ -430,7 +430,9 @@ describe('showcase execute', () => {
   });
 
   it('should return error when pool unavailable for browse', async () => {
-    getPool.mockReturnValueOnce(null);
+    getPool.mockImplementationOnce(() => {
+      throw new Error('Database not initialized');
+    });
     const interaction = createMockInteraction('browse');
     await execute(interaction);
     expect(interaction.editReply).toHaveBeenCalledWith(

@@ -10,7 +10,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // safeReply works with both Interactions (.reply()) and Messages (.reply()).
 // Both accept the same options shape including allowedMentions, so the
 // safe wrapper applies identically to either target type.
-import { safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
 import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
@@ -426,21 +426,9 @@ export function registerShowcaseModalHandler(client) {
     try {
       await handleShowcaseModalSubmit(interaction, pool);
     } catch (err) {
-      logError('Showcase modal submit handler failed', {
-        userId: interaction.user?.id,
-        error: err.message,
-      });
-
-      if (!interaction.replied && !interaction.deferred) {
-        try {
-          await safeReply(interaction, {
-            content: '❌ Failed to submit your project.',
-            ephemeral: true,
-          });
-        } catch {
-          // Ignore — we tried
-        }
-      }
+      logError('Showcase modal error', { error: err.message });
+      const reply = interaction.deferred ? safeEditReply : safeReply;
+      await reply(interaction, { content: '❌ Something went wrong.' });
     }
   });
 }

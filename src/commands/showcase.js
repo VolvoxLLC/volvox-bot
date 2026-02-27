@@ -34,8 +34,8 @@ const EMBED_COLOR = 0x5865f2;
 function isValidUrl(str) {
   if (!str) return true; // optional fields
   try {
-    new URL(str);
-    return true;
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
   } catch {
     return false;
   }
@@ -480,10 +480,11 @@ export async function execute(interaction) {
 
   await interaction.deferReply({ ephemeral: false });
 
-  const pool = getPool();
-  if (!pool) {
-    await safeEditReply(interaction, { content: '❌ Database is not available.' });
-    return;
+  let pool;
+  try {
+    pool = getPool();
+  } catch {
+    return safeEditReply(interaction, { content: '❌ Database is not available.' });
   }
 
   try {
