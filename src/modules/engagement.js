@@ -93,8 +93,8 @@ export async function trackReaction(reaction, user) {
     const authorId = messageAuthor?.id;
     if (authorId && authorId !== user.id && !messageAuthor?.bot) {
       await pool.query(
-        `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen, last_active)
-         VALUES ($1, $2, 1, NOW(), NOW())
+        `INSERT INTO user_stats (guild_id, user_id, reactions_received, first_seen)
+         VALUES ($1, $2, 1, NOW())
          ON CONFLICT (guild_id, user_id) DO UPDATE
            SET reactions_received = user_stats.reactions_received + 1`,
         [guildId, authorId],
