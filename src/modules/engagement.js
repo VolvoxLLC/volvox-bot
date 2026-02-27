@@ -34,7 +34,7 @@ export async function trackMessage(message) {
        ON CONFLICT (guild_id, user_id) DO UPDATE
          SET messages_sent = user_stats.messages_sent + 1,
              days_active = CASE
-               WHEN user_stats.last_active::date < $3::date
+               WHEN user_stats.days_active = 0 OR user_stats.last_active::date < $3::date
                THEN user_stats.days_active + 1
                ELSE user_stats.days_active
              END,
@@ -80,7 +80,7 @@ export async function trackReaction(reaction, user) {
        ON CONFLICT (guild_id, user_id) DO UPDATE
          SET reactions_given = user_stats.reactions_given + 1,
              days_active = CASE
-               WHEN user_stats.last_active::date < $3::date
+               WHEN user_stats.days_active = 0 OR user_stats.last_active::date < $3::date
                THEN user_stats.days_active + 1
                ELSE user_stats.days_active
              END,
