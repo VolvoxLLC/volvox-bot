@@ -5,7 +5,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/134
  */
 
-import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info } from '../logger.js';
 import { getConfig } from '../modules/config.js';
@@ -61,6 +61,19 @@ export const data = new SlashCommandBuilder()
         opt.setName('channel').setDescription('Channel to post the panel in').setRequired(false),
       ),
   );
+
+/**
+ * Check if a channel is a valid ticket context (thread or ticket text channel).
+ *
+ * @param {import('discord.js').Channel} channel
+ * @returns {boolean}
+ */
+function isTicketContext(channel) {
+  if (!channel) return false;
+  if (typeof channel.isThread === 'function' && channel.isThread()) return true;
+  if (channel.type === ChannelType.GuildText) return true;
+  return false;
+}
 
 /**
  * Execute the /ticket command.
@@ -124,22 +137,23 @@ async function handleOpen(interaction, ticketConfig) {
 
 /**
  * Handle /ticket close — close the current ticket.
+ * Works in both thread-mode and channel-mode tickets.
  *
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 async function handleClose(interaction) {
   const reason = interaction.options.getString('reason');
-  const thread = interaction.channel;
+  const channel = interaction.channel;
 
-  if (!thread?.isThread()) {
+  if (!isTicketContext(channel)) {
     await safeEditReply(interaction, {
-      content: '❌ This command must be used inside a ticket thread.',
+      content: '❌ This command must be used inside a ticket thread or channel.',
     });
     return;
   }
 
   try {
-    const ticket = await closeTicket(thread, interaction.user, reason);
+    const ticket = await closeTicket(channel, interaction.user, reason);
     await safeEditReply(interaction, {
       content: `✅ Ticket #${ticket.id} has been closed.`,
     });
@@ -152,22 +166,23 @@ async function handleClose(interaction) {
 
 /**
  * Handle /ticket add — add a user to the current ticket.
+ * Works in both thread-mode (thread.members) and channel-mode (permission overrides).
  *
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 async function handleAdd(interaction) {
   const user = interaction.options.getUser('user');
-  const thread = interaction.channel;
+  const channel = interaction.channel;
 
-  if (!thread?.isThread()) {
+  if (!isTicketContext(channel)) {
     await safeEditReply(interaction, {
-      content: '❌ This command must be used inside a ticket thread.',
+      content: '❌ This command must be used inside a ticket thread or channel.',
     });
     return;
   }
 
   try {
-    await addMember(thread, user);
+    await addMember(channel, user);
     await safeEditReply(interaction, {
       content: `✅ <@${user.id}> has been added to the ticket.`,
     });
@@ -180,22 +195,23 @@ async function handleAdd(interaction) {
 
 /**
  * Handle /ticket remove — remove a user from the current ticket.
+ * Works in both thread-mode (thread.members) and channel-mode (permission overrides).
  *
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 async function handleRemove(interaction) {
   const user = interaction.options.getUser('user');
-  const thread = interaction.channel;
+  const channel = interaction.channel;
 
-  if (!thread?.isThread()) {
+  if (!isTicketContext(channel)) {
     await safeEditReply(interaction, {
-      content: '❌ This command must be used inside a ticket thread.',
+      content: '❌ This command must be used inside a ticket thread or channel.',
     });
     return;
   }
 
   try {
-    await removeMember(thread, user);
+    await removeMember(channel, user);
     await safeEditReply(interaction, {
       content: `✅ <@${user.id}> has been removed from the ticket.`,
     });

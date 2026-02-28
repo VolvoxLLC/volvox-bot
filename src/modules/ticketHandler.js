@@ -2,6 +2,10 @@
  * Ticket Handler Module
  * Business logic for support ticket creation, closing, member management, and auto-close.
  *
+ * Supports two modes:
+ * - "thread" (default): creates a private thread per ticket
+ * - "channel": creates a dedicated text channel per ticket with permission overrides
+ *
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/134
  */
 
@@ -11,6 +15,7 @@ import {
   ButtonStyle,
   ChannelType,
   EmbedBuilder,
+  OverwriteType,
   PermissionFlagsBits,
 } from 'discord.js';
 import { getPool } from '../db.js';
@@ -21,6 +26,7 @@ import { getConfig } from './config.js';
 /** Default configuration values for the ticket system */
 const TICKET_DEFAULTS = {
   enabled: false,
+  mode: 'thread',
   supportRole: null,
   category: null,
   autoCloseHours: 48,
@@ -40,6 +46,9 @@ const TICKET_CLOSED_COLOR = 0xed4245;
 /** Embed colour for the ticket panel */
 const TICKET_PANEL_COLOR = 0x57f287;
 
+/** Delay (ms) before deleting a channel-mode ticket so the close message is visible */
+const CHANNEL_DELETE_DELAY_MS = 10_000;
+
 /**
  * Resolve ticket config from guild config with defaults.
  *
@@ -52,13 +61,62 @@ export function getTicketConfig(guildId) {
 }
 
 /**
- * Open a new support ticket by creating a private thread.
+ * Build the permission-override array used when creating a channel-mode ticket.
+ *
+ * @param {import('discord.js').Guild} guild
+ * @param {string} userId - The ticket opener
+ * @param {string|null} supportRoleId
+ * @returns {Array<import('discord.js').OverwriteResolvable>}
+ */
+function buildChannelPermissions(guild, userId, supportRoleId) {
+  const overwrites = [
+    // Deny @everyone
+    {
+      id: guild.id,
+      type: OverwriteType.Role,
+      deny: [PermissionFlagsBits.ViewChannel],
+    },
+    // Allow ticket user
+    {
+      id: userId,
+      type: OverwriteType.Member,
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+    },
+    // Allow bot
+    {
+      id: guild.members.me.id,
+      type: OverwriteType.Member,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ManageChannels,
+      ],
+    },
+  ];
+
+  if (supportRoleId) {
+    overwrites.push({
+      id: supportRoleId,
+      type: OverwriteType.Role,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ManageMessages,
+      ],
+    });
+  }
+
+  return overwrites;
+}
+
+/**
+ * Open a new support ticket by creating a private thread or a dedicated text channel.
  *
  * @param {import('discord.js').Guild} guild - The Discord guild
  * @param {import('discord.js').User} user - The user opening the ticket
  * @param {string|null} topic - Optional topic for the ticket
  * @param {string|null} channelId - The channel the ticket panel lives in (for DB tracking)
- * @returns {Promise<{ticket: object, thread: import('discord.js').ThreadChannel}>}
+ * @returns {Promise<{ticket: object, thread: import('discord.js').ThreadChannel|import('discord.js').TextChannel}>}
  */
 export async function openTicket(guild, user, topic, channelId = null) {
   const pool = getPool();
@@ -78,60 +136,79 @@ export async function openTicket(guild, user, topic, channelId = null) {
     );
   }
 
-  // Find the channel to create the thread in
-  let parentChannel;
-  if (ticketConfig.category) {
-    parentChannel = guild.channels.cache.get(ticketConfig.category);
-  }
-  if (!parentChannel && channelId) {
-    parentChannel = guild.channels.cache.get(channelId);
-  }
-  if (!parentChannel) {
-    // Fallback to the first text channel
-    parentChannel = guild.channels.cache.find(
-      (ch) =>
-        ch.type === ChannelType.GuildText &&
-        ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
-    );
-  }
-
-  if (!parentChannel) {
-    throw new Error('No suitable channel found to create a ticket thread.');
-  }
-
-  // Create a private thread
   const ticketName = topic
     ? `ticket-${user.username}-${topic.slice(0, 20).replace(/\s+/g, '-').toLowerCase()}`
     : `ticket-${user.username}`;
 
-  const thread = await parentChannel.threads.create({
-    name: ticketName,
-    type: ChannelType.PrivateThread,
-    reason: `Support ticket opened by ${user.tag}`,
-  });
+  let ticketChannel;
 
-  // Add the user to the thread
-  await thread.members.add(user.id);
+  if (ticketConfig.mode === 'channel') {
+    // ── Channel mode: create a text channel with permission overrides ──
+    const parent = ticketConfig.category
+      ? guild.channels.cache.get(ticketConfig.category)
+      : undefined;
 
-  // Add support role members if configured
-  if (ticketConfig.supportRole) {
-    const role = guild.roles.cache.get(ticketConfig.supportRole);
-    if (role) {
-      for (const [, member] of role.members) {
-        try {
-          await thread.members.add(member.id);
-        } catch {
-          // Some members may not be fetchable
+    ticketChannel = await guild.channels.create({
+      name: ticketName,
+      type: ChannelType.GuildText,
+      parent: parent?.id ?? undefined,
+      permissionOverwrites: buildChannelPermissions(
+        guild,
+        user.id,
+        ticketConfig.supportRole,
+      ),
+      reason: `Support ticket opened by ${user.tag}`,
+    });
+  } else {
+    // ── Thread mode (default): create a private thread ──
+    let parentChannel;
+    if (ticketConfig.category) {
+      parentChannel = guild.channels.cache.get(ticketConfig.category);
+    }
+    if (!parentChannel && channelId) {
+      parentChannel = guild.channels.cache.get(channelId);
+    }
+    if (!parentChannel) {
+      parentChannel = guild.channels.cache.find(
+        (ch) =>
+          ch.type === ChannelType.GuildText &&
+          ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
+      );
+    }
+
+    if (!parentChannel) {
+      throw new Error('No suitable channel found to create a ticket thread.');
+    }
+
+    ticketChannel = await parentChannel.threads.create({
+      name: ticketName,
+      type: ChannelType.PrivateThread,
+      reason: `Support ticket opened by ${user.tag}`,
+    });
+
+    // Add the user to the thread
+    await ticketChannel.members.add(user.id);
+
+    // Add support role members if configured
+    if (ticketConfig.supportRole) {
+      const role = guild.roles.cache.get(ticketConfig.supportRole);
+      if (role) {
+        for (const [, member] of role.members) {
+          try {
+            await ticketChannel.members.add(member.id);
+          } catch {
+            // Some members may not be fetchable
+          }
         }
       }
     }
   }
 
-  // Insert into database
+  // Insert into database (channel ID stored in thread_id for both modes)
   const { rows } = await pool.query(
     `INSERT INTO tickets (guild_id, user_id, topic, thread_id, channel_id)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [guild.id, user.id, topic, thread.id, channelId],
+    [guild.id, user.id, topic, ticketChannel.id, channelId],
   );
 
   const ticket = rows[0];
@@ -155,28 +232,34 @@ export async function openTicket(guild, user, topic, channelId = null) {
       .setEmoji('🔒'),
   );
 
-  await safeSend(thread, { embeds: [embed], components: [closeButton] });
+  await safeSend(ticketChannel, { embeds: [embed], components: [closeButton] });
 
-  info('Ticket opened', { ticketId: ticket.id, guildId: guild.id, userId: user.id, topic });
+  info('Ticket opened', {
+    ticketId: ticket.id,
+    guildId: guild.id,
+    userId: user.id,
+    topic,
+    mode: ticketConfig.mode,
+  });
 
-  return { ticket, thread };
+  return { ticket, thread: ticketChannel };
 }
 
 /**
- * Close a ticket: save transcript, update DB, archive thread.
+ * Close a ticket: save transcript, update DB, archive thread or delete channel.
  *
- * @param {import('discord.js').ThreadChannel} thread - The ticket thread
+ * @param {import('discord.js').ThreadChannel|import('discord.js').TextChannel} channel - The ticket thread or channel
  * @param {import('discord.js').User} closer - The user closing the ticket
  * @param {string|null} reason - Optional close reason
  * @returns {Promise<object>} The closed ticket row
  */
-export async function closeTicket(thread, closer, reason) {
+export async function closeTicket(channel, closer, reason) {
   const pool = getPool();
   if (!pool) throw new Error('Database not available');
 
-  // Find the ticket by thread_id
+  // Find the ticket by thread_id (stores either thread or channel ID)
   const { rows } = await pool.query('SELECT * FROM tickets WHERE thread_id = $1 AND status = $2', [
-    thread.id,
+    channel.id,
     'open',
   ]);
 
@@ -185,9 +268,10 @@ export async function closeTicket(thread, closer, reason) {
   }
 
   const ticket = rows[0];
+  const isThread = typeof channel.isThread === 'function' && channel.isThread();
 
   // Fetch transcript (last 100 messages)
-  const messages = await thread.messages.fetch({ limit: 100 });
+  const messages = await channel.messages.fetch({ limit: 100 });
   const transcript = Array.from(messages.values())
     .reverse()
     .map((msg) => ({
@@ -215,13 +299,13 @@ export async function closeTicket(thread, closer, reason) {
     )
     .setTimestamp();
 
-  await safeSend(thread, { embeds: [embed], components: [] });
+  await safeSend(channel, { embeds: [embed], components: [] });
 
   // Send transcript to transcript channel if configured
   const ticketConfig = getTicketConfig(ticket.guild_id);
   if (ticketConfig.transcriptChannel) {
     try {
-      const guild = thread.guild;
+      const guild = channel.guild;
       const transcriptCh = guild.channels.cache.get(ticketConfig.transcriptChannel);
       if (transcriptCh) {
         const transcriptEmbed = new EmbedBuilder()
@@ -241,11 +325,22 @@ export async function closeTicket(thread, closer, reason) {
     }
   }
 
-  // Archive the thread
-  try {
-    await thread.setArchived(true);
-  } catch (err) {
-    logError('Failed to archive ticket thread', { ticketId: ticket.id, error: err.message });
+  // Archive (thread) or delete (channel)
+  if (isThread) {
+    try {
+      await channel.setArchived(true);
+    } catch (err) {
+      logError('Failed to archive ticket thread', { ticketId: ticket.id, error: err.message });
+    }
+  } else {
+    // Channel mode: delete after a short delay so the close message is visible
+    setTimeout(async () => {
+      try {
+        await channel.delete(`Ticket #${ticket.id} closed`);
+      } catch (err) {
+        logError('Failed to delete ticket channel', { ticketId: ticket.id, error: err.message });
+      }
+    }, CHANNEL_DELETE_DELAY_MS);
   }
 
   info('Ticket closed', {
@@ -259,32 +354,56 @@ export async function closeTicket(thread, closer, reason) {
 }
 
 /**
- * Add a user to a ticket thread.
+ * Add a user to a ticket thread or channel.
  *
- * @param {import('discord.js').ThreadChannel} thread - The ticket thread
+ * For thread mode: adds via thread.members.
+ * For channel mode: grants ViewChannel + SendMessages via permission overrides.
+ *
+ * @param {import('discord.js').ThreadChannel|import('discord.js').TextChannel} channel - The ticket thread or channel
  * @param {import('discord.js').User} user - The user to add
  */
-export async function addMember(thread, user) {
-  await thread.members.add(user.id);
-  await safeSend(thread, { content: `✅ <@${user.id}> has been added to the ticket.` });
-  info('Member added to ticket', { threadId: thread.id, userId: user.id });
+export async function addMember(channel, user) {
+  const isThread = typeof channel.isThread === 'function' && channel.isThread();
+
+  if (isThread) {
+    await channel.members.add(user.id);
+  } else {
+    await channel.permissionOverwrites.edit(user.id, {
+      ViewChannel: true,
+      SendMessages: true,
+    });
+  }
+
+  await safeSend(channel, { content: `✅ <@${user.id}> has been added to the ticket.` });
+  info('Member added to ticket', { channelId: channel.id, userId: user.id });
 }
 
 /**
- * Remove a user from a ticket thread.
+ * Remove a user from a ticket thread or channel.
  *
- * @param {import('discord.js').ThreadChannel} thread - The ticket thread
+ * For thread mode: removes via thread.members.
+ * For channel mode: revokes ViewChannel via permission overrides.
+ *
+ * @param {import('discord.js').ThreadChannel|import('discord.js').TextChannel} channel - The ticket thread or channel
  * @param {import('discord.js').User} user - The user to remove
  */
-export async function removeMember(thread, user) {
-  await thread.members.remove(user.id);
-  await safeSend(thread, { content: `🚫 <@${user.id}> has been removed from the ticket.` });
-  info('Member removed from ticket', { threadId: thread.id, userId: user.id });
+export async function removeMember(channel, user) {
+  const isThread = typeof channel.isThread === 'function' && channel.isThread();
+
+  if (isThread) {
+    await channel.members.remove(user.id);
+  } else {
+    await channel.permissionOverwrites.delete(user.id);
+  }
+
+  await safeSend(channel, { content: `🚫 <@${user.id}> has been removed from the ticket.` });
+  info('Member removed from ticket', { channelId: channel.id, userId: user.id });
 }
 
 /**
  * Check for tickets that should be auto-closed due to inactivity.
  * Sends a warning after autoCloseHours, then closes after an additional 24h.
+ * Works for both thread-mode and channel-mode tickets.
  *
  * @param {import('discord.js').Client} client - The Discord client
  */
@@ -305,11 +424,11 @@ export async function checkAutoClose(client) {
       const guild = client.guilds.cache.get(ticket.guild_id);
       if (!guild) continue;
 
-      let thread;
+      let channel;
       try {
-        thread = await guild.channels.fetch(ticket.thread_id);
+        channel = await guild.channels.fetch(ticket.thread_id);
       } catch {
-        // Thread was deleted — close the ticket in DB
+        // Thread/channel was deleted — close the ticket in DB
         await pool.query(
           `UPDATE tickets SET status = 'closed', close_reason = 'Thread deleted', closed_at = NOW() WHERE id = $1`,
           [ticket.id],
@@ -317,10 +436,14 @@ export async function checkAutoClose(client) {
         continue;
       }
 
-      if (!thread || !thread.isThread()) continue;
+      if (!channel) continue;
 
-      // Get the last message timestamp in the thread
-      const lastMessages = await thread.messages.fetch({ limit: 1 });
+      // Accept both threads and text channels
+      const isThread = typeof channel.isThread === 'function' && channel.isThread();
+      if (!isThread && channel.type !== ChannelType.GuildText) continue;
+
+      // Get the last message timestamp
+      const lastMessages = await channel.messages.fetch({ limit: 1 });
       const lastMessage = lastMessages.size > 0 ? lastMessages.values().next().value : null;
       const lastActivity = lastMessage ? lastMessage.createdAt : new Date(ticket.created_at);
 
@@ -330,16 +453,16 @@ export async function checkAutoClose(client) {
 
       if (hoursSinceActivity >= totalCloseThreshold) {
         // Close the ticket
-        await closeTicket(thread, client.user, 'Auto-closed due to inactivity');
+        await closeTicket(channel, client.user, 'Auto-closed due to inactivity');
       } else if (hoursSinceActivity >= ticketConfig.autoCloseHours) {
         // Check if we already sent a warning (look for our warning message)
-        const recentMessages = await thread.messages.fetch({ limit: 5 });
+        const recentMessages = await channel.messages.fetch({ limit: 5 });
         const hasWarning = Array.from(recentMessages.values()).some(
           (msg) => msg.author?.id === client.user.id && msg.content?.includes('auto-close'),
         );
 
         if (!hasWarning) {
-          await safeSend(thread, {
+          await safeSend(channel, {
             content: `⚠️ This ticket will be **auto-closed in ${AUTO_CLOSE_WARNING_HOURS} hours** due to inactivity. Send a message to keep it open.`,
           });
           info('Auto-close warning sent', { ticketId: ticket.id });
