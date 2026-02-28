@@ -90,7 +90,7 @@ export function SystemPromptEditor({
                   ? 'text-yellow-500'
                   : 'text-muted-foreground',
             )}
-            aria-live="polite"
+            aria-live="off"
           >
             {charCount.toLocaleString()} / {maxLength.toLocaleString()}
           </output>

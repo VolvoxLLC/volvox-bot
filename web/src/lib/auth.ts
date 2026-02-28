@@ -9,7 +9,6 @@ let envValidated = false;
 
 function validateEnv(): void {
   if (envValidated) return;
-  envValidated = true;
 
   const secret = process.env.NEXTAUTH_SECRET ?? '';
   if (secret.length < 32 || PLACEHOLDER_PATTERN.test(secret)) {
@@ -33,6 +32,8 @@ function validateEnv(): void {
         'Set BOT_API_SECRET to secure bot API communication.',
     );
   }
+
+  envValidated = true;
 }
 
 /**

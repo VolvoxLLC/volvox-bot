@@ -21,10 +21,10 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 const DEFAULT_ACTIVITY_BADGES = [
-  { id: 'default-legend', days: 90, label: '👑 Legend' },
-  { id: 'default-veteran', days: 30, label: '🌳 Veteran' },
-  { id: 'default-regular', days: 7, label: '🌿 Regular' },
-  { id: 'default-newcomer', days: 0, label: '🌱 Newcomer' },
+  { days: 90, label: '👑 Legend' },
+  { days: 30, label: '🌳 Veteran' },
+  { days: 7, label: '🌿 Regular' },
+  { days: 0, label: '🌱 Newcomer' },
 ] as const;
 
 /** Parse a number input value, enforcing optional min/max constraints. Returns undefined if invalid. */
@@ -529,7 +529,7 @@ export function ConfigEditor() {
   // ── Loading state ──────────────────────────────────────────────
   if (loading) {
     return (
-      <output role="status" className="flex items-center justify-center py-12">
+      <output className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
         <span className="sr-only">Loading configuration...</span>
       </output>
@@ -589,7 +589,7 @@ export function ConfigEditor() {
 
       {/* Unsaved changes banner */}
       {hasChanges && (
-        <output role="status" className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+        <output className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
           You have unsaved changes.{' '}
           <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
             Ctrl+S
@@ -1313,10 +1313,7 @@ export function ConfigEditor() {
           </p>
           {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
             (badge: { id?: string; days?: number; label?: string }, i: number) => (
-              <div
-                key={badge.id ?? `fallback-${i}`}
-                className="flex items-center gap-2"
-              >
+              <div key={badge.id ?? `fallback-${i}`} className="flex items-center gap-2">
                 <Input
                   className="w-20"
                   type="number"
@@ -1381,7 +1378,7 @@ export function ConfigEditor() {
             onClick={() => {
               const badges = [
                 ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
-                { id: crypto.randomUUID(), days: 0, label: '🌟 New Badge' },
+                { days: 0, label: '🌟 New Badge' },
               ];
               updateDraftConfig((prev) => ({
                 ...prev,
