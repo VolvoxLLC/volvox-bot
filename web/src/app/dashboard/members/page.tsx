@@ -33,7 +33,7 @@ export default function MembersPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Debounce search
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
