@@ -3,7 +3,7 @@
  * Handles Discord event listeners and handlers
  */
 
-import { Client, Events } from 'discord.js';
+import { ChannelType, Client, Events } from 'discord.js';
 import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../commands/showcase.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
@@ -674,16 +674,19 @@ export function registerTicketCloseButtonHandler(client) {
 
     await interaction.deferReply({ ephemeral: true });
 
-    const thread = interaction.channel;
-    if (!thread?.isThread()) {
+    const ticketChannel = interaction.channel;
+    const isThread = typeof ticketChannel?.isThread === 'function' && ticketChannel.isThread();
+    const isTextChannel = ticketChannel?.type === ChannelType.GuildText;
+
+    if (!isThread && !isTextChannel) {
       await safeEditReply(interaction, {
-        content: '❌ This button can only be used inside a ticket thread.',
+        content: '❌ This button can only be used inside a ticket channel or thread.',
       });
       return;
     }
 
     try {
-      const ticket = await closeTicket(thread, interaction.user, 'Closed via button');
+      const ticket = await closeTicket(ticketChannel, interaction.user, 'Closed via button');
       await safeEditReply(interaction, {
         content: `✅ Ticket #${ticket.id} has been closed.`,
       });
