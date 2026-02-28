@@ -269,13 +269,15 @@ router.get('/:guildId/stats', async (req, res) => {
       topContributors.rows.map(async (row) => {
         const level = computeLevel(row.xp, repConfig.levelThresholds);
         let username = row.user_id;
+        let displayName = row.user_id;
         let avatar = null;
 
         if (guild) {
           try {
             const member = await guild.members.fetch(row.user_id).catch(() => null);
             if (member) {
-              username = member.displayName;
+              username = member.user.username;
+              displayName = member.displayName;
               avatar = member.user.displayAvatarURL();
             }
           } catch {
@@ -283,7 +285,7 @@ router.get('/:guildId/stats', async (req, res) => {
           }
         }
 
-        return { username, avatar, xp: row.xp, level, badge: getLevelBadge(level) };
+        return { userId: row.user_id, username, displayName, avatar, xp: row.xp, level, badge: getLevelBadge(level) };
       }),
     );
 
