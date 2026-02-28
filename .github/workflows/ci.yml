@@ -201,9 +201,9 @@ jobs:
           context: .
           file: Dockerfile
           push: false
-          tags: bill-bot-ci:${{ github.sha }}
-          cache-from: type=gha,scope=bill-bot
-          cache-to: type=gha,mode=max,scope=bill-bot
+          tags: volvox-bot-ci:${{ github.sha }}
+          cache-from: type=gha,scope=volvox-bot
+          cache-to: type=gha,mode=max,scope=volvox-bot
 
       - name: Build web Docker image
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
@@ -211,6 +211,6 @@ jobs:
           context: web
           file: web/Dockerfile
           push: false
-          tags: bill-web-ci:${{ github.sha }}
-          cache-from: type=gha,scope=bill-web
-          cache-to: type=gha,mode=max,scope=bill-web
+          tags: volvox-web-ci:${{ github.sha }}
+          cache-from: type=gha,scope=volvox-web
+          cache-to: type=gha,mode=max,scope=volvox-web
