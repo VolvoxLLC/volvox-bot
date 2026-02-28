@@ -61,8 +61,17 @@ describe('community routes', () => {
     roles: { cache: new Map() },
     members: {
       cache: new Map([[PUBLIC_USER, mockMember]]),
-      fetch: vi.fn().mockImplementation((userId) => {
-        if (userId === PUBLIC_USER) return Promise.resolve(mockMember);
+      fetch: vi.fn().mockImplementation((userIdOrOpts) => {
+        // Handle batch fetch: guild.members.fetch({ user: [...] })
+        if (userIdOrOpts !== null && typeof userIdOrOpts === 'object' && 'user' in userIdOrOpts) {
+          const result = new Map();
+          for (const uid of userIdOrOpts.user) {
+            if (uid === PUBLIC_USER) result.set(uid, mockMember);
+          }
+          return Promise.resolve(result);
+        }
+        // Handle individual fetch: guild.members.fetch(userId)
+        if (userIdOrOpts === PUBLIC_USER) return Promise.resolve(mockMember);
         return Promise.reject(new Error('Unknown Member'));
       }),
     },
