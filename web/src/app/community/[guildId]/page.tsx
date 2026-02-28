@@ -1,8 +1,8 @@
+import { ExternalLink, Github, MessageSquare, Rocket, ThumbsUp, Trophy, Users } from 'lucide-react';
 import type { Metadata } from 'next';
-import { Users, MessageSquare, Rocket, Trophy, ExternalLink, ThumbsUp, Github } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,7 +64,9 @@ async function fetchStats(guildId: string): Promise<CommunityStats | null> {
   }
 }
 
-async function fetchLeaderboard(guildId: string): Promise<{ members: LeaderboardMember[]; total: number } | null> {
+async function fetchLeaderboard(
+  guildId: string,
+): Promise<{ members: LeaderboardMember[]; total: number } | null> {
   try {
     const res = await fetch(`${getApiBase()}/community/${guildId}/leaderboard?limit=25&page=1`, {
       next: { revalidate: 60 },
@@ -76,11 +78,16 @@ async function fetchLeaderboard(guildId: string): Promise<{ members: Leaderboard
   }
 }
 
-async function fetchShowcases(guildId: string): Promise<{ projects: ShowcaseProject[]; total: number } | null> {
+async function fetchShowcases(
+  guildId: string,
+): Promise<{ projects: ShowcaseProject[]; total: number } | null> {
   try {
-    const res = await fetch(`${getApiBase()}/community/${guildId}/showcases?limit=12&page=1&sort=upvotes`, {
-      next: { revalidate: 60 },
-    });
+    const res = await fetch(
+      `${getApiBase()}/community/${guildId}/showcases?limit=12&page=1&sort=upvotes`,
+      {
+        next: { revalidate: 60 },
+      },
+    );
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -121,7 +128,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+}) {
   return (
     <Card className="text-center">
       <CardContent className="pt-6">
@@ -138,9 +153,10 @@ function XpBar({ xp, level }: { xp: number; level: number }) {
   const thresholds = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
   const currentThreshold = thresholds[level - 1] || 0;
   const nextThreshold = thresholds[level] || thresholds[thresholds.length - 1];
-  const progress = nextThreshold > currentThreshold
-    ? Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100)
-    : 100;
+  const progress =
+    nextThreshold > currentThreshold
+      ? Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100)
+      : 100;
 
   return (
     <div className="w-full bg-muted rounded-full h-2">
@@ -152,22 +168,28 @@ function XpBar({ xp, level }: { xp: number; level: number }) {
   );
 }
 
-function MemberAvatar({ avatar, name, size = 'md' }: { avatar: string | null; name: string; size?: 'sm' | 'md' | 'lg' }) {
+function MemberAvatar({
+  avatar,
+  name,
+  size = 'md',
+}: {
+  avatar: string | null;
+  name: string;
+  size?: 'sm' | 'md' | 'lg';
+}) {
   const sizeClasses = { sm: 'h-8 w-8', md: 'h-10 w-10', lg: 'h-12 w-12' };
   const textSizes = { sm: 'text-xs', md: 'text-sm', lg: 'text-base' };
 
   if (avatar) {
     return (
-      <img
-        src={avatar}
-        alt={name}
-        className={`${sizeClasses[size]} rounded-full object-cover`}
-      />
+      <img src={avatar} alt={name} className={`${sizeClasses[size]} rounded-full object-cover`} />
     );
   }
 
   return (
-    <div className={`${sizeClasses[size]} rounded-full bg-primary/10 flex items-center justify-center`}>
+    <div
+      className={`${sizeClasses[size]} rounded-full bg-primary/10 flex items-center justify-center`}
+    >
       <span className={`${textSizes[size]} font-medium text-primary`}>
         {name.charAt(0).toUpperCase()}
       </span>
@@ -209,9 +231,17 @@ export default async function CommunityPage({ params }: PageProps) {
           <section className="mb-10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard icon={Users} label="Public Members" value={stats.memberCount} />
-              <StatCard icon={MessageSquare} label="Messages This Week" value={stats.messagesThisWeek.toLocaleString()} />
+              <StatCard
+                icon={MessageSquare}
+                label="Messages This Week"
+                value={stats.messagesThisWeek.toLocaleString()}
+              />
               <StatCard icon={Rocket} label="Projects" value={stats.activeProjects} />
-              <StatCard icon={Trophy} label="Challenges Completed" value={stats.challengesCompleted} />
+              <StatCard
+                icon={Trophy}
+                label="Challenges Completed"
+                value={stats.challengesCompleted}
+              />
             </div>
           </section>
         )}
@@ -275,7 +305,11 @@ export default async function CommunityPage({ params }: PageProps) {
                   <div className="space-y-4">
                     {stats.topContributors.map((contributor, idx) => (
                       <div key={idx} className="flex items-center gap-3">
-                        <MemberAvatar avatar={contributor.avatar} name={contributor.username} size="lg" />
+                        <MemberAvatar
+                          avatar={contributor.avatar}
+                          name={contributor.username}
+                          size="lg"
+                        />
                         <div>
                           <p className="font-medium">{contributor.username}</p>
                           <p className="text-xs text-muted-foreground">
@@ -317,7 +351,11 @@ export default async function CommunityPage({ params }: PageProps) {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <MemberAvatar avatar={project.authorAvatar} name={project.authorName} size="sm" />
+                        <MemberAvatar
+                          avatar={project.authorAvatar}
+                          name={project.authorName}
+                          size="sm"
+                        />
                         <span className="text-sm text-muted-foreground">{project.authorName}</span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -359,7 +397,9 @@ export default async function CommunityPage({ params }: PageProps) {
         {/* Privacy Notice */}
         <div className="mt-12 text-center text-sm text-muted-foreground">
           <p>
-            Only members who opted in with <code className="bg-muted px-1.5 py-0.5 rounded text-xs">/profile public</code> appear here.
+            Only members who opted in with{' '}
+            <code className="bg-muted px-1.5 py-0.5 rounded text-xs">/profile public</code> appear
+            here.
           </p>
           <p className="mt-1">Your profile is private by default.</p>
         </div>

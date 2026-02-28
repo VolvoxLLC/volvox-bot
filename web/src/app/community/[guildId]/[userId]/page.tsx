@@ -1,9 +1,18 @@
+import {
+  ArrowLeft,
+  Calendar,
+  ExternalLink,
+  Github,
+  Heart,
+  MessageSquare,
+  ThumbsUp,
+  Zap,
+} from 'lucide-react';
 import type { Metadata } from 'next';
-import { MessageSquare, Calendar, Zap, Heart, ExternalLink, Github, ThumbsUp, ArrowLeft } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,7 +103,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+}) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
@@ -114,9 +131,10 @@ function XpBar({ xp, level }: { xp: number; level: number }) {
   const thresholds = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
   const currentThreshold = thresholds[level - 1] || 0;
   const nextThreshold = thresholds[level] || thresholds[thresholds.length - 1];
-  const progress = nextThreshold > currentThreshold
-    ? Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100)
-    : 100;
+  const progress =
+    nextThreshold > currentThreshold
+      ? Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100)
+      : 100;
 
   return (
     <div className="w-full">
@@ -145,7 +163,11 @@ export default async function ProfilePage({ params }: PageProps) {
   }
 
   const joinDate = profile.joinedAt
-    ? new Date(profile.joinedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(profile.joinedAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
     : null;
 
   return (
@@ -188,11 +210,7 @@ export default async function ProfilePage({ params }: PageProps) {
                   <Badge variant="secondary">{profile.badge}</Badge>
                 </div>
                 <p className="text-muted-foreground mb-1">@{profile.username}</p>
-                {joinDate && (
-                  <p className="text-sm text-muted-foreground">
-                    Joined {joinDate}
-                  </p>
-                )}
+                {joinDate && <p className="text-sm text-muted-foreground">Joined {joinDate}</p>}
                 <div className="mt-4 max-w-sm">
                   <p className="text-sm font-medium mb-1">Level {profile.level}</p>
                   <XpBar xp={profile.xp} level={profile.level} />
@@ -206,10 +224,18 @@ export default async function ProfilePage({ params }: PageProps) {
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4">Stats</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard icon={MessageSquare} label="Messages" value={profile.stats.messagesSent.toLocaleString()} />
+            <StatCard
+              icon={MessageSquare}
+              label="Messages"
+              value={profile.stats.messagesSent.toLocaleString()}
+            />
             <StatCard icon={Calendar} label="Days Active" value={profile.stats.daysActive} />
             <StatCard icon={Zap} label="XP" value={profile.xp.toLocaleString()} />
-            <StatCard icon={Heart} label="Reactions" value={profile.stats.reactionsGiven + profile.stats.reactionsReceived} />
+            <StatCard
+              icon={Heart}
+              label="Reactions"
+              value={profile.stats.reactionsGiven + profile.stats.reactionsReceived}
+            />
           </div>
         </section>
 

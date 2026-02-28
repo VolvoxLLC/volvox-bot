@@ -247,10 +247,9 @@ router.get('/:guildId/stats', async (req, res) => {
           [guildId],
         ),
         pool.query('SELECT COUNT(*)::int AS count FROM showcases WHERE guild_id = $1', [guildId]),
-        pool.query(
-          'SELECT COUNT(*)::int AS count FROM challenge_solves WHERE guild_id = $1',
-          [guildId],
-        ),
+        pool.query('SELECT COUNT(*)::int AS count FROM challenge_solves WHERE guild_id = $1', [
+          guildId,
+        ]),
         pool.query(
           `SELECT us.user_id, r.xp, r.level
            FROM user_stats us
@@ -387,13 +386,20 @@ router.get('/:guildId/profile/:userId', async (req, res) => {
 
     // Build recent badges based on activity milestones
     const recentBadges = [];
-    if (stats.messages_sent >= 1000) recentBadges.push({ name: '💬 Chatterbox', description: '1,000+ messages' });
-    if (stats.messages_sent >= 100) recentBadges.push({ name: '🗣️ Active Voice', description: '100+ messages' });
-    if (stats.days_active >= 30) recentBadges.push({ name: '📅 Monthly Regular', description: '30+ days active' });
-    if (stats.days_active >= 7) recentBadges.push({ name: '🔄 Week Warrior', description: '7+ days active' });
-    if (stats.reactions_given >= 50) recentBadges.push({ name: '❤️ Generous', description: '50+ reactions given' });
-    if (projects.length >= 3) recentBadges.push({ name: '🚀 Prolific Builder', description: '3+ projects showcased' });
-    if (projects.length >= 1) recentBadges.push({ name: '🛠️ Builder', description: 'Has a project showcase' });
+    if (stats.messages_sent >= 1000)
+      recentBadges.push({ name: '💬 Chatterbox', description: '1,000+ messages' });
+    if (stats.messages_sent >= 100)
+      recentBadges.push({ name: '🗣️ Active Voice', description: '100+ messages' });
+    if (stats.days_active >= 30)
+      recentBadges.push({ name: '📅 Monthly Regular', description: '30+ days active' });
+    if (stats.days_active >= 7)
+      recentBadges.push({ name: '🔄 Week Warrior', description: '7+ days active' });
+    if (stats.reactions_given >= 50)
+      recentBadges.push({ name: '❤️ Generous', description: '50+ reactions given' });
+    if (projects.length >= 3)
+      recentBadges.push({ name: '🚀 Prolific Builder', description: '3+ projects showcased' });
+    if (projects.length >= 1)
+      recentBadges.push({ name: '🛠️ Builder', description: 'Has a project showcase' });
 
     res.json({
       username,
