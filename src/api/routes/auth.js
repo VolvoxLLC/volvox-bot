@@ -109,7 +109,24 @@ export function stopAuthCleanup() {
 const oauthRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 
 /**
- * GET /discord — Redirect to Discord OAuth2 authorization
+ * @openapi
+ * /auth/discord:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Initiate Discord OAuth2 login
+ *     description: Redirects the user to Discord's OAuth2 authorization page. On success, Discord redirects back to the callback URL.
+ *     responses:
+ *       "302":
+ *         description: Redirect to Discord authorization page
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         description: OAuth2 not configured
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
  */
 router.get('/discord', oauthRateLimit, (_req, res) => {
   const clientId = process.env.DISCORD_CLIENT_ID;
@@ -147,8 +164,58 @@ router.get('/discord', oauthRateLimit, (_req, res) => {
 });
 
 /**
- * GET /discord/callback — Handle Discord OAuth2 callback
- * Exchanges code for token, fetches user info, creates JWT
+ * @openapi
+ * /auth/discord/callback:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Discord OAuth2 callback
+ *     description: >
+ *       Handles the OAuth2 callback from Discord. Exchanges the authorization code
+ *       for an access token, fetches user info, creates a JWT session, sets an httpOnly
+ *       cookie, and redirects to the dashboard.
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Authorization code from Discord
+ *       - in: query
+ *         name: state
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CSRF state parameter
+ *     responses:
+ *       "302":
+ *         description: Redirect to dashboard with session cookie set
+ *       "400":
+ *         description: Missing authorization code
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         description: Failed to exchange code or fetch user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "403":
+ *         description: Invalid or expired OAuth state
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "502":
+ *         description: Invalid response from Discord
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
  */
 router.get('/discord/callback', async (req, res) => {
   cleanExpiredStates();
@@ -283,8 +350,45 @@ router.get('/discord/callback', async (req, res) => {
 });
 
 /**
- * GET /me — Return current authenticated user info from JWT
- * Fetches fresh guilds from Discord using the stored access token
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Get current user
+ *     description: Returns the authenticated user's profile and guild list. Requires a valid session cookie.
+ *     security:
+ *       - CookieAuth: []
+ *     responses:
+ *       "200":
+ *         description: Current user info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 username:
+ *                   type: string
+ *                 avatar:
+ *                   type: string
+ *                   nullable: true
+ *                 guilds:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       permissions:
+ *                         type: string
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/me', requireOAuth(), async (req, res) => {
   const { userId, username, avatar } = req.user;
@@ -316,7 +420,28 @@ router.get('/me', requireOAuth(), async (req, res) => {
 });
 
 /**
- * POST /logout — Invalidate the user's server-side session
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Log out
+ *     description: Invalidates the server-side session and clears the session cookie.
+ *     security:
+ *       - CookieAuth: []
+ *     responses:
+ *       "200":
+ *         description: Successfully logged out
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
  */
 router.post('/logout', requireOAuth(), async (req, res) => {
   try {

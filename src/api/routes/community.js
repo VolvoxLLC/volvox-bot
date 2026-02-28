@@ -55,8 +55,77 @@ function getDbPool(req) {
 // ─── GET /:guildId/leaderboard ────────────────────────────────────────────────
 
 /**
- * GET /:guildId/leaderboard — Top members by XP (public profiles only)
- * Query: ?limit=25&page=1
+ * @openapi
+ * /community/{guildId}/leaderboard:
+ *   get:
+ *     tags:
+ *       - Community
+ *     summary: XP leaderboard
+ *     description: Returns top members ranked by XP. Only members with public profiles are included. No auth required.
+ *     parameters:
+ *       - in: path
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Discord guild ID
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           minimum: 1
+ *           maximum: 100
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *           minimum: 1
+ *     responses:
+ *       "200":
+ *         description: Leaderboard page
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 members:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       displayName:
+ *                         type: string
+ *                       avatar:
+ *                         type: string
+ *                         nullable: true
+ *                       xp:
+ *                         type: integer
+ *                       level:
+ *                         type: integer
+ *                       badge:
+ *                         type: string
+ *                       rank:
+ *                         type: integer
+ *                       currentLevelXp:
+ *                         type: integer
+ *                       nextLevelXp:
+ *                         type: integer
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:guildId/leaderboard', async (req, res) => {
   const { guildId } = req.params;
@@ -146,8 +215,86 @@ router.get('/:guildId/leaderboard', async (req, res) => {
 // ─── GET /:guildId/showcases ──────────────────────────────────────────────────
 
 /**
- * GET /:guildId/showcases — Project showcase gallery
- * Query: ?limit=12&page=1&sort=upvotes|recent
+ * @openapi
+ * /community/{guildId}/showcases:
+ *   get:
+ *     tags:
+ *       - Community
+ *     summary: Project showcase gallery
+ *     description: Returns community project showcases sorted by upvotes or recency. No auth required.
+ *     parameters:
+ *       - in: path
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 12
+ *           minimum: 1
+ *           maximum: 50
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [upvotes, recent]
+ *           default: upvotes
+ *     responses:
+ *       "200":
+ *         description: Showcase gallery page
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       tech:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       repoUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       liveUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       authorName:
+ *                         type: string
+ *                       authorAvatar:
+ *                         type: string
+ *                         nullable: true
+ *                       upvotes:
+ *                         type: integer
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:guildId/showcases', async (req, res) => {
   const { guildId } = req.params;
@@ -231,7 +378,61 @@ router.get('/:guildId/showcases', async (req, res) => {
 // ─── GET /:guildId/stats ──────────────────────────────────────────────────────
 
 /**
- * GET /:guildId/stats — Community stats banner
+ * @openapi
+ * /community/{guildId}/stats:
+ *   get:
+ *     tags:
+ *       - Community
+ *     summary: Community statistics
+ *     description: Returns aggregate community statistics including member count, messages, projects, and top contributors. No auth required.
+ *     parameters:
+ *       - in: path
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         description: Community stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 memberCount:
+ *                   type: integer
+ *                 totalMessagesSent:
+ *                   type: integer
+ *                 activeProjects:
+ *                   type: integer
+ *                 challengesCompleted:
+ *                   type: integer
+ *                 topContributors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       displayName:
+ *                         type: string
+ *                       avatar:
+ *                         type: string
+ *                         nullable: true
+ *                       xp:
+ *                         type: integer
+ *                       level:
+ *                         type: integer
+ *                       badge:
+ *                         type: string
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:guildId/stats', async (req, res) => {
   const { guildId } = req.params;
@@ -327,8 +528,107 @@ router.get('/:guildId/stats', async (req, res) => {
 // ─── GET /:guildId/profile/:userId ────────────────────────────────────────────
 
 /**
- * GET /:guildId/profile/:userId — Public user profile
- * Only returns data if user has public_profile = true.
+ * @openapi
+ * /community/{guildId}/profile/{userId}:
+ *   get:
+ *     tags:
+ *       - Community
+ *     summary: Public user profile
+ *     description: Returns a user's public profile including stats, XP, badges, and project showcases. Returns 404 if the user has not opted in to a public profile.
+ *     parameters:
+ *       - in: path
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         description: User profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 username:
+ *                   type: string
+ *                 displayName:
+ *                   type: string
+ *                 avatar:
+ *                   type: string
+ *                   nullable: true
+ *                 xp:
+ *                   type: integer
+ *                 level:
+ *                   type: integer
+ *                 currentLevelXp:
+ *                   type: integer
+ *                 nextLevelXp:
+ *                   type: integer
+ *                 badge:
+ *                   type: string
+ *                 joinedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     messagesSent:
+ *                       type: integer
+ *                     reactionsGiven:
+ *                       type: integer
+ *                     reactionsReceived:
+ *                       type: integer
+ *                     daysActive:
+ *                       type: integer
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       tech:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       repoUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       liveUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       upvotes:
+ *                         type: integer
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 recentBadges:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:guildId/profile/:userId', async (req, res) => {
   const { guildId, userId } = req.params;

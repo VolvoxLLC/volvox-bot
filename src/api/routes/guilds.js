@@ -315,12 +315,44 @@ export function validateGuild(req, res, next) {
 }
 
 /**
- * GET / — List guilds
- * For OAuth2 users:
- * - bot owners: return all guilds where the bot is present (access = "bot-owner")
- * - non-owners: fetch fresh guilds from Discord and return only guilds where user has
- *   ADMINISTRATOR (access = "admin") or MANAGE_GUILD (access = "moderator"), and bot is present
- * For api-secret users: returns all bot guilds
+ * @openapi
+ * /guilds:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: List guilds
+ *     description: >
+ *       For OAuth users: returns guilds where the user has MANAGE_GUILD or ADMINISTRATOR.
+ *       Bot owners see all guilds. For API-secret users: returns all bot guilds.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     responses:
+ *       "200":
+ *         description: Guild list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   icon:
+ *                     type: string
+ *                     nullable: true
+ *                   memberCount:
+ *                     type: integer
+ *                   access:
+ *                     type: string
+ *                     enum: [admin, moderator, bot-owner]
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.get('/', async (req, res) => {
   const { client } = req.app.locals;
@@ -423,7 +455,60 @@ function getGuildChannels(guild) {
 }
 
 /**
- * GET /:id — Guild info
+ * @openapi
+ * /guilds/{id}:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: Get guild info
+ *     description: Returns detailed information about a specific guild.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *     responses:
+ *       "200":
+ *         description: Guild details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 name:
+ *                   type: string
+ *                 icon:
+ *                   type: string
+ *                   nullable: true
+ *                 memberCount:
+ *                   type: integer
+ *                 channels:
+ *                   type: integer
+ *                 roles:
+ *                   type: integer
+ *                 owner:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     username:
+ *                       type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  */
 router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
   const guild = req.guild;
@@ -438,14 +523,86 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
 });
 
 /**
- * GET /:id/channels — Guild channel list
+ * @openapi
+ * /guilds/{id}/channels:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: List guild channels
+ *     description: Returns all channels in the guild (capped at 500).
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         description: Channel list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   type:
+ *                     type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
  */
 router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
   res.json(getGuildChannels(req.guild));
 });
 
 /**
- * GET /:id/roles — Guild role list
+ * @openapi
+ * /guilds/{id}/roles:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: List guild roles
+ *     description: Returns all roles in the guild (capped at 250).
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         description: Role list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   color:
+ *                     type: string
+ *                   position:
+ *                     type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
  */
 router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
   const guild = req.guild;
@@ -458,8 +615,33 @@ router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
 });
 
 /**
- * GET /:id/config — Read guild config (safe keys only)
- * Returns per-guild config (global defaults merged with guild overrides).
+ * @openapi
+ * /guilds/{id}/config:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: Get guild config
+ *     description: Returns per-guild configuration (global defaults merged with guild overrides). Sensitive fields are masked.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         description: Guild config
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
  */
 router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
   const config = getConfig(req.params.id);
@@ -476,9 +658,47 @@ router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
 });
 
 /**
- * PATCH /:id/config — Update a guild-specific config value (safe keys only)
- * Body: { path: "ai.model", value: "claude-3" }
- * Writes to the per-guild config overrides for the requested guild.
+ * @openapi
+ * /guilds/{id}/config:
+ *   patch:
+ *     tags:
+ *       - Guilds
+ *     summary: Update guild config
+ *     description: Updates per-guild configuration overrides. Only writable sections are accepted.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       "200":
+ *         description: Updated guild config section
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       "400":
+ *         description: Invalid config
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ValidationError"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => {
   if (!req.body) {
@@ -516,7 +736,50 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
 });
 
 /**
- * GET /:id/stats — Guild statistics
+ * @openapi
+ * /guilds/{id}/stats:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: Guild statistics
+ *     description: Returns aggregate guild statistics including member count, messages, active users, and moderation data.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         description: Guild stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 memberCount:
+ *                   type: integer
+ *                 totalMessages:
+ *                   type: integer
+ *                 activeToday:
+ *                   type: integer
+ *                 activeThisWeek:
+ *                   type: integer
+ *                 newMembersToday:
+ *                   type: integer
+ *                 activeModerationCases:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
@@ -554,13 +817,48 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
 });
 
 /**
- * GET /:id/analytics — Dashboard analytics dataset
- * Query params:
- *   - range=today|week|month|custom
- *   - from=<ISO date> (required for custom)
- *   - to=<ISO date> (required for custom)
- *   - interval=hour|day (optional; auto-derived when omitted)
- *   - channelId=<Discord channel id> (optional filter)
+ * @openapi
+ * /guilds/{id}/analytics:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: Guild analytics
+ *     description: Returns time-series analytics data for dashboard charts — messages, joins/leaves, active members, AI usage, XP distribution, and more.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: range
+ *         schema:
+ *           type: string
+ *           enum: [7d, 30d, 90d, 1y]
+ *           default: 30d
+ *       - in: query
+ *         name: channelId
+ *         schema:
+ *           type: string
+ *         description: Optional filter by channel ID
+ *     responses:
+ *       "200":
+ *         description: Analytics dataset
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
@@ -1002,8 +1300,59 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 });
 
 /**
- * GET /:id/moderation — Paginated moderation cases
- * Query params: ?page=1&limit=25 (max 100)
+ * @openapi
+ * /guilds/{id}/moderation:
+ *   get:
+ *     tags:
+ *       - Guilds
+ *     summary: Recent moderation cases
+ *     description: Returns recent moderation cases for the guild overview. Requires moderator permissions.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *     responses:
+ *       "200":
+ *         description: Moderation cases
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 cases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 pages:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
@@ -1044,9 +1393,57 @@ router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, 
 });
 
 /**
- * POST /:id/actions — Execute bot actions
- * Body: { action: "sendMessage", channelId: "...", content: "..." }
- * Restricted to API-secret callers to prevent CSRF via browser-based OAuth sessions.
+ * @openapi
+ * /guilds/{id}/actions:
+ *   post:
+ *     tags:
+ *       - Guilds
+ *     summary: Trigger guild action
+ *     description: >
+ *       Trigger a bot action on a guild (e.g. sync roles, purge cache).
+ *       Restricted to API-secret authentication only.
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 description: The action to perform
+ *     responses:
+ *       "200":
+ *         description: Action completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       "400":
+ *         description: Unknown action
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.post('/:id/actions', requireGuildAdmin, validateGuild, async (req, res) => {
   if (req.authMethod !== 'api-secret') {

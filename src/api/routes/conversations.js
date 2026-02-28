@@ -144,8 +144,116 @@ function buildConversationSummary(convo, guild) {
 // ─── GET / — List conversations (grouped) ─────────────────────────────────────
 
 /**
- * GET / — List conversations grouped by channel + time proximity
- * Query params: ?page=1&limit=25&search=<text>&user=<username>&channel=<channelId>&from=<date>&to=<date>
+ * @openapi
+ * /guilds/{id}/conversations:
+ *   get:
+ *     tags:
+ *       - Conversations
+ *     summary: List AI conversations
+ *     description: >
+ *       Returns AI conversations grouped by channel and time proximity.
+ *       Messages within 15 minutes in the same channel are grouped together.
+ *       Defaults to the last 30 days.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Full-text search in message content
+ *       - in: query
+ *         name: user
+ *         schema:
+ *           type: string
+ *         description: Filter by username
+ *       - in: query
+ *         name: channel
+ *         schema:
+ *           type: string
+ *         description: Filter by channel ID
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Start date filter
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: End date filter
+ *     responses:
+ *       "200":
+ *         description: Paginated conversation list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversations:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       channelId:
+ *                         type: string
+ *                       channelName:
+ *                         type: string
+ *                       participants:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             username:
+ *                               type: string
+ *                             role:
+ *                               type: string
+ *                       messageCount:
+ *                         type: integer
+ *                       firstMessageAt:
+ *                         type: string
+ *                         format: date-time
+ *                       lastMessageAt:
+ *                         type: string
+ *                         format: date-time
+ *                       preview:
+ *                         type: string
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
@@ -237,8 +345,66 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
 // ─── GET /stats — Conversation analytics ──────────────────────────────────────
 
 /**
- * GET /stats — Conversation analytics
- * Returns aggregate stats about conversations for the guild.
+ * @openapi
+ * /guilds/{id}/conversations/stats:
+ *   get:
+ *     tags:
+ *       - Conversations
+ *     summary: Conversation analytics
+ *     description: Returns aggregate statistics about AI conversations for the guild.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *     responses:
+ *       "200":
+ *         description: Conversation analytics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalConversations:
+ *                   type: integer
+ *                 totalMessages:
+ *                   type: integer
+ *                 avgMessagesPerConversation:
+ *                   type: integer
+ *                 topUsers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       username:
+ *                         type: string
+ *                       messageCount:
+ *                         type: integer
+ *                 dailyActivity:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                         format: date
+ *                       count:
+ *                         type: integer
+ *                 estimatedTokens:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
@@ -327,8 +493,101 @@ router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, a
 // ─── GET /flags — List flagged messages ───────────────────────────────────────
 
 /**
- * GET /flags — List flagged messages
- * Query params: ?page=1&limit=25&status=open|resolved|dismissed
+ * @openapi
+ * /guilds/{id}/conversations/flags:
+ *   get:
+ *     tags:
+ *       - Conversations
+ *     summary: List flagged messages
+ *     description: Returns flagged AI messages with optional status filter.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [open, resolved, dismissed]
+ *     responses:
+ *       "200":
+ *         description: Flagged messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 flags:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       guildId:
+ *                         type: string
+ *                       conversationFirstId:
+ *                         type: integer
+ *                       messageId:
+ *                         type: integer
+ *                       flaggedBy:
+ *                         type: string
+ *                       reason:
+ *                         type: string
+ *                       notes:
+ *                         type: string
+ *                         nullable: true
+ *                       status:
+ *                         type: string
+ *                         enum: [open, resolved, dismissed]
+ *                       resolvedBy:
+ *                         type: string
+ *                         nullable: true
+ *                       resolvedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       messageContent:
+ *                         type: string
+ *                         nullable: true
+ *                       messageRole:
+ *                         type: string
+ *                         nullable: true
+ *                       messageUsername:
+ *                         type: string
+ *                         nullable: true
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/flags', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
@@ -402,8 +661,78 @@ router.get('/flags', conversationsRateLimit, requireGuildAdmin, validateGuild, a
 // ─── GET /:conversationId — Single conversation detail ────────────────────────
 
 /**
- * GET /:conversationId — Fetch all messages in a conversation for replay
- * The conversationId is the ID of the first message in the conversation.
+ * @openapi
+ * /guilds/{id}/conversations/{conversationId}:
+ *   get:
+ *     tags:
+ *       - Conversations
+ *     summary: Get conversation detail
+ *     description: Returns all messages in a conversation for replay, including flag status and token estimates.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the first message in the conversation
+ *     responses:
+ *       "200":
+ *         description: Conversation detail with messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       role:
+ *                         type: string
+ *                       content:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       flagStatus:
+ *                         type: string
+ *                         nullable: true
+ *                         enum: [open, resolved, dismissed]
+ *                 channelId:
+ *                   type: string
+ *                 duration:
+ *                   type: integer
+ *                   description: Duration in seconds
+ *                 tokenEstimate:
+ *                   type: integer
+ *       "400":
+ *         description: Invalid conversation ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get(
   '/:conversationId',
@@ -512,8 +841,75 @@ router.get(
 // ─── POST /:conversationId/flag — Flag a message ─────────────────────────────
 
 /**
- * POST /:conversationId/flag — Flag a problematic AI response
- * Body: { messageId: number, reason: string, notes?: string }
+ * @openapi
+ * /guilds/{id}/conversations/{conversationId}/flag:
+ *   post:
+ *     tags:
+ *       - Conversations
+ *     summary: Flag a message
+ *     description: Flag a problematic AI response in a conversation for review.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Conversation ID (first message ID)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - messageId
+ *               - reason
+ *             properties:
+ *               messageId:
+ *                 type: integer
+ *                 description: ID of the message to flag
+ *               reason:
+ *                 type: string
+ *                 maxLength: 500
+ *               notes:
+ *                 type: string
+ *                 maxLength: 2000
+ *     responses:
+ *       "201":
+ *         description: Message flagged successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 flagId:
+ *                   type: integer
+ *                 status:
+ *                   type: string
+ *                   enum: [open]
+ *       "400":
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.post(
   '/:conversationId/flag',

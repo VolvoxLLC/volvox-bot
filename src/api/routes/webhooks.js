@@ -12,12 +12,60 @@ import { validateConfigPatchBody } from '../utils/validateConfigPatch.js';
 const router = Router();
 
 /**
- * POST /config-update — Receive a config update pushed from the dashboard.
- * Persists the change via setConfigValue.
- *
- * Body: { guildId: "123456", path: "ai.model", value: "claude-3" }
- *
- * Auth: API secret only (req.authMethod === 'api-secret').
+ * @openapi
+ * /webhooks/config-update:
+ *   post:
+ *     tags:
+ *       - Webhooks
+ *     summary: Push config update
+ *     description: >
+ *       Receives a config update pushed from the dashboard. Persists the change
+ *       to the specified guild's config. Requires API secret authentication only
+ *       (OAuth is not accepted).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - guildId
+ *               - path
+ *               - value
+ *             properties:
+ *               guildId:
+ *                 type: string
+ *                 description: Target guild ID
+ *               path:
+ *                 type: string
+ *                 description: Dot-notated config path (e.g. "ai.model")
+ *               value:
+ *                 description: New value to set
+ *     responses:
+ *       "200":
+ *         description: Updated config section
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       "400":
+ *         description: Invalid request body
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ValidationError"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         description: Requires API secret authentication (OAuth not accepted)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.post('/config-update', async (req, res) => {
   if (req.authMethod !== 'api-secret') {

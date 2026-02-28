@@ -40,9 +40,85 @@ try {
 }
 
 /**
- * GET / — Health check endpoint
- * Returns status, uptime, and Discord connection details.
- * Includes extended data only when a valid x-api-secret header is provided.
+ * @openapi
+ * /health:
+ *   get:
+ *     tags:
+ *       - Health
+ *     summary: Health check
+ *     description: >
+ *       Returns server status and uptime. When a valid `x-api-secret` header is
+ *       provided, includes extended diagnostics (Discord connection, memory,
+ *       system info, error counts, restart history).
+ *     parameters:
+ *       - in: header
+ *         name: x-api-secret
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Optional — include for extended diagnostics
+ *     responses:
+ *       "200":
+ *         description: Server health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 uptime:
+ *                   type: number
+ *                   description: Server uptime in seconds
+ *                 discord:
+ *                   type: object
+ *                   description: Discord connection info (auth only)
+ *                   properties:
+ *                     status:
+ *                       type: integer
+ *                     ping:
+ *                       type: integer
+ *                     guilds:
+ *                       type: integer
+ *                 memory:
+ *                   type: object
+ *                   description: Process memory usage (auth only)
+ *                 system:
+ *                   type: object
+ *                   description: System info (auth only)
+ *                   properties:
+ *                     platform:
+ *                       type: string
+ *                     nodeVersion:
+ *                       type: string
+ *                 errors:
+ *                   type: object
+ *                   description: Error counts (auth only)
+ *                   properties:
+ *                     lastHour:
+ *                       type: integer
+ *                       nullable: true
+ *                     lastDay:
+ *                       type: integer
+ *                       nullable: true
+ *                 restarts:
+ *                   type: array
+ *                   description: Recent restart history (auth only)
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       timestamp:
+ *                         type: string
+ *                         format: date-time
+ *                       reason:
+ *                         type: string
+ *                       version:
+ *                         type: string
+ *                         nullable: true
+ *                       uptimeBefore:
+ *                         type: number
+ *                         nullable: true
  */
 router.get('/', async (req, res) => {
   const { client } = req.app.locals;
