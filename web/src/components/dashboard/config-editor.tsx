@@ -413,7 +413,7 @@ export function ConfigEditor() {
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
-        return { ...prev, welcome: { ...prev.welcome, [field]: value } } as GuildConfig;
+        return { ...prev, welcome: { ...(prev.welcome ?? {}), [field]: value } } as GuildConfig;
       });
     },
     [updateDraftConfig],
@@ -426,8 +426,8 @@ export function ConfigEditor() {
         return {
           ...prev,
           welcome: {
-            ...prev.welcome,
-            roleMenu: { ...prev.welcome?.roleMenu, [field]: value },
+            ...(prev.welcome ?? {}),
+            roleMenu: { ...(prev.welcome?.roleMenu ?? {}), [field]: value },
           },
         } as GuildConfig;
       });
@@ -442,8 +442,8 @@ export function ConfigEditor() {
         return {
           ...prev,
           welcome: {
-            ...prev.welcome,
-            dmSequence: { ...prev.welcome?.dmSequence, [field]: value },
+            ...(prev.welcome ?? {}),
+            dmSequence: { ...(prev.welcome?.dmSequence ?? {}), [field]: value },
           },
         } as GuildConfig;
       });
