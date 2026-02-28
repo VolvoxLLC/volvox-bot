@@ -104,6 +104,12 @@ function LogRow({
           className="group w-full cursor-pointer px-3 py-1 font-mono text-xs text-left transition-colors"
           aria-expanded={isExpanded}
           onClick={onToggle}
+          onKeyDown={(event) => {
+            if (event.key === ' ') {
+              event.preventDefault();
+              onToggle();
+            }
+          }}
         >
           {mainRow}
         </button>
