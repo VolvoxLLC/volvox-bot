@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.3",
   "info": {
     "title": "Volvox Bot API",
     "version": "1.0.0",
@@ -18,11 +18,11 @@
         "name": "x-api-secret",
         "description": "Shared API secret configured via BOT_API_SECRET environment variable."
       },
-      "CookieAuth": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "token",
-        "description": "JWT session cookie set after Discord OAuth2 login."
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token provided in the Authorization header as Bearer <token>."
       }
     },
     "schemas": {
@@ -282,7 +282,7 @@
         "description": "Returns the authenticated user's profile and guild list. Requires a valid session cookie.",
         "security": [
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -343,7 +343,7 @@
         "description": "Invalidates the server-side session and clears the session cookie.",
         "security": [
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -847,7 +847,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -881,7 +881,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "requestBody": {
@@ -984,7 +984,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1151,7 +1151,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1225,6 +1225,9 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           },
@@ -1246,7 +1249,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1377,6 +1380,9 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           },
@@ -1398,7 +1404,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1490,8 +1496,14 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -1514,7 +1526,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1600,8 +1612,14 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -1624,7 +1642,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -1685,7 +1703,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1721,7 +1739,22 @@
                       "type": "integer"
                     },
                     "channels": {
-                      "type": "integer"
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "integer",
+                            "description": "Discord channel type enum (0=Text, 2=Voice, 4=Category, 5=Announcement, 13=Stage, 15=Forum, 16=Media)"
+                          }
+                        }
+                      }
                     },
                     "roles": {
                       "type": "integer"
@@ -1770,7 +1803,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1829,7 +1862,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1891,7 +1924,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1934,7 +1967,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2002,7 +2035,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2073,7 +2106,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2091,13 +2124,58 @@
             "schema": {
               "type": "string",
               "enum": [
-                "7d",
-                "30d",
-                "90d",
-                "1y"
+                "today",
+                "week",
+                "month",
+                "custom"
               ],
-              "default": "30d"
-            }
+              "default": "week"
+            },
+            "description": "Preset time range. Use 'custom' with from/to for a specific window."
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start of custom date range (ISO 8601). Required when range=custom."
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End of custom date range (ISO 8601). Required when range=custom."
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day"
+              ]
+            },
+            "description": "Bucket size for time-series data. Auto-selected if omitted."
+          },
+          {
+            "in": "query",
+            "name": "compare",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1",
+                "true",
+                "yes",
+                "on"
+              ]
+            },
+            "description": "When set, includes comparison data for the previous equivalent period."
           },
           {
             "in": "query",
@@ -2146,7 +2224,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2196,7 +2274,7 @@
                     "page": {
                       "type": "integer"
                     },
-                    "pages": {
+                    "limit": {
                       "type": "integer"
                     }
                   }
@@ -2225,7 +2303,7 @@
           "Guilds"
         ],
         "summary": "Trigger guild action",
-        "description": "Trigger a bot action on a guild (e.g. sync roles, purge cache). Restricted to API-secret authentication only.\n",
+        "description": "Trigger a bot action on a guild. Supported actions: sendMessage (post a text message to a channel). Restricted to API-secret authentication only.\n",
         "security": [
           {
             "ApiKeyAuth": []
@@ -2421,7 +2499,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2476,7 +2554,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2656,7 +2734,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2845,7 +2923,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2976,7 +3054,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3090,7 +3168,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3254,7 +3332,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3377,6 +3455,9 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
@@ -3395,7 +3476,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3469,6 +3550,9 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
@@ -3487,7 +3571,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3601,6 +3685,9 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
@@ -3619,7 +3706,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3661,6 +3748,9 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           },
@@ -3682,7 +3772,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3782,6 +3872,9 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           },
@@ -3803,7 +3896,7 @@
             "ApiKeyAuth": []
           },
           {
-            "CookieAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3933,6 +4026,9 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
