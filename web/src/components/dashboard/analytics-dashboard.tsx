@@ -333,8 +333,9 @@ export function AnalyticsDashboard() {
     rows.push('KPI,Current,Previous,DeltaPercent');
     for (const card of kpiCards) {
       const current = card.value ?? 0;
-      const previous = compareMode ? (card.previous ?? 0) : null;
-      const delta = compareMode && previous !== null ? toDeltaPercent(current, previous) : null;
+      const hasComparison = compareMode && analytics.comparison != null;
+      const previous = hasComparison ? (card.previous ?? null) : null;
+      const delta = hasComparison && previous !== null ? toDeltaPercent(current, previous) : null;
 
       rows.push(
         [
@@ -507,8 +508,11 @@ export function AnalyticsDashboard() {
           : kpiCards.map((card) => {
               const Icon = card.icon;
               const value = card.value ?? 0;
-              const previous = card.previous ?? 0;
-              const delta = compareMode ? toDeltaPercent(value, previous) : null;
+              const hasComparison = compareMode && analytics?.comparison != null;
+              const delta =
+                hasComparison && card.previous != null
+                  ? toDeltaPercent(value, card.previous)
+                  : null;
 
               const deltaColor =
                 delta === null
@@ -531,7 +535,7 @@ export function AnalyticsDashboard() {
                       </span>
                       <Icon className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    {compareMode ? (
+                    {hasComparison ? (
                       <div className={`mt-2 flex items-center gap-1 text-xs ${deltaColor}`}>
                         {delta === null ? (
                           <Minus className="h-3 w-3" />
