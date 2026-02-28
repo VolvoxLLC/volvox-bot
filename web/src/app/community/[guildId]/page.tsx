@@ -35,7 +35,7 @@ interface ShowcaseProject {
 
 interface CommunityStats {
   memberCount: number;
-  messagesThisWeek: number;
+  totalMessagesSent: number;
   activeProjects: number;
   challengesCompleted: number;
   topContributors: {
@@ -325,8 +325,8 @@ export default async function CommunityPage({ params }: PageProps) {
               <StatCard icon={Users} label="Public Members" value={stats.memberCount} />
               <StatCard
                 icon={MessageSquare}
-                label="Messages This Week"
-                value={stats.messagesThisWeek.toLocaleString()}
+                label="Total Messages Sent"
+                value={stats.totalMessagesSent.toLocaleString()}
               />
               <StatCard icon={Rocket} label="Projects" value={stats.activeProjects} />
               <StatCard

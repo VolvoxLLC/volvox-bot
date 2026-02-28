@@ -310,7 +310,7 @@ router.get('/:guildId/stats', async (req, res) => {
 
     res.json({
       memberCount: memberCount.rows[0]?.count ?? 0,
-      messagesThisWeek: messagesResult.rows[0]?.total ?? 0,
+      totalMessagesSent: messagesResult.rows[0]?.total ?? 0,
       activeProjects: projectsResult.rows[0]?.count ?? 0,
       challengesCompleted: challengesResult.rows[0]?.count ?? 0,
       topContributors: top3,
