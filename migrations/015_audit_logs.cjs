@@ -29,6 +29,11 @@ async function up(pool) {
     CREATE INDEX IF NOT EXISTS idx_audit_logs_guild_created
       ON audit_logs(guild_id, created_at DESC);
   `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at
+      ON audit_logs(created_at);
+  `);
 }
 
 module.exports = { up };
