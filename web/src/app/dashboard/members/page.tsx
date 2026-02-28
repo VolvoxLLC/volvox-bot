@@ -171,7 +171,7 @@ export default function MembersPage() {
   const handleRowClick = useCallback(
     (userId: string) => {
       if (!guildId) return;
-      router.push(`/dashboard/members/${userId}`);
+      router.push(`/dashboard/members/${userId}?guildId=${encodeURIComponent(guildId)}`);
     },
     [router, guildId],
   );
