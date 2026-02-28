@@ -215,7 +215,6 @@ export interface ReviewConfig extends ToggleSectionConfig {
   xpReward: number;
 }
 
-/** Daily challenge scheduler settings. */
 /** Ticket system settings. */
 export interface TicketsConfig extends ToggleSectionConfig {
   mode: 'thread' | 'channel';
@@ -226,6 +225,7 @@ export interface TicketsConfig extends ToggleSectionConfig {
   maxOpenPerUser: number;
 }
 
+/** Daily challenge scheduler settings. */
 export interface ChallengesConfig extends ToggleSectionConfig {
   channelId: string | null;
   postTime: string;

@@ -582,7 +582,6 @@ export function registerTicketOpenButtonHandler(client) {
     if (!interaction.isButton()) return;
     if (interaction.customId !== 'ticket_open') return;
 
-    const guildConfig = getConfig(interaction.guildId);
     const ticketConfig = getTicketConfig(interaction.guildId);
     if (!ticketConfig.enabled) {
       try {

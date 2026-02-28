@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, RefreshCw, Search, Ticket, X } from 'lucide-react';
+import { RefreshCw, Search, Ticket, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
