@@ -23,6 +23,8 @@ describe('auth routes coverage', () => {
   let app;
 
   beforeEach(() => {
+    // Reset JWT secret cache so each test reads from current env
+    _resetSecretCache();
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     const client = {
       guilds: { cache: new Map() },
@@ -30,11 +32,6 @@ describe('auth routes coverage', () => {
       user: { tag: 'Bot#1234' },
     };
     app = createApp(client, null);
-  });
-
-  beforeEach(() => {
-    // Reset JWT secret cache so each test reads from current env
-    _resetSecretCache();
   });
 
   afterEach(() => {
@@ -61,9 +58,7 @@ describe('auth routes coverage', () => {
         json: async () => ({ access_token: '' }), // empty string - invalid
       });
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(502);
       expect(res.body.error).toContain('Invalid response from Discord');
     });
@@ -82,9 +77,7 @@ describe('auth routes coverage', () => {
         json: async () => ({ access_token: null }),
       });
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(502);
     });
 
@@ -107,9 +100,7 @@ describe('auth routes coverage', () => {
           json: async () => ({ id: '', username: 'test' }), // empty id
         });
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(502);
     });
 
@@ -132,9 +123,7 @@ describe('auth routes coverage', () => {
           json: async () => ({ username: 'test' }), // missing id
         });
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(502);
     });
 
@@ -147,9 +136,7 @@ describe('auth routes coverage', () => {
       const state = 'state-missing-config';
       _seedOAuthState(state);
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('OAuth2 not configured');
     });
@@ -174,9 +161,7 @@ describe('auth routes coverage', () => {
           json: async () => ({ id: 'user123', username: 'user', avatar: null }),
         });
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(302);
       // Should redirect to '/' fallback
       expect(res.headers.location).toBe('/');
@@ -206,9 +191,7 @@ describe('auth routes coverage', () => {
           json: async () => ({ id: 'user456', username: 'user', avatar: null }),
         });
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(302);
       expect(res.headers.location).toBe('https://dashboard.example.com');
     });
@@ -224,9 +207,7 @@ describe('auth routes coverage', () => {
 
       vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Authentication failed');
     });
@@ -259,9 +240,7 @@ describe('auth routes coverage', () => {
       // Make sessionStore.get throw to trigger 503
       vi.spyOn(sessionStore, 'get').mockRejectedValue(new Error('Redis unavailable'));
 
-      const res = await request(app)
-        .get('/api/v1/auth/me')
-        .set('Authorization', `Bearer ${token}`);
+      const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(503);
       expect(res.body.error).toContain('Session lookup failed');
@@ -280,9 +259,7 @@ describe('auth routes coverage', () => {
       // Session has no accessToken
       await sessionStore.set('u2', { jti: 'jti2' });
 
-      const res = await request(app)
-        .get('/api/v1/auth/me')
-        .set('Authorization', `Bearer ${token}`);
+      const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       expect(res.body.userId).toBe('u2');
@@ -330,7 +307,6 @@ describe('auth routes coverage', () => {
     });
   });
 
-
   describe('GET /api/v1/auth/discord/callback - expired state', () => {
     it('returns 403 when state has expired', async () => {
       vi.useFakeTimers();
@@ -343,9 +319,7 @@ describe('auth routes coverage', () => {
       // Advance past STATE_TTL_MS (10 minutes = 600,000ms)
       vi.setSystemTime(10 * 60 * 1000 + 1000); // just past expiry
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
 
       vi.useRealTimers();
       expect(res.status).toBe(403);
@@ -387,7 +361,7 @@ describe('auth routes coverage', () => {
       // We need to mock at the sessionStore.get level differently
       // First call (verifyJwt) should succeed, second (in /me handler) should fail
       let callCount = 0;
-      vi.spyOn(sessionStore, 'get').mockImplementation(async (userId) => {
+      vi.spyOn(sessionStore, 'get').mockImplementation(async (_userId) => {
         callCount++;
         if (callCount === 1) {
           // verifyJwt call - return valid session
@@ -397,9 +371,7 @@ describe('auth routes coverage', () => {
         throw new Error('Redis down');
       });
 
-      const res = await request(app)
-        .get('/api/v1/auth/me')
-        .set('Authorization', `Bearer ${token}`);
+      const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(503);
       expect(res.body.error).toContain('Session store unavailable');
