@@ -97,7 +97,13 @@ describe('members routes', () => {
   beforeEach(() => {
     vi.stubEnv('BOT_API_SECRET', TEST_SECRET);
 
-    mockPool = { query: vi.fn() };
+    mockPool = {
+      query: vi.fn(),
+      connect: vi.fn().mockResolvedValue({
+        query: vi.fn(),
+        release: vi.fn(),
+      }),
+    };
     getPool.mockReturnValue(mockPool);
 
     const client = {
@@ -166,6 +172,8 @@ describe('members routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.members).toHaveLength(1);
       expect(res.body.members[0].username).toBe('alice');
+      // Search should include filteredTotal
+      expect(res.body.filteredTotal).toBe(1);
     });
 
     it('should sort by xp descending', async () => {
@@ -411,9 +419,15 @@ describe('members routes', () => {
 
   describe('POST /api/v1/guilds/:id/members/:userId/xp', () => {
     it('should adjust XP correctly and return updated level', async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ xp: 350, level: 2 }] })
-        .mockResolvedValueOnce({ rows: [] }); // level update
+      const mockClient = {
+        query: vi.fn()
+          .mockResolvedValueOnce({}) // BEGIN
+          .mockResolvedValueOnce({ rows: [{ xp: 350, level: 2 }] }) // upsert
+          .mockResolvedValueOnce({}) // level update
+          .mockResolvedValueOnce({}), // COMMIT
+        release: vi.fn(),
+      };
+      mockPool.connect.mockResolvedValueOnce(mockClient);
 
       const res = await authed(
         request(app)
@@ -427,10 +441,22 @@ describe('members routes', () => {
       expect(res.body.level).toBe(2);
       expect(res.body.adjustment).toBe(100);
       expect(res.body.reason).toBe('Helpful contribution');
+
+      // Verify transaction was used
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
     });
 
     it('should handle negative XP adjustment', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [{ xp: 50, level: 0 }] });
+      const mockClient = {
+        query: vi.fn()
+          .mockResolvedValueOnce({}) // BEGIN
+          .mockResolvedValueOnce({ rows: [{ xp: 50, level: 0 }] }) // upsert
+          .mockResolvedValueOnce({}), // COMMIT
+        release: vi.fn(),
+      };
+      mockPool.connect.mockResolvedValueOnce(mockClient);
 
       const res = await authed(
         request(app)
@@ -476,8 +502,17 @@ describe('members routes', () => {
       expect(res.status).toBe(401);
     });
 
+    it('should reject XP amount exceeding bounds', async () => {
+      const res = await authed(
+        request(app).post('/api/v1/guilds/guild1/members/user1/xp').send({ amount: 2000000 }),
+      );
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('amount must be between -1000000 and 1000000');
+    });
+
     it('should handle DB error gracefully', async () => {
-      mockPool.query.mockRejectedValueOnce(new Error('DB error'));
+      mockPool.connect.mockRejectedValueOnce(new Error('DB error'));
 
       const res = await authed(
         request(app).post('/api/v1/guilds/guild1/members/user1/xp').send({ amount: 50 }),
