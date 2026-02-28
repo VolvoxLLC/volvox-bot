@@ -114,7 +114,6 @@ import { getPool } from '../../src/db.js';
 import {
   buildChallengeButtons,
   buildChallengeEmbed,
-  getLocalDateString,
   selectTodaysChallenge,
 } from '../../src/modules/challengeScheduler.js';
 import { getConfig } from '../../src/modules/config.js';
