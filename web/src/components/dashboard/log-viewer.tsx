@@ -103,12 +103,6 @@ function LogRow({
         className={cn(rowClassName, 'cursor-pointer w-full text-left')}
         aria-expanded={isExpanded}
         onClick={onToggle}
-        onKeyDown={(e: React.KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onToggle();
-          }
-        }}
       >
         {mainRow}
 
