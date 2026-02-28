@@ -380,6 +380,23 @@ describe('conversations routes', () => {
       expect(searchParam).toBe('%some\\_thing%');
     });
 
+    it('should escape backslash in ILIKE search query', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      // URL-encoded backslash (%5C) in search term
+      const res = await authed(
+        request(app).get('/api/v1/guilds/guild1/conversations?search=path%5Cfile'),
+      );
+
+      expect(res.status).toBe(200);
+      const queryCall = mockPool.query.mock.calls[0];
+      expect(queryCall[0]).toContain('ILIKE');
+      // Backslash must be escaped to \\\\ so it does not act as an escape character in ILIKE
+      const searchParam = queryCall[1].find((v) => typeof v === 'string' && v.includes('\\\\'));
+      expect(searchParam).toBeDefined();
+      expect(searchParam).toBe('%path\\\\file%');
+    });
+
     it('should support channel filter', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] });
 
@@ -598,7 +615,12 @@ describe('conversations routes', () => {
     });
 
     it('should successfully flag a message', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [{ id: 5 }] }); // msg check
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 5, channel_id: 'ch1', created_at: new Date().toISOString() }],
+      }); // msg check
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 1, channel_id: 'ch1', created_at: new Date().toISOString() }],
+      }); // anchor check
       mockPool.query.mockResolvedValueOnce({
         rows: [{ id: 1, status: 'open' }],
       }); // insert
@@ -624,7 +646,12 @@ describe('conversations routes', () => {
     });
 
     it('should handle notes as optional', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [{ id: 5 }] });
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 5, channel_id: 'ch1', created_at: new Date().toISOString() }],
+      });
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 1, channel_id: 'ch1', created_at: new Date().toISOString() }],
+      }); // anchor check
       mockPool.query.mockResolvedValueOnce({
         rows: [{ id: 1, status: 'open' }],
       });
