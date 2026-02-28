@@ -921,5 +921,222 @@ describe('ticketHandler', () => {
       // checkAutoClose returns early (no guilds) before any query
       expect(mockQuery).toHaveBeenCalledTimes(0);
     });
+
+    it('should handle message-fetch errors per ticket without throwing', async () => {
+      getConfig.mockReturnValue({
+        tickets: { enabled: true, autoCloseHours: 48 },
+      });
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 8,
+            guild_id: 'guild1',
+            thread_id: 'thread8',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const thread = createMockThread({ id: 'thread8' });
+      thread.messages.fetch.mockRejectedValue(new Error('cannot fetch messages'));
+
+      const guild = createMockGuild();
+      guild.channels.fetch = vi.fn().mockResolvedValue(thread);
+
+      const client = {
+        guilds: { cache: new Map([['guild1', guild]]) },
+        user: { id: 'bot1' },
+      };
+
+      await expect(checkAutoClose(client)).resolves.toBeUndefined();
+    });
+
+
+    it('should continue when ticket processing throws inside loop', async () => {
+      getConfig.mockImplementation(() => {
+        throw new Error('config failure');
+      });
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 88,
+            guild_id: 'guild1',
+            thread_id: 'thread88',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const guild = createMockGuild();
+      const client = {
+        guilds: { cache: new Map([['guild1', guild]]) },
+        user: { id: 'bot1' },
+      };
+
+      await expect(checkAutoClose(client)).resolves.toBeUndefined();
+    });
+
+    it('should support discord Collection.find path for recent messages', async () => {
+      getConfig.mockReturnValue({
+        tickets: { enabled: true, autoCloseHours: 48 },
+      });
+
+      const almostOldDate = new Date(Date.now() - 50 * 60 * 60 * 1000);
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 9,
+            guild_id: 'guild1',
+            thread_id: 'thread9',
+            created_at: almostOldDate.toISOString(),
+          },
+        ],
+      });
+
+      const thread = createMockThread({ id: 'thread9' });
+      const recentMessagesLikeCollection = {
+        find: vi.fn((predicate) => {
+          const msgs = [
+            { author: { bot: true }, createdAt: new Date() },
+            { author: { bot: false }, createdAt: almostOldDate },
+          ];
+          return msgs.find(predicate);
+        }),
+      };
+      thread.messages.fetch.mockResolvedValue(recentMessagesLikeCollection);
+
+      const guild = createMockGuild();
+      guild.channels.fetch = vi.fn().mockResolvedValue(thread);
+
+      const client = {
+        guilds: { cache: new Map([['guild1', guild]]) },
+        user: { id: 'bot1' },
+      };
+
+      await checkAutoClose(client);
+
+      expect(recentMessagesLikeCollection.find).toHaveBeenCalledTimes(1);
+      expect(mockSafeSend).toHaveBeenCalledWith(
+        thread,
+        expect.objectContaining({ content: expect.stringContaining('auto-closed in') }),
+      );
+    });
+  });
+
+  describe('openTicket edge paths', () => {
+    it('should throw when no suitable thread parent channel can be resolved', async () => {
+      getConfig.mockReturnValue({
+        tickets: {
+          enabled: true,
+          mode: 'thread',
+          supportRole: null,
+          category: null,
+          autoCloseHours: 48,
+          transcriptChannel: null,
+          maxOpenPerUser: 3,
+        },
+      });
+
+      const guild = {
+        id: 'guild1',
+        channels: {
+          cache: {
+            get: vi.fn().mockReturnValue(undefined),
+            find: vi.fn().mockReturnValue(undefined),
+          },
+        },
+        roles: { cache: new Map() },
+        members: { me: { id: 'bot1' } },
+      };
+
+      const user = createMockUser();
+
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+
+      await expect(openTicket(guild, user, 'help', null)).rejects.toThrow(
+        'No suitable channel found to create a ticket thread.',
+      );
+    });
+  });
+
+  describe('closeTicket edge paths', () => {
+    it('should swallow transcript channel send errors', async () => {
+      getConfig.mockReturnValue({
+        tickets: {
+          enabled: true,
+          mode: 'thread',
+          supportRole: null,
+          category: null,
+          autoCloseHours: 48,
+          transcriptChannel: 'transcript-ch',
+          maxOpenPerUser: 3,
+        },
+      });
+
+      const transcriptChannel = { id: 'transcript-ch' };
+      const thread = createMockThread({
+        guild: {
+          id: 'guild1',
+          channels: { cache: new Map([['transcript-ch', transcriptChannel]]) },
+        },
+      });
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 16, guild_id: 'guild1', user_id: 'user1', thread_id: 'thread1' }],
+      });
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 16, status: 'closed' }],
+      });
+
+      mockSafeSend.mockImplementation((target) => {
+        if (target?.id === 'transcript-ch') {
+          return Promise.reject(new Error('missing perms'));
+        }
+        return Promise.resolve(undefined);
+      });
+
+      await expect(closeTicket(thread, createMockUser({ id: 'closer2' }), 'Done')).resolves.toEqual(
+        expect.objectContaining({ id: 16 }),
+      );
+    });
+
+    it('should skip transcript send when configured channel is missing', async () => {
+      getConfig.mockReturnValue({
+        tickets: {
+          enabled: true,
+          mode: 'thread',
+          supportRole: null,
+          category: null,
+          autoCloseHours: 48,
+          transcriptChannel: 'transcript-ch',
+          maxOpenPerUser: 3,
+        },
+      });
+
+      const thread = createMockThread({
+        guild: {
+          id: 'guild1',
+          channels: { cache: new Map() },
+        },
+      });
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 15, guild_id: 'guild1', user_id: 'user1', thread_id: 'thread1' }],
+      });
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 15, status: 'closed' }],
+      });
+
+      await closeTicket(thread, createMockUser({ id: 'closer1' }), 'Done');
+
+      // Only one safeSend call: close embed in current ticket channel.
+      expect(mockSafeSend).toHaveBeenCalledTimes(1);
+      expect(mockSafeSend).toHaveBeenCalledWith(
+        thread,
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
+    });
   });
 });
