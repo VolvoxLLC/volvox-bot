@@ -422,26 +422,32 @@ export function AnalyticsDashboard() {
                 <Activity className="h-4 w-4" />
                 Online members
               </div>
-              <p className="mt-2 text-2xl font-semibold">
+              <output
+                className="mt-2 block text-2xl font-semibold"
+                aria-label="Online members value"
+              >
                 {analytics == null
                   ? '\u2014'
                   : analytics.realtime.onlineMembers === null
                     ? 'N/A'
                     : formatNumber(analytics.realtime.onlineMembers)}
-              </p>
+              </output>
             </div>
             <div className="rounded-lg border p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Bot className="h-4 w-4" />
                 Active AI conversations
               </div>
-              <p className="mt-2 text-2xl font-semibold">
+              <output
+                className="mt-2 block text-2xl font-semibold"
+                aria-label="Active AI conversations value"
+              >
                 {loading || analytics == null
                   ? '\u2014'
                   : analytics.realtime.activeAiConversations === null
                     ? 'N/A'
                     : formatNumber(analytics.realtime.activeAiConversations)}
-              </p>
+              </output>
             </div>
           </CardContent>
         </Card>
