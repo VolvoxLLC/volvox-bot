@@ -7,7 +7,7 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { info, warn } from '../logger.js';
+import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { safeEditReply } from '../utils/safeSend.js';
 import { parseTimeAndMessage } from '../utils/timeParser.js';
@@ -80,6 +80,23 @@ export async function execute(interaction) {
 }
 
 /**
+ * Safely roll back an open transaction, ignoring rollback errors.
+ *
+ * @param {import('pg').PoolClient | undefined} client
+ */
+async function rollbackQuietly(client) {
+  if (!client) {
+    return;
+  }
+
+  try {
+    await client.query('ROLLBACK');
+  } catch {
+    // Ignore rollback errors; original failure is what we care about.
+  }
+}
+
+/**
  * Handle /remind me <when> <message>
  */
 async function handleMe(interaction, pool, guildConfig) {
@@ -113,35 +130,83 @@ async function handleMe(interaction, pool, guildConfig) {
     return;
   }
 
-  // Check per-user limit
   const maxPerUser = guildConfig.reminders?.maxPerUser ?? 25;
-  const { rows: countRows } = await pool.query(
-    'SELECT COUNT(*) as count FROM reminders WHERE guild_id = $1 AND user_id = $2 AND completed = false',
-    [interaction.guildId, interaction.user.id],
-  );
+  let reminder = null;
+  let limitReached = false;
+  /** @type {import('pg').PoolClient | undefined} */
+  let client;
 
-  if (Number.parseInt(countRows[0].count, 10) >= maxPerUser) {
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Serialize reminder creation per guild/user to avoid race conditions where
+    // concurrent requests bypass the per-user max reminders limit.
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', [
+      interaction.guildId,
+      interaction.user.id,
+    ]);
+
+    const { rows: countRows } = await client.query(
+      'SELECT COUNT(*) as count FROM reminders WHERE guild_id = $1 AND user_id = $2 AND completed = false',
+      [interaction.guildId, interaction.user.id],
+    );
+
+    const activeCount = Number.parseInt(countRows[0]?.count ?? '0', 10);
+    if (activeCount >= maxPerUser) {
+      limitReached = true;
+      await client.query('ROLLBACK');
+    } else {
+      const { rows } = await client.query(
+        `INSERT INTO reminders (guild_id, user_id, channel_id, message, remind_at)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [
+          interaction.guildId,
+          interaction.user.id,
+          interaction.channelId,
+          reminderMessage,
+          parsed.date.toISOString(),
+        ],
+      );
+      reminder = rows[0] ?? null;
+      await client.query('COMMIT');
+    }
+  } catch (err) {
+    await rollbackQuietly(client);
+
+    logError('Failed to create reminder', {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+
+    await safeEditReply(interaction, {
+      content: '❌ Something went wrong while creating your reminder. Please try again.',
+    });
+    return;
+  } finally {
+    client?.release();
+  }
+
+  if (limitReached) {
     await safeEditReply(interaction, {
       content: `❌ You've reached the maximum of ${maxPerUser} active reminders. Cancel some first.`,
     });
     return;
   }
 
-  // Insert reminder
-  const { rows } = await pool.query(
-    `INSERT INTO reminders (guild_id, user_id, channel_id, message, remind_at)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING *`,
-    [
-      interaction.guildId,
-      interaction.user.id,
-      interaction.channelId,
-      reminderMessage,
-      parsed.date.toISOString(),
-    ],
-  );
+  if (!reminder) {
+    logError('Reminder insert returned no row', {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
+    await safeEditReply(interaction, {
+      content: '❌ Something went wrong while creating your reminder. Please try again.',
+    });
+    return;
+  }
 
-  const reminder = rows[0];
   const timestamp = Math.floor(parsed.date.getTime() / 1000);
 
   await safeEditReply(interaction, {
@@ -160,13 +225,29 @@ async function handleMe(interaction, pool, guildConfig) {
  * Handle /remind list
  */
 async function handleList(interaction, pool) {
-  const { rows } = await pool.query(
-    `SELECT id, message, remind_at, recurring_cron, snoozed_count, created_at
-     FROM reminders
-     WHERE guild_id = $1 AND user_id = $2 AND completed = false
-     ORDER BY remind_at ASC`,
-    [interaction.guildId, interaction.user.id],
-  );
+  let rows;
+
+  try {
+    const result = await pool.query(
+      `SELECT id, message, remind_at, recurring_cron, snoozed_count, created_at
+       FROM reminders
+       WHERE guild_id = $1 AND user_id = $2 AND completed = false
+       ORDER BY remind_at ASC`,
+      [interaction.guildId, interaction.user.id],
+    );
+    rows = result.rows;
+  } catch (err) {
+    logError('Failed to list reminders', {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+
+    await safeEditReply(interaction, {
+      content: '❌ Something went wrong while fetching your reminders. Please try again.',
+    });
+    return;
+  }
 
   if (rows.length === 0) {
     await safeEditReply(interaction, {
@@ -199,38 +280,51 @@ async function handleList(interaction, pool) {
 async function handleCancel(interaction, pool) {
   const reminderId = interaction.options.getInteger('id');
 
-  const { rows } = await pool.query(
-    'SELECT * FROM reminders WHERE id = $1 AND guild_id = $2 AND completed = false',
-    [reminderId, interaction.guildId],
-  );
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM reminders WHERE id = $1 AND guild_id = $2 AND completed = false',
+      [reminderId, interaction.guildId],
+    );
 
-  if (rows.length === 0) {
+    if (rows.length === 0) {
+      await safeEditReply(interaction, {
+        content: `❌ No active reminder with ID **#${reminderId}** found.`,
+      });
+      return;
+    }
+
+    const reminder = rows[0];
+
+    // Verify ownership
+    if (reminder.user_id !== interaction.user.id) {
+      await safeEditReply(interaction, {
+        content: '❌ You can only cancel your own reminders.',
+      });
+      warn('Reminder cancel permission denied', {
+        userId: interaction.user.id,
+        reminderId,
+        ownerId: reminder.user_id,
+      });
+      return;
+    }
+
+    await pool.query('UPDATE reminders SET completed = true WHERE id = $1', [reminderId]);
+
     await safeEditReply(interaction, {
-      content: `❌ No active reminder with ID **#${reminderId}** found.`,
+      content: `✅ Reminder **#${reminderId}** cancelled.`,
     });
-    return;
-  }
 
-  const reminder = rows[0];
-
-  // Verify ownership
-  if (reminder.user_id !== interaction.user.id) {
-    await safeEditReply(interaction, {
-      content: '❌ You can only cancel your own reminders.',
-    });
-    warn('Reminder cancel permission denied', {
-      userId: interaction.user.id,
+    info('Reminder cancelled', { reminderId, userId: interaction.user.id });
+  } catch (err) {
+    logError('Failed to cancel reminder', {
       reminderId,
-      ownerId: reminder.user_id,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      error: err instanceof Error ? err.message : String(err),
     });
-    return;
+
+    await safeEditReply(interaction, {
+      content: '❌ Something went wrong while cancelling your reminder. Please try again.',
+    });
   }
-
-  await pool.query('UPDATE reminders SET completed = true WHERE id = $1', [reminderId]);
-
-  await safeEditReply(interaction, {
-    content: `✅ Reminder **#${reminderId}** cancelled.`,
-  });
-
-  info('Reminder cancelled', { reminderId, userId: interaction.user.id });
 }

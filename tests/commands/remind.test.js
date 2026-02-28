@@ -78,13 +78,23 @@ import { safeEditReply } from '../../src/utils/safeSend.js';
 
 describe('remind command', () => {
   let mockPool;
+  let mockClient;
   let data;
   let execute;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    mockPool = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      release: vi.fn(),
+    };
+
+    mockPool = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      connect: vi.fn().mockResolvedValue(mockClient),
+    };
+
     getPool.mockReturnValue(mockPool);
     getConfig.mockReturnValue({ reminders: { enabled: true, maxPerUser: 25 } });
 
@@ -116,11 +126,14 @@ describe('remind command', () => {
   describe('/remind me', () => {
     it('should create a reminder', async () => {
       const futureDate = new Date(Date.now() + 3_600_000);
-      mockPool.query
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [] }) // advisory lock
         .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // COUNT
         .mockResolvedValueOnce({
           rows: [{ id: 1, remind_at: futureDate.toISOString(), message: 'test' }],
-        }); // INSERT
+        }) // INSERT
+        .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
       const interaction = {
         guildId: 'g1',
@@ -136,6 +149,8 @@ describe('remind command', () => {
 
       await execute(interaction);
       expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+      expect(mockPool.connect).toHaveBeenCalled();
+      expect(mockClient.release).toHaveBeenCalled();
       expect(safeEditReply).toHaveBeenCalledWith(
         interaction,
         expect.objectContaining({ content: expect.stringContaining('Reminder **#1**') }),
@@ -160,10 +175,15 @@ describe('remind command', () => {
         interaction,
         expect.objectContaining({ content: expect.stringContaining('Could not understand') }),
       );
+      expect(mockPool.connect).not.toHaveBeenCalled();
     });
 
     it('should enforce max per user limit', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [{ count: '25' }] });
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [] }) // advisory lock
+        .mockResolvedValueOnce({ rows: [{ count: '25' }] }) // COUNT
+        .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
 
       const interaction = {
         guildId: 'g1',
@@ -182,6 +202,32 @@ describe('remind command', () => {
         interaction,
         expect.objectContaining({ content: expect.stringContaining('maximum') }),
       );
+    });
+
+    it('should handle database errors while creating reminder', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockRejectedValueOnce(new Error('db unavailable')) // lock
+        .mockResolvedValueOnce({ rows: [] }); // rollback from catch
+
+      const interaction = {
+        guildId: 'g1',
+        channelId: 'c1',
+        user: { id: 'u1' },
+        deferReply: vi.fn().mockResolvedValue(undefined),
+        options: {
+          getSubcommand: () => 'me',
+          getString: (name) => (name === 'when' ? 'in 1 hour' : 'test'),
+          getInteger: () => null,
+        },
+      };
+
+      await execute(interaction);
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining('creating your reminder') }),
+      );
+      expect(mockClient.release).toHaveBeenCalled();
     });
   });
 
@@ -236,6 +282,27 @@ describe('remind command', () => {
       expect(safeEditReply).toHaveBeenCalledWith(
         interaction,
         expect.objectContaining({ embeds: expect.any(Array) }),
+      );
+    });
+
+    it('should handle database errors while listing reminders', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('db unavailable'));
+
+      const interaction = {
+        guildId: 'g1',
+        user: { id: 'u1' },
+        deferReply: vi.fn().mockResolvedValue(undefined),
+        options: {
+          getSubcommand: () => 'list',
+          getString: () => null,
+          getInteger: () => null,
+        },
+      };
+
+      await execute(interaction);
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining('fetching your reminders') }),
       );
     });
   });
@@ -307,6 +374,27 @@ describe('remind command', () => {
       expect(safeEditReply).toHaveBeenCalledWith(
         interaction,
         expect.objectContaining({ content: expect.stringContaining('#999') }),
+      );
+    });
+
+    it('should handle database errors while cancelling reminder', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('db unavailable'));
+
+      const interaction = {
+        guildId: 'g1',
+        user: { id: 'u1' },
+        deferReply: vi.fn().mockResolvedValue(undefined),
+        options: {
+          getSubcommand: () => 'cancel',
+          getString: () => null,
+          getInteger: () => 5,
+        },
+      };
+
+      await execute(interaction);
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining('cancelling your reminder') }),
       );
     });
   });
