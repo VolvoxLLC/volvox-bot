@@ -212,7 +212,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
          FROM conversations
          WHERE ${whereClause}
          ORDER BY created_at ASC
-         LIMIT 5000`,
+         LIMIT 10000 -- capped to prevent runaway memory; 30-day default window keeps this reasonable`,
       values,
     );
 
