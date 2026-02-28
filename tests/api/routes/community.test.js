@@ -415,9 +415,7 @@ describe('community routes', () => {
           ],
         }); // data (private user row excluded by SQL JOIN + filter)
 
-      const res = await request(app)
-        .get(`/api/v1/community/${GUILD_ID}/showcases`)
-        .expect(200);
+      const res = await request(app).get(`/api/v1/community/${GUILD_ID}/showcases`).expect(200);
 
       // SQL must include the privacy guard on both count and data queries
       expect(mockPool.query.mock.calls[0][0]).toContain('public_profile = TRUE');

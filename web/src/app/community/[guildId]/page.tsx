@@ -206,7 +206,15 @@ function StatCard({
  * @param nextLevelXp - XP required to reach the next level.
  * @returns A JSX element rendering the XP progress bar reflecting progress toward the next level.
  */
-function XpBar({ xp, currentLevelXp, nextLevelXp }: { xp: number; currentLevelXp: number; nextLevelXp: number }) {
+function XpBar({
+  xp,
+  currentLevelXp,
+  nextLevelXp,
+}: {
+  xp: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+}) {
   const progress =
     nextLevelXp > currentLevelXp
       ? Math.min(100, ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100)
@@ -360,7 +368,11 @@ export default async function CommunityPage({ params }: PageProps) {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <XpBar xp={member.xp} currentLevelXp={member.currentLevelXp} nextLevelXp={member.nextLevelXp} />
+                            <XpBar
+                              xp={member.xp}
+                              currentLevelXp={member.currentLevelXp}
+                              nextLevelXp={member.nextLevelXp}
+                            />
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
                               {member.xp.toLocaleString()} XP
                             </span>
@@ -395,7 +407,9 @@ export default async function CommunityPage({ params }: PageProps) {
                           size="lg"
                         />
                         <div>
-                          <p className="font-medium">{contributor.displayName ?? contributor.username}</p>
+                          <p className="font-medium">
+                            {contributor.displayName ?? contributor.username}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {contributor.badge} · {contributor.xp.toLocaleString()} XP
                           </p>
