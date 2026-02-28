@@ -200,13 +200,14 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
 
     const whereClause = whereParts.join(' AND ');
 
-    // Fetch all matching messages for grouping
-    // We need to fetch all to do proper time-based grouping, then paginate the result
+    // Fetch matching messages for grouping (capped at 5000 rows to prevent memory exhaustion)
+    // Time-based grouping requires sorted rows; paginate after grouping
     const result = await dbPool.query(
       `SELECT id, channel_id, role, content, username, created_at
          FROM conversations
          WHERE ${whereClause}
-         ORDER BY created_at ASC`,
+         ORDER BY created_at ASC
+         LIMIT 5000`,
       values,
     );
 
