@@ -218,9 +218,11 @@ async function purgeExpiredAuditLogs() {
   try {
     const pool = getPool();
     const config = getConfig();
-    const retentionDays = config.auditLog?.retentionDays ?? 90;
-
-    if (retentionDays <= 0) return;
+    const rawRetentionDays = config.auditLog?.retentionDays;
+    const parsedRetentionDays = Number(rawRetentionDays);
+    const retentionDays = Number.isFinite(parsedRetentionDays)
+      ? Math.min(3650, Math.max(1, Math.trunc(parsedRetentionDays)))
+      : 90;
 
     const { rowCount } = await pool.query(
       'DELETE FROM audit_logs WHERE created_at < NOW() - make_interval(days => $1)',
