@@ -262,7 +262,7 @@
     "xpReward": 50
   },
   "reminders": {
-    "enabled": true,
+    "enabled": false,
     "maxPerUser": 25,
     "maxRecurring": 5
   }
