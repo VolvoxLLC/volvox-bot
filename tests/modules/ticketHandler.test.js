@@ -2,6 +2,7 @@
  * Tests for src/modules/ticketHandler.js
  * Covers openTicket, closeTicket, addMember, removeMember,
  * checkAutoClose, buildTicketPanel, getTicketConfig.
+ * Tests both thread mode (default) and channel mode.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,6 +23,7 @@ vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({
     tickets: {
       enabled: true,
+      mode: 'thread',
       supportRole: 'role1',
       category: null,
       autoCloseHours: 48,
@@ -56,6 +58,7 @@ function createMockThread(overrides = {}) {
   return {
     id: 'thread1',
     isThread: () => true,
+    type: 12, // PrivateThread
     guild: {
       id: 'guild1',
       channels: { cache: new Map() },
@@ -72,8 +75,30 @@ function createMockThread(overrides = {}) {
   };
 }
 
+function createMockChannel(overrides = {}) {
+  return {
+    id: 'channel1',
+    isThread: () => false,
+    type: 0, // GuildText
+    guild: {
+      id: 'guild1',
+      channels: { cache: new Map() },
+    },
+    permissionOverwrites: {
+      edit: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+    },
+    messages: {
+      fetch: vi.fn().mockResolvedValue(new Map()),
+    },
+    delete: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function createMockGuild(overrides = {}) {
   const botMember = {
+    id: 'bot1',
     permissions: { has: () => true },
   };
   const textChannel = {
@@ -93,6 +118,7 @@ function createMockGuild(overrides = {}) {
     channels: {
       cache: new Map([['ch1', textChannel]]),
       fetch: vi.fn(),
+      create: vi.fn().mockResolvedValue(createMockChannel()),
     },
     roles: { cache: new Map([['role1', role]]) },
     members: { me: botMember },
@@ -127,6 +153,7 @@ describe('ticketHandler', () => {
     it('should merge defaults with guild config', () => {
       const config = getTicketConfig('guild1');
       expect(config.enabled).toBe(true);
+      expect(config.mode).toBe('thread');
       expect(config.supportRole).toBe('role1');
       expect(config.autoCloseHours).toBe(48);
       expect(config.maxOpenPerUser).toBe(3);
@@ -136,6 +163,7 @@ describe('ticketHandler', () => {
       getConfig.mockReturnValueOnce({});
       const config = getTicketConfig('guild2');
       expect(config.enabled).toBe(false);
+      expect(config.mode).toBe('thread');
       expect(config.supportRole).toBeNull();
       expect(config.autoCloseHours).toBe(48);
       expect(config.maxOpenPerUser).toBe(3);
@@ -155,9 +183,9 @@ describe('ticketHandler', () => {
     });
   });
 
-  // ─── openTicket ───────────────────────────────────────────────
+  // ─── openTicket (thread mode) ─────────────────────────────────
 
-  describe('openTicket', () => {
+  describe('openTicket (thread mode)', () => {
     it('should create a ticket successfully', async () => {
       const guild = createMockGuild();
       const user = createMockUser();
@@ -231,9 +259,171 @@ describe('ticketHandler', () => {
     });
   });
 
-  // ─── closeTicket ──────────────────────────────────────────────
+  // ─── openTicket (channel mode) ────────────────────────────────
 
-  describe('closeTicket', () => {
+  describe('openTicket (channel mode)', () => {
+    beforeEach(() => {
+      getConfig.mockReturnValue({
+        tickets: {
+          enabled: true,
+          mode: 'channel',
+          supportRole: 'role1',
+          category: 'cat1',
+          autoCloseHours: 48,
+          transcriptChannel: null,
+          maxOpenPerUser: 3,
+        },
+      });
+    });
+
+    it('should create a text channel with permission overrides', async () => {
+      const categoryChannel = { id: 'cat1', type: 4 };
+      const createdChannel = createMockChannel({ id: 'ticket-ch' });
+
+      const guild = createMockGuild();
+      guild.channels.cache.set('cat1', categoryChannel);
+      guild.channels.create.mockResolvedValue(createdChannel);
+
+      const user = createMockUser();
+
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 10,
+            guild_id: 'guild1',
+            user_id: 'user1',
+            topic: 'help',
+            thread_id: 'ticket-ch',
+          },
+        ],
+      });
+
+      const result = await openTicket(guild, user, 'help', 'ch1');
+
+      expect(result.ticket.id).toBe(10);
+      expect(result.thread.id).toBe('ticket-ch');
+
+      // Verify guild.channels.create was called with correct params
+      expect(guild.channels.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ticket-testuser-help',
+          type: 0, // GuildText
+          parent: 'cat1',
+          reason: expect.stringContaining('testuser'),
+        }),
+      );
+
+      // Verify permission overrides include @everyone deny, user allow, bot allow, role allow
+      const createCall = guild.channels.create.mock.calls[0][0];
+      const overwrites = createCall.permissionOverwrites;
+      expect(overwrites).toHaveLength(4); // everyone + user + bot + support role
+
+      // @everyone deny ViewChannel
+      const everyoneOverwrite = overwrites.find((o) => o.id === 'guild1');
+      expect(everyoneOverwrite).toBeDefined();
+
+      // User allow
+      const userOverwrite = overwrites.find((o) => o.id === 'user1');
+      expect(userOverwrite).toBeDefined();
+
+      // Bot allow
+      const botOverwrite = overwrites.find((o) => o.id === 'bot1');
+      expect(botOverwrite).toBeDefined();
+
+      // Support role allow
+      const roleOverwrite = overwrites.find((o) => o.id === 'role1');
+      expect(roleOverwrite).toBeDefined();
+    });
+
+    it('should not call thread.members.add in channel mode', async () => {
+      const createdChannel = createMockChannel({ id: 'ticket-ch' });
+      const guild = createMockGuild();
+      guild.channels.create.mockResolvedValue(createdChannel);
+
+      const user = createMockUser();
+
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 11,
+            guild_id: 'guild1',
+            user_id: 'user1',
+            topic: null,
+            thread_id: 'ticket-ch',
+          },
+        ],
+      });
+
+      await openTicket(guild, user, null, 'ch1');
+
+      // Thread mode would call thread.members.add, channel mode should not
+      const threadInCache = guild.channels.cache.get('ch1');
+      expect(threadInCache.threads.create).not.toHaveBeenCalled();
+    });
+
+    it('should work without a category configured', async () => {
+      getConfig.mockReturnValue({
+        tickets: {
+          enabled: true,
+          mode: 'channel',
+          supportRole: null,
+          category: null,
+          autoCloseHours: 48,
+          transcriptChannel: null,
+          maxOpenPerUser: 3,
+        },
+      });
+
+      const createdChannel = createMockChannel({ id: 'ticket-ch2' });
+      const guild = createMockGuild();
+      guild.channels.create.mockResolvedValue(createdChannel);
+
+      const user = createMockUser();
+
+      mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 12,
+            guild_id: 'guild1',
+            user_id: 'user1',
+            topic: null,
+            thread_id: 'ticket-ch2',
+          },
+        ],
+      });
+
+      const result = await openTicket(guild, user, null, 'ch1');
+      expect(result.ticket.id).toBe(12);
+
+      // parent should be undefined when no category
+      const createCall = guild.channels.create.mock.calls[0][0];
+      expect(createCall.parent).toBeUndefined();
+
+      // No support role → only 3 overwrites (everyone + user + bot)
+      expect(createCall.permissionOverwrites).toHaveLength(3);
+    });
+  });
+
+  // ─── closeTicket (thread mode) ────────────────────────────────
+
+  describe('closeTicket (thread mode)', () => {
+    beforeEach(() => {
+      getConfig.mockReturnValue({
+        tickets: {
+          enabled: true,
+          mode: 'thread',
+          supportRole: 'role1',
+          category: null,
+          autoCloseHours: 48,
+          transcriptChannel: 'transcript-ch',
+          maxOpenPerUser: 3,
+        },
+      });
+    });
+
     it('should close a ticket and save transcript', async () => {
       const closer = createMockUser({ id: 'closer1', tag: 'Closer#1234' });
       const messages = new Map([
@@ -351,9 +541,98 @@ describe('ticketHandler', () => {
     });
   });
 
-  // ─── addMember / removeMember ─────────────────────────────────
+  // ─── closeTicket (channel mode) ───────────────────────────────
 
-  describe('addMember', () => {
+  describe('closeTicket (channel mode)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      getConfig.mockReturnValue({
+        tickets: {
+          enabled: true,
+          mode: 'channel',
+          supportRole: null,
+          category: null,
+          autoCloseHours: 48,
+          transcriptChannel: null,
+          maxOpenPerUser: 3,
+        },
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should delete the channel after a delay instead of archiving', async () => {
+      const channel = createMockChannel({
+        guild: { id: 'guild1', channels: { cache: new Map() } },
+      });
+      const closer = createMockUser();
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 5, guild_id: 'guild1', user_id: 'user1', thread_id: 'channel1' }],
+      });
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 5, status: 'closed' }],
+      });
+
+      const result = await closeTicket(channel, closer, 'Done');
+      expect(result.status).toBe('closed');
+
+      // Channel should NOT be deleted immediately
+      expect(channel.delete).not.toHaveBeenCalled();
+
+      // Advance timers past the 10s delay
+      await vi.advanceTimersByTimeAsync(11_000);
+
+      expect(channel.delete).toHaveBeenCalledWith('Ticket #5 closed');
+    });
+
+    it('should handle channel delete failure gracefully', async () => {
+      const channel = createMockChannel({
+        guild: { id: 'guild1', channels: { cache: new Map() } },
+      });
+      channel.delete.mockRejectedValue(new Error('Missing Permissions'));
+      const closer = createMockUser();
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 6, guild_id: 'guild1', user_id: 'user1', thread_id: 'channel1' }],
+      });
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 6, status: 'closed' }],
+      });
+
+      const result = await closeTicket(channel, closer, null);
+      expect(result.status).toBe('closed');
+
+      // Should not throw when delete fails
+      await vi.advanceTimersByTimeAsync(11_000);
+      expect(channel.delete).toHaveBeenCalled();
+    });
+
+    it('should not call setArchived for channel mode', async () => {
+      const channel = createMockChannel({
+        guild: { id: 'guild1', channels: { cache: new Map() } },
+      });
+      // Add setArchived to ensure it's not called
+      channel.setArchived = vi.fn();
+      const closer = createMockUser();
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 7, guild_id: 'guild1', user_id: 'user1', thread_id: 'channel1' }],
+      });
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 7, status: 'closed' }],
+      });
+
+      await closeTicket(channel, closer, null);
+      expect(channel.setArchived).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── addMember (thread mode) ──────────────────────────────────
+
+  describe('addMember (thread mode)', () => {
     it('should add a user to the thread', async () => {
       const thread = createMockThread();
       const user = createMockUser({ id: 'newuser' });
@@ -364,13 +643,46 @@ describe('ticketHandler', () => {
     });
   });
 
-  describe('removeMember', () => {
+  // ─── addMember (channel mode) ─────────────────────────────────
+
+  describe('addMember (channel mode)', () => {
+    it('should update permission overrides to grant access', async () => {
+      const channel = createMockChannel();
+      const user = createMockUser({ id: 'newuser' });
+
+      await addMember(channel, user);
+
+      expect(channel.permissionOverwrites.edit).toHaveBeenCalledWith('newuser', {
+        ViewChannel: true,
+        SendMessages: true,
+      });
+      expect(mockSafeSend).toHaveBeenCalled();
+    });
+  });
+
+  // ─── removeMember (thread mode) ───────────────────────────────
+
+  describe('removeMember (thread mode)', () => {
     it('should remove a user from the thread', async () => {
       const thread = createMockThread();
       const user = createMockUser({ id: 'olduser' });
 
       await removeMember(thread, user);
       expect(thread.members.remove).toHaveBeenCalledWith('olduser');
+      expect(mockSafeSend).toHaveBeenCalled();
+    });
+  });
+
+  // ─── removeMember (channel mode) ──────────────────────────────
+
+  describe('removeMember (channel mode)', () => {
+    it('should delete permission override to revoke access', async () => {
+      const channel = createMockChannel();
+      const user = createMockUser({ id: 'olduser' });
+
+      await removeMember(channel, user);
+
+      expect(channel.permissionOverwrites.delete).toHaveBeenCalledWith('olduser');
       expect(mockSafeSend).toHaveBeenCalled();
     });
   });
@@ -443,6 +755,55 @@ describe('ticketHandler', () => {
       await checkAutoClose(client);
 
       // The update query should have been called
+      const updateCalls = mockQuery.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('UPDATE tickets'),
+      );
+      expect(updateCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should auto-close channel-mode tickets (text channel)', async () => {
+      getConfig.mockReturnValue({
+        tickets: { enabled: true, mode: 'channel', autoCloseHours: 48 },
+      });
+
+      const oldDate = new Date(Date.now() - 80 * 60 * 60 * 1000);
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 20,
+            guild_id: 'guild1',
+            thread_id: 'ticket-ch1',
+            created_at: oldDate.toISOString(),
+          },
+        ],
+      });
+
+      const channel = createMockChannel({
+        id: 'ticket-ch1',
+        guild: { id: 'guild1', channels: { cache: new Map() } },
+      });
+      const lastMsg = { createdAt: oldDate };
+      channel.messages.fetch.mockResolvedValue(new Map([['msg1', lastMsg]]));
+
+      const guild = createMockGuild();
+      guild.channels.fetch = vi.fn().mockResolvedValue(channel);
+
+      const client = {
+        guilds: { cache: new Map([['guild1', guild]]) },
+        user: { id: 'bot1', tag: 'Bot#1234' },
+      };
+
+      // closeTicket queries
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 20, guild_id: 'guild1', user_id: 'user1', thread_id: 'ticket-ch1' }],
+      });
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 20, status: 'closed' }],
+      });
+
+      await checkAutoClose(client);
+
       const updateCalls = mockQuery.mock.calls.filter(
         (call) => typeof call[0] === 'string' && call[0].includes('UPDATE tickets'),
       );
