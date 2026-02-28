@@ -122,6 +122,8 @@ router.use(adaptGuildIdParam, requireGuildModerator);
  *                   type: integer
  *                 page:
  *                   type: integer
+ *                 limit:
+ *                   type: integer
  *                 pages:
  *                   type: integer
  *       "400":
@@ -203,6 +205,7 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
       cases: casesResult.rows,
       total,
       page,
+      limit,
       pages,
     });
   } catch (err) {
@@ -570,6 +573,8 @@ router.get('/stats', moderationRateLimit, async (req, res) => {
  *                   type: integer
  *                 page:
  *                   type: integer
+ *                 limit:
+ *                   type: integer
  *                 pages:
  *                   type: integer
  *                 byAction:
@@ -660,6 +665,7 @@ router.get('/user/:userId/history', moderationRateLimit, async (req, res) => {
       cases: casesResult.rows,
       total,
       page,
+      limit,
       pages,
       byAction,
     });

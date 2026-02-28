@@ -3324,6 +3324,9 @@
                     "page": {
                       "type": "integer"
                     },
+                    "limit": {
+                      "type": "integer"
+                    },
                     "pages": {
                       "type": "integer"
                     }
@@ -3690,6 +3693,9 @@
                       "type": "integer"
                     },
                     "page": {
+                      "type": "integer"
+                    },
+                    "limit": {
                       "type": "integer"
                     },
                     "pages": {
