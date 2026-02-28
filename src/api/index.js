@@ -4,7 +4,9 @@
  */
 
 import { Router } from 'express';
+import { auditLogMiddleware } from './middleware/auditLog.js';
 import { requireAuth } from './middleware/auth.js';
+import auditLogRouter from './routes/auditLog.js';
 import authRouter from './routes/auth.js';
 import communityRouter from './routes/community.js';
 import configRouter from './routes/config.js';
@@ -48,7 +50,15 @@ router.use('/guilds', requireAuth(), guildsRouter);
 // Moderation routes — require API secret or OAuth2 JWT
 router.use('/moderation', requireAuth(), moderationRouter);
 
+// Audit log routes — require API secret or OAuth2 JWT
+// (mounted before guilds catch-all to handle /:id/audit-log)
+router.use('/guilds', requireAuth(), auditLogRouter);
+
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
+
+// Audit log middleware — records all mutating authenticated requests.
+// Applied after all route mounts so it captures POST/PUT/PATCH/DELETE on all routes above.
+router.use(auditLogMiddleware());
 
 export default router;
