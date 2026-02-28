@@ -167,7 +167,7 @@ export function auditLogMiddleware() {
     const cleanPath = (req.originalUrl || req.path).split('?')[0];
 
     const userId = req.user?.userId || req.authMethod || 'unknown';
-    const guildId = extractGuildId(cleanPath);
+    const guildId = extractGuildId(cleanPath) || req.body?.guildId || null;
     const action = deriveAction(req.method, cleanPath);
     const ipAddress = req.ip || req.socket?.remoteAddress;
 

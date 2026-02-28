@@ -446,7 +446,9 @@ describe('guilds routes', () => {
       // and after snapshot; provide pass-through values so the route handler gets
       // the intended guild-scoped config response.
       getConfig.mockReturnValueOnce({});
-      getConfig.mockReturnValueOnce({ ai: { enabled: true, systemPrompt: 'claude-3', historyLength: 20 } });
+      getConfig.mockReturnValueOnce({
+        ai: { enabled: true, systemPrompt: 'claude-3', historyLength: 20 },
+      });
       getConfig.mockReturnValueOnce({
         ai: { enabled: true, systemPrompt: 'claude-4', historyLength: 20 },
       });
