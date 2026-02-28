@@ -30,23 +30,17 @@ const router = Router();
 // Graceful fallback for restartTracker — may not exist yet
 let getRestarts = null;
 let getRestartPool = null;
+let getPoolStats = null;
 try {
   const mod = await import('../../utils/restartTracker.js');
   getRestarts = mod.getRestarts ?? null;
   const dbMod = await import('../../db.js');
   getRestartPool = dbMod.getPool ?? null;
+  getPoolStats = dbMod.getPoolStats ?? null;
 } catch {
   // restartTracker not available yet — fallback to null
 }
 
-// DB pool stats — imported independently so restartTracker failures don't affect it
-let getPoolStats = null;
-try {
-  const dbMod = await import('../../db.js');
-  getPoolStats = dbMod.getPoolStats ?? null;
-} catch {
-  // db module not available — fallback to null
-}
 
 /**
  * GET / — Health check endpoint
