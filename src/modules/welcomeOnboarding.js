@@ -6,7 +6,7 @@ import {
   StringSelectMenuBuilder,
 } from 'discord.js';
 import { info } from '../logger.js';
-import { safeReply, safeSend } from '../utils/safeSend.js';
+import { safeReply, safeEditReply, safeSend } from '../utils/safeSend.js';
 
 export const RULES_ACCEPT_BUTTON_ID = 'welcome_rules_accept';
 export const ROLE_MENU_SELECT_ID = 'welcome_role_select';
@@ -107,12 +107,12 @@ async function fetchRole(guild, roleId) {
 }
 
 export async function handleRulesAcceptButton(interaction, config) {
+  await interaction.deferReply({ ephemeral: true });
   const welcome = normalizeWelcomeOnboardingConfig(config?.welcome);
 
   if (!welcome.verifiedRole) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '⚠️ Verified role is not configured yet. Ask an admin to set `welcome.verifiedRole`.',
-      ephemeral: true,
     });
     return;
   }
@@ -121,26 +121,23 @@ export async function handleRulesAcceptButton(interaction, config) {
   const role = await fetchRole(interaction.guild, welcome.verifiedRole);
 
   if (!role) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content:
         '❌ I cannot find the configured verified role. Ask an admin to fix onboarding config.',
-      ephemeral: true,
     });
     return;
   }
 
   if (!role.editable) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '❌ I cannot assign the verified role (it is above my highest role).',
-      ephemeral: true,
     });
     return;
   }
 
   if (member.roles.cache.has(role.id)) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '✅ You are already verified.',
-      ephemeral: true,
     });
     return;
   }
@@ -170,9 +167,8 @@ export async function handleRulesAcceptButton(interaction, config) {
     }
   }
 
-  await safeReply(interaction, {
+  await safeEditReply(interaction, {
     content: `✅ Rules accepted! You now have <@&${role.id}>.`,
-    ephemeral: true,
   });
 
   info('User verified via rules button', {
@@ -183,12 +179,12 @@ export async function handleRulesAcceptButton(interaction, config) {
 }
 
 export async function handleRoleMenuSelection(interaction, config) {
+  await interaction.deferReply({ ephemeral: true });
   const welcome = normalizeWelcomeOnboardingConfig(config?.welcome);
 
   if (!welcome.roleMenu.enabled || welcome.roleMenu.options.length === 0) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: '⚠️ Role menu is not configured on this server.',
-      ephemeral: true,
     });
     return;
   }
@@ -223,11 +219,10 @@ export async function handleRoleMenuSelection(interaction, config) {
     );
   }
 
-  await safeReply(interaction, {
+  await safeEditReply(interaction, {
     content:
       addable.length === 0 && removable.length === 0
         ? '✅ No role changes were needed.'
         : `✅ Updated roles. Added: ${addable.length}, Removed: ${removable.length}.`,
-    ephemeral: true,
   });
 }
