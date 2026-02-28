@@ -300,7 +300,6 @@ describe('rateLimit coverage', () => {
       expect(result.limited).toBe(true);
     });
   });
-});
 
   describe('warnUser with null reply', () => {
     it('handles null reply from safeReply gracefully', async () => {
@@ -317,5 +316,5 @@ describe('rateLimit coverage', () => {
       // No error thrown even when reply is null
     });
   });
-
+});
 
