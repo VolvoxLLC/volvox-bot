@@ -63,16 +63,26 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
- * Check if a channel is a valid ticket context (thread or ticket text channel).
+ * Check if a channel is a valid ticket context (thread or ticket text channel)
+ * by verifying the channel has an open ticket in the database.
  *
  * @param {import('discord.js').Channel} channel
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function isTicketContext(channel) {
+async function isTicketContext(channel) {
   if (!channel) return false;
-  if (typeof channel.isThread === 'function' && channel.isThread()) return true;
-  if (channel.type === ChannelType.GuildText) return true;
-  return false;
+  const isThread = typeof channel.isThread === 'function' && channel.isThread();
+  const isTextChannel = channel.type === ChannelType.GuildText;
+  if (!isThread && !isTextChannel) return false;
+
+  // Verify this channel/thread is actually an open ticket
+  const pool = getPool();
+  if (!pool) return false;
+  const { rows } = await pool.query(
+    'SELECT 1 FROM tickets WHERE thread_id = $1 AND status = $2',
+    [channel.id, 'open'],
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -96,7 +106,7 @@ export async function execute(interaction) {
   const subcommand = interaction.options.getSubcommand();
 
   if (subcommand === 'open') {
-    await handleOpen(interaction, ticketConfig);
+    await handleOpen(interaction);
   } else if (subcommand === 'close') {
     await handleClose(interaction);
   } else if (subcommand === 'add') {
@@ -112,9 +122,8 @@ export async function execute(interaction) {
  * Handle /ticket open — create a new ticket.
  *
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {object} ticketConfig
  */
-async function handleOpen(interaction, ticketConfig) {
+async function handleOpen(interaction) {
   const topic = interaction.options.getString('topic');
 
   try {
@@ -145,7 +154,7 @@ async function handleClose(interaction) {
   const reason = interaction.options.getString('reason');
   const channel = interaction.channel;
 
-  if (!isTicketContext(channel)) {
+  if (!(await isTicketContext(channel))) {
     await safeEditReply(interaction, {
       content: '❌ This command must be used inside a ticket thread or channel.',
     });
@@ -174,7 +183,7 @@ async function handleAdd(interaction) {
   const user = interaction.options.getUser('user');
   const channel = interaction.channel;
 
-  if (!isTicketContext(channel)) {
+  if (!(await isTicketContext(channel))) {
     await safeEditReply(interaction, {
       content: '❌ This command must be used inside a ticket thread or channel.',
     });
@@ -203,7 +212,7 @@ async function handleRemove(interaction) {
   const user = interaction.options.getUser('user');
   const channel = interaction.channel;
 
-  if (!isTicketContext(channel)) {
+  if (!(await isTicketContext(channel))) {
     await safeEditReply(interaction, {
       content: '❌ This command must be used inside a ticket thread or channel.',
     });
@@ -235,7 +244,7 @@ async function handlePanel(interaction, guildConfig) {
     !isModerator(interaction.member, guildConfig)
   ) {
     await safeEditReply(interaction, {
-      content: '❌ You need administrator permissions to use this command.',
+      content: '❌ You need moderator or administrator permissions to use this command.',
     });
     return;
   }
