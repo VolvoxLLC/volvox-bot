@@ -159,12 +159,19 @@ router.get('/:guildId/showcases', async (req, res) => {
 
   try {
     const [countResult, projectsResult] = await Promise.all([
-      pool.query('SELECT COUNT(*)::int AS total FROM showcases WHERE guild_id = $1', [guildId]),
+      pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM showcases s
+         INNER JOIN user_stats us ON us.guild_id = s.guild_id AND us.user_id = s.author_id
+         WHERE s.guild_id = $1 AND us.public_profile = TRUE`,
+        [guildId],
+      ),
       pool.query(
         `SELECT s.id, s.name, s.description, s.tech_stack, s.repo_url, s.live_url,
                 s.author_id, s.upvotes, s.created_at
          FROM showcases s
-         WHERE s.guild_id = $1
+         INNER JOIN user_stats us ON us.guild_id = s.guild_id AND us.user_id = s.author_id
+         WHERE s.guild_id = $1 AND us.public_profile = TRUE
          ORDER BY ${orderBy}
          LIMIT $2 OFFSET $3`,
         [guildId, limit, offset],
