@@ -163,21 +163,24 @@ export function auditLogMiddleware() {
 
     req._auditLogAttached = true;
 
+    // Strip query string once — req.originalUrl includes it (e.g. /api/v1/guilds/123/config?limit=25)
+    const cleanPath = (req.originalUrl || req.path).split('?')[0];
+
     const userId = req.user?.userId || req.authMethod || 'unknown';
-    const guildId = extractGuildId(req.originalUrl || req.path);
-    const action = deriveAction(req.method, req.originalUrl || req.path);
+    const guildId = extractGuildId(cleanPath);
+    const action = deriveAction(req.method, cleanPath);
     const ipAddress = req.ip || req.socket?.remoteAddress;
 
     // For config updates, capture before state to compute diff.
-    // Reuse the already-fetched config snapshot — it reflects state before the handler runs.
+    // Use guild-scoped config for accurate before/after snapshots.
     const isConfigUpdate =
-      (req.originalUrl || req.path).includes('/config') &&
+      cleanPath.includes('/config') &&
       (req.method === 'PUT' || req.method === 'PATCH');
 
     let beforeConfig = null;
     if (isConfigUpdate) {
       try {
-        beforeConfig = structuredClone(config);
+        beforeConfig = structuredClone(getConfig(guildId));
       } catch {
         // Non-critical — proceed without diff
       }
@@ -188,7 +191,7 @@ export function auditLogMiddleware() {
       // Only log successful mutations (2xx/3xx)
       if (res.statusCode >= 400) return;
 
-      const details = { method: req.method, path: req.originalUrl || req.path };
+      const details = { method: req.method, path: cleanPath };
 
       // Include request body with sensitive fields masked
       if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
@@ -198,7 +201,7 @@ export function auditLogMiddleware() {
       // Compute config diff for config updates, masking sensitive fields in both snapshots
       if (isConfigUpdate && beforeConfig) {
         try {
-          const afterConfig = getConfig();
+          const afterConfig = getConfig(guildId);
           const diff = computeConfigDiff(beforeConfig, afterConfig);
           if (Object.keys(diff.before).length > 0 || Object.keys(diff.after).length > 0) {
             details.configDiff = {
@@ -214,7 +217,7 @@ export function auditLogMiddleware() {
       // Derive target type/id from path
       let targetType = null;
       let targetId = null;
-      const pathSegments = (req.originalUrl || req.path)
+      const pathSegments = cleanPath
         .replace(/^\/api\/v1\/?/, '')
         .split('/')
         .filter(Boolean);
