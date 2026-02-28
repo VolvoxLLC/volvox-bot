@@ -218,6 +218,7 @@ export interface ReviewConfig extends ToggleSectionConfig {
 /** Daily challenge scheduler settings. */
 /** Ticket system settings. */
 export interface TicketsConfig extends ToggleSectionConfig {
+  mode: 'thread' | 'channel';
   supportRole: string | null;
   category: string | null;
   autoCloseHours: number;

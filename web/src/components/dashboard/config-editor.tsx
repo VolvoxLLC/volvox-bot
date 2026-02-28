@@ -1702,6 +1702,26 @@ export function ConfigEditor() {
               label="Tickets"
             />
           </div>
+          <label className="space-y-2">
+            <span className="text-sm font-medium">Ticket Mode</span>
+            <select
+              value={draftConfig.tickets?.mode ?? 'thread'}
+              onChange={(e) =>
+                updateDraftConfig((prev) => ({
+                  ...prev,
+                  tickets: { ...prev.tickets, mode: e.target.value as 'thread' | 'channel' },
+                }))
+              }
+              disabled={saving}
+              className={inputClasses}
+            >
+              <option value="thread">Thread (private thread per ticket)</option>
+              <option value="channel">Channel (dedicated text channel per ticket)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Thread mode creates private threads. Channel mode creates locked text channels with permission overrides.
+            </p>
+          </label>
           <div className="grid grid-cols-2 gap-4">
             <label className="space-y-2">
               <span className="text-sm font-medium">Support Role ID</span>
