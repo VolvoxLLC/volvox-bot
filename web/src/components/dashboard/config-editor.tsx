@@ -127,6 +127,10 @@ export function ConfigEditor() {
   /** Working copy that the user edits. */
   const [draftConfig, setDraftConfig] = useState<GuildConfig | null>(null);
 
+  /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
+  const [roleMenuRaw, setRoleMenuRaw] = useState('');
+  const [dmStepsRaw, setDmStepsRaw] = useState('');
+
   const abortRef = useRef<AbortController | null>(null);
 
   const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
@@ -195,6 +199,8 @@ export function ConfigEditor() {
 
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
+      setRoleMenuRaw(stringifyRoleMenuOptions(data.welcome?.roleMenu?.options ?? []));
+      setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
       const msg = (err as Error).message || 'Failed to load config';
@@ -365,6 +371,8 @@ export function ConfigEditor() {
   const discardChanges = useCallback(() => {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
+    setRoleMenuRaw(stringifyRoleMenuOptions(savedConfig.welcome?.roleMenu?.options ?? []));
+    setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
     toast.success('Changes discarded.');
   }, [savedConfig]);
 
@@ -783,10 +791,13 @@ export function ConfigEditor() {
               />
             </div>
             <textarea
-              value={stringifyRoleMenuOptions(draftConfig.welcome?.roleMenu?.options ?? [])}
-              onChange={(e) =>
-                updateWelcomeRoleMenu('options', parseRoleMenuOptions(e.target.value))
-              }
+              value={roleMenuRaw}
+              onChange={(e) => setRoleMenuRaw(e.target.value)}
+              onBlur={() => {
+                const parsed = parseRoleMenuOptions(roleMenuRaw);
+                updateWelcomeRoleMenu('options', parsed);
+                setRoleMenuRaw(stringifyRoleMenuOptions(parsed));
+              }}
               rows={5}
               disabled={saving}
               className={inputClasses}
@@ -808,16 +819,16 @@ export function ConfigEditor() {
               />
             </div>
             <textarea
-              value={(draftConfig.welcome?.dmSequence?.steps ?? []).join('\n')}
-              onChange={(e) =>
-                updateWelcomeDmSequence(
-                  'steps',
-                  e.target.value
-                    .split('\n')
-                    .map((line) => line.trim())
-                    .filter(Boolean),
-                )
-              }
+              value={dmStepsRaw}
+              onChange={(e) => setDmStepsRaw(e.target.value)}
+              onBlur={() => {
+                const parsed = dmStepsRaw
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean);
+                updateWelcomeDmSequence('steps', parsed);
+                setDmStepsRaw(parsed.join('\n'));
+              }}
               rows={4}
               disabled={saving}
               className={inputClasses}
