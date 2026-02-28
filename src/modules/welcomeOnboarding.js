@@ -94,7 +94,7 @@ export function buildRoleMenuMessage(welcomeConfig) {
     .setMaxValues(onboarding.roleMenu.options.length)
     .addOptions(
       onboarding.roleMenu.options.map((opt) => ({
-        label: opt.label,
+        label: opt.label.slice(0, 100),
         value: opt.roleId,
         ...(opt.description ? { description: opt.description.slice(0, 100) } : {}),
       })),
@@ -151,10 +151,16 @@ export async function handleRulesAcceptButton(interaction, config) {
   try {
     await member.roles.add(role, 'Accepted server rules');
   } catch (roleErr) {
+    info('Failed to assign verified role during rules acceptance', {
+      guildId: interaction.guildId,
+      userId: interaction.user.id,
+      roleId: role.id,
+      error: roleErr?.message,
+    });
     await safeEditReply(interaction, {
       content: '❌ Failed to assign the verified role. Please try again or contact an admin.',
     });
-    throw roleErr;
+    return;
   }
 
   if (welcome.introChannel) {
