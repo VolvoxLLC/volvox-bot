@@ -170,7 +170,7 @@ function startLeakDetection(poolInstance, maxSize) {
         source: 'pool_monitor',
       });
     }
-  }, 30_000);
+  }, 30_000).unref();
 }
 
 /**
