@@ -71,13 +71,13 @@ describe('tickets routes', () => {
 
   describe('authentication', () => {
     it('should return 401 without auth', async () => {
-      const res = await request(app).get('/api/guilds/guild1/tickets');
+      const res = await request(app).get('/api/v1/guilds/guild1/tickets');
       expect(res.status).toBe(401);
     });
 
     it('should return 404 for unknown guild', async () => {
       const res = await authed(
-        request(app).get('/api/guilds/unknown-guild/tickets'),
+        request(app).get('/api/v1/guilds/unknown-guild/tickets'),
       );
       expect(res.status).toBe(404);
     });
@@ -93,7 +93,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [{ total: 0 }] })
         .mockResolvedValueOnce({ rows: [] });
 
-      const res = await authed(request(app).get('/api/guilds/guild1/tickets'));
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/tickets'));
       expect(res.status).toBe(200);
       expect(res.body.tickets).toEqual([]);
       expect(res.body.total).toBe(0);
@@ -119,7 +119,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [ticket] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets?page=1&limit=10'),
+        request(app).get('/api/v1/guilds/guild1/tickets?page=1&limit=10'),
       );
       expect(res.status).toBe(200);
       expect(res.body.tickets).toHaveLength(1);
@@ -134,7 +134,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets?status=open'),
+        request(app).get('/api/v1/guilds/guild1/tickets?status=open'),
       );
       expect(res.status).toBe(200);
 
@@ -150,7 +150,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets?user=user123'),
+        request(app).get('/api/v1/guilds/guild1/tickets?user=user123'),
       );
       expect(res.status).toBe(200);
 
@@ -165,7 +165,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets?status=closed&user=user456'),
+        request(app).get('/api/v1/guilds/guild1/tickets?status=closed&user=user456'),
       );
       expect(res.status).toBe(200);
 
@@ -180,7 +180,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets?limit=999'),
+        request(app).get('/api/v1/guilds/guild1/tickets?limit=999'),
       );
       expect(res.status).toBe(200);
       expect(res.body.limit).toBe(100);
@@ -192,7 +192,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets?page=-1'),
+        request(app).get('/api/v1/guilds/guild1/tickets?page=-1'),
       );
       expect(res.status).toBe(200);
       expect(res.body.page).toBe(1);
@@ -204,7 +204,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets?status=invalid'),
+        request(app).get('/api/v1/guilds/guild1/tickets?status=invalid'),
       );
       expect(res.status).toBe(200);
 
@@ -217,7 +217,7 @@ describe('tickets routes', () => {
       mockPool.query.mockRejectedValue(new Error('DB connection lost'));
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets'),
+        request(app).get('/api/v1/guilds/guild1/tickets'),
       );
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Failed to fetch tickets');
@@ -240,7 +240,7 @@ describe('tickets routes', () => {
       mockPool.query.mockResolvedValueOnce({ rows: [ticket] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets/1'),
+        request(app).get('/api/v1/guilds/guild1/tickets/1'),
       );
       expect(res.status).toBe(200);
       expect(res.body.id).toBe(1);
@@ -251,7 +251,7 @@ describe('tickets routes', () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets/999'),
+        request(app).get('/api/v1/guilds/guild1/tickets/999'),
       );
       expect(res.status).toBe(404);
       expect(res.body.error).toBe('Ticket not found');
@@ -261,7 +261,7 @@ describe('tickets routes', () => {
       mockPool.query.mockRejectedValue(new Error('Query failed'));
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets/1'),
+        request(app).get('/api/v1/guilds/guild1/tickets/1'),
       );
       expect(res.status).toBe(500);
     });
@@ -277,7 +277,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [{ count: 12 }] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets/stats'),
+        request(app).get('/api/v1/guilds/guild1/tickets/stats'),
       );
       expect(res.status).toBe(200);
       expect(res.body.openCount).toBe(5);
@@ -292,7 +292,7 @@ describe('tickets routes', () => {
         .mockResolvedValueOnce({ rows: [{ count: 0 }] });
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets/stats'),
+        request(app).get('/api/v1/guilds/guild1/tickets/stats'),
       );
       expect(res.status).toBe(200);
       expect(res.body.openCount).toBe(0);
@@ -304,7 +304,7 @@ describe('tickets routes', () => {
       mockPool.query.mockRejectedValue(new Error('Stats query failed'));
 
       const res = await authed(
-        request(app).get('/api/guilds/guild1/tickets/stats'),
+        request(app).get('/api/v1/guilds/guild1/tickets/stats'),
       );
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Failed to fetch ticket stats');

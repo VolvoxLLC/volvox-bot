@@ -13,8 +13,8 @@ import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
-import webhooksRouter from './routes/webhooks.js';
 import ticketsRouter from './routes/tickets.js';
+import webhooksRouter from './routes/webhooks.js';
 
 const router = Router();
 
@@ -38,6 +38,10 @@ router.use('/guilds', requireAuth(), membersRouter);
 // (mounted before guilds to handle /:id/conversations/* before the catch-all guild endpoint)
 router.use('/guilds/:id/conversations', requireAuth(), conversationsRouter);
 
+// Ticket routes — require API secret or OAuth2 JWT
+// (mounted before guilds to handle /:id/tickets/* before the catch-all guild endpoint)
+router.use('/guilds', requireAuth(), ticketsRouter);
+
 // Guild routes — require API secret or OAuth2 JWT
 router.use('/guilds', requireAuth(), guildsRouter);
 
@@ -46,8 +50,5 @@ router.use('/moderation', requireAuth(), moderationRouter);
 
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
-
-// Ticket routes — require API secret or OAuth2 JWT
-router.use('/guilds', requireAuth(), ticketsRouter);
 
 export default router;

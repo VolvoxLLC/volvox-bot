@@ -6,8 +6,7 @@
  */
 
 import { Router } from 'express';
-import { getPool } from '../../db.js';
-import { info, error as logError } from '../../logger.js';
+import { error as logError } from '../../logger.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
@@ -15,7 +14,17 @@ const router = Router();
 
 /** Rate limiter for ticket API endpoints — 30 req/min per IP. */
 const ticketRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
-router.use(ticketRateLimit);
+
+
+/**
+ * Helper to get the database pool from app.locals.
+ *
+ * @param {import('express').Request} req
+ * @returns {import('pg').Pool | null}
+ */
+function getDbPool(req) {
+  return req.app.locals.dbPool || null;
+}
 
 // ─── GET /:id/tickets/stats ───────────────────────────────────────────────────
 
@@ -23,13 +32,12 @@ router.use(ticketRateLimit);
  * GET /:id/tickets/stats — Ticket statistics for a guild.
  * Returns open count, avg resolution time, and tickets this week.
  */
-router.get('/:id/tickets/stats', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/tickets/stats', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { id: guildId } = req.params;
+  const pool = getDbPool(req);
+  if (!pool) return res.status(503).json({ error: 'Database not available' });
 
   try {
-    const pool = getPool();
-    if (!pool) return res.status(503).json({ error: 'Database not available' });
-
     const [openResult, avgResult, weekResult] = await Promise.all([
       pool.query(
         'SELECT COUNT(*)::int AS count FROM tickets WHERE guild_id = $1 AND status = $2',
@@ -67,13 +75,12 @@ router.get('/:id/tickets/stats', requireGuildAdmin, validateGuild, async (req, r
 /**
  * GET /:id/tickets/:ticketId — Ticket detail with transcript.
  */
-router.get('/:id/tickets/:ticketId', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/tickets/:ticketId', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { id: guildId, ticketId } = req.params;
+  const pool = getDbPool(req);
+  if (!pool) return res.status(503).json({ error: 'Database not available' });
 
   try {
-    const pool = getPool();
-    if (!pool) return res.status(503).json({ error: 'Database not available' });
-
     const { rows } = await pool.query(
       'SELECT * FROM tickets WHERE guild_id = $1 AND id = $2',
       [guildId, Number.parseInt(ticketId, 10)],
@@ -101,17 +108,16 @@ router.get('/:id/tickets/:ticketId', requireGuildAdmin, validateGuild, async (re
  *   page    — Page number (default 1)
  *   limit   — Items per page (default 25, max 100)
  */
-router.get('/:id/tickets', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/tickets', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { id: guildId } = req.params;
   const { status, user } = req.query;
-  let page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-  let limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
   const offset = (page - 1) * limit;
+  const pool = getDbPool(req);
+  if (!pool) return res.status(503).json({ error: 'Database not available' });
 
   try {
-    const pool = getPool();
-    if (!pool) return res.status(503).json({ error: 'Database not available' });
-
     const conditions = ['guild_id = $1'];
     const params = [guildId];
     let paramIndex = 2;

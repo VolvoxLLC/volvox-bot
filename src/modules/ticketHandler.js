@@ -318,7 +318,7 @@ export async function checkAutoClose(client) {
 
       // Get the last message timestamp in the thread
       const lastMessages = await thread.messages.fetch({ limit: 1 });
-      const lastMessage = lastMessages.first();
+      const lastMessage = lastMessages.size > 0 ? lastMessages.values().next().value : null;
       const lastActivity = lastMessage
         ? lastMessage.createdAt
         : new Date(ticket.created_at);
@@ -334,7 +334,7 @@ export async function checkAutoClose(client) {
       } else if (hoursSinceActivity >= ticketConfig.autoCloseHours) {
         // Check if we already sent a warning (look for our warning message)
         const recentMessages = await thread.messages.fetch({ limit: 5 });
-        const hasWarning = recentMessages.some(
+        const hasWarning = Array.from(recentMessages.values()).some(
           (msg) => msg.author?.id === client.user.id && msg.content?.includes('auto-close'),
         );
 
