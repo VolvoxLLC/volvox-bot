@@ -952,7 +952,6 @@ describe('ticketHandler', () => {
       await expect(checkAutoClose(client)).resolves.toBeUndefined();
     });
 
-
     it('should continue when ticket processing throws inside loop', async () => {
       getConfig.mockImplementation(() => {
         throw new Error('config failure');
