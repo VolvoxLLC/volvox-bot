@@ -7,6 +7,7 @@ export interface AnalyticsRange {
   to: string;
   interval: AnalyticsInterval;
   channelId: string | null;
+  compare?: boolean;
 }
 
 export interface DashboardKpis {
@@ -37,6 +38,17 @@ export interface ModelUsage {
   costUsd: number;
 }
 
+export interface ChannelBreakdownEntry {
+  channelId: string;
+  name: string;
+  messages: number;
+}
+
+export interface CommandUsageEntry {
+  command: string;
+  uses: number;
+}
+
 export interface DashboardAnalytics {
   guildId: string;
   range: AnalyticsRange;
@@ -50,11 +62,19 @@ export interface DashboardAnalytics {
       completion: number;
     };
   };
-  channelActivity: Array<{
-    channelId: string;
-    name: string;
-    messages: number;
-  }>;
+  channelActivity: ChannelBreakdownEntry[];
+  topChannels?: ChannelBreakdownEntry[];
+  commandUsage?: {
+    source: 'logs' | 'unavailable';
+    items: CommandUsageEntry[];
+  };
+  comparison?: {
+    previousRange: {
+      from: string;
+      to: string;
+    };
+    kpis: DashboardKpis;
+  } | null;
   heatmap: Array<{
     dayOfWeek: number;
     hour: number;

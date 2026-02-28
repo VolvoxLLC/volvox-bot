@@ -205,6 +205,31 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
     );
   });
 
+  it("forwards compare query param to upstream analytics endpoint", async () => {
+    mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: () => Promise.resolve({ guildId: "guild-1" }),
+    } as Response);
+
+    const response = await GET(
+      createRequest(
+        "http://localhost:3000/api/guilds/guild-1/analytics?range=week&compare=1&channelId=123",
+      ),
+      {
+        params: Promise.resolve({ guildId: "guild-1" }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+    expect(calledUrl).toContain("compare=1");
+    expect(calledUrl).toContain("channelId=123");
+  });
+
   it("forwards upstream error status and message", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
 

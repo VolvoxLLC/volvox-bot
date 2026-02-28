@@ -1,6 +1,18 @@
 'use client';
 
-import { Activity, Bot, Coins, MessageSquare, RefreshCw, UserPlus, Users } from 'lucide-react';
+import {
+  Activity,
+  ArrowDown,
+  ArrowUp,
+  Bot,
+  Coins,
+  Download,
+  MessageSquare,
+  Minus,
+  RefreshCw,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
@@ -42,6 +54,14 @@ const PIE_COLORS = ['#5865F2', '#22C55E', '#F59E0B', '#A855F7', '#06B6D4'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+type KpiCard = {
+  label: string;
+  value: number | undefined;
+  previous: number | undefined;
+  icon: typeof MessageSquare;
+  format: (value: number) => string;
+};
+
 function KpiSkeleton() {
   return (
     <Card>
@@ -56,6 +76,28 @@ function KpiSkeleton() {
       </CardContent>
     </Card>
   );
+}
+
+function escapeCsvCell(value: string | number | null): string {
+  if (value === null) return '';
+  const text = String(value);
+  if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function toDeltaPercent(current: number, previous: number): number | null {
+  if (previous === 0) {
+    return current === 0 ? 0 : null;
+  }
+  return ((current - previous) / previous) * 100;
+}
+
+function formatDeltaPercent(deltaPercent: number | null): string {
+  if (deltaPercent === null) return '—';
+  if (deltaPercent === 0) return '0%';
+  return `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%`;
 }
 
 export function AnalyticsDashboard() {
@@ -73,6 +115,7 @@ export function AnalyticsDashboard() {
   );
   const [customToApplied, setCustomToApplied] = useState<string>(formatDateInput(now));
   const [channelFilter, setChannelFilter] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,8 +140,12 @@ export function AnalyticsDashboard() {
       params.set('channelId', channelFilter);
     }
 
+    if (compareMode) {
+      params.set('compare', '1');
+    }
+
     return params.toString();
-  }, [channelFilter, customFromApplied, customToApplied, rangePreset]);
+  }, [channelFilter, compareMode, customFromApplied, customToApplied, rangePreset]);
 
   const fetchAnalytics = useCallback(
     async (backgroundRefresh = false) => {
@@ -225,6 +272,112 @@ export function AnalyticsDashboard() {
     [analytics?.aiUsage.tokens.completion, analytics?.aiUsage.tokens.prompt],
   );
 
+  const topChannels = analytics?.topChannels ?? analytics?.channelActivity ?? [];
+
+  const kpiCards = useMemo<KpiCard[]>(
+    () => [
+      {
+        label: 'Total messages',
+        value: analytics?.kpis.totalMessages,
+        previous: analytics?.comparison?.kpis.totalMessages,
+        icon: MessageSquare,
+        format: formatNumber,
+      },
+      {
+        label: 'AI requests',
+        value: analytics?.kpis.aiRequests,
+        previous: analytics?.comparison?.kpis.aiRequests,
+        icon: Bot,
+        format: formatNumber,
+      },
+      {
+        label: 'AI cost (est.)',
+        value: analytics?.kpis.aiCostUsd,
+        previous: analytics?.comparison?.kpis.aiCostUsd,
+        icon: Coins,
+        format: formatUsd,
+      },
+      {
+        label: 'Active users',
+        value: analytics?.kpis.activeUsers,
+        previous: analytics?.comparison?.kpis.activeUsers,
+        icon: Users,
+        format: formatNumber,
+      },
+      {
+        label: 'New members',
+        value: analytics?.kpis.newMembers,
+        previous: analytics?.comparison?.kpis.newMembers,
+        icon: UserPlus,
+        format: formatNumber,
+      },
+    ],
+    [analytics],
+  );
+
+  const exportCsv = useCallback(() => {
+    if (!analytics) return;
+
+    const rows: string[] = [];
+    rows.push('# Analytics export');
+    rows.push(`# Generated at,${escapeCsvCell(new Date().toISOString())}`);
+    rows.push(`# Guild ID,${escapeCsvCell(analytics.guildId)}`);
+    rows.push(`# Range,${escapeCsvCell(analytics.range.type)}`);
+    rows.push(`# From,${escapeCsvCell(analytics.range.from)}`);
+    rows.push(`# To,${escapeCsvCell(analytics.range.to)}`);
+    rows.push(`# Interval,${escapeCsvCell(analytics.range.interval)}`);
+    rows.push(`# Channel filter,${escapeCsvCell(analytics.range.channelId ?? 'all')}`);
+    rows.push(`# Compare mode,${escapeCsvCell(compareMode ? 'enabled' : 'disabled')}`);
+    rows.push('');
+
+    rows.push('KPI,Current,Previous,DeltaPercent');
+    for (const card of kpiCards) {
+      const current = card.value ?? 0;
+      const previous = compareMode ? (card.previous ?? 0) : null;
+      const delta = compareMode && previous !== null ? toDeltaPercent(current, previous) : null;
+
+      rows.push(
+        [
+          escapeCsvCell(card.label),
+          escapeCsvCell(current),
+          escapeCsvCell(previous),
+          escapeCsvCell(delta === null ? null : Number(delta.toFixed(2))),
+        ].join(','),
+      );
+    }
+
+    rows.push('');
+    rows.push('Top Channels');
+    rows.push('Channel ID,Channel Name,Messages');
+    for (const channel of topChannels) {
+      rows.push(
+        [
+          escapeCsvCell(channel.channelId),
+          escapeCsvCell(channel.name),
+          escapeCsvCell(channel.messages),
+        ].join(','),
+      );
+    }
+
+    rows.push('');
+    rows.push('Command Usage');
+    rows.push(`# Source,${escapeCsvCell(analytics.commandUsage?.source ?? 'unavailable')}`);
+    rows.push('Command,Uses');
+    for (const entry of analytics.commandUsage?.items ?? []) {
+      rows.push([escapeCsvCell(entry.command), escapeCsvCell(entry.uses)].join(','));
+    }
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analytics-${analytics.guildId}-${analytics.range.type}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }, [analytics, compareMode, kpiCards, topChannels]);
+
   if (!guildId) {
     return (
       <Card>
@@ -236,11 +389,10 @@ export function AnalyticsDashboard() {
     );
   }
 
-  const kpis = analytics?.kpis;
   const showKpiSkeleton = loading && !analytics;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
@@ -270,6 +422,14 @@ export function AnalyticsDashboard() {
               {preset.label}
             </Button>
           ))}
+
+          <Button
+            variant={compareMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCompareMode((current) => !current)}
+          >
+            Compare vs previous
+          </Button>
 
           {rangePreset === 'custom' ? (
             <>
@@ -314,6 +474,16 @@ export function AnalyticsDashboard() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={exportCsv}
+            disabled={!analytics}
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
       </div>
 
@@ -329,85 +499,56 @@ export function AnalyticsDashboard() {
         </Card>
       ) : null}
 
-      {/* KPI cards with loading skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {showKpiSkeleton ? (
-          (['kpi-0', 'kpi-1', 'kpi-2', 'kpi-3', 'kpi-4'] as const).map((key) => (
-            <KpiSkeleton key={key} />
-          ))
-        ) : (
-          <>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total messages</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.totalMessages) : '\u2014'}
-                  </span>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+        {showKpiSkeleton
+          ? (['kpi-0', 'kpi-1', 'kpi-2', 'kpi-3', 'kpi-4'] as const).map((key) => (
+              <KpiSkeleton key={key} />
+            ))
+          : kpiCards.map((card) => {
+              const Icon = card.icon;
+              const value = card.value ?? 0;
+              const previous = card.previous ?? 0;
+              const delta = compareMode ? toDeltaPercent(value, previous) : null;
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">AI requests</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.aiRequests) : '\u2014'}
-                  </span>
-                  <Bot className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+              const deltaColor =
+                delta === null
+                  ? 'text-muted-foreground'
+                  : delta > 0
+                    ? 'text-emerald-600'
+                    : delta < 0
+                      ? 'text-rose-600'
+                      : 'text-muted-foreground';
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">AI cost (est.)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">
-                    {kpis ? formatUsd(kpis.aiCostUsd) : '\u2014'}
-                  </span>
-                  <Coins className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Active users</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.activeUsers) : '\u2014'}
-                  </span>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">New members</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">
-                    {kpis ? formatNumber(kpis.newMembers) : '\u2014'}
-                  </span>
-                  <UserPlus className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+              return (
+                <Card key={card.label}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-bold">
+                        {analytics ? card.format(value) : '\u2014'}
+                      </span>
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    {compareMode ? (
+                      <div className={`mt-2 flex items-center gap-1 text-xs ${deltaColor}`}>
+                        {delta === null ? (
+                          <Minus className="h-3 w-3" />
+                        ) : delta > 0 ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : delta < 0 ? (
+                          <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <Minus className="h-3 w-3" />
+                        )}
+                        <span>{formatDeltaPercent(delta)} vs previous period</span>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              );
+            })}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -465,7 +606,7 @@ export function AnalyticsDashboard() {
             >
               All channels
             </Button>
-            {(analytics?.channelActivity ?? []).map((channel) => (
+            {topChannels.map((channel) => (
               <Button
                 key={channel.channelId}
                 size="sm"
@@ -564,14 +705,16 @@ export function AnalyticsDashboard() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Channel activity</CardTitle>
-            <CardDescription>Most active channels in the selected period.</CardDescription>
+            <CardTitle>Top channels breakdown</CardTitle>
+            <CardDescription>
+              Channels ranked by message volume in the selected period.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={analytics?.channelActivity ?? []}
+                  data={topChannels}
                   layout="vertical"
                   margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
                 >
@@ -584,12 +727,12 @@ export function AnalyticsDashboard() {
                     fill="#22C55E"
                     radius={[0, 6, 6, 0]}
                     onClick={(_value, index) => {
-                      const selected = analytics?.channelActivity[index]?.channelId;
+                      const selected = topChannels[index]?.channelId;
                       if (!selected) return;
                       setChannelFilter((current) => (current === selected ? null : selected));
                     }}
                   >
-                    {(analytics?.channelActivity ?? []).map((channel) => (
+                    {topChannels.map((channel) => (
                       <Cell
                         key={channel.channelId}
                         fill={channel.channelId === channelFilter ? '#5865F2' : '#22C55E'}
@@ -604,62 +747,103 @@ export function AnalyticsDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Activity heatmap</CardTitle>
-            <CardDescription>Message density by day of week and hour of day.</CardDescription>
+            <CardTitle>Command usage stats</CardTitle>
+            <CardDescription>Most used slash commands for the selected range.</CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-separate border-spacing-1 text-xs">
-              <thead>
-                <tr>
-                  <th scope="col" className="w-14 text-left text-muted-foreground">
-                    Day
-                  </th>
-                  {HOURS.map((hour) => (
-                    <th
-                      key={hour}
-                      scope="col"
-                      className="text-center text-[10px] text-muted-foreground"
-                    >
-                      {hour % 3 === 0 ? hour : ''}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {DAYS.map((day, dayIndex) => (
-                  <tr key={day}>
-                    <th scope="row" className="pr-2 text-muted-foreground">
-                      {day}
-                    </th>
-                    {HOURS.map((hour) => {
-                      const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
-                      const alpha =
-                        value === 0 || heatmapLookup.max === 0
-                          ? 0
-                          : 0.2 + (value / heatmapLookup.max) * 0.8;
-
-                      return (
-                        <td key={`${day}-${hour}`}>
-                          <div
-                            title={`${day} ${hour}:00 \u2014 ${value} messages`}
-                            className="h-4 rounded-sm border"
-                            style={{
-                              backgroundColor:
-                                value === 0
-                                  ? 'transparent'
-                                  : `rgba(88, 101, 242, ${alpha.toFixed(3)})`,
-                            }}
-                          />
+          <CardContent>
+            {analytics?.commandUsage?.items?.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[320px] text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th scope="col" className="py-2 pr-2">
+                        Command
+                      </th>
+                      <th scope="col" className="py-2 text-right">
+                        Uses
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.commandUsage.items.map((entry) => (
+                      <tr key={entry.command} className="border-b last:border-0">
+                        <td className="py-2 pr-2 font-mono text-xs">/{entry.command}</td>
+                        <td className="py-2 text-right font-semibold">
+                          {formatNumber(entry.uses)}
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                {analytics?.commandUsage?.source === 'unavailable'
+                  ? 'Command usage source is currently unavailable. Showing empty state until telemetry is ready.'
+                  : 'No command usage found for this range.'}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity heatmap</CardTitle>
+          <CardDescription>Message density by day of week and hour of day.</CardDescription>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-separate border-spacing-1 text-xs">
+            <thead>
+              <tr>
+                <th scope="col" className="w-14 text-left text-muted-foreground">
+                  Day
+                </th>
+                {HOURS.map((hour) => (
+                  <th
+                    key={hour}
+                    scope="col"
+                    className="text-center text-[10px] text-muted-foreground"
+                  >
+                    {hour % 3 === 0 ? hour : ''}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {DAYS.map((day, dayIndex) => (
+                <tr key={day}>
+                  <th scope="row" className="pr-2 text-muted-foreground">
+                    {day}
+                  </th>
+                  {HOURS.map((hour) => {
+                    const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
+                    const alpha =
+                      value === 0 || heatmapLookup.max === 0
+                        ? 0
+                        : 0.2 + (value / heatmapLookup.max) * 0.8;
+
+                    return (
+                      <td key={`${day}-${hour}`}>
+                        <div
+                          title={`${day} ${hour}:00 — ${value} messages`}
+                          className="h-4 rounded-sm border"
+                          style={{
+                            backgroundColor:
+                              value === 0
+                                ? 'transparent'
+                                : `rgba(88, 101, 242, ${alpha.toFixed(3)})`,
+                          }}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
