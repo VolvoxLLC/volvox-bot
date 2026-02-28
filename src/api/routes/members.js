@@ -181,20 +181,22 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
       return res.status(503).json({ error: 'Database unavailable' });
     }
 
-    // Fetch from Discord with cursor pagination
-    const fetchOptions = { limit, after };
-    const members = await guild.members.list(fetchOptions);
-
-    let memberList = Array.from(members.values());
-
-    // Apply search filter
+    // Fetch members — use Discord server-side search when a query is provided
+    // (searches all guild members by username/nickname prefix), otherwise use
+    // cursor-based listing.  Sort is applied after enrichment and is scoped to
+    // the returned page; it does NOT globally sort all guild members.
+    let memberList;
+    let paginationCursor = null;
     if (search) {
-      const searchLower = search.toLowerCase();
-      memberList = memberList.filter(
-        (m) =>
-          m.user.username.toLowerCase().includes(searchLower) ||
-          m.displayName.toLowerCase().includes(searchLower),
-      );
+      const searchResults = await guild.members.search({ query: search, limit });
+      memberList = Array.from(searchResults.values());
+      // Discord search does not support cursor pagination
+    } else {
+      const fetchOptions = { limit, after };
+      const discordPage = await guild.members.list(fetchOptions);
+      memberList = Array.from(discordPage.values());
+      const lastMember = Array.from(discordPage.values()).pop();
+      paginationCursor = lastMember ? lastMember.id : null;
     }
 
     const userIds = memberList.map((m) => m.id);
@@ -281,15 +283,14 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
       });
     }
 
-    // Cursor is based on last Discord member ID from the original fetch
-    const lastDiscordMember = Array.from(members.values()).pop();
-
     const response = {
       members: enriched,
-      nextAfter: lastDiscordMember ? lastDiscordMember.id : null,
+      nextAfter: paginationCursor,
       total: guild.memberCount,
     };
-    // When search is active, include filtered count so the UI can show accurate totals
+    // When search is active, include filtered count so the UI can show accurate
+    // totals.  Because Discord search caps results at `limit`, the count may be
+    // truncated for very broad queries.
     if (search) {
       response.filteredTotal = enriched.length;
     }

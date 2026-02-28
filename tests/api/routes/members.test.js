@@ -86,6 +86,7 @@ describe('members routes', () => {
           ['user2', mockMember2],
         ]),
       ),
+      search: vi.fn().mockResolvedValue(new Map([['user1', mockMember1]])),
       fetch: vi.fn().mockImplementation((userId) => {
         const member = userId === 'user1' ? mockMember1 : userId === 'user2' ? mockMember2 : null;
         if (!member) return Promise.reject(new Error('Unknown Member'));
@@ -164,16 +165,30 @@ describe('members routes', () => {
       expect(bob.warning_count).toBe(0);
     });
 
-    it('should filter by search query', async () => {
+    it('should use server-side search via Discord API and return filteredTotal', async () => {
       mockEmptyDbResults();
 
       const res = await authed(request(app).get('/api/v1/guilds/guild1/members?search=alice'));
 
       expect(res.status).toBe(200);
+      // Server-side search returns mock result (alice only)
       expect(res.body.members).toHaveLength(1);
       expect(res.body.members[0].username).toBe('alice');
-      // Search should include filteredTotal
       expect(res.body.filteredTotal).toBe(1);
+      // Search should not have cursor-based pagination
+      expect(res.body.nextAfter).toBeNull();
+      // Verify search was called on Discord, not list
+      expect(mockGuild.members.search).toHaveBeenCalledWith({ query: 'alice', limit: 25 });
+    });
+
+    it('should not include filteredTotal when search is absent', async () => {
+      mockEmptyDbResults();
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members'));
+
+      expect(res.status).toBe(200);
+      expect(res.body.filteredTotal).toBeUndefined();
+      expect(res.body.nextAfter).toBe('user2');
     });
 
     it('should sort by xp descending', async () => {
@@ -791,7 +806,10 @@ describe('members routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should search by displayName', async () => {
+    it('should search by displayName via server-side search', async () => {
+      // Override the default search mock to return Bob
+      mockGuild.members.search.mockResolvedValueOnce(new Map([['user2', mockMember2]]));
+
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -802,6 +820,7 @@ describe('members routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.members).toHaveLength(1);
       expect(res.body.members[0].username).toBe('bob');
+      expect(mockGuild.members.search).toHaveBeenCalledWith({ query: 'Bob', limit: 25 });
     });
   });
 });
