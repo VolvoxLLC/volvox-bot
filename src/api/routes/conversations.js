@@ -467,10 +467,14 @@ router.get(
       const messageIds = messages.map((m) => m.id);
       const flagsResult = await dbPool.query(
         `SELECT message_id, status FROM flagged_messages
-         WHERE guild_id = $1 AND message_id = ANY($2)`,
+         WHERE guild_id = $1 AND message_id = ANY($2)
+         ORDER BY created_at DESC`,
         [guildId, messageIds],
       );
 
+      // Build Map after ordering by created_at DESC so the most recent flag
+      // status wins for messages that have been flagged multiple times.
+      // Without ORDER BY the Map construction was non-deterministic.
       const flaggedMessageIds = new Map(flagsResult.rows.map((r) => [r.message_id, r.status]));
 
       const enrichedMessages = messages.map((m) => ({
