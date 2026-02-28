@@ -121,9 +121,9 @@ vi.mock('discord.js', () => {
   };
 });
 
-import { safeEditReply, safeSend } from '../../src/utils/safeSend.js';
 import { getConfig } from '../../src/modules/config.js';
 import { isModerator } from '../../src/utils/permissions.js';
+import { safeEditReply, safeSend } from '../../src/utils/safeSend.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
