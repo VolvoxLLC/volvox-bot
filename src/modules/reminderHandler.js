@@ -8,6 +8,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
+import { getConfig } from '../modules/config.js';
 import { getNextCronRun } from '../utils/cronParser.js';
 import { safeSend } from '../utils/safeSend.js';
 
@@ -145,6 +146,13 @@ export async function checkReminders(client) {
 
   for (const reminder of rows) {
     try {
+      // Check if reminders are enabled for this guild
+      const guildConfig = getConfig(reminder.guild_id);
+      if (guildConfig.reminders?.enabled === false) {
+        info('Reminders disabled for guild, skipping', { reminderId: reminder.id, guildId: reminder.guild_id });
+        continue;
+      }
+
       const delivered = await sendReminderNotification(client, reminder);
 
       if (!delivered) {
