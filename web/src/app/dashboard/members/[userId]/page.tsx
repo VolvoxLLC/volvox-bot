@@ -73,14 +73,27 @@ interface MemberCase {
   created_at: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+/**
+ * Returns a CSS color for a role, falling back to the muted foreground when the provided color is missing or pure black.
+ *
+ * @param hexColor - The role color as a hex string (e.g., `#ff0000`). If falsy or `#000000`, a muted foreground HSL value is returned.
+ * @returns The CSS color to use for the role (either `hexColor` or `hsl(var(--muted-foreground))`).
+ */
 
 function roleColorStyle(hexColor: string): string {
   if (!hexColor || hexColor === '#000000') return 'hsl(var(--muted-foreground))';
   return hexColor;
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
+/**
+ * Renders a compact statistic card with an icon, label, primary value, and optional subtext.
+ *
+ * @param label - Short descriptor shown above the value
+ * @param value - Primary value to display; numbers are formatted with locale separators
+ * @param icon - Icon component rendered inside a rounded background to the left of the text
+ * @param subtext - Optional secondary content displayed beneath the primary value
+ * @returns A React element representing the statistic card
+ */
 
 function StatCard({
   label,
@@ -113,7 +126,14 @@ function StatCard({
   );
 }
 
-// ─── XP Progress Bar ──────────────────────────────────────────────────────────
+/**
+ * Render an XP progress display showing the current level, current XP, and progress toward the next level.
+ *
+ * @param level - The member's current level.
+ * @param xp - The member's current XP total.
+ * @param nextLevelXp - The XP required to reach the next level, or `null` when the member is at max level.
+ * @returns A React element containing a level badge, a progress bar, and a textual XP summary.
+ */
 
 function XpProgress({
   level,
@@ -149,7 +169,15 @@ function XpProgress({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+/**
+ * Page component that displays a guild member's profile, stats, warning history, and admin controls.
+ *
+ * Renders a detailed member view with avatar and roles, stat cards (messages, days active, XP, reactions),
+ * a table of recent moderation cases, an XP adjustment form (with inline validation and success/error feedback),
+ * and a CSV export action for all members.
+ *
+ * @returns A React element rendering the member detail page with interactive admin actions and data-driven UI states.
+ */
 
 export default function MemberDetailPage() {
   const router = useRouter();

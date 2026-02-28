@@ -23,9 +23,9 @@ const membersRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 router.use(membersRateLimit);
 
 /**
- * Resolve reputation config with defaults for a guild.
- * @param {string} guildId
- * @returns {object}
+ * Resolve the reputation configuration for a guild by returning the defaults overridden by the guild's configured reputation values.
+ * @param {string} guildId - Guild identifier used to load the guild's configuration.
+ * @returns {object} The resolved reputation configuration containing level thresholds and related reputation settings.
  */
 function getRepConfig(guildId) {
   const cfg = getConfig(guildId);
@@ -33,9 +33,10 @@ function getRepConfig(guildId) {
 }
 
 /**
- * Safely get the database pool, returning null if unavailable.
- * Routes should return 503 when this returns null.
- * @returns {import('pg').Pool | null}
+ * Obtain the PostgreSQL connection pool instance for the application.
+ *
+ * Returns the active `pg` Pool when available; returns `null` if the pool cannot be retrieved.
+ * @returns {import('pg').Pool | null} Database pool if available, `null` otherwise.
  */
 function safeGetPool() {
   try {

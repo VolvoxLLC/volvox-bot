@@ -20,6 +20,15 @@ interface MembersApiResponse {
   filteredTotal?: number;
 }
 
+/**
+ * Renders the Members page with search, sorting, pagination, and a member list table.
+ *
+ * Displays a searchable and sortable list of guild members, supports cursor-based
+ * pagination, refreshing, row navigation to a member detail page, and shows totals
+ * and errors. If the API responds with an unauthorized status, navigates to `/login`.
+ *
+ * @returns The React element for the Members page UI.
+ */
 export default function MembersPage() {
   const router = useRouter();
 

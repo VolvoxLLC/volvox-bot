@@ -47,7 +47,18 @@ interface MemberTableProps {
   onRowClick: (userId: string) => void;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+/**
+ * Formats an ISO 8601 timestamp into a concise human-readable relative time.
+ *
+ * @param iso - An ISO 8601 timestamp string or `null`. When `null`, no time is available.
+ * @returns `'—'` if `iso` is `null`; otherwise one of:
+ * - `'just now'` for times less than 60 seconds ago
+ * - `'<N>m ago'` for minutes
+ * - `'<N>h ago'` for hours
+ * - `'<N>d ago'` for days
+ * - `'<N>mo ago'` for months
+ * - `'<N>y ago'` for years
+ */
 
 function relativeTime(iso: string | null): string {
   if (!iso) return '—';
@@ -65,16 +76,38 @@ function relativeTime(iso: string | null): string {
   return `${Math.floor(months / 12)}y ago`;
 }
 
+/**
+ * Format a number using the runtime's locale conventions.
+ *
+ * @param n - The number to format with locale-aware separators and digit grouping
+ * @returns The string representation of `n` formatted according to the runtime's default locale
+ */
 function formatNumber(n: number): string {
   return n.toLocaleString();
 }
 
+/**
+ * Format an ISO date string into a locale-aware short/medium date, or return a dash when no date is provided.
+ *
+ * @param iso - An ISO 8601 date string (or `null` / empty) to format
+ * @returns The formatted date string, or `'—'` if `iso` is `null` or empty
+ */
 function formatDateShort(iso: string | null): string {
   if (!iso) return '—';
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(iso));
 }
 
-// ─── Sort Header ──────────────────────────────────────────────────────────────
+/**
+ * Renders a table header cell with a clickable label that activates sorting for a specific column.
+ *
+ * @param column - The sort column this header represents.
+ * @param label - Visible text displayed in the header button.
+ * @param currentColumn - The column currently used for sorting; used to determine active state.
+ * @param currentOrder - The current sort order (`'asc'` or `'desc'`) shown when `column` is active.
+ * @param onSort - Callback invoked with `column` when the header is clicked.
+ * @param className - Optional additional CSS class names applied to the header cell.
+ * @returns A table header cell element containing a sort button and, when active, a direction icon.
+ */
 
 function SortableHead({
   column,
@@ -111,7 +144,11 @@ function SortableHead({
   );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+/**
+ * Renders a table-shaped loading skeleton with eight placeholder rows matching the member table's columns.
+ *
+ * @returns A React fragment containing eight table rows, each filled with Skeleton cells sized to mirror the table's avatar, username, display name, messages, XP/level, warnings, last active, and joined columns.
+ */
 
 function TableSkeleton() {
   return (
@@ -148,7 +185,13 @@ function TableSkeleton() {
   );
 }
 
-// ─── Keyboard handler for accessible rows ─────────────────────────────────────
+/**
+ * Enable activating a table row via Enter or Space to support keyboard interaction.
+ *
+ * @param e - Keyboard event from the table row
+ * @param userId - Identifier of the row's target user to pass to the click handler
+ * @param onClick - Handler invoked with `userId` when Enter or Space is pressed
+ */
 
 function handleRowKeyDown(
   e: React.KeyboardEvent<HTMLTableRowElement>,
@@ -161,7 +204,21 @@ function handleRowKeyDown(
   }
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+/**
+ * Render a responsive, sortable members table with avatars, stats, warnings, activity, and a load-more control.
+ *
+ * Renders header columns (including clickable sortable headers for client-side sortable fields), loading skeletons, an empty state, and one interactive row per member. Rows are keyboard-accessible and invoke `onRowClick` when activated.
+ *
+ * @param members - The list of member records to display.
+ * @param onSort - Callback invoked with a `SortColumn` when a sortable header is activated.
+ * @param sortColumn - The currently active sort column.
+ * @param sortOrder - The current sort direction (`'asc' | 'desc'`).
+ * @param onLoadMore - Callback invoked when the "Load More" button is clicked.
+ * @param hasMore - Whether more members can be loaded (controls visibility of the load-more button).
+ * @param loading - Whether the table is in a loading state (controls skeletons and disables loading actions).
+ * @param onRowClick - Callback invoked with a member id when a row is clicked or activated via keyboard.
+ * @returns The rendered JSX element for the member table.
+ */
 
 export function MemberTable({
   members,

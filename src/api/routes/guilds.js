@@ -227,12 +227,18 @@ function isOAuthGuildModerator(user, guildId) {
 }
 
 /**
- * Create middleware that verifies OAuth2 users have the required guild permission.
- * API-secret users and configured bot owners are trusted and pass through.
+ * Return Express middleware that enforces a guild-level permission for OAuth users.
  *
- * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Permission check function
- * @param {string} errorMessage - Error message for 403 responses
- * @returns {import('express').RequestHandler}
+ * The middleware bypasses checks for API-secret requests and for configured bot owners.
+ * For OAuth-authenticated requests it calls `permissionCheck(user, guildId)` and:
+ * - responds 403 with `errorMessage` when the check resolves to `false`,
+ * - responds 502 when the permission verification throws,
+ * - otherwise allows the request to continue.
+ * Unknown or missing auth methods receive a 401 response.
+ *
+ * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Function that returns `true` if the provided user has the required permission in the specified guild, `false` otherwise.
+ * @param {string} errorMessage - Message to include in the 403 response when permission is denied.
+ * @returns {import('express').RequestHandler} Express middleware enforcing the permission.
  */
 function requireGuildPermission(permissionCheck, errorMessage) {
   return async (req, res, next) => {
@@ -277,8 +283,11 @@ export const requireGuildModerator = requireGuildPermission(
 );
 
 /**
- * Middleware: validate guild ID param and attach guild to req.
- * Returns 404 if the bot is not in the requested guild.
+ * Validate that the requested guild exists and attach it to req.guild.
+ *
+ * If the bot is not present in the guild identified by req.params.id, sends a 404
+ * response with `{ error: 'Guild not found' }` and does not call `next()`. Otherwise
+ * sets `req.guild` to the Guild instance and calls `next()`.
  */
 export function validateGuild(req, res, next) {
   const { client } = req.app.locals;

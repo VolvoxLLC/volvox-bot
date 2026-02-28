@@ -12,8 +12,13 @@ export const dynamic = 'force-dynamic';
 const LOG_PREFIX = '[api/guilds/:guildId/members/:userId/xp]';
 
 /**
- * POST /api/guilds/:guildId/members/:userId/xp — Proxy XP adjustment to bot API.
- * Body: { amount: number, reason?: string }
+ * Proxy an XP adjustment request for a guild member to the bot API.
+ *
+ * Accepts a JSON body of the form `{ amount: number, reason?: string }` and forwards it to the bot API endpoint for the specified guild and user.
+ *
+ * @param request - The incoming NextRequest
+ * @param params - A promise resolving to route parameters containing `guildId` and `userId`
+ * @returns The response from the bot API proxy or a NextResponse indicating an early error (e.g., missing IDs, auth failure, invalid JSON)
  */
 export async function POST(
   request: NextRequest,

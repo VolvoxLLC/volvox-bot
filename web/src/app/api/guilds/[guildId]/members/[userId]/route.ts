@@ -12,7 +12,15 @@ export const dynamic = 'force-dynamic';
 const LOG_PREFIX = '[api/guilds/:guildId/members/:userId]';
 
 /**
- * GET /api/guilds/:guildId/members/:userId — Proxy member detail to bot API.
+ * Proxy a GET request for a guild member's details to the bot API.
+ *
+ * Validates required path parameters, enforces guild admin authorization, builds the upstream URL,
+ * and forwards the request to the bot API. Returns a 400 response if `guildId` or `userId` is missing,
+ * returns any authorization or configuration error responses produced during processing, and otherwise
+ * returns the proxied bot API response (or an error response if proxying fails).
+ *
+ * @param params - Promise resolving to an object with `guildId` and `userId` path parameters
+ * @returns A NextResponse containing the proxied bot API response or an error response
  */
 export async function GET(
   request: NextRequest,
