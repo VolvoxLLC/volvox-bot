@@ -51,8 +51,8 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
   if (loading && !health) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }, (_, i) => (
-          <SkeletonCard key={i} />
+        {(['hc-0', 'hc-1', 'hc-2', 'hc-3', 'hc-4', 'hc-5', 'hc-6', 'hc-7'] as const).map((key) => (
+          <SkeletonCard key={key} />
         ))}
       </div>
     );

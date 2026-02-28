@@ -99,8 +99,8 @@ function ReasonBadge({ reason }: { reason: string }) {
 function TableSkeleton() {
   return (
     <div className="space-y-2">
-      {Array.from({ length: 5 }, (_, i) => (
-        <Skeleton key={i} className="h-10 w-full" />
+      {(['rh-0', 'rh-1', 'rh-2', 'rh-3', 'rh-4'] as const).map((key) => (
+        <Skeleton key={key} className="h-10 w-full" />
       ))}
     </div>
   );

@@ -354,8 +354,8 @@ export default function MemberDetailPage() {
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={`skeleton-${i}`} className="h-24 rounded-xl" />
+          {(['sk-0', 'sk-1', 'sk-2', 'sk-3'] as const).map((key) => (
+            <Skeleton key={key} className="h-24 rounded-xl" />
           ))}
         </div>
       </div>
