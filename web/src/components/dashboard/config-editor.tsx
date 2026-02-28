@@ -589,7 +589,10 @@ export function ConfigEditor() {
 
       {/* Unsaved changes banner */}
       {hasChanges && (
-        <output className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+        <output
+          aria-live="polite"
+          className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
+        >
           You have unsaved changes.{' '}
           <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
             Ctrl+S
@@ -1312,8 +1315,8 @@ export function ConfigEditor() {
             active days.
           </p>
           {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
-            (badge: { id?: string; days?: number; label?: string }, i: number) => (
-              <div key={badge.id ?? `fallback-${i}`} className="flex items-center gap-2">
+            (badge: { days?: number; label?: string }, i: number) => (
+              <div key={badge.label ?? `fallback-${i}`} className="flex items-center gap-2">
                 <Input
                   className="w-20"
                   type="number"
