@@ -4,6 +4,7 @@ import {
   Bot,
   LayoutDashboard,
   MessageSquare,
+  MessagesSquare,
   ScrollText,
   Settings,
   Shield,
@@ -34,6 +35,11 @@ const navigation = [
     name: 'Members',
     href: '/dashboard/members',
     icon: Users,
+  },
+  {
+    name: 'Conversations',
+    href: '/dashboard/conversations',
+    icon: MessagesSquare,
   },
   {
     name: 'Bot Config',
