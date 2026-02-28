@@ -830,9 +830,7 @@ describe('ticketHandler', () => {
       };
 
       const thread = createMockThread({ id: 'thread2' });
-      thread.messages.fetch
-        .mockResolvedValueOnce(new Map([['msg1', lastMsg]])) // limit: 1
-        .mockResolvedValueOnce(new Map()); // limit: 5 (no warning yet)
+      thread.messages.fetch.mockResolvedValueOnce(new Map([['msg1', lastMsg]])); // limit: 10
 
       const guild = createMockGuild();
       guild.channels.fetch = vi.fn().mockResolvedValue(thread);
@@ -920,8 +918,8 @@ describe('ticketHandler', () => {
       };
 
       await checkAutoClose(client);
-      // Should not throw and should not call any more queries
-      expect(mockQuery).toHaveBeenCalledTimes(1);
+      // checkAutoClose returns early (no guilds) before any query
+      expect(mockQuery).toHaveBeenCalledTimes(0);
     });
   });
 });

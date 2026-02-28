@@ -1687,7 +1687,7 @@ export function ConfigEditor() {
 
       {/* ═══ Tickets ═══ */}
       <Card>
-        <CardContent className="space-y-4 pt-6">
+        <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Tickets</CardTitle>
             <ToggleSwitch
@@ -1702,6 +1702,8 @@ export function ConfigEditor() {
               label="Tickets"
             />
           </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <label className="space-y-2">
             <span className="text-sm font-medium">Ticket Mode</span>
             <select
@@ -1753,7 +1755,7 @@ export function ConfigEditor() {
                 }
                 disabled={saving}
                 className={inputClasses}
-                placeholder="Category for ticket threads"
+                placeholder="Category for tickets"
               />
             </label>
             <label className="space-y-2">

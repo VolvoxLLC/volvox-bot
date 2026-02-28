@@ -170,10 +170,22 @@ function createMockThread(overrides = {}) {
 
 describe('/ticket command', () => {
   let execute;
+  const mockQuery = vi.fn();
+  const mockPool = { query: mockQuery };
 
   beforeEach(async () => {
     vi.clearAllMocks();
     mockGetTicketConfig.mockReturnValue({ enabled: true });
+
+    // Mock pool: thread1 is an open ticket, channel1 is not
+    const { getPool } = await import('../../src/db.js');
+    getPool.mockReturnValue(mockPool);
+    mockQuery.mockImplementation((sql, params) => {
+      if (sql.includes('SELECT 1 FROM tickets') && params && params[0] === 'thread1') {
+        return Promise.resolve({ rows: [{}] });
+      }
+      return Promise.resolve({ rows: [] });
+    });
 
     // Dynamically import after mocks are set up
     const mod = await import('../../src/commands/ticket.js');
@@ -486,7 +498,7 @@ describe('/ticket command', () => {
 
       expect(mockBuildTicketPanel).not.toHaveBeenCalled();
       expect(safeEditReply).toHaveBeenCalledWith(interaction, {
-        content: '❌ You need administrator permissions to use this command.',
+        content: '❌ You need moderator or administrator permissions to use this command.',
       });
     });
 

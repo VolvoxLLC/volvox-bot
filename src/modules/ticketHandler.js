@@ -143,6 +143,15 @@ export async function openTicket(guild, user, topic, channelId = null) {
     ? `ticket-${user.username}-${topic.slice(0, 20).replace(/\s+/g, '-').toLowerCase()}`
     : `ticket-${user.username}`;
 
+  /** Sanitize a string to meet Discord channel name rules (lowercase, alphanumeric + hyphens, max 100 chars) */
+  const sanitizeChannelName = (name) =>
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 100) || 'ticket';
+
   let ticketChannel;
 
   if (ticketConfig.mode === 'channel') {
@@ -151,8 +160,13 @@ export async function openTicket(guild, user, topic, channelId = null) {
       ? guild.channels.cache.get(ticketConfig.category)
       : undefined;
 
+    const safeUsername = sanitizeChannelName(user.username);
+    const channelTicketName = topic
+      ? sanitizeChannelName(`ticket-${safeUsername}-${topic.slice(0, 20).replace(/\s+/g, '-')}`)
+      : sanitizeChannelName(`ticket-${safeUsername}`);
+
     ticketChannel = await guild.channels.create({
-      name: ticketName,
+      name: channelTicketName,
       type: ChannelType.GuildText,
       parent: parent?.id ?? undefined,
       permissionOverwrites: buildChannelPermissions(guild, user.id, ticketConfig.supportRole),
@@ -163,11 +177,8 @@ export async function openTicket(guild, user, topic, channelId = null) {
     let parentChannel;
     if (ticketConfig.category) {
       const resolved = guild.channels.cache.get(ticketConfig.category);
-      // CategoryChannel can't create threads — only use text/news channels
-      if (
-        resolved &&
-        (resolved.type === ChannelType.GuildText || resolved.type === ChannelType.GuildAnnouncement)
-      ) {
+      // CategoryChannel can't create threads — only GuildText supports PrivateThread
+      if (resolved && resolved.type === ChannelType.GuildText) {
         parentChannel = resolved;
       }
     }
@@ -461,7 +472,12 @@ export async function checkAutoClose(client) {
       // Using the last bot message would cause a warning loop: the warning itself
       // would reset lastActivity to now, deferring the close indefinitely.
       const recentMessages = await channel.messages.fetch({ limit: 10 });
-      const lastUserMessage = recentMessages.find((m) => !m.author?.bot);
+      // Collection.find exists in discord.js but plain Map does not have it; support both
+      const findFn =
+        typeof recentMessages.find === 'function'
+          ? (cb) => recentMessages.find(cb)
+          : (cb) => Array.from(recentMessages.values()).find(cb);
+      const lastUserMessage = findFn((m) => !m.author?.bot);
       const lastActivity = lastUserMessage
         ? lastUserMessage.createdAt
         : new Date(ticket.created_at);

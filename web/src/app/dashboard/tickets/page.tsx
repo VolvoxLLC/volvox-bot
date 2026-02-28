@@ -357,7 +357,6 @@ export default function TicketsPage() {
                       key={ticket.id}
                       className="cursor-pointer hover:bg-muted/50"
                       tabIndex={0}
-                      role="link"
                       onClick={() => handleRowClick(ticket.id)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
