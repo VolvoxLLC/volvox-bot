@@ -10,6 +10,7 @@ import { info, error as logError, warn as logWarn } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
 import { checkDailyChallenge } from './challengeScheduler.js';
 import { closeExpiredPolls } from './pollHandler.js';
+import { checkReminders } from './reminderHandler.js';
 import { expireStaleReviews } from './reviewHandler.js';
 import { checkAutoClose } from './ticketHandler.js';
 
@@ -187,6 +188,8 @@ async function pollScheduledMessages(client) {
     }
     // Close expired polls
     await closeExpiredPolls(client);
+    // Check and fire due reminders
+    await checkReminders(client);
 
     // Check and post daily coding challenges
     await checkDailyChallenge(client);
