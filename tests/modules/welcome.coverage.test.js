@@ -276,11 +276,14 @@ describe('welcome module coverage', () => {
       const nowSpy = vi.spyOn(Date, 'now');
 
       nowSpy.mockReturnValue(0);
-      recordCommunityActivity({
-        guild: { id: 'g1' },
-        channel: { id: 'stale-ch', isTextBased: () => true },
-        author: { bot: false },
-      }, {});
+      recordCommunityActivity(
+        {
+          guild: { id: 'g1' },
+          channel: { id: 'stale-ch', isTextBased: () => true },
+          author: { bot: false },
+        },
+        {},
+      );
 
       nowSpy.mockReturnValue(4_000_000);
       for (let i = 0; i < 49; i++) {
@@ -318,8 +321,8 @@ describe('welcome module coverage', () => {
       });
 
       const state = __getCommunityActivityState('g1');
-      expect(state['ch1']).toHaveLength(1);
-      expect(state['ch2']).toBeUndefined();
+      expect(state.ch1).toHaveLength(1);
+      expect(state.ch2).toBeUndefined();
     });
   });
 
