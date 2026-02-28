@@ -763,6 +763,7 @@ describe('conversations routes', () => {
         { method: 'get', path: '/api/v1/guilds/nonexistent/conversations/1' },
         { method: 'get', path: '/api/v1/guilds/nonexistent/conversations/stats' },
         { method: 'get', path: '/api/v1/guilds/nonexistent/conversations/flags' },
+        { method: 'post', path: '/api/v1/guilds/nonexistent/conversations/1/flag' },
       ];
 
       for (const { method, path } of endpoints) {
