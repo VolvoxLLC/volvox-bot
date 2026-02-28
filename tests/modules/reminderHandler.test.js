@@ -17,7 +17,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock('../../src/modules/scheduler.js', () => ({
+vi.mock('../../src/utils/cronParser.js', () => ({
   getNextCronRun: vi.fn(),
 }));
 
@@ -73,7 +73,7 @@ import {
   handleReminderDismiss,
   handleReminderSnooze,
 } from '../../src/modules/reminderHandler.js';
-import { getNextCronRun } from '../../src/modules/scheduler.js';
+import { getNextCronRun } from '../../src/utils/cronParser.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('reminderHandler', () => {

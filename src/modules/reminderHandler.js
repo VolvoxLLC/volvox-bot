@@ -8,8 +8,8 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
+import { getNextCronRun } from '../utils/cronParser.js';
 import { safeSend } from '../utils/safeSend.js';
-import { getNextCronRun } from './scheduler.js';
 
 /** Snooze durations in milliseconds, keyed by button suffix */
 const SNOOZE_DURATIONS = {
@@ -17,6 +17,9 @@ const SNOOZE_DURATIONS = {
   '1h': 60 * 60_000,
   tomorrow: 24 * 60 * 60_000,
 };
+
+/** Max delivery failures before giving up on a reminder */
+const MAX_DELIVERY_RETRIES = 3;
 
 /**
  * Build snooze action row for a fired reminder.
@@ -80,6 +83,7 @@ function buildReminderEmbed(reminder) {
  *
  * @param {import('discord.js').Client} client - Discord client
  * @param {object} reminder - Reminder row from DB
+ * @returns {Promise<boolean>} true if the notification was delivered, false if all attempts failed
  */
 async function sendReminderNotification(client, reminder) {
   const embed = buildReminderEmbed(reminder);
@@ -90,7 +94,7 @@ async function sendReminderNotification(client, reminder) {
     const user = await client.users.fetch(reminder.user_id);
     await user.send({ embeds: [embed], components });
     info('Reminder sent via DM', { reminderId: reminder.id, userId: reminder.user_id });
-    return;
+    return true;
   } catch {
     // DM failed — fall back to channel mention
   }
@@ -108,6 +112,7 @@ async function sendReminderNotification(client, reminder) {
         reminderId: reminder.id,
         channelId: reminder.channel_id,
       });
+      return true;
     } else {
       warn('Reminder channel not found', {
         reminderId: reminder.id,
@@ -120,6 +125,8 @@ async function sendReminderNotification(client, reminder) {
       error: err.message,
     });
   }
+
+  return false;
 }
 
 /**
@@ -138,7 +145,34 @@ export async function checkReminders(client) {
 
   for (const reminder of rows) {
     try {
-      await sendReminderNotification(client, reminder);
+      const delivered = await sendReminderNotification(client, reminder);
+
+      if (!delivered) {
+        // Increment failure count and check against retry limit
+        const currentCount = reminder.failed_delivery_count ?? 0;
+        const newCount = currentCount + 1;
+
+        if (newCount >= MAX_DELIVERY_RETRIES) {
+          warn('Reminder delivery failed max times, marking completed', {
+            reminderId: reminder.id,
+            attempts: newCount,
+          });
+          await pool.query(
+            'UPDATE reminders SET completed = true, failed_delivery_count = $1 WHERE id = $2',
+            [newCount, reminder.id],
+          );
+        } else {
+          info('Reminder delivery failed, will retry next poll', {
+            reminderId: reminder.id,
+            attempt: newCount,
+          });
+          await pool.query('UPDATE reminders SET failed_delivery_count = $1 WHERE id = $2', [
+            newCount,
+            reminder.id,
+          ]);
+        }
+        continue;
+      }
 
       if (reminder.recurring_cron) {
         // Recurring: schedule next run, don't mark completed
@@ -184,6 +218,13 @@ export async function handleReminderSnooze(interaction) {
   const snoozeMs = SNOOZE_DURATIONS[duration];
 
   const pool = getPool();
+  if (!pool) {
+    await interaction.reply({
+      content: '❌ Database unavailable. Please try again later.',
+      ephemeral: true,
+    });
+    return;
+  }
 
   const { rows } = await pool.query('SELECT * FROM reminders WHERE id = $1', [reminderId]);
 
@@ -237,6 +278,13 @@ export async function handleReminderDismiss(interaction) {
 
   const reminderId = Number.parseInt(match[1], 10);
   const pool = getPool();
+  if (!pool) {
+    await interaction.reply({
+      content: '❌ Database unavailable. Please try again later.',
+      ephemeral: true,
+    });
+    return;
+  }
 
   const { rows } = await pool.query('SELECT * FROM reminders WHERE id = $1', [reminderId]);
 

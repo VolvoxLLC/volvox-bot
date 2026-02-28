@@ -21,6 +21,7 @@ async function up(pool) {
       remind_at TIMESTAMPTZ NOT NULL,
       recurring_cron VARCHAR,
       snoozed_count INT NOT NULL DEFAULT 0,
+      failed_delivery_count INT NOT NULL DEFAULT 0,
       completed BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -29,6 +30,11 @@ async function up(pool) {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_reminders_due
       ON reminders(remind_at) WHERE completed = false;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_reminders_user_active
+      ON reminders(guild_id, user_id) WHERE completed = false;
   `);
 }
 
