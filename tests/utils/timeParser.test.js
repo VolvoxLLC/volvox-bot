@@ -137,6 +137,20 @@ describe('timeParser', () => {
         const expected = new Date(2026, 2, 2, 0, 0, 0, 0);
         expect(result.date.getTime()).toBe(expected.getTime());
       });
+
+      it('should parse "tomorrow at 3 pm" with spaced am/pm', () => {
+        const result = parseTime('tomorrow at 3 pm', now);
+        expect(result).not.toBeNull();
+        const expected = new Date(2026, 2, 2, 15, 0, 0, 0);
+        expect(result.date.getTime()).toBe(expected.getTime());
+      });
+
+      it('should parse "tomorrow at 9:30 am" with spaced am/pm', () => {
+        const result = parseTime('tomorrow at 9:30 am', now);
+        expect(result).not.toBeNull();
+        const expected = new Date(2026, 2, 2, 9, 30, 0, 0);
+        expect(result.date.getTime()).toBe(expected.getTime());
+      });
     });
 
     describe('"next <day>" format', () => {
@@ -181,6 +195,22 @@ describe('timeParser', () => {
 
       it('should return null for "next invalid"', () => {
         expect(parseTime('next invalid', now)).toBeNull();
+      });
+
+      it('should parse "next fri at 9 am" with spaced am/pm', () => {
+        const result = parseTime('next fri at 9 am', now);
+        expect(result).not.toBeNull();
+        expect(result.date.getDay()).toBe(5); // Friday
+        expect(result.date.getHours()).toBe(9);
+        expect(result.date.getMinutes()).toBe(0);
+      });
+
+      it('should parse "next monday at 2:30 pm" with spaced am/pm', () => {
+        const result = parseTime('next monday at 2:30 pm', now);
+        expect(result).not.toBeNull();
+        expect(result.date.getDay()).toBe(1); // Monday
+        expect(result.date.getHours()).toBe(14);
+        expect(result.date.getMinutes()).toBe(30);
       });
     });
 

@@ -148,7 +148,7 @@ export function parseTime(input, now) {
   }
 
   // Pattern 3: "tomorrow" or "tomorrow at <time>"
-  const tomorrowMatch = trimmed.match(/^tomorrow(?:\s+at\s+(.+?))?(?:\s|$)/);
+  const tomorrowMatch = trimmed.match(/^tomorrow(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
   if (tomorrowMatch) {
     const tomorrow = new Date(ref.getTime());
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -158,7 +158,7 @@ export function parseTime(input, now) {
   }
 
   // Pattern 4: "next <day>" or "next <day> at <time>"
-  const nextDayMatch = trimmed.match(/^next\s+([a-z]+)(?:\s+at\s+(.+?))?(?:\s|$)/);
+  const nextDayMatch = trimmed.match(/^next\s+([a-z]+)(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
   if (nextDayMatch) {
     const dayName = nextDayMatch[1];
     const targetDay = DAY_NAMES[dayName];
