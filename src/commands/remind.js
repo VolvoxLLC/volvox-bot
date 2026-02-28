@@ -23,10 +23,11 @@ export const data = new SlashCommandBuilder()
         opt
           .setName('when')
           .setDescription('When to remind you (e.g. "in 2 hours", "tomorrow at 3pm", "5m")')
+          .setMaxLength(200)
           .setRequired(true),
       )
       .addStringOption((opt) =>
-        opt.setName('message').setDescription('What to remind you about').setRequired(true),
+        opt.setName('message').setDescription('What to remind you about').setMaxLength(500).setRequired(true),
       ),
   )
   .addSubcommand((sub) => sub.setName('list').setDescription('List your active reminders'))
