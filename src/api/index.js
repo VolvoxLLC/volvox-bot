@@ -14,6 +14,7 @@ import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
 import webhooksRouter from './routes/webhooks.js';
+import ticketsRouter from './routes/tickets.js';
 
 const router = Router();
 
@@ -45,5 +46,8 @@ router.use('/moderation', requireAuth(), moderationRouter);
 
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
+
+// Ticket routes — require API secret or OAuth2 JWT
+router.use('/guilds', requireAuth(), ticketsRouter);
 
 export default router;
