@@ -24,9 +24,9 @@ jobs:
           CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
           THRESHOLD: '1000'
         run: |
-          node <<'NODE'
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
           (async () => {
-            const fs = require('node:fs');
             const marker = '<!-- pr-size-check -->';
             const additions = Number(process.env.ADDITIONS || 0);
             const deletions = Number(process.env.DELETIONS || 0);
@@ -37,7 +37,7 @@ jobs:
 
             const summary = `PR changes: +${additions} / -${deletions} (${total} lines across ${changedFiles} files)`;
             console.log(summary);
-            fs.appendFileSync(
+            appendFileSync(
               process.env.GITHUB_STEP_SUMMARY,
               `## PR Size Check\n\n${summary}\n\nThreshold: ${threshold} changed lines.\n`,
             );
@@ -74,7 +74,8 @@ jobs:
             );
 
             if (!commentsRes.ok) {
-              throw new Error(`Failed to list comments: ${commentsRes.status}`);
+              console.log(`::warning title=PR Size Check::Could not list comments (${commentsRes.status}) — skipping comment.`);
+              return;
             }
 
             const comments = await commentsRes.json();
@@ -92,7 +93,8 @@ jobs:
                 },
               );
               if (!patchRes.ok) {
-                throw new Error(`Failed to update warning comment: ${patchRes.status}`);
+                console.log(`::warning title=PR Size Check::Could not update warning comment (${patchRes.status}).`);
+                return;
               }
               console.log(`Updated existing warning comment (${existing.id}).`);
             } else {
@@ -105,12 +107,12 @@ jobs:
                 },
               );
               if (!postRes.ok) {
-                throw new Error(`Failed to create warning comment: ${postRes.status}`);
+                console.log(`::warning title=PR Size Check::Could not create warning comment (${postRes.status}).`);
+                return;
               }
               console.log('Created warning comment.');
             }
           })().catch((error) => {
-            console.error(error);
-            process.exit(1);
+            console.warn('PR size check warning:', error.message);
           });
           NODE
