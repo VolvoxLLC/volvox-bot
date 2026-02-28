@@ -501,18 +501,9 @@ function getGuildChannels(guild) {
  *                       type:
  *                         type: integer
  *                         description: "Discord channel type enum (0=Text, 2=Voice, 4=Category, 5=Announcement, 13=Stage, 15=Forum, 16=Media)"
- *                 roles:
+ *                 channelCount:
  *                   type: integer
- *                 owner:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     username:
- *                       type: string
- *                 createdAt:
- *                   type: string
- *                   format: date-time
+ *                   description: Total number of channels in the guild
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
@@ -569,6 +560,8 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  */
 router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
   res.json(getGuildChannels(req.guild));
@@ -613,6 +606,8 @@ router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  */
 router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
   const guild = req.guild;
@@ -652,6 +647,8 @@ router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  */
 router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
   const config = getConfig(req.params.id);
@@ -707,6 +704,8 @@ router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
@@ -786,6 +785,8 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "503":
@@ -890,6 +891,8 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "503":
@@ -1384,6 +1387,8 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "503":

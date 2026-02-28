@@ -356,7 +356,7 @@ router.get('/discord/callback', async (req, res) => {
  *     tags:
  *       - Auth
  *     summary: Get current user
- *     description: Returns the authenticated user's profile and guild list. Requires a valid session cookie.
+ *     description: Returns the authenticated user's profile and guild list. Requires a valid Bearer JWT in the Authorization header.
  *     security:
  *       - BearerAuth: []
  *     responses:
