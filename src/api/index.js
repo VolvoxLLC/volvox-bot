@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { requireAuth } from './middleware/auth.js';
 import authRouter from './routes/auth.js';
+import communityRouter from './routes/community.js';
 import configRouter from './routes/config.js';
 import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
@@ -17,6 +18,9 @@ const router = Router();
 
 // Health check — public (no auth required)
 router.use('/health', healthRouter);
+
+// Community routes — public (no auth required, rate-limited)
+router.use('/community', communityRouter);
 
 // Auth routes — public (no auth required)
 router.use('/auth', authRouter);
