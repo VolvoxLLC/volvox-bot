@@ -251,7 +251,7 @@ async function handlePanel(interaction, guildConfig) {
 
   const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
-  const { embed, row } = buildTicketPanel();
+  const { embed, row } = buildTicketPanel(interaction.guildId);
 
   try {
     await safeSend(targetChannel, { embeds: [embed], components: [row] });

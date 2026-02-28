@@ -17,7 +17,7 @@ async function up(pool) {
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       topic TEXT,
-      status TEXT NOT NULL DEFAULT 'open',
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
       thread_id TEXT NOT NULL,
       channel_id TEXT,
       closed_by TEXT,

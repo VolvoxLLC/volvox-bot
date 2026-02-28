@@ -457,10 +457,14 @@ export async function checkAutoClose(client) {
       const isThread = typeof channel.isThread === 'function' && channel.isThread();
       if (!isThread && channel.type !== ChannelType.GuildText) continue;
 
-      // Get the last message timestamp
-      const lastMessages = await channel.messages.fetch({ limit: 1 });
-      const lastMessage = lastMessages.size > 0 ? lastMessages.values().next().value : null;
-      const lastActivity = lastMessage ? lastMessage.createdAt : new Date(ticket.created_at);
+      // Get the last user (non-bot) message timestamp.
+      // Using the last bot message would cause a warning loop: the warning itself
+      // would reset lastActivity to now, deferring the close indefinitely.
+      const recentMessages = await channel.messages.fetch({ limit: 10 });
+      const lastUserMessage = recentMessages.find((m) => !m.author?.bot);
+      const lastActivity = lastUserMessage
+        ? lastUserMessage.createdAt
+        : new Date(ticket.created_at);
 
       const hoursSinceActivity = (Date.now() - lastActivity.getTime()) / (1000 * 60 * 60);
 
@@ -490,15 +494,23 @@ export async function checkAutoClose(client) {
 /**
  * Build the persistent ticket panel embed with an "Open Ticket" button.
  *
+ * @param {string} [guildId] - Guild ID used to look up the ticket config mode.
  * @returns {{ embed: EmbedBuilder, row: ActionRowBuilder }}
  */
-export function buildTicketPanel() {
+export function buildTicketPanel(guildId) {
+  const config = guildId ? getTicketConfig(guildId) : null;
+  const mode = config?.mode ?? 'thread';
+  const channelDescription =
+    mode === 'channel'
+      ? 'A private channel will be created where you can describe your issue '
+      : 'A private thread will be created where you can describe your issue ';
+
   const embed = new EmbedBuilder()
     .setColor(TICKET_PANEL_COLOR)
     .setTitle('🎫 Support Tickets')
     .setDescription(
       'Need help? Click the button below to open a support ticket.\n\n' +
-        'A private ticket will be opened where you can describe your issue ' +
+        channelDescription +
         'and our support team will assist you.',
     )
     .setFooter({ text: 'Volvox Bot • Ticket System' });

@@ -3,7 +3,15 @@
  * Handles Discord event listeners and handlers
  */
 
-import { ChannelType, Client, Events } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ChannelType,
+  Client,
+  Events,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} from 'discord.js';
 import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../commands/showcase.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getUserFriendlyMessage } from '../utils/errors.js';
@@ -596,10 +604,6 @@ export function registerTicketOpenButtonHandler(client) {
     }
 
     // Show a modal to collect the topic
-    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import(
-      'discord.js'
-    );
-
     const modal = new ModalBuilder()
       .setCustomId('ticket_open_modal')
       .setTitle('Open Support Ticket');
