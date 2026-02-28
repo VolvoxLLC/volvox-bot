@@ -24,7 +24,7 @@ async function purgeOldTickets(pool) {
     const result = await pool.query(
       `DELETE FROM tickets
        WHERE status = 'closed'
-         AND updated_at < NOW() - make_interval(days => $1)`,
+         AND closed_at < NOW() - make_interval(days => $1)`,
       [TICKET_RETENTION_DAYS],
     );
     const count = result.rowCount ?? 0;
@@ -93,7 +93,9 @@ async function purgeStaleRateLimits(pool) {
     return count;
   } catch (err) {
     if (err.code === '42P01') {
-      warn('DB maintenance: rate_limits table does not exist, skipping', { source: 'db_maintenance' });
+      warn('DB maintenance: rate_limits table does not exist, skipping', {
+        source: 'db_maintenance',
+      });
       return 0;
     }
     throw err;

@@ -41,7 +41,6 @@ try {
   // restartTracker not available yet — fallback to null
 }
 
-
 /**
  * GET / — Health check endpoint
  * Returns status, uptime, and Discord connection details.

@@ -100,26 +100,25 @@ function wrapPoolQuery(poolInstance, thresholdMs) {
           source: 'slow_query_log',
         });
 
-        // Attempt EXPLAIN (best-effort, non-blocking)
-        try {
-          const explainText = typeof args[0] === 'string' ? args[0] : (args[0]?.text ?? '');
-          const explainValues = Array.isArray(args[1]) ? args[1] : (args[0]?.values ?? []);
+        // Attempt EXPLAIN (best-effort, fire-and-forget — do not await)
+        const explainText = typeof args[0] === 'string' ? args[0] : (args[0]?.text ?? '');
+        const explainValues = Array.isArray(args[1]) ? args[1] : (args[0]?.values ?? []);
 
-          if (/^\s*(SELECT|INSERT|UPDATE|DELETE)/i.test(explainText)) {
-            const explainResult = await originalQuery({
-              text: `EXPLAIN ${explainText}`,
-              values: explainValues,
-            });
-            const plan = explainResult.rows.map((r) => Object.values(r)[0]).join('\n');
-            warn('Slow query EXPLAIN plan', {
-              duration_ms: duration,
-              query: queryText.slice(0, 200),
-              plan: plan.slice(0, 2000),
-              source: 'slow_query_log',
-            });
-          }
-        } catch {
-          // EXPLAIN failed — skip silently
+        if (/^\s*(SELECT|INSERT|UPDATE|DELETE)/i.test(explainText)) {
+          originalQuery({
+            text: `EXPLAIN ${explainText}`,
+            values: explainValues,
+          })
+            .then((explainResult) => {
+              const plan = explainResult.rows.map((r) => Object.values(r)[0]).join('\n');
+              warn('Slow query EXPLAIN plan', {
+                duration_ms: duration,
+                query: queryText.slice(0, 200),
+                plan: plan.slice(0, 2000),
+                source: 'slow_query_log',
+              });
+            })
+            .catch(() => {});
         }
       }
 
@@ -219,8 +218,10 @@ export async function initDb() {
     }
 
     const poolSize = Math.max(1, parseInt(process.env.PG_POOL_SIZE, 10) || 5);
-    const idleTimeoutMs = parseInt(process.env.PG_IDLE_TIMEOUT_MS, 10) || 30000;
-    const connectionTimeoutMs = parseInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10) || 10000;
+    const _idleRaw = parseInt(process.env.PG_IDLE_TIMEOUT_MS, 10);
+    const idleTimeoutMs = isNaN(_idleRaw) ? 30000 : _idleRaw;
+    const _connRaw = parseInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10);
+    const connectionTimeoutMs = isNaN(_connRaw) ? 10000 : _connRaw;
 
     pool = new Pool({
       connectionString,
@@ -264,7 +265,8 @@ export async function initDb() {
     });
 
     // Wrap query with slow query logging
-    const slowQueryThresholdMs = parseInt(process.env.PG_SLOW_QUERY_MS, 10) || 100;
+    const _slowRaw = parseInt(process.env.PG_SLOW_QUERY_MS, 10);
+    const slowQueryThresholdMs = isNaN(_slowRaw) ? 100 : _slowRaw;
     wrapPoolQuery(pool, slowQueryThresholdMs);
 
     try {

@@ -15,10 +15,10 @@ exports.up = async (pgm) => {
       ON conversations(guild_id, channel_id, created_at)
   `);
 
-  // moderation_cases: queries by guild + time for mod log
+  // mod_cases: queries by guild + time for mod log
   pgm.sql(`
-    CREATE INDEX IF NOT EXISTS idx_moderation_cases_guild_created
-      ON moderation_cases(guild_id, created_at)
+    CREATE INDEX IF NOT EXISTS idx_mod_cases_guild_created
+      ON mod_cases(guild_id, created_at)
   `);
 
   // flagged_messages: queries by guild + status for review queue
@@ -55,7 +55,7 @@ exports.up = async (pgm) => {
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.down = async (pgm) => {
   pgm.sql('DROP INDEX IF EXISTS idx_conversations_guild_channel_created');
-  pgm.sql('DROP INDEX IF EXISTS idx_moderation_cases_guild_created');
+  pgm.sql('DROP INDEX IF EXISTS idx_mod_cases_guild_created');
   pgm.sql('DROP INDEX IF EXISTS idx_flagged_messages_guild_status');
   pgm.sql('DROP INDEX IF EXISTS idx_scheduled_messages_enabled_next');
   pgm.sql('DROP INDEX IF EXISTS idx_reminders_due');
