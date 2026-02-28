@@ -351,6 +351,14 @@ export function validateGuild(req, res, next) {
  *                     enum: [admin, moderator, bot-owner]
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
+ *       "502":
+ *         description: Failed to fetch guilds from Discord
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
@@ -887,6 +895,12 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
  *           application/json:
  *             schema:
  *               type: object
+ *       "400":
+ *         description: Invalid analytics query parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
@@ -1463,14 +1477,18 @@ router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, 
  *                 type: string
  *                 description: The action to perform
  *     responses:
- *       "200":
- *         description: Action completed
+ *       "201":
+ *         description: Message sent
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
+ *                 id:
+ *                   type: string
+ *                 channelId:
+ *                   type: string
+ *                 content:
  *                   type: string
  *       "400":
  *         description: Unknown action
@@ -1482,6 +1500,8 @@ router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, 
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
