@@ -108,7 +108,7 @@ describe('welcome module coverage', () => {
       const member = makeMember();
       const config = { welcome: { enabled: true, channelId: 'ch1' } };
 
-      await sendWelcomeMessage(member, client, config);
+      await expect(sendWelcomeMessage(member, client, config)).resolves.toBeUndefined();
       expect(client.channels.fetch).toHaveBeenCalledWith('ch1');
     });
   });
@@ -273,42 +273,53 @@ describe('welcome module coverage', () => {
     });
 
     it('prunes stale activity after EVICTION_INTERVAL calls', () => {
-      for (let i = 0; i < 51; i++) {
+      const nowSpy = vi.spyOn(Date, 'now');
+
+      nowSpy.mockReturnValue(0);
+      recordCommunityActivity({
+        guild: { id: 'g1' },
+        channel: { id: 'stale-ch', isTextBased: () => true },
+        author: { bot: false },
+      }, {});
+
+      nowSpy.mockReturnValue(4_000_000);
+      for (let i = 0; i < 49; i++) {
         const message = {
           guild: { id: 'g1' },
-          channel: { id: `ch${i % 5}`, isTextBased: () => true },
+          channel: { id: 'fresh-ch', isTextBased: () => true },
           author: { bot: false },
         };
         recordCommunityActivity(message, {});
       }
 
       const state = __getCommunityActivityState('g1');
-      expect(Object.keys(state)).toHaveLength(5);
-      expect(
-        state.ch0.length +
-          state.ch1.length +
-          state.ch2.length +
-          state.ch3.length +
-          state.ch4.length,
-      ).toBe(51);
+      expect(state['stale-ch']).toBeUndefined();
+      expect(state['fresh-ch']?.length).toBeGreaterThan(0);
+      nowSpy.mockRestore();
     });
 
     it('rebuilds excluded channels cache when list changes', () => {
-      const message = {
+      const includedMessage = {
         guild: { id: 'g1' },
         channel: { id: 'ch1', isTextBased: () => true },
         author: { bot: false },
       };
-      // First call with no exclusions
-      recordCommunityActivity(message, {});
+      const excludedMessage = {
+        guild: { id: 'g1' },
+        channel: { id: 'ch2', isTextBased: () => true },
+        author: { bot: false },
+      };
 
-      // Second call with exclusions (cache key changes) should skip ch1
-      recordCommunityActivity(message, {
-        welcome: { dynamic: { excludeChannels: ['ch1'] } },
+      // First call with no exclusions
+      recordCommunityActivity(includedMessage, {});
+      // Second call with exclusions (cache key changes)
+      recordCommunityActivity(excludedMessage, {
+        welcome: { dynamic: { excludeChannels: ['ch2'] } },
       });
 
       const state = __getCommunityActivityState('g1');
-      expect(state.ch1).toHaveLength(1);
+      expect(state['ch1']).toHaveLength(1);
+      expect(state['ch2']).toBeUndefined();
     });
   });
 
