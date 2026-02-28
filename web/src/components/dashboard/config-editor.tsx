@@ -14,7 +14,7 @@ import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
 
 /** Config sections exposed by the API — all fields optional for partial API responses. */
-type GuildConfig = DeepPartial<BotConfig> & Record<string, any>;
+type GuildConfig = DeepPartial<BotConfig>;
 
 /** Shared input styling for text inputs and textareas in the config editor. */
 const inputClasses =
@@ -1315,13 +1315,13 @@ export function ConfigEditor() {
             active days.
           </p>
           {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
-            (badge: { days: number; label: string }, i: number) => (
+            (badge: { days?: number; label?: string }, i: number) => (
               <div key={i} className="flex items-center gap-2">
                 <Input
                   className="w-20"
                   type="number"
                   min={0}
-                  value={badge.days}
+                  value={badge.days ?? 0}
                   onChange={(e) => {
                     const badges = [
                       ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
@@ -1340,7 +1340,7 @@ export function ConfigEditor() {
                 <span className="text-xs text-muted-foreground">days →</span>
                 <Input
                   className="flex-1"
-                  value={badge.label}
+                  value={badge.label ?? ''}
                   onChange={(e) => {
                     const badges = [
                       ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
