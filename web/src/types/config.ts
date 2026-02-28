@@ -215,6 +215,16 @@ export interface ReviewConfig extends ToggleSectionConfig {
   xpReward: number;
 }
 
+/** Ticket system settings. */
+export interface TicketsConfig extends ToggleSectionConfig {
+  mode: 'thread' | 'channel';
+  supportRole: string | null;
+  category: string | null;
+  autoCloseHours: number;
+  transcriptChannel: string | null;
+  maxOpenPerUser: number;
+}
+
 /** Daily challenge scheduler settings. */
 export interface ChallengesConfig extends ToggleSectionConfig {
   channelId: string | null;
@@ -247,6 +257,7 @@ export interface BotConfig {
   github?: GithubConfig;
   review?: ReviewConfig;
   challenges?: ChallengesConfig;
+  tickets?: TicketsConfig;
 }
 
 /** All config sections shown in the editor. */
@@ -270,7 +281,8 @@ export type ConfigSection =
   | 'engagement'
   | 'github'
   | 'review'
-  | 'challenges';
+  | 'challenges'
+  | 'tickets';
 
 /**
  * @deprecated Use {@link ConfigSection} directly.

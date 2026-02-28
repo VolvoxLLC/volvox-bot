@@ -8,6 +8,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  Ticket,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -40,6 +41,11 @@ const navigation = [
     name: 'Conversations',
     href: '/dashboard/conversations',
     icon: MessagesSquare,
+  },
+  {
+    name: 'Tickets',
+    href: '/dashboard/tickets',
+    icon: Ticket,
   },
   {
     name: 'Bot Config',
