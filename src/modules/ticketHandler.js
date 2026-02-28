@@ -488,7 +488,7 @@ export function buildTicketPanel() {
     .setTitle('🎫 Support Tickets')
     .setDescription(
       'Need help? Click the button below to open a support ticket.\n\n' +
-        'A private thread will be created where you can describe your issue ' +
+        'A private ticket will be opened where you can describe your issue ' +
         'and our support team will assist you.',
     )
     .setFooter({ text: 'Volvox Bot • Ticket System' });
