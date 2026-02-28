@@ -7,11 +7,11 @@ import { Router } from 'express';
 import { requireAuth } from './middleware/auth.js';
 import authRouter from './routes/auth.js';
 import configRouter from './routes/config.js';
+import conversationsRouter from './routes/conversations.js';
 import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
-import conversationsRouter from './routes/conversations.js';
 import webhooksRouter from './routes/webhooks.js';
 
 const router = Router();

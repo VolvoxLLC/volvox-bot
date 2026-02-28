@@ -18,7 +18,11 @@ export async function GET(
     return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, '[api/guilds/:guildId/conversations/stats]');
+  const authError = await authorizeGuildAdmin(
+    request,
+    guildId,
+    '[api/guilds/:guildId/conversations/stats]',
+  );
   if (authError) return authError;
 
   const config = getBotApiConfig('[api/guilds/:guildId/conversations/stats]');
