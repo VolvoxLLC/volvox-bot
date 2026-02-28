@@ -25,6 +25,20 @@ function getDbPool(req) {
   return req.app.locals.dbPool || null;
 }
 
+/**
+ * Normalize a query filter value to a non-empty string.
+ * Express query params can be arrays/objects for repeated or nested keys.
+ * We ignore non-string values to avoid passing invalid types to pg.
+ *
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+function toFilterString(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 // ─── GET /:id/audit-log ──────────────────────────────────────────────────────
 
 /**
@@ -51,15 +65,17 @@ router.get('/:id/audit-log', auditRateLimit, requireGuildAdmin, validateGuild, a
     const params = [guildId];
     let paramIndex = 2;
 
-    if (req.query.action) {
+    const actionFilter = toFilterString(req.query.action);
+    if (actionFilter) {
       conditions.push(`action = $${paramIndex}`);
-      params.push(req.query.action);
+      params.push(actionFilter);
       paramIndex++;
     }
 
-    if (req.query.userId) {
+    const userIdFilter = toFilterString(req.query.userId);
+    if (userIdFilter) {
       conditions.push(`user_id = $${paramIndex}`);
-      params.push(req.query.userId);
+      params.push(userIdFilter);
       paramIndex++;
     }
 

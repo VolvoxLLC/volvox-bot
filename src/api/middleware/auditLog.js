@@ -24,9 +24,9 @@ export function deriveAction(method, path) {
   const segments = cleaned.split('/').filter(Boolean);
 
   // Common patterns:
-  //   guilds/:id/config → config.update
-  //   guilds/:id/members/:memberId/xp → member.xp_adjust
-  //   moderation/... → moderation.<action>
+  //   PUT  guilds/:id/config               → config.update
+  //   PUT  guilds/:id/members/:memberId/xp → members.xp_update
+  //   POST moderation/warn                 → moderation.create
 
   if (segments.length === 0) return `${method.toLowerCase()}.unknown`;
 
@@ -150,8 +150,12 @@ export function auditLogMiddleware() {
       return next();
     }
 
-    // Check if audit logging is enabled in config
-    const config = getConfig();
+    // Strip query string once — req.originalUrl includes it (e.g. /api/v1/guilds/123/config?limit=25)
+    const cleanPath = (req.originalUrl || req.path).split('?')[0];
+    const guildId = extractGuildId(cleanPath) || req.body?.guildId || null;
+
+    // Check if audit logging is enabled in config (guild-scoped when available)
+    const config = getConfig(guildId || undefined);
     if (config.auditLog && config.auditLog.enabled === false) {
       return next();
     }
@@ -163,11 +167,7 @@ export function auditLogMiddleware() {
 
     req._auditLogAttached = true;
 
-    // Strip query string once — req.originalUrl includes it (e.g. /api/v1/guilds/123/config?limit=25)
-    const cleanPath = (req.originalUrl || req.path).split('?')[0];
-
     const userId = req.user?.userId || req.authMethod || 'unknown';
-    const guildId = extractGuildId(cleanPath) || req.body?.guildId || null;
     const action = deriveAction(req.method, cleanPath);
     const ipAddress = req.ip || req.socket?.remoteAddress;
 

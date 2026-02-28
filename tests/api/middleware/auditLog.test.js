@@ -25,7 +25,7 @@ import {
   computeConfigDiff,
   deriveAction,
 } from '../../../src/api/middleware/auditLog.js';
-import { _setTestConfig } from '../../../src/modules/config.js';
+import { _setTestConfig, getConfig } from '../../../src/modules/config.js';
 
 describe('auditLog middleware', () => {
   afterEach(() => {
@@ -177,6 +177,17 @@ describe('auditLog middleware', () => {
       middleware(req, res, next);
 
       expect(res.on).toHaveBeenCalledWith('finish', expect.any(Function));
+    });
+
+    it('should use guild-scoped config for the enabled check', () => {
+      const middleware = auditLogMiddleware();
+      const req = createMockReq('POST', '/api/v1/guilds/123/config');
+      const res = createMockRes();
+      const next = vi.fn();
+
+      middleware(req, res, next);
+
+      expect(getConfig).toHaveBeenCalledWith('123');
     });
 
     it('should insert audit entry on successful response finish', () => {

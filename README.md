@@ -203,6 +203,13 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 
 **Escalation thresholds** are objects with: `warns` (count), `withinDays` (window), `action` ("timeout" or "ban"), `duration` (for timeout, e.g. "1h").
 
+### Audit Log (`auditLog`)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `enabled` | boolean | Enable/disable audit logging for mutating authenticated API requests |
+| `retentionDays` | number | Data retention window in days for scheduled cleanup (default: 90, `<= 0` disables purge) |
+
 ### Starboard (`starboard`)
 
 | Key | Type | Description |

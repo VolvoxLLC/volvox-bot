@@ -170,6 +170,40 @@ describe('auditLog routes', () => {
       expect(countCall[1]).toContain('user42');
     });
 
+    it('should ignore non-string action filters', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(
+        request(app).get(
+          '/api/v1/guilds/guild1/audit-log?action=config.update&action=members.delete',
+        ),
+      );
+
+      expect(res.status).toBe(200);
+
+      const countCall = mockPool.query.mock.calls[0];
+      expect(countCall[0]).not.toContain('action =');
+      expect(countCall[1]).toEqual(['guild1']);
+    });
+
+    it('should ignore non-string userId filters', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(
+        request(app).get('/api/v1/guilds/guild1/audit-log?userId=user1&userId=user2'),
+      );
+
+      expect(res.status).toBe(200);
+
+      const countCall = mockPool.query.mock.calls[0];
+      expect(countCall[0]).not.toContain('user_id =');
+      expect(countCall[1]).toEqual(['guild1']);
+    });
+
     it('should filter by date range', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total: 2 }] })
