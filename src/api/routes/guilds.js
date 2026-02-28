@@ -599,9 +599,8 @@ router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
  *                   name:
  *                     type: string
  *                   color:
- *                     type: string
- *                   position:
  *                     type: integer
+ *                     description: Role color as decimal integer (for example 16711680)
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
@@ -751,7 +750,7 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
  *     tags:
  *       - Guilds
  *     summary: Guild statistics
- *     description: Returns aggregate guild statistics including member count, messages, active users, and moderation data.
+ *     description: Returns aggregate guild statistics — member count, AI conversations, moderation cases, and uptime.
  *     security:
  *       - ApiKeyAuth: []
  *       - BearerAuth: []

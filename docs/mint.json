@@ -1,11 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
   "name": "Volvox Bot",
-  "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
-  },
-  "favicon": "/favicon.svg",
   "colors": {
     "primary": "#22c55e",
     "light": "#4ade80",
@@ -57,7 +52,13 @@
         {
           "group": "Members",
           "icon": "users",
-          "pages": ["api-reference/members/list-members", "api-reference/members/get-member"]
+          "pages": [
+            "api-reference/members/list-members",
+            "api-reference/members/export-members",
+            "api-reference/members/get-member",
+            "api-reference/members/member-cases",
+            "api-reference/members/adjust-member-xp"
+          ]
         },
         {
           "group": "Moderation",
@@ -93,13 +94,18 @@
           "group": "Community",
           "icon": "people-group",
           "pages": ["api-reference/community/leaderboard", "api-reference/community/showcases", "api-reference/community/stats"]
+        },
+        {
+          "group": "Webhooks",
+          "icon": "webhook",
+          "pages": ["api-reference/webhooks/config-update"]
         }
       ]
     }
   ],
   "openapi": "openapi.json",
   "api": {
-    "baseUrl": "https://api.yourdomain.com/api/v1"
+    "baseUrl": "/api/v1"
   },
   "footerSocials": {
     "github": "https://github.com/VolvoxLLC/volvox-bot",

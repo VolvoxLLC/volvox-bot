@@ -3,10 +3,13 @@
  * Generates the OpenAPI 3.0 spec from JSDoc annotations across route files.
  */
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import swaggerJsdoc from 'swagger-jsdoc';
 import pkg from '../../package.json' with { type: 'json' };
 
 const { version } = pkg;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const options = {
   definition: {
@@ -133,7 +136,7 @@ const options = {
       },
     },
   },
-  apis: ['./src/api/routes/*.js'],
+  apis: [path.resolve(__dirname, 'routes/*.js')],
 };
 
 /** Generated OpenAPI specification object */

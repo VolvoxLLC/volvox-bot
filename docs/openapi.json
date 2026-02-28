@@ -1881,10 +1881,8 @@
                         "type": "string"
                       },
                       "color": {
-                        "type": "string"
-                      },
-                      "position": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Role color as decimal integer (for example 16711680)"
                       }
                     }
                   }
@@ -2027,7 +2025,7 @@
           "Guilds"
         ],
         "summary": "Guild statistics",
-        "description": "Returns aggregate guild statistics including member count, messages, active users, and moderation data.",
+        "description": "Returns aggregate guild statistics — member count, AI conversations, moderation cases, and uptime.",
         "security": [
           {
             "ApiKeyAuth": []
