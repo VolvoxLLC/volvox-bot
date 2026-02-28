@@ -123,7 +123,7 @@
   ],
   "openapi": "openapi.json",
   "api": {
-    "baseUrl": "https://your-domain.com/api/v1"
+    "baseUrl": "/api/v1"
   },
   "footerSocials": {
     "github": "https://github.com/VolvoxLLC/volvox-bot",
