@@ -11,6 +11,7 @@ import { safeSend } from '../utils/safeSend.js';
 import { checkDailyChallenge } from './challengeScheduler.js';
 import { closeExpiredPolls } from './pollHandler.js';
 import { expireStaleReviews } from './reviewHandler.js';
+import { checkAutoClose } from './ticketHandler.js';
 
 /** @type {ReturnType<typeof setInterval> | null} */
 let schedulerInterval = null;
@@ -188,6 +189,8 @@ async function pollScheduledMessages(client) {
     await checkDailyChallenge(client);
     // Expire stale review requests
     await expireStaleReviews(client);
+    // Auto-close inactive support tickets
+    await checkAutoClose(client);
   } catch (err) {
     logError('Scheduler poll error', { error: err.message });
   } finally {
