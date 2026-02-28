@@ -31,7 +31,7 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  const allowedParams = ['range', 'from', 'to', 'interval', 'channelId'];
+  const allowedParams = ['range', 'from', 'to', 'interval', 'channelId', 'compare'];
   for (const key of allowedParams) {
     const value = request.nextUrl.searchParams.get(key);
     if (value !== null) {

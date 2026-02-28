@@ -77,6 +77,18 @@ const analyticsPayload = {
       messages: 500,
     },
   ],
+  topChannels: [
+    {
+      channelId: "channel-1",
+      name: "general",
+      messages: 500,
+    },
+  ],
+  commandUsage: {
+    source: "logs",
+    items: [{ command: "help", uses: 42 }],
+  },
+  comparison: null,
   heatmap: [
     {
       dayOfWeek: 1,
@@ -359,5 +371,96 @@ describe("AnalyticsDashboard", () => {
 
     // @ts-expect-error -- restoring location mock
     window.location = originalLocation;
+  });
+  it("exports visible analytics data as CSV", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(analyticsPayload),
+    } as Response);
+
+    const createObjectURLSpy = vi
+      .spyOn(window.URL, "createObjectURL")
+      .mockReturnValue("blob:analytics");
+    const revokeObjectURLSpy = vi
+      .spyOn(window.URL, "revokeObjectURL")
+      .mockImplementation(() => undefined);
+
+    const clickSpy = vi.fn();
+    let createdAnchor: HTMLAnchorElement | null = null;
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
+      const element = originalCreateElement(tagName);
+      if (tagName.toLowerCase() === "a") {
+        createdAnchor = element as HTMLAnchorElement;
+        Object.defineProperty(element, "click", {
+          value: clickSpy,
+          configurable: true,
+        });
+      }
+      return element;
+    });
+
+    const user = userEvent.setup();
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /export csv/i })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+    const exportedBlob = createObjectURLSpy.mock.calls[0]?.[0] as Blob;
+    expect(exportedBlob.type).toContain("text/csv");
+    expect(createdAnchor?.download).toContain("analytics-guild-1");
+    expect(createdAnchor?.href).toBe("blob:analytics");
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURLSpy).toHaveBeenCalledWith("blob:analytics");
+  });
+
+
+  it("includes compare query param when comparison mode is enabled", async () => {
+  localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+  const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(analyticsPayload),
+  } as Response);
+
+  const user = userEvent.setup();
+  render(<AnalyticsDashboard />);
+
+  await waitFor(() => {
+    expect(fetchSpy).toHaveBeenCalled();
+  });
+
+  await user.click(screen.getByRole("button", { name: /compare vs previous/i }));
+
+  await waitFor(() => {
+    expect(fetchSpy.mock.calls.some(([url]) => String(url).includes("compare=1"))).toBe(true);
+  });
+});
+
+  it("renders command usage section", async () => {
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(analyticsPayload),
+    } as Response);
+
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Command usage stats")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("/help")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
   });
 });
