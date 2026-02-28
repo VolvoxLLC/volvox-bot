@@ -70,6 +70,9 @@ function formatDuration(first: string, last: string): string {
   return `${hours}h ${mins % 60}m`;
 }
 
+/** Number of conversations per page */
+const PAGE_SIZE = 25;
+
 /**
  * Conversation list page with search, filters, and pagination.
  */
@@ -151,7 +154,7 @@ export default function ConversationsPage() {
       try {
         const params = new URLSearchParams();
         params.set('page', String(opts.page));
-        params.set('limit', '25');
+        params.set('limit', String(PAGE_SIZE));
         if (opts.search) params.set('search', opts.search);
         if (opts.channel) params.set('channel', opts.channel);
 
@@ -222,7 +225,7 @@ export default function ConversationsPage() {
     setPage(1);
   }, []);
 
-  const totalPages = Math.ceil(total / 25);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
