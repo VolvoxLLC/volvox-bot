@@ -255,7 +255,13 @@ router.get('/:guildId/stats', async (req, res) => {
            WHERE guild_id = $1 AND last_active >= NOW() - INTERVAL '7 days'`,
           [guildId],
         ),
-        pool.query('SELECT COUNT(*)::int AS count FROM showcases WHERE guild_id = $1', [guildId]),
+        pool.query(
+          `SELECT COUNT(*)::int AS count
+           FROM showcases s
+           INNER JOIN user_stats us ON us.guild_id = s.guild_id AND us.user_id = s.author_id
+           WHERE s.guild_id = $1 AND us.public_profile = TRUE`,
+          [guildId],
+        ),
         pool.query('SELECT COUNT(*)::int AS count FROM challenge_solves WHERE guild_id = $1', [
           guildId,
         ]),
