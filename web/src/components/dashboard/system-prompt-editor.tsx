@@ -80,7 +80,7 @@ export function SystemPromptEditor({
           placeholder="Enter the system prompt for your bot..."
         />
         <div className="flex items-center justify-end gap-2 text-xs">
-          <span
+          <output
             id={counterId}
             className={cn(
               'tabular-nums',
@@ -90,11 +90,10 @@ export function SystemPromptEditor({
                   ? 'text-yellow-500'
                   : 'text-muted-foreground',
             )}
-            role="status"
             aria-live="off"
           >
             {charCount.toLocaleString()} / {maxLength.toLocaleString()}
-          </span>
+          </output>
           {isOverLimit && (
             <span className="text-destructive" role="alert">
               ({(charCount - maxLength).toLocaleString()} over limit)
