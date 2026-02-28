@@ -14,7 +14,6 @@ vi.mock('../../src/logger.js', () => ({
   debug: vi.fn(),
 }));
 
-import { getConfig } from '../../src/modules/config.js';
 import { warn as logWarn } from '../../src/logger.js';
 import {
   _setPoolGetter,
@@ -27,6 +26,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from '../../src/modules/ai.js';
+import { getConfig } from '../../src/modules/config.js';
 
 describe('ai module coverage', () => {
   beforeEach(() => {
@@ -47,7 +47,9 @@ describe('ai module coverage', () => {
 
   describe('getHistoryLength config edge cases', () => {
     it('uses default when config throws', async () => {
-      getConfig.mockImplementation(() => { throw new Error('config error'); });
+      getConfig.mockImplementation(() => {
+        throw new Error('config error');
+      });
       // Should not throw and should use DEFAULT_HISTORY_LENGTH (20)
       const history = await getHistoryAsync('test-channel');
       expect(history).toEqual([]);
@@ -92,9 +94,12 @@ describe('ai module coverage', () => {
 
     it('dedupes concurrent hydration requests', async () => {
       let resolveQuery;
-      const queryPromise = new Promise((resolve) => { resolveQuery = resolve; });
+      const queryPromise = new Promise((resolve) => {
+        resolveQuery = resolve;
+      });
       const mockPool = {
-        query: vi.fn()
+        query: vi
+          .fn()
           .mockImplementationOnce(() => queryPromise)
           .mockResolvedValue({}),
       };
@@ -127,9 +132,12 @@ describe('ai module coverage', () => {
 
     it('merges in-flight writes with DB history', async () => {
       let resolveQuery;
-      const queryPromise = new Promise((resolve) => { resolveQuery = resolve; });
+      const queryPromise = new Promise((resolve) => {
+        resolveQuery = resolve;
+      });
       const mockPool = {
-        query: vi.fn()
+        query: vi
+          .fn()
           .mockImplementationOnce(() => queryPromise)
           .mockResolvedValue({}),
       };
@@ -141,9 +149,7 @@ describe('ai module coverage', () => {
       addToHistory('merge-channel', 'user', 'concurrent message');
 
       resolveQuery({
-        rows: [
-          { role: 'assistant', content: 'db reply' },
-        ],
+        rows: [{ role: 'assistant', content: 'db reply' }],
       });
 
       const history = await asyncHistory;
@@ -174,16 +180,17 @@ describe('ai module coverage', () => {
 
       // Give the fire-and-forget a tick to run
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO conversations'),
-        ['ch1', 'user', 'hello', 'testuser'],
-      );
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO conversations'), [
+        'ch1',
+        'user',
+        'hello',
+        'testuser',
+      ]);
     });
 
     it('logs error when DB write fails', async () => {
       const { error: logError } = await import('../../src/logger.js');
-      const mockQuery = vi.fn()
-        .mockRejectedValue(new Error('write failed'));
+      const mockQuery = vi.fn().mockRejectedValue(new Error('write failed'));
       setPool({ query: mockQuery });
 
       addToHistory('ch1', 'user', 'hello');
@@ -205,9 +212,7 @@ describe('ai module coverage', () => {
     it('skips when no pool', async () => {
       const { info } = await import('../../src/logger.js');
       await initConversationHistory();
-      expect(info).toHaveBeenCalledWith(
-        expect.stringContaining('No DB available'),
-      );
+      expect(info).toHaveBeenCalledWith(expect.stringContaining('No DB available'));
     });
 
     it('handles query failure gracefully', async () => {
@@ -339,7 +344,9 @@ describe('ai module - uncovered branch coverage', () => {
     });
 
     it('uses DEFAULT_HISTORY_LENGTH when getConfig throws', async () => {
-      getConfig.mockImplementation(() => { throw new Error('not loaded'); });
+      getConfig.mockImplementation(() => {
+        throw new Error('not loaded');
+      });
       const mockPool = { query: vi.fn().mockResolvedValue({ rows: [] }) };
       setPool(mockPool);
 
@@ -360,13 +367,15 @@ describe('ai module - uncovered branch coverage', () => {
       // Cleanup query should use DEFAULT_HISTORY_TTL_DAYS
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('DELETE FROM conversations'),
-        expect.any(Array),
+        [30],
       );
       stopConversationCleanup();
     });
 
     it('uses DEFAULT when getConfig throws in cleanup', async () => {
-      getConfig.mockImplementation(() => { throw new Error('not loaded'); });
+      getConfig.mockImplementation(() => {
+        throw new Error('not loaded');
+      });
       const mockPool = { query: vi.fn().mockResolvedValue({ rowCount: 0 }) };
       setPool(mockPool);
 
@@ -374,7 +383,7 @@ describe('ai module - uncovered branch coverage', () => {
       await new Promise((r) => setTimeout(r, 20));
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('DELETE FROM conversations'),
-        expect.any(Array),
+        [30],
       );
       stopConversationCleanup();
     });
@@ -383,9 +392,12 @@ describe('ai module - uncovered branch coverage', () => {
   describe('hydrateHistory pending dedup (line 118)', () => {
     it('returns existing pending hydration for same channel', async () => {
       let resolveQuery;
-      const queryPromise = new Promise((resolve) => { resolveQuery = resolve; });
+      const queryPromise = new Promise((resolve) => {
+        resolveQuery = resolve;
+      });
       const mockPool = {
-        query: vi.fn()
+        query: vi
+          .fn()
           .mockImplementationOnce(() => queryPromise)
           .mockResolvedValue({ rows: [] }),
       };

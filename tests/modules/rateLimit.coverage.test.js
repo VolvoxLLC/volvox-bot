@@ -22,8 +22,6 @@ vi.mock('../../src/utils/sanitizeMentions.js', () => ({
   sanitizeMentions: vi.fn((s) => s),
 }));
 
-import { isExempt } from '../../src/utils/modExempt.js';
-import { safeReply } from '../../src/utils/safeSend.js';
 import {
   checkRateLimit,
   clearRateLimitState,
@@ -31,6 +29,8 @@ import {
   setMaxTrackedUsers,
   stopRateLimitCleanup,
 } from '../../src/modules/rateLimit.js';
+import { isExempt } from '../../src/utils/modExempt.js';
+import { safeReply } from '../../src/utils/safeSend.js';
 
 function makeMessage({
   userId = 'user1',
@@ -183,14 +183,27 @@ describe('rateLimit coverage', () => {
     });
 
     it('resets trigger window when muteWindowMs has elapsed', async () => {
-      const msg = makeMessage();
-      // Use a very short mute window (0 seconds = already expired)
-      const config = makeConfig({ maxMessages: 2, muteAfterTriggers: 3, muteWindowSeconds: 0 });
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
 
-      // Send enough messages to trigger but window immediately expires
-      await triggerRateLimit(msg, config, 3);
-      // triggerCount should have reset since muteWindowMs = 0
-      expect(msg.member.timeout).not.toHaveBeenCalled();
+        const msg = makeMessage();
+        const config = makeConfig({ maxMessages: 2, muteAfterTriggers: 2, muteWindowSeconds: 1 });
+
+        // First trigger starts the mute window
+        await triggerRateLimit(msg, config, 3);
+        expect(msg.member.timeout).not.toHaveBeenCalled();
+        expect(safeReply).toHaveBeenCalledTimes(1);
+
+        // Move beyond mute window and trigger again: should reset instead of muting
+        vi.setSystemTime(new Date('2024-01-01T00:00:06.500Z'));
+        await triggerRateLimit(msg, config, 3);
+
+        expect(msg.member.timeout).not.toHaveBeenCalled();
+        expect(safeReply).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('skips mute when member is null', async () => {
@@ -317,4 +330,3 @@ describe('rateLimit coverage', () => {
     });
   });
 });
-

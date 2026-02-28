@@ -45,7 +45,10 @@ vi.mock('../../src/modules/cli-process.js', () => {
 vi.mock('../../src/modules/spam.js', () => ({ isSpam: vi.fn().mockReturnValue(false) }));
 vi.mock('../../src/utils/safeSend.js', () => ({ safeSend: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../../src/logger.js', () => ({
-  info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn(),
+  info: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+  debug: vi.fn(),
 }));
 vi.mock('../../src/modules/memory.js', () => ({
   buildMemoryContext: vi.fn().mockResolvedValue(''),
@@ -96,17 +99,17 @@ vi.mock('../../src/modules/triage-buffer.js', async (importOriginal) => {
   return actual; // use real buffer implementation
 });
 
-import { CLIProcessError } from '../../src/modules/cli-process.js';
 import { warn } from '../../src/logger.js';
-import { parseClassifyResult, parseRespondResult } from '../../src/modules/triage-parse.js';
-import { checkTriggerWords } from '../../src/modules/triage-filter.js';
-import { channelBuffers } from '../../src/modules/triage-buffer.js';
+import { CLIProcessError } from '../../src/modules/cli-process.js';
 import {
   accumulateMessage,
   evaluateNow,
   startTriage,
   stopTriage,
 } from '../../src/modules/triage.js';
+import { channelBuffers } from '../../src/modules/triage-buffer.js';
+import { checkTriggerWords } from '../../src/modules/triage-filter.js';
+import { parseClassifyResult, parseRespondResult } from '../../src/modules/triage-parse.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -156,7 +159,10 @@ function makeDiscordMessage(channelId, content = 'hello', extras = {}) {
   return {
     id: extras.id || 'msg1',
     content,
-    channel: { id: channelId, messages: { fetch: vi.fn().mockRejectedValue(new Error('not found')) } },
+    channel: {
+      id: channelId,
+      messages: { fetch: vi.fn().mockRejectedValue(new Error('not found')) },
+    },
     author: { username: 'user', id: 'u1', bot: false },
     createdTimestamp: Date.now(),
     reference: null,
@@ -204,7 +210,9 @@ describe('triage module coverage', () => {
   describe('evaluateNow - concurrent eval guard', () => {
     it('marks pendingReeval when evaluation is in progress', async () => {
       let resolveClassify;
-      const classifyPromise = new Promise((resolve) => { resolveClassify = resolve; });
+      const classifyPromise = new Promise((resolve) => {
+        resolveClassify = resolve;
+      });
       mockClassifierSend.mockReturnValueOnce(classifyPromise);
 
       // Accumulate a message to create buffer entry
@@ -246,7 +254,10 @@ describe('triage module coverage', () => {
   describe('evaluateNow - classifier returns ignore', () => {
     it('stops processing when classifier returns null (ignore)', async () => {
       mockClassifierSend.mockResolvedValue({
-        type: 'result', is_error: false, result: '{}', total_cost_usd: 0,
+        type: 'result',
+        is_error: false,
+        result: '{}',
+        total_cost_usd: 0,
       });
       parseClassifyResult.mockReturnValue(null); // null = ignore
 
@@ -260,14 +271,14 @@ describe('triage module coverage', () => {
 
   describe('evaluateNow - classifier timeout', () => {
     it('handles CLIProcessError timeout from classifier', async () => {
-      mockClassifierSend.mockRejectedValue(
-        new CLIProcessError('Timeout', 'timeout')
-      );
+      mockClassifierSend.mockRejectedValue(new CLIProcessError('Timeout', 'timeout'));
 
       const msg = makeDiscordMessage('ch-timeout', 'hello');
       await accumulateMessage(msg, makeTriageConfig());
       // Should not throw — timeout is swallowed inside evaluateNow
-      await expect(evaluateNow('ch-timeout', makeTriageConfig(), mockClient)).resolves.toBeUndefined();
+      await expect(
+        evaluateNow('ch-timeout', makeTriageConfig(), mockClient),
+      ).resolves.toBeUndefined();
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining('Triage evaluation aborted (timeout)'),
         expect.any(Object),
@@ -278,9 +289,7 @@ describe('triage module coverage', () => {
   describe('evaluateNow - non-timeout CLIProcessError', () => {
     it('logs parse errors without sending user message', async () => {
       const { error: logError } = await import('../../src/logger.js');
-      mockClassifierSend.mockRejectedValue(
-        new CLIProcessError('Parse failed', 'parse')
-      );
+      mockClassifierSend.mockRejectedValue(new CLIProcessError('Parse failed', 'parse'));
 
       const msg = makeDiscordMessage('ch-parse-err', 'hello');
       await accumulateMessage(msg, makeTriageConfig());
@@ -302,7 +311,7 @@ describe('triage module coverage', () => {
       const { safeSend } = await import('../../src/utils/safeSend.js');
       expect(safeSend).toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining("trouble thinking"),
+        expect.stringContaining('trouble thinking'),
       );
     });
   });
@@ -331,7 +340,12 @@ describe('triage module coverage', () => {
 
     it('handles trigger word detected - calls evaluateNow', async () => {
       checkTriggerWords.mockReturnValueOnce(true);
-      mockClassifierSend.mockResolvedValue({ type: 'result', is_error: false, result: '{}', total_cost_usd: 0 });
+      mockClassifierSend.mockResolvedValue({
+        type: 'result',
+        is_error: false,
+        result: '{}',
+        total_cost_usd: 0,
+      });
       parseClassifyResult.mockReturnValueOnce(null); // ignore
 
       const msg = makeDiscordMessage('ch-trigger', 'urgent message');
@@ -340,6 +354,7 @@ describe('triage module coverage', () => {
       // Should have tried to classify (trigger word path)
       // Give it a tick for the fire-and-forget
       await new Promise((r) => setTimeout(r, 10));
+      expect(checkTriggerWords).toHaveBeenCalledWith('urgent message', expect.any(Object));
       expect(mockClassifierSend).toHaveBeenCalled();
     });
 

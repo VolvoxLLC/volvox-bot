@@ -234,7 +234,8 @@ describe('welcome module coverage', () => {
         channel: { id: 'ch1', isTextBased: () => true },
         author: { bot: false },
       };
-      recordCommunityActivity(message, {}); // no throw
+      recordCommunityActivity(message, {});
+      expect(__getCommunityActivityState('g1')).toEqual({});
     });
 
     it('ignores non-text channels', () => {
@@ -268,7 +269,7 @@ describe('welcome module coverage', () => {
       };
       recordCommunityActivity(message, {});
       const state = __getCommunityActivityState('g1');
-      expect(state['ch1']).toHaveLength(1);
+      expect(state.ch1).toHaveLength(1);
     });
 
     it('prunes stale activity after EVICTION_INTERVAL calls', () => {
@@ -280,7 +281,16 @@ describe('welcome module coverage', () => {
         };
         recordCommunityActivity(message, {});
       }
-      // Should not throw, eviction should run at call 50
+
+      const state = __getCommunityActivityState('g1');
+      expect(Object.keys(state)).toHaveLength(5);
+      expect(
+        state.ch0.length +
+          state.ch1.length +
+          state.ch2.length +
+          state.ch3.length +
+          state.ch4.length,
+      ).toBe(51);
     });
 
     it('rebuilds excluded channels cache when list changes', () => {
@@ -291,10 +301,14 @@ describe('welcome module coverage', () => {
       };
       // First call with no exclusions
       recordCommunityActivity(message, {});
-      // Second call with exclusions (cache key changes)
+
+      // Second call with exclusions (cache key changes) should skip ch1
       recordCommunityActivity(message, {
-        welcome: { dynamic: { excludeChannels: ['ch2'] } },
+        welcome: { dynamic: { excludeChannels: ['ch1'] } },
       });
+
+      const state = __getCommunityActivityState('g1');
+      expect(state.ch1).toHaveLength(1);
     });
   });
 
@@ -302,11 +316,14 @@ describe('welcome module coverage', () => {
     it('generates hype level message with active channels', async () => {
       // Pre-populate 60+ messages for 'hype' level
       for (let i = 0; i < 65; i++) {
-        recordCommunityActivity({
-          guild: { id: 'g-hype' },
-          channel: { id: 'ch-hype', isTextBased: () => true },
-          author: { bot: false },
-        }, { welcome: { dynamic: { activityWindowMinutes: 60 } } });
+        recordCommunityActivity(
+          {
+            guild: { id: 'g-hype' },
+            channel: { id: 'ch-hype', isTextBased: () => true },
+            author: { bot: false },
+          },
+          { welcome: { dynamic: { activityWindowMinutes: 60 } } },
+        );
       }
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
@@ -350,11 +367,14 @@ describe('welcome module coverage', () => {
 
     it('generates steady level message (8-24 messages)', async () => {
       for (let i = 0; i < 10; i++) {
-        recordCommunityActivity({
-          guild: { id: 'g-steady' },
-          channel: { id: 'ch-steady', isTextBased: () => true },
-          author: { bot: false },
-        }, { welcome: { dynamic: { activityWindowMinutes: 60 } } });
+        recordCommunityActivity(
+          {
+            guild: { id: 'g-steady' },
+            channel: { id: 'ch-steady', isTextBased: () => true },
+            author: { bot: false },
+          },
+          { welcome: { dynamic: { activityWindowMinutes: 60 } } },
+        );
       }
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
@@ -376,11 +396,14 @@ describe('welcome module coverage', () => {
 
     it('generates busy level message (25-59 messages)', async () => {
       for (let i = 0; i < 30; i++) {
-        recordCommunityActivity({
-          guild: { id: 'g-busy' },
-          channel: { id: 'ch-busy', isTextBased: () => true },
-          author: { bot: false },
-        }, { welcome: { dynamic: { activityWindowMinutes: 60 } } });
+        recordCommunityActivity(
+          {
+            guild: { id: 'g-busy' },
+            channel: { id: 'ch-busy', isTextBased: () => true },
+            author: { bot: false },
+          },
+          { welcome: { dynamic: { activityWindowMinutes: 60 } } },
+        );
       }
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
@@ -477,11 +500,14 @@ describe('welcome module coverage', () => {
   describe('dynamic welcome - voice channel activity', () => {
     it('includes voice info for light activity with voice channels and no text suggestions', async () => {
       // 1 message = 'light' activity
-      recordCommunityActivity({
-        guild: { id: 'g-voice' },
-        channel: { id: 'ch-voice', isTextBased: () => true },
-        author: { bot: false },
-      }, { welcome: { dynamic: { activityWindowMinutes: 60 } } });
+      recordCommunityActivity(
+        {
+          guild: { id: 'g-voice' },
+          channel: { id: 'ch-voice', isTextBased: () => true },
+          author: { bot: false },
+        },
+        { welcome: { dynamic: { activityWindowMinutes: 60 } } },
+      );
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
       const client = makeClient(mockSend);
@@ -508,11 +534,14 @@ describe('welcome module coverage', () => {
 
     it('generates light + voice + channel text message', async () => {
       // 1 message = 'light' activity
-      recordCommunityActivity({
-        guild: { id: 'g-voice2' },
-        channel: { id: 'ch-main', isTextBased: () => true },
-        author: { bot: false },
-      }, { welcome: { dynamic: { activityWindowMinutes: 60 } } });
+      recordCommunityActivity(
+        {
+          guild: { id: 'g-voice2' },
+          channel: { id: 'ch-main', isTextBased: () => true },
+          author: { bot: false },
+        },
+        { welcome: { dynamic: { activityWindowMinutes: 60 } } },
+      );
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
       const client = makeClient(mockSend);

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../../src/utils/logQuery.js', () => ({
   queryLogs: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
 }));
+
 import WebSocket from 'ws';
 import {
   getAuthenticatedClientCount,
@@ -19,6 +20,7 @@ import {
 import { WebSocketTransport } from '../../../src/transports/websocket.js';
 
 import { queryLogs } from '../../../src/utils/logQuery.js';
+
 const TEST_SECRET = 'test-secret-coverage';
 
 function makeTicket(secret = TEST_SECRET, ttlMs = 60_000) {
@@ -110,7 +112,8 @@ describe('logStream coverage', () => {
         const msg = JSON.parse(data.toString());
         messages.push(msg);
         count++;
-        if (count >= 2) { // auth_ok + history
+        if (count >= 2) {
+          // auth_ok + history
           ws.off('message', handler);
           resolve(messages);
         }
@@ -271,7 +274,7 @@ describe('logStream coverage', () => {
           {
             level: 'info',
             message: 'test message',
-            metadata: JSON.stringify({ module: 'auth', userId: 'u1' }),
+            metadata: { module: 'auth', userId: 'u1' },
             timestamp: new Date().toISOString(),
           },
         ],
@@ -279,7 +282,7 @@ describe('logStream coverage', () => {
       });
 
       const ws = await connect();
-      
+
       const messages = await new Promise((resolve) => {
         const msgs = [];
         ws.on('message', function handler(data) {
