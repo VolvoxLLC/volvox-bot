@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LeaderboardMember {
+  userId: string;
   username: string;
   displayName: string;
   avatar: string | null;
@@ -335,7 +336,7 @@ export default async function CommunityPage({ params }: PageProps) {
                     {leaderboard.members.map((member) => (
                       <Link
                         key={member.rank}
-                        href={`/community/${guildId}/${member.username}`}
+                        href={`/community/${guildId}/${member.userId}`}
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors"
                       >
                         <RankBadge rank={member.rank} />
