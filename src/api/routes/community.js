@@ -182,37 +182,34 @@ router.get('/:guildId/showcases', async (req, res) => {
     const { client } = req.app.locals;
     const guild = client?.guilds?.cache?.get(guildId);
 
-    const projects = await Promise.all(
-      projectsResult.rows.map(async (row) => {
-        let authorName = row.author_id;
-        let authorAvatar = null;
+    const authorIds = projectsResult.rows.map((r) => r.author_id);
+    const fetchedAuthors = guild
+      ? await guild.members.fetch({ user: authorIds }).catch(() => new Map())
+      : new Map();
 
-        if (guild) {
-          try {
-            const member = await guild.members.fetch(row.author_id).catch(() => null);
-            if (member) {
-              authorName = member.displayName;
-              authorAvatar = member.user.displayAvatarURL();
-            }
-          } catch {
-            // Author may have left
-          }
-        }
+    const projects = projectsResult.rows.map((row) => {
+      let authorName = row.author_id;
+      let authorAvatar = null;
 
-        return {
-          id: row.id,
-          title: row.name,
-          description: row.description,
-          tech: row.tech_stack || [],
-          repoUrl: row.repo_url,
-          liveUrl: row.live_url,
-          authorName,
-          authorAvatar,
-          upvotes: row.upvotes,
-          createdAt: row.created_at,
-        };
-      }),
-    );
+      const member = fetchedAuthors.get(row.author_id);
+      if (member) {
+        authorName = member.displayName;
+        authorAvatar = member.user.displayAvatarURL();
+      }
+
+      return {
+        id: row.id,
+        title: row.name,
+        description: row.description,
+        tech: row.tech_stack || [],
+        repoUrl: row.repo_url,
+        liveUrl: row.live_url,
+        authorName,
+        authorAvatar,
+        upvotes: row.upvotes,
+        createdAt: row.created_at,
+      };
+    });
 
     res.json({ projects, total, page });
   } catch (err) {
