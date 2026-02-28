@@ -1,0 +1,37 @@
+---
+title: Authentication
+description: 'How to authenticate with the Volvox Bot API'
+---
+
+# Authentication
+
+The API supports two authentication methods:
+
+## API Key
+
+Pass your API secret in the `x-api-secret` header:
+
+```bash
+curl -H "x-api-secret: YOUR_SECRET" https://your-domain.com/api/v1/health
+```
+
+Set via the `BOT_API_SECRET` environment variable.
+
+## OAuth2 Session
+
+The web dashboard uses Discord OAuth2:
+
+1. User clicks "Login with Discord"
+2. Discord redirects to `/api/v1/auth/callback` with an authorization code
+3. Server exchanges code for tokens, creates a JWT session cookie
+4. Subsequent requests include the `token` cookie automatically
+
+## Public Endpoints
+
+These endpoints require no authentication:
+
+- `GET /health` — Basic health check
+- `GET /community/:guildId/leaderboard` — Public leaderboard
+- `GET /community/:guildId/showcases` — Public showcases
+- `GET /community/:guildId/stats` — Public server stats
+- `GET /community/:guildId/profile/:userId` — Public user profile

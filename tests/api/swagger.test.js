@@ -74,37 +74,10 @@ describe('OpenAPI / Swagger', () => {
     });
   });
 
-  describe('/api/docs endpoint', () => {
-    it('should return 401 for unauthenticated requests', async () => {
-      const app = buildApp();
-      const res = await request(app).get('/api/docs/');
-      expect(res.status).toBe(401);
-    });
-
-    it('should return 200 for authenticated requests (API secret)', async () => {
-      vi.stubEnv('BOT_API_SECRET', 'test-secret-for-swagger');
-      const app = buildApp();
-      const res = await request(app)
-        .get('/api/docs/')
-        .set('x-api-secret', 'test-secret-for-swagger');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toMatch(/html/);
-    });
-  });
-
   describe('/api/docs.json endpoint', () => {
-    it('should return 401 for unauthenticated requests', async () => {
+    it('should return the OpenAPI spec as JSON without authentication (public)', async () => {
       const app = buildApp();
       const res = await request(app).get('/api/docs.json');
-      expect(res.status).toBe(401);
-    });
-
-    it('should return the OpenAPI spec as JSON for authenticated requests', async () => {
-      vi.stubEnv('BOT_API_SECRET', 'test-secret-for-swagger');
-      const app = buildApp();
-      const res = await request(app)
-        .get('/api/docs.json')
-        .set('x-api-secret', 'test-secret-for-swagger');
       expect(res.status).toBe(200);
       expect(res.body.openapi).toBe('3.1.0');
       expect(res.body.paths).toBeDefined();
