@@ -16,6 +16,8 @@ interface LeaderboardMember {
   level: number;
   badge: string;
   rank: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
 }
 
 interface ShowcaseProject {
@@ -196,20 +198,18 @@ function StatCard({
 /**
  * Render a horizontal progress bar showing XP progress toward the next level.
  *
- * Uses predefined XP thresholds to compute the percentage complete for the given `level`.
+ * Uses the guild-configured XP thresholds returned by the API so the bar
+ * reflects the actual per-guild level curve rather than hard-coded defaults.
  *
  * @param xp - The member's total experience points.
- * @param level - The member's current level (1-based).
+ * @param currentLevelXp - XP required to reach the member's current level.
+ * @param nextLevelXp - XP required to reach the next level.
  * @returns A JSX element rendering the XP progress bar reflecting progress toward the next level.
  */
-function XpBar({ xp, level }: { xp: number; level: number }) {
-  // Simple thresholds matching the bot defaults
-  const thresholds = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
-  const currentThreshold = thresholds[level - 1] || 0;
-  const nextThreshold = thresholds[level] || thresholds[thresholds.length - 1];
+function XpBar({ xp, currentLevelXp, nextLevelXp }: { xp: number; currentLevelXp: number; nextLevelXp: number }) {
   const progress =
-    nextThreshold > currentThreshold
-      ? Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100)
+    nextLevelXp > currentLevelXp
+      ? Math.min(100, ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100)
       : 100;
 
   return (
@@ -360,7 +360,7 @@ export default async function CommunityPage({ params }: PageProps) {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <XpBar xp={member.xp} level={member.level} />
+                            <XpBar xp={member.xp} currentLevelXp={member.currentLevelXp} nextLevelXp={member.nextLevelXp} />
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
                               {member.xp.toLocaleString()} XP
                             </span>

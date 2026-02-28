@@ -114,6 +114,11 @@ router.get('/:guildId/leaderboard', async (req, res) => {
         avatar = member.user.displayAvatarURL();
       }
 
+      const currentLevelXp = repConfig.levelThresholds[level - 1] ?? 0;
+      const nextLevelXp =
+        repConfig.levelThresholds[level] ??
+        repConfig.levelThresholds[repConfig.levelThresholds.length - 1];
+
       return {
         userId: row.user_id,
         username,
@@ -123,6 +128,8 @@ router.get('/:guildId/leaderboard', async (req, res) => {
         level,
         badge: getLevelBadge(level),
         rank: offset + idx + 1,
+        currentLevelXp,
+        nextLevelXp,
       };
     });
 
