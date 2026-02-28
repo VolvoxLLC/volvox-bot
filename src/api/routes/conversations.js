@@ -284,7 +284,7 @@ router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, a
          SELECT CASE
            WHEN created_at - LAG(created_at) OVER (
              PARTITION BY channel_id ORDER BY created_at
-           ) > interval '15 minutes'
+           ) > interval '${CONVERSATION_GAP_MINUTES} minutes'
            OR LAG(created_at) OVER (
              PARTITION BY channel_id ORDER BY created_at
            ) IS NULL

@@ -705,14 +705,8 @@ describe('conversations routes', () => {
       });
       // Token chars
       mockPool.query.mockResolvedValueOnce({ rows: [{ total_chars: 4000 }] });
-      // All messages for grouping
-      mockPool.query.mockResolvedValueOnce({
-        rows: [
-          { id: 1, channel_id: 'ch1', created_at: '2024-01-15T10:00:00Z' },
-          { id: 2, channel_id: 'ch1', created_at: '2024-01-15T10:05:00Z' },
-          { id: 3, channel_id: 'ch1', created_at: '2024-01-15T12:00:00Z' },
-        ],
-      });
+      // Conversation count (SQL window-function grouping)
+      mockPool.query.mockResolvedValueOnce({ rows: [{ total_conversations: 2 }] });
 
       const res = await authed(request(app).get('/api/v1/guilds/guild1/conversations/stats'));
 

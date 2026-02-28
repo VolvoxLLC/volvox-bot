@@ -200,15 +200,15 @@ export function ConversationReplay({
 
                     {/* Flag button for assistant messages */}
                     {msg.role === 'assistant' && (
-                      <div className="absolute -top-2 -right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="absolute -top-2 -right-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                         <Button
                           variant="destructive"
                           size="icon"
                           className="h-6 w-6"
                           onClick={() => openFlagDialog(msg.id)}
-                          title="Flag this response"
+                          aria-label="Flag this response"
                         >
-                          <Flag className="h-3 w-3" />
+                          <Flag className="h-3 w-3" aria-hidden="true" />
                         </Button>
                       </div>
                     )}
