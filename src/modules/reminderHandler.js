@@ -148,7 +148,7 @@ export async function checkReminders(client) {
     try {
       // Check if reminders are enabled for this guild
       const guildConfig = getConfig(reminder.guild_id);
-      if (guildConfig.reminders?.enabled === false) {
+      if (!guildConfig?.reminders?.enabled) {
         info('Reminders disabled for guild, skipping', {
           reminderId: reminder.id,
           guildId: reminder.guild_id,

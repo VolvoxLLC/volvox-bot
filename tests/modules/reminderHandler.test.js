@@ -21,6 +21,9 @@ vi.mock('../../src/utils/cronParser.js', () => ({
   getNextCronRun: vi.fn(),
 }));
 
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({ reminders: { enabled: true } }),
+}));
 vi.mock('discord.js', () => {
   class EmbedBuilder {
     setTitle() {
