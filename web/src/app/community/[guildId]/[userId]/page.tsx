@@ -50,11 +50,26 @@ interface UserProfile {
 
 const API_BASE = process.env.BOT_API_URL || 'http://localhost:3001';
 
+/**
+ * Normalize the API base URL to ensure it ends with `/api/v1`.
+ *
+ * This removes any trailing slashes from the configured base and appends `/api/v1`
+ * if it is not already present.
+ *
+ * @returns The API base URL guaranteed to end with `/api/v1`.
+ */
 function getApiBase(): string {
   const trimmed = API_BASE.replace(/\/+$/, '');
   return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
 }
 
+/**
+ * Fetches a community member's profile from the API.
+ *
+ * @param guildId - The guild (community) identifier
+ * @param userId - The user's identifier
+ * @returns The user's profile object if the request succeeds, `null` if the response is not OK or a network/error occurs
+ */
 async function fetchProfile(guildId: string, userId: string): Promise<UserProfile | null> {
   try {
     const res = await fetch(`${getApiBase()}/community/${guildId}/profile/${userId}`, {
@@ -73,6 +88,16 @@ interface PageProps {
   params: Promise<{ guildId: string; userId: string }>;
 }
 
+/**
+ * Builds metadata for a community member's profile page.
+ *
+ * Fetches the user's profile using route params and constructs page metadata including title,
+ * description, Open Graph data, and Twitter card information. If the profile cannot be found,
+ * returns metadata with the title "Profile Not Found".
+ *
+ * @param params - A promise that resolves to route parameters containing `guildId` and `userId`.
+ * @returns The page metadata object used by Next.js (title, description, openGraph, twitter).
+ */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { guildId, userId } = await params;
   const profile = await fetchProfile(guildId, userId);
@@ -101,7 +126,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// ─── Components ───────────────────────────────────────────────────────────────
+/**
+ * Renders a compact statistic card with a leading icon, a prominent value, and a descriptive label.
+ *
+ * @param icon - Component used as the leading icon
+ * @param label - Descriptive label shown below the value
+ * @param value - Primary statistic displayed prominently
+ * @returns A card element containing the icon, value, and label
+ */
 
 function StatCard({
   icon: Icon,
@@ -127,6 +159,13 @@ function StatCard({
   );
 }
 
+/**
+ * Render an XP progress bar showing current XP and the next-level threshold.
+ *
+ * @param xp - The user's total experience points.
+ * @param level - The user's current level (1-based).
+ * @returns A React element displaying the XP range and a progress bar filled to the percentage toward the next threshold.
+ */
 function XpBar({ xp, level }: { xp: number; level: number }) {
   const thresholds = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
   const currentThreshold = thresholds[level - 1] || 0;
@@ -152,7 +191,16 @@ function XpBar({ xp, level }: { xp: number; level: number }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+/**
+ * Render the community member profile page for the given guild and user.
+ *
+ * Fetches the user's profile and returns the page markup showing avatar, basic info,
+ * level and XP, stats, recent badges, and projects. Triggers a 404 page when the profile
+ * cannot be found.
+ *
+ * @param params - Object containing `guildId` and `userId` path parameters
+ * @returns The page JSX that displays the user's public community profile
+ */
 
 export default async function ProfilePage({ params }: PageProps) {
   const { guildId, userId } = await params;

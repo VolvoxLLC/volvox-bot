@@ -47,11 +47,24 @@ interface CommunityStats {
 
 const API_BASE = process.env.BOT_API_URL || 'http://localhost:3001';
 
+/**
+ * Normalize the configured API base so it ends with `/api/v1`.
+ *
+ * Removes any trailing slashes from the configured base and appends `/api/v1` if it's not already present.
+ *
+ * @returns The normalized API base URL ending with `/api/v1`.
+ */
 function getApiBase(): string {
   const trimmed = API_BASE.replace(/\/+$/, '');
   return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
 }
 
+/**
+ * Fetches aggregate community statistics for the specified guild.
+ *
+ * @param guildId - The guild identifier to fetch statistics for
+ * @returns The community statistics for the guild, or `null` if the data is unavailable (e.g., network error or non-OK response)
+ */
 async function fetchStats(guildId: string): Promise<CommunityStats | null> {
   try {
     const res = await fetch(`${getApiBase()}/community/${guildId}/stats`, {
@@ -64,6 +77,12 @@ async function fetchStats(guildId: string): Promise<CommunityStats | null> {
   }
 }
 
+/**
+ * Fetches the top leaderboard entries for a given guild.
+ *
+ * @param guildId - The guild identifier to fetch the leaderboard for
+ * @returns An object containing `members` (array of leaderboard entries) and `total` (total number of leaderboard members), or `null` if the request failed or the response was not ok
+ */
 async function fetchLeaderboard(
   guildId: string,
 ): Promise<{ members: LeaderboardMember[]; total: number } | null> {
@@ -78,6 +97,12 @@ async function fetchLeaderboard(
   }
 }
 
+/**
+ * Fetches the top showcase projects for a guild, sorted by upvotes.
+ *
+ * @param guildId - The guild identifier to fetch showcases for.
+ * @returns An object with `projects` (array of showcase projects) and `total` (total number of showcases), or `null` if the request fails or the response is not OK.
+ */
 async function fetchShowcases(
   guildId: string,
 ): Promise<{ projects: ShowcaseProject[]; total: number } | null> {
@@ -101,6 +126,15 @@ interface PageProps {
   params: Promise<{ guildId: string }>;
 }
 
+/**
+ * Builds page metadata for the Community Hub, using guild statistics when available.
+ *
+ * If stats are available the description includes member count, active projects, and challenges completed;
+ * otherwise a generic description is used. The returned metadata also includes Open Graph and Twitter card fields.
+ *
+ * @param params - Promise resolving to route parameters; expects `guildId` to fetch community stats
+ * @returns Metadata object containing `title`, `description`, `openGraph`, and `twitter` properties
+ */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { guildId } = await params;
   const stats = await fetchStats(guildId);
@@ -126,7 +160,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// ─── Components ───────────────────────────────────────────────────────────────
+/**
+ * Renders a centered statistic card showing an icon, a prominent value, and a label.
+ *
+ * @param icon - React component used as the icon shown above the value
+ * @param label - Short descriptive text displayed beneath the value
+ * @param value - The statistic to display prominently (string or number)
+ * @returns A card element containing the icon, value, and label
+ */
 
 function StatCard({
   icon: Icon,
@@ -148,6 +189,15 @@ function StatCard({
   );
 }
 
+/**
+ * Render a horizontal progress bar showing XP progress toward the next level.
+ *
+ * Uses predefined XP thresholds to compute the percentage complete for the given `level`.
+ *
+ * @param xp - The member's total experience points.
+ * @param level - The member's current level (1-based).
+ * @returns A JSX element rendering the XP progress bar reflecting progress toward the next level.
+ */
 function XpBar({ xp, level }: { xp: number; level: number }) {
   // Simple thresholds matching the bot defaults
   const thresholds = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
@@ -168,6 +218,17 @@ function XpBar({ xp, level }: { xp: number; level: number }) {
   );
 }
 
+/**
+ * Render a user's avatar image or a single-letter initial fallback inside a circular container.
+ *
+ * If `avatar` is provided the image is shown with the appropriate size and alt text; otherwise the
+ * first letter of `name` is rendered centered as a styled fallback.
+ *
+ * @param avatar - The avatar image URL, or `null` to show the initial fallback
+ * @param name - The user's display name (used for `alt` text and the fallback initial)
+ * @param size - Visual size variant: `'sm'`, `'md'`, or `'lg'`
+ * @returns A JSX element containing the avatar image or initial fallback
+ */
 function MemberAvatar({
   avatar,
   name,
@@ -197,6 +258,12 @@ function MemberAvatar({
   );
 }
 
+/**
+ * Renders a visual badge for a leaderboard position.
+ *
+ * @param rank - The 1-based position of the member on the leaderboard.
+ * @returns An element showing a medal emoji for ranks 1–3, or a small monospaced `#<rank>` label for other ranks.
+ */
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-lg">🥇</span>;
   if (rank === 2) return <span className="text-lg">🥈</span>;
@@ -204,7 +271,12 @@ function RankBadge({ rank }: { rank: number }) {
   return <span className="text-sm text-muted-foreground font-mono w-6 text-center">#{rank}</span>;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+/**
+ * Renders the Community Hub page for a given guild, displaying stats, a leaderboard, top contributors, and project showcases.
+ *
+ * @param params - An object containing `guildId`, the identifier of the community to display.
+ * @returns The page's React element containing community statistics, leaderboard entries, contributor highlights, and project showcase cards.
+ */
 
 export default async function CommunityPage({ params }: PageProps) {
   const { guildId } = await params;

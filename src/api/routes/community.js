@@ -20,9 +20,9 @@ const communityRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
 router.use(communityRateLimit);
 
 /**
- * Resolve the reputation config for a guild, merging defaults.
- * @param {string} guildId
- * @returns {object}
+ * Obtain the reputation configuration for a guild by merging guild-specific settings with defaults.
+ * @param {string} guildId - The guild identifier to load configuration for.
+ * @returns {object} The reputation configuration with guild-specific values overriding defaults.
  */
 function getRepConfig(guildId) {
   const cfg = getConfig(guildId);
@@ -30,9 +30,9 @@ function getRepConfig(guildId) {
 }
 
 /**
- * Get a level badge label from the level number.
- * @param {number} level
- * @returns {string}
+ * Map a numeric reputation level to its corresponding badge label.
+ * @param {number} level - The reputation level.
+ * @returns {string} The badge label: `🏆 Legend` for level >= 10, `⭐ Expert` for level >= 7, `🔥 Veteran` for level >= 5, `💪 Regular` for level >= 3, `🌱 Newcomer` for level >= 1, `👋 New` otherwise.
  */
 function getLevelBadge(level) {
   if (level >= 10) return '🏆 Legend';
@@ -44,9 +44,9 @@ function getLevelBadge(level) {
 }
 
 /**
- * Safely get the database pool from app.locals.
- * @param {import('express').Request} req
- * @returns {import('pg').Pool | null}
+ * Retrieve the PostgreSQL pool stored on app.locals for the current request, or null if not set.
+ * @param {import('express').Request} req - Express request object used to access app.locals.
+ * @returns {import('pg').Pool | null} `Pool` if present on `req.app.locals.dbPool`, `null` otherwise.
  */
 function getDbPool(req) {
   return req.app.locals.dbPool || null;
