@@ -30,7 +30,7 @@ exports.up = async (pgm) => {
   // scheduled_messages: partial index — only enabled messages need fast lookup
   pgm.sql(`
     CREATE INDEX IF NOT EXISTS idx_scheduled_messages_enabled_next
-      ON scheduled_messages(enabled, next_run)
+      ON scheduled_messages(next_run)
       WHERE enabled = true
   `);
 
