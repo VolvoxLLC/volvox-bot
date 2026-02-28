@@ -128,6 +128,7 @@ function SortableHead({
   return (
     <TableHead className={className}>
       <button
+        type="button"
         className="flex items-center gap-1 hover:text-foreground transition-colors"
         onClick={() => onSort(column)}
         aria-label={`Sort by ${label}`}
@@ -154,7 +155,7 @@ function TableSkeleton() {
   return (
     <>
       {Array.from({ length: 8 }).map((_, i) => (
-        <TableRow key={i}>
+        <TableRow key={`skeleton-${i}`}>
           <TableCell>
             <Skeleton className="h-8 w-8 rounded-full" />
           </TableCell>

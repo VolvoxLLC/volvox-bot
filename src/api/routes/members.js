@@ -71,7 +71,6 @@ router.get(
 
       let lastId;
       let exportedCount = 0;
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const fetchOpts = { limit: 1000 };
         if (lastId) fetchOpts.after = lastId;

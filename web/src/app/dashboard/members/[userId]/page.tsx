@@ -303,7 +303,7 @@ export default function MemberDetailPage() {
         setXpSubmitting(false);
       }
     },
-    [guildId, userId, xpAmount, xpReason],
+    [guildId, userId, xpAmount, xpReason, router],
   );
 
   // Export CSV
@@ -330,7 +330,7 @@ export default function MemberDetailPage() {
     } finally {
       setExporting(false);
     }
-  }, [guildId]);
+  }, [guildId, router]);
 
   // ─── Loading state ───────────────────────────────────────────────────────
 
@@ -355,7 +355,7 @@ export default function MemberDetailPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
+            <Skeleton key={`skeleton-${i}`} className="h-24 rounded-xl" />
           ))}
         </div>
       </div>
