@@ -85,7 +85,7 @@ jobs:
       - name: Coverage summary
         if: always()
         run: |
-          node <<'NODE'
+          node --input-type=module <<'NODE'
           import fs from 'node:fs';
 
           const summaryPath = 'coverage/coverage-summary.json';
