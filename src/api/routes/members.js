@@ -62,88 +62,80 @@ router.get(
         return res.status(503).json({ error: 'Database unavailable' });
       }
 
-      // Fetch all members — paginate in batches of 1000 for large guilds
-      const members = new Map();
+      // Stream CSV in batches of 1000 to avoid holding all guild members in
+      // memory at once.  Each batch is fetched from Discord, enriched from the
+      // DB, written to the response, and then released for GC.
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="members.csv"');
+      res.write('userId,username,displayName,joinedAt,messages,xp,level,daysActive,warnings\n');
+
       let lastId;
+      let exportedCount = 0;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const fetchOpts = { limit: 1000 };
         if (lastId) fetchOpts.after = lastId;
         const batch = await guild.members.list(fetchOpts);
         if (batch.size === 0) break;
-        for (const [id, member] of batch) {
-          members.set(id, member);
-        }
-        lastId = Array.from(batch.keys()).pop();
-        if (batch.size < 1000) break; // Last page
-      }
 
-      const userIds = Array.from(members.keys());
+        const batchMembers = Array.from(batch.values());
+        const userIds = batchMembers.map((m) => m.id);
 
-      // Batch-fetch stats and reputation
-      const [statsResult, repResult, warningsResult] = await Promise.all([
-        userIds.length > 0
-          ? pool.query(
-              `SELECT user_id, messages_sent, days_active, last_active
+        // Enrich this batch from the DB
+        const [statsResult, repResult, warningsResult] = await Promise.all([
+          pool.query(
+            `SELECT user_id, messages_sent, days_active, last_active
                FROM user_stats
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-              [guild.id, userIds],
-            )
-          : { rows: [] },
-        userIds.length > 0
-          ? pool.query(
-              `SELECT user_id, xp, level
+            [guild.id, userIds],
+          ),
+          pool.query(
+            `SELECT user_id, xp, level
                FROM reputation
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-              [guild.id, userIds],
-            )
-          : { rows: [] },
-        userIds.length > 0
-          ? pool.query(
-              `SELECT target_id, COUNT(*)::integer AS count
+            [guild.id, userIds],
+          ),
+          pool.query(
+            `SELECT target_id, COUNT(*)::integer AS count
                FROM mod_cases
                WHERE guild_id = $1 AND target_id = ANY($2) AND action = 'warn'
                GROUP BY target_id`,
-              [guild.id, userIds],
-            )
-          : { rows: [] },
-      ]);
+            [guild.id, userIds],
+          ),
+        ]);
 
-      const statsMap = new Map(statsResult.rows.map((r) => [r.user_id, r]));
-      const repMap = new Map(repResult.rows.map((r) => [r.user_id, r]));
-      const warningsMap = new Map(warningsResult.rows.map((r) => [r.target_id, r.count]));
+        const statsMap = new Map(statsResult.rows.map((r) => [r.user_id, r]));
+        const repMap = new Map(repResult.rows.map((r) => [r.user_id, r]));
+        const warningsMap = new Map(warningsResult.rows.map((r) => [r.target_id, r.count]));
 
-      // Set CSV headers
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="members.csv"');
+        // Write CSV rows for this batch, then let maps/arrays become GC-eligible
+        for (const member of batchMembers) {
+          const stats = statsMap.get(member.id) || {};
+          const rep = repMap.get(member.id) || {};
+          const warnings = warningsMap.get(member.id) || 0;
 
-      // Write CSV header row
-      res.write('userId,username,displayName,joinedAt,messages,xp,level,daysActive,warnings\n');
+          const row = [
+            member.id,
+            escapeCsv(member.user.username),
+            escapeCsv(member.displayName),
+            member.joinedAt ? member.joinedAt.toISOString() : '',
+            stats.messages_sent ?? 0,
+            rep.xp ?? 0,
+            rep.level ?? 0,
+            stats.days_active ?? 0,
+            warnings,
+          ].join(',');
 
-      // Write each member row
-      for (const [, member] of members) {
-        const stats = statsMap.get(member.id) || {};
-        const rep = repMap.get(member.id) || {};
-        const warnings = warningsMap.get(member.id) || 0;
+          res.write(`${row}\n`);
+        }
 
-        const row = [
-          member.id,
-          escapeCsv(member.user.username),
-          escapeCsv(member.displayName),
-          member.joinedAt ? member.joinedAt.toISOString() : '',
-          stats.messages_sent ?? 0,
-          rep.xp ?? 0,
-          rep.level ?? 0,
-          stats.days_active ?? 0,
-          warnings,
-        ].join(',');
-
-        res.write(`${row}\n`);
+        lastId = Array.from(batch.keys()).pop();
+        exportedCount += batch.size;
+        if (batch.size < 1000) break;
       }
 
       res.end();
-
-      info('Members CSV exported', { guildId: guild.id, count: members.size });
+      info('Members CSV exported', { guildId: guild.id, count: exportedCount });
     } catch (err) {
       logError('Failed to export members CSV', { error: err.message, guild: req.params.id });
       // Only send error if headers haven't been sent yet

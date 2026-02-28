@@ -611,6 +611,32 @@ describe('members routes', () => {
       const res = await authed(request(app).get('/api/v1/guilds/unknown/members/export'));
       expect(res.status).toBe(404);
     });
+
+    it('should stream batch-by-batch without accumulating all members in memory', async () => {
+      // The streaming export fetches batches of 1000 from Discord, enriches from
+      // DB, writes CSV rows, then releases each batch for GC.  Here we verify
+      // the basic flow with a single batch (< 1000 members triggers break).
+      mockPool.query
+        .mockResolvedValueOnce({
+          rows: [{ user_id: 'user1', messages_sent: 10, days_active: 1, last_active: null }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ user_id: 'user1', xp: 50, level: 1 }],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members/export'));
+
+      expect(res.status).toBe(200);
+      const lines = res.text.trim().split('\n');
+      expect(lines[0]).toBe(
+        'userId,username,displayName,joinedAt,messages,xp,level,daysActive,warnings',
+      );
+      // Default mock returns 2 members, both should appear in the streamed CSV
+      expect(lines.length).toBe(3);
+      // Verify list was called (streaming path)
+      expect(mockGuild.members.list).toHaveBeenCalledWith({ limit: 1000 });
+    });
   });
 
   // ─── safeGetPool null path ─────────────────────────────────────────
