@@ -251,7 +251,7 @@ describe('community routes', () => {
       });
       expect(res.body.topContributors).toHaveLength(1);
       expect(res.body.topContributors[0]).toMatchObject({
-        username: 'Alice',
+        username: 'alice',
         xp: 500,
       });
     });
