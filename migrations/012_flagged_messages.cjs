@@ -16,6 +16,11 @@ async function up(pool) {
     CREATE TABLE IF NOT EXISTS flagged_messages (
       id SERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
+      -- conversation_first_id references the first message id of the conversation group.
+      -- No FK constraint here: conversations are not stored in a separate table with their
+      -- own PK; they are virtual groups derived from the messages table (conversations).
+      -- The PK space is shared (message IDs), so a FK would point back to the same table,
+      -- which is intentional — we rely on message_id FK for referential integrity instead.
       conversation_first_id INTEGER NOT NULL,
       message_id INTEGER NOT NULL REFERENCES conversations(id),
       flagged_by TEXT NOT NULL,
