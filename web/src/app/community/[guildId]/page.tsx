@@ -1,0 +1,507 @@
+import { ExternalLink, Github, MessageSquare, Rocket, ThumbsUp, Trophy, Users } from 'lucide-react';
+import type { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface LeaderboardMember {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatar: string | null;
+  xp: number;
+  level: number;
+  badge: string;
+  rank: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+}
+
+interface ShowcaseProject {
+  id: number;
+  title: string;
+  description: string;
+  tech: string[];
+  repoUrl: string | null;
+  liveUrl: string | null;
+  authorName: string;
+  authorAvatar: string | null;
+  upvotes: number;
+  createdAt: string;
+}
+
+interface CommunityStats {
+  memberCount: number;
+  totalMessagesSent: number;
+  activeProjects: number;
+  challengesCompleted: number;
+  topContributors: {
+    userId: string;
+    username: string;
+    displayName?: string;
+    avatar: string | null;
+    xp: number;
+    level: number;
+    badge: string;
+  }[];
+}
+
+// ─── Data Fetching ────────────────────────────────────────────────────────────
+
+const API_BASE = process.env.BOT_API_URL || 'http://localhost:3001';
+
+/**
+ * Normalize the configured API base so it ends with `/api/v1`.
+ *
+ * Removes any trailing slashes from the configured base and appends `/api/v1` if it's not already present.
+ *
+ * @returns The normalized API base URL ending with `/api/v1`.
+ */
+function getApiBase(): string {
+  const trimmed = API_BASE.replace(/\/+$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+}
+
+/**
+ * Fetches aggregate community statistics for the specified guild.
+ *
+ * @param guildId - The guild identifier to fetch statistics for
+ * @returns The community statistics for the guild, or `null` if the data is unavailable (e.g., network error or non-OK response)
+ */
+async function fetchStats(guildId: string): Promise<CommunityStats | null> {
+  try {
+    const res = await fetch(`${getApiBase()}/community/${guildId}/stats`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches the top leaderboard entries for a given guild.
+ *
+ * @param guildId - The guild identifier to fetch the leaderboard for
+ * @returns An object containing `members` (array of leaderboard entries) and `total` (total number of leaderboard members), or `null` if the request failed or the response was not ok
+ */
+async function fetchLeaderboard(
+  guildId: string,
+): Promise<{ members: LeaderboardMember[]; total: number } | null> {
+  try {
+    const res = await fetch(`${getApiBase()}/community/${guildId}/leaderboard?limit=25&page=1`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches the top showcase projects for a guild, sorted by upvotes.
+ *
+ * @param guildId - The guild identifier to fetch showcases for.
+ * @returns An object with `projects` (array of showcase projects) and `total` (total number of showcases), or `null` if the request fails or the response is not OK.
+ */
+async function fetchShowcases(
+  guildId: string,
+): Promise<{ projects: ShowcaseProject[]; total: number } | null> {
+  try {
+    const res = await fetch(
+      `${getApiBase()}/community/${guildId}/showcases?limit=12&page=1&sort=upvotes`,
+      {
+        next: { revalidate: 60 },
+      },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+
+interface PageProps {
+  params: Promise<{ guildId: string }>;
+}
+
+/**
+ * Builds page metadata for the Community Hub, using guild statistics when available.
+ *
+ * If stats are available the description includes member count, active projects, and challenges completed;
+ * otherwise a generic description is used. The returned metadata also includes Open Graph and Twitter card fields.
+ *
+ * @param params - Promise resolving to route parameters; expects `guildId` to fetch community stats
+ * @returns Metadata object containing `title`, `description`, `openGraph`, and `twitter` properties
+ */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { guildId } = await params;
+  const stats = await fetchStats(guildId);
+
+  const title = 'Community Hub — Leaderboard & Showcases';
+  const description = stats
+    ? `Join ${stats.memberCount} public members. ${stats.activeProjects} projects showcased, ${stats.challengesCompleted} challenges completed.`
+    : 'Explore our community leaderboard, project showcases, and stats.';
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+  };
+}
+
+/**
+ * Renders a centered statistic card showing an icon, a prominent value, and a label.
+ *
+ * @param icon - React component used as the icon shown above the value
+ * @param label - Short descriptive text displayed beneath the value
+ * @param value - The statistic to display prominently (string or number)
+ * @returns A card element containing the icon, value, and label
+ */
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <Card className="text-center">
+      <CardContent className="pt-6">
+        <Icon className="h-8 w-8 mx-auto mb-2 text-primary" />
+        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Render a horizontal progress bar showing XP progress toward the next level.
+ *
+ * Uses the guild-configured XP thresholds returned by the API so the bar
+ * reflects the actual per-guild level curve rather than hard-coded defaults.
+ *
+ * @param xp - The member's total experience points.
+ * @param currentLevelXp - XP required to reach the member's current level.
+ * @param nextLevelXp - XP required to reach the next level.
+ * @returns A JSX element rendering the XP progress bar reflecting progress toward the next level.
+ */
+function XpBar({
+  xp,
+  currentLevelXp,
+  nextLevelXp,
+}: {
+  xp: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+}) {
+  const progress =
+    nextLevelXp > currentLevelXp
+      ? Math.min(100, ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100)
+      : 100;
+
+  return (
+    <div className="w-full bg-muted rounded-full h-2">
+      <div
+        className="bg-primary h-2 rounded-full transition-all"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Render a user's avatar image or a single-letter initial fallback inside a circular container.
+ *
+ * If `avatar` is provided the image is shown with the appropriate size and alt text; otherwise the
+ * first letter of `name` is rendered centered as a styled fallback.
+ *
+ * @param avatar - The avatar image URL, or `null` to show the initial fallback
+ * @param name - The user's display name (used for `alt` text and the fallback initial)
+ * @param size - Visual size variant: `'sm'`, `'md'`, or `'lg'`
+ * @returns A JSX element containing the avatar image or initial fallback
+ */
+function MemberAvatar({
+  avatar,
+  name,
+  size = 'md',
+}: {
+  avatar: string | null;
+  name: string;
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  const sizeClasses = { sm: 'h-8 w-8', md: 'h-10 w-10', lg: 'h-12 w-12' };
+  const textSizes = { sm: 'text-xs', md: 'text-sm', lg: 'text-base' };
+
+  const sizePx = { sm: 32, md: 40, lg: 48 };
+
+  if (avatar) {
+    return (
+      <Image
+        src={avatar}
+        alt={name}
+        width={sizePx[size]}
+        height={sizePx[size]}
+        className={`${sizeClasses[size]} rounded-full object-cover`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClasses[size]} rounded-full bg-primary/10 flex items-center justify-center`}
+    >
+      <span className={`${textSizes[size]} font-medium text-primary`}>
+        {name.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Renders a visual badge for a leaderboard position.
+ *
+ * @param rank - The 1-based position of the member on the leaderboard.
+ * @returns An element showing a medal emoji for ranks 1–3, or a small monospaced `#<rank>` label for other ranks.
+ */
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <span className="text-lg">🥇</span>;
+  if (rank === 2) return <span className="text-lg">🥈</span>;
+  if (rank === 3) return <span className="text-lg">🥉</span>;
+  return <span className="text-sm text-muted-foreground font-mono w-6 text-center">#{rank}</span>;
+}
+
+/**
+ * Renders the Community Hub page for a given guild, displaying stats, a leaderboard, top contributors, and project showcases.
+ *
+ * @param params - An object containing `guildId`, the identifier of the community to display.
+ * @returns The page's React element containing community statistics, leaderboard entries, contributor highlights, and project showcase cards.
+ */
+
+export default async function CommunityPage({ params }: PageProps) {
+  const { guildId } = await params;
+
+  const [stats, leaderboard, showcases] = await Promise.all([
+    fetchStats(guildId),
+    fetchLeaderboard(guildId),
+    fetchShowcases(guildId),
+  ]);
+
+  return (
+    <main className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-2">Community Hub</h1>
+          <p className="text-muted-foreground text-lg">
+            Leaderboards, showcases, and community stats
+          </p>
+        </div>
+
+        {/* Stats Banner */}
+        {stats && (
+          <section className="mb-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard icon={Users} label="Public Members" value={stats.memberCount} />
+              <StatCard
+                icon={MessageSquare}
+                label="Total Messages Sent"
+                value={stats.totalMessagesSent.toLocaleString()}
+              />
+              <StatCard icon={Rocket} label="Projects" value={stats.activeProjects} />
+              <StatCard
+                icon={Trophy}
+                label="Challenges Completed"
+                value={stats.challengesCompleted}
+              />
+            </div>
+          </section>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Leaderboard */}
+          <section className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5" />
+                  Leaderboard
+                </CardTitle>
+                <CardDescription>Top members by XP</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {leaderboard && leaderboard.members.length > 0 ? (
+                  <div className="space-y-3">
+                    {leaderboard.members.map((member) => (
+                      <Link
+                        key={member.rank}
+                        href={`/community/${guildId}/${member.userId}`}
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <RankBadge rank={member.rank} />
+                        <MemberAvatar avatar={member.avatar} name={member.displayName} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{member.displayName}</span>
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              {member.badge}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <XpBar
+                              xp={member.xp}
+                              currentLevelXp={member.currentLevelXp}
+                              nextLevelXp={member.nextLevelXp}
+                            />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {member.xp.toLocaleString()} XP
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No public members yet. Use <code>/profile public</code> to opt in!
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Top Contributors Sidebar */}
+          {stats && stats.topContributors.length > 0 && (
+            <section>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">🏅 Top Contributors</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {stats.topContributors.map((contributor) => (
+                      <div key={contributor.userId} className="flex items-center gap-3">
+                        <MemberAvatar
+                          avatar={contributor.avatar}
+                          name={contributor.displayName ?? contributor.username}
+                          size="lg"
+                        />
+                        <div>
+                          <p className="font-medium">
+                            {contributor.displayName ?? contributor.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {contributor.badge} · {contributor.xp.toLocaleString()} XP
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+          )}
+        </div>
+
+        {/* Showcase Gallery */}
+        {showcases && showcases.projects.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <Rocket className="h-6 w-6" />
+              Project Showcase
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {showcases.projects.map((project) => (
+                <Card key={project.id} className="flex flex-col">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{project.title}</CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {project.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col justify-between gap-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {project.tech.map((t) => (
+                        <Badge key={t} variant="outline" className="text-xs">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MemberAvatar
+                          avatar={project.authorAvatar}
+                          name={project.authorName}
+                          size="sm"
+                        />
+                        <span className="text-sm text-muted-foreground">{project.authorName}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <ThumbsUp className="h-3.5 w-3.5" />
+                          {project.upvotes}
+                        </span>
+                        {project.repoUrl && (
+                          <a
+                            href={project.repoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="View repository"
+                          >
+                            <Github className="h-4 w-4" />
+                          </a>
+                        )}
+                        {project.liveUrl && (
+                          <a
+                            href={project.liveUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="View live demo"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Privacy Notice */}
+        <div className="mt-12 text-center text-sm text-muted-foreground">
+          <p>
+            Only members who opted in with{' '}
+            <code className="bg-muted px-1.5 py-0.5 rounded text-xs">/profile public</code> appear
+            here.
+          </p>
+          <p className="mt-1">Your profile is private by default.</p>
+        </div>
+      </div>
+    </main>
+  );
+}
