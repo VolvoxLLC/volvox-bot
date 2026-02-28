@@ -130,6 +130,7 @@ async function sendReminderNotification(client, reminder) {
  */
 export async function checkReminders(client) {
   const pool = getPool();
+  if (!pool) return;
 
   const { rows } = await pool.query(
     'SELECT * FROM reminders WHERE completed = false AND remind_at <= NOW()',
