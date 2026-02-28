@@ -10,6 +10,22 @@
 
 import { info, error as logError, warn } from '../logger.js';
 
+/** Track optional tables we've already warned about to avoid hourly log spam */
+const warnedMissingOptionalTables = new Set();
+
+/**
+ * Warn once when an optional table is missing.
+ *
+ * @param {string} tableName - Table name
+ */
+function warnMissingOptionalTableOnce(tableName) {
+  if (warnedMissingOptionalTables.has(tableName)) return;
+  warnedMissingOptionalTables.add(tableName);
+  warn(`DB maintenance: ${tableName} table does not exist, skipping`, {
+    source: 'db_maintenance',
+  });
+}
+
 /**
  * Parse and validate TICKET_RETENTION_DAYS.
  * - Valid non-negative integers (including 0) are used as-is.
@@ -78,7 +94,7 @@ async function purgeExpiredSessions(pool) {
     return count;
   } catch (err) {
     if (err.code === '42P01') {
-      warn('DB maintenance: sessions table does not exist, skipping', { source: 'db_maintenance' });
+      warnMissingOptionalTableOnce('sessions');
       return 0;
     }
     throw err;
@@ -106,9 +122,7 @@ async function purgeStaleRateLimits(pool) {
     return count;
   } catch (err) {
     if (err.code === '42P01') {
-      warn('DB maintenance: rate_limits table does not exist, skipping', {
-        source: 'db_maintenance',
-      });
+      warnMissingOptionalTableOnce('rate_limits');
       return 0;
     }
     throw err;

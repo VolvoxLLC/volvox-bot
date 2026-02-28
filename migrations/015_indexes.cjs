@@ -21,22 +21,6 @@ exports.up = async (pgm) => {
       ON mod_cases(guild_id, created_at)
   `);
 
-  // flagged_messages: queries by guild + status for review queue
-  pgm.sql(`
-    CREATE INDEX IF NOT EXISTS idx_flagged_messages_guild_status
-      ON flagged_messages(guild_id, status)
-  `);
-
-  // scheduled_messages: migration 002 created idx_scheduled_next_run with the
-  // same definition. Drop the old name and replace with the canonical name so
-  // there is exactly one index on this column.
-  pgm.sql('DROP INDEX IF EXISTS idx_scheduled_next_run');
-  pgm.sql(`
-    CREATE INDEX IF NOT EXISTS idx_scheduled_messages_enabled_next
-      ON scheduled_messages(next_run)
-      WHERE enabled = true
-  `);
-
   // reminders: partial index — only incomplete reminders queried by due time
   // Table may not exist yet; skip gracefully if so.
   pgm.sql(`
@@ -59,7 +43,5 @@ exports.up = async (pgm) => {
 exports.down = async (pgm) => {
   pgm.sql('DROP INDEX IF EXISTS idx_conversations_guild_channel_created');
   pgm.sql('DROP INDEX IF EXISTS idx_mod_cases_guild_created');
-  pgm.sql('DROP INDEX IF EXISTS idx_flagged_messages_guild_status');
-  pgm.sql('DROP INDEX IF EXISTS idx_scheduled_messages_enabled_next');
   pgm.sql('DROP INDEX IF EXISTS idx_reminders_due');
 };

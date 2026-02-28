@@ -150,6 +150,41 @@ describe('runMaintenance', () => {
       );
     });
 
+    it('warns once per optional missing table across multiple runs', async () => {
+      const sessionsTableError = Object.assign(new Error('relation "sessions" does not exist'), {
+        code: '42P01',
+      });
+      const rateLimitsTableError = Object.assign(
+        new Error('relation "rate_limits" does not exist'),
+        {
+          code: '42P01',
+        },
+      );
+
+      mockPool.query.mockImplementation((sql) => {
+        if (typeof sql === 'string' && sql.includes('sessions')) {
+          return Promise.reject(sessionsTableError);
+        }
+        if (typeof sql === 'string' && sql.includes('rate_limits')) {
+          return Promise.reject(rateLimitsTableError);
+        }
+        return Promise.resolve({ rowCount: 0 });
+      });
+
+      await runMaintenance(mockPool);
+      await runMaintenance(mockPool);
+
+      const sessionsWarnings = logger.warn.mock.calls.filter(
+        ([message]) => message === 'DB maintenance: sessions table does not exist, skipping',
+      );
+      const rateLimitWarnings = logger.warn.mock.calls.filter(
+        ([message]) => message === 'DB maintenance: rate_limits table does not exist, skipping',
+      );
+
+      expect(sessionsWarnings).toHaveLength(1);
+      expect(rateLimitWarnings).toHaveLength(1);
+    });
+
     it('handles all three tables missing simultaneously', async () => {
       const tableError = Object.assign(new Error('relation does not exist'), { code: '42P01' });
       mockPool.query.mockRejectedValue(tableError);
