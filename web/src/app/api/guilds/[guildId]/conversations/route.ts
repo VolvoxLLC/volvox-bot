@@ -7,6 +7,8 @@ import {
   proxyToBotApi,
 } from '@/lib/bot-api-proxy';
 
+const LOG_PREFIX = '[api/guilds/:guildId/conversations]';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(
@@ -18,20 +20,16 @@ export async function GET(
     return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(
-    request,
-    guildId,
-    '[api/guilds/:guildId/conversations]',
-  );
+  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
   if (authError) return authError;
 
-  const config = getBotApiConfig('[api/guilds/:guildId/conversations]');
+  const config = getBotApiConfig(LOG_PREFIX);
   if (config instanceof NextResponse) return config;
 
   const upstreamUrl = buildUpstreamUrl(
     config.baseUrl,
     `/guilds/${encodeURIComponent(guildId)}/conversations`,
-    '[api/guilds/:guildId/conversations]',
+    LOG_PREFIX,
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
@@ -43,10 +41,5 @@ export async function GET(
     }
   }
 
-  return proxyToBotApi(
-    upstreamUrl,
-    config.secret,
-    '[api/guilds/:guildId/conversations]',
-    'Failed to fetch conversations',
-  );
+  return proxyToBotApi(upstreamUrl, config.secret, LOG_PREFIX, 'Failed to fetch conversations');
 }

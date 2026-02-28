@@ -7,6 +7,8 @@ import {
   proxyToBotApi,
 } from '@/lib/bot-api-proxy';
 
+const LOG_PREFIX = '[api/guilds/:guildId/conversations/:id/flag]';
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(
@@ -18,20 +20,16 @@ export async function POST(
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(
-    request,
-    guildId,
-    '[api/guilds/:guildId/conversations/:id/flag]',
-  );
+  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
   if (authError) return authError;
 
-  const config = getBotApiConfig('[api/guilds/:guildId/conversations/:id/flag]');
+  const config = getBotApiConfig(LOG_PREFIX);
   if (config instanceof NextResponse) return config;
 
   const upstreamUrl = buildUpstreamUrl(
     config.baseUrl,
     `/guilds/${encodeURIComponent(guildId)}/conversations/${encodeURIComponent(conversationId)}/flag`,
-    '[api/guilds/:guildId/conversations/:id/flag]',
+    LOG_PREFIX,
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
@@ -42,15 +40,9 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  return proxyToBotApi(
-    upstreamUrl,
-    config.secret,
-    '[api/guilds/:guildId/conversations/:id/flag]',
-    'Failed to flag message',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    },
-  );
+  return proxyToBotApi(upstreamUrl, config.secret, LOG_PREFIX, 'Failed to flag message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
 }
