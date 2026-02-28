@@ -3,13 +3,13 @@
  * Tests: auth timeout, invalid JSON, missing type, filter without auth, unknown message type,
  *        double setupLogStream, heartbeat, queryLogs failure
  */
-vi.mock('../../../src/utils/logQuery.js', () => ({
-  queryLogs: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
-}));
-
 import { createHmac, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../../src/utils/logQuery.js', () => ({
+  queryLogs: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+}));
 import WebSocket from 'ws';
 import {
   getAuthenticatedClientCount,
@@ -279,7 +279,6 @@ describe('logStream coverage', () => {
       });
 
       const ws = await connect();
-      clients.push(ws);
       
       const messages = await new Promise((resolve) => {
         const msgs = [];
@@ -315,7 +314,6 @@ describe('logStream coverage', () => {
       });
 
       const ws = await connect();
-      clients.push(ws);
       const messages = await authenticate(ws);
       const history = messages.find((m) => m.type === 'history');
       expect(history).toBeDefined();
@@ -327,7 +325,6 @@ describe('logStream coverage', () => {
       queryLogs.mockRejectedValueOnce(new Error('DB unavailable'));
 
       const ws = await connect();
-      clients.push(ws);
       const messages = await authenticate(ws);
       const history = messages.find((m) => m.type === 'history');
       expect(history).toBeDefined();
