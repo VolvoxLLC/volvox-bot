@@ -45,7 +45,7 @@ jobs:
     name: Test (Vitest Coverage)
     runs-on: ubuntu-latest
     permissions:
-      actions: write
+      actions: read
       contents: read
 
     steps:
@@ -141,7 +141,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      actions: write
+      actions: read
       contents: read
 
     steps:
