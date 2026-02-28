@@ -164,7 +164,8 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
     if (req.query.search && typeof req.query.search === 'string') {
       paramIndex++;
       whereParts.push(`content ILIKE $${paramIndex}`);
-      values.push(`%${req.query.search}%`);
+      const escaped = req.query.search.replace(/[%_\\]/g, (c) => `\\${c}`);
+      values.push(`%${escaped}%`);
     }
 
     if (req.query.user && typeof req.query.user === 'string') {
