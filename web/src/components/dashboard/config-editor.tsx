@@ -529,7 +529,7 @@ export function ConfigEditor() {
   // ── Loading state ──────────────────────────────────────────────
   if (loading) {
     return (
-      <output className="flex items-center justify-center py-12">
+      <output role="status" className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
         <span className="sr-only">Loading configuration...</span>
       </output>
@@ -589,7 +589,7 @@ export function ConfigEditor() {
 
       {/* Unsaved changes banner */}
       {hasChanges && (
-        <output className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+        <output role="status" className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
           You have unsaved changes.{' '}
           <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
             Ctrl+S
