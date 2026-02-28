@@ -36,6 +36,11 @@ async function up(pool) {
     CREATE INDEX IF NOT EXISTS idx_reminders_user_active
       ON reminders(guild_id, user_id) WHERE completed = false;
   `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_reminders_user
+      ON reminders(guild_id, user_id, completed);
+  `);
 }
 
 module.exports = { up };
