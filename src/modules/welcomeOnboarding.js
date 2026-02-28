@@ -43,9 +43,9 @@ export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
     : [];
 
   return {
-    rulesChannel: welcomeConfig?.rulesChannel ?? null,
-    verifiedRole: welcomeConfig?.verifiedRole ?? null,
-    introChannel: welcomeConfig?.introChannel ?? null,
+    rulesChannel: typeof welcomeConfig?.rulesChannel === 'string' && welcomeConfig.rulesChannel.trim() ? welcomeConfig.rulesChannel.trim() : null,
+    verifiedRole: typeof welcomeConfig?.verifiedRole === 'string' && welcomeConfig.verifiedRole.trim() ? welcomeConfig.verifiedRole.trim() : null,
+    introChannel: typeof welcomeConfig?.introChannel === 'string' && welcomeConfig.introChannel.trim() ? welcomeConfig.introChannel.trim() : null,
     roleMenu: {
       enabled: welcomeConfig?.roleMenu?.enabled === true,
       options: roleMenuOptions,
