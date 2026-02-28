@@ -231,8 +231,12 @@ export function ConfigEditor() {
     const bySection = new Map<string, Array<{ path: string; value: unknown }>>();
     for (const patch of patches) {
       const section = patch.path.split('.')[0];
-      if (!bySection.has(section)) bySection.set(section, []);
-      bySection.get(section)?.push(patch);
+      const sectionPatches = bySection.get(section);
+      if (sectionPatches) {
+        sectionPatches.push(patch);
+        continue;
+      }
+      bySection.set(section, [patch]);
     }
 
     setSaving(true);
