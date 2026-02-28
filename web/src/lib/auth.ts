@@ -55,10 +55,11 @@ export async function refreshDiscordToken(
     logger.warn('[auth] Cannot refresh Discord token: refreshToken is missing or invalid');
     return { ...token, error: 'RefreshTokenError' };
   }
+  validateEnv();
 
   const params = new URLSearchParams({
-    client_id: process.env.DISCORD_CLIENT_ID ?? '',
-    client_secret: process.env.DISCORD_CLIENT_SECRET ?? '',
+    client_id: process.env.DISCORD_CLIENT_ID as string,
+    client_secret: process.env.DISCORD_CLIENT_SECRET as string,
     grant_type: 'refresh_token',
     refresh_token: token.refreshToken as string,
   });
@@ -118,8 +119,8 @@ export function getAuthOptions(): AuthOptions {
   _authOptions = {
     providers: [
       DiscordProvider({
-        clientId: process.env.DISCORD_CLIENT_ID ?? '',
-        clientSecret: process.env.DISCORD_CLIENT_SECRET ?? '',
+        clientId: process.env.DISCORD_CLIENT_ID as string,
+        clientSecret: process.env.DISCORD_CLIENT_SECRET as string,
         authorization: {
           params: {
             scope: DISCORD_SCOPES,
