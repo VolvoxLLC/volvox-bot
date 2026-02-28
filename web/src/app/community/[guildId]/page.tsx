@@ -36,7 +36,9 @@ interface CommunityStats {
   activeProjects: number;
   challengesCompleted: number;
   topContributors: {
+    userId: string;
     username: string;
+    displayName?: string;
     avatar: string | null;
     xp: number;
     level: number;
@@ -380,11 +382,11 @@ export default async function CommunityPage({ params }: PageProps) {
                       <div key={idx} className="flex items-center gap-3">
                         <MemberAvatar
                           avatar={contributor.avatar}
-                          name={contributor.username}
+                          name={contributor.displayName ?? contributor.username}
                           size="lg"
                         />
                         <div>
-                          <p className="font-medium">{contributor.username}</p>
+                          <p className="font-medium">{contributor.displayName ?? contributor.username}</p>
                           <p className="text-xs text-muted-foreground">
                             {contributor.badge} · {contributor.xp.toLocaleString()} XP
                           </p>
