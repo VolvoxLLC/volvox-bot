@@ -179,7 +179,10 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 
   try {
     const guild = req.guild;
-    const pool = getPool();
+    const pool = safeGetPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
 
     // Fetch from Discord with cursor pagination
     const fetchOptions = { limit, after };
