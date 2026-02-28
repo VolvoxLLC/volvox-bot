@@ -387,7 +387,6 @@ describe('auth routes coverage', () => {
       // We need to mock at the sessionStore.get level differently
       // First call (verifyJwt) should succeed, second (in /me handler) should fail
       let callCount = 0;
-      const originalGet = sessionStore.get.bind(sessionStore);
       vi.spyOn(sessionStore, 'get').mockImplementation(async (userId) => {
         callCount++;
         if (callCount === 1) {
