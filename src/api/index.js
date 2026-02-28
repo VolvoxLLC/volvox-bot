@@ -5,7 +5,6 @@
 
 import { Router } from 'express';
 import { requireAuth } from './middleware/auth.js';
-import { rateLimit } from './middleware/rateLimit.js';
 import authRouter from './routes/auth.js';
 import configRouter from './routes/config.js';
 import guildsRouter from './routes/guilds.js';

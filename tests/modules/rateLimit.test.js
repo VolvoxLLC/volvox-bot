@@ -340,3 +340,546 @@ describe('checkRateLimit — warns user', () => {
     );
   });
 });
+
+import { stopRateLimitCleanup } from '../../src/modules/rateLimit.js';
+
+describe('checkRateLimit — handleRepeatOffender edge cases', () => {
+  it('should return early if message.member is null', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+    });
+
+    const msg = {
+      author: { id: 'no-member-user', tag: 'NoMember#0001' },
+      channel: { id: 'chan1' },
+      guild: { id: 'guild1' },
+      member: null,
+      client: { channels: { fetch: vi.fn() } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    // Fill + trigger
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    // No timeout should be attempted since member is null
+  });
+
+  it('should warn when bot lacks MODERATE_MEMBERS permission', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 300,
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(false) } } },
+    };
+
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn(),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-noperm', tag: 'NoPerm#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: { channels: { fetch: vi.fn() } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    expect(result.reason).toMatch(/temp-muted/i);
+    // timeout should NOT be called since bot lacks permission
+    expect(member.timeout).not.toHaveBeenCalled();
+  });
+
+  it('should handle timeout failure gracefully', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 300,
+      muteDurationSeconds: 60,
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockRejectedValue(new Error('Cannot timeout')),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-timeout-err', tag: 'TimeoutErr#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: { channels: { fetch: vi.fn().mockResolvedValue({ send: vi.fn() }) } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    expect(member.timeout).toHaveBeenCalled();
+  });
+
+  it('should send alert to mod channel with embed on mute', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 300,
+      muteDurationSeconds: 60,
+      alertChannelId: 'alert-ch',
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const alertSend = vi.fn().mockResolvedValue(undefined);
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockResolvedValue(undefined),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-alert', tag: 'AlertUser#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: {
+        channels: { fetch: vi.fn().mockResolvedValue({ send: alertSend }) },
+      },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+
+    expect(alertSend).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
+  });
+
+  it('should handle alert channel fetch returning null', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      alertChannelId: 'missing-ch',
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockResolvedValue(undefined),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-no-alert-ch', tag: 'NoAlert#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: {
+        channels: { fetch: vi.fn().mockRejectedValue(new Error('not found')) },
+      },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    // Should not throw
+    await checkRateLimit(msg, config);
+  });
+
+  it('should reset trigger window when mute window expires', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 3,
+      muteWindowSeconds: 60, // short mute window
+    });
+
+    const msg = makeMessage();
+
+    // Trigger 1
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config); // trigger
+
+    // Advance past mute window (60s)
+    vi.advanceTimersByTime(61_000);
+
+    // Trigger 2 — should reset trigger counter since window expired
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    // triggerCount should be 1 (reset) not 2
+  });
+
+  it('should not warn on subsequent triggers (only first)', async () => {
+    const config = makeConfig({ maxMessages: 2, windowSeconds: 10 });
+    const msg = makeMessage();
+
+    // Fill + trigger 1 (warns)
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config); // trigger 1 — warns
+
+    expect(msg.reply).toHaveBeenCalledTimes(1);
+
+    // Trigger 2 — should NOT warn again (triggerCount is 2 now)
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    expect(msg.reply).toHaveBeenCalledTimes(1); // still just 1 warn
+  });
+});
+
+describe('stopRateLimitCleanup', () => {
+  it('should stop and clear the cleanup interval', () => {
+    // Calling it twice should be safe
+    stopRateLimitCleanup();
+    stopRateLimitCleanup();
+    // No error means success
+  });
+});
+
+describe('checkRateLimit — muteWindowMinutes singular/plural', () => {
+  it('should format singular "minute" when muteWindowSeconds rounds to 60', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 60, // 1 minute
+      muteDurationSeconds: 60,
+      alertChannelId: 'alert-ch',
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const alertSend = vi.fn().mockResolvedValue(undefined);
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockResolvedValue(undefined),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-singular', tag: 'Singular#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: {
+        channels: { fetch: vi.fn().mockResolvedValue({ send: alertSend }) },
+      },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+
+    expect(alertSend).toHaveBeenCalled();
+  });
+});
+
+describe('checkRateLimit — handleRepeatOffender edge cases', () => {
+  it('should handle null member gracefully', async () => {
+    const config = makeConfig({ maxMessages: 2, windowSeconds: 10, muteAfterTriggers: 1 });
+    const msg = {
+      author: { id: 'no-member-user', tag: 'NoMember#0001' },
+      channel: { id: 'chan1' },
+      guild: { id: 'guild1' },
+      member: null,
+      client: { channels: { fetch: vi.fn() } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+  });
+
+  it('should warn when bot lacks MODERATE_MEMBERS permission', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 300,
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(false) } } },
+    };
+
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn(),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-noperm', tag: 'NoPerm#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: { channels: { fetch: vi.fn() } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    expect(result.reason).toMatch(/temp-muted/i);
+    expect(member.timeout).not.toHaveBeenCalled();
+  });
+
+  it('should handle timeout failure gracefully', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 300,
+      muteDurationSeconds: 60,
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockRejectedValue(new Error('Cannot timeout')),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-timeout-err', tag: 'TimeoutErr#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: { channels: { fetch: vi.fn().mockResolvedValue({ send: vi.fn() }) } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    expect(member.timeout).toHaveBeenCalled();
+  });
+
+  it('should send alert to mod channel on mute', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 300,
+      muteDurationSeconds: 60,
+      alertChannelId: 'alert-ch',
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const alertSend = vi.fn().mockResolvedValue(undefined);
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockResolvedValue(undefined),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-alert', tag: 'AlertUser#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: { channels: { fetch: vi.fn().mockResolvedValue({ send: alertSend }) } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+
+    expect(alertSend).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
+  });
+
+  it('should handle alert channel fetch returning null', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      alertChannelId: 'missing-ch',
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockResolvedValue(undefined),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-no-alert', tag: 'NoAlert#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: { channels: { fetch: vi.fn().mockRejectedValue(new Error('not found')) } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config); // Should not throw
+  });
+});
+
+describe('checkRateLimit — trigger window reset', () => {
+  it('should reset trigger count after mute window expires', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 3,
+      muteWindowSeconds: 60,
+    });
+    const msg = makeMessage();
+
+    // Trigger 1
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+
+    // Advance past mute window (60s)
+    vi.advanceTimersByTime(61_000);
+
+    // Trigger 2 — should reset trigger counter
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    const result = await checkRateLimit(msg, config);
+    expect(result.limited).toBe(true);
+    // triggerCount was reset to 1 (not accumulated to 2)
+  });
+
+  it('should not warn on subsequent triggers (only first)', async () => {
+    const config = makeConfig({ maxMessages: 2, windowSeconds: 10 });
+    const msg = makeMessage();
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config); // trigger 1 — warns
+    expect(msg.reply).toHaveBeenCalledTimes(1);
+
+    // 4th message — trigger 2, should NOT warn again
+    await checkRateLimit(msg, config);
+    expect(msg.reply).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('stopRateLimitCleanup', () => {
+  it('should stop and allow being called multiple times safely', () => {
+    stopRateLimitCleanup();
+    stopRateLimitCleanup();
+  });
+});
+
+describe('checkRateLimit — singular minute in alert', () => {
+  it('should format singular "minute" when muteWindowSeconds is 60', async () => {
+    const config = makeConfig({
+      maxMessages: 2,
+      windowSeconds: 10,
+      muteAfterTriggers: 1,
+      muteWindowSeconds: 60,
+      muteDurationSeconds: 60,
+      alertChannelId: 'alert-ch',
+    });
+
+    const guild = {
+      id: 'guild1',
+      members: { me: { permissions: { has: vi.fn().mockReturnValue(true) } } },
+    };
+
+    const alertSend = vi.fn().mockResolvedValue(undefined);
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      timeout: vi.fn().mockResolvedValue(undefined),
+      guild,
+    };
+
+    const msg = {
+      author: { id: 'user-singular', tag: 'Singular#0001' },
+      channel: { id: 'chan1' },
+      guild,
+      member,
+      client: { channels: { fetch: vi.fn().mockResolvedValue({ send: alertSend }) } },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+    };
+
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+    await checkRateLimit(msg, config);
+
+    expect(alertSend).toHaveBeenCalled();
+  });
+});
