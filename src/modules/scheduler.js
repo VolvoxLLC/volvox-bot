@@ -200,7 +200,7 @@ async function pollScheduledMessages(client) {
     }
     // DB maintenance once per hour (every 60th tick)
     if (tickCount % 60 === 0) {
-      await runMaintenance(getPool());
+      await runMaintenance(pool);
     }
   } catch (err) {
     logError('Scheduler poll error', { error: err.message });
