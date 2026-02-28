@@ -174,8 +174,7 @@ export function auditLogMiddleware() {
     // For config updates, capture before state to compute diff.
     // Use guild-scoped config for accurate before/after snapshots.
     const isConfigUpdate =
-      cleanPath.includes('/config') &&
-      (req.method === 'PUT' || req.method === 'PATCH');
+      cleanPath.includes('/config') && (req.method === 'PUT' || req.method === 'PATCH');
 
     let beforeConfig = null;
     if (isConfigUpdate) {
