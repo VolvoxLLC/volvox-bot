@@ -220,6 +220,7 @@ export function CaseTable({
                   require a backend ORDER param — not worth it right now. */}
               <TableHead className="w-36">
                 <button
+                  type="button"
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                   onClick={onSortToggle}
                   aria-label={sortDesc ? 'Sort by date ascending' : 'Sort by date descending'}
@@ -237,8 +238,8 @@ export function CaseTable({
 
           <TableBody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
+              (['r0', 'r1', 'r2', 'r3', 'r4'] as const).map((key) => (
+                <TableRow key={key}>
                   {[1, 2, 3, 4, 5, 6].map((j) => (
                     <TableCell key={j}>
                       <div className="h-4 animate-pulse rounded bg-muted" />

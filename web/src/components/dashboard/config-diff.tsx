@@ -14,6 +14,7 @@ interface ConfigDiffProps {
 }
 
 interface DiffLine {
+  id: number;
   content: string;
   type: 'added' | 'removed' | 'unchanged';
 }
@@ -46,13 +47,13 @@ export function ConfigDiff({ original, modified, title = 'Pending Changes' }: Co
       const changeLines = change.value.replace(/\n$/, '').split('\n');
       for (const line of changeLines) {
         if (change.added) {
-          result.push({ content: line, type: 'added' });
+          result.push({ id: result.length, content: line, type: 'added' });
           added++;
         } else if (change.removed) {
-          result.push({ content: line, type: 'removed' });
+          result.push({ id: result.length, content: line, type: 'removed' });
           removed++;
         } else {
-          result.push({ content: line, type: 'unchanged' });
+          result.push({ id: result.length, content: line, type: 'unchanged' });
         }
       }
     }
@@ -86,15 +87,14 @@ export function ConfigDiff({ original, modified, title = 'Pending Changes' }: Co
         </div>
       </CardHeader>
       <CardContent>
-        <div
+        <section
           className="overflow-x-auto rounded-md border bg-muted/30 font-mono text-sm"
-          role="region"
           aria-label="Configuration diff"
         >
           <pre className="p-4">
-            {lines.map((line, i) => (
+            {lines.map((line) => (
               <span
-                key={i}
+                key={line.id}
                 className={
                   line.type === 'added'
                     ? 'block bg-green-500/15 text-green-400'
@@ -113,7 +113,7 @@ export function ConfigDiff({ original, modified, title = 'Pending Changes' }: Co
               </span>
             ))}
           </pre>
-        </div>
+        </section>
       </CardContent>
     </Card>
   );

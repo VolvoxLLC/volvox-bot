@@ -231,8 +231,12 @@ export function ConfigEditor() {
     const bySection = new Map<string, Array<{ path: string; value: unknown }>>();
     for (const patch of patches) {
       const section = patch.path.split('.')[0];
-      if (!bySection.has(section)) bySection.set(section, []);
-      bySection.get(section)!.push(patch);
+      const sectionPatches = bySection.get(section);
+      if (sectionPatches) {
+        sectionPatches.push(patch);
+        continue;
+      }
+      bySection.set(section, [patch]);
     }
 
     setSaving(true);
@@ -529,10 +533,10 @@ export function ConfigEditor() {
   // ── Loading state ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12" role="status">
+      <output className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
         <span className="sr-only">Loading configuration...</span>
-      </div>
+      </output>
     );
   }
 
@@ -589,16 +593,16 @@ export function ConfigEditor() {
 
       {/* Unsaved changes banner */}
       {hasChanges && (
-        <div
+        <output
+          aria-live="polite"
           className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
-          role="status"
         >
           You have unsaved changes.{' '}
           <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
             Ctrl+S
           </kbd>{' '}
           to save.
-        </div>
+        </output>
       )}
 
       {/* AI section */}

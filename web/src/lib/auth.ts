@@ -5,11 +5,12 @@ import { logger } from '@/lib/logger';
 // --- Runtime validation (deferred to request time, not module load / build) ---
 
 const PLACEHOLDER_PATTERN = /change|placeholder|example|replace.?me/i;
+// Cache successful validation only. Failed validation is retried on later calls,
+// which is safer for misconfigured environments and test setups that patch env.
 let envValidated = false;
 
 function validateEnv(): void {
   if (envValidated) return;
-  envValidated = true;
 
   const secret = process.env.NEXTAUTH_SECRET ?? '';
   if (secret.length < 32 || PLACEHOLDER_PATTERN.test(secret)) {
@@ -33,6 +34,9 @@ function validateEnv(): void {
         'Set BOT_API_SECRET to secure bot API communication.',
     );
   }
+
+  // Mark validated only after all checks pass.
+  envValidated = true;
 }
 
 /**
@@ -55,10 +59,19 @@ export async function refreshDiscordToken(
     logger.warn('[auth] Cannot refresh Discord token: refreshToken is missing or invalid');
     return { ...token, error: 'RefreshTokenError' };
   }
+  try {
+    validateEnv();
+  } catch (error) {
+    logger.error(
+      '[auth] Cannot refresh Discord token: environment configuration is invalid',
+      error,
+    );
+    return { ...token, error: 'RefreshTokenError' };
+  }
 
   const params = new URLSearchParams({
-    client_id: process.env.DISCORD_CLIENT_ID!,
-    client_secret: process.env.DISCORD_CLIENT_SECRET!,
+    client_id: process.env.DISCORD_CLIENT_ID as string,
+    client_secret: process.env.DISCORD_CLIENT_SECRET as string,
     grant_type: 'refresh_token',
     refresh_token: token.refreshToken as string,
   });
@@ -118,8 +131,8 @@ export function getAuthOptions(): AuthOptions {
   _authOptions = {
     providers: [
       DiscordProvider({
-        clientId: process.env.DISCORD_CLIENT_ID!,
-        clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+        clientId: process.env.DISCORD_CLIENT_ID as string,
+        clientSecret: process.env.DISCORD_CLIENT_SECRET as string,
         authorization: {
           params: {
             scope: DISCORD_SCOPES,

@@ -154,8 +154,8 @@ function SortableHead({
 function TableSkeleton() {
   return (
     <>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <TableRow key={`skeleton-${i}`}>
+      {(['mt-0', 'mt-1', 'mt-2', 'mt-3', 'mt-4', 'mt-5', 'mt-6', 'mt-7'] as const).map((key) => (
+        <TableRow key={key}>
           <TableCell>
             <Skeleton className="h-8 w-8 rounded-full" />
           </TableCell>
