@@ -65,7 +65,7 @@ async function purgeExpiredSessions(pool) {
     return count;
   } catch (err) {
     if (err.code === '42P01') {
-      // Sessions table doesn't exist — not an error
+      warn('DB maintenance: sessions table does not exist, skipping', { source: 'db_maintenance' });
       return 0;
     }
     throw err;
@@ -93,6 +93,7 @@ async function purgeStaleRateLimits(pool) {
     return count;
   } catch (err) {
     if (err.code === '42P01') {
+      warn('DB maintenance: rate_limits table does not exist, skipping', { source: 'db_maintenance' });
       return 0;
     }
     throw err;
