@@ -59,7 +59,15 @@ export async function refreshDiscordToken(
     logger.warn('[auth] Cannot refresh Discord token: refreshToken is missing or invalid');
     return { ...token, error: 'RefreshTokenError' };
   }
-  validateEnv();
+  try {
+    validateEnv();
+  } catch (error) {
+    logger.error(
+      '[auth] Cannot refresh Discord token: environment configuration is invalid',
+      error,
+    );
+    return { ...token, error: 'RefreshTokenError' };
+  }
 
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID as string,
