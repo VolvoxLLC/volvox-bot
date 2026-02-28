@@ -82,50 +82,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Coverage summary
-        if: always()
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-
-          const summaryPath = 'coverage/coverage-summary.json';
-          if (!fs.existsSync(summaryPath)) {
-            console.log('::warning title=Coverage summary missing::coverage/coverage-summary.json was not found.');
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '## Coverage\n\n⚠️ Coverage summary file was not found.\n');
-            process.exit(0);
-          }
-
-          const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-          const total = summary.total;
-          const thresholds = {
-            statements: 80,
-            branches: 85,
-            functions: 80,
-            lines: 80,
-          };
-
-          const rows = ['statements', 'branches', 'functions', 'lines'].map((metric) => {
-            const pct = total[metric]?.pct ?? 0;
-            const threshold = thresholds[metric];
-            if (pct < threshold) {
-              console.log(`::warning title=Coverage below threshold::${metric} coverage is ${pct}% (threshold ${threshold}%).`);
-            } else {
-              console.log(`::notice title=Coverage::${metric} coverage is ${pct}% (threshold ${threshold}%).`);
-            }
-            return `| ${metric} | ${pct}% | ${threshold}% |`;
-          });
-
-          const markdown = [
-            '## Coverage',
-            '',
-            '| Metric | Coverage | Threshold |',
-            '| --- | ---: | ---: |',
-            ...rows,
-            '',
-          ].join('\n');
-
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
-          NODE
 
   lint-and-test:
     name: Lint & Test
