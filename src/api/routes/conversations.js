@@ -276,17 +276,26 @@ router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, a
     const totalMessages = totalResult.rows[0]?.total_messages || 0;
     const totalChars = Number(tokenResult.rows[0]?.total_chars || 0);
 
-    // Fetch all messages for conversation counting
-    const allMsgsResult = await dbPool.query(
-      `SELECT id, channel_id, created_at
+    // Count conversations via SQL using window functions to detect time gaps
+    // A new conversation starts when the gap from the previous message in the
+    // same channel exceeds CONVERSATION_GAP_MINUTES (15 min).
+    const convoCountResult = await dbPool.query(
+      `SELECT COUNT(*)::int AS total_conversations FROM (
+         SELECT CASE
+           WHEN created_at - LAG(created_at) OVER (
+             PARTITION BY channel_id ORDER BY created_at
+           ) > interval '15 minutes'
+           OR LAG(created_at) OVER (
+             PARTITION BY channel_id ORDER BY created_at
+           ) IS NULL
+           THEN 1 ELSE NULL END AS is_start
          FROM conversations
          WHERE guild_id = $1
-         ORDER BY created_at ASC`,
+       ) sub WHERE is_start = 1`,
       [guildId],
     );
 
-    const allConversations = groupMessagesIntoConversations(allMsgsResult.rows);
-    const totalConversations = allConversations.length;
+    const totalConversations = convoCountResult.rows[0]?.total_conversations || 0;
     const avgMessagesPerConversation =
       totalConversations > 0 ? Math.round(totalMessages / totalConversations) : 0;
 
