@@ -19,9 +19,6 @@ const router = Router();
 /** Rate limiter for member endpoints — 120 requests / 15 min per IP. */
 const membersRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
-// Apply rate limiting globally to all member routes before any auth or DB access.
-router.use(membersRateLimit);
-
 /**
  * Resolve the reputation configuration for a guild by returning the defaults overridden by the guild's configured reputation values.
  * @param {string} guildId - Guild identifier used to load the guild's configuration.
@@ -52,7 +49,7 @@ function safeGetPool() {
  * GET /:id/members/export — Export all members with stats as CSV
  * Streams a CSV file with enriched member data.
  */
-router.get('/:id/members/export', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/members/export', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   try {
     const guild = req.guild;
     const pool = safeGetPool();
@@ -162,7 +159,7 @@ router.get('/:id/members/export', requireGuildAdmin, validateGuild, async (req, 
  *   sort   — messages|xp|warnings|joined (default: joined)
  *   order  — asc|desc (default: desc)
  */
-router.get('/:id/members', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   let limit = Number.parseInt(req.query.limit, 10) || 25;
   if (limit < 1) limit = 1;
   if (limit > 100) limit = 100;
@@ -302,7 +299,7 @@ router.get('/:id/members', requireGuildAdmin, validateGuild, async (req, res) =>
 /**
  * GET /:id/members/:userId — Full member profile with stats, XP, and warnings
  */
-router.get('/:id/members/:userId', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/members/:userId', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { userId } = req.params;
 
   try {
@@ -413,7 +410,7 @@ router.get('/:id/members/:userId', requireGuildAdmin, validateGuild, async (req,
  *   page  (default 1)
  *   limit (default 25, max 100)
  */
-router.get('/:id/members/:userId/cases', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/members/:userId/cases', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { userId } = req.params;
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
@@ -469,7 +466,7 @@ router.get('/:id/members/:userId/cases', requireGuildAdmin, validateGuild, async
  * Body: { amount: number, reason?: string }
  * Positive or negative adjustment. Returns updated XP/level.
  */
-router.post('/:id/members/:userId/xp', requireGuildAdmin, validateGuild, async (req, res) => {
+router.post('/:id/members/:userId/xp', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { userId } = req.params;
   const { amount, reason } = req.body || {};
 
