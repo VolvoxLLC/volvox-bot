@@ -27,7 +27,10 @@ exports.up = async (pgm) => {
       ON flagged_messages(guild_id, status)
   `);
 
-  // scheduled_messages: partial index — only enabled messages need fast lookup
+  // scheduled_messages: migration 002 created idx_scheduled_next_run with the
+  // same definition. Drop the old name and replace with the canonical name so
+  // there is exactly one index on this column.
+  pgm.sql('DROP INDEX IF EXISTS idx_scheduled_next_run');
   pgm.sql(`
     CREATE INDEX IF NOT EXISTS idx_scheduled_messages_enabled_next
       ON scheduled_messages(next_run)
