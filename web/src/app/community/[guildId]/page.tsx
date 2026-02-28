@@ -51,18 +51,10 @@ interface CommunityStats {
 
 // ─── Data Fetching ────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.BOT_API_URL || 'http://localhost:3001';
+import { getBotApiBaseUrl } from '@/lib/bot-api';
 
-/**
- * Normalize the configured API base so it ends with `/api/v1`.
- *
- * Removes any trailing slashes from the configured base and appends `/api/v1` if it's not already present.
- *
- * @returns The normalized API base URL ending with `/api/v1`.
- */
 function getApiBase(): string {
-  const trimmed = API_BASE.replace(/\/+$/, '');
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+  return getBotApiBaseUrl() || 'http://localhost:3001/api/v1';
 }
 
 /**

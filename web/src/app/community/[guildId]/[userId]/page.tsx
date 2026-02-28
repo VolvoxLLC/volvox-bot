@@ -51,19 +51,10 @@ interface UserProfile {
 
 // ─── Data Fetching ────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.BOT_API_URL || 'http://localhost:3001';
+import { getBotApiBaseUrl } from '@/lib/bot-api';
 
-/**
- * Normalize the API base URL to ensure it ends with `/api/v1`.
- *
- * This removes any trailing slashes from the configured base and appends `/api/v1`
- * if it is not already present.
- *
- * @returns The API base URL guaranteed to end with `/api/v1`.
- */
 function getApiBase(): string {
-  const trimmed = API_BASE.replace(/\/+$/, '');
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+  return getBotApiBaseUrl() || 'http://localhost:3001/api/v1';
 }
 
 /**
