@@ -284,7 +284,7 @@ router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, a
          SELECT CASE
            WHEN created_at - LAG(created_at) OVER (
              PARTITION BY channel_id ORDER BY created_at
-           ) > interval '${CONVERSATION_GAP_MINUTES} minutes'
+           ) > ($2 * interval '1 minute')
            OR LAG(created_at) OVER (
              PARTITION BY channel_id ORDER BY created_at
            ) IS NULL
@@ -292,7 +292,7 @@ router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, a
          FROM conversations
          WHERE guild_id = $1
        ) sub WHERE is_start = 1`,
-      [guildId],
+      [guildId, CONVERSATION_GAP_MINUTES],
     );
 
     const totalConversations = convoCountResult.rows[0]?.total_conversations || 0;

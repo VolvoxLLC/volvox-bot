@@ -200,7 +200,7 @@ export function ConversationReplay({
 
                     {/* Flag button for assistant messages */}
                     {msg.role === 'assistant' && (
-                      <div className="absolute -top-2 -right-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                      <div className="absolute -top-2 -right-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                         <Button
                           variant="destructive"
                           size="icon"
@@ -257,7 +257,9 @@ export function ConversationReplay({
                 id="flag-notes"
                 placeholder="Additional context..."
                 value={flagNotes}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFlagNotes(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setFlagNotes(e.target.value)
+                }
                 maxLength={2000}
               />
             </div>
