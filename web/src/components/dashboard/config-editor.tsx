@@ -68,6 +68,7 @@ function isGuildConfig(data: unknown): data is GuildConfig {
     'github',
     'review',
     'challenges',
+    'tickets',
   ] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
@@ -1684,6 +1685,117 @@ export function ConfigEditor() {
         </CardContent>
       </Card>
 
+
+      {/* ═══ Tickets ═══ */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Tickets</CardTitle>
+            <ToggleSwitch
+              checked={draftConfig.tickets?.enabled ?? false}
+              onChange={(v) =>
+                updateDraftConfig((prev) => ({
+                  ...prev,
+                  tickets: { ...prev.tickets, enabled: v },
+                }))
+              }
+              disabled={saving}
+              label="Tickets"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Support Role ID</span>
+              <input
+                type="text"
+                value={draftConfig.tickets?.supportRole ?? ''}
+                onChange={(e) =>
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    tickets: { ...prev.tickets, supportRole: e.target.value || null },
+                  }))
+                }
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Role ID for support staff"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Category Channel ID</span>
+              <input
+                type="text"
+                value={draftConfig.tickets?.category ?? ''}
+                onChange={(e) =>
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    tickets: { ...prev.tickets, category: e.target.value || null },
+                  }))
+                }
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Category for ticket threads"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Auto-Close Hours</span>
+              <input
+                type="number"
+                min="1"
+                max="720"
+                value={draftConfig.tickets?.autoCloseHours ?? 48}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1, 720);
+                  if (num !== undefined)
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      tickets: { ...prev.tickets, autoCloseHours: num },
+                    }));
+                }}
+                disabled={saving}
+                className={inputClasses}
+              />
+              <p className="text-xs text-muted-foreground">
+                Hours of inactivity before warning (then +24h to close)
+              </p>
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Max Open Per User</span>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={draftConfig.tickets?.maxOpenPerUser ?? 3}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1, 20);
+                  if (num !== undefined)
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      tickets: { ...prev.tickets, maxOpenPerUser: num },
+                    }));
+                }}
+                disabled={saving}
+                className={inputClasses}
+              />
+            </label>
+            <label className="space-y-2 col-span-2">
+              <span className="text-sm font-medium">Transcript Channel ID</span>
+              <input
+                type="text"
+                value={draftConfig.tickets?.transcriptChannel ?? ''}
+                onChange={(e) =>
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    tickets: { ...prev.tickets, transcriptChannel: e.target.value || null },
+                  }))
+                }
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Channel to post ticket transcripts"
+              />
+            </label>
+          </div>
+        </CardContent>
+      </Card>
       {/* Diff view */}
       {hasChanges && savedConfig && <ConfigDiff original={savedConfig} modified={draftConfig} />}
     </div>
