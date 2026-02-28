@@ -1809,7 +1809,8 @@ function computePatches(
       ) {
         walk(origVal as Record<string, unknown>, modVal as Record<string, unknown>, fullPath);
       } else {
-        patches.push({ path: fullPath, value: modVal });
+        const patchValue = !Object.hasOwn(modObj, key) || modVal === undefined ? null : modVal;
+        patches.push({ path: fullPath, value: patchValue });
       }
     }
   }
