@@ -1719,7 +1719,8 @@ export function ConfigEditor() {
               <option value="channel">Channel (dedicated text channel per ticket)</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Thread mode creates private threads. Channel mode creates locked text channels with permission overrides.
+              Thread mode creates private threads. Channel mode creates locked text channels with
+              permission overrides.
             </p>
           </label>
           <div className="grid grid-cols-2 gap-4">

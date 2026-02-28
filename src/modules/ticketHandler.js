@@ -152,11 +152,7 @@ export async function openTicket(guild, user, topic, channelId = null) {
       name: ticketName,
       type: ChannelType.GuildText,
       parent: parent?.id ?? undefined,
-      permissionOverwrites: buildChannelPermissions(
-        guild,
-        user.id,
-        ticketConfig.supportRole,
-      ),
+      permissionOverwrites: buildChannelPermissions(guild, user.id, ticketConfig.supportRole),
       reason: `Support ticket opened by ${user.tag}`,
     });
   } else {

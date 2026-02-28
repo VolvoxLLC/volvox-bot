@@ -305,17 +305,14 @@ describe('ticketHandler', () => {
       expect(result.thread.id).toBe('ticket-ch');
 
       // Verify guild.channels.create was called with correct params
-      expect(guild.channels.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'ticket-testuser-help',
-          type: 0, // GuildText
-          parent: 'cat1',
-          reason: expect.stringContaining('testuser'),
-        }),
-      );
+      expect(guild.channels.create).toHaveBeenCalledTimes(1);
+      const createCall = guild.channels.create.mock.calls[0][0];
+      expect(createCall.name).toBe('ticket-testuser-help');
+      expect(createCall.type).toBe(0); // GuildText
+      expect(createCall.parent).toBe('cat1');
+      expect(createCall.reason).toContain('User#1234');
 
       // Verify permission overrides include @everyone deny, user allow, bot allow, role allow
-      const createCall = guild.channels.create.mock.calls[0][0];
       const overwrites = createCall.permissionOverwrites;
       expect(overwrites).toHaveLength(4); // everyone + user + bot + support role
 
