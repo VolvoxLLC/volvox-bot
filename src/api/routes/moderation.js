@@ -45,7 +45,7 @@ router.use(adaptGuildIdParam, requireGuildModerator);
  *     description: Returns paginated moderation cases for a guild with optional filters by target user or action type.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: query
  *         name: guildId
@@ -223,7 +223,7 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
  *     description: Returns a single moderation case by case number, including any scheduled actions.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: caseNumber
@@ -377,7 +377,7 @@ router.get('/cases/:caseNumber', moderationRateLimit, async (req, res) => {
  *     description: Returns aggregate moderation statistics for a guild — totals, recent activity, breakdown by action, and top targets.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: query
  *         name: guildId
@@ -509,7 +509,7 @@ router.get('/stats', moderationRateLimit, async (req, res) => {
  *     description: Returns full moderation history for a specific user in a guild with breakdown by action type.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: userId

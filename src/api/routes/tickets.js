@@ -37,7 +37,7 @@ function getDbPool(req) {
  *     description: Returns ticket statistics — open count, average resolution time, and tickets created this week.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -124,7 +124,7 @@ router.get(
  *     description: Returns a single ticket with full details and transcript.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -239,7 +239,7 @@ router.get(
  *     description: Returns paginated tickets with optional status and user filters.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

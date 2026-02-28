@@ -358,7 +358,7 @@ router.get('/discord/callback', async (req, res) => {
  *     summary: Get current user
  *     description: Returns the authenticated user's profile and guild list. Requires a valid session cookie.
  *     security:
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       "200":
  *         description: Current user info
@@ -428,7 +428,7 @@ router.get('/me', requireOAuth(), async (req, res) => {
  *     summary: Log out
  *     description: Invalidates the server-side session and clears the session cookie.
  *     security:
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       "200":
  *         description: Successfully logged out

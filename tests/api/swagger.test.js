@@ -36,7 +36,7 @@ describe('OpenAPI / Swagger', () => {
   describe('swagger spec validation', () => {
     it('should generate a valid OpenAPI spec with paths', () => {
       expect(swaggerSpec).toBeDefined();
-      expect(swaggerSpec.openapi).toBe('3.1.0');
+      expect(swaggerSpec.openapi).toBe('3.0.3');
       expect(swaggerSpec.info.title).toBe('Volvox Bot API');
       expect(swaggerSpec.paths).toBeDefined();
       expect(Object.keys(swaggerSpec.paths).length).toBeGreaterThan(0);
@@ -44,7 +44,7 @@ describe('OpenAPI / Swagger', () => {
 
     it('should include security schemes', () => {
       expect(swaggerSpec.components.securitySchemes.ApiKeyAuth).toBeDefined();
-      expect(swaggerSpec.components.securitySchemes.CookieAuth).toBeDefined();
+      expect(swaggerSpec.components.securitySchemes.BearerAuth).toBeDefined();
     });
 
     it('should include common schemas', () => {
@@ -79,7 +79,7 @@ describe('OpenAPI / Swagger', () => {
       const app = buildApp();
       const res = await request(app).get('/api/docs.json');
       expect(res.status).toBe(200);
-      expect(res.body.openapi).toBe('3.1.0');
+      expect(res.body.openapi).toBe('3.0.3');
       expect(res.body.paths).toBeDefined();
       expect(Object.keys(res.body.paths).length).toBeGreaterThan(0);
     });

@@ -326,7 +326,7 @@ export function validateGuild(req, res, next) {
  *       Bot owners see all guilds. For API-secret users: returns all bot guilds.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       "200":
  *         description: Guild list
@@ -464,7 +464,7 @@ function getGuildChannels(guild) {
  *     description: Returns detailed information about a specific guild.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -532,7 +532,7 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
  *     description: Returns all channels in the guild (capped at 500).
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -574,7 +574,7 @@ router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
  *     description: Returns all roles in the guild (capped at 250).
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -624,7 +624,7 @@ router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
  *     description: Returns per-guild configuration (global defaults merged with guild overrides). Sensitive fields are masked.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -667,7 +667,7 @@ router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
  *     description: Updates per-guild configuration overrides. Only writable sections are accepted.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -745,7 +745,7 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
  *     description: Returns aggregate guild statistics including member count, messages, active users, and moderation data.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -826,7 +826,7 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
  *     description: Returns time-series analytics data for dashboard charts — messages, joins/leaves, active members, AI usage, XP distribution, and more.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -837,8 +837,33 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
  *         name: range
  *         schema:
  *           type: string
- *           enum: [7d, 30d, 90d, 1y]
- *           default: 30d
+ *           enum: [today, week, month, custom]
+ *           default: week
+ *         description: Preset time range. Use 'custom' with from/to for a specific window.
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Start of custom date range (ISO 8601). Required when range=custom.
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: End of custom date range (ISO 8601). Required when range=custom.
+ *       - in: query
+ *         name: interval
+ *         schema:
+ *           type: string
+ *           enum: [hour, day]
+ *         description: Bucket size for time-series data. Auto-selected if omitted.
+ *       - in: query
+ *         name: compare
+ *         schema:
+ *           type: string
+ *           enum: ["1", "true", "yes", "on"]
+ *         description: When set, includes comparison data for the previous equivalent period.
  *       - in: query
  *         name: channelId
  *         schema:
@@ -1309,7 +1334,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
  *     description: Returns recent moderation cases for the guild overview. Requires moderator permissions.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -1400,8 +1425,8 @@ router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, 
  *       - Guilds
  *     summary: Trigger guild action
  *     description: >
- *       Trigger a bot action on a guild (e.g. sync roles, purge cache).
- *       Restricted to API-secret authentication only.
+ *       Trigger a bot action on a guild. Supported actions: sendMessage (post a text message
+ *       to a channel). Restricted to API-secret authentication only.
  *     security:
  *       - ApiKeyAuth: []
  *     parameters:

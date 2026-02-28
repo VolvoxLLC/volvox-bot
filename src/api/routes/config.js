@@ -110,7 +110,7 @@ function requireGlobalAdmin(req, res, next) {
  *     description: Returns the current global bot configuration. Restricted to API-secret callers or bot-owner OAuth users. Sensitive fields are masked.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       "200":
  *         description: Current global config (readable sections, sensitive fields masked)
@@ -150,7 +150,7 @@ router.get('/', requireGlobalAdmin, (_req, res) => {
  *       existing config. Restricted to API-secret callers or bot-owner OAuth users.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:

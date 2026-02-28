@@ -1,17 +1,16 @@
 /**
  * OpenAPI / Swagger Configuration
- * Generates the OpenAPI 3.1 spec from JSDoc annotations across route files.
+ * Generates the OpenAPI 3.0 spec from JSDoc annotations across route files.
  */
 
-import { createRequire } from 'node:module';
 import swaggerJsdoc from 'swagger-jsdoc';
+import pkg from '../../package.json' with { type: 'json' };
 
-const require = createRequire(import.meta.url);
-const { version } = require('../../package.json');
+const { version } = pkg;
 
 const options = {
   definition: {
-    openapi: '3.1.0',
+    openapi: '3.0.3',
     info: {
       title: 'Volvox Bot API',
       version,
@@ -27,11 +26,11 @@ const options = {
           name: 'x-api-secret',
           description: 'Shared API secret configured via BOT_API_SECRET environment variable.',
         },
-        CookieAuth: {
-          type: 'apiKey',
-          in: 'cookie',
-          name: 'token',
-          description: 'JWT session cookie set after Discord OAuth2 login.',
+        BearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT token provided in the Authorization header as Bearer <token>.',
         },
       },
       schemas: {

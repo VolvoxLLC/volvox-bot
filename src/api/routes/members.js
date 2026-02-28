@@ -55,7 +55,7 @@ function safeGetPool() {
  *     description: Streams a CSV file with enriched member data (stats, XP, warnings). May take a while for large guilds.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -189,7 +189,7 @@ router.get(
  *     description: Returns enriched member list with stats, XP, and warning counts. Supports search, sort, and cursor-based pagination.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -442,7 +442,7 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
  *     description: Returns full member profile including stats, XP, level progression, roles, and recent warnings.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -679,7 +679,7 @@ router.get(
  *     description: Returns paginated moderation case history for a specific member.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -823,7 +823,7 @@ router.get(
  *     description: Add or remove XP for a member. XP floors at 0. Amount must be a non-zero integer between -1,000,000 and 1,000,000.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

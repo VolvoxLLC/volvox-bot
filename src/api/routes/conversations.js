@@ -156,7 +156,7 @@ function buildConversationSummary(convo, guild) {
  *       Defaults to the last 30 days.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -354,7 +354,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
  *     description: Returns aggregate statistics about AI conversations for the guild.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -502,7 +502,7 @@ router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, a
  *     description: Returns flagged AI messages with optional status filter.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -670,7 +670,7 @@ router.get('/flags', conversationsRateLimit, requireGuildAdmin, validateGuild, a
  *     description: Returns all messages in a conversation for replay, including flag status and token estimates.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -850,7 +850,7 @@ router.get(
  *     description: Flag a problematic AI response in a conversation for review.
  *     security:
  *       - ApiKeyAuth: []
- *       - CookieAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
