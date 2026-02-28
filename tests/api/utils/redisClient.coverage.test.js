@@ -23,12 +23,12 @@ vi.mock('../../../src/logger.js', () => ({
   info: vi.fn(),
 }));
 
-import { error as logError, warn } from '../../../src/logger.js';
 import {
   _resetRedisClient,
   closeRedis,
   getRedisClient,
 } from '../../../src/api/utils/redisClient.js';
+import { error as logError, warn } from '../../../src/logger.js';
 
 describe('redisClient coverage', () => {
   const originalRedisUrl = process.env.REDIS_URL;
@@ -59,7 +59,10 @@ describe('redisClient coverage', () => {
       process.env.REDIS_URL = 'redis://localhost:6379';
       const client = getRedisClient();
       expect(client).not.toBeNull();
-      expect(mockRedisConstructorImpl).toHaveBeenCalledWith('redis://localhost:6379', expect.any(Object));
+      expect(mockRedisConstructorImpl).toHaveBeenCalledWith(
+        'redis://localhost:6379',
+        expect.any(Object),
+      );
     });
 
     it('returns cached client on subsequent calls (already initialized)', () => {
