@@ -162,7 +162,11 @@ export async function openTicket(guild, user, topic, channelId = null) {
     // ── Thread mode (default): create a private thread ──
     let parentChannel;
     if (ticketConfig.category) {
-      parentChannel = guild.channels.cache.get(ticketConfig.category);
+      const resolved = guild.channels.cache.get(ticketConfig.category);
+      // CategoryChannel can't create threads — only use text/news channels
+      if (resolved && (resolved.type === ChannelType.GuildText || resolved.type === ChannelType.GuildAnnouncement)) {
+        parentChannel = resolved;
+      }
     }
     if (!parentChannel && channelId) {
       parentChannel = guild.channels.cache.get(channelId);
@@ -171,7 +175,7 @@ export async function openTicket(guild, user, topic, channelId = null) {
       parentChannel = guild.channels.cache.find(
         (ch) =>
           ch.type === ChannelType.GuildText &&
-          ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
+          guild.members.me && ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
       );
     }
 
@@ -333,6 +337,8 @@ export async function closeTicket(channel, closer, reason) {
     }
   } else {
     // Channel mode: delete after a short delay so the close message is visible
+    // NOTE: known limitation — if the process restarts during the delay,
+    // the channel won't be deleted (orphaned). A startup cleanup job could address this.
     setTimeout(async () => {
       try {
         await channel.delete(`Ticket #${ticket.id} closed`);
