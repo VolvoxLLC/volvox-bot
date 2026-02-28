@@ -6,7 +6,7 @@ import {
   StringSelectMenuBuilder,
 } from 'discord.js';
 import { info } from '../logger.js';
-import { safeReply, safeEditReply, safeSend } from '../utils/safeSend.js';
+import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
 export const RULES_ACCEPT_BUTTON_ID = 'welcome_rules_accept';
 export const ROLE_MENU_SELECT_ID = 'welcome_role_select';
@@ -57,6 +57,12 @@ export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
   };
 }
 
+/**
+ * Check whether a guild member is rejoining (has the DidRejoin flag).
+ *
+ * @param {import('discord.js').GuildMember} member - The guild member to check.
+ * @returns {boolean} `true` if the member has previously left and is rejoining the guild.
+ */
 export function isReturningMember(member) {
   return member?.flags?.has?.(GuildMemberFlagsBitField.Flags.DidRejoin) === true;
 }
@@ -142,7 +148,14 @@ export async function handleRulesAcceptButton(interaction, config) {
     return;
   }
 
-  await member.roles.add(role, 'Accepted server rules');
+  try {
+    await member.roles.add(role, 'Accepted server rules');
+  } catch (roleErr) {
+    await safeEditReply(interaction, {
+      content: '❌ Failed to assign the verified role. Please try again or contact an admin.',
+    });
+    throw roleErr;
+  }
 
   if (welcome.introChannel) {
     const introChannel =
@@ -161,7 +174,12 @@ export async function handleRulesAcceptButton(interaction, config) {
     for (const step of welcome.dmSequence.steps) {
       try {
         await interaction.user.send(step);
-      } catch {
+      } catch (dmErr) {
+        info('DM delivery failed during onboarding sequence', {
+          guildId: interaction.guildId,
+          userId: interaction.user.id,
+          error: dmErr?.message,
+        });
         break;
       }
     }

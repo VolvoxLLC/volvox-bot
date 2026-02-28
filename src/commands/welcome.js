@@ -9,6 +9,8 @@ import {
 import { isModerator } from '../utils/permissions.js';
 import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('welcome')
   .setDescription('Welcome/onboarding admin helpers')

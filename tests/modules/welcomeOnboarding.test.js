@@ -15,6 +15,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
     if (typeof target?.reply === 'function') return target.reply(payload);
     return undefined;
   }),
+  safeEditReply: vi.fn(async () => {}),
 }));
 
 import {
@@ -23,7 +24,7 @@ import {
   handleRulesAcceptButton,
   normalizeWelcomeOnboardingConfig,
 } from '../../src/modules/welcomeOnboarding.js';
-import { safeReply, safeSend } from '../../src/utils/safeSend.js';
+import { safeEditReply, safeSend } from '../../src/utils/safeSend.js';
 
 describe('welcomeOnboarding module', () => {
   it('applies safe defaults when welcome onboarding fields are missing', () => {
@@ -80,6 +81,9 @@ describe('welcomeOnboarding module', () => {
         },
       },
       reply: vi.fn(async () => {}),
+      deferReply: vi.fn(async () => {}),
+      deferred: false,
+      replied: false,
     };
 
     await handleRulesAcceptButton(interaction, {
@@ -92,9 +96,9 @@ describe('welcomeOnboarding module', () => {
 
     expect(member.roles.add).toHaveBeenCalled();
     expect(safeSend).toHaveBeenCalledWith(introChannel, expect.stringContaining('<@member-1>'));
-    expect(safeReply).toHaveBeenCalledWith(
+    expect(safeEditReply).toHaveBeenCalledWith(
       interaction,
-      expect.objectContaining({ ephemeral: true }),
+      expect.objectContaining({ content: expect.stringContaining('Rules accepted') }),
     );
   });
 
@@ -124,6 +128,9 @@ describe('welcomeOnboarding module', () => {
         },
       },
       reply: vi.fn(async () => {}),
+      deferReply: vi.fn(async () => {}),
+      deferred: false,
+      replied: false,
     };
 
     await handleRoleMenuSelection(interaction, {

@@ -532,6 +532,7 @@ export function registerWelcomeOnboardingHandlers(client) {
     if (!guildId) return;
 
     const guildConfig = getConfig(guildId);
+    if (!guildConfig.welcome?.enabled) return;
 
     if (interaction.isButton() && interaction.customId === RULES_ACCEPT_BUTTON_ID) {
       try {
@@ -543,15 +544,19 @@ export function registerWelcomeOnboardingHandlers(client) {
           error: err?.message,
         });
 
-        if (!interaction.replied && !interaction.deferred) {
-          try {
+        try {
+          if (interaction.deferred || interaction.replied) {
+            await safeEditReply(interaction, {
+              content: '❌ Failed to verify. Please ping an admin.',
+            });
+          } else {
             await safeReply(interaction, {
               content: '❌ Failed to verify. Please ping an admin.',
               ephemeral: true,
             });
-          } catch {
-            // ignore
           }
+        } catch {
+          // ignore
         }
       }
       return;
@@ -567,15 +572,19 @@ export function registerWelcomeOnboardingHandlers(client) {
           error: err?.message,
         });
 
-        if (!interaction.replied && !interaction.deferred) {
-          try {
+        try {
+          if (interaction.deferred || interaction.replied) {
+            await safeEditReply(interaction, {
+              content: '❌ Failed to update roles. Please try again.',
+            });
+          } else {
             await safeReply(interaction, {
               content: '❌ Failed to update roles. Please try again.',
               ephemeral: true,
             });
-          } catch {
-            // ignore
           }
+        } catch {
+          // ignore
         }
       }
     }
