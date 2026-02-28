@@ -9,6 +9,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -237,9 +238,11 @@ export default async function ProfilePage({ params }: PageProps) {
               {/* Avatar */}
               <div className="relative">
                 {profile.avatar ? (
-                  <img
+                  <Image
                     src={profile.avatar}
                     alt={profile.displayName}
+                    width={96}
+                    height={96}
                     className="h-24 w-24 rounded-full object-cover ring-2 ring-primary/20"
                   />
                 ) : (

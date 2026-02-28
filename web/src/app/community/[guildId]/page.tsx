@@ -1,5 +1,6 @@
 import { ExternalLink, Github, MessageSquare, Rocket, ThumbsUp, Trophy, Users } from 'lucide-react';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -244,9 +245,17 @@ function MemberAvatar({
   const sizeClasses = { sm: 'h-8 w-8', md: 'h-10 w-10', lg: 'h-12 w-12' };
   const textSizes = { sm: 'text-xs', md: 'text-sm', lg: 'text-base' };
 
+  const sizePx = { sm: 32, md: 40, lg: 48 };
+
   if (avatar) {
     return (
-      <img src={avatar} alt={name} className={`${sizeClasses[size]} rounded-full object-cover`} />
+      <Image
+        src={avatar}
+        alt={name}
+        width={sizePx[size]}
+        height={sizePx[size]}
+        className={`${sizeClasses[size]} rounded-full object-cover`}
+      />
     );
   }
 
