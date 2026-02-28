@@ -47,6 +47,10 @@ export default function MembersPage() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // AbortController and request sequencing to prevent stale responses
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
@@ -54,6 +58,13 @@ export default function MembersPage() {
     }, 300);
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
+
+  // Abort in-flight request on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const onGuildChange = useCallback(() => {
     setMembers([]);
@@ -67,7 +78,8 @@ export default function MembersPage() {
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
-  // Fetch members
+  // Fetch members — uses AbortController to cancel stale in-flight requests
+  // and a monotonic request ID to discard out-of-order responses.
   const fetchMembers = useCallback(
     async (opts: {
       guildId: string;
@@ -77,6 +89,12 @@ export default function MembersPage() {
       after: string | null;
       append: boolean;
     }) => {
+      // Abort any previous in-flight request
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const requestId = ++requestIdRef.current;
+
       setLoading(true);
       setError(null);
       try {
@@ -89,7 +107,12 @@ export default function MembersPage() {
 
         const res = await fetch(
           `/api/guilds/${encodeURIComponent(opts.guildId)}/members?${params.toString()}`,
+          { signal: controller.signal },
         );
+
+        // Discard stale response if a newer request was issued
+        if (requestId !== requestIdRef.current) return;
+
         if (res.status === 401) {
           onUnauthorized();
           return;
@@ -107,9 +130,16 @@ export default function MembersPage() {
         setTotal(data.total);
         setFilteredTotal(data.filteredTotal ?? null);
       } catch (err) {
+        // Silently ignore aborted requests
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        // Discard errors from stale requests
+        if (requestId !== requestIdRef.current) return;
         setError(err instanceof Error ? err.message : 'Failed to fetch members');
       } finally {
-        setLoading(false);
+        // Only clear loading for the current (non-superseded) request
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [onUnauthorized],
