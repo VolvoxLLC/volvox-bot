@@ -13,7 +13,10 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["introduction", "authentication"]
+      "pages": [
+        "introduction",
+        "authentication"
+      ]
     },
     {
       "group": "API Reference",
@@ -21,17 +24,26 @@
         {
           "group": "Health",
           "icon": "heart-pulse",
-          "pages": ["api-reference/health/get-health"]
+          "pages": [
+            "api-reference/health/get-health"
+          ]
         },
         {
           "group": "Auth",
           "icon": "key",
-          "pages": ["api-reference/auth/callback", "api-reference/auth/session", "api-reference/auth/logout"]
+          "pages": [
+            "api-reference/auth/callback",
+            "api-reference/auth/session",
+            "api-reference/auth/logout"
+          ]
         },
         {
           "group": "Config",
           "icon": "gear",
-          "pages": ["api-reference/config/get-config", "api-reference/config/update-config"]
+          "pages": [
+            "api-reference/config/get-config",
+            "api-reference/config/update-config"
+          ]
         },
         {
           "group": "Guilds",
@@ -93,22 +105,33 @@
         {
           "group": "Community",
           "icon": "people-group",
-          "pages": ["api-reference/community/leaderboard", "api-reference/community/showcases", "api-reference/community/stats"]
+          "pages": [
+            "api-reference/community/leaderboard",
+            "api-reference/community/showcases",
+            "api-reference/community/stats"
+          ]
         },
         {
           "group": "Webhooks",
           "icon": "webhook",
-          "pages": ["api-reference/webhooks/config-update"]
+          "pages": [
+            "api-reference/webhooks/config-update"
+          ]
         }
       ]
     }
   ],
   "openapi": "openapi.json",
   "api": {
-    "baseUrl": "/api/v1"
+    "baseUrl": "https://your-domain.com/api/v1"
   },
   "footerSocials": {
     "github": "https://github.com/VolvoxLLC/volvox-bot",
     "discord": "https://discord.gg/volvox"
-  }
+  },
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg"
 }
