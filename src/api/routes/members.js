@@ -52,110 +52,104 @@ function safeGetPool() {
  * GET /:id/members/export — Export all members with stats as CSV
  * Streams a CSV file with enriched member data.
  */
-router.get(
-  '/:id/members/export',
-  membersRateLimit,
-  requireGuildAdmin,
-  validateGuild,
-  async (req, res) => {
-    try {
-      const guild = req.guild;
-      const pool = safeGetPool();
-      if (!pool) {
-        return res.status(503).json({ error: 'Database unavailable' });
+router.get('/:id/members/export', requireGuildAdmin, validateGuild, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const pool = safeGetPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    // Fetch all members — paginate in batches of 1000 for large guilds
+    const members = new Map();
+    let lastId;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const fetchOpts = { limit: 1000 };
+      if (lastId) fetchOpts.after = lastId;
+      const batch = await guild.members.list(fetchOpts);
+      if (batch.size === 0) break;
+      for (const [id, member] of batch) {
+        members.set(id, member);
       }
+      lastId = Array.from(batch.keys()).pop();
+      if (batch.size < 1000) break; // Last page
+    }
 
-      // Fetch all members — paginate in batches of 1000 for large guilds
-      const members = new Map();
-      let lastId;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const fetchOpts = { limit: 1000 };
-        if (lastId) fetchOpts.after = lastId;
-        const batch = await guild.members.list(fetchOpts);
-        if (batch.size === 0) break;
-        for (const [id, member] of batch) {
-          members.set(id, member);
-        }
-        lastId = Array.from(batch.keys()).pop();
-        if (batch.size < 1000) break; // Last page
-      }
+    const userIds = Array.from(members.keys());
 
-      const userIds = Array.from(members.keys());
-
-      // Batch-fetch stats and reputation
-      const [statsResult, repResult, warningsResult] = await Promise.all([
-        userIds.length > 0
-          ? pool.query(
-              `SELECT user_id, messages_sent, days_active, last_active
+    // Batch-fetch stats and reputation
+    const [statsResult, repResult, warningsResult] = await Promise.all([
+      userIds.length > 0
+        ? pool.query(
+            `SELECT user_id, messages_sent, days_active, last_active
                FROM user_stats
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-              [guild.id, userIds],
-            )
-          : { rows: [] },
-        userIds.length > 0
-          ? pool.query(
-              `SELECT user_id, xp, level
+            [guild.id, userIds],
+          )
+        : { rows: [] },
+      userIds.length > 0
+        ? pool.query(
+            `SELECT user_id, xp, level
                FROM reputation
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-              [guild.id, userIds],
-            )
-          : { rows: [] },
-        userIds.length > 0
-          ? pool.query(
-              `SELECT target_id, COUNT(*)::integer AS count
+            [guild.id, userIds],
+          )
+        : { rows: [] },
+      userIds.length > 0
+        ? pool.query(
+            `SELECT target_id, COUNT(*)::integer AS count
                FROM mod_cases
                WHERE guild_id = $1 AND target_id = ANY($2) AND action = 'warn'
                GROUP BY target_id`,
-              [guild.id, userIds],
-            )
-          : { rows: [] },
-      ]);
+            [guild.id, userIds],
+          )
+        : { rows: [] },
+    ]);
 
-      const statsMap = new Map(statsResult.rows.map((r) => [r.user_id, r]));
-      const repMap = new Map(repResult.rows.map((r) => [r.user_id, r]));
-      const warningsMap = new Map(warningsResult.rows.map((r) => [r.target_id, r.count]));
+    const statsMap = new Map(statsResult.rows.map((r) => [r.user_id, r]));
+    const repMap = new Map(repResult.rows.map((r) => [r.user_id, r]));
+    const warningsMap = new Map(warningsResult.rows.map((r) => [r.target_id, r.count]));
 
-      // Set CSV headers
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="members.csv"');
+    // Set CSV headers
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="members.csv"');
 
-      // Write CSV header row
-      res.write('userId,username,displayName,joinedAt,messages,xp,level,daysActive,warnings\n');
+    // Write CSV header row
+    res.write('userId,username,displayName,joinedAt,messages,xp,level,daysActive,warnings\n');
 
-      // Write each member row
-      for (const [, member] of members) {
-        const stats = statsMap.get(member.id) || {};
-        const rep = repMap.get(member.id) || {};
-        const warnings = warningsMap.get(member.id) || 0;
+    // Write each member row
+    for (const [, member] of members) {
+      const stats = statsMap.get(member.id) || {};
+      const rep = repMap.get(member.id) || {};
+      const warnings = warningsMap.get(member.id) || 0;
 
-        const row = [
-          member.id,
-          escapeCsv(member.user.username),
-          escapeCsv(member.displayName),
-          member.joinedAt ? member.joinedAt.toISOString() : '',
-          stats.messages_sent ?? 0,
-          rep.xp ?? 0,
-          rep.level ?? 0,
-          stats.days_active ?? 0,
-          warnings,
-        ].join(',');
+      const row = [
+        member.id,
+        escapeCsv(member.user.username),
+        escapeCsv(member.displayName),
+        member.joinedAt ? member.joinedAt.toISOString() : '',
+        stats.messages_sent ?? 0,
+        rep.xp ?? 0,
+        rep.level ?? 0,
+        stats.days_active ?? 0,
+        warnings,
+      ].join(',');
 
-        res.write(`${row}\n`);
-      }
-
-      res.end();
-
-      info('Members CSV exported', { guildId: guild.id, count: members.size });
-    } catch (err) {
-      logError('Failed to export members CSV', { error: err.message, guild: req.params.id });
-      // Only send error if headers haven't been sent yet
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Failed to export members' });
-      }
+      res.write(`${row}\n`);
     }
-  },
-);
+
+    res.end();
+
+    info('Members CSV exported', { guildId: guild.id, count: members.size });
+  } catch (err) {
+    logError('Failed to export members CSV', { error: err.message, guild: req.params.id });
+    // Only send error if headers haven't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to export members' });
+    }
+  }
+});
 
 // ─── GET /:id/members — Enhanced member list ─────────────────────────────────
 
@@ -168,7 +162,7 @@ router.get(
  *   sort   — messages|xp|warnings|joined (default: joined)
  *   order  — asc|desc (default: desc)
  */
-router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/members', requireGuildAdmin, validateGuild, async (req, res) => {
   let limit = Number.parseInt(req.query.limit, 10) || 25;
   if (limit < 1) limit = 1;
   if (limit > 100) limit = 100;
@@ -308,114 +302,108 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 /**
  * GET /:id/members/:userId — Full member profile with stats, XP, and warnings
  */
-router.get(
-  '/:id/members/:userId',
-  membersRateLimit,
-  requireGuildAdmin,
-  validateGuild,
-  async (req, res) => {
-    const { userId } = req.params;
+router.get('/:id/members/:userId', requireGuildAdmin, validateGuild, async (req, res) => {
+  const { userId } = req.params;
 
+  try {
+    const guild = req.guild;
+    const pool = safeGetPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    // Fetch Discord member
+    let member;
     try {
-      const guild = req.guild;
-      const pool = safeGetPool();
-      if (!pool) {
-        return res.status(503).json({ error: 'Database unavailable' });
-      }
+      member = await guild.members.fetch(userId);
+    } catch {
+      return res.status(404).json({ error: 'Member not found in guild' });
+    }
 
-      // Fetch Discord member
-      let member;
-      try {
-        member = await guild.members.fetch(userId);
-      } catch {
-        return res.status(404).json({ error: 'Member not found in guild' });
-      }
-
-      // Fetch all enrichment data in parallel
-      const [statsResult, repResult, warningCountResult, recentWarningsResult] = await Promise.all([
-        pool.query(
-          `SELECT messages_sent, reactions_given, reactions_received, days_active, first_seen, last_active
+    // Fetch all enrichment data in parallel
+    const [statsResult, repResult, warningCountResult, recentWarningsResult] = await Promise.all([
+      pool.query(
+        `SELECT messages_sent, reactions_given, reactions_received, days_active, first_seen, last_active
            FROM user_stats
            WHERE guild_id = $1 AND user_id = $2`,
-          [guild.id, userId],
-        ),
-        pool.query(
-          `SELECT xp, level, messages_count, voice_minutes, helps_given, last_xp_gain
+        [guild.id, userId],
+      ),
+      pool.query(
+        `SELECT xp, level, messages_count, voice_minutes, helps_given, last_xp_gain
            FROM reputation
            WHERE guild_id = $1 AND user_id = $2`,
-          [guild.id, userId],
-        ),
-        pool.query(
-          `SELECT COUNT(*)::integer AS count
+        [guild.id, userId],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::integer AS count
            FROM mod_cases
            WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'`,
-          [guild.id, userId],
-        ),
-        pool.query(
-          `SELECT case_number, action, reason, moderator_tag, created_at
+        [guild.id, userId],
+      ),
+      pool.query(
+        `SELECT case_number, action, reason, moderator_tag, created_at
            FROM mod_cases
            WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
            ORDER BY created_at DESC
            LIMIT 5`,
-          [guild.id, userId],
-        ),
-      ]);
+        [guild.id, userId],
+      ),
+    ]);
 
-      const stats = statsResult.rows[0] || null;
-      const rep = repResult.rows[0] || null;
-      const warningCount = warningCountResult.rows[0]?.count ?? 0;
+    const stats = statsResult.rows[0] || null;
+    const rep = repResult.rows[0] || null;
+    const warningCount = warningCountResult.rows[0]?.count ?? 0;
 
-      // Compute badge/level info
-      const repConfig = getRepConfig(guild.id);
-      const xp = rep?.xp ?? 0;
-      const level = rep?.level ?? computeLevel(xp, repConfig.levelThresholds);
-      const nextThreshold = repConfig.levelThresholds[level] ?? null;
+    // Compute badge/level info
+    const repConfig = getRepConfig(guild.id);
+    const xp = rep?.xp ?? 0;
+    const level = rep?.level ?? computeLevel(xp, repConfig.levelThresholds);
+    const nextThreshold = repConfig.levelThresholds[level] ?? null;
 
-      res.json({
-        id: member.id,
-        username: member.user.username,
-        displayName: member.displayName,
-        avatar: member.user.displayAvatarURL(),
-        roles: Array.from(member.roles.cache.values()).map((r) => ({
-          id: r.id,
-          name: r.name,
-          color: r.hexColor,
-        })),
-        joinedAt: member.joinedAt,
-        stats: stats
-          ? {
-              messages_sent: stats.messages_sent,
-              reactions_given: stats.reactions_given,
-              reactions_received: stats.reactions_received,
-              days_active: stats.days_active,
-              first_seen: stats.first_seen,
-              last_active: stats.last_active,
-            }
-          : null,
-        reputation: {
-          xp,
-          level,
-          messages_count: rep?.messages_count ?? 0,
-          voice_minutes: rep?.voice_minutes ?? 0,
-          helps_given: rep?.helps_given ?? 0,
-          last_xp_gain: rep?.last_xp_gain ?? null,
-          next_level_xp: nextThreshold,
-        },
-        warnings: {
-          count: warningCount,
-          recent: recentWarningsResult.rows,
-        },
-      });
-    } catch (err) {
-      logError('Failed to fetch member detail', {
-        error: err.message,
-        guild: req.params.id,
-        userId: req.params.userId,
-      });
-      res.status(500).json({ error: 'Failed to fetch member details' });
-    }
-  },
-);
+    res.json({
+      id: member.id,
+      username: member.user.username,
+      displayName: member.displayName,
+      avatar: member.user.displayAvatarURL(),
+      roles: Array.from(member.roles.cache.values()).map((r) => ({
+        id: r.id,
+        name: r.name,
+        color: r.hexColor,
+      })),
+      joinedAt: member.joinedAt,
+      stats: stats
+        ? {
+            messages_sent: stats.messages_sent,
+            reactions_given: stats.reactions_given,
+            reactions_received: stats.reactions_received,
+            days_active: stats.days_active,
+            first_seen: stats.first_seen,
+            last_active: stats.last_active,
+          }
+        : null,
+      reputation: {
+        xp,
+        level,
+        messages_count: rep?.messages_count ?? 0,
+        voice_minutes: rep?.voice_minutes ?? 0,
+        helps_given: rep?.helps_given ?? 0,
+        last_xp_gain: rep?.last_xp_gain ?? null,
+        next_level_xp: nextThreshold,
+      },
+      warnings: {
+        count: warningCount,
+        recent: recentWarningsResult.rows,
+      },
+    });
+  } catch (err) {
+    logError('Failed to fetch member detail', {
+      error: err.message,
+      guild: req.params.id,
+      userId: req.params.userId,
+    });
+    res.status(500).json({ error: 'Failed to fetch member details' });
+  }
+});
 
 // ─── GET /:id/members/:userId/cases — Full moderation history ─────────────────
 
@@ -425,60 +413,54 @@ router.get(
  *   page  (default 1)
  *   limit (default 25, max 100)
  */
-router.get(
-  '/:id/members/:userId/cases',
-  membersRateLimit,
-  requireGuildAdmin,
-  validateGuild,
-  async (req, res) => {
-    const { userId } = req.params;
-    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
-    const offset = (page - 1) * limit;
+router.get('/:id/members/:userId/cases', requireGuildAdmin, validateGuild, async (req, res) => {
+  const { userId } = req.params;
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
+  const offset = (page - 1) * limit;
 
-    try {
-      const pool = safeGetPool();
-      if (!pool) {
-        return res.status(503).json({ error: 'Database unavailable' });
-      }
+  try {
+    const pool = safeGetPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
 
-      const [casesResult, countResult] = await Promise.all([
-        pool.query(
-          `SELECT case_number, action, reason, moderator_id, moderator_tag, duration, expires_at, created_at
+    const [casesResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT case_number, action, reason, moderator_id, moderator_tag, duration, expires_at, created_at
            FROM mod_cases
            WHERE guild_id = $1 AND target_id = $2
            ORDER BY created_at DESC
            LIMIT $3 OFFSET $4`,
-          [req.guild.id, userId, limit, offset],
-        ),
-        pool.query(
-          `SELECT COUNT(*)::integer AS total
+        [req.guild.id, userId, limit, offset],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::integer AS total
            FROM mod_cases
            WHERE guild_id = $1 AND target_id = $2`,
-          [req.guild.id, userId],
-        ),
-      ]);
+        [req.guild.id, userId],
+      ),
+    ]);
 
-      const total = countResult.rows[0]?.total ?? 0;
-      const pages = Math.ceil(total / limit) || 1;
+    const total = countResult.rows[0]?.total ?? 0;
+    const pages = Math.ceil(total / limit) || 1;
 
-      res.json({
-        userId,
-        cases: casesResult.rows,
-        total,
-        page,
-        pages,
-      });
-    } catch (err) {
-      logError('Failed to fetch member cases', {
-        error: err.message,
-        guild: req.params.id,
-        userId,
-      });
-      res.status(500).json({ error: 'Failed to fetch member cases' });
-    }
-  },
-);
+    res.json({
+      userId,
+      cases: casesResult.rows,
+      total,
+      page,
+      pages,
+    });
+  } catch (err) {
+    logError('Failed to fetch member cases', {
+      error: err.message,
+      guild: req.params.id,
+      userId,
+    });
+    res.status(500).json({ error: 'Failed to fetch member cases' });
+  }
+});
 
 // ─── POST /:id/members/:userId/xp — Admin XP adjustment ──────────────────────
 
@@ -487,96 +469,90 @@ router.get(
  * Body: { amount: number, reason?: string }
  * Positive or negative adjustment. Returns updated XP/level.
  */
-router.post(
-  '/:id/members/:userId/xp',
-  membersRateLimit,
-  requireGuildAdmin,
-  validateGuild,
-  async (req, res) => {
-    const { userId } = req.params;
-    const { amount, reason } = req.body || {};
+router.post('/:id/members/:userId/xp', requireGuildAdmin, validateGuild, async (req, res) => {
+  const { userId } = req.params;
+  const { amount, reason } = req.body || {};
 
-    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount === 0) {
-      return res.status(400).json({ error: 'amount must be a non-zero finite number' });
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount === 0) {
+    return res.status(400).json({ error: 'amount must be a non-zero finite number' });
+  }
+
+  // Cap adjustment to ±1,000,000
+  if (Math.abs(amount) > 1_000_000) {
+    return res.status(400).json({ error: 'amount must be between -1000000 and 1000000' });
+  }
+
+  try {
+    const pool = safeGetPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database unavailable' });
     }
+    const guildId = req.guild.id;
 
-    // Cap adjustment to ±1,000,000
-    if (Math.abs(amount) > 1_000_000) {
-      return res.status(400).json({ error: 'amount must be between -1000000 and 1000000' });
-    }
-
+    // Wrap XP upsert + level update in a transaction for consistency
+    const client = await pool.connect();
+    let newXp, newLevel;
     try {
-      const pool = safeGetPool();
-      if (!pool) {
-        return res.status(503).json({ error: 'Database unavailable' });
-      }
-      const guildId = req.guild.id;
+      await client.query('BEGIN');
 
-      // Wrap XP upsert + level update in a transaction for consistency
-      const client = await pool.connect();
-      let newXp, newLevel;
-      try {
-        await client.query('BEGIN');
-
-        // Upsert reputation and adjust XP (floor at 0)
-        const { rows } = await client.query(
-          `INSERT INTO reputation (guild_id, user_id, xp, level)
+      // Upsert reputation and adjust XP (floor at 0)
+      const { rows } = await client.query(
+        `INSERT INTO reputation (guild_id, user_id, xp, level)
            VALUES ($1, $2, GREATEST(0, $3), 0)
            ON CONFLICT (guild_id, user_id) DO UPDATE
              SET xp = GREATEST(0, reputation.xp + $3)
            RETURNING xp, level`,
-          [guildId, userId, amount],
+        [guildId, userId, amount],
+      );
+
+      newXp = rows[0].xp;
+
+      // Recompute level from thresholds
+      const repConfig = getRepConfig(guildId);
+      newLevel = computeLevel(newXp, repConfig.levelThresholds);
+
+      // Update level if changed
+      if (newLevel !== rows[0].level) {
+        await client.query(
+          'UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3',
+          [newLevel, guildId, userId],
         );
-
-        newXp = rows[0].xp;
-
-        // Recompute level from thresholds
-        const repConfig = getRepConfig(guildId);
-        newLevel = computeLevel(newXp, repConfig.levelThresholds);
-
-        // Update level if changed
-        if (newLevel !== rows[0].level) {
-          await client.query(
-            'UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3',
-            [newLevel, guildId, userId],
-          );
-        }
-
-        await client.query('COMMIT');
-      } catch (txErr) {
-        await client.query('ROLLBACK');
-        throw txErr;
-      } finally {
-        client.release();
       }
 
-      info('XP adjusted via API', {
-        guildId,
-        userId,
-        amount,
-        reason: reason || null,
-        newXp,
-        newLevel,
-        adjustedBy: req.user?.userId || 'api-secret',
-      });
-
-      res.json({
-        userId,
-        xp: newXp,
-        level: newLevel,
-        adjustment: amount,
-        reason: reason || null,
-      });
-    } catch (err) {
-      logError('Failed to adjust XP', {
-        error: err.message,
-        guild: req.params.id,
-        userId,
-      });
-      res.status(500).json({ error: 'Failed to adjust XP' });
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
-  },
-);
+
+    info('XP adjusted via API', {
+      guildId,
+      userId,
+      amount,
+      reason: reason || null,
+      newXp,
+      newLevel,
+      adjustedBy: req.user?.userId || 'api-secret',
+    });
+
+    res.json({
+      userId,
+      xp: newXp,
+      level: newLevel,
+      adjustment: amount,
+      reason: reason || null,
+    });
+  } catch (err) {
+    logError('Failed to adjust XP', {
+      error: err.message,
+      guild: req.params.id,
+      userId,
+    });
+    res.status(500).json({ error: 'Failed to adjust XP' });
+  }
+});
 
 /**
  * Escape a value for CSV output.

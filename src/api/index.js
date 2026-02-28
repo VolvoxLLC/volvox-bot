@@ -27,12 +27,7 @@ router.use('/config', requireAuth(), configRouter);
 
 // Member management routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/members/* before the basic guilds endpoint)
-router.use(
-  '/guilds',
-  rateLimit({ windowMs: 15 * 60 * 1000, max: 120 }),
-  requireAuth(),
-  membersRouter,
-);
+router.use('/guilds', requireAuth(), membersRouter);
 
 // Guild routes — require API secret or OAuth2 JWT
 router.use('/guilds', requireAuth(), guildsRouter);

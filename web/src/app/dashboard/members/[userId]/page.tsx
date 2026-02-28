@@ -267,6 +267,10 @@ export default function MemberDetailPage() {
             body: JSON.stringify({ amount, reason: xpReason || undefined }),
           },
         );
+        if (res.status === 401) {
+          router.replace('/login');
+          return;
+        }
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || `Failed to adjust XP (${res.status})`);
@@ -309,6 +313,10 @@ export default function MemberDetailPage() {
     setExportError(null);
     try {
       const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/members/export`);
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -318,7 +326,6 @@ export default function MemberDetailPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('CSV export failed:', err);
       setExportError(err instanceof Error ? err.message : 'Failed to export CSV');
     } finally {
       setExporting(false);
@@ -326,6 +333,14 @@ export default function MemberDetailPage() {
   }, [guildId]);
 
   // ─── Loading state ───────────────────────────────────────────────────────
+
+  if (!guildId || !userId) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-muted-foreground">No member selected.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
