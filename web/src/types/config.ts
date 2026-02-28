@@ -161,6 +161,67 @@ export interface TriageConfig {
   statusReactions: boolean;
 }
 
+/** Generic enabled-flag section used by several community features. */
+export interface ToggleSectionConfig {
+  enabled: boolean;
+}
+
+/** TL;DR summary feature settings. */
+export interface TldrConfig extends ToggleSectionConfig {
+  defaultMessages: number;
+  maxMessages: number;
+  cooldownSeconds: number;
+}
+
+/** Reputation/XP settings. */
+export interface ReputationConfig extends ToggleSectionConfig {
+  xpPerMessage: number[];
+  xpCooldownSeconds: number;
+  announceChannelId: string | null;
+  levelThresholds: number[];
+  roleRewards: Record<string, string>;
+}
+
+/** Activity badge definition for profile/engagement. */
+export interface ActivityBadge {
+  days: number;
+  label: string;
+}
+
+/** Engagement tracking settings. */
+export interface EngagementConfig extends ToggleSectionConfig {
+  trackMessages: boolean;
+  trackReactions: boolean;
+  activityBadges: ActivityBadge[];
+}
+
+/** GitHub feed settings. */
+export interface GithubFeedConfig extends ToggleSectionConfig {
+  channelId: string | null;
+  repos: string[];
+  events: string[];
+  pollIntervalMinutes?: number;
+}
+
+/** GitHub integration settings. */
+export interface GithubConfig {
+  feed: GithubFeedConfig;
+}
+
+/** Review request system settings. */
+export interface ReviewConfig extends ToggleSectionConfig {
+  channelId: string | null;
+  staleAfterDays: number;
+  xpReward: number;
+}
+
+/** Daily challenge scheduler settings. */
+export interface ChallengesConfig extends ToggleSectionConfig {
+  channelId: string | null;
+  postTime: string;
+  timezone: string;
+}
+
 /** Full bot config response from GET /api/guilds/:id/config. */
 export interface BotConfig {
   guildId: string;
@@ -172,10 +233,44 @@ export interface BotConfig {
   starboard?: StarboardConfig;
   permissions?: PermissionsConfig;
   memory?: MemoryConfig;
+
+  // Community/dashboard sections
+  help?: ToggleSectionConfig;
+  announce?: ToggleSectionConfig;
+  snippet?: ToggleSectionConfig;
+  poll?: ToggleSectionConfig;
+  showcase?: ToggleSectionConfig;
+  tldr?: TldrConfig;
+  reputation?: ReputationConfig;
+  afk?: ToggleSectionConfig;
+  engagement?: EngagementConfig;
+  github?: GithubConfig;
+  review?: ReviewConfig;
+  challenges?: ChallengesConfig;
 }
 
 /** All config sections shown in the editor. */
-export type ConfigSection = "ai" | "welcome" | "spam" | "moderation" | "triage" | "starboard" | "permissions" | "memory";
+export type ConfigSection =
+  | 'ai'
+  | 'welcome'
+  | 'spam'
+  | 'moderation'
+  | 'triage'
+  | 'starboard'
+  | 'permissions'
+  | 'memory'
+  | 'help'
+  | 'announce'
+  | 'snippet'
+  | 'poll'
+  | 'showcase'
+  | 'tldr'
+  | 'reputation'
+  | 'afk'
+  | 'engagement'
+  | 'github'
+  | 'review'
+  | 'challenges';
 
 /**
  * @deprecated Use {@link ConfigSection} directly.
@@ -186,11 +281,13 @@ export type WritableConfigSection = ConfigSection;
 /** Maximum characters allowed for the AI system prompt in the config editor. */
 export const SYSTEM_PROMPT_MAX_LENGTH = 4000;
 
-/** Recursively make all properties optional. */
+/** Recursively make all properties optional (including optional/union object fields). */
+type DeepPartialValue<T> = T extends (infer U)[]
+  ? DeepPartialValue<U>[]
+  : T extends object
+    ? DeepPartial<T>
+    : T;
+
 export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends (infer U)[]
-    ? DeepPartial<U>[]
-    : T[P] extends object
-      ? DeepPartial<T[P]>
-      : T[P];
+  [P in keyof T]?: DeepPartialValue<T[P]>;
 };
