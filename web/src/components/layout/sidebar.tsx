@@ -36,6 +36,11 @@ const navigation = [
     icon: Users,
   },
   {
+    name: 'Conversations',
+    href: '/dashboard/conversations',
+    icon: MessageSquare,
+  },
+  {
     name: 'Bot Config',
     href: '/dashboard/config',
     icon: Bot,
