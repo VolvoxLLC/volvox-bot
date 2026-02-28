@@ -96,38 +96,35 @@ router.get('/:guildId/leaderboard', async (req, res) => {
     const { client } = req.app.locals;
     const guild = client?.guilds?.cache?.get(guildId);
 
-    const members = await Promise.all(
-      membersResult.rows.map(async (row, idx) => {
-        const level = computeLevel(row.xp, repConfig.levelThresholds);
-        let username = row.user_id;
-        let displayName = row.user_id;
-        let avatar = null;
+    const leaderboardUserIds = membersResult.rows.map((r) => r.user_id);
+    const fetchedLeaderboardMembers = guild
+      ? await guild.members.fetch({ user: leaderboardUserIds }).catch(() => new Map())
+      : new Map();
 
-        if (guild) {
-          try {
-            const member = await guild.members.fetch(row.user_id).catch(() => null);
-            if (member) {
-              username = member.user.username;
-              displayName = member.displayName;
-              avatar = member.user.displayAvatarURL();
-            }
-          } catch {
-            // Member may have left the guild
-          }
-        }
+    const members = membersResult.rows.map((row, idx) => {
+      const level = computeLevel(row.xp, repConfig.levelThresholds);
+      let username = row.user_id;
+      let displayName = row.user_id;
+      let avatar = null;
 
-        return {
-          userId: row.user_id,
-          username,
-          displayName,
-          avatar,
-          xp: row.xp,
-          level,
-          badge: getLevelBadge(level),
-          rank: offset + idx + 1,
-        };
-      }),
-    );
+      const member = fetchedLeaderboardMembers.get(row.user_id);
+      if (member) {
+        username = member.user.username;
+        displayName = member.displayName;
+        avatar = member.user.displayAvatarURL();
+      }
+
+      return {
+        userId: row.user_id,
+        username,
+        displayName,
+        avatar,
+        xp: row.xp,
+        level,
+        badge: getLevelBadge(level),
+        rank: offset + idx + 1,
+      };
+    });
 
     res.json({ members, total, page });
   } catch (err) {
@@ -265,29 +262,34 @@ router.get('/:guildId/stats', async (req, res) => {
     const { client } = req.app.locals;
     const guild = client?.guilds?.cache?.get(guildId);
 
-    const top3 = await Promise.all(
-      topContributors.rows.map(async (row) => {
-        const level = computeLevel(row.xp, repConfig.levelThresholds);
-        let username = row.user_id;
-        let displayName = row.user_id;
-        let avatar = null;
+    const topContributorUserIds = topContributors.rows.map((r) => r.user_id);
+    const fetchedTopMembers = guild
+      ? await guild.members.fetch({ user: topContributorUserIds }).catch(() => new Map())
+      : new Map();
 
-        if (guild) {
-          try {
-            const member = await guild.members.fetch(row.user_id).catch(() => null);
-            if (member) {
-              username = member.user.username;
-              displayName = member.displayName;
-              avatar = member.user.displayAvatarURL();
-            }
-          } catch {
-            // Member may have left
-          }
-        }
+    const top3 = topContributors.rows.map((row) => {
+      const level = computeLevel(row.xp, repConfig.levelThresholds);
+      let username = row.user_id;
+      let displayName = row.user_id;
+      let avatar = null;
 
-        return { userId: row.user_id, username, displayName, avatar, xp: row.xp, level, badge: getLevelBadge(level) };
-      }),
-    );
+      const member = fetchedTopMembers.get(row.user_id);
+      if (member) {
+        username = member.user.username;
+        displayName = member.displayName;
+        avatar = member.user.displayAvatarURL();
+      }
+
+      return {
+        userId: row.user_id,
+        username,
+        displayName,
+        avatar,
+        xp: row.xp,
+        level,
+        badge: getLevelBadge(level),
+      };
+    });
 
     res.json({
       memberCount: memberCount.rows[0]?.count ?? 0,
