@@ -201,8 +201,7 @@ describe('guilds routes coverage', () => {
 
       // express parses empty body as undefined or empty object
       // if action is missing, should be 400
-      const statusOptions = [400, 415];
-      expect(statusOptions).toContain(res.status);
+      expect(res.status).toBe(400);
     });
 
     it('returns 400 when action is missing', async () => {
@@ -324,7 +323,7 @@ describe('guilds routes coverage', () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics')
         .set('x-api-secret', SECRET);
-      expect([200, 500]).toContain(res.status); // May fail if pool query isn't set up perfectly
+      expect(res.status).toBe(200);
     });
 
     it('handles today range', async () => {
@@ -332,7 +331,7 @@ describe('guilds routes coverage', () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=today')
         .set('x-api-secret', SECRET);
-      expect([200, 500]).toContain(res.status);
+      expect(res.status).toBe(200);
     });
 
     it('handles month range', async () => {
@@ -340,7 +339,7 @@ describe('guilds routes coverage', () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=month')
         .set('x-api-secret', SECRET);
-      expect([200, 500]).toContain(res.status);
+      expect(res.status).toBe(200);
     });
 
     it('returns 400 for custom range without from/to', async () => {
@@ -377,8 +376,7 @@ describe('guilds routes coverage', () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/channels')
         .set('x-api-secret', SECRET);
-      // Just check it doesn't crash
-      expect([200, 404]).toContain(res.status);
+      expect(res.status).toBe(200);
     });
   });
 });
