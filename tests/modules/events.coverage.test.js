@@ -80,9 +80,11 @@ vi.mock('../../src/db.js', () => ({
   getPool: vi.fn(),
 }));
 
-import { warn } from '../../src/logger.js';
 import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../../src/commands/showcase.js';
 import { getPool } from '../../src/db.js';
+import { warn } from '../../src/logger.js';
+import { handleHintButton, handleSolveButton } from '../../src/modules/challengeScheduler.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   registerChallengeButtonHandler,
   registerErrorHandlers,
@@ -93,8 +95,6 @@ import {
   registerShowcaseButtonHandler,
   registerShowcaseModalHandler,
 } from '../../src/modules/events.js';
-import { handleHintButton, handleSolveButton } from '../../src/modules/challengeScheduler.js';
-import { getConfig } from '../../src/modules/config.js';
 import { checkLinks } from '../../src/modules/linkFilter.js';
 import { checkRateLimit } from '../../src/modules/rateLimit.js';
 import { handleReviewClaim } from '../../src/modules/reviewHandler.js';
@@ -349,10 +349,7 @@ describe('events coverage follow-up', () => {
     handleReviewClaim.mockRejectedValueOnce(new Error('boom'));
     const failing = makeInteraction({ customId: 'review_claim_123' });
     await handler(failing);
-    expect(safeReply).toHaveBeenCalledWith(
-      failing,
-      expect.objectContaining({ ephemeral: true }),
-    );
+    expect(safeReply).toHaveBeenCalledWith(failing, expect.objectContaining({ ephemeral: true }));
 
     handleReviewClaim.mockRejectedValueOnce(new Error('boom'));
     const alreadyDone = makeInteraction({ customId: 'review_claim_123', replied: true });
@@ -387,10 +384,7 @@ describe('events coverage follow-up', () => {
     handleShowcaseUpvote.mockRejectedValueOnce(new Error('upvote fail'));
     const failing = makeInteraction({ customId: 'showcase_upvote_2' });
     await handler(failing);
-    expect(safeReply).toHaveBeenCalledWith(
-      failing,
-      expect.objectContaining({ ephemeral: true }),
-    );
+    expect(safeReply).toHaveBeenCalledWith(failing, expect.objectContaining({ ephemeral: true }));
 
     handleShowcaseUpvote.mockRejectedValueOnce(new Error('upvote fail'));
     const alreadyDone = makeInteraction({ customId: 'showcase_upvote_3', deferred: true });
@@ -485,10 +479,7 @@ describe('events coverage follow-up', () => {
     handleSolveButton.mockRejectedValueOnce(new Error('solve fail'));
     const failing = makeInteraction({ customId: 'challenge_solve_7' });
     await handler(failing);
-    expect(safeReply).toHaveBeenCalledWith(
-      failing,
-      expect.objectContaining({ ephemeral: true }),
-    );
+    expect(safeReply).toHaveBeenCalledWith(failing, expect.objectContaining({ ephemeral: true }));
 
     handleHintButton.mockRejectedValueOnce(new Error('hint fail'));
     const alreadyDone = makeInteraction({ customId: 'challenge_hint_9', replied: true });

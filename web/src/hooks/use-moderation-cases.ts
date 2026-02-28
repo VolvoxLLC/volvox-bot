@@ -90,7 +90,7 @@ export function useModerationCases({
   useEffect(() => {
     if (!guildId) return;
     void fetchCases(guildId, page, sortDesc, actionFilter, userSearch);
-  }, [guildId, page, actionFilter, userSearch, fetchCases]);
+  }, [guildId, page, actionFilter, userSearch, fetchCases, sortDesc]);
 
   // Client-side sort toggle
   useEffect(() => {
@@ -98,7 +98,7 @@ export function useModerationCases({
       if (!prev) return prev;
       return { ...prev, cases: [...prev.cases].reverse() };
     });
-  }, [sortDesc]);
+  }, []);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
