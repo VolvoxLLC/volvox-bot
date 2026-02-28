@@ -146,7 +146,6 @@ export const CONFIG_SCHEMA = {
     properties: {
       enabled: { type: 'boolean' },
       maxPerUser: { type: 'number' },
-      maxRecurring: { type: 'number' },
     },
   },
 };
