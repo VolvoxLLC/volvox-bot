@@ -98,10 +98,10 @@ function LogRow({
 
   if (hasMeta) {
     return (
-      <div className={cn(rowClassName, 'cursor-pointer')}>
+      <div className={cn('border-b border-gray-800/50', level.row)}>
         <button
           type="button"
-          className="w-full text-left"
+          className="group w-full cursor-pointer px-3 py-1 font-mono text-xs text-left transition-colors"
           aria-expanded={isExpanded}
           onClick={onToggle}
         >
