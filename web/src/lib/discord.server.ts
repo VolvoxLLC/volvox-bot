@@ -46,7 +46,7 @@ export async function fetchWithRateLimit(url: string, init?: RequestInit): Promi
     await new Promise<void>((resolve, reject) => {
       const onAbort = () => {
         clearTimeout(timer);
-        reject(signal!.reason);
+        reject(signal?.reason);
       };
       const timer = setTimeout(() => {
         signal?.removeEventListener('abort', onAbort);
@@ -71,6 +71,7 @@ export async function fetchUserGuilds(
 ): Promise<DiscordGuild[]> {
   const allGuilds: DiscordGuild[] = [];
   let after: string | undefined;
+  let hasMore = true;
 
   do {
     const url = new URL(`${DISCORD_API_BASE}/users/@me/guilds`);
@@ -110,13 +111,13 @@ export async function fetchUserGuilds(
     allGuilds.push(...page);
 
     // If we got fewer than the max, we've fetched everything
-    if (page.length < GUILDS_PER_PAGE) {
-      break;
-    }
+    hasMore = page.length >= GUILDS_PER_PAGE;
 
     // Set cursor to the last guild's ID for the next page
-    after = page[page.length - 1].id;
-  } while (true);
+    if (hasMore) {
+      after = page[page.length - 1].id;
+    }
+  } while (hasMore);
 
   return allGuilds;
 }

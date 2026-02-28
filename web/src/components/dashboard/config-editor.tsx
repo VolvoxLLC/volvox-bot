@@ -232,7 +232,7 @@ export function ConfigEditor() {
     for (const patch of patches) {
       const section = patch.path.split('.')[0];
       if (!bySection.has(section)) bySection.set(section, []);
-      bySection.get(section)!.push(patch);
+      bySection.get(section)?.push(patch);
     }
 
     setSaving(true);
@@ -529,10 +529,10 @@ export function ConfigEditor() {
   // ── Loading state ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12" role="status">
+      <output className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
         <span className="sr-only">Loading configuration...</span>
-      </div>
+      </output>
     );
   }
 
@@ -589,16 +589,13 @@ export function ConfigEditor() {
 
       {/* Unsaved changes banner */}
       {hasChanges && (
-        <div
-          className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
-          role="status"
-        >
+        <output className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
           You have unsaved changes.{' '}
           <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
             Ctrl+S
           </kbd>{' '}
           to save.
-        </div>
+        </output>
       )}
 
       {/* AI section */}
@@ -1316,7 +1313,10 @@ export function ConfigEditor() {
           </p>
           {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
             (badge: { days?: number; label?: string }, i: number) => (
-              <div key={i} className="flex items-center gap-2">
+              <div
+                key={`${badge.label ?? ''}:${badge.days ?? ''}`}
+                className="flex items-center gap-2"
+              >
                 <Input
                   className="w-20"
                   type="number"
