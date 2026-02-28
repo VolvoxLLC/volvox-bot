@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { requireAuth } from './middleware/auth.js';
+import { rateLimit } from './middleware/rateLimit.js';
 import authRouter from './routes/auth.js';
 import configRouter from './routes/config.js';
 import guildsRouter from './routes/guilds.js';
@@ -26,7 +27,12 @@ router.use('/config', requireAuth(), configRouter);
 
 // Member management routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/members/* before the basic guilds endpoint)
-router.use('/guilds', requireAuth(), membersRouter);
+router.use(
+  '/guilds',
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 120 }),
+  requireAuth(),
+  membersRouter,
+);
 
 // Guild routes — require API secret or OAuth2 JWT
 router.use('/guilds', requireAuth(), guildsRouter);

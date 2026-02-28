@@ -19,6 +19,9 @@ const router = Router();
 /** Rate limiter for member endpoints — 120 requests / 15 min per IP. */
 const membersRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
+// Apply rate limiting globally to all member routes before any auth or DB access.
+router.use(membersRateLimit);
+
 /**
  * Resolve reputation config with defaults for a guild.
  * @param {string} guildId
