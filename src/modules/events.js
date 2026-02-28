@@ -545,14 +545,9 @@ export function registerWelcomeOnboardingHandlers(client) {
         });
 
         try {
-          if (interaction.deferred || interaction.replied) {
+          if (!interaction.replied) {
             await safeEditReply(interaction, {
               content: '❌ Failed to verify. Please ping an admin.',
-            });
-          } else {
-            await safeReply(interaction, {
-              content: '❌ Failed to verify. Please ping an admin.',
-              ephemeral: true,
             });
           }
         } catch {
@@ -573,14 +568,9 @@ export function registerWelcomeOnboardingHandlers(client) {
         });
 
         try {
-          if (interaction.deferred || interaction.replied) {
+          if (!interaction.replied) {
             await safeEditReply(interaction, {
               content: '❌ Failed to update roles. Please try again.',
-            });
-          } else {
-            await safeReply(interaction, {
-              content: '❌ Failed to update roles. Please try again.',
-              ephemeral: true,
             });
           }
         } catch {
