@@ -477,6 +477,10 @@ router.post('/:id/members/:userId/xp', requireGuildAdmin, validateGuild, async (
     return res.status(400).json({ error: 'amount must be a non-zero finite number' });
   }
 
+  if (!Number.isInteger(amount)) {
+    return res.status(400).json({ error: 'amount must be an integer' });
+  }
+
   // Cap adjustment to ±1,000,000
   if (Math.abs(amount) > 1_000_000) {
     return res.status(400).json({ error: 'amount must be between -1000000 and 1000000' });
