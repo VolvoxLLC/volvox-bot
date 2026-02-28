@@ -29,6 +29,19 @@ function getRepConfig(guildId) {
   return { ...REPUTATION_DEFAULTS, ...cfg.reputation };
 }
 
+/**
+ * Safely get the database pool, returning null if unavailable.
+ * Routes should return 503 when this returns null.
+ * @returns {import('pg').Pool | null}
+ */
+function safeGetPool() {
+  try {
+    return getPool();
+  } catch {
+    return null;
+  }
+}
+
 // ─── GET /:id/members/export — CSV export (must be before /:userId) ──────────
 
 /**
@@ -43,10 +56,26 @@ router.get(
   async (req, res) => {
     try {
       const guild = req.guild;
-      const pool = getPool();
+      const pool = safeGetPool();
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
-      // Fetch all members (Discord caps at 1000 per call)
-      const members = await guild.members.list({ limit: 1000 });
+      // Fetch all members — paginate in batches of 1000 for large guilds
+      let members = new Map();
+      let lastId;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const fetchOpts = { limit: 1000 };
+        if (lastId) fetchOpts.after = lastId;
+        const batch = await guild.members.list(fetchOpts);
+        if (batch.size === 0) break;
+        for (const [id, member] of batch) {
+          members.set(id, member);
+        }
+        lastId = Array.from(batch.keys()).pop();
+        if (batch.size < 1000) break; // Last page
+      }
 
       const userIds = Array.from(members.keys());
 
@@ -251,11 +280,16 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
     // Cursor is based on last Discord member ID from the original fetch
     const lastDiscordMember = Array.from(members.values()).pop();
 
-    res.json({
+    const response = {
       members: enriched,
       nextAfter: lastDiscordMember ? lastDiscordMember.id : null,
       total: guild.memberCount,
-    });
+    };
+    // When search is active, include filtered count so the UI can show accurate totals
+    if (search) {
+      response.filteredTotal = enriched.length;
+    }
+    res.json(response);
   } catch (err) {
     logError('Failed to fetch enriched members', { error: err.message, guild: req.params.id });
     res.status(500).json({ error: 'Failed to fetch members' });
@@ -277,7 +311,10 @@ router.get(
 
     try {
       const guild = req.guild;
-      const pool = getPool();
+      const pool = safeGetPool();
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       // Fetch Discord member
       let member;
@@ -310,7 +347,7 @@ router.get(
         pool.query(
           `SELECT case_number, action, reason, moderator_tag, created_at
            FROM mod_cases
-           WHERE guild_id = $1 AND target_id = $2
+           WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
            ORDER BY created_at DESC
            LIMIT 5`,
           [guild.id, userId],
@@ -393,7 +430,10 @@ router.get(
     const offset = (page - 1) * limit;
 
     try {
-      const pool = getPool();
+      const pool = safeGetPool();
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       const [casesResult, countResult] = await Promise.all([
         pool.query(
@@ -453,33 +493,55 @@ router.post(
       return res.status(400).json({ error: 'amount must be a non-zero finite number' });
     }
 
+    // Cap adjustment to ±1,000,000
+    if (Math.abs(amount) > 1_000_000) {
+      return res.status(400).json({ error: 'amount must be between -1000000 and 1000000' });
+    }
+
     try {
-      const pool = getPool();
+      const pool = safeGetPool();
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
       const guildId = req.guild.id;
 
-      // Upsert reputation and adjust XP (floor at 0)
-      const { rows } = await pool.query(
-        `INSERT INTO reputation (guild_id, user_id, xp, level)
-         VALUES ($1, $2, GREATEST(0, $3), 0)
-         ON CONFLICT (guild_id, user_id) DO UPDATE
-           SET xp = GREATEST(0, reputation.xp + $3)
-         RETURNING xp, level`,
-        [guildId, userId, amount],
-      );
+      // Wrap XP upsert + level update in a transaction for consistency
+      const client = await pool.connect();
+      let newXp, newLevel;
+      try {
+        await client.query('BEGIN');
 
-      const { xp: newXp } = rows[0];
+        // Upsert reputation and adjust XP (floor at 0)
+        const { rows } = await client.query(
+          `INSERT INTO reputation (guild_id, user_id, xp, level)
+           VALUES ($1, $2, GREATEST(0, $3), 0)
+           ON CONFLICT (guild_id, user_id) DO UPDATE
+             SET xp = GREATEST(0, reputation.xp + $3)
+           RETURNING xp, level`,
+          [guildId, userId, amount],
+        );
 
-      // Recompute level from thresholds
-      const repConfig = getRepConfig(guildId);
-      const newLevel = computeLevel(newXp, repConfig.levelThresholds);
+        newXp = rows[0].xp;
 
-      // Update level if changed
-      if (newLevel !== rows[0].level) {
-        await pool.query('UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3', [
-          newLevel,
-          guildId,
-          userId,
-        ]);
+        // Recompute level from thresholds
+        const repConfig = getRepConfig(guildId);
+        newLevel = computeLevel(newXp, repConfig.levelThresholds);
+
+        // Update level if changed
+        if (newLevel !== rows[0].level) {
+          await client.query('UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3', [
+            newLevel,
+            guildId,
+            userId,
+          ]);
+        }
+
+        await client.query('COMMIT');
+      } catch (txErr) {
+        await client.query('ROLLBACK');
+        throw txErr;
+      } finally {
+        client.release();
       }
 
       info('XP adjusted via API', {
@@ -511,13 +573,20 @@ router.post(
 );
 
 /**
- * Escape a value for CSV output (handles commas, quotes, newlines).
+ * Escape a value for CSV output.
+ * Handles commas, quotes, newlines, and formula-injection characters
+ * (=, +, -, @, \t, \r) by prefixing with a single quote.
  * @param {string} value
  * @returns {string}
  */
 function escapeCsv(value) {
   if (value == null) return '';
-  const str = String(value);
+  let str = String(value);
+  // Prevent CSV formula injection — prefix dangerous leading chars
+  const formulaChars = ['=', '+', '-', '@', '\t', '\r'];
+  if (str.length > 0 && formulaChars.includes(str[0])) {
+    str = "'" + str;
+  }
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
