@@ -81,7 +81,7 @@ export default function ConversationDetailPage() {
           </h2>
           {data && (
             <p className="text-sm text-muted-foreground">
-              Channel: {data.channelId} · {data.messages.length} messages
+              Channel ${data.channelId.slice(-4)} · {data.messages.length} messages
             </p>
           )}
         </div>
