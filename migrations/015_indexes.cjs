@@ -1,0 +1,62 @@
+/**
+ * Migration 015: Add missing performance indexes
+ *
+ * Adds indexes on high-traffic columns to improve query performance.
+ * All indexes use IF NOT EXISTS to be idempotent.
+ */
+
+'use strict';
+
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+exports.up = async (pgm) => {
+  // conversations: queries by guild + channel + time range
+  pgm.sql(`
+    CREATE INDEX IF NOT EXISTS idx_conversations_guild_channel_created
+      ON conversations(guild_id, channel_id, created_at)
+  `);
+
+  // moderation_cases: queries by guild + time for mod log
+  pgm.sql(`
+    CREATE INDEX IF NOT EXISTS idx_moderation_cases_guild_created
+      ON moderation_cases(guild_id, created_at)
+  `);
+
+  // flagged_messages: queries by guild + status for review queue
+  pgm.sql(`
+    CREATE INDEX IF NOT EXISTS idx_flagged_messages_guild_status
+      ON flagged_messages(guild_id, status)
+  `);
+
+  // scheduled_messages: partial index — only enabled messages need fast lookup
+  pgm.sql(`
+    CREATE INDEX IF NOT EXISTS idx_scheduled_messages_enabled_next
+      ON scheduled_messages(enabled, next_run)
+      WHERE enabled = true
+  `);
+
+  // reminders: partial index — only incomplete reminders queried by due time
+  // Table may not exist yet; skip gracefully if so.
+  pgm.sql(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'reminders'
+      ) THEN
+        CREATE INDEX IF NOT EXISTS idx_reminders_due
+          ON reminders(remind_at)
+          WHERE completed = false;
+      END IF;
+    END;
+    $$
+  `);
+};
+
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+exports.down = async (pgm) => {
+  pgm.sql('DROP INDEX IF EXISTS idx_conversations_guild_channel_created');
+  pgm.sql('DROP INDEX IF EXISTS idx_moderation_cases_guild_created');
+  pgm.sql('DROP INDEX IF EXISTS idx_flagged_messages_guild_status');
+  pgm.sql('DROP INDEX IF EXISTS idx_scheduled_messages_enabled_next');
+  pgm.sql('DROP INDEX IF EXISTS idx_reminders_due');
+};

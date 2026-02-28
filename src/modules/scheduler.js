@@ -7,6 +7,7 @@
 
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { runMaintenance } from '../utils/dbMaintenance.js';
 import { safeSend } from '../utils/safeSend.js';
 import { checkDailyChallenge } from './challengeScheduler.js';
 import { closeExpiredPolls } from './pollHandler.js';
@@ -196,6 +197,10 @@ async function pollScheduledMessages(client) {
     tickCount++;
     if (tickCount % 5 === 0) {
       await checkAutoClose(client);
+    }
+    // DB maintenance once per hour (every 60th tick)
+    if (tickCount % 60 === 0) {
+      await runMaintenance(getPool());
     }
   } catch (err) {
     logError('Scheduler poll error', { error: err.message });

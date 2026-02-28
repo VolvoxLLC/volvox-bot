@@ -39,6 +39,15 @@ try {
   // restartTracker not available yet — fallback to null
 }
 
+// DB pool stats — imported independently so restartTracker failures don't affect it
+let getPoolStats = null;
+try {
+  const dbMod = await import('../../db.js');
+  getPoolStats = dbMod.getPoolStats ?? null;
+} catch {
+  // db module not available — fallback to null
+}
+
 /**
  * GET / — Health check endpoint
  * Returns status, uptime, and Discord connection details.
@@ -74,6 +83,16 @@ router.get('/', async (req, res) => {
       nodeVersion: process.version,
       cpuUsage: process.cpuUsage(),
     };
+
+    // DB pool stats (authenticated only)
+    if (getPoolStats) {
+      try {
+        const stats = getPoolStats();
+        body.pool = stats ?? null;
+      } catch {
+        body.pool = null;
+      }
+    }
 
     // Error counts from logs table (optional — partial data on failure)
     const queryLogs = await getQueryLogs();
