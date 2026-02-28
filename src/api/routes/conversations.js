@@ -448,7 +448,6 @@ router.get(
         createdAt: msg.created_at,
       }));
 
-      const _totalChars = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
       const durationMs = targetConvo.lastTime - targetConvo.firstTime;
 
       // Fetch any flags for messages in this conversation
