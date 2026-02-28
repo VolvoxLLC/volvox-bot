@@ -330,12 +330,21 @@ describe('triage module coverage', () => {
       await accumulateMessage(msg, makeTriageConfig());
       // Buffer should not be created or message pushed
       expect(channelBuffers.has('ch1')).toBe(false);
+      expect(checkTriggerWords).not.toHaveBeenCalled();
     });
 
     it('skips empty string messages', async () => {
       const msg = makeDiscordMessage('ch1', '');
       await accumulateMessage(msg, makeTriageConfig());
       expect(channelBuffers.has('ch1')).toBe(false);
+      expect(checkTriggerWords).not.toHaveBeenCalled();
+    });
+
+    it('skips null content messages', async () => {
+      const msg = makeDiscordMessage('ch1', null);
+      await accumulateMessage(msg, makeTriageConfig());
+      expect(channelBuffers.has('ch1')).toBe(false);
+      expect(checkTriggerWords).not.toHaveBeenCalled();
     });
 
     it('handles trigger word detected - calls evaluateNow', async () => {
