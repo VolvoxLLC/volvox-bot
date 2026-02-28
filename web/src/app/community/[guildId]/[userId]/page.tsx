@@ -23,6 +23,8 @@ interface UserProfile {
   avatar: string | null;
   xp: number;
   level: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
   badge: string;
   joinedAt: string | null;
   stats: {
@@ -167,20 +169,25 @@ function StatCard({
  * @param level - The user's current level (1-based).
  * @returns A React element displaying the XP range and a progress bar filled to the percentage toward the next threshold.
  */
-function XpBar({ xp, level }: { xp: number; level: number }) {
-  const thresholds = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
-  const currentThreshold = thresholds[level - 1] || 0;
-  const nextThreshold = thresholds[level] || thresholds[thresholds.length - 1];
+function XpBar({
+  xp,
+  currentLevelXp,
+  nextLevelXp,
+}: {
+  xp: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+}) {
   const progress =
-    nextThreshold > currentThreshold
-      ? Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100)
+    nextLevelXp > currentLevelXp
+      ? Math.min(100, ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100)
       : 100;
 
   return (
     <div className="w-full">
       <div className="flex justify-between text-xs text-muted-foreground mb-1">
         <span>{xp.toLocaleString()} XP</span>
-        <span>{nextThreshold.toLocaleString()} XP</span>
+        <span>{nextLevelXp.toLocaleString()} XP</span>
       </div>
       <div className="w-full bg-muted rounded-full h-3">
         <div
@@ -264,7 +271,11 @@ export default async function ProfilePage({ params }: PageProps) {
                 {joinDate && <p className="text-sm text-muted-foreground">Joined {joinDate}</p>}
                 <div className="mt-4 max-w-sm">
                   <p className="text-sm font-medium mb-1">Level {profile.level}</p>
-                  <XpBar xp={profile.xp} level={profile.level} />
+                  <XpBar
+                    xp={profile.xp}
+                    currentLevelXp={profile.currentLevelXp}
+                    nextLevelXp={profile.nextLevelXp}
+                  />
                 </div>
               </div>
             </div>

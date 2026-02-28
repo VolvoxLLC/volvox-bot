@@ -372,6 +372,10 @@ router.get('/:guildId/profile/:userId', async (req, res) => {
 
     const rep = repResult.rows[0] || { xp: 0, level: 0 };
     const level = computeLevel(rep.xp, repConfig.levelThresholds);
+    const currentLevelXp = repConfig.levelThresholds[level - 1] ?? 0;
+    const nextLevelXp =
+      repConfig.levelThresholds[level] ??
+      repConfig.levelThresholds[repConfig.levelThresholds.length - 1];
 
     // Resolve Discord user info
     const { client } = req.app.locals;
@@ -429,6 +433,8 @@ router.get('/:guildId/profile/:userId', async (req, res) => {
       avatar,
       xp: rep.xp,
       level,
+      currentLevelXp,
+      nextLevelXp,
       badge: getLevelBadge(level),
       joinedAt,
       stats: {
