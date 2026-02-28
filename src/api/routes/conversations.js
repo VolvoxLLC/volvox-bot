@@ -7,6 +7,7 @@
 
 import { Router } from 'express';
 import { info, error as logError } from '../../logger.js';
+import { escapeIlike } from '../../utils/escapeIlike.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
@@ -164,8 +165,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
     if (req.query.search && typeof req.query.search === 'string') {
       paramIndex++;
       whereParts.push(`content ILIKE $${paramIndex}`);
-      const escaped = req.query.search.replace(/[%_\\]/g, (c) => `\\${c}`);
-      values.push(`%${escaped}%`);
+      values.push(`%${escapeIlike(req.query.search)}%`);
     }
 
     if (req.query.user && typeof req.query.user === 'string') {
@@ -187,6 +187,11 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
         whereParts.push(`created_at >= $${paramIndex}`);
         values.push(from.toISOString());
       }
+    } else {
+      // Default: last 30 days to prevent unbounded scans on active servers
+      paramIndex++;
+      whereParts.push(`created_at >= $${paramIndex}`);
+      values.push(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
     }
 
     if (req.query.to && typeof req.query.to === 'string') {
@@ -472,10 +477,15 @@ router.get(
         [guildId, messageIds],
       );
 
-      // Build Map after ordering by created_at DESC so the most recent flag
-      // status wins for messages that have been flagged multiple times.
-      // Without ORDER BY the Map construction was non-deterministic.
-      const flaggedMessageIds = new Map(flagsResult.rows.map((r) => [r.message_id, r.status]));
+      // Build Map iterating rows already sorted by created_at DESC.
+      // We only set each key once so the most-recent flag status wins
+      // for messages that have been flagged multiple times.
+      const flaggedMessageIds = new Map();
+      for (const r of flagsResult.rows) {
+        if (!flaggedMessageIds.has(r.message_id)) {
+          flaggedMessageIds.set(r.message_id, r.status);
+        }
+      }
 
       const enrichedMessages = messages.map((m) => ({
         ...m,
@@ -548,12 +558,31 @@ router.post(
     try {
       // Verify the message exists and belongs to this guild
       const msgCheck = await dbPool.query(
-        'SELECT id FROM conversations WHERE id = $1 AND guild_id = $2',
+        'SELECT id, channel_id, created_at FROM conversations WHERE id = $1 AND guild_id = $2',
         [messageId, guildId],
       );
 
       if (msgCheck.rows.length === 0) {
         return res.status(404).json({ error: 'Message not found' });
+      }
+
+      // Verify that the message belongs to the specified conversation.
+      // We check by confirming that the anchor message (conversationId) and
+      // the flagged message share the same channel and that the flagged
+      // message falls within the 2-hour fetch window used by the detail endpoint.
+      const anchorCheck = await dbPool.query(
+        'SELECT id, channel_id, created_at FROM conversations WHERE id = $1 AND guild_id = $2',
+        [conversationId, guildId],
+      );
+
+      if (anchorCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+
+      const anchor = anchorCheck.rows[0];
+      const msg = msgCheck.rows[0];
+      if (msg.channel_id !== anchor.channel_id) {
+        return res.status(400).json({ error: 'Message does not belong to this conversation' });
       }
 
       // Determine flagged_by from auth context
