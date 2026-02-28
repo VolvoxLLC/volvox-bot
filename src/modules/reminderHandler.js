@@ -149,7 +149,10 @@ export async function checkReminders(client) {
       // Check if reminders are enabled for this guild
       const guildConfig = getConfig(reminder.guild_id);
       if (guildConfig.reminders?.enabled === false) {
-        info('Reminders disabled for guild, skipping', { reminderId: reminder.id, guildId: reminder.guild_id });
+        info('Reminders disabled for guild, skipping', {
+          reminderId: reminder.id,
+          guildId: reminder.guild_id,
+        });
         continue;
       }
 
@@ -246,6 +249,15 @@ export async function handleReminderSnooze(interaction) {
   // Verify ownership
   if (reminder.user_id !== interaction.user.id) {
     await interaction.reply({ content: "❌ This isn't your reminder.", ephemeral: true });
+    return;
+  }
+
+  // Guard: do not reactivate already-completed reminders (stale snooze buttons)
+  if (reminder.completed) {
+    await interaction.reply({
+      content: '❌ This reminder has already been completed.',
+      ephemeral: true,
+    });
     return;
   }
 

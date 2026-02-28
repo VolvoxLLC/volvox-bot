@@ -27,7 +27,11 @@ export const data = new SlashCommandBuilder()
           .setRequired(true),
       )
       .addStringOption((opt) =>
-        opt.setName('message').setDescription('What to remind you about').setMaxLength(500).setRequired(true),
+        opt
+          .setName('message')
+          .setDescription('What to remind you about')
+          .setMaxLength(1000)
+          .setRequired(true),
       ),
   )
   .addSubcommand((sub) => sub.setName('list').setDescription('List your active reminders'))
