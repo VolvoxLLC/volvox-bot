@@ -19,6 +19,9 @@ let schedulerInterval = null;
 /** Re-entrancy guard */
 let pollInFlight = false;
 
+/** Tick counter for throttling heavy tasks */
+let tickCount = 0;
+
 /**
  * Parse a 5-field cron expression into its component arrays.
  * Supports: numbers, wildcards (*), and single values.
@@ -189,8 +192,11 @@ async function pollScheduledMessages(client) {
     await checkDailyChallenge(client);
     // Expire stale review requests
     await expireStaleReviews(client);
-    // Auto-close inactive support tickets
-    await checkAutoClose(client);
+    // Auto-close inactive support tickets (every 5 minutes / 5th tick)
+    tickCount++;
+    if (tickCount % 5 === 0) {
+      await checkAutoClose(client);
+    }
   } catch (err) {
     logError('Scheduler poll error', { error: err.message });
   } finally {

@@ -49,6 +49,9 @@ const TICKET_PANEL_COLOR = 0x57f287;
 /** Delay (ms) before deleting a channel-mode ticket so the close message is visible */
 const CHANNEL_DELETE_DELAY_MS = 10_000;
 
+/** Track ticket IDs that have received an auto-close warning in this process run */
+const warningsSent = new Set();
+
 /**
  * Resolve ticket config from guild config with defaults.
  *
@@ -339,6 +342,8 @@ export async function closeTicket(channel, closer, reason) {
     }, CHANNEL_DELETE_DELAY_MS);
   }
 
+  warningsSent.delete(ticket.id);
+
   info('Ticket closed', {
     ticketId: ticket.id,
     guildId: ticket.guild_id,
@@ -407,10 +412,14 @@ export async function checkAutoClose(client) {
   const pool = getPool();
   if (!pool) return;
 
-  // Find all open tickets
-  const { rows: openTickets } = await pool.query('SELECT * FROM tickets WHERE status = $1', [
-    'open',
-  ]);
+  // Find all open tickets for guilds the bot is currently in
+  const guildIds = Array.from(client.guilds.cache.keys());
+  if (guildIds.length === 0) return;
+
+  const { rows: openTickets } = await pool.query(
+    'SELECT * FROM tickets WHERE status = $1 AND guild_id = ANY($2::text[])',
+    ['open', guildIds],
+  );
 
   for (const ticket of openTickets) {
     try {
@@ -451,16 +460,11 @@ export async function checkAutoClose(client) {
         // Close the ticket
         await closeTicket(channel, client.user, 'Auto-closed due to inactivity');
       } else if (hoursSinceActivity >= ticketConfig.autoCloseHours) {
-        // Check if we already sent a warning (look for our warning message)
-        const recentMessages = await channel.messages.fetch({ limit: 5 });
-        const hasWarning = Array.from(recentMessages.values()).some(
-          (msg) => msg.author?.id === client.user.id && msg.content?.includes('auto-close'),
-        );
-
-        if (!hasWarning) {
+        if (!warningsSent.has(ticket.id)) {
           await safeSend(channel, {
             content: `⚠️ This ticket will be **auto-closed in ${AUTO_CLOSE_WARNING_HOURS} hours** due to inactivity. Send a message to keep it open.`,
           });
+          warningsSent.add(ticket.id);
           info('Auto-close warning sent', { ticketId: ticket.id });
         }
       }
