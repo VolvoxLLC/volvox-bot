@@ -141,6 +141,14 @@ export const CONFIG_SCHEMA = {
       moderationLogChannel: { type: 'string', nullable: true },
     },
   },
+  reminders: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      maxPerUser: { type: 'number' },
+      maxRecurring: { type: 'number' },
+    },
+  },
 };
 
 /**
