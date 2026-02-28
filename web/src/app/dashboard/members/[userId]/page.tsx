@@ -318,6 +318,7 @@ export default function MemberDetailPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
+      console.error('CSV export failed:', err);
       setExportError(err instanceof Error ? err.message : 'Failed to export CSV');
     } finally {
       setExporting(false);
