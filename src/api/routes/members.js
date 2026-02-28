@@ -588,7 +588,7 @@ function escapeCsv(value) {
   // Prevent CSV formula injection — prefix dangerous leading chars
   const formulaChars = ['=', '+', '-', '@', '\t', '\r'];
   if (str.length > 0 && formulaChars.includes(str[0])) {
-    str = `'`;
+    str = `'${str}`;
   }
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
