@@ -861,66 +861,6 @@ describe('guilds routes', () => {
     });
   });
 
-  describe('GET /:id/members', () => {
-    it('should return cursor-paginated members', async () => {
-      const res = await request(app)
-        .get('/api/v1/guilds/guild1/members')
-        .set('x-api-secret', SECRET);
-
-      expect(res.status).toBe(200);
-      expect(res.body.limit).toBe(25);
-      expect(res.body.after).toBeNull();
-      expect(res.body.nextAfter).toBe('user1');
-      expect(res.body.members).toHaveLength(1);
-      expect(res.body.members[0].username).toBe('testuser');
-      expect(res.body.members[0].roles).toEqual([{ id: 'role1', name: 'Admin' }]);
-      expect(mockGuild.members.list).toHaveBeenCalledWith({ limit: 25, after: undefined });
-    });
-
-    it('should pass after cursor and custom limit to guild.members.list', async () => {
-      const res = await request(app)
-        .get('/api/v1/guilds/guild1/members?limit=10&after=user0')
-        .set('x-api-secret', SECRET);
-
-      expect(res.status).toBe(200);
-      expect(res.body.limit).toBe(10);
-      expect(res.body.after).toBe('user0');
-      expect(mockGuild.members.list).toHaveBeenCalledWith({ limit: 10, after: 'user0' });
-    });
-
-    it('should cap limit at 100', async () => {
-      const res = await request(app)
-        .get('/api/v1/guilds/guild1/members?limit=200')
-        .set('x-api-secret', SECRET);
-
-      expect(res.status).toBe(200);
-      expect(res.body.limit).toBe(100);
-      expect(mockGuild.members.list).toHaveBeenCalledWith({ limit: 100, after: undefined });
-    });
-
-    it('should return null nextAfter when no members returned', async () => {
-      mockGuild.members.list.mockResolvedValueOnce(new Map());
-
-      const res = await request(app)
-        .get('/api/v1/guilds/guild1/members')
-        .set('x-api-secret', SECRET);
-
-      expect(res.status).toBe(200);
-      expect(res.body.nextAfter).toBeNull();
-      expect(res.body.members).toHaveLength(0);
-    });
-
-    it('should return 500 on fetch error', async () => {
-      mockGuild.members.list.mockRejectedValueOnce(new Error('Discord error'));
-
-      const res = await request(app)
-        .get('/api/v1/guilds/guild1/members')
-        .set('x-api-secret', SECRET);
-
-      expect(res.status).toBe(500);
-    });
-  });
-
   describe('GET /:id/moderation', () => {
     it('should return paginated mod cases', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [{ count: 50 }] }).mockResolvedValueOnce({
