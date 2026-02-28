@@ -227,12 +227,18 @@ function isOAuthGuildModerator(user, guildId) {
 }
 
 /**
- * Create middleware that verifies OAuth2 users have the required guild permission.
- * API-secret users and configured bot owners are trusted and pass through.
+ * Return Express middleware that enforces a guild-level permission for OAuth users.
  *
- * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Permission check function
- * @param {string} errorMessage - Error message for 403 responses
- * @returns {import('express').RequestHandler}
+ * The middleware bypasses checks for API-secret requests and for configured bot owners.
+ * For OAuth-authenticated requests it calls `permissionCheck(user, guildId)` and:
+ * - responds 403 with `errorMessage` when the check resolves to `false`,
+ * - responds 502 when the permission verification throws,
+ * - otherwise allows the request to continue.
+ * Unknown or missing auth methods receive a 401 response.
+ *
+ * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Function that returns `true` if the provided user has the required permission in the specified guild, `false` otherwise.
+ * @param {string} errorMessage - Message to include in the 403 response when permission is denied.
+ * @returns {import('express').RequestHandler} Express middleware enforcing the permission.
  */
 function requireGuildPermission(permissionCheck, errorMessage) {
   return async (req, res, next) => {
@@ -265,7 +271,7 @@ function requireGuildPermission(permissionCheck, errorMessage) {
 }
 
 /** Middleware: verify OAuth2 users are guild admins. API-secret users pass through. */
-const requireGuildAdmin = requireGuildPermission(
+export const requireGuildAdmin = requireGuildPermission(
   isOAuthGuildAdmin,
   'You do not have admin access to this guild',
 );
@@ -277,10 +283,13 @@ export const requireGuildModerator = requireGuildPermission(
 );
 
 /**
- * Middleware: validate guild ID param and attach guild to req.
- * Returns 404 if the bot is not in the requested guild.
+ * Validate that the requested guild exists and attach it to req.guild.
+ *
+ * If the bot is not present in the guild identified by req.params.id, sends a 404
+ * response with `{ error: 'Guild not found' }` and does not call `next()`. Otherwise
+ * sets `req.guild` to the Guild instance and calls `next()`.
  */
-function validateGuild(req, res, next) {
+export function validateGuild(req, res, next) {
   const { client } = req.app.locals;
   const guild = client.guilds.cache.get(req.params.id);
 
@@ -815,42 +824,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       channelId: activeChannelFilter,
     });
     return res.status(500).json({ error: 'Failed to fetch analytics' });
-  }
-});
-
-/**
- * GET /:id/members — Cursor-based paginated member list with roles
- * Query params: ?limit=25&after=<userId> (max 100)
- * Uses Discord's cursor-based pagination via guild.members.list().
- */
-router.get('/:id/members', requireGuildAdmin, validateGuild, async (req, res) => {
-  let limit = Number.parseInt(req.query.limit, 10) || 25;
-  if (limit < 1) limit = 1;
-  if (limit > 100) limit = 100;
-  const after = req.query.after || undefined;
-
-  try {
-    const members = await req.guild.members.list({ limit, after });
-
-    const memberList = Array.from(members.values()).map((m) => ({
-      id: m.id,
-      username: m.user.username,
-      displayName: m.displayName,
-      roles: Array.from(m.roles.cache.values()).map((r) => ({ id: r.id, name: r.name })),
-      joinedAt: m.joinedAt,
-    }));
-
-    const lastMember = memberList[memberList.length - 1];
-
-    res.json({
-      limit,
-      after: after || null,
-      nextAfter: lastMember ? lastMember.id : null,
-      members: memberList,
-    });
-  } catch (err) {
-    error('Failed to fetch members', { error: err.message, guild: req.params.id });
-    res.status(500).json({ error: 'Failed to fetch members' });
   }
 });
 
