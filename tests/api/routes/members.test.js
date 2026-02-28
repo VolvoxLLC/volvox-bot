@@ -588,4 +588,211 @@ describe('members routes', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  // ─── safeGetPool null path ─────────────────────────────────────────
+
+  describe('safeGetPool returning null (DB unavailable)', () => {
+    it('should return 503 for GET members when pool throws', async () => {
+      getPool.mockImplementation(() => {
+        throw new Error('DB not initialized');
+      });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members'));
+      expect(res.status).toBe(503);
+      expect(res.body.error).toBe('Database unavailable');
+    });
+
+    it('should return 503 for GET member detail when pool throws', async () => {
+      getPool.mockImplementation(() => {
+        throw new Error('DB not initialized');
+      });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members/user1'));
+      expect(res.status).toBe(503);
+      expect(res.body.error).toBe('Database unavailable');
+    });
+
+    it('should return 503 for GET member cases when pool throws', async () => {
+      getPool.mockImplementation(() => {
+        throw new Error('DB not initialized');
+      });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members/user1/cases'));
+      expect(res.status).toBe(503);
+      expect(res.body.error).toBe('Database unavailable');
+    });
+
+    it('should return 503 for POST XP when pool throws', async () => {
+      getPool.mockImplementation(() => {
+        throw new Error('DB not initialized');
+      });
+
+      const res = await authed(
+        request(app).post('/api/v1/guilds/guild1/members/user1/xp').send({ amount: 50 }),
+      );
+      expect(res.status).toBe(503);
+      expect(res.body.error).toBe('Database unavailable');
+    });
+
+    it('should return 503 for GET export when pool throws', async () => {
+      getPool.mockImplementation(() => {
+        throw new Error('DB not initialized');
+      });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members/export'));
+      expect(res.status).toBe(503);
+      expect(res.body.error).toBe('Database unavailable');
+    });
+  });
+
+  // ─── XP adjustment — transaction rollback ────────────────────────────
+
+  describe('POST XP — transaction rollback', () => {
+    it('should rollback on transaction error and return 500', async () => {
+      const mockClient = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({}) // BEGIN
+          .mockRejectedValueOnce(new Error('INSERT failed')), // upsert fails
+        release: vi.fn(),
+      };
+      mockPool.connect.mockResolvedValueOnce(mockClient);
+
+      const res = await authed(
+        request(app).post('/api/v1/guilds/guild1/members/user1/xp').send({ amount: 100 }),
+      );
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe('Failed to adjust XP');
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  // ─── CSV export — escapeCsv edge cases ──────────────────────────────
+
+  describe('GET export — escapeCsv coverage', () => {
+    it('should escape usernames starting with formula injection chars', async () => {
+      const dangerousMember = {
+        id: 'user-danger',
+        user: {
+          username: '=CMD("calc")',
+          displayAvatarURL: () => 'https://cdn.example.com/danger.png',
+        },
+        displayName: '+injected',
+        roles: { cache: new Map() },
+        joinedAt: new Date('2024-01-01'),
+      };
+
+      mockGuild.members.list.mockResolvedValueOnce(new Map([['user-danger', dangerousMember]]));
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members/export'));
+
+      expect(res.status).toBe(200);
+      const lines = res.text.trim().split('\n');
+      const dataLine = lines[1];
+      expect(dataLine).toContain("'=CMD");
+      expect(dataLine).toContain("'+injected");
+    });
+
+    it('should wrap values with commas in double quotes', async () => {
+      const commaName = {
+        id: 'user-comma',
+        user: {
+          username: 'hello,world',
+          displayAvatarURL: () => 'https://cdn.example.com/comma.png',
+        },
+        displayName: 'Normal',
+        roles: { cache: new Map() },
+        joinedAt: new Date('2024-06-01'),
+      };
+
+      mockGuild.members.list.mockResolvedValueOnce(new Map([['user-comma', commaName]]));
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members/export'));
+
+      expect(res.status).toBe(200);
+      const lines = res.text.trim().split('\n');
+      const dataLine = lines[1];
+      expect(dataLine).toContain('"hello,world"');
+    });
+
+    it('should escape values with quotes and newlines', async () => {
+      const quoteName = {
+        id: 'user-quote',
+        user: {
+          username: 'say"hi',
+          displayAvatarURL: () => 'https://cdn.example.com/q.png',
+        },
+        displayName: 'line\nbreak',
+        roles: { cache: new Map() },
+        joinedAt: new Date('2024-06-01'),
+      };
+
+      mockGuild.members.list.mockResolvedValueOnce(new Map([['user-quote', quoteName]]));
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members/export'));
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('""');
+    });
+  });
+
+  // ─── GET members — additional sort/search branches ──────────────────
+
+  describe('GET members — additional sort/search branches', () => {
+    it('should sort by joined ascending', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(
+        request(app).get('/api/v1/guilds/guild1/members?sort=joined&order=asc'),
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body.members[0].id).toBe('user1');
+      expect(res.body.members[1].id).toBe('user2');
+    });
+
+    it('should clamp limit to minimum 1', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members?limit=-5'));
+
+      expect(res.status).toBe(200);
+    });
+
+    it('should search by displayName', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(request(app).get('/api/v1/guilds/guild1/members?search=Bob'));
+
+      expect(res.status).toBe(200);
+      expect(res.body.members).toHaveLength(1);
+      expect(res.body.members[0].username).toBe('bob');
+    });
+  });
 });
