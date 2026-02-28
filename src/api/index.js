@@ -11,6 +11,7 @@ import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
+import conversationsRouter from './routes/conversations.js';
 import webhooksRouter from './routes/webhooks.js';
 
 const router = Router();
@@ -27,6 +28,10 @@ router.use('/config', requireAuth(), configRouter);
 // Member management routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/members/* before the basic guilds endpoint)
 router.use('/guilds', requireAuth(), membersRouter);
+
+// Conversation routes — require API secret or OAuth2 JWT
+// (mounted before guilds to handle /:id/conversations/* before the catch-all guild endpoint)
+router.use('/guilds/:id/conversations', requireAuth(), conversationsRouter);
 
 // Guild routes — require API secret or OAuth2 JWT
 router.use('/guilds', requireAuth(), guildsRouter);
