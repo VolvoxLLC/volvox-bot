@@ -5,6 +5,8 @@ import { logger } from '@/lib/logger';
 // --- Runtime validation (deferred to request time, not module load / build) ---
 
 const PLACEHOLDER_PATTERN = /change|placeholder|example|replace.?me/i;
+// Cache successful validation only. Failed validation is retried on later calls,
+// which is safer for misconfigured environments and test setups that patch env.
 let envValidated = false;
 
 function validateEnv(): void {
@@ -33,6 +35,7 @@ function validateEnv(): void {
     );
   }
 
+  // Mark validated only after all checks pass.
   envValidated = true;
 }
 
