@@ -10,8 +10,21 @@
 
 import { info, error as logError, warn } from '../logger.js';
 
-/** Default retention period for closed tickets (days) */
-const TICKET_RETENTION_DAYS = parseInt(process.env.TICKET_RETENTION_DAYS, 10) || 30;
+/**
+ * Parse and validate TICKET_RETENTION_DAYS.
+ * - Valid non-negative integers (including 0) are used as-is.
+ * - NaN, non-finite, or negative values fall back to the default (30 days).
+ *
+ * @param {string | undefined} raw - Raw env var value
+ * @returns {number} Validated retention period in days
+ */
+function parseRetentionDays(raw) {
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 30;
+}
+
+/** Retention period for closed tickets in days (default: 30) */
+const TICKET_RETENTION_DAYS = parseRetentionDays(process.env.TICKET_RETENTION_DAYS);
 
 /**
  * Purge closed tickets older than the configured retention period.

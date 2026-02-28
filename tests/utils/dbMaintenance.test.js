@@ -181,3 +181,66 @@ describe('runMaintenance', () => {
     expect(ticketsCall[0]).not.toContain('updated_at');
   });
 });
+
+describe('TICKET_RETENTION_DAYS env var parsing', () => {
+  let originalRetentionEnv;
+
+  beforeEach(() => {
+    originalRetentionEnv = process.env.TICKET_RETENTION_DAYS;
+  });
+
+  afterEach(() => {
+    if (originalRetentionEnv !== undefined) {
+      process.env.TICKET_RETENTION_DAYS = originalRetentionEnv;
+    } else {
+      delete process.env.TICKET_RETENTION_DAYS;
+    }
+  });
+
+  /**
+   * Load dbMaintenance with a specific env var value, run maintenance,
+   * and return the pool.query call for the tickets table.
+   */
+  async function getTicketsCallWith(value) {
+    if (value !== undefined) {
+      process.env.TICKET_RETENTION_DAYS = value;
+    } else {
+      delete process.env.TICKET_RETENTION_DAYS;
+    }
+    vi.resetModules();
+    const mod = await import('../../src/utils/dbMaintenance.js');
+    const pool = { query: vi.fn().mockResolvedValue({ rowCount: 0 }) };
+    await mod.runMaintenance(pool);
+    return pool.query.mock.calls.find(([sql]) => typeof sql === 'string' && sql.includes('tickets'));
+  }
+
+  it('uses 0 retention days when TICKET_RETENTION_DAYS=0 (not the default 30)', async () => {
+    const ticketsCall = await getTicketsCallWith('0');
+    expect(ticketsCall).toBeDefined();
+    expect(ticketsCall[1][0]).toBe(0);
+  });
+
+  it('falls back to 30 when TICKET_RETENTION_DAYS is negative', async () => {
+    const ticketsCall = await getTicketsCallWith('-5');
+    expect(ticketsCall).toBeDefined();
+    expect(ticketsCall[1][0]).toBe(30);
+  });
+
+  it('falls back to 30 when TICKET_RETENTION_DAYS is not a number', async () => {
+    const ticketsCall = await getTicketsCallWith('notanumber');
+    expect(ticketsCall).toBeDefined();
+    expect(ticketsCall[1][0]).toBe(30);
+  });
+
+  it('falls back to 30 when TICKET_RETENTION_DAYS is unset', async () => {
+    const ticketsCall = await getTicketsCallWith(undefined);
+    expect(ticketsCall).toBeDefined();
+    expect(ticketsCall[1][0]).toBe(30);
+  });
+
+  it('uses configured value when set to a positive integer', async () => {
+    const ticketsCall = await getTicketsCallWith('90');
+    expect(ticketsCall).toBeDefined();
+    expect(ticketsCall[1][0]).toBe(90);
+  });
+});
