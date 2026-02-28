@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Clock, ExternalLink, Flag, Hash, Zap } from 'lucide-react';
+import { AlertTriangle, Clock, Flag, Hash, Zap } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -141,8 +140,7 @@ export function ConversationReplay({
           {formatDuration(duration)}
         </Badge>
         <Badge variant="outline" className="gap-1">
-          <Zap className="h-3 w-3" />
-          ~{tokenEstimate.toLocaleString()} tokens
+          <Zap className="h-3 w-3" />~{tokenEstimate.toLocaleString()} tokens
         </Badge>
         <Badge variant="secondary">{messages.length} messages</Badge>
       </div>
@@ -191,9 +189,7 @@ export function ConversationReplay({
                   <div
                     className={cn(
                       'group relative max-w-[75%] rounded-lg px-3 py-2',
-                      msg.role === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-background border',
+                      msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-background border',
                       isFlagged && 'ring-2 ring-red-500',
                     )}
                   >
@@ -237,9 +233,7 @@ export function ConversationReplay({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Flag AI Response</DialogTitle>
-            <DialogDescription>
-              Report a problematic AI response for review.
-            </DialogDescription>
+            <DialogDescription>Report a problematic AI response for review.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -263,13 +257,11 @@ export function ConversationReplay({
                 id="flag-notes"
                 placeholder="Additional context..."
                 value={flagNotes}
-                onChange={(e) => setFlagNotes(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFlagNotes(e.target.value)}
                 maxLength={2000}
               />
             </div>
-            {flagError && (
-              <p className="text-sm text-destructive">{flagError}</p>
-            )}
+            {flagError && <p className="text-sm text-destructive">{flagError}</p>}
           </div>
           <DialogFooter>
             <Button

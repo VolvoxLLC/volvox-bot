@@ -6,7 +6,7 @@
  */
 
 import { Router } from 'express';
-import { error as logError, info, warn } from '../../logger.js';
+import { info, error as logError } from '../../logger.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
@@ -146,92 +146,86 @@ function buildConversationSummary(convo, guild) {
  * GET / — List conversations grouped by channel + time proximity
  * Query params: ?page=1&limit=25&search=<text>&user=<username>&channel=<channelId>&from=<date>&to=<date>
  */
-router.get(
-  '/',
-  conversationsRateLimit,
-  requireGuildAdmin,
-  validateGuild,
-  async (req, res) => {
-    const { dbPool } = req.app.locals;
-    if (!dbPool) {
-      return res.status(503).json({ error: 'Database not available' });
+router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
+  const { dbPool } = req.app.locals;
+  if (!dbPool) {
+    return res.status(503).json({ error: 'Database not available' });
+  }
+
+  const { page, limit } = parsePagination(req.query);
+  const guildId = req.params.id;
+
+  try {
+    // Build WHERE clauses
+    const whereParts = ['guild_id = $1'];
+    const values = [guildId];
+    let paramIndex = 1;
+
+    if (req.query.search && typeof req.query.search === 'string') {
+      paramIndex++;
+      whereParts.push(`content ILIKE $${paramIndex}`);
+      values.push(`%${req.query.search}%`);
     }
 
-    const { page, limit } = parsePagination(req.query);
-    const guildId = req.params.id;
+    if (req.query.user && typeof req.query.user === 'string') {
+      paramIndex++;
+      whereParts.push(`username = $${paramIndex}`);
+      values.push(req.query.user);
+    }
 
-    try {
-      // Build WHERE clauses
-      const whereParts = ['guild_id = $1'];
-      const values = [guildId];
-      let paramIndex = 1;
+    if (req.query.channel && typeof req.query.channel === 'string') {
+      paramIndex++;
+      whereParts.push(`channel_id = $${paramIndex}`);
+      values.push(req.query.channel);
+    }
 
-      if (req.query.search && typeof req.query.search === 'string') {
+    if (req.query.from && typeof req.query.from === 'string') {
+      const from = new Date(req.query.from);
+      if (!Number.isNaN(from.getTime())) {
         paramIndex++;
-        whereParts.push(`content ILIKE $${paramIndex}`);
-        values.push(`%${req.query.search}%`);
+        whereParts.push(`created_at >= $${paramIndex}`);
+        values.push(from.toISOString());
       }
+    }
 
-      if (req.query.user && typeof req.query.user === 'string') {
+    if (req.query.to && typeof req.query.to === 'string') {
+      const to = new Date(req.query.to);
+      if (!Number.isNaN(to.getTime())) {
         paramIndex++;
-        whereParts.push(`username = $${paramIndex}`);
-        values.push(req.query.user);
+        whereParts.push(`created_at <= $${paramIndex}`);
+        values.push(to.toISOString());
       }
+    }
 
-      if (req.query.channel && typeof req.query.channel === 'string') {
-        paramIndex++;
-        whereParts.push(`channel_id = $${paramIndex}`);
-        values.push(req.query.channel);
-      }
+    const whereClause = whereParts.join(' AND ');
 
-      if (req.query.from && typeof req.query.from === 'string') {
-        const from = new Date(req.query.from);
-        if (!Number.isNaN(from.getTime())) {
-          paramIndex++;
-          whereParts.push(`created_at >= $${paramIndex}`);
-          values.push(from.toISOString());
-        }
-      }
-
-      if (req.query.to && typeof req.query.to === 'string') {
-        const to = new Date(req.query.to);
-        if (!Number.isNaN(to.getTime())) {
-          paramIndex++;
-          whereParts.push(`created_at <= $${paramIndex}`);
-          values.push(to.toISOString());
-        }
-      }
-
-      const whereClause = whereParts.join(' AND ');
-
-      // Fetch all matching messages for grouping
-      // We need to fetch all to do proper time-based grouping, then paginate the result
-      const result = await dbPool.query(
-        `SELECT id, channel_id, role, content, username, created_at
+    // Fetch all matching messages for grouping
+    // We need to fetch all to do proper time-based grouping, then paginate the result
+    const result = await dbPool.query(
+      `SELECT id, channel_id, role, content, username, created_at
          FROM conversations
          WHERE ${whereClause}
          ORDER BY created_at ASC`,
-        values,
-      );
+      values,
+    );
 
-      const allConversations = groupMessagesIntoConversations(result.rows);
-      const total = allConversations.length;
+    const allConversations = groupMessagesIntoConversations(result.rows);
+    const total = allConversations.length;
 
-      // Paginate grouped conversations
-      const startIdx = (page - 1) * limit;
-      const paginatedConversations = allConversations.slice(startIdx, startIdx + limit);
+    // Paginate grouped conversations
+    const startIdx = (page - 1) * limit;
+    const paginatedConversations = allConversations.slice(startIdx, startIdx + limit);
 
-      const conversations = paginatedConversations.map((convo) =>
-        buildConversationSummary(convo, req.guild),
-      );
+    const conversations = paginatedConversations.map((convo) =>
+      buildConversationSummary(convo, req.guild),
+    );
 
-      res.json({ conversations, total, page });
-    } catch (err) {
-      logError('Failed to fetch conversations', { error: err.message, guild: guildId });
-      res.status(500).json({ error: 'Failed to fetch conversations' });
-    }
-  },
-);
+    res.json({ conversations, total, page });
+  } catch (err) {
+    logError('Failed to fetch conversations', { error: err.message, guild: guildId });
+    res.status(500).json({ error: 'Failed to fetch conversations' });
+  }
+});
 
 // ─── GET /stats — Conversation analytics ──────────────────────────────────────
 
@@ -239,86 +233,80 @@ router.get(
  * GET /stats — Conversation analytics
  * Returns aggregate stats about conversations for the guild.
  */
-router.get(
-  '/stats',
-  conversationsRateLimit,
-  requireGuildAdmin,
-  validateGuild,
-  async (req, res) => {
-    const { dbPool } = req.app.locals;
-    if (!dbPool) {
-      return res.status(503).json({ error: 'Database not available' });
-    }
+router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
+  const { dbPool } = req.app.locals;
+  if (!dbPool) {
+    return res.status(503).json({ error: 'Database not available' });
+  }
 
-    const guildId = req.params.id;
+  const guildId = req.params.id;
 
-    try {
-      const [totalResult, topUsersResult, dailyResult, tokenResult] = await Promise.all([
-        dbPool.query(
-          'SELECT COUNT(*)::int AS total_messages FROM conversations WHERE guild_id = $1',
-          [guildId],
-        ),
-        dbPool.query(
-          `SELECT username, COUNT(*)::int AS message_count
+  try {
+    const [totalResult, topUsersResult, dailyResult, tokenResult] = await Promise.all([
+      dbPool.query(
+        'SELECT COUNT(*)::int AS total_messages FROM conversations WHERE guild_id = $1',
+        [guildId],
+      ),
+      dbPool.query(
+        `SELECT username, COUNT(*)::int AS message_count
            FROM conversations
            WHERE guild_id = $1 AND username IS NOT NULL
            GROUP BY username
            ORDER BY message_count DESC
            LIMIT 10`,
-          [guildId],
-        ),
-        dbPool.query(
-          `SELECT DATE(created_at) AS date, COUNT(*)::int AS count
+        [guildId],
+      ),
+      dbPool.query(
+        `SELECT DATE(created_at) AS date, COUNT(*)::int AS count
            FROM conversations
            WHERE guild_id = $1
            GROUP BY DATE(created_at)
            ORDER BY date DESC
            LIMIT 30`,
-          [guildId],
-        ),
-        dbPool.query(
-          'SELECT COALESCE(SUM(LENGTH(content)), 0)::bigint AS total_chars FROM conversations WHERE guild_id = $1',
-          [guildId],
-        ),
-      ]);
+        [guildId],
+      ),
+      dbPool.query(
+        'SELECT COALESCE(SUM(LENGTH(content)), 0)::bigint AS total_chars FROM conversations WHERE guild_id = $1',
+        [guildId],
+      ),
+    ]);
 
-      const totalMessages = totalResult.rows[0]?.total_messages || 0;
-      const totalChars = Number(tokenResult.rows[0]?.total_chars || 0);
+    const totalMessages = totalResult.rows[0]?.total_messages || 0;
+    const totalChars = Number(tokenResult.rows[0]?.total_chars || 0);
 
-      // Fetch all messages for conversation counting
-      const allMsgsResult = await dbPool.query(
-        `SELECT id, channel_id, created_at
+    // Fetch all messages for conversation counting
+    const allMsgsResult = await dbPool.query(
+      `SELECT id, channel_id, created_at
          FROM conversations
          WHERE guild_id = $1
          ORDER BY created_at ASC`,
-        [guildId],
-      );
+      [guildId],
+    );
 
-      const allConversations = groupMessagesIntoConversations(allMsgsResult.rows);
-      const totalConversations = allConversations.length;
-      const avgMessagesPerConversation =
-        totalConversations > 0 ? Math.round(totalMessages / totalConversations) : 0;
+    const allConversations = groupMessagesIntoConversations(allMsgsResult.rows);
+    const totalConversations = allConversations.length;
+    const avgMessagesPerConversation =
+      totalConversations > 0 ? Math.round(totalMessages / totalConversations) : 0;
 
-      res.json({
-        totalConversations,
-        totalMessages,
-        avgMessagesPerConversation,
-        topUsers: topUsersResult.rows.map((r) => ({
-          username: r.username,
-          messageCount: r.message_count,
-        })),
-        dailyActivity: dailyResult.rows.map((r) => ({
-          date: r.date,
-          count: r.count,
-        })),
-        estimatedTokens: Math.ceil(totalChars / 4),
-      });
-    } catch (err) {
-      logError('Failed to fetch conversation stats', { error: err.message, guild: guildId });
-      res.status(500).json({ error: 'Failed to fetch conversation stats' });
-    }
-  },
-);
+    res.json({
+      totalConversations,
+      totalMessages,
+      avgMessagesPerConversation,
+      topUsers: topUsersResult.rows.map((r) => ({
+        username: r.username,
+        messageCount: r.message_count,
+      })),
+      dailyActivity: dailyResult.rows.map((r) => ({
+        date: r.date,
+        count: r.count,
+      })),
+      estimatedTokens: Math.ceil(totalChars / 4),
+    });
+  } catch (err) {
+    logError('Failed to fetch conversation stats', { error: err.message, guild: guildId });
+    res.status(500).json({ error: 'Failed to fetch conversation stats' });
+  }
+});
 
 // ─── GET /flags — List flagged messages ───────────────────────────────────────
 
@@ -326,41 +314,36 @@ router.get(
  * GET /flags — List flagged messages
  * Query params: ?page=1&limit=25&status=open|resolved|dismissed
  */
-router.get(
-  '/flags',
-  conversationsRateLimit,
-  requireGuildAdmin,
-  validateGuild,
-  async (req, res) => {
-    const { dbPool } = req.app.locals;
-    if (!dbPool) {
-      return res.status(503).json({ error: 'Database not available' });
+router.get('/flags', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
+  const { dbPool } = req.app.locals;
+  if (!dbPool) {
+    return res.status(503).json({ error: 'Database not available' });
+  }
+
+  const { page, limit, offset } = parsePagination(req.query);
+  const guildId = req.params.id;
+
+  try {
+    const whereParts = ['fm.guild_id = $1'];
+    const values = [guildId];
+    let paramIndex = 1;
+
+    const validStatuses = ['open', 'resolved', 'dismissed'];
+    if (req.query.status && validStatuses.includes(req.query.status)) {
+      paramIndex++;
+      whereParts.push(`fm.status = $${paramIndex}`);
+      values.push(req.query.status);
     }
 
-    const { page, limit, offset } = parsePagination(req.query);
-    const guildId = req.params.id;
+    const whereClause = whereParts.join(' AND ');
 
-    try {
-      const whereParts = ['fm.guild_id = $1'];
-      const values = [guildId];
-      let paramIndex = 1;
-
-      const validStatuses = ['open', 'resolved', 'dismissed'];
-      if (req.query.status && validStatuses.includes(req.query.status)) {
-        paramIndex++;
-        whereParts.push(`fm.status = $${paramIndex}`);
-        values.push(req.query.status);
-      }
-
-      const whereClause = whereParts.join(' AND ');
-
-      const [countResult, flagsResult] = await Promise.all([
-        dbPool.query(
-          `SELECT COUNT(*)::int AS count FROM flagged_messages fm WHERE ${whereClause}`,
-          values,
-        ),
-        dbPool.query(
-          `SELECT fm.id, fm.guild_id, fm.conversation_first_id, fm.message_id,
+    const [countResult, flagsResult] = await Promise.all([
+      dbPool.query(
+        `SELECT COUNT(*)::int AS count FROM flagged_messages fm WHERE ${whereClause}`,
+        values,
+      ),
+      dbPool.query(
+        `SELECT fm.id, fm.guild_id, fm.conversation_first_id, fm.message_id,
                   fm.flagged_by, fm.reason, fm.notes, fm.status,
                   fm.resolved_by, fm.resolved_at, fm.created_at,
                   c.content AS message_content, c.role AS message_role,
@@ -370,36 +353,35 @@ router.get(
            WHERE ${whereClause}
            ORDER BY fm.created_at DESC
            LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}`,
-          [...values, limit, offset],
-        ),
-      ]);
+        [...values, limit, offset],
+      ),
+    ]);
 
-      res.json({
-        flags: flagsResult.rows.map((r) => ({
-          id: r.id,
-          guildId: r.guild_id,
-          conversationFirstId: r.conversation_first_id,
-          messageId: r.message_id,
-          flaggedBy: r.flagged_by,
-          reason: r.reason,
-          notes: r.notes,
-          status: r.status,
-          resolvedBy: r.resolved_by,
-          resolvedAt: r.resolved_at,
-          createdAt: r.created_at,
-          messageContent: r.message_content,
-          messageRole: r.message_role,
-          messageUsername: r.message_username,
-        })),
-        total: countResult.rows[0]?.count || 0,
-        page,
-      });
-    } catch (err) {
-      logError('Failed to fetch flagged messages', { error: err.message, guild: guildId });
-      res.status(500).json({ error: 'Failed to fetch flagged messages' });
-    }
-  },
-);
+    res.json({
+      flags: flagsResult.rows.map((r) => ({
+        id: r.id,
+        guildId: r.guild_id,
+        conversationFirstId: r.conversation_first_id,
+        messageId: r.message_id,
+        flaggedBy: r.flagged_by,
+        reason: r.reason,
+        notes: r.notes,
+        status: r.status,
+        resolvedBy: r.resolved_by,
+        resolvedAt: r.resolved_at,
+        createdAt: r.created_at,
+        messageContent: r.message_content,
+        messageRole: r.message_role,
+        messageUsername: r.message_username,
+      })),
+      total: countResult.rows[0]?.count || 0,
+      page,
+    });
+  } catch (err) {
+    logError('Failed to fetch flagged messages', { error: err.message, guild: guildId });
+    res.status(500).json({ error: 'Failed to fetch flagged messages' });
+  }
+});
 
 // ─── GET /:conversationId — Single conversation detail ────────────────────────
 
@@ -439,8 +421,6 @@ router.get(
       }
 
       const anchor = anchorResult.rows[0];
-      const anchorTime = new Date(anchor.created_at).getTime();
-      const gapMs = CONVERSATION_GAP_MINUTES * 60 * 1000;
 
       // Fetch all messages in the same channel around the anchor
       const messagesResult = await dbPool.query(
@@ -467,7 +447,7 @@ router.get(
         createdAt: msg.created_at,
       }));
 
-      const totalChars = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+      const _totalChars = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
       const durationMs = targetConvo.lastTime - targetConvo.firstTime;
 
       // Fetch any flags for messages in this conversation
@@ -478,9 +458,7 @@ router.get(
         [guildId, messageIds],
       );
 
-      const flaggedMessageIds = new Map(
-        flagsResult.rows.map((r) => [r.message_id, r.status]),
-      );
+      const flaggedMessageIds = new Map(flagsResult.rows.map((r) => [r.message_id, r.status]));
 
       const enrichedMessages = messages.map((m) => ({
         ...m,

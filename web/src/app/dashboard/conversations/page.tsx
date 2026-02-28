@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Hash, MessageSquare, RefreshCw, Search, Users, X } from 'lucide-react';
+import { Hash, MessageSquare, RefreshCw, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -125,9 +125,7 @@ export default function ConversationsPage() {
     if (!guildId) return;
     void (async () => {
       try {
-        const res = await fetch(
-          `/api/guilds/${encodeURIComponent(guildId)}/channels`,
-        );
+        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/channels`);
         if (res.ok) {
           const data = (await res.json()) as Channel[];
           // Only show text channels (type 0)
@@ -141,12 +139,7 @@ export default function ConversationsPage() {
 
   // Fetch conversations
   const fetchConversations = useCallback(
-    async (opts: {
-      guildId: string;
-      search: string;
-      channel: string;
-      page: number;
-    }) => {
+    async (opts: { guildId: string; search: string; channel: string; page: number }) => {
       abortControllerRef.current?.abort();
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -240,9 +233,7 @@ export default function ConversationsPage() {
             <MessageSquare className="h-6 w-6" />
             Conversations
           </h2>
-          <p className="text-muted-foreground">
-            Browse, search, and replay AI conversations.
-          </p>
+          <p className="text-muted-foreground">Browse, search, and replay AI conversations.</p>
         </div>
 
         <Button
