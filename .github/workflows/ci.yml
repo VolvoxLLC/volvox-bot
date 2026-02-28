@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  lint-and-test:
-    name: Lint & Test
+  lint:
+    name: Lint (Biome)
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -41,8 +41,111 @@ jobs:
       - name: Lint (Biome)
         run: pnpm lint
 
+  test:
+    name: Test (Vitest Coverage)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Test with coverage (Vitest)
         run: pnpm test:coverage
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage/lcov.info
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          node <<'NODE'
+          import fs from 'node:fs';
+
+          const summaryPath = 'coverage/coverage-summary.json';
+          if (!fs.existsSync(summaryPath)) {
+            console.log('::warning title=Coverage summary missing::coverage/coverage-summary.json was not found.');
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '## Coverage\n\n⚠️ Coverage summary file was not found.\n');
+            process.exit(0);
+          }
+
+          const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+          const total = summary.total;
+          const thresholds = {
+            statements: 80,
+            branches: 85,
+            functions: 80,
+            lines: 80,
+          };
+
+          const rows = ['statements', 'branches', 'functions', 'lines'].map((metric) => {
+            const pct = total[metric]?.pct ?? 0;
+            const threshold = thresholds[metric];
+            if (pct < threshold) {
+              console.log(`::warning title=Coverage below threshold::${metric} coverage is ${pct}% (threshold ${threshold}%).`);
+            } else {
+              console.log(`::notice title=Coverage::${metric} coverage is ${pct}% (threshold ${threshold}%).`);
+            }
+            return `| ${metric} | ${pct}% | ${threshold}% |`;
+          });
+
+          const markdown = [
+            '## Coverage',
+            '',
+            '| Metric | Coverage | Threshold |',
+            '| --- | ---: | ---: |',
+            ...rows,
+            '',
+          ].join('\n');
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
+          NODE
+
+  lint-and-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: ${{ always() }}
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Gate required check
+        run: |
+          echo "lint result: ${{ needs.lint.result }}"
+          echo "test result: ${{ needs.test.result }}"
+
+          if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Lint and/or test failed."
+            exit 1
+          fi
 
   web:
     name: Web — Lint, Typecheck & Build
@@ -76,3 +179,38 @@ jobs:
 
       - name: Build
         run: pnpm --prefix web build
+
+  docker-build-validation:
+    name: Docker Build Validation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Build bot Docker image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: bill-bot-ci:${{ github.sha }}
+          cache-from: type=gha,scope=bill-bot
+          cache-to: type=gha,mode=max,scope=bill-bot
+
+      - name: Build web Docker image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: web
+          file: web/Dockerfile
+          push: false
+          tags: bill-web-ci:${{ github.sha }}
+          cache-from: type=gha,scope=bill-web
+          cache-to: type=gha,mode=max,scope=bill-web
