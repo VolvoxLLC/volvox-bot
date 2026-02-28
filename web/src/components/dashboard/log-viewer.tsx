@@ -98,15 +98,17 @@ function LogRow({
 
   if (hasMeta) {
     return (
-      <button
-        type="button"
-        className={cn(rowClassName, 'cursor-pointer w-full text-left')}
-        aria-expanded={isExpanded}
-        onClick={onToggle}
-      >
-        {mainRow}
+      <div className={cn(rowClassName, 'cursor-pointer')}>
+        <button
+          type="button"
+          className="w-full text-left"
+          aria-expanded={isExpanded}
+          onClick={onToggle}
+        >
+          {mainRow}
+        </button>
 
-        {/* Expanded metadata */}
+        {/* Expanded metadata — outside the button so text is selectable */}
         {isExpanded && (
           <div className="mt-1 ml-14 rounded bg-gray-900 p-2 text-gray-400">
             <pre className="whitespace-pre-wrap break-words text-[11px]">
@@ -114,7 +116,7 @@ function LogRow({
             </pre>
           </div>
         )}
-      </button>
+      </div>
     );
   }
 
