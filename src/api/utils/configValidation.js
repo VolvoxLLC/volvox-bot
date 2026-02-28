@@ -46,6 +46,23 @@ export const CONFIG_SCHEMA = {
           excludeChannels: { type: 'array' },
         },
       },
+      rulesChannel: { type: 'string', nullable: true },
+      verifiedRole: { type: 'string', nullable: true },
+      introChannel: { type: 'string', nullable: true },
+      roleMenu: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          options: { type: 'array' },
+        },
+      },
+      dmSequence: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          steps: { type: 'array' },
+        },
+      },
     },
   },
   spam: {

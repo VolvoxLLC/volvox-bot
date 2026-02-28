@@ -66,6 +66,13 @@ describe('configValidation', () => {
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('expected finite number');
     });
+
+    it('should validate new welcome onboarding fields', () => {
+      expect(validateSingleValue('welcome.rulesChannel', null)).toEqual([]);
+      expect(validateSingleValue('welcome.verifiedRole', '123')).toEqual([]);
+      expect(validateSingleValue('welcome.roleMenu.enabled', true)).toEqual([]);
+      expect(validateSingleValue('welcome.dmSequence.steps', ['hi', 'there'])).toEqual([]);
+    });
   });
 
   describe('CONFIG_SCHEMA', () => {
