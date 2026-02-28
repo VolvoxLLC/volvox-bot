@@ -281,6 +281,10 @@ describe('ai module coverage', () => {
       setPool(mockPool);
       startConversationCleanup();
       await new Promise((r) => setTimeout(r, 20));
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM conversations'),
+        expect.any(Array),
+      );
       expect(logWarn).toHaveBeenCalledWith(
         'Conversation cleanup failed',
         expect.objectContaining({ error: 'cleanup failed' }),
