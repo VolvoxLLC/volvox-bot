@@ -348,6 +348,38 @@ describe('conversations routes', () => {
       expect(queryCall[1]).toContain('%hello%');
     });
 
+    it('should escape % wildcards in ILIKE search query', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(
+        request(app).get('/api/v1/guilds/guild1/conversations?search=100%25off'),
+      );
+
+      expect(res.status).toBe(200);
+      const queryCall = mockPool.query.mock.calls[0];
+      expect(queryCall[0]).toContain('ILIKE');
+      // % must be escaped to \% so it doesn't act as a wildcard
+      const searchParam = queryCall[1].find((v) => typeof v === 'string' && v.includes('\\%'));
+      expect(searchParam).toBeDefined();
+      expect(searchParam).toBe('%100\\%off%');
+    });
+
+    it('should escape _ wildcards in ILIKE search query', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await authed(
+        request(app).get('/api/v1/guilds/guild1/conversations?search=some_thing'),
+      );
+
+      expect(res.status).toBe(200);
+      const queryCall = mockPool.query.mock.calls[0];
+      expect(queryCall[0]).toContain('ILIKE');
+      // _ must be escaped to \_ so it doesn't act as a single-char wildcard
+      const searchParam = queryCall[1].find((v) => typeof v === 'string' && v.includes('\\_'));
+      expect(searchParam).toBeDefined();
+      expect(searchParam).toBe('%some\\_thing%');
+    });
+
     it('should support channel filter', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] });
 
