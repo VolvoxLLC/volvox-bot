@@ -104,7 +104,7 @@ function wrapPoolQuery(poolInstance, thresholdMs) {
         const explainText = typeof args[0] === 'string' ? args[0] : (args[0]?.text ?? '');
         const explainValues = Array.isArray(args[1]) ? args[1] : (args[0]?.values ?? []);
 
-        if (/^\s*(SELECT|INSERT|UPDATE|DELETE)/i.test(explainText)) {
+        if (/^\s*SELECT/i.test(explainText)) {
           originalQuery({
             text: `EXPLAIN ${explainText}`,
             values: explainValues,
