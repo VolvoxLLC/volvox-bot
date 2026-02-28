@@ -27,16 +27,23 @@ async function getQueryLogs() {
 
 const router = Router();
 
-// Graceful fallback for restartTracker — may not exist yet
-let getRestarts = null;
+// db.js is the critical dependency — import independently so restartTracker
+// failures never prevent pool stats from being available.
 let getRestartPool = null;
 let getPoolStats = null;
 try {
-  const mod = await import('../../utils/restartTracker.js');
-  getRestarts = mod.getRestarts ?? null;
   const dbMod = await import('../../db.js');
   getRestartPool = dbMod.getPool ?? null;
   getPoolStats = dbMod.getPoolStats ?? null;
+} catch {
+  // db module not available — fallback to null
+}
+
+// restartTracker is optional — may not exist in all deployments
+let getRestarts = null;
+try {
+  const mod = await import('../../utils/restartTracker.js');
+  getRestarts = mod.getRestarts ?? null;
 } catch {
   // restartTracker not available yet — fallback to null
 }
