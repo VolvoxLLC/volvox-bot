@@ -40,7 +40,6 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { getPool } from '../../src/db.js';
 import { getConfig } from '../../src/modules/config.js';
 import {
   addMember,
@@ -180,6 +179,18 @@ describe('ticketHandler', () => {
       expect(row).toBeDefined();
       expect(row.components).toHaveLength(1);
       expect(row.components[0].data.custom_id).toBe('ticket_open');
+    });
+
+    it('should use channel-mode copy when guild ticket mode is channel', () => {
+      getConfig.mockReturnValueOnce({
+        tickets: {
+          enabled: true,
+          mode: 'channel',
+        },
+      });
+
+      const { embed } = buildTicketPanel('guild1');
+      expect(embed.data.description).toContain('A private channel will be created');
     });
   });
 
@@ -1021,6 +1032,97 @@ describe('ticketHandler', () => {
         thread,
         expect.objectContaining({ content: expect.stringContaining('auto-closed in') }),
       );
+    });
+
+    it('should skip ticket when fetched channel is null', async () => {
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue({ rows: [] });
+      getConfig.mockReturnValue({ tickets: { enabled: true, autoCloseHours: 48 } });
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 10,
+            guild_id: 'guild1',
+            thread_id: 'missing-channel',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const guild = createMockGuild();
+      guild.channels.fetch = vi.fn().mockResolvedValue(null);
+
+      await checkAutoClose({
+        guilds: { cache: new Map([['guild1', guild]]) },
+        user: { id: 'bot1' },
+      });
+
+      expect(guild.channels.fetch).toHaveBeenCalledTimes(1);
+      expect(mockSafeSend).not.toHaveBeenCalled();
+    });
+
+    it('should skip unsupported non-thread, non-text channels', async () => {
+      getConfig.mockReturnValue({ tickets: { enabled: true, autoCloseHours: 48 } });
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 11,
+            guild_id: 'guild1',
+            thread_id: 'voice1',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const voiceLikeChannel = {
+        id: 'voice1',
+        type: 2,
+        isThread: () => false,
+        messages: { fetch: vi.fn() },
+      };
+
+      const guild = createMockGuild();
+      guild.channels.fetch = vi.fn().mockResolvedValue(voiceLikeChannel);
+
+      await checkAutoClose({
+        guilds: { cache: new Map([['guild1', guild]]) },
+        user: { id: 'bot1' },
+      });
+
+      expect(voiceLikeChannel.messages.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should not send duplicate warnings once warning was already sent', async () => {
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue({ rows: [] });
+      getConfig.mockReturnValue({ tickets: { enabled: true, autoCloseHours: 48 } });
+      const almostOldDate = new Date(Date.now() - 50 * 60 * 60 * 1000);
+
+      const ticketRow = {
+        id: 12,
+        guild_id: 'guild1',
+        thread_id: 'thread12',
+        created_at: almostOldDate.toISOString(),
+      };
+
+      mockQuery.mockResolvedValue({ rows: [ticketRow] });
+
+      const thread = createMockThread({ id: 'thread12' });
+      thread.messages.fetch.mockResolvedValue(new Map([['msg1', { createdAt: almostOldDate }]]));
+
+      const guild = createMockGuild();
+      guild.channels.fetch = vi.fn().mockResolvedValue(thread);
+      const client = {
+        guilds: { cache: new Map([['guild1', guild]]) },
+        user: { id: 'bot1' },
+      };
+
+      await checkAutoClose(client);
+      expect(mockSafeSend).toHaveBeenCalledTimes(1);
+
+      mockSafeSend.mockClear();
+      await checkAutoClose(client);
+      expect(mockSafeSend).not.toHaveBeenCalled();
     });
   });
 
