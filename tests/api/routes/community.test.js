@@ -393,6 +393,45 @@ describe('community routes', () => {
 
       expect(res.body.error).toBe('Profile not found');
     });
+
+    it('showcases query filters out private users via public_profile = TRUE', async () => {
+      // After fix: both count and data queries JOIN user_stats and filter by public_profile.
+      // The DB does the filtering; we verify the SQL contains the privacy guard.
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total: 1 }] }) // count (only public users)
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 10,
+              name: 'Public Project',
+              description: 'By a public user',
+              tech_stack: ['Node'],
+              repo_url: null,
+              live_url: null,
+              author_id: PUBLIC_USER,
+              upvotes: 5,
+              created_at: '2024-06-01T00:00:00Z',
+            },
+          ],
+        }); // data (private user row excluded by SQL JOIN + filter)
+
+      const res = await request(app)
+        .get(`/api/v1/community/${GUILD_ID}/showcases`)
+        .expect(200);
+
+      // SQL must include the privacy guard on both count and data queries
+      expect(mockPool.query.mock.calls[0][0]).toContain('public_profile = TRUE');
+      expect(mockPool.query.mock.calls[1][0]).toContain('public_profile = TRUE');
+
+      // Only the public user's project is in the response
+      expect(res.body.projects).toHaveLength(1);
+      expect(res.body.projects[0].title).toBe('Public Project');
+      expect(res.body.projects[0].authorName).toBe('Alice'); // resolved via batch member fetch
+
+      // Private user's project is NOT present
+      const authorNames = res.body.projects.map((p) => p.authorName);
+      expect(authorNames).not.toContain(PRIVATE_USER);
+    });
   });
 
   // ─── No Auth Required ────────────────────────────────────────────────────
