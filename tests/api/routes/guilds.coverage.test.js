@@ -70,15 +70,18 @@ describe('guilds routes coverage', () => {
     roles: { cache: new Map([['role1', { id: 'role1', name: 'Admin', position: 1, color: 0 }]]) },
     members: {
       cache: new Map([
-        ['user1', {
-          id: 'user1',
-          user: { username: 'testuser', bot: false },
-          displayName: 'Test',
-          roles: { cache: new Map([['role1', { id: 'role1', name: 'Admin' }]]) },
-          joinedAt: new Date('2024-01-01'),
-          joinedTimestamp: new Date('2024-01-01').getTime(),
-          presence: null,
-        }],
+        [
+          'user1',
+          {
+            id: 'user1',
+            user: { username: 'testuser', bot: false },
+            displayName: 'Test',
+            roles: { cache: new Map([['role1', { id: 'role1', name: 'Admin' }]]) },
+            joinedAt: new Date('2024-01-01'),
+            joinedTimestamp: new Date('2024-01-01').getTime(),
+            presence: null,
+          },
+        ],
       ]),
       list: vi.fn().mockResolvedValue(new Map()),
     },
@@ -171,11 +174,9 @@ describe('guilds routes coverage', () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-secret');
       const jti = 'jti-actions';
       sessionStore.set('user1', { accessToken: 'tok', jti });
-      const token = jwt.sign(
-        { userId: 'user1', username: 'user', jti },
-        'jwt-secret',
-        { algorithm: 'HS256' }
-      );
+      const token = jwt.sign({ userId: 'user1', username: 'user', jti }, 'jwt-secret', {
+        algorithm: 'HS256',
+      });
 
       // Mock guild access
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({

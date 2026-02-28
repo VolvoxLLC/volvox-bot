@@ -33,6 +33,12 @@ import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
+import {
+  handleRoleMenuSelection,
+  handleRulesAcceptButton,
+  ROLE_MENU_SELECT_ID,
+  RULES_ACCEPT_BUTTON_ID,
+} from './welcomeOnboarding.js';
 
 /** @type {boolean} Guard against duplicate process-level handler registration */
 let processHandlersRegistered = false;
@@ -512,6 +518,69 @@ export function registerErrorHandlers(client) {
  *
  * @param {Client} client - Discord client instance
  */
+
+/**
+ * Register onboarding interaction handlers:
+ * - Rules acceptance button
+ * - Role selection menu
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerWelcomeOnboardingHandlers(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    const guildId = interaction.guildId;
+    if (!guildId) return;
+
+    const guildConfig = getConfig(guildId);
+    if (!guildConfig.welcome?.enabled) return;
+
+    if (interaction.isButton() && interaction.customId === RULES_ACCEPT_BUTTON_ID) {
+      try {
+        await handleRulesAcceptButton(interaction, guildConfig);
+      } catch (err) {
+        logError('Rules acceptance handler failed', {
+          guildId,
+          userId: interaction.user?.id,
+          error: err?.message,
+        });
+
+        try {
+          if (!interaction.replied) {
+            await safeEditReply(interaction, {
+              content: '❌ Failed to verify. Please ping an admin.',
+            });
+          }
+        } catch {
+          // ignore
+        }
+      }
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === ROLE_MENU_SELECT_ID) {
+      try {
+        await handleRoleMenuSelection(interaction, guildConfig);
+      } catch (err) {
+        logError('Role menu handler failed', {
+          guildId,
+          userId: interaction.user?.id,
+          error: err?.message,
+        });
+
+        try {
+          if (!interaction.replied) {
+            await safeEditReply(interaction, {
+              content: '❌ Failed to update roles. Please try again.',
+            });
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  });
+}
+
 export function registerChallengeButtonHandler(client) {
   client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isButton()) return;
@@ -575,6 +644,7 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerTicketOpenButtonHandler(client);
   registerTicketModalHandler(client);
   registerTicketCloseButtonHandler(client);
+  registerWelcomeOnboardingHandlers(client);
   registerErrorHandlers(client);
 }
 

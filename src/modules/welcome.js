@@ -5,6 +5,7 @@
 
 import { info, error as logError } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
+import { isReturningMember } from './welcomeOnboarding.js';
 
 const guildActivity = new Map();
 const DEFAULT_ACTIVITY_WINDOW_MINUTES = 45;
@@ -137,14 +138,21 @@ export async function sendWelcomeMessage(member, client, config) {
     if (!channel) return;
 
     const useDynamic = config.welcome?.dynamic?.enabled === true;
+    const returningMember = isReturningMember(member);
 
-    const message = useDynamic
-      ? buildDynamicWelcomeMessage(member, config)
-      : renderWelcomeMessage(
-          config.welcome.message || 'Welcome, {user}!',
+    const message = returningMember
+      ? renderWelcomeMessage(
+          'Welcome back, {user}! Glad to see you again. Jump back in whenever you are ready.',
           { id: member.id, username: member.user.username },
           { name: member.guild.name, memberCount: member.guild.memberCount },
-        );
+        )
+      : useDynamic
+        ? buildDynamicWelcomeMessage(member, config)
+        : renderWelcomeMessage(
+            config.welcome.message || 'Welcome, {user}!',
+            { id: member.id, username: member.user.username },
+            { name: member.guild.name, memberCount: member.guild.memberCount },
+          );
 
     await safeSend(channel, message);
     info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });

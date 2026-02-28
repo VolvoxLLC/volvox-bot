@@ -66,6 +66,39 @@ describe('configValidation', () => {
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('expected finite number');
     });
+
+    it('should validate new welcome onboarding fields', () => {
+      expect(validateSingleValue('welcome.rulesChannel', null)).toEqual([]);
+      expect(validateSingleValue('welcome.verifiedRole', '123')).toEqual([]);
+      expect(validateSingleValue('welcome.roleMenu.enabled', true)).toEqual([]);
+      expect(validateSingleValue('welcome.dmSequence.steps', ['hi', 'there'])).toEqual([]);
+    });
+
+    it('should accept valid welcome.introChannel string', () => {
+      expect(validateSingleValue('welcome.introChannel', '123456')).toEqual([]);
+    });
+
+    it('should accept null welcome.introChannel', () => {
+      expect(validateSingleValue('welcome.introChannel', null)).toEqual([]);
+    });
+
+    it('should reject malformed roleMenu.options items', () => {
+      const errors = validateSingleValue('welcome.roleMenu', {
+        enabled: true,
+        options: [{ label: 'Test' }],
+      });
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some((e) => e.includes('missing required key "roleId"'))).toBe(true);
+    });
+
+    it('should reject dmSequence.steps as non-array', () => {
+      const errors = validateSingleValue('welcome.dmSequence', {
+        enabled: true,
+        steps: 'not-an-array',
+      });
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some((e) => e.includes('expected array'))).toBe(true);
+    });
   });
 
   describe('CONFIG_SCHEMA', () => {

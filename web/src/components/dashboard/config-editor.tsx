@@ -37,6 +37,32 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
   return num;
 }
 
+function parseRoleMenuOptions(raw: string) {
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [label = '', roleId = '', ...descParts] = line.split('|');
+      const description = descParts.join('|').trim();
+      return {
+        label: label.trim(),
+        roleId: roleId.trim(),
+        ...(description ? { description } : {}),
+      };
+    })
+    .filter((opt) => opt.label && opt.roleId)
+    .slice(0, 25);
+}
+
+function stringifyRoleMenuOptions(
+  options: Array<{ label?: string; roleId?: string; description?: string }> = [],
+) {
+  return options
+    .map((opt) => [opt.label ?? '', opt.roleId ?? '', opt.description ?? ''].join('|'))
+    .join('\n');
+}
+
 /**
  * Type guard that checks whether a value is a guild configuration object returned by the API.
  *
@@ -100,6 +126,10 @@ export function ConfigEditor() {
   const [savedConfig, setSavedConfig] = useState<GuildConfig | null>(null);
   /** Working copy that the user edits. */
   const [draftConfig, setDraftConfig] = useState<GuildConfig | null>(null);
+
+  /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
+  const [roleMenuRaw, setRoleMenuRaw] = useState('');
+  const [dmStepsRaw, setDmStepsRaw] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -169,6 +199,8 @@ export function ConfigEditor() {
 
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
+      setRoleMenuRaw(stringifyRoleMenuOptions(data.welcome?.roleMenu?.options ?? []));
+      setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
       const msg = (err as Error).message || 'Failed to load config';
@@ -339,6 +371,8 @@ export function ConfigEditor() {
   const discardChanges = useCallback(() => {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
+    setRoleMenuRaw(stringifyRoleMenuOptions(savedConfig.welcome?.roleMenu?.options ?? []));
+    setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
     toast.success('Changes discarded.');
   }, [savedConfig]);
 
@@ -378,6 +412,48 @@ export function ConfigEditor() {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
         return { ...prev, welcome: { ...prev.welcome, message } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateWelcomeField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, welcome: { ...(prev.welcome ?? {}), [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateWelcomeRoleMenu = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          welcome: {
+            ...(prev.welcome ?? {}),
+            roleMenu: { ...(prev.welcome?.roleMenu ?? {}), [field]: value },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateWelcomeDmSequence = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          welcome: {
+            ...(prev.welcome ?? {}),
+            dmSequence: { ...(prev.welcome?.dmSequence ?? {}), [field]: value },
+          },
+        } as GuildConfig;
       });
     },
     [updateDraftConfig],
@@ -648,7 +724,7 @@ export function ConfigEditor() {
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <label className="space-y-2">
             <span className="text-sm font-medium">Welcome Message</span>
             <textarea
@@ -664,6 +740,101 @@ export function ConfigEditor() {
           <p id="welcome-message-hint" className="mt-1 text-xs text-muted-foreground">
             Use {'{user}'} for the member mention and {'{memberCount}'} for the server member count.
           </p>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Rules Channel ID</span>
+              <input
+                type="text"
+                value={draftConfig.welcome?.rulesChannel ?? ''}
+                onChange={(e) => updateWelcomeField('rulesChannel', e.target.value.trim() || null)}
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Channel where Accept Rules button lives"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Verified Role ID</span>
+              <input
+                type="text"
+                value={draftConfig.welcome?.verifiedRole ?? ''}
+                onChange={(e) => updateWelcomeField('verifiedRole', e.target.value.trim() || null)}
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Role granted after rules acceptance"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Intro Channel ID</span>
+              <input
+                type="text"
+                value={draftConfig.welcome?.introChannel ?? ''}
+                onChange={(e) => updateWelcomeField('introChannel', e.target.value.trim() || null)}
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Channel to prompt member intros"
+              />
+            </label>
+          </div>
+
+          <fieldset className="space-y-2 rounded-md border p-3">
+            <legend className="text-sm font-medium">Role Menu</legend>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                Enable self-assignable role menu
+              </span>
+              <ToggleSwitch
+                checked={draftConfig.welcome?.roleMenu?.enabled ?? false}
+                onChange={(v) => updateWelcomeRoleMenu('enabled', v)}
+                disabled={saving}
+                label="Role Menu"
+              />
+            </div>
+            <textarea
+              value={roleMenuRaw}
+              onChange={(e) => setRoleMenuRaw(e.target.value)}
+              onBlur={() => {
+                const parsed = parseRoleMenuOptions(roleMenuRaw);
+                updateWelcomeRoleMenu('options', parsed);
+                setRoleMenuRaw(stringifyRoleMenuOptions(parsed));
+              }}
+              rows={5}
+              disabled={saving}
+              className={inputClasses}
+              placeholder={
+                'Format: Label|RoleID|Description (optional)\nOne option per line (max 25).'
+              }
+            />
+          </fieldset>
+
+          <fieldset className="space-y-2 rounded-md border p-3">
+            <legend className="text-sm font-medium">DM Sequence</legend>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Enable onboarding DMs</span>
+              <ToggleSwitch
+                checked={draftConfig.welcome?.dmSequence?.enabled ?? false}
+                onChange={(v) => updateWelcomeDmSequence('enabled', v)}
+                disabled={saving}
+                label="DM Sequence"
+              />
+            </div>
+            <textarea
+              value={dmStepsRaw}
+              onChange={(e) => setDmStepsRaw(e.target.value)}
+              onBlur={() => {
+                const parsed = dmStepsRaw
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean);
+                updateWelcomeDmSequence('steps', parsed);
+                setDmStepsRaw(parsed.join('\n'));
+              }}
+              rows={4}
+              disabled={saving}
+              className={inputClasses}
+              placeholder="One DM step per line"
+            />
+          </fieldset>
         </CardContent>
       </Card>
 

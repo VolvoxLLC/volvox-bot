@@ -25,12 +25,36 @@ export interface WelcomeDynamic {
   excludeChannels: string[];
 }
 
+/** Self-assignable role menu option. */
+export interface WelcomeRoleOption {
+  label: string;
+  roleId: string;
+  description?: string;
+}
+
+/** Self-assignable role menu settings. */
+export interface WelcomeRoleMenu {
+  enabled: boolean;
+  options: WelcomeRoleOption[];
+}
+
+/** Direct-message onboarding sequence. */
+export interface WelcomeDmSequence {
+  enabled: boolean;
+  steps: string[];
+}
+
 /** Welcome message configuration. */
 export interface WelcomeConfig {
   enabled: boolean;
   channelId: string;
   message: string;
   dynamic: WelcomeDynamic;
+  rulesChannel: string | null;
+  verifiedRole: string | null;
+  introChannel: string | null;
+  roleMenu: WelcomeRoleMenu;
+  dmSequence: WelcomeDmSequence;
 }
 
 /** Spam config is a passthrough — shape defined by the bot's spam module. */

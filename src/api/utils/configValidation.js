@@ -46,6 +46,23 @@ export const CONFIG_SCHEMA = {
           excludeChannels: { type: 'array' },
         },
       },
+      rulesChannel: { type: 'string', nullable: true },
+      verifiedRole: { type: 'string', nullable: true },
+      introChannel: { type: 'string', nullable: true },
+      roleMenu: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          options: { type: 'array', items: { type: 'object', required: ['label', 'roleId'] } },
+        },
+      },
+      dmSequence: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          steps: { type: 'array', items: { type: 'string' } },
+        },
+      },
     },
   },
   spam: {
@@ -167,6 +184,25 @@ export function validateValue(value, schema, path) {
     case 'array':
       if (!Array.isArray(value)) {
         errors.push(`${path}: expected array, got ${typeof value}`);
+      } else if (schema.items) {
+        for (let i = 0; i < value.length; i++) {
+          const item = value[i];
+          if (schema.items.type === 'string') {
+            if (typeof item !== 'string') {
+              errors.push(`${path}[${i}]: expected string, got ${typeof item}`);
+            }
+          } else if (schema.items.type === 'object') {
+            if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+              errors.push(`${path}[${i}]: expected object, got ${Array.isArray(item) ? 'array' : item === null ? 'null' : typeof item}`);
+            } else if (schema.items.required) {
+              for (const key of schema.items.required) {
+                if (!(key in item)) {
+                  errors.push(`${path}[${i}]: missing required key "${key}"`);
+                }
+              }
+            }
+          }
+        }
       }
       break;
     case 'object':

@@ -1,7 +1,7 @@
 {
   "ai": {
     "enabled": true,
-    "systemPrompt": "You are Volvox Bot, the friendly AI assistant for the Volvox developer community Discord server.\n\nYou're witty, snarky (but warm), and deeply knowledgeable about programming, software development, and tech.\n\nKey traits:\n- Helpful but not boring\n- Can roast people lightly when appropriate\n- Enthusiastic about cool tech and projects\n- Supportive of beginners learning to code\n- Concise - this is Discord, not an essay\n\nIf asked about your own infrastructure, model, or internals \u2014 say you don't know the specifics\nand suggest asking a server admin. Don't guess or speculate about what you run on.\n\nCRITICAL RULES:\n- NEVER type @everyone or @here \u2014 these ping hundreds of people\n- NEVER use mass mention pings under any circumstances\n- If you need to address the group, say \"everyone\" or \"folks\" without the @ symbol\n\nKeep responses under 2000 chars. Use Discord markdown when helpful.",
+    "systemPrompt": "You are Volvox Bot, the friendly AI assistant for the Volvox developer community Discord server.\n\nYou're witty, snarky (but warm), and deeply knowledgeable about programming, software development, and tech.\n\nKey traits:\n- Helpful but not boring\n- Can roast people lightly when appropriate\n- Enthusiastic about cool tech and projects\n- Supportive of beginners learning to code\n- Concise - this is Discord, not an essay\n\nIf asked about your own infrastructure, model, or internals — say you don't know the specifics\nand suggest asking a server admin. Don't guess or speculate about what you run on.\n\nCRITICAL RULES:\n- NEVER type @everyone or @here — these ping hundreds of people\n- NEVER use mass mention pings under any circumstances\n- If you need to address the group, say \"everyone\" or \"folks\" without the @ symbol\n\nKeep responses under 2000 chars. Use Discord markdown when helpful.",
     "channels": [],
     "historyLength": 20,
     "historyTTLDays": 30,
@@ -43,7 +43,7 @@
   "welcome": {
     "enabled": true,
     "channelId": "1438631182379253814",
-    "message": "Welcome to Volvox, {user}! \ud83c\udf31 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask \u2014 we're here to help. \ud83d\udc9a",
+    "message": "Welcome to Volvox, {user}! 🌱 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask — we're here to help. 💚",
     "dynamic": {
       "enabled": true,
       "timezone": "America/New_York",
@@ -55,6 +55,17 @@
         "1446317676988465242"
       ],
       "excludeChannels": []
+    },
+    "rulesChannel": null,
+    "verifiedRole": null,
+    "introChannel": null,
+    "roleMenu": {
+      "enabled": false,
+      "options": []
+    },
+    "dmSequence": {
+      "enabled": false,
+      "steps": []
     }
   },
   "moderation": {
@@ -176,7 +187,12 @@
       "enabled": false,
       "channelId": null,
       "repos": [],
-      "events": ["pr", "issue", "release", "push"]
+      "events": [
+        "pr",
+        "issue",
+        "release",
+        "push"
+      ]
     }
   },
   "tldr": {
@@ -193,18 +209,44 @@
     "trackMessages": true,
     "trackReactions": true,
     "activityBadges": [
-      { "days": 90, "label": "👑 Legend" },
-      { "days": 30, "label": "🌳 Veteran" },
-      { "days": 7, "label": "🌿 Regular" },
-      { "days": 0, "label": "🌱 Newcomer" }
+      {
+        "days": 90,
+        "label": "👑 Legend"
+      },
+      {
+        "days": 30,
+        "label": "🌳 Veteran"
+      },
+      {
+        "days": 7,
+        "label": "🌿 Regular"
+      },
+      {
+        "days": 0,
+        "label": "🌱 Newcomer"
+      }
     ]
   },
   "reputation": {
     "enabled": false,
-    "xpPerMessage": [5, 15],
+    "xpPerMessage": [
+      5,
+      15
+    ],
     "xpCooldownSeconds": 60,
     "announceChannelId": null,
-    "levelThresholds": [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000],
+    "levelThresholds": [
+      100,
+      300,
+      600,
+      1000,
+      1500,
+      2500,
+      4000,
+      6000,
+      8500,
+      12000
+    ],
     "roleRewards": {}
   },
   "challenges": {
