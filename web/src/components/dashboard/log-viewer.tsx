@@ -67,62 +67,64 @@ function LogRow({
 
   const hasMeta = entry.meta && Object.keys(entry.meta).length > 0;
 
-  const handleKeyDown = hasMeta
-    ? (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onToggle();
-        }
-      }
-    : undefined;
+  const rowClassName = cn(
+    'group border-b border-gray-800/50 px-3 py-1 font-mono text-xs transition-colors',
+    level.row,
+  );
 
-  return (
-    <div
-      className={cn(
-        'group border-b border-gray-800/50 px-3 py-1 font-mono text-xs transition-colors',
-        level.row,
-        hasMeta && 'cursor-pointer',
+  /** Shared main-row content rendered in both branches */
+  const mainRow = (
+    <div className="flex items-start gap-2 min-w-0">
+      {/* Timestamp */}
+      <span className="shrink-0 text-gray-600 select-none">{time}</span>
+
+      {/* Level badge */}
+      <span className={cn('shrink-0 min-w-[3rem] select-none', level.badge)}>{level.label}</span>
+
+      {/* Module */}
+      {entry.module && (
+        <span className="shrink-0 text-purple-400 max-w-[120px] truncate">[{entry.module}]</span>
       )}
-      role={hasMeta ? 'button' : undefined}
-      tabIndex={hasMeta ? 0 : undefined}
-      aria-expanded={hasMeta ? isExpanded : undefined}
-      onClick={hasMeta ? onToggle : undefined}
-      onKeyDown={handleKeyDown}
-    >
-      {/* Main row */}
-      <div className="flex items-start gap-2 min-w-0">
-        {/* Timestamp */}
-        <span className="shrink-0 text-gray-600 select-none">{time}</span>
 
-        {/* Level badge */}
-        <span className={cn('shrink-0 min-w-[3rem] select-none', level.badge)}>{level.label}</span>
+      {/* Message */}
+      <span className="text-gray-200 break-words min-w-0">{entry.message}</span>
 
-        {/* Module */}
-        {entry.module && (
-          <span className="shrink-0 text-purple-400 max-w-[120px] truncate">[{entry.module}]</span>
-        )}
-
-        {/* Message */}
-        <span className="text-gray-200 break-words min-w-0">{entry.message}</span>
-
-        {/* Expand indicator */}
-        {hasMeta && (
-          <span className="ml-auto shrink-0 text-gray-600 select-none">
-            {isExpanded ? '▲' : '▼'}
-          </span>
-        )}
-      </div>
-
-      {/* Expanded metadata */}
-      {isExpanded && hasMeta && (
-        <div className="mt-1 ml-14 rounded bg-gray-900 p-2 text-gray-400">
-          <pre className="whitespace-pre-wrap break-words text-[11px]">
-            {JSON.stringify(entry.meta, null, 2)}
-          </pre>
-        </div>
+      {/* Expand indicator */}
+      {hasMeta && (
+        <span className="ml-auto shrink-0 text-gray-600 select-none">{isExpanded ? '▲' : '▼'}</span>
       )}
     </div>
   );
+
+  if (hasMeta) {
+    return (
+      <button
+        type="button"
+        className={cn(rowClassName, 'cursor-pointer w-full text-left')}
+        aria-expanded={isExpanded}
+        onClick={onToggle}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        {mainRow}
+
+        {/* Expanded metadata */}
+        {isExpanded && (
+          <div className="mt-1 ml-14 rounded bg-gray-900 p-2 text-gray-400">
+            <pre className="whitespace-pre-wrap break-words text-[11px]">
+              {JSON.stringify(entry.meta, null, 2)}
+            </pre>
+          </div>
+        )}
+      </button>
+    );
+  }
+
+  return <div className={rowClassName}>{mainRow}</div>;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -148,7 +150,7 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
 
   // Auto-scroll to bottom when new logs arrive (unless paused/user scrolled)
   useEffect(() => {
-    if (paused || userScrolledRef.current) return;
+    if (!logs.length || paused || userScrolledRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [logs, paused]);
 
