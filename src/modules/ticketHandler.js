@@ -164,7 +164,10 @@ export async function openTicket(guild, user, topic, channelId = null) {
     if (ticketConfig.category) {
       const resolved = guild.channels.cache.get(ticketConfig.category);
       // CategoryChannel can't create threads — only use text/news channels
-      if (resolved && (resolved.type === ChannelType.GuildText || resolved.type === ChannelType.GuildAnnouncement)) {
+      if (
+        resolved &&
+        (resolved.type === ChannelType.GuildText || resolved.type === ChannelType.GuildAnnouncement)
+      ) {
         parentChannel = resolved;
       }
     }
@@ -175,7 +178,8 @@ export async function openTicket(guild, user, topic, channelId = null) {
       parentChannel = guild.channels.cache.find(
         (ch) =>
           ch.type === ChannelType.GuildText &&
-          guild.members.me && ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
+          guild.members.me &&
+          ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
       );
     }
 

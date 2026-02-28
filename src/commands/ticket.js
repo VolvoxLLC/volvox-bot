@@ -78,10 +78,10 @@ async function isTicketContext(channel) {
   // Verify this channel/thread is actually an open ticket
   const pool = getPool();
   if (!pool) return false;
-  const { rows } = await pool.query(
-    'SELECT 1 FROM tickets WHERE thread_id = $1 AND status = $2',
-    [channel.id, 'open'],
-  );
+  const { rows } = await pool.query('SELECT 1 FROM tickets WHERE thread_id = $1 AND status = $2', [
+    channel.id,
+    'open',
+  ]);
   return rows.length > 0;
 }
 
