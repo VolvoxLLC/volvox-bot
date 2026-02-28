@@ -372,6 +372,10 @@ describe('ai module - uncovered branch coverage', () => {
 
       startConversationCleanup();
       await new Promise((r) => setTimeout(r, 20));
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM conversations'),
+        expect.any(Array),
+      );
       stopConversationCleanup();
     });
   });
