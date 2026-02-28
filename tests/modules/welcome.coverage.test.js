@@ -109,6 +109,7 @@ describe('welcome module coverage', () => {
       const config = { welcome: { enabled: true, channelId: 'ch1' } };
 
       await sendWelcomeMessage(member, client, config);
+      expect(client.channels.fetch).toHaveBeenCalledWith('ch1');
     });
   });
 
