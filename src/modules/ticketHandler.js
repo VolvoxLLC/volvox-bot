@@ -84,7 +84,7 @@ function buildChannelPermissions(guild, userId, supportRoleId) {
     },
     // Allow bot
     {
-      id: guild.members.me.id,
+      id: guild.members.me?.id ?? guild.client.user.id,
       type: OverwriteType.Member,
       allow: [
         PermissionFlagsBits.ViewChannel,

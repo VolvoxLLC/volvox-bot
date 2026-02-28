@@ -90,10 +90,15 @@ router.get(
     const pool = getDbPool(req);
     if (!pool) return res.status(503).json({ error: 'Database not available' });
 
+    const parsedId = Number.parseInt(ticketId, 10);
+    if (Number.isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid ticket ID' });
+    }
+
     try {
       const { rows } = await pool.query('SELECT * FROM tickets WHERE guild_id = $1 AND id = $2', [
         guildId,
-        Number.parseInt(ticketId, 10),
+        parsedId,
       ]);
 
       if (rows.length === 0) {

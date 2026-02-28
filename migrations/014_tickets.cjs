@@ -37,6 +37,11 @@ async function up(pool) {
     CREATE INDEX IF NOT EXISTS idx_tickets_user
       ON tickets(guild_id, user_id);
   `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_tickets_thread_status
+      ON tickets(thread_id, status);
+  `);
 }
 
 module.exports = { up };
