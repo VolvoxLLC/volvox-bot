@@ -471,6 +471,15 @@ describe('members routes', () => {
       expect(res.body.adjustment).toBe(-200);
     });
 
+    it('should reject fractional XP amount', async () => {
+      const res = await authed(
+        request(app).post('/api/v1/guilds/guild1/members/user1/xp').send({ amount: 1.5 }),
+      );
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('amount must be an integer');
+    });
+
     it('should reject when amount is zero', async () => {
       const res = await authed(
         request(app).post('/api/v1/guilds/guild1/members/user1/xp').send({ amount: 0 }),
