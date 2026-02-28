@@ -387,8 +387,8 @@ export default async function CommunityPage({ params }: PageProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {stats.topContributors.map((contributor, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
+                    {stats.topContributors.map((contributor) => (
+                      <div key={contributor.userId} className="flex items-center gap-3">
                         <MemberAvatar
                           avatar={contributor.avatar}
                           name={contributor.displayName ?? contributor.username}
