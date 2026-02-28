@@ -117,6 +117,7 @@ router.get('/:guildId/leaderboard', async (req, res) => {
         }
 
         return {
+          userId: row.user_id,
           username,
           displayName,
           avatar,
