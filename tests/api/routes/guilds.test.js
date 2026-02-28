@@ -442,9 +442,14 @@ describe('guilds routes', () => {
 
   describe('PATCH /:id/config', () => {
     it('should update config value', async () => {
-      // auditLogMiddleware calls getConfig() once (enabled check) before the route handler.
-      // Provide a pass-through value for that call so the route handler gets the intended mock.
+      // auditLogMiddleware now calls getConfig() for enabled check, before snapshot,
+      // and after snapshot; provide pass-through values so the route handler gets
+      // the intended guild-scoped config response.
       getConfig.mockReturnValueOnce({});
+      getConfig.mockReturnValueOnce({ ai: { enabled: true, systemPrompt: 'claude-3', historyLength: 20 } });
+      getConfig.mockReturnValueOnce({
+        ai: { enabled: true, systemPrompt: 'claude-4', historyLength: 20 },
+      });
       getConfig.mockReturnValueOnce({
         ai: { enabled: true, systemPrompt: 'claude-4', historyLength: 20 },
       });
