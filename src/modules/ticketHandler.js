@@ -73,7 +73,9 @@ export async function openTicket(guild, user, topic, channelId = null) {
   );
 
   if (openTickets[0].count >= ticketConfig.maxOpenPerUser) {
-    throw new Error(`You already have ${ticketConfig.maxOpenPerUser} open tickets. Please close one before opening another.`);
+    throw new Error(
+      `You already have ${ticketConfig.maxOpenPerUser} open tickets. Please close one before opening another.`,
+    );
   }
 
   // Find the channel to create the thread in
@@ -87,7 +89,9 @@ export async function openTicket(guild, user, topic, channelId = null) {
   if (!parentChannel) {
     // Fallback to the first text channel
     parentChannel = guild.channels.cache.find(
-      (ch) => ch.type === ChannelType.GuildText && ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
+      (ch) =>
+        ch.type === ChannelType.GuildText &&
+        ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.CreatePrivateThreads),
     );
   }
 
@@ -171,10 +175,10 @@ export async function closeTicket(thread, closer, reason) {
   if (!pool) throw new Error('Database not available');
 
   // Find the ticket by thread_id
-  const { rows } = await pool.query(
-    'SELECT * FROM tickets WHERE thread_id = $1 AND status = $2',
-    [thread.id, 'open'],
-  );
+  const { rows } = await pool.query('SELECT * FROM tickets WHERE thread_id = $1 AND status = $2', [
+    thread.id,
+    'open',
+  ]);
 
   if (rows.length === 0) {
     throw new Error('No open ticket found for this thread.');
@@ -289,10 +293,9 @@ export async function checkAutoClose(client) {
   if (!pool) return;
 
   // Find all open tickets
-  const { rows: openTickets } = await pool.query(
-    'SELECT * FROM tickets WHERE status = $1',
-    ['open'],
-  );
+  const { rows: openTickets } = await pool.query('SELECT * FROM tickets WHERE status = $1', [
+    'open',
+  ]);
 
   for (const ticket of openTickets) {
     try {
@@ -319,12 +322,9 @@ export async function checkAutoClose(client) {
       // Get the last message timestamp in the thread
       const lastMessages = await thread.messages.fetch({ limit: 1 });
       const lastMessage = lastMessages.size > 0 ? lastMessages.values().next().value : null;
-      const lastActivity = lastMessage
-        ? lastMessage.createdAt
-        : new Date(ticket.created_at);
+      const lastActivity = lastMessage ? lastMessage.createdAt : new Date(ticket.created_at);
 
-      const hoursSinceActivity =
-        (Date.now() - lastActivity.getTime()) / (1000 * 60 * 60);
+      const hoursSinceActivity = (Date.now() - lastActivity.getTime()) / (1000 * 60 * 60);
 
       const totalCloseThreshold = ticketConfig.autoCloseHours + AUTO_CLOSE_WARNING_HOURS;
 

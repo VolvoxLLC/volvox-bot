@@ -22,8 +22,8 @@ import { handleXpGain } from './reputation.js';
 import { handleReviewClaim } from './reviewHandler.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
-import { accumulateMessage, evaluateNow } from './triage.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
+import { accumulateMessage, evaluateNow } from './triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 
 /** @type {boolean} Guard against duplicate process-level handler registration */
@@ -597,7 +597,9 @@ export function registerTicketOpenButtonHandler(client) {
     }
 
     // Show a modal to collect the topic
-    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
+    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import(
+      'discord.js'
+    );
 
     const modal = new ModalBuilder()
       .setCustomId('ticket_open_modal')

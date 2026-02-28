@@ -280,8 +280,8 @@ export type ConfigSection =
   | 'engagement'
   | 'github'
   | 'review'
-  | 'challenges';
-  | 'tickets'
+  | 'challenges'
+  | 'tickets';
 
 /**
  * @deprecated Use {@link ConfigSection} directly.

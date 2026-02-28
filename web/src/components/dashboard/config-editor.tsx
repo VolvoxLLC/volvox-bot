@@ -1685,7 +1685,6 @@ export function ConfigEditor() {
         </CardContent>
       </Card>
 
-
       {/* ═══ Tickets ═══ */}
       <Card>
         <CardContent className="space-y-4 pt-6">

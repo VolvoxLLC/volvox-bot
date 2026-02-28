@@ -43,9 +43,7 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('add')
       .setDescription('Add a user to the current ticket')
-      .addUserOption((opt) =>
-        opt.setName('user').setDescription('User to add').setRequired(true),
-      ),
+      .addUserOption((opt) => opt.setName('user').setDescription('User to add').setRequired(true)),
   )
   .addSubcommand((sub) =>
     sub
@@ -60,10 +58,7 @@ export const data = new SlashCommandBuilder()
       .setName('panel')
       .setDescription('Post a persistent ticket panel (Admin only)')
       .addChannelOption((opt) =>
-        opt
-          .setName('channel')
-          .setDescription('Channel to post the panel in')
-          .setRequired(false),
+        opt.setName('channel').setDescription('Channel to post the panel in').setRequired(false),
       ),
   );
 
@@ -229,8 +224,7 @@ async function handlePanel(interaction, guildConfig) {
     return;
   }
 
-  const targetChannel =
-    interaction.options.getChannel('channel') || interaction.channel;
+  const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
   const { embed, row } = buildTicketPanel();
 

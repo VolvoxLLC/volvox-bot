@@ -124,9 +124,7 @@ export default function TicketsPage() {
     if (!guildId) return;
     void (async () => {
       try {
-        const res = await fetch(
-          `/api/guilds/${encodeURIComponent(guildId)}/tickets/stats`,
-        );
+        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/tickets/stats`);
         if (res.ok) {
           const data = (await res.json()) as TicketStats;
           setStats(data);
@@ -209,9 +207,7 @@ export default function TicketsPage() {
   const handleRowClick = useCallback(
     (ticketId: number) => {
       if (!guildId) return;
-      router.push(
-        `/dashboard/tickets/${ticketId}?guildId=${encodeURIComponent(guildId)}`,
-      );
+      router.push(`/dashboard/tickets/${ticketId}?guildId=${encodeURIComponent(guildId)}`);
     },
     [router, guildId],
   );
@@ -360,7 +356,9 @@ export default function TicketsPage() {
                     >
                       <TableCell className="font-mono text-sm">#{ticket.id}</TableCell>
                       <TableCell className="max-w-xs truncate">
-                        {ticket.topic || <span className="text-muted-foreground italic">No topic</span>}
+                        {ticket.topic || (
+                          <span className="text-muted-foreground italic">No topic</span>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-sm">{ticket.user_id}</TableCell>
                       <TableCell>

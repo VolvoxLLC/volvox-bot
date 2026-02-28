@@ -15,7 +15,6 @@ const router = Router();
 /** Rate limiter for ticket API endpoints — 30 req/min per IP. */
 const ticketRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
 
-
 /**
  * Helper to get the database pool from app.locals.
  *
@@ -32,70 +31,82 @@ function getDbPool(req) {
  * GET /:id/tickets/stats — Ticket statistics for a guild.
  * Returns open count, avg resolution time, and tickets this week.
  */
-router.get('/:id/tickets/stats', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
-  const { id: guildId } = req.params;
-  const pool = getDbPool(req);
-  if (!pool) return res.status(503).json({ error: 'Database not available' });
+router.get(
+  '/:id/tickets/stats',
+  ticketRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    const { id: guildId } = req.params;
+    const pool = getDbPool(req);
+    if (!pool) return res.status(503).json({ error: 'Database not available' });
 
-  try {
-    const [openResult, avgResult, weekResult] = await Promise.all([
-      pool.query(
-        'SELECT COUNT(*)::int AS count FROM tickets WHERE guild_id = $1 AND status = $2',
-        [guildId, 'open'],
-      ),
-      pool.query(
-        `SELECT COALESCE(
+    try {
+      const [openResult, avgResult, weekResult] = await Promise.all([
+        pool.query(
+          'SELECT COUNT(*)::int AS count FROM tickets WHERE guild_id = $1 AND status = $2',
+          [guildId, 'open'],
+        ),
+        pool.query(
+          `SELECT COALESCE(
           EXTRACT(EPOCH FROM AVG(closed_at - created_at))::int, 0
         ) AS avg_seconds
         FROM tickets
         WHERE guild_id = $1 AND status = 'closed' AND closed_at IS NOT NULL`,
-        [guildId],
-      ),
-      pool.query(
-        `SELECT COUNT(*)::int AS count
+          [guildId],
+        ),
+        pool.query(
+          `SELECT COUNT(*)::int AS count
          FROM tickets
          WHERE guild_id = $1 AND created_at >= NOW() - INTERVAL '7 days'`,
-        [guildId],
-      ),
-    ]);
+          [guildId],
+        ),
+      ]);
 
-    res.json({
-      openCount: openResult.rows[0].count,
-      avgResolutionSeconds: avgResult.rows[0].avg_seconds,
-      ticketsThisWeek: weekResult.rows[0].count,
-    });
-  } catch (err) {
-    logError('Failed to fetch ticket stats', { guildId, error: err.message });
-    res.status(500).json({ error: 'Failed to fetch ticket stats' });
-  }
-});
+      res.json({
+        openCount: openResult.rows[0].count,
+        avgResolutionSeconds: avgResult.rows[0].avg_seconds,
+        ticketsThisWeek: weekResult.rows[0].count,
+      });
+    } catch (err) {
+      logError('Failed to fetch ticket stats', { guildId, error: err.message });
+      res.status(500).json({ error: 'Failed to fetch ticket stats' });
+    }
+  },
+);
 
 // ─── GET /:id/tickets/:ticketId ───────────────────────────────────────────────
 
 /**
  * GET /:id/tickets/:ticketId — Ticket detail with transcript.
  */
-router.get('/:id/tickets/:ticketId', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
-  const { id: guildId, ticketId } = req.params;
-  const pool = getDbPool(req);
-  if (!pool) return res.status(503).json({ error: 'Database not available' });
+router.get(
+  '/:id/tickets/:ticketId',
+  ticketRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    const { id: guildId, ticketId } = req.params;
+    const pool = getDbPool(req);
+    if (!pool) return res.status(503).json({ error: 'Database not available' });
 
-  try {
-    const { rows } = await pool.query(
-      'SELECT * FROM tickets WHERE guild_id = $1 AND id = $2',
-      [guildId, Number.parseInt(ticketId, 10)],
-    );
+    try {
+      const { rows } = await pool.query('SELECT * FROM tickets WHERE guild_id = $1 AND id = $2', [
+        guildId,
+        Number.parseInt(ticketId, 10),
+      ]);
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Ticket not found' });
+      }
+
+      res.json(rows[0]);
+    } catch (err) {
+      logError('Failed to fetch ticket detail', { guildId, ticketId, error: err.message });
+      res.status(500).json({ error: 'Failed to fetch ticket' });
     }
-
-    res.json(rows[0]);
-  } catch (err) {
-    logError('Failed to fetch ticket detail', { guildId, ticketId, error: err.message });
-    res.status(500).json({ error: 'Failed to fetch ticket' });
-  }
-});
+  },
+);
 
 // ─── GET /:id/tickets ─────────────────────────────────────────────────────────
 

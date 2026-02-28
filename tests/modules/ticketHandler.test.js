@@ -38,8 +38,8 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { getConfig } from '../../src/modules/config.js';
 import { getPool } from '../../src/db.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   addMember,
   buildTicketPanel,
@@ -166,7 +166,9 @@ describe('ticketHandler', () => {
       mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
       // Insert query
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 1, guild_id: 'guild1', user_id: 'user1', topic: 'test', thread_id: 'thread1' }],
+        rows: [
+          { id: 1, guild_id: 'guild1', user_id: 'user1', topic: 'test', thread_id: 'thread1' },
+        ],
       });
 
       const result = await openTicket(guild, user, 'test', 'ch1');
@@ -203,7 +205,9 @@ describe('ticketHandler', () => {
 
       mockQuery.mockResolvedValueOnce({ rows: [{ count: 0 }] });
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 1, guild_id: 'guild1', user_id: 'user1', topic: 'test', thread_id: 'thread1' }],
+        rows: [
+          { id: 1, guild_id: 'guild1', user_id: 'user1', topic: 'test', thread_id: 'thread1' },
+        ],
       });
 
       await openTicket(guild, user, 'test', 'ch1');
@@ -233,16 +237,22 @@ describe('ticketHandler', () => {
     it('should close a ticket and save transcript', async () => {
       const closer = createMockUser({ id: 'closer1', tag: 'Closer#1234' });
       const messages = new Map([
-        ['msg1', {
-          author: { tag: 'User#1234', id: 'user1' },
-          content: 'Hello',
-          createdAt: new Date('2024-01-01'),
-        }],
-        ['msg2', {
-          author: { tag: 'Staff#5678', id: 'staff1' },
-          content: 'How can I help?',
-          createdAt: new Date('2024-01-01T00:01:00'),
-        }],
+        [
+          'msg1',
+          {
+            author: { tag: 'User#1234', id: 'user1' },
+            content: 'Hello',
+            createdAt: new Date('2024-01-01'),
+          },
+        ],
+        [
+          'msg2',
+          {
+            author: { tag: 'Staff#5678', id: 'staff1' },
+            content: 'How can I help?',
+            createdAt: new Date('2024-01-01T00:01:00'),
+          },
+        ],
       ]);
 
       const transcriptChannel = {
@@ -259,22 +269,26 @@ describe('ticketHandler', () => {
 
       // SELECT ticket
       mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 1,
-          guild_id: 'guild1',
-          user_id: 'user1',
-          topic: 'test',
-          thread_id: 'thread1',
-        }],
+        rows: [
+          {
+            id: 1,
+            guild_id: 'guild1',
+            user_id: 'user1',
+            topic: 'test',
+            thread_id: 'thread1',
+          },
+        ],
       });
       // UPDATE ticket
       mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 1,
-          status: 'closed',
-          closed_by: 'closer1',
-          close_reason: 'Resolved',
-        }],
+        rows: [
+          {
+            id: 1,
+            status: 'closed',
+            closed_by: 'closer1',
+            close_reason: 'Resolved',
+          },
+        ],
       });
 
       const result = await closeTicket(thread, closer, 'Resolved');
@@ -294,9 +308,7 @@ describe('ticketHandler', () => {
 
       mockQuery.mockResolvedValueOnce({ rows: [] });
 
-      await expect(closeTicket(thread, closer, 'Done')).rejects.toThrow(
-        'No open ticket found',
-      );
+      await expect(closeTicket(thread, closer, 'Done')).rejects.toThrow('No open ticket found');
     });
 
     it('should archive the thread after closing', async () => {
@@ -370,7 +382,9 @@ describe('ticketHandler', () => {
       getConfig.mockReturnValue({ tickets: { enabled: false } });
 
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 1, guild_id: 'guild1', thread_id: 'thread1', created_at: new Date().toISOString() }],
+        rows: [
+          { id: 1, guild_id: 'guild1', thread_id: 'thread1', created_at: new Date().toISOString() },
+        ],
       });
 
       const client = {
@@ -392,12 +406,14 @@ describe('ticketHandler', () => {
       const oldDate = new Date(Date.now() - 80 * 60 * 60 * 1000); // 80 hours ago
 
       mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 1,
-          guild_id: 'guild1',
-          thread_id: 'thread1',
-          created_at: oldDate.toISOString(),
-        }],
+        rows: [
+          {
+            id: 1,
+            guild_id: 'guild1',
+            thread_id: 'thread1',
+            created_at: oldDate.toISOString(),
+          },
+        ],
       });
 
       const thread = createMockThread({
@@ -441,12 +457,14 @@ describe('ticketHandler', () => {
       const almostOldDate = new Date(Date.now() - 50 * 60 * 60 * 1000); // 50 hours ago
 
       mockQuery.mockResolvedValueOnce({
-        rows: [{
-          id: 2,
-          guild_id: 'guild1',
-          thread_id: 'thread2',
-          created_at: almostOldDate.toISOString(),
-        }],
+        rows: [
+          {
+            id: 2,
+            guild_id: 'guild1',
+            thread_id: 'thread2',
+            created_at: almostOldDate.toISOString(),
+          },
+        ],
       });
 
       const lastMsg = {
@@ -483,7 +501,14 @@ describe('ticketHandler', () => {
       });
 
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 3, guild_id: 'guild1', thread_id: 'thread-gone', created_at: new Date().toISOString() }],
+        rows: [
+          {
+            id: 3,
+            guild_id: 'guild1',
+            thread_id: 'thread-gone',
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       const guild = createMockGuild();
@@ -521,7 +546,14 @@ describe('ticketHandler', () => {
       });
 
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 4, guild_id: 'unknown-guild', thread_id: 'thread4', created_at: new Date().toISOString() }],
+        rows: [
+          {
+            id: 4,
+            guild_id: 'unknown-guild',
+            thread_id: 'thread4',
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       const client = {
