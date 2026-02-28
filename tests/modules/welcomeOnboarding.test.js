@@ -82,6 +82,7 @@ describe('welcomeOnboarding module', () => {
       },
       reply: vi.fn(async () => {}),
       deferReply: vi.fn(async () => {}),
+      editReply: vi.fn(async () => {}),
       deferred: false,
       replied: false,
     };
@@ -129,6 +130,7 @@ describe('welcomeOnboarding module', () => {
       },
       reply: vi.fn(async () => {}),
       deferReply: vi.fn(async () => {}),
+      editReply: vi.fn(async () => {}),
       deferred: false,
       replied: false,
     };
