@@ -81,7 +81,7 @@ interface MemberCase {
  */
 
 function roleColorStyle(hexColor: string): string {
-  if (!hexColor || hexColor === '#000000') return 'hsl(var(--muted-foreground))';
+  if (!hexColor || hexColor === '#000000') return '#6b7280';
   return hexColor;
 }
 
