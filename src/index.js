@@ -232,7 +232,12 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     await command.execute(interaction);
-    info('Command executed', { command: commandName, user: interaction.user.tag });
+    info('Command executed', {
+      command: commandName,
+      user: interaction.user.tag,
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+    });
   } catch (err) {
     error('Command error', {
       command: commandName,

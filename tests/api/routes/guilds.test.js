@@ -767,7 +767,8 @@ describe('guilds routes', () => {
               cost_usd: '0.0456',
             },
           ],
-        });
+        })
+        .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -789,6 +790,8 @@ describe('guilds routes', () => {
         messages: 80,
       });
       expect(res.body.messageVolume).toHaveLength(1);
+      expect(res.body.topChannels).toEqual(res.body.channelActivity);
+      expect(res.body.commandUsage).toEqual({ source: 'logs', items: [] });
       expect(res.body.heatmap).toHaveLength(1);
     });
 
@@ -810,6 +813,7 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
@@ -827,6 +831,7 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
@@ -841,6 +846,70 @@ describe('guilds routes', () => {
       ).toBe(true);
     });
 
+    it('should return comparison KPIs and previous AI cost when compare mode is enabled', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({
+          rows: [{ total_messages: 12, ai_requests: 6, active_users: 4 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ total_messages: 8, ai_requests: 4, active_users: 3 }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 1 }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              model: 'claude',
+              requests: 6,
+              prompt_tokens: 12,
+              completion_tokens: 3,
+              cost_usd: '0.0300',
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [{ cost_usd: '0.0200' }] })
+        .mockResolvedValueOnce({ rows: [{ command_name: 'help', uses: 5 }] });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week&compare=1&channelId=ch1')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.range.compare).toBe(true);
+      expect(res.body.comparison).toBeTruthy();
+      expect(res.body.comparison.kpis.totalMessages).toBe(8);
+      expect(res.body.comparison.kpis.aiRequests).toBe(4);
+      expect(res.body.comparison.kpis.activeUsers).toBe(3);
+      expect(res.body.comparison.kpis.aiCostUsd).toBeCloseTo(0.02, 6);
+      expect(res.body.commandUsage).toEqual({
+        source: 'logs',
+        items: [{ command: 'help', uses: 5 }],
+      });
+
+      const comparisonKpiQuery = mockPool.query.mock.calls[1]?.[0];
+      expect(comparisonKpiQuery).toContain('channel_id = $4');
+    });
+
+    it('should mark command usage source unavailable when command query fails', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockRejectedValueOnce(new Error('command logs missing'));
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.commandUsage).toEqual({ source: 'unavailable', items: [] });
+    });
+
     it('should gracefully degrade when logs query fails', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
@@ -848,7 +917,8 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ count: 0 }] })
-        .mockRejectedValueOnce(new Error('logs relation missing'));
+        .mockRejectedValueOnce(new Error('logs relation missing'))
+        .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')

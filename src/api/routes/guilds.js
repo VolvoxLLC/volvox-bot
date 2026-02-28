@@ -141,6 +141,19 @@ function parseAnalyticsInterval(query, from, to) {
 }
 
 /**
+ * Parse optional comparison-mode query flag.
+ * Accepts compare=1|true|yes|on.
+ *
+ * @param {Object} query - Express req.query
+ * @returns {boolean}
+ */
+function parseComparisonMode(query) {
+  if (typeof query.compare !== 'string') return false;
+  const value = query.compare.trim().toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on';
+}
+
+/**
  * Human-friendly chart label for a time bucket.
  * @param {Date} bucket
  * @param {'hour'|'day'} interval
@@ -573,6 +586,11 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
   const { from, to, range } = rangeConfig;
   const interval = parseAnalyticsInterval(req.query, from, to);
+  const compareMode = parseComparisonMode(req.query);
+
+  const rangeDurationMs = to.getTime() - from.getTime();
+  const comparisonFrom = compareMode ? new Date(from.getTime() - rangeDurationMs) : null;
+  const comparisonTo = compareMode ? new Date(to.getTime() - rangeDurationMs) : null;
 
   const channelId = typeof req.query.channelId === 'string' ? req.query.channelId.trim() : '';
   const activeChannelFilter = channelId.length > 0 ? channelId : null;
@@ -586,6 +604,22 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   }
 
   const conversationWhere = conversationWhereParts.join(' AND ');
+
+  const comparisonConversationValues =
+    comparisonFrom && comparisonTo
+      ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
+      : null;
+  const comparisonConversationWhereParts = comparisonConversationValues
+    ? ['guild_id = $1', 'created_at >= $2', 'created_at <= $3']
+    : [];
+
+  if (activeChannelFilter && comparisonConversationValues && comparisonConversationWhereParts) {
+    comparisonConversationValues.push(activeChannelFilter);
+    comparisonConversationWhereParts.push(`channel_id = $${comparisonConversationValues.length}`);
+  }
+
+  const comparisonConversationWhere = comparisonConversationWhereParts.join(' AND ');
+
   const ALLOWED_INTERVALS = new Set(['hour', 'day']);
   if (!ALLOWED_INTERVALS.has(interval)) {
     return res.status(400).json({ error: 'Invalid interval parameter' });
@@ -608,20 +642,70 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
   const logsWhere = logsWhereParts.join(' AND ');
 
+  const comparisonLogsValues =
+    comparisonFrom && comparisonTo
+      ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
+      : null;
+  const comparisonLogsWhereParts = comparisonLogsValues
+    ? ["message = 'AI usage'", "metadata->>'guildId' = $1", 'timestamp >= $2', 'timestamp <= $3']
+    : [];
+
+  if (activeChannelFilter && comparisonLogsValues && comparisonLogsWhereParts) {
+    comparisonLogsValues.push(activeChannelFilter);
+    comparisonLogsWhereParts.push(`metadata->>'channelId' = $${comparisonLogsValues.length}`);
+  }
+
+  const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
+
+  const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
+  const commandUsageWhereParts = [
+    "message = 'Command executed'",
+    "metadata->>'guildId' = $1",
+    'timestamp >= $2',
+    'timestamp <= $3',
+  ];
+
+  if (activeChannelFilter) {
+    commandUsageValues.push(activeChannelFilter);
+    commandUsageWhereParts.push(`metadata->>'channelId' = $${commandUsageValues.length}`);
+  }
+
+  const commandUsageWhere = commandUsageWhereParts.join(' AND ');
+
   try {
-    const [kpiResult, volumeResult, channelResult, heatmapResult, activeResult, modelUsageResult] =
-      await Promise.all([
-        dbPool.query(
-          `SELECT
+    const [
+      kpiResult,
+      comparisonKpiResult,
+      volumeResult,
+      channelResult,
+      heatmapResult,
+      activeResult,
+      modelUsageResult,
+      comparisonCostResult,
+      commandUsageResult,
+    ] = await Promise.all([
+      dbPool.query(
+        `SELECT
              COUNT(*)::int AS total_messages,
              COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests,
              COUNT(DISTINCT CASE WHEN role = 'user' THEN username END)::int AS active_users
            FROM conversations
            WHERE ${conversationWhere}`,
-          conversationValues,
-        ),
-        dbPool.query(
-          `SELECT
+        conversationValues,
+      ),
+      comparisonConversationValues
+        ? dbPool.query(
+            `SELECT
+                 COUNT(*)::int AS total_messages,
+                 COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests,
+                 COUNT(DISTINCT CASE WHEN role = 'user' THEN username END)::int AS active_users
+               FROM conversations
+               WHERE ${comparisonConversationWhere}`,
+            comparisonConversationValues,
+          )
+        : Promise.resolve({ rows: [] }),
+      dbPool.query(
+        `SELECT
              ${bucketExpr} AS bucket,
              COUNT(*)::int AS messages,
              COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests
@@ -629,19 +713,19 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
            WHERE ${conversationWhere}
            GROUP BY 1
            ORDER BY 1 ASC`,
-          conversationValues,
-        ),
-        dbPool.query(
-          `SELECT channel_id, COUNT(*)::int AS messages
+        conversationValues,
+      ),
+      dbPool.query(
+        `SELECT channel_id, COUNT(*)::int AS messages
            FROM conversations
            WHERE ${conversationWhere}
            GROUP BY channel_id
            ORDER BY messages DESC
            LIMIT 10`,
-          conversationValues,
-        ),
-        dbPool.query(
-          `SELECT
+        conversationValues,
+      ),
+      dbPool.query(
+        `SELECT
              EXTRACT(DOW FROM created_at)::int AS day_of_week,
              EXTRACT(HOUR FROM created_at)::int AS hour_of_day,
              COUNT(*)::int AS messages
@@ -649,30 +733,30 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
            WHERE ${conversationWhere}
            GROUP BY 1, 2
            ORDER BY 1 ASC, 2 ASC`,
-          conversationValues,
-        ),
-        // Active AI conversations - filter by channel if specified
-        activeChannelFilter
-          ? dbPool.query(
-              `SELECT COUNT(DISTINCT channel_id)::int AS count
+        conversationValues,
+      ),
+      // Active AI conversations - filter by channel if specified
+      activeChannelFilter
+        ? dbPool.query(
+            `SELECT COUNT(DISTINCT channel_id)::int AS count
                FROM conversations
                WHERE guild_id = $1
                  AND channel_id = $2
                  AND role = 'assistant'
                  AND created_at >= NOW() - make_interval(mins => $3)`,
-              [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-            )
-          : dbPool.query(
-              `SELECT COUNT(DISTINCT channel_id)::int AS count
+            [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+          )
+        : dbPool.query(
+            `SELECT COUNT(DISTINCT channel_id)::int AS count
                FROM conversations
                WHERE guild_id = $1
                  AND role = 'assistant'
                  AND created_at >= NOW() - make_interval(mins => $2)`,
-              [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-            ),
-        dbPool
-          .query(
-            `SELECT
+            [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+          ),
+      dbPool
+        .query(
+          `SELECT
                COALESCE(NULLIF(metadata->>'model', ''), 'unknown') AS model,
                COUNT(*)::bigint AS requests,
                SUM(
@@ -700,18 +784,69 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
              WHERE ${logsWhere}
              GROUP BY 1
              ORDER BY requests DESC`,
-            logsValues,
-          )
-          .catch((err) => {
-            warn('Analytics logs query failed; returning empty AI usage dataset', {
-              guild: req.params.id,
-              error: err.message,
-            });
-            return { rows: [] };
-          }),
-      ]);
+          logsValues,
+        )
+        .catch((err) => {
+          warn('Analytics logs query failed; returning empty AI usage dataset', {
+            guild: req.params.id,
+            error: err.message,
+          });
+          return { rows: [] };
+        }),
+      comparisonLogsValues
+        ? dbPool
+            .query(
+              `SELECT
+                   SUM(
+                     CASE
+                       WHEN (metadata->>'estimatedCostUsd') ~ '^[0-9]+(\\.[0-9]+)?$'
+                       THEN (metadata->>'estimatedCostUsd')::numeric
+                       ELSE 0
+                     END
+                   ) AS cost_usd
+                 FROM logs
+                 WHERE ${comparisonLogsWhere}`,
+              comparisonLogsValues,
+            )
+            .catch((err) => {
+              warn('Comparison AI usage query failed; defaulting previous AI cost to 0', {
+                guild: req.params.id,
+                error: err.message,
+              });
+              return { rows: [] };
+            })
+        : Promise.resolve({ rows: [] }),
+      dbPool
+        .query(
+          `SELECT
+               COALESCE(NULLIF(metadata->>'command', ''), 'unknown') AS command_name,
+               COUNT(*)::int AS uses
+             FROM logs
+             WHERE ${commandUsageWhere}
+             GROUP BY 1
+             ORDER BY uses DESC, command_name ASC
+             LIMIT 15`,
+          commandUsageValues,
+        )
+        .then((result) => ({ rows: result.rows, available: true }))
+        .catch((err) => {
+          // TODO(issue-122): move slash-command analytics to a dedicated usage table
+          // so dashboard metrics are not coupled to log transport availability.
+          warn('Command usage query failed; returning empty command usage dataset', {
+            guild: req.params.id,
+            error: err.message,
+          });
+          return { rows: [], available: false };
+        }),
+    ]);
 
     const kpiRow = kpiResult.rows[0] || {
+      total_messages: 0,
+      ai_requests: 0,
+      active_users: 0,
+    };
+
+    const comparisonKpiRow = comparisonKpiResult.rows[0] || {
       total_messages: 0,
       ai_requests: 0,
       active_users: 0,
@@ -756,6 +891,12 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       0,
     );
     const aiCostUsd = usageByModel.reduce((sum, model) => sum + model.costUsd, 0);
+    const comparisonAiCostUsd = Number(comparisonCostResult.rows[0]?.cost_usd || 0);
+
+    const commandUsage = commandUsageResult.rows.map((row) => ({
+      command: row.command_name,
+      uses: Number(row.uses || 0),
+    }));
 
     const fromMs = from.getTime();
     const toMs = to.getTime();
@@ -772,6 +913,18 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       if (!joinedAt) return count;
       return joinedAt >= fromMs && joinedAt <= toMs ? count + 1 : count;
     }, 0);
+
+    const comparisonFromMs = comparisonFrom?.getTime() ?? null;
+    const comparisonToMs = comparisonTo?.getTime() ?? null;
+    const comparisonNewMembers =
+      comparisonFromMs !== null && comparisonToMs !== null
+        ? Array.from(req.guild.members.cache.values()).reduce((count, member) => {
+            if (member.user?.bot) return count;
+            const joinedAt = member.joinedTimestamp;
+            if (!joinedAt) return count;
+            return joinedAt >= comparisonFromMs && joinedAt <= comparisonToMs ? count + 1 : count;
+          }, 0)
+        : 0;
 
     let onlineMemberCount = 0;
     let membersWithPresence = 0;
@@ -791,6 +944,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
         to: to.toISOString(),
         interval,
         channelId: activeChannelFilter,
+        compare: compareMode,
       },
       kpis: {
         totalMessages: Number(kpiRow.total_messages || 0),
@@ -812,6 +966,26 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
         },
       },
       channelActivity,
+      topChannels: channelActivity,
+      commandUsage: {
+        source: commandUsageResult.available ? 'logs' : 'unavailable',
+        items: commandUsage,
+      },
+      comparison: compareMode
+        ? {
+            previousRange: {
+              from: comparisonFrom.toISOString(),
+              to: comparisonTo.toISOString(),
+            },
+            kpis: {
+              totalMessages: Number(comparisonKpiRow.total_messages || 0),
+              aiRequests: Number(comparisonKpiRow.ai_requests || 0),
+              aiCostUsd: Number(comparisonAiCostUsd.toFixed(6)),
+              activeUsers: Number(comparisonKpiRow.active_users || 0),
+              newMembers: comparisonNewMembers,
+            },
+          }
+        : null,
       heatmap,
     });
   } catch (err) {
