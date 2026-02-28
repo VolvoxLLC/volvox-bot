@@ -63,7 +63,9 @@ export async function execute(interaction) {
     } else {
       resultLines.push('⚠️ Could not find `welcome.channelId`; role menu not posted.');
     }
-  } else if (!roleMenuMsg) {
+  } else if (roleMenuMsg) {
+    resultLines.push('⚠️ `welcome.channelId` is not configured; role menu not posted.');
+  } else {
     resultLines.push('⚠️ `welcome.roleMenu` is disabled or has no valid options.');
   }
 
