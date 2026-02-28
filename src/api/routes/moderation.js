@@ -304,6 +304,8 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
  *         $ref: "#/components/responses/Forbidden"
  *       "404":
  *         $ref: "#/components/responses/NotFound"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
@@ -423,6 +425,8 @@ router.get('/cases/:caseNumber', moderationRateLimit, async (req, res) => {
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
@@ -582,6 +586,8 @@ router.get('/stats', moderationRateLimit, async (req, res) => {
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */

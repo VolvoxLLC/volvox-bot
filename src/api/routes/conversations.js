@@ -401,6 +401,8 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "503":
@@ -584,6 +586,8 @@ router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, a
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "503":
@@ -727,8 +731,12 @@ router.get('/flags', conversationsRateLimit, requireGuildAdmin, validateGuild, a
  *               $ref: "#/components/schemas/Error"
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
  *       "404":
  *         $ref: "#/components/responses/NotFound"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "503":
@@ -904,8 +912,12 @@ router.get(
  *               $ref: "#/components/schemas/Error"
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
  *       "404":
  *         $ref: "#/components/responses/NotFound"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "503":

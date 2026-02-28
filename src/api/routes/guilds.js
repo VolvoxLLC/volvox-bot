@@ -490,7 +490,17 @@ function getGuildChannels(guild) {
  *                 memberCount:
  *                   type: integer
  *                 channels:
- *                   type: integer
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       type:
+ *                         type: integer
+ *                         description: "Discord channel type enum (0=Text, 2=Voice, 4=Category, 5=Announcement, 13=Stage, 15=Forum, 16=Media)"
  *                 roles:
  *                   type: integer
  *                 owner:
@@ -1368,7 +1378,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
  *                   type: integer
  *                 page:
  *                   type: integer
- *                 pages:
+ *                 limit:
  *                   type: integer
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
