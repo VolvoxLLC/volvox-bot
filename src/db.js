@@ -159,15 +159,19 @@ function startLeakDetection(poolInstance, maxSize) {
         max: maxSize,
         source: 'pool_monitor',
       });
-    } else if (total >= maxSize * 0.8) {
-      warn('Database connection pool nearing capacity', {
-        total,
-        idle: poolInstance.idleCount,
-        waiting,
-        max: maxSize,
-        utilization_pct: Math.round((total / maxSize) * 100),
-        source: 'pool_monitor',
-      });
+    } else {
+      const activeCount = poolInstance.totalCount - poolInstance.idleCount;
+      if (activeCount >= maxSize * 0.8) {
+        warn('Database connection pool nearing capacity', {
+          total,
+          active: activeCount,
+          idle: poolInstance.idleCount,
+          waiting,
+          max: maxSize,
+          utilization_pct: Math.round((activeCount / maxSize) * 100),
+          source: 'pool_monitor',
+        });
+      }
     }
   }, 30_000).unref();
 }
@@ -217,11 +221,15 @@ export async function initDb() {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
-    const poolSize = Math.max(1, parseInt(process.env.PG_POOL_SIZE, 10) || 5);
-    const _idleRaw = parseInt(process.env.PG_IDLE_TIMEOUT_MS, 10);
-    const idleTimeoutMs = isNaN(_idleRaw) ? 30000 : _idleRaw;
-    const _connRaw = parseInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10);
-    const connectionTimeoutMs = isNaN(_connRaw) ? 10000 : _connRaw;
+    /** @param {string|undefined} env @param {number} defaultVal */
+    const parsePositiveInt = (env, defaultVal) => {
+      const val = parseInt(env, 10);
+      return isNaN(val) || val < 0 ? defaultVal : val;
+    };
+
+    const poolSize = Math.max(1, parsePositiveInt(process.env.PG_POOL_SIZE, 5));
+    const idleTimeoutMs = parsePositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 30000);
+    const connectionTimeoutMs = parsePositiveInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10000);
 
     pool = new Pool({
       connectionString,
@@ -265,8 +273,7 @@ export async function initDb() {
     });
 
     // Wrap query with slow query logging
-    const _slowRaw = parseInt(process.env.PG_SLOW_QUERY_MS, 10);
-    const slowQueryThresholdMs = isNaN(_slowRaw) ? 100 : _slowRaw;
+    const slowQueryThresholdMs = parsePositiveInt(process.env.PG_SLOW_QUERY_MS, 100);
     wrapPoolQuery(pool, slowQueryThresholdMs);
 
     try {

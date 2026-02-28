@@ -211,7 +211,9 @@ describe('TICKET_RETENTION_DAYS env var parsing', () => {
     const mod = await import('../../src/utils/dbMaintenance.js');
     const pool = { query: vi.fn().mockResolvedValue({ rowCount: 0 }) };
     await mod.runMaintenance(pool);
-    return pool.query.mock.calls.find(([sql]) => typeof sql === 'string' && sql.includes('tickets'));
+    return pool.query.mock.calls.find(
+      ([sql]) => typeof sql === 'string' && sql.includes('tickets'),
+    );
   }
 
   it('uses 0 retention days when TICKET_RETENTION_DAYS=0 (not the default 30)', async () => {
