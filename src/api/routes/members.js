@@ -62,7 +62,7 @@ router.get(
       }
 
       // Fetch all members — paginate in batches of 1000 for large guilds
-      let members = new Map();
+      const members = new Map();
       let lastId;
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -529,11 +529,10 @@ router.post(
 
         // Update level if changed
         if (newLevel !== rows[0].level) {
-          await client.query('UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3', [
-            newLevel,
-            guildId,
-            userId,
-          ]);
+          await client.query(
+            'UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3',
+            [newLevel, guildId, userId],
+          );
         }
 
         await client.query('COMMIT');
@@ -585,7 +584,7 @@ function escapeCsv(value) {
   // Prevent CSV formula injection — prefix dangerous leading chars
   const formulaChars = ['=', '+', '-', '@', '\t', '\r'];
   if (str.length > 0 && formulaChars.includes(str[0])) {
-    str = "'" + str;
+    str = `'`;
   }
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;

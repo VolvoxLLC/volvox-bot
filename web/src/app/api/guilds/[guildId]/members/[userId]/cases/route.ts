@@ -37,10 +37,5 @@ export async function GET(
   const upstreamUrl = buildUpstreamUrl(apiConfig.baseUrl, path, LOG_PREFIX);
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  return proxyToBotApi(
-    upstreamUrl,
-    apiConfig.secret,
-    LOG_PREFIX,
-    'Failed to fetch member cases',
-  );
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch member cases');
 }

@@ -1,10 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import {
-  authorizeGuildAdmin,
-  buildUpstreamUrl,
-  getBotApiConfig,
-} from '@/lib/bot-api-proxy';
+import { authorizeGuildAdmin, buildUpstreamUrl, getBotApiConfig } from '@/lib/bot-api-proxy';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -57,7 +53,8 @@ export async function GET(
       status: 200,
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': response.headers.get('Content-Disposition') || 'attachment; filename="members.csv"',
+        'Content-Disposition':
+          response.headers.get('Content-Disposition') || 'attachment; filename="members.csv"',
       },
     });
   } catch (error) {

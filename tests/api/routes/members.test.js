@@ -420,7 +420,8 @@ describe('members routes', () => {
   describe('POST /api/v1/guilds/:id/members/:userId/xp', () => {
     it('should adjust XP correctly and return updated level', async () => {
       const mockClient = {
-        query: vi.fn()
+        query: vi
+          .fn()
           .mockResolvedValueOnce({}) // BEGIN
           .mockResolvedValueOnce({ rows: [{ xp: 350, level: 2 }] }) // upsert
           .mockResolvedValueOnce({}) // level update
@@ -450,7 +451,8 @@ describe('members routes', () => {
 
     it('should handle negative XP adjustment', async () => {
       const mockClient = {
-        query: vi.fn()
+        query: vi
+          .fn()
           .mockResolvedValueOnce({}) // BEGIN
           .mockResolvedValueOnce({ rows: [{ xp: 50, level: 0 }] }) // upsert
           .mockResolvedValueOnce({}), // COMMIT

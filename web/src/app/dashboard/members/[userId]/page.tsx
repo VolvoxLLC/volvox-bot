@@ -131,9 +131,7 @@ function XpProgress({
         <Badge variant="secondary" className="text-xs">
           Lv. {level}
         </Badge>
-        {nextLevelXp && (
-          <span className="text-xs text-muted-foreground">→ Lv. {level + 1}</span>
-        )}
+        {nextLevelXp && <span className="text-xs text-muted-foreground">→ Lv. {level + 1}</span>}
       </div>
       <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
         <div
@@ -142,7 +140,10 @@ function XpProgress({
         />
       </div>
       <p className="text-xs text-muted-foreground tabular-nums">
-        {xp.toLocaleString()} XP{nextLevelXp ? ` / ${nextLevelXp.toLocaleString()} · ${Math.round(pct)}% to next level` : ' (max level)'}
+        {xp.toLocaleString()} XP
+        {nextLevelXp
+          ? ` / ${nextLevelXp.toLocaleString()} · ${Math.round(pct)}% to next level`
+          : ' (max level)'}
       </p>
     </div>
   );
@@ -220,7 +221,7 @@ export default function MemberDetailPage() {
       if (!guildId || !userId || !xpAmount) return;
 
       const amount = parseInt(xpAmount, 10);
-      if (isNaN(amount)) {
+      if (Number.isNaN(amount)) {
         setXpError('Please enter a valid number');
         return;
       }
@@ -374,9 +375,7 @@ export default function MemberDetailPage() {
           )}
         </Avatar>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {data.displayName || data.username}
-          </h2>
+          <h2 className="text-2xl font-bold tracking-tight">{data.displayName || data.username}</h2>
           <p className="font-mono text-sm text-muted-foreground">@{data.username}</p>
           {data.roles.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
