@@ -50,7 +50,10 @@ export default function TicketDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDetail = useCallback(async () => {
-    if (!guildId || !ticketId) return;
+    if (!guildId || !ticketId) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);

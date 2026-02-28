@@ -63,7 +63,7 @@ function formatDuration(seconds: number): string {
   if (seconds === 0) return 'N/A';
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  if (hours > 24) {
+  if (hours >= 24) {
     const days = Math.floor(hours / 24);
     return `${days}d ${hours % 24}h`;
   }
@@ -122,17 +122,21 @@ export default function TicketsPage() {
   // Fetch stats
   useEffect(() => {
     if (!guildId) return;
+    const controller = new AbortController();
     void (async () => {
       try {
-        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/tickets/stats`);
+        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/tickets/stats`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = (await res.json()) as TicketStats;
           setStats(data);
         }
       } catch {
-        // Non-critical
+        // Non-critical (includes AbortError)
       }
     })();
+    return () => controller.abort();
   }, [guildId]);
 
   // Fetch tickets
@@ -352,7 +356,15 @@ export default function TicketsPage() {
                     <TableRow
                       key={ticket.id}
                       className="cursor-pointer hover:bg-muted/50"
+                      tabIndex={0}
+                      role="link"
                       onClick={() => handleRowClick(ticket.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleRowClick(ticket.id);
+                        }
+                      }}
                     >
                       <TableCell className="font-mono text-sm">#{ticket.id}</TableCell>
                       <TableCell className="max-w-xs truncate">

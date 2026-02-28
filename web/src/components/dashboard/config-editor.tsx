@@ -1732,7 +1732,7 @@ export function ConfigEditor() {
                 onChange={(e) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
-                    tickets: { ...prev.tickets, supportRole: e.target.value || null },
+                    tickets: { ...prev.tickets, supportRole: e.target.value.trim() || null },
                   }))
                 }
                 disabled={saving}
@@ -1748,7 +1748,7 @@ export function ConfigEditor() {
                 onChange={(e) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
-                    tickets: { ...prev.tickets, category: e.target.value || null },
+                    tickets: { ...prev.tickets, category: e.target.value.trim() || null },
                   }))
                 }
                 disabled={saving}
@@ -1805,7 +1805,7 @@ export function ConfigEditor() {
                 onChange={(e) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
-                    tickets: { ...prev.tickets, transcriptChannel: e.target.value || null },
+                    tickets: { ...prev.tickets, transcriptChannel: e.target.value.trim() || null },
                   }))
                 }
                 disabled={saving}
