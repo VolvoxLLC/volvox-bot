@@ -340,7 +340,7 @@
           "Auth"
         ],
         "summary": "Log out",
-        "description": "Invalidates the server-side session and clears the session cookie.",
+        "description": "Invalidates the server-side session. Requires a valid Bearer JWT in the Authorization header.",
         "security": [
           {
             "BearerAuth": []
@@ -2054,23 +2054,23 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "guildId": {
+                      "type": "string"
+                    },
                     "memberCount": {
                       "type": "integer"
                     },
-                    "totalMessages": {
-                      "type": "integer"
+                    "aiConversations": {
+                      "type": "integer",
+                      "description": "Total AI conversations logged for this guild"
                     },
-                    "activeToday": {
-                      "type": "integer"
+                    "moderationCases": {
+                      "type": "integer",
+                      "description": "Total moderation cases for this guild"
                     },
-                    "activeThisWeek": {
-                      "type": "integer"
-                    },
-                    "newMembersToday": {
-                      "type": "integer"
-                    },
-                    "activeModerationCases": {
-                      "type": "integer"
+                    "uptime": {
+                      "type": "number",
+                      "description": "Bot process uptime in seconds"
                     }
                   }
                 }

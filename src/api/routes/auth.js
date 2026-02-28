@@ -426,7 +426,7 @@ router.get('/me', requireOAuth(), async (req, res) => {
  *     tags:
  *       - Auth
  *     summary: Log out
- *     description: Invalidates the server-side session and clears the session cookie.
+ *     description: Invalidates the server-side session. Requires a valid Bearer JWT in the Authorization header.
  *     security:
  *       - BearerAuth: []
  *     responses:

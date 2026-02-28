@@ -41,7 +41,18 @@
         {
           "group": "Guilds",
           "icon": "server",
-          "pages": ["api-reference/guilds/list-guilds", "api-reference/guilds/get-guild"]
+          "pages": [
+            "api-reference/guilds/list-guilds",
+            "api-reference/guilds/get-guild",
+            "api-reference/guilds/list-channels",
+            "api-reference/guilds/list-roles",
+            "api-reference/guilds/get-config",
+            "api-reference/guilds/update-config",
+            "api-reference/guilds/stats",
+            "api-reference/guilds/analytics",
+            "api-reference/guilds/moderation-cases",
+            "api-reference/guilds/actions"
+          ]
         },
         {
           "group": "Members",
@@ -51,7 +62,32 @@
         {
           "group": "Moderation",
           "icon": "shield",
-          "pages": ["api-reference/moderation/list-cases", "api-reference/moderation/get-case"]
+          "pages": [
+            "api-reference/moderation/list-cases",
+            "api-reference/moderation/get-case",
+            "api-reference/moderation/stats",
+            "api-reference/moderation/user-history"
+          ]
+        },
+        {
+          "group": "Conversations",
+          "icon": "message",
+          "pages": [
+            "api-reference/conversations/list",
+            "api-reference/conversations/analytics",
+            "api-reference/conversations/flagged",
+            "api-reference/conversations/get-detail",
+            "api-reference/conversations/flag-message"
+          ]
+        },
+        {
+          "group": "Tickets",
+          "icon": "ticket",
+          "pages": [
+            "api-reference/tickets/stats",
+            "api-reference/tickets/get-ticket",
+            "api-reference/tickets/list-tickets"
+          ]
         },
         {
           "group": "Community",

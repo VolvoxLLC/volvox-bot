@@ -769,18 +769,19 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
  *             schema:
  *               type: object
  *               properties:
+ *                 guildId:
+ *                   type: string
  *                 memberCount:
  *                   type: integer
- *                 totalMessages:
+ *                 aiConversations:
  *                   type: integer
- *                 activeToday:
+ *                   description: Total AI conversations logged for this guild
+ *                 moderationCases:
  *                   type: integer
- *                 activeThisWeek:
- *                   type: integer
- *                 newMembersToday:
- *                   type: integer
- *                 activeModerationCases:
- *                   type: integer
+ *                   description: Total moderation cases for this guild
+ *                 uptime:
+ *                   type: number
+ *                   description: Bot process uptime in seconds
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":
