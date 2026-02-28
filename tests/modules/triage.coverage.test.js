@@ -320,11 +320,13 @@ describe('triage module coverage', () => {
       const msg = makeDiscordMessage('ch1', '   '); // whitespace only
       await accumulateMessage(msg, makeTriageConfig());
       // Buffer should not be created or message pushed
+      expect(channelBuffers.has('ch1')).toBe(false);
     });
 
     it('skips empty string messages', async () => {
       const msg = makeDiscordMessage('ch1', '');
       await accumulateMessage(msg, makeTriageConfig());
+      expect(channelBuffers.has('ch1')).toBe(false);
     });
 
     it('handles trigger word detected - calls evaluateNow', async () => {
@@ -338,6 +340,7 @@ describe('triage module coverage', () => {
       // Should have tried to classify (trigger word path)
       // Give it a tick for the fire-and-forget
       await new Promise((r) => setTimeout(r, 10));
+      expect(mockClassifierSend).toHaveBeenCalled();
     });
 
     it('fetches referenced message content for replies', async () => {
