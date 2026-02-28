@@ -6,6 +6,7 @@
 
 import { info, error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
+import { maskSensitiveFields } from '../utils/configAllowlist.js';
 
 /** HTTP methods considered mutating */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -100,8 +101,8 @@ export function computeConfigDiff(before, after) {
 function insertAuditEntry(pool, entry) {
   const { guildId, userId, action, targetType, targetId, details, ipAddress } = entry;
 
-  pool
-    .query(
+  try {
+    const result = pool.query(
       `INSERT INTO audit_logs (guild_id, user_id, action, target_type, target_id, details, ip_address)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
@@ -113,13 +114,20 @@ function insertAuditEntry(pool, entry) {
         details ? JSON.stringify(details) : null,
         ipAddress || null,
       ],
-    )
-    .then(() => {
-      info('Audit log entry created', { action, guildId, userId });
-    })
-    .catch((err) => {
-      logError('Failed to insert audit log entry', { error: err.message, action, guildId });
-    });
+    );
+
+    if (result && typeof result.then === 'function') {
+      result
+        .then(() => {
+          info('Audit log entry created', { action, guildId, userId });
+        })
+        .catch((err) => {
+          logError('Failed to insert audit log entry', { error: err.message, action, guildId });
+        });
+    }
+  } catch (err) {
+    logError('Failed to insert audit log entry', { error: err.message, action, guildId });
+  }
 }
 
 /**
@@ -130,6 +138,13 @@ function insertAuditEntry(pool, entry) {
  */
 export function auditLogMiddleware() {
   return (req, res, next) => {
+    // Prevent double-execution: multiple routers can be mounted at the same path prefix
+    // (e.g. /guilds mounts membersRouter, ticketsRouter, guildsRouter in sequence).
+    // Only the first matching mount should attach the audit handler.
+    if (req._auditLogAttached) {
+      return next();
+    }
+
     // Only audit mutating methods
     if (!MUTATING_METHODS.has(req.method)) {
       return next();
@@ -146,12 +161,15 @@ export function auditLogMiddleware() {
       return next();
     }
 
+    req._auditLogAttached = true;
+
     const userId = req.user?.userId || req.authMethod || 'unknown';
     const guildId = extractGuildId(req.originalUrl || req.path);
     const action = deriveAction(req.method, req.originalUrl || req.path);
     const ipAddress = req.ip || req.socket?.remoteAddress;
 
-    // For config updates, capture before state to compute diff
+    // For config updates, capture before state to compute diff.
+    // Reuse the already-fetched config snapshot — it reflects state before the handler runs.
     const isConfigUpdate =
       (req.originalUrl || req.path).includes('/config') &&
       (req.method === 'PUT' || req.method === 'PATCH');
@@ -172,18 +190,21 @@ export function auditLogMiddleware() {
 
       const details = { method: req.method, path: req.originalUrl || req.path };
 
-      // Include request body (sanitised)
+      // Include request body with sensitive fields masked
       if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-        details.body = req.body;
+        details.body = maskSensitiveFields(req.body);
       }
 
-      // Compute config diff for config updates
+      // Compute config diff for config updates, masking sensitive fields in both snapshots
       if (isConfigUpdate && beforeConfig) {
         try {
           const afterConfig = getConfig();
           const diff = computeConfigDiff(beforeConfig, afterConfig);
           if (Object.keys(diff.before).length > 0 || Object.keys(diff.after).length > 0) {
-            details.configDiff = diff;
+            details.configDiff = {
+              before: maskSensitiveFields(diff.before),
+              after: maskSensitiveFields(diff.after),
+            };
           }
         } catch {
           // Non-critical

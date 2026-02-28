@@ -30,35 +30,31 @@ router.use('/community', communityRouter);
 router.use('/auth', authRouter);
 
 // Global config routes — require API secret or OAuth2 JWT
-router.use('/config', requireAuth(), configRouter);
+router.use('/config', requireAuth(), auditLogMiddleware(), configRouter);
 
 // Member management routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/members/* before the basic guilds endpoint)
-router.use('/guilds', requireAuth(), membersRouter);
+router.use('/guilds', requireAuth(), auditLogMiddleware(), membersRouter);
 
 // Conversation routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/conversations/* before the catch-all guild endpoint)
-router.use('/guilds/:id/conversations', requireAuth(), conversationsRouter);
+router.use('/guilds/:id/conversations', requireAuth(), auditLogMiddleware(), conversationsRouter);
 
 // Ticket routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/tickets/* before the catch-all guild endpoint)
-router.use('/guilds', requireAuth(), ticketsRouter);
+router.use('/guilds', requireAuth(), auditLogMiddleware(), ticketsRouter);
 
 // Guild routes — require API secret or OAuth2 JWT
-router.use('/guilds', requireAuth(), guildsRouter);
+router.use('/guilds', requireAuth(), auditLogMiddleware(), guildsRouter);
 
 // Moderation routes — require API secret or OAuth2 JWT
-router.use('/moderation', requireAuth(), moderationRouter);
+router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter);
 
 // Audit log routes — require API secret or OAuth2 JWT
-// (mounted before guilds catch-all to handle /:id/audit-log)
+// GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
 
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
-
-// Audit log middleware — records all mutating authenticated requests.
-// Applied after all route mounts so it captures POST/PUT/PATCH/DELETE on all routes above.
-router.use(auditLogMiddleware());
 
 export default router;

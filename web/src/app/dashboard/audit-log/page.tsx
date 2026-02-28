@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronRight, ClipboardList, RefreshCw, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -358,9 +358,8 @@ export default function AuditLogPage() {
                   {entries.map((entry) => {
                     const isExpanded = expandedRows.has(entry.id);
                     return (
-                      <>
+                      <React.Fragment key={entry.id}>
                         <TableRow
-                          key={entry.id}
                           className="cursor-pointer hover:bg-muted/50"
                           tabIndex={0}
                           onClick={() => toggleRow(entry.id)}
@@ -403,7 +402,7 @@ export default function AuditLogPage() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     );
                   })}
                 </TableBody>

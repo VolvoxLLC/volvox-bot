@@ -442,6 +442,9 @@ describe('guilds routes', () => {
 
   describe('PATCH /:id/config', () => {
     it('should update config value', async () => {
+      // auditLogMiddleware calls getConfig() once (enabled check) before the route handler.
+      // Provide a pass-through value for that call so the route handler gets the intended mock.
+      getConfig.mockReturnValueOnce({});
       getConfig.mockReturnValueOnce({
         ai: { enabled: true, systemPrompt: 'claude-4', historyLength: 20 },
       });
