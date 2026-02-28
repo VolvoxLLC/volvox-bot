@@ -15,16 +15,18 @@ import { useGuildSelection } from '@/hooks/use-guild-selection';
 
 interface MembersApiResponse {
   members: MemberRow[];
-  cursor: string | null;
+  nextAfter: string | null;
   total: number;
+  filteredTotal?: number;
 }
 
 export default function MembersPage() {
   const router = useRouter();
 
   const [members, setMembers] = useState<MemberRow[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [filteredTotal, setFilteredTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,8 +48,9 @@ export default function MembersPage() {
 
   const onGuildChange = useCallback(() => {
     setMembers([]);
-    setCursor(null);
+    setNextAfter(null);
     setTotal(0);
+    setFilteredTotal(null);
     setError(null);
   }, []);
 
@@ -62,7 +65,7 @@ export default function MembersPage() {
       search: string;
       sortColumn: SortColumn;
       sortOrder: SortOrder;
-      cursor: string | null;
+      after: string | null;
       append: boolean;
     }) => {
       setLoading(true);
@@ -72,7 +75,7 @@ export default function MembersPage() {
         if (opts.search) params.set('search', opts.search);
         params.set('sort', opts.sortColumn);
         params.set('order', opts.sortOrder);
-        if (opts.cursor) params.set('cursor', opts.cursor);
+        if (opts.after) params.set('after', opts.after);
         params.set('limit', '50');
 
         const res = await fetch(
@@ -91,8 +94,9 @@ export default function MembersPage() {
         } else {
           setMembers(data.members);
         }
-        setCursor(data.cursor);
+        setNextAfter(data.nextAfter);
         setTotal(data.total);
+        setFilteredTotal(data.filteredTotal ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch members');
       } finally {
@@ -110,11 +114,10 @@ export default function MembersPage() {
       search: debouncedSearch,
       sortColumn,
       sortOrder,
-      cursor: null,
+      after: null,
       append: false,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [guildId, debouncedSearch, sortColumn, sortOrder]);
+  }, [guildId, debouncedSearch, sortColumn, sortOrder, fetchMembers]);
 
   const handleSort = useCallback(
     (col: SortColumn) => {
@@ -125,48 +128,51 @@ export default function MembersPage() {
         setSortOrder('desc');
       }
       setMembers([]);
-      setCursor(null);
+      setNextAfter(null);
     },
     [sortColumn],
   );
 
   const handleLoadMore = useCallback(() => {
-    if (!guildId || !cursor || loading) return;
+    if (!guildId || !nextAfter || loading) return;
     void fetchMembers({
       guildId,
       search: debouncedSearch,
       sortColumn,
       sortOrder,
-      cursor,
+      after: nextAfter,
       append: true,
     });
-  }, [guildId, cursor, loading, fetchMembers, debouncedSearch, sortColumn, sortOrder]);
+  }, [guildId, nextAfter, loading, fetchMembers, debouncedSearch, sortColumn, sortOrder]);
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
     setMembers([]);
-    setCursor(null);
+    setNextAfter(null);
     void fetchMembers({
       guildId,
       search: debouncedSearch,
       sortColumn,
       sortOrder,
-      cursor: null,
+      after: null,
       append: false,
     });
   }, [guildId, fetchMembers, debouncedSearch, sortColumn, sortOrder]);
 
   const handleRowClick = useCallback(
     (userId: string) => {
+      if (!guildId) return;
       router.push(`/dashboard/members/${userId}`);
     },
-    [router],
+    [router, guildId],
   );
 
   const handleClearSearch = useCallback(() => {
     setSearch('');
     setDebouncedSearch('');
   }, []);
+
+  const displayTotal = filteredTotal !== null ? filteredTotal : total;
 
   return (
     <div className="space-y-6">
@@ -229,7 +235,9 @@ export default function MembersPage() {
             </div>
             {total > 0 && (
               <span className="text-sm text-muted-foreground tabular-nums">
-                {total.toLocaleString()} {total === 1 ? 'member' : 'members'}
+                {filteredTotal !== null && filteredTotal !== total
+                  ? `${filteredTotal.toLocaleString()} of ${total.toLocaleString()} members`
+                  : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
               </span>
             )}
           </div>
@@ -251,7 +259,7 @@ export default function MembersPage() {
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onLoadMore={handleLoadMore}
-            hasMore={cursor !== null}
+            hasMore={nextAfter !== null}
             loading={loading}
             onRowClick={handleRowClick}
           />

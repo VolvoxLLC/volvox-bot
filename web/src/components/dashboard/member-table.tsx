@@ -17,28 +17,22 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** Matches the enriched member shape returned by GET /:id/members */
 export interface MemberRow {
-  user_id: string;
+  id: string;
   username: string;
-  display_name: string | null;
-  avatar_hash: string | null;
-  messages: number;
+  displayName: string | null;
+  avatar: string | null;
+  messages_sent: number;
   xp: number;
   level: number;
-  warnings: number;
+  warning_count: number;
   last_active: string | null;
-  joined_at: string | null;
+  joinedAt: string | null;
 }
 
-export type SortColumn =
-  | 'username'
-  | 'display_name'
-  | 'messages'
-  | 'xp'
-  | 'level'
-  | 'warnings'
-  | 'last_active'
-  | 'joined_at';
+/** API-supported sort columns. Client-only sorts (username, displayName) are excluded. */
+export type SortColumn = 'messages' | 'xp' | 'warnings' | 'joined';
 
 export type SortOrder = 'asc' | 'desc';
 
@@ -54,11 +48,6 @@ interface MemberTableProps {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function avatarUrl(userId: string, hash: string | null): string | null {
-  if (!hash) return null;
-  return `https://cdn.discordapp.com/avatars/${userId}/${hash}.png?size=64`;
-}
 
 function relativeTime(iso: string | null): string {
   if (!iso) return '—';
@@ -159,6 +148,19 @@ function TableSkeleton() {
   );
 }
 
+// ─── Keyboard handler for accessible rows ─────────────────────────────────────
+
+function handleRowKeyDown(
+  e: React.KeyboardEvent<HTMLTableRowElement>,
+  userId: string,
+  onClick: (id: string) => void,
+) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    onClick(userId);
+  }
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function MemberTable({
@@ -180,20 +182,9 @@ export function MemberTable({
           <TableHeader>
             <TableRow>
               <TableHead className="w-12" />
-              <SortableHead
-                column="username"
-                label="Username"
-                currentColumn={sortColumn}
-                currentOrder={sortOrder}
-                onSort={onSort}
-              />
-              <SortableHead
-                column="display_name"
-                label="Display Name"
-                currentColumn={sortColumn}
-                currentOrder={sortOrder}
-                onSort={onSort}
-              />
+              {/* Username & Display Name are not API-sortable, shown as plain headers */}
+              <TableHead>Username</TableHead>
+              <TableHead>Display Name</TableHead>
               <SortableHead
                 column="messages"
                 label="Messages"
@@ -216,15 +207,9 @@ export function MemberTable({
                 currentOrder={sortOrder}
                 onSort={onSort}
               />
+              <TableHead>Last Active</TableHead>
               <SortableHead
-                column="last_active"
-                label="Last Active"
-                currentColumn={sortColumn}
-                currentOrder={sortOrder}
-                onSort={onSort}
-              />
-              <SortableHead
-                column="joined_at"
+                column="joined"
                 label="Joined"
                 currentColumn={sortColumn}
                 currentOrder={sortOrder}
@@ -250,16 +235,20 @@ export function MemberTable({
             ) : (
               members.map((m) => (
                 <TableRow
-                  key={m.user_id}
+                  key={m.id}
                   className="cursor-pointer"
-                  onClick={() => onRowClick(m.user_id)}
+                  tabIndex={0}
+                  onClick={() => onRowClick(m.id)}
+                  onKeyDown={(e) => handleRowKeyDown(e, m.id, onRowClick)}
+                  role="link"
+                  aria-label={`View details for ${m.displayName || m.username}`}
                 >
-                  {/* Avatar */}
+                  {/* Avatar — backend returns full URL */}
                   <TableCell>
                     <Avatar className="h-8 w-8">
-                      {avatarUrl(m.user_id, m.avatar_hash) ? (
+                      {m.avatar ? (
                         <Image
-                          src={avatarUrl(m.user_id, m.avatar_hash)!}
+                          src={m.avatar}
                           alt={m.username}
                           width={32}
                           height={32}
@@ -267,7 +256,7 @@ export function MemberTable({
                         />
                       ) : (
                         <AvatarFallback className="text-xs">
-                          {(m.display_name || m.username).charAt(0).toUpperCase()}
+                          {(m.displayName || m.username).charAt(0).toUpperCase()}
                         </AvatarFallback>
                       )}
                     </Avatar>
@@ -278,12 +267,12 @@ export function MemberTable({
 
                   {/* Display Name */}
                   <TableCell className="text-sm">
-                    {m.display_name || <span className="text-muted-foreground italic">—</span>}
+                    {m.displayName || <span className="text-muted-foreground italic">—</span>}
                   </TableCell>
 
                   {/* Messages (hidden on mobile) */}
                   <TableCell className="hidden md:table-cell font-mono text-sm tabular-nums">
-                    {formatNumber(m.messages)}
+                    {formatNumber(m.messages_sent)}
                   </TableCell>
 
                   {/* XP / Level */}
@@ -297,9 +286,9 @@ export function MemberTable({
 
                   {/* Warnings */}
                   <TableCell>
-                    {m.warnings > 0 ? (
+                    {m.warning_count > 0 ? (
                       <Badge variant="destructive" className="text-xs">
-                        {m.warnings}
+                        {m.warning_count}
                       </Badge>
                     ) : (
                       <span className="text-sm text-muted-foreground">0</span>
@@ -313,7 +302,7 @@ export function MemberTable({
 
                   {/* Joined (hidden on mobile) */}
                   <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                    {formatDateShort(m.joined_at)}
+                    {formatDateShort(m.joinedAt)}
                   </TableCell>
                 </TableRow>
               ))

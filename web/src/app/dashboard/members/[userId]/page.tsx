@@ -32,25 +32,37 @@ import {
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { formatDate } from '@/lib/format-time';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types (aligned with backend response shapes) ─────────────────────────────
 
-interface MemberDetail {
-  user_id: string;
+/** Matches GET /:id/members/:userId response */
+interface MemberDetailResponse {
+  id: string;
   username: string;
-  display_name: string | null;
-  avatar_hash: string | null;
-  roles: Array<{ id: string; name: string; color: number }>;
-  messages: number;
-  days_active: number;
-  xp: number;
-  level: number;
-  xp_for_next_level: number;
-  xp_progress: number;
-  reactions_given: number;
-  reactions_received: number;
-  warnings: number;
-  joined_at: string | null;
-  last_active: string | null;
+  displayName: string | null;
+  avatar: string | null;
+  roles: Array<{ id: string; name: string; color: string }>;
+  joinedAt: string | null;
+  stats: {
+    messages_sent: number;
+    reactions_given: number;
+    reactions_received: number;
+    days_active: number;
+    first_seen: string | null;
+    last_active: string | null;
+  } | null;
+  reputation: {
+    xp: number;
+    level: number;
+    messages_count: number;
+    voice_minutes: number;
+    helps_given: number;
+    last_xp_gain: string | null;
+    next_level_xp: number | null;
+  };
+  warnings: {
+    count: number;
+    recent: MemberCase[];
+  };
 }
 
 interface MemberCase {
@@ -63,14 +75,9 @@ interface MemberCase {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function avatarUrl(userId: string, hash: string | null, size = 128): string | null {
-  if (!hash) return null;
-  return `https://cdn.discordapp.com/avatars/${userId}/${hash}.png?size=${size}`;
-}
-
-function roleColor(colorInt: number): string {
-  if (!colorInt) return 'hsl(var(--muted-foreground))';
-  return `#${colorInt.toString(16).padStart(6, '0')}`;
+function roleColorStyle(hexColor: string): string {
+  if (!hexColor || hexColor === '#000000') return 'hsl(var(--muted-foreground))';
+  return hexColor;
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -108,15 +115,25 @@ function StatCard({
 
 // ─── XP Progress Bar ──────────────────────────────────────────────────────────
 
-function XpProgress({ level, xp, progress }: { level: number; xp: number; progress: number }) {
-  const pct = Math.min(Math.max(progress * 100, 0), 100);
+function XpProgress({
+  level,
+  xp,
+  nextLevelXp,
+}: {
+  level: number;
+  xp: number;
+  nextLevelXp: number | null;
+}) {
+  const pct = nextLevelXp ? Math.min(Math.max((xp / nextLevelXp) * 100, 0), 100) : 100;
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
         <Badge variant="secondary" className="text-xs">
           Lv. {level}
         </Badge>
-        <span className="text-xs text-muted-foreground">→ Lv. {level + 1}</span>
+        {nextLevelXp && (
+          <span className="text-xs text-muted-foreground">→ Lv. {level + 1}</span>
+        )}
       </div>
       <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
         <div
@@ -125,7 +142,7 @@ function XpProgress({ level, xp, progress }: { level: number; xp: number; progre
         />
       </div>
       <p className="text-xs text-muted-foreground tabular-nums">
-        {xp.toLocaleString()} XP · {Math.round(pct)}% to next level
+        {xp.toLocaleString()} XP{nextLevelXp ? ` / ${nextLevelXp.toLocaleString()} · ${Math.round(pct)}% to next level` : ' (max level)'}
       </p>
     </div>
   );
@@ -140,8 +157,7 @@ export default function MemberDetailPage() {
 
   const guildId = useGuildSelection();
 
-  const [member, setMember] = useState<MemberDetail | null>(null);
-  const [cases, setCases] = useState<MemberCase[]>([]);
+  const [data, setData] = useState<MemberDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -153,6 +169,7 @@ export default function MemberDetailPage() {
   const [xpError, setXpError] = useState<string | null>(null);
 
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Fetch member detail
   useEffect(() => {
@@ -178,10 +195,9 @@ export default function MemberDetailPage() {
         if (!res.ok) {
           throw new Error(`Failed to load member (${res.status})`);
         }
-        const data = await res.json();
+        const responseData = (await res.json()) as MemberDetailResponse;
         if (!cancelled) {
-          setMember(data.member);
-          setCases(data.cases ?? []);
+          setData(responseData);
         }
       } catch (err) {
         if (!cancelled) {
@@ -233,15 +249,17 @@ export default function MemberDetailPage() {
         setXpAmount('');
         setXpReason('');
 
-        // Update member data in place
+        // Update data in place with new XP/level
         if (result.xp !== undefined) {
-          setMember((prev) =>
+          setData((prev) =>
             prev
               ? {
                   ...prev,
-                  xp: result.xp,
-                  level: result.level ?? prev.level,
-                  xp_progress: result.xp_progress ?? prev.xp_progress,
+                  reputation: {
+                    ...prev.reputation,
+                    xp: result.xp,
+                    level: result.level ?? prev.reputation.level,
+                  },
                 }
               : prev,
           );
@@ -259,6 +277,7 @@ export default function MemberDetailPage() {
   const handleExport = useCallback(async () => {
     if (!guildId) return;
     setExporting(true);
+    setExportError(null);
     try {
       const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/members/export`);
       if (!res.ok) throw new Error('Export failed');
@@ -269,8 +288,8 @@ export default function MemberDetailPage() {
       a.download = `members-${guildId}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      // Silently fail — could add toast later
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Failed to export CSV');
     } finally {
       setExporting(false);
     }
@@ -300,7 +319,7 @@ export default function MemberDetailPage() {
 
   // ─── Error state ─────────────────────────────────────────────────────────
 
-  if (error || !member) {
+  if (error || !data) {
     return (
       <div className="space-y-4">
         <Button
@@ -322,7 +341,7 @@ export default function MemberDetailPage() {
     );
   }
 
-  const url = avatarUrl(member.user_id, member.avatar_hash);
+  const cases = data.warnings.recent;
 
   return (
     <div className="space-y-6">
@@ -340,35 +359,35 @@ export default function MemberDetailPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <Avatar className="h-20 w-20">
-          {url ? (
+          {data.avatar ? (
             <Image
-              src={url}
-              alt={member.username}
+              src={data.avatar}
+              alt={data.username}
               width={80}
               height={80}
               className="aspect-square h-full w-full rounded-full"
             />
           ) : (
             <AvatarFallback className="text-2xl">
-              {(member.display_name || member.username).charAt(0).toUpperCase()}
+              {(data.displayName || data.username).charAt(0).toUpperCase()}
             </AvatarFallback>
           )}
         </Avatar>
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            {member.display_name || member.username}
+            {data.displayName || data.username}
           </h2>
-          <p className="font-mono text-sm text-muted-foreground">@{member.username}</p>
-          {member.roles.length > 0 && (
+          <p className="font-mono text-sm text-muted-foreground">@{data.username}</p>
+          {data.roles.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {member.roles.map((role) => (
+              {data.roles.map((role) => (
                 <span
                   key={role.id}
                   className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border"
                   style={{
-                    color: roleColor(role.color),
-                    borderColor: `${roleColor(role.color)}40`,
-                    backgroundColor: `${roleColor(role.color)}15`,
+                    color: roleColorStyle(role.color),
+                    borderColor: `${roleColorStyle(role.color)}40`,
+                    backgroundColor: `${roleColorStyle(role.color)}15`,
                   }}
                 >
                   {role.name}
@@ -381,17 +400,27 @@ export default function MemberDetailPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Messages Sent" value={member.messages} icon={MessageSquare} />
-        <StatCard label="Days Active" value={member.days_active} icon={Calendar} />
+        <StatCard
+          label="Messages Sent"
+          value={data.stats?.messages_sent ?? 0}
+          icon={MessageSquare}
+        />
+        <StatCard label="Days Active" value={data.stats?.days_active ?? 0} icon={Calendar} />
         <StatCard
           label="XP"
-          value={member.xp}
+          value={data.reputation.xp}
           icon={Sparkles}
-          subtext={<XpProgress level={member.level} xp={member.xp} progress={member.xp_progress} />}
+          subtext={
+            <XpProgress
+              level={data.reputation.level}
+              xp={data.reputation.xp}
+              nextLevelXp={data.reputation.next_level_xp}
+            />
+          }
         />
         <StatCard
           label="Reactions"
-          value={`${member.reactions_given} / ${member.reactions_received}`}
+          value={`${data.stats?.reactions_given ?? 0} / ${data.stats?.reactions_received ?? 0}`}
           icon={Smile}
           subtext={<p className="text-xs text-muted-foreground">Given / Received</p>}
         />
@@ -403,8 +432,8 @@ export default function MemberDetailPage() {
           <CardTitle className="text-lg">Warning History</CardTitle>
           <CardDescription>
             {cases.length === 0
-              ? 'No moderation cases on record.'
-              : `${cases.length} ${cases.length === 1 ? 'case' : 'cases'} on record`}
+              ? 'No warnings on record.'
+              : `${data.warnings.count} ${data.warnings.count === 1 ? 'warning' : 'warnings'} total · showing ${cases.length} most recent`}
           </CardDescription>
         </CardHeader>
         {cases.length > 0 && (
@@ -497,21 +526,24 @@ export default function MemberDetailPage() {
           </div>
 
           {/* Export */}
-          <div className="flex items-center gap-3 pt-2 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleExport}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Export All Members (CSV)
-            </Button>
+          <div className="flex flex-col gap-2 pt-2 border-t">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleExport}
+                disabled={exporting}
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Export All Members (CSV)
+              </Button>
+            </div>
+            {exportError && <p className="text-sm text-destructive">{exportError}</p>}
           </div>
         </CardContent>
       </Card>
