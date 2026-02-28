@@ -21,10 +21,10 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 const DEFAULT_ACTIVITY_BADGES = [
-  { days: 90, label: '👑 Legend' },
-  { days: 30, label: '🌳 Veteran' },
-  { days: 7, label: '🌿 Regular' },
-  { days: 0, label: '🌱 Newcomer' },
+  { id: 'default-legend', days: 90, label: '👑 Legend' },
+  { id: 'default-veteran', days: 30, label: '🌳 Veteran' },
+  { id: 'default-regular', days: 7, label: '🌿 Regular' },
+  { id: 'default-newcomer', days: 0, label: '🌱 Newcomer' },
 ] as const;
 
 /** Parse a number input value, enforcing optional min/max constraints. Returns undefined if invalid. */
@@ -1312,9 +1312,9 @@ export function ConfigEditor() {
             active days.
           </p>
           {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
-            (badge: { days?: number; label?: string }, i: number) => (
+            (badge: { id?: string; days?: number; label?: string }, i: number) => (
               <div
-                key={`${badge.label ?? ''}:${badge.days ?? ''}`}
+                key={badge.id ?? `fallback-${i}`}
                 className="flex items-center gap-2"
               >
                 <Input
@@ -1381,7 +1381,7 @@ export function ConfigEditor() {
             onClick={() => {
               const badges = [
                 ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
-                { days: 0, label: '🌟 New Badge' },
+                { id: crypto.randomUUID(), days: 0, label: '🌟 New Badge' },
               ];
               updateDraftConfig((prev) => ({
                 ...prev,
