@@ -24,7 +24,8 @@ async function purgeOldTickets(pool) {
     const result = await pool.query(
       `DELETE FROM tickets
        WHERE status = 'closed'
-         AND updated_at < NOW() - INTERVAL '${TICKET_RETENTION_DAYS} days'`,
+         AND updated_at < NOW() - make_interval(days => $1)`,
+      [TICKET_RETENTION_DAYS],
     );
     const count = result.rowCount ?? 0;
     if (count > 0) {
