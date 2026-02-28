@@ -278,9 +278,7 @@ export function MemberTable({
 
                   {/* Display Name */}
                   <TableCell className="text-sm">
-                    {m.display_name || (
-                      <span className="text-muted-foreground italic">—</span>
-                    )}
+                    {m.display_name || <span className="text-muted-foreground italic">—</span>}
                   </TableCell>
 
                   {/* Messages (hidden on mobile) */}

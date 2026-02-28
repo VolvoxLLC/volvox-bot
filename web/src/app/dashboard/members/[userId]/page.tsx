@@ -260,9 +260,7 @@ export default function MemberDetailPage() {
     if (!guildId) return;
     setExporting(true);
     try {
-      const res = await fetch(
-        `/api/guilds/${encodeURIComponent(guildId)}/members/export`,
-      );
+      const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/members/export`);
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -383,35 +381,19 @@ export default function MemberDetailPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Messages Sent"
-          value={member.messages}
-          icon={MessageSquare}
-        />
-        <StatCard
-          label="Days Active"
-          value={member.days_active}
-          icon={Calendar}
-        />
+        <StatCard label="Messages Sent" value={member.messages} icon={MessageSquare} />
+        <StatCard label="Days Active" value={member.days_active} icon={Calendar} />
         <StatCard
           label="XP"
           value={member.xp}
           icon={Sparkles}
-          subtext={
-            <XpProgress
-              level={member.level}
-              xp={member.xp}
-              progress={member.xp_progress}
-            />
-          }
+          subtext={<XpProgress level={member.level} xp={member.xp} progress={member.xp_progress} />}
         />
         <StatCard
           label="Reactions"
           value={`${member.reactions_given} / ${member.reactions_received}`}
           icon={Smile}
-          subtext={
-            <p className="text-xs text-muted-foreground">Given / Received</p>
-          }
+          subtext={<p className="text-xs text-muted-foreground">Given / Received</p>}
         />
       </div>
 
@@ -477,7 +459,10 @@ export default function MemberDetailPage() {
               <Zap className="h-4 w-4" />
               Adjust XP
             </h4>
-            <form onSubmit={handleAdjustXp} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <form
+              onSubmit={handleAdjustXp}
+              className="flex flex-col gap-2 sm:flex-row sm:items-end"
+            >
               <div className="space-y-1">
                 <label htmlFor="xp-amount" className="text-xs text-muted-foreground">
                   Amount (negative to subtract)
@@ -507,12 +492,8 @@ export default function MemberDetailPage() {
                 Submit
               </Button>
             </form>
-            {xpSuccess && (
-              <p className="text-sm text-green-500">{xpSuccess}</p>
-            )}
-            {xpError && (
-              <p className="text-sm text-destructive">{xpError}</p>
-            )}
+            {xpSuccess && <p className="text-sm text-green-500">{xpSuccess}</p>}
+            {xpError && <p className="text-sm text-destructive">{xpError}</p>}
           </div>
 
           {/* Export */}

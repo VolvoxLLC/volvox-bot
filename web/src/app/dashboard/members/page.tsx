@@ -4,8 +4,8 @@ import { RefreshCw, Search, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  MemberTable,
   type MemberRow,
+  MemberTable,
   type SortColumn,
   type SortOrder,
 } from '@/components/dashboard/member-table';
