@@ -433,13 +433,16 @@ router.get(
 
       const anchor = anchorResult.rows[0];
 
-      // Fetch all messages in the same channel around the anchor
+      // Fetch messages in a bounded time window around the anchor (±2 hours)
+      // to avoid loading the entire channel history
       const messagesResult = await dbPool.query(
         `SELECT id, channel_id, role, content, username, created_at
          FROM conversations
          WHERE guild_id = $1 AND channel_id = $2
+           AND created_at BETWEEN ($3::timestamptz - interval '2 hours')
+                              AND ($3::timestamptz + interval '2 hours')
          ORDER BY created_at ASC`,
-        [guildId, anchor.channel_id],
+        [guildId, anchor.channel_id, anchor.created_at],
       );
 
       // Group into conversations and find the one containing our anchor
