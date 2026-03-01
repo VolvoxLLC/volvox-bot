@@ -1,0 +1,27 @@
+{
+  "name": "Volvox Bot",
+  "theme": {
+    "colors": {
+      "primary": {
+        "light": "#4ade80",
+        "dark": "#16a34a"
+      },
+      "anchors": {
+        "from": "#22c55e",
+        "to": "#16a34a"
+      }
+    }
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "introduction",
+          "authentication"
+        ]
+      }
+    ]
+  },
+  "openapi": "openapi.json"
+}
