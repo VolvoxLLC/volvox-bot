@@ -546,10 +546,15 @@ export function stopTriage() {
 }
 
 /**
- * Append a Discord message to the channel's triage buffer and trigger evaluation when necessary.
+ * Append a Discord message to the channel's triage buffer and trigger evaluation when conditions are met.
+ *
+ * Skips processing if triage is disabled, the channel is not eligible, or the message is empty/attachment-only.
+ * Truncates message content to 1000 characters and, when the message is a reply, captures up to 500 characters of the referenced message as reply context.
+ * Adds the entry to the per-channel bounded ring buffer and records the message in conversation history.
+ * If configured trigger words are present, forces an immediate evaluation (and falls back to scheduling if forcing fails); otherwise schedules a dynamic evaluation timer for the channel.
  *
  * @param {import('discord.js').Message} message - The Discord message to accumulate.
- * @param {Object} msgConfig - Bot configuration containing the `triage` settings.
+ * @param {Object} msgConfig - Bot configuration containing triage settings (e.g., enabled, maxBufferSize, trigger words).
  */
 export async function accumulateMessage(message, msgConfig) {
   const triageConfig = msgConfig.triage;
