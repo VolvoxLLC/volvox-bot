@@ -7,12 +7,9 @@
 
 import { getPool } from '../db.js';
 import { warn } from '../logger.js';
+import { escapeIlike } from './escapeIlike.js';
 
 const ALLOWED_LEVELS = ['error', 'warn', 'info', 'debug'];
-
-function escapeIlike(str) {
-  return str.replace(/[\\%_]/g, (ch) => `\\${ch}`);
-}
 
 /**
  * Query log entries from the PostgreSQL logs table.

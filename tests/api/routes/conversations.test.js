@@ -298,16 +298,10 @@ describe('conversations routes', () => {
 
     it('should return paginated conversations', async () => {
       const baseTime = new Date('2024-01-15T10:00:00Z');
+      // Mock returns rows in DESC order (newest first), matching ORDER BY created_at DESC.
+      // The route reverses them before grouping so the conversation anchor is still the oldest message.
       mockPool.query.mockResolvedValueOnce({
         rows: [
-          {
-            id: 1,
-            channel_id: 'ch1',
-            role: 'user',
-            content: 'Hello world',
-            username: 'alice',
-            created_at: baseTime.toISOString(),
-          },
           {
             id: 2,
             channel_id: 'ch1',
@@ -315,6 +309,14 @@ describe('conversations routes', () => {
             content: 'Hi there!',
             username: 'bot',
             created_at: new Date(baseTime.getTime() + 60000).toISOString(),
+          },
+          {
+            id: 1,
+            channel_id: 'ch1',
+            role: 'user',
+            content: 'Hello world',
+            username: 'alice',
+            created_at: baseTime.toISOString(),
           },
         ],
       });
