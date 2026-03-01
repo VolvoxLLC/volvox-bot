@@ -6,7 +6,7 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN --mount=type=cache,id=s/8ab2cd3e-0c27-4de1-9069-be9e79e399fa-pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # --- Production ---
 FROM node:22-alpine AS runner
