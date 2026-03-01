@@ -93,10 +93,14 @@ export function RoleSelector({
             typeof (r as Record<string, unknown>).color === 'number',
         );
 
-        setRoles(fetchedRoles);
+        if (abortControllerRef.current === controller) {
+          setRoles(fetchedRoles);
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Failed to load roles');
+        if (abortControllerRef.current === controller) {
+          setError(err instanceof Error ? err.message : 'Failed to load roles');
+        }
       } finally {
         if (abortControllerRef.current === controller) {
           setLoading(false);
@@ -250,10 +254,7 @@ export function RoleSelector({
           })}
           {unknownSelectedIds.map((id) => (
             <Badge key={id} variant="secondary" className="flex items-center gap-1 pr-1">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: '#99aab5' }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: '#99aab5' }} />
               <span className="truncate max-w-[150px]">Unknown role</span>
               <button
                 type="button"

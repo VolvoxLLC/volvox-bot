@@ -4,6 +4,7 @@ import { ExternalLink, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MobileSidebar } from './mobile-sidebar';
-import { ThemeToggle } from '@/components/theme-toggle';
 
 export function Header() {
   const { data: session, status } = useSession();

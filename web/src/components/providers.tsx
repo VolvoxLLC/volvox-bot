@@ -1,9 +1,21 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
+import { useTheme } from 'next-themes';
 import type { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
+
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme();
+  return (
+    <Toaster
+      position="bottom-right"
+      theme={(resolvedTheme as 'light' | 'dark') ?? 'system'}
+      richColors
+    />
+  );
+}
 
 /**
  * Wraps application UI with NextAuth session context, theme provider, and a global toast container.
@@ -14,7 +26,7 @@ import { ThemeProvider } from '@/components/theme-provider';
  * Theme defaults to system preference with CSS variable-based dark/light mode support.
  *
  * @returns A React element that renders providers around `children` and mounts a Toaster
- *          positioned at the bottom-right with system theme and rich colors enabled.
+ *          positioned at the bottom-right with resolved theme (light/dark) and rich colors enabled.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -26,7 +38,7 @@ export function Providers({ children }: { children: ReactNode }) {
         disableTransitionOnChange={false}
       >
         {children}
-        <Toaster position="bottom-right" theme="system" richColors />
+        <ThemedToaster />
       </ThemeProvider>
     </SessionProvider>
   );

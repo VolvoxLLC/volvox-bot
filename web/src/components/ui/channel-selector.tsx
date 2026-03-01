@@ -212,10 +212,14 @@ export function ChannelSelector({
           return a.name.localeCompare(b.name);
         });
 
-        setChannels(sortedChannels);
+        if (abortControllerRef.current === controller) {
+          setChannels(sortedChannels);
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Failed to load channels');
+        if (abortControllerRef.current === controller) {
+          setError(err instanceof Error ? err.message : 'Failed to load channels');
+        }
       } finally {
         if (abortControllerRef.current === controller) {
           setLoading(false);
@@ -361,7 +365,9 @@ export function ChannelSelector({
           })}
           {unknownSelectedIds.map((id) => (
             <Badge key={id} variant="secondary" className="flex items-center gap-1 pr-1">
-              <span className="text-muted-foreground scale-75"><Hash className="h-4 w-4" /></span>
+              <span className="text-muted-foreground scale-75">
+                <Hash className="h-4 w-4" />
+              </span>
               <span className="truncate max-w-[150px]">#unknown-channel</span>
               <button
                 type="button"
