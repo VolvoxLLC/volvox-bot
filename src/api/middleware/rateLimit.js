@@ -41,6 +41,11 @@ export function rateLimit({ windowMs = 15 * 60 * 1000, max = 100 } = {}) {
 
     entry.count++;
 
+    // Emit rate-limit headers on every response so clients can track their quota
+    res.set('X-RateLimit-Limit', String(max));
+    res.set('X-RateLimit-Remaining', String(Math.max(0, max - entry.count)));
+    res.set('X-RateLimit-Reset', String(Math.ceil(entry.resetAt / 1000)));
+
     if (entry.count > max) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       res.set('Retry-After', String(retryAfter));

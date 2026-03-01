@@ -79,6 +79,7 @@ describe('moderation routes', () => {
       expect(res.body.cases).toHaveLength(1);
       expect(res.body.total).toBe(1);
       expect(res.body.page).toBe(1);
+      expect(res.body.limit).toBe(25);
       expect(res.body.pages).toBe(1);
     });
 
@@ -140,6 +141,7 @@ describe('moderation routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.page).toBe(2);
+      expect(res.body.limit).toBe(10);
       expect(res.body.pages).toBe(10);
     });
 
@@ -154,6 +156,7 @@ describe('moderation routes', () => {
       );
 
       expect(res.status).toBe(200);
+      expect(res.body.limit).toBe(100);
       const firstCall = mockPool.query.mock.calls[0];
       expect(firstCall[1]).toContain(100);
     });
@@ -369,6 +372,7 @@ describe('moderation routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.page).toBe(3);
+      expect(res.body.limit).toBe(10);
       expect(res.body.pages).toBe(5);
     });
 

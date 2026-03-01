@@ -141,6 +141,20 @@ export const CONFIG_SCHEMA = {
       moderationLogChannel: { type: 'string', nullable: true },
     },
   },
+  auditLog: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      retentionDays: { type: 'number' },
+    },
+  },
+  reminders: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      maxPerUser: { type: 'number' },
+    },
+  },
 };
 
 /**

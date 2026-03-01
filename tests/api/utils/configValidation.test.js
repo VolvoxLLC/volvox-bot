@@ -104,8 +104,48 @@ describe('configValidation', () => {
   describe('CONFIG_SCHEMA', () => {
     it('should have schemas for all expected top-level sections', () => {
       expect(Object.keys(CONFIG_SCHEMA)).toEqual(
-        expect.arrayContaining(['ai', 'welcome', 'spam', 'moderation', 'triage']),
+        expect.arrayContaining(['ai', 'welcome', 'spam', 'moderation', 'triage', 'auditLog']),
       );
+    });
+  });
+
+  describe('auditLog schema validation', () => {
+    it('should accept valid auditLog.enabled boolean', () => {
+      expect(validateSingleValue('auditLog.enabled', true)).toEqual([]);
+      expect(validateSingleValue('auditLog.enabled', false)).toEqual([]);
+    });
+
+    it('should reject non-boolean auditLog.enabled', () => {
+      const errors = validateSingleValue('auditLog.enabled', 'yes');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected boolean');
+    });
+
+    it('should accept valid auditLog.retentionDays number', () => {
+      expect(validateSingleValue('auditLog.retentionDays', 90)).toEqual([]);
+      expect(validateSingleValue('auditLog.retentionDays', 365)).toEqual([]);
+    });
+
+    it('should reject non-number auditLog.retentionDays', () => {
+      const errors = validateSingleValue('auditLog.retentionDays', '90');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected finite number');
+    });
+
+    it('should reject NaN auditLog.retentionDays', () => {
+      const errors = validateSingleValue('auditLog.retentionDays', NaN);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected finite number');
+    });
+
+    it('should reject unknown keys in auditLog object', () => {
+      const errors = validateSingleValue('auditLog', {
+        enabled: true,
+        retentionDays: 90,
+        badKey: 'nope',
+      });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('unknown config key');
     });
   });
 });

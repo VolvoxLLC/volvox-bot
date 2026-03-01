@@ -2,6 +2,7 @@
 
 import {
   Bot,
+  ClipboardList,
   LayoutDashboard,
   MessageSquare,
   MessagesSquare,
@@ -51,6 +52,11 @@ const navigation = [
     name: 'Bot Config',
     href: '/dashboard/config',
     icon: Bot,
+  },
+  {
+    name: 'Audit Log',
+    href: '/dashboard/audit-log',
+    icon: ClipboardList,
   },
   {
     name: 'Logs',
