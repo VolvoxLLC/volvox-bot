@@ -44,4 +44,15 @@ async function up(pool) {
   `);
 }
 
-module.exports = { up };
+/**
+ * @param {import('pg').Pool} pool
+ */
+async function down(pool) {
+  await pool.query(`
+    DROP INDEX IF EXISTS idx_flagged_messages_status;
+    DROP INDEX IF EXISTS idx_flagged_messages_guild;
+    DROP TABLE IF EXISTS flagged_messages;
+  `);
+}
+
+module.exports = { up, down };
