@@ -23,8 +23,8 @@ import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
 
-import { getConfig } from './config.js';
 import { addToHistory } from './ai.js';
+import { getConfig } from './config.js';
 import {
   channelBuffers,
   clearEvaluatedMessages,
