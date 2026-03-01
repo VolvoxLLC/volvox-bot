@@ -463,7 +463,9 @@ export function isProtectedTarget(target, guild, config) {
     roleIds: [],
   };
 
-  const protectRoles = config.moderation?.protectRoles ?? defaultProtectRoles;
+  // Deep-merge defaults so a partial persisted object (e.g. only roleIds set)
+  // never leaves enabled/include* as undefined/falsy.
+  const protectRoles = { ...defaultProtectRoles, ...config.moderation?.protectRoles };
   if (!protectRoles.enabled) {
     return false;
   }

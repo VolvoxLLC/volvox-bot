@@ -580,11 +580,18 @@ export function ConfigEditor() {
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
+        const existingProtectRoles = prev.moderation?.protectRoles ?? {
+          enabled: true,
+          includeAdmins: true,
+          includeModerators: true,
+          includeServerOwner: true,
+          roleIds: [],
+        };
         return {
           ...prev,
           moderation: {
             ...prev.moderation,
-            protectRoles: { ...prev.moderation?.protectRoles, [field]: value },
+            protectRoles: { ...existingProtectRoles, [field]: value },
           },
         } as GuildConfig;
       });
