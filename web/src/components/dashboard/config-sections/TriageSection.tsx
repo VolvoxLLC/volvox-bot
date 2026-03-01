@@ -1,12 +1,11 @@
 'use client';
 
-import { ToggleSwitch } from '@/components/dashboard/toggle-switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import type { GuildConfig } from '@/lib/config-utils';
 import { NumberField } from './NumberField';
-
-const inputClasses =
-  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 interface TriageSectionProps {
   draftConfig: GuildConfig;
@@ -33,37 +32,37 @@ export function TriageSection({
               Configure message triage classifier, responder models, and channels.
             </CardDescription>
           </div>
-          <ToggleSwitch
+          <Switch
             checked={draftConfig.triage?.enabled ?? false}
-            onChange={onEnabledChange}
+            onCheckedChange={onEnabledChange}
             disabled={saving}
-            label="Triage"
+            aria-label="Toggle Triage"
           />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <label className="space-y-2">
-          <span className="text-sm font-medium">Classify Model</span>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="classify-model">Classify Model</Label>
+          <Input
+            id="classify-model"
             type="text"
             value={draftConfig.triage?.classifyModel ?? ''}
             onChange={(e) => onFieldChange('classifyModel', e.target.value)}
             disabled={saving}
-            className={inputClasses}
             placeholder="e.g. claude-haiku-4-5"
           />
-        </label>
-        <label className="space-y-2">
-          <span className="text-sm font-medium">Respond Model</span>
-          <input
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="respond-model">Respond Model</Label>
+          <Input
+            id="respond-model"
             type="text"
             value={draftConfig.triage?.respondModel ?? ''}
             onChange={(e) => onFieldChange('respondModel', e.target.value)}
             disabled={saving}
-            className={inputClasses}
             placeholder="e.g. claude-sonnet-4-6"
           />
-        </label>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <NumberField
             label="Classify Budget"
@@ -115,43 +114,52 @@ export function TriageSection({
           />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Streaming</span>
-          <ToggleSwitch
+          <Label htmlFor="streaming" className="text-sm font-medium">
+            Streaming
+          </Label>
+          <Switch
+            id="streaming"
             checked={draftConfig.triage?.streaming ?? false}
-            onChange={(v) => onFieldChange('streaming', v)}
+            onCheckedChange={(v) => onFieldChange('streaming', v)}
             disabled={saving}
-            label="Streaming"
+            aria-label="Toggle streaming"
           />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Moderation Response</span>
-          <ToggleSwitch
+          <Label htmlFor="moderation-response" className="text-sm font-medium">
+            Moderation Response
+          </Label>
+          <Switch
+            id="moderation-response"
             checked={draftConfig.triage?.moderationResponse ?? false}
-            onChange={(v) => onFieldChange('moderationResponse', v)}
+            onCheckedChange={(v) => onFieldChange('moderationResponse', v)}
             disabled={saving}
-            label="Moderation Response"
+            aria-label="Toggle moderation response"
           />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Debug Footer</span>
-          <ToggleSwitch
+          <Label htmlFor="debug-footer" className="text-sm font-medium">
+            Debug Footer
+          </Label>
+          <Switch
+            id="debug-footer"
             checked={draftConfig.triage?.debugFooter ?? false}
-            onChange={(v) => onFieldChange('debugFooter', v)}
+            onCheckedChange={(v) => onFieldChange('debugFooter', v)}
             disabled={saving}
-            label="Debug Footer"
+            aria-label="Toggle debug footer"
           />
         </div>
-        <label className="space-y-2">
-          <span className="text-sm font-medium">Moderation Log Channel</span>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="mod-log-channel">Moderation Log Channel</Label>
+          <Input
+            id="mod-log-channel"
             type="text"
             value={draftConfig.triage?.moderationLogChannel ?? ''}
             onChange={(e) => onFieldChange('moderationLogChannel', e.target.value)}
             disabled={saving}
-            className={inputClasses}
             placeholder="Channel ID for moderation logs"
           />
-        </label>
+        </div>
       </CardContent>
     </Card>
   );
