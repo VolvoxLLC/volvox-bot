@@ -24,11 +24,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 export interface DiscordChannel {
@@ -118,7 +114,10 @@ function getChannelTypeLabel(type: number): string {
   }
 }
 
-function filterChannelsByType(channels: DiscordChannel[], filter: ChannelTypeFilter): DiscordChannel[] {
+function filterChannelsByType(
+  channels: DiscordChannel[],
+  filter: ChannelTypeFilter,
+): DiscordChannel[] {
   if (filter === 'all') return channels;
 
   return channels.filter((channel) => {
@@ -126,7 +125,10 @@ function filterChannelsByType(channels: DiscordChannel[], filter: ChannelTypeFil
       case 'text':
         return channel.type === CHANNEL_TYPES.GUILD_TEXT;
       case 'voice':
-        return channel.type === CHANNEL_TYPES.GUILD_VOICE || channel.type === CHANNEL_TYPES.GUILD_STAGE_VOICE;
+        return (
+          channel.type === CHANNEL_TYPES.GUILD_VOICE ||
+          channel.type === CHANNEL_TYPES.GUILD_STAGE_VOICE
+        );
       case 'announcement':
         return channel.type === CHANNEL_TYPES.GUILD_ANNOUNCEMENT;
       case 'thread':
@@ -136,7 +138,9 @@ function filterChannelsByType(channels: DiscordChannel[], filter: ChannelTypeFil
           channel.type === CHANNEL_TYPES.PRIVATE_THREAD
         );
       case 'forum':
-        return channel.type === CHANNEL_TYPES.GUILD_FORUM || channel.type === CHANNEL_TYPES.GUILD_MEDIA;
+        return (
+          channel.type === CHANNEL_TYPES.GUILD_FORUM || channel.type === CHANNEL_TYPES.GUILD_MEDIA
+        );
       default:
         return true;
     }
@@ -200,8 +204,10 @@ export function ChannelSelector({
         );
 
         const sortedChannels = fetchedChannels.sort((a, b) => {
-          if (a.type === CHANNEL_TYPES.GUILD_CATEGORY && b.type !== CHANNEL_TYPES.GUILD_CATEGORY) return 1;
-          if (b.type === CHANNEL_TYPES.GUILD_CATEGORY && a.type !== CHANNEL_TYPES.GUILD_CATEGORY) return -1;
+          if (a.type === CHANNEL_TYPES.GUILD_CATEGORY && b.type !== CHANNEL_TYPES.GUILD_CATEGORY)
+            return 1;
+          if (b.type === CHANNEL_TYPES.GUILD_CATEGORY && a.type !== CHANNEL_TYPES.GUILD_CATEGORY)
+            return -1;
           return a.name.localeCompare(b.name);
         });
 
@@ -315,10 +321,7 @@ export function ChannelSelector({
                       <span className="flex-1 truncate">{channel.name}</span>
                       {!isCategory && (
                         <Check
-                          className={cn(
-                            'h-4 w-4',
-                            isSelected ? 'opacity-100' : 'opacity-0',
-                          )}
+                          className={cn('h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
                         />
                       )}
                     </CommandItem>
@@ -335,11 +338,7 @@ export function ChannelSelector({
           {selectedChannels.map((channel) => {
             const icon = getChannelIcon(channel.type);
             return (
-              <Badge
-                key={channel.id}
-                variant="secondary"
-                className="flex items-center gap-1 pr-1"
-              >
+              <Badge key={channel.id} variant="secondary" className="flex items-center gap-1 pr-1">
                 {icon && <span className="text-muted-foreground scale-75">{icon}</span>}
                 <span className="truncate max-w-[150px]">#{channel.name}</span>
                 <button

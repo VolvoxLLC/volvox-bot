@@ -13,11 +13,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 export interface DiscordRole {
@@ -200,12 +196,7 @@ export function RoleSelector({
                         style={{ backgroundColor: colorHex ?? '#99aab5' }}
                       />
                       <span className="flex-1 truncate">{role.name}</span>
-                      <Check
-                        className={cn(
-                          'h-4 w-4',
-                          isSelected ? 'opacity-100' : 'opacity-0',
-                        )}
-                      />
+                      <Check className={cn('h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')} />
                     </CommandItem>
                   );
                 })}
