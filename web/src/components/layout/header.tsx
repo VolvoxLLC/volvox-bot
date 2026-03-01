@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MobileSidebar } from './mobile-sidebar';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export function Header() {
   const { data: session, status } = useSession();
@@ -46,6 +47,7 @@ export function Header() {
       </div>
 
       <div className="ml-auto flex items-center gap-4">
+        <ThemeToggle />
         {status === 'loading' && (
           <Skeleton className="h-8 w-8 rounded-full" data-testid="header-skeleton" />
         )}
