@@ -116,6 +116,15 @@ export interface LinkFilterConfig {
   blockedDomains: string[];
 }
 
+/** Protected role configuration. */
+export interface ModerationProtectRoles {
+  enabled: boolean;
+  roleIds: string[];
+  includeAdmins: boolean;
+  includeModerators: boolean;
+  includeServerOwner: boolean;
+}
+
 /** Moderation configuration. */
 export interface ModerationConfig {
   enabled: boolean;
@@ -124,6 +133,7 @@ export interface ModerationConfig {
   dmNotifications: ModerationDmNotifications;
   escalation: ModerationEscalation;
   logging: ModerationLogging;
+  protectRoles?: ModerationProtectRoles;
   rateLimit?: RateLimitConfig;
   linkFilter?: LinkFilterConfig;
 }

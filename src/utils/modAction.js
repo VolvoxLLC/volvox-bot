@@ -10,6 +10,7 @@ import { getConfig } from '../modules/config.js';
 import {
   checkHierarchy,
   createCase,
+  isProtectedTarget,
   sendDmNotification,
   sendModLogEmbed,
   shouldSendDm,
@@ -35,6 +36,7 @@ import { safeEditReply } from './safeSend.js';
  *   command — they are passed to `actionFn` but excluded from case data by the
  *   `...extraCaseData` spread (callers must destructure them out).
  * @param {boolean} [opts.skipHierarchy=false] - Skip role hierarchy check
+ * @param {boolean} [opts.skipProtection=false] - Skip protected-role check (e.g. unban)
  * @param {boolean} [opts.skipDm=false] - Skip DM notification
  * @param {string} [opts.dmAction] - Override action name for DM (e.g. tempban uses 'ban')
  * @param {Function} [opts.afterCase] - async (caseData, interaction, config) => void
@@ -49,6 +51,7 @@ export async function executeModAction(interaction, opts) {
     actionFn,
     extractOptions,
     skipHierarchy = false,
+    skipProtection = false,
     skipDm = false,
     dmAction,
     afterCase,
@@ -90,6 +93,16 @@ export async function executeModAction(interaction, opts) {
     }
 
     const { target, targetId, targetTag } = resolved;
+
+    // Protected-role check
+    if (!skipProtection && target) {
+      if (isProtectedTarget(target, interaction.guild, config)) {
+        return await safeEditReply(
+          interaction,
+          '\u274C Cannot moderate administrators or moderators.',
+        );
+      }
+    }
 
     // Hierarchy check
     if (!skipHierarchy && target) {
