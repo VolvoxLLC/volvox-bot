@@ -3,6 +3,8 @@ name: Claude Code Review
 on:
   pull_request_review_comment:
     types: [created]
+  issue_comment:
+    types: [created]
 
 concurrency:
   group: claude-review-${{ github.event.pull_request.number }}
@@ -20,11 +22,13 @@ jobs:
 
     steps:
       - name: Debug event
+        env:
+            COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           echo "event_name=${{ github.event_name }}"
           echo "action=${{ github.event.action }}"
           echo "body<<EOF"
-          echo "${{ github.event.comment.body }}"
+          echo "$COMMENT_BODY"
           echo "EOF"
 
       - name: Checkout
