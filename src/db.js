@@ -224,7 +224,7 @@ export async function initDb() {
     /** @param {string|undefined} env @param {number} defaultVal */
     const parsePositiveInt = (env, defaultVal) => {
       const val = parseInt(env, 10);
-      return isNaN(val) || val < 0 ? defaultVal : val;
+      return Number.isNaN(val) || val < 0 ? defaultVal : val;
     };
 
     const poolSize = Math.max(1, parsePositiveInt(process.env.PG_POOL_SIZE, 5));

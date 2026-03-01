@@ -65,8 +65,15 @@ export async function execute(interaction) {
       },
       logLoaded: false,
     });
-    results.push({ name: 'Commands', success: true, detail: `${interaction.client.commands.size} loaded` });
-    info('Reload: commands reloaded', { count: interaction.client.commands.size, userId: interaction.user.id });
+    results.push({
+      name: 'Commands',
+      success: true,
+      detail: `${interaction.client.commands.size} loaded`,
+    });
+    info('Reload: commands reloaded', {
+      count: interaction.client.commands.size,
+      userId: interaction.user.id,
+    });
   } catch (err) {
     results.push({ name: 'Commands', success: false, error: err.message });
     logError('Reload: command reload failed', { error: err.message });
@@ -76,7 +83,12 @@ export async function execute(interaction) {
   try {
     const commands = Array.from(interaction.client.commands.values());
     const guildId = process.env.GUILD_ID || null;
-    await registerCommands(commands, interaction.client.user.id, process.env.DISCORD_TOKEN, guildId);
+    await registerCommands(
+      commands,
+      interaction.client.user.id,
+      process.env.DISCORD_TOKEN,
+      guildId,
+    );
     results.push({ name: 'Register', success: true });
     info('Reload: commands registered with Discord', { userId: interaction.user.id });
   } catch (err) {

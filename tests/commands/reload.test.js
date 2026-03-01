@@ -47,6 +47,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn().mockResolvedValue(undefined),
 }));
 
+import { adminOnly, data, execute } from '../../src/commands/reload.js';
 import { loadConfig } from '../../src/modules/config.js';
 import { loadOptOuts } from '../../src/modules/optout.js';
 import { startTriage, stopTriage } from '../../src/modules/triage.js';
@@ -54,7 +55,6 @@ import { loadCommandsFromDirectory } from '../../src/utils/loadCommands.js';
 import { isBotOwner } from '../../src/utils/permissions.js';
 import { registerCommands } from '../../src/utils/registerCommands.js';
 import { safeEditReply, safeReply } from '../../src/utils/safeSend.js';
-import { adminOnly, data, execute } from '../../src/commands/reload.js';
 
 function mockInteraction(overrides = {}) {
   return {

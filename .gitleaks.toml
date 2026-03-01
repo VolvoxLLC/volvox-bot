@@ -43,3 +43,7 @@ paths = [
   '''\.gitleaks\.toml$''',
   '''pnpm-lock\.yaml$''',
 ]
+# Historical false positive: dummy token in deleted verify-sensitive-data-redaction.js
+commits = [
+  "0286a77d7695030adffa322c55b4f6c20f420dd4",
+]
