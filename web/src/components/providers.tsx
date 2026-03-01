@@ -26,7 +26,7 @@ function ThemedToaster() {
  * Theme defaults to system preference with CSS variable-based dark/light mode support.
  *
  * @returns A React element that renders providers around `children` and mounts a Toaster
- *          positioned at the bottom-right with system theme and rich colors enabled.
+ *          positioned at the bottom-right with resolved theme (light/dark) and rich colors enabled.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
