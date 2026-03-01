@@ -609,6 +609,16 @@ export async function accumulateMessage(message, _msgConfig) {
   // Push to ring buffer (with truncation warning)
   pushToBuffer(channelId, entry, maxBufferSize);
 
+  // Log user message to conversation history
+  addToHistory(
+    channelId,
+    'user',
+    entry.content,
+    entry.author,
+    entry.messageId,
+    message.guild?.id || null,
+  );
+
   // Check for trigger words -- instant evaluation
   if (checkTriggerWords(message.content, liveConfig)) {
     info('Trigger word detected, forcing evaluation', { channelId });
