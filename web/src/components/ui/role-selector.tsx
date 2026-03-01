@@ -93,10 +93,14 @@ export function RoleSelector({
             typeof (r as Record<string, unknown>).color === 'number',
         );
 
-        setRoles(fetchedRoles);
+        if (abortControllerRef.current === controller) {
+          setRoles(fetchedRoles);
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Failed to load roles');
+        if (abortControllerRef.current === controller) {
+          setError(err instanceof Error ? err.message : 'Failed to load roles');
+        }
       } finally {
         if (abortControllerRef.current === controller) {
           setLoading(false);
