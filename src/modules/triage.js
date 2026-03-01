@@ -30,6 +30,7 @@ import {
   pushToBuffer,
 } from './triage-buffer.js';
 import { getDynamicInterval, isChannelEligible, resolveTriageConfig } from './triage-config.js';
+import { addToHistory } from './ai.js';
 import { checkTriggerWords, sanitizeText } from './triage-filter.js';
 import { parseClassifyResult, parseRespondResult } from './triage-parse.js';
 import { buildClassifyPrompt, buildRespondPrompt } from './triage-prompt.js';
@@ -596,6 +597,16 @@ export async function accumulateMessage(message, msgConfig) {
 
   // Push to ring buffer (with truncation warning)
   pushToBuffer(channelId, entry, maxBufferSize);
+
+  // Log user message to conversation history
+  addToHistory(
+    channelId,
+    'user',
+    entry.content,
+    entry.author,
+    entry.messageId,
+    message.guild?.id || null
+  );
 
   // Check for trigger words -- instant evaluation
   if (checkTriggerWords(message.content, msgConfig)) {
