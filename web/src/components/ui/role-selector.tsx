@@ -134,6 +134,11 @@ export function RoleSelector({
     [roles, selected],
   );
 
+  const unknownSelectedIds = React.useMemo(
+    () => selected.filter((id) => !roles.some((role) => role.id === id)),
+    [roles, selected],
+  );
+
   const atMaxSelection = maxSelections !== undefined && selected.length >= maxSelections;
 
   return (
@@ -207,7 +212,7 @@ export function RoleSelector({
         </PopoverContent>
       </Popover>
 
-      {selectedRoles.length > 0 && (
+      {(selectedRoles.length > 0 || unknownSelectedIds.length > 0) && (
         <div className="flex flex-wrap gap-1">
           {selectedRoles.map((role) => {
             const colorHex = discordColorToHex(role.color);
@@ -243,6 +248,24 @@ export function RoleSelector({
               </Badge>
             );
           })}
+          {unknownSelectedIds.map((id) => (
+            <Badge key={id} variant="secondary" className="flex items-center gap-1 pr-1">
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: '#99aab5' }}
+              />
+              <span className="truncate max-w-[150px]">Unknown role</span>
+              <button
+                type="button"
+                onClick={() => removeRole(id)}
+                className="ml-1 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+                disabled={disabled}
+                aria-label={`Remove unknown role ${id}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
         </div>
       )}
 
