@@ -1782,12 +1782,12 @@ export function ConfigEditor() {
               />
             </label>
           </div>
-          <label htmlFor="level-thresholds-comma-separat" className="space-y-2">
+          <label htmlFor="level-thresholds-comma-separated" className="space-y-2">
             <span className="text-sm font-medium">
               Level Thresholds (comma-separated XP values)
             </span>
             <input
-              id="level-thresholds-comma-separat"
+              id="level-thresholds-comma-separated"
               type="text"
               value={(
                 draftConfig.reputation?.levelThresholds ?? [
