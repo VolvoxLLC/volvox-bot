@@ -1,8 +1,8 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
-import type { ReactNode } from 'react';
 import { useTheme } from 'next-themes';
+import type { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 

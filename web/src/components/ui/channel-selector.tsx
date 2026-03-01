@@ -365,7 +365,9 @@ export function ChannelSelector({
           })}
           {unknownSelectedIds.map((id) => (
             <Badge key={id} variant="secondary" className="flex items-center gap-1 pr-1">
-              <span className="text-muted-foreground scale-75"><Hash className="h-4 w-4" /></span>
+              <span className="text-muted-foreground scale-75">
+                <Hash className="h-4 w-4" />
+              </span>
               <span className="truncate max-w-[150px]">#unknown-channel</span>
               <button
                 type="button"

@@ -254,10 +254,7 @@ export function RoleSelector({
           })}
           {unknownSelectedIds.map((id) => (
             <Badge key={id} variant="secondary" className="flex items-center gap-1 pr-1">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: '#99aab5' }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: '#99aab5' }} />
               <span className="truncate max-w-[150px]">Unknown role</span>
               <button
                 type="button"
