@@ -738,7 +738,7 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Welcome Message</span>
             <textarea
               value={draftConfig.welcome?.message ?? ''}
@@ -755,7 +755,7 @@ export function ConfigEditor() {
           </p>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Rules Channel ID</span>
               <input
                 type="text"
@@ -766,7 +766,7 @@ export function ConfigEditor() {
                 placeholder="Channel where Accept Rules button lives"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Verified Role ID</span>
               <input
                 type="text"
@@ -777,7 +777,7 @@ export function ConfigEditor() {
                 placeholder="Role granted after rules acceptance"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Intro Channel ID</span>
               <input
                 type="text"
@@ -834,7 +834,7 @@ export function ConfigEditor() {
                       ✕
                     </Button>
                   </div>
-                  <RoleSelector
+                  <RoleSelector id="admin-role"
                     guildId={guildId}
                     selected={opt.roleId ? [opt.roleId] : []}
                     onChange={(selected) => {
@@ -928,7 +928,7 @@ export function ConfigEditor() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Alert Channel ID</span>
               <input
                 type="text"
@@ -985,7 +985,7 @@ export function ConfigEditor() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <label className="space-y-2">
+                <label htmlFor="admin-role" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Max Messages</span>
                   <input
                     type="number"
@@ -999,7 +999,7 @@ export function ConfigEditor() {
                     className={inputClasses}
                   />
                 </label>
-                <label className="space-y-2">
+                <label htmlFor="admin-role" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Window (seconds)</span>
                   <input
                     type="number"
@@ -1015,7 +1015,7 @@ export function ConfigEditor() {
                 </label>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <label className="space-y-2">
+                <label htmlFor="admin-role" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Mute After Triggers</span>
                   <input
                     type="number"
@@ -1029,7 +1029,7 @@ export function ConfigEditor() {
                     className={inputClasses}
                   />
                 </label>
-                <label className="space-y-2">
+                <label htmlFor="admin-role" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Mute Window (s)</span>
                   <input
                     type="number"
@@ -1043,7 +1043,7 @@ export function ConfigEditor() {
                     className={inputClasses}
                   />
                 </label>
-                <label className="space-y-2">
+                <label htmlFor="admin-role" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Mute Duration (s)</span>
                   <input
                     type="number"
@@ -1072,7 +1072,7 @@ export function ConfigEditor() {
                   label="Link Filtering"
                 />
               </div>
-              <label className="space-y-2">
+              <label htmlFor="admin-role" className="space-y-2">
                 <span className="text-sm text-muted-foreground">Blocked Domains</span>
                 <input
                   type="text"
@@ -1116,7 +1116,7 @@ export function ConfigEditor() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Classify Model</span>
               <input
                 type="text"
@@ -1127,7 +1127,7 @@ export function ConfigEditor() {
                 placeholder="e.g. claude-haiku-4-5"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Respond Model</span>
               <input
                 type="text"
@@ -1139,7 +1139,7 @@ export function ConfigEditor() {
               />
             </label>
             <div className="grid grid-cols-2 gap-4">
-              <label className="space-y-2">
+              <label htmlFor="admin-role" className="space-y-2">
                 <span className="text-sm font-medium">Classify Budget</span>
                 <input
                   type="number"
@@ -1154,7 +1154,7 @@ export function ConfigEditor() {
                   className={inputClasses}
                 />
               </label>
-              <label className="space-y-2">
+              <label htmlFor="admin-role" className="space-y-2">
                 <span className="text-sm font-medium">Respond Budget</span>
                 <input
                   type="number"
@@ -1171,7 +1171,7 @@ export function ConfigEditor() {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <label className="space-y-2">
+              <label htmlFor="admin-role" className="space-y-2">
                 <span className="text-sm font-medium">Default Interval (ms)</span>
                 <input
                   type="number"
@@ -1185,7 +1185,7 @@ export function ConfigEditor() {
                   className={inputClasses}
                 />
               </label>
-              <label className="space-y-2">
+              <label htmlFor="admin-role" className="space-y-2">
                 <span className="text-sm font-medium">Timeout (ms)</span>
                 <input
                   type="number"
@@ -1201,7 +1201,7 @@ export function ConfigEditor() {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <label className="space-y-2">
+              <label htmlFor="admin-role" className="space-y-2">
                 <span className="text-sm font-medium">Context Messages</span>
                 <input
                   type="number"
@@ -1215,7 +1215,7 @@ export function ConfigEditor() {
                   className={inputClasses}
                 />
               </label>
-              <label className="space-y-2">
+              <label htmlFor="admin-role" className="space-y-2">
                 <span className="text-sm font-medium">Max Buffer Size</span>
                 <input
                   type="number"
@@ -1266,7 +1266,7 @@ export function ConfigEditor() {
                 label="Status Reactions"
               />
             </div>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Moderation Log Channel</span>
               <input
                 type="text"
@@ -1298,7 +1298,7 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Channel ID</span>
             <input
               type="text"
@@ -1310,7 +1310,7 @@ export function ConfigEditor() {
             />
           </label>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Threshold</span>
               <input
                 type="number"
@@ -1324,7 +1324,7 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Emoji</span>
               <div className="flex items-center gap-2">
                 <input
@@ -1363,7 +1363,7 @@ export function ConfigEditor() {
               label="Self-Star Allowed"
             />
           </div>
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Ignored Channels</span>
             <input
               type="text"
@@ -1404,9 +1404,9 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Admin Role ID</span>
-            <RoleSelector
+            <RoleSelector id="admin-role"
               guildId={guildId}
               selected={
                 draftConfig.permissions?.adminRoleId ? [draftConfig.permissions.adminRoleId] : []
@@ -1417,9 +1417,9 @@ export function ConfigEditor() {
               maxSelections={1}
             />
           </label>
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Moderator Role ID</span>
-            <RoleSelector
+            <RoleSelector id="admin-role"
               guildId={guildId}
               selected={
                 draftConfig.permissions?.moderatorRoleId
@@ -1434,7 +1434,7 @@ export function ConfigEditor() {
               maxSelections={1}
             />
           </label>
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Bot Owners</span>
             <input
               type="text"
@@ -1473,7 +1473,7 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Max Context Memories</span>
             <input
               type="number"
@@ -1668,7 +1668,7 @@ export function ConfigEditor() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">XP per Message (min)</span>
               <input
                 type="number"
@@ -1690,7 +1690,7 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">XP per Message (max)</span>
               <input
                 type="number"
@@ -1712,7 +1712,7 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">XP Cooldown (seconds)</span>
               <input
                 type="number"
@@ -1730,7 +1730,7 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Announce Channel ID</span>
               <input
                 type="text"
@@ -1750,7 +1750,7 @@ export function ConfigEditor() {
               />
             </label>
           </div>
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">
               Level Thresholds (comma-separated XP values)
             </span>
@@ -1806,7 +1806,7 @@ export function ConfigEditor() {
             Auto-post a daily coding challenge with hint and solve tracking.
           </p>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Challenge Channel ID</span>
               <input
                 type="text"
@@ -1828,7 +1828,7 @@ export function ConfigEditor() {
                 placeholder="Channel ID for daily challenges"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Post Time (HH:MM)</span>
               <input
                 type="text"
@@ -1891,7 +1891,7 @@ export function ConfigEditor() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Feed Channel ID</span>
               <input
                 type="text"
@@ -1910,7 +1910,7 @@ export function ConfigEditor() {
                 placeholder="Channel ID for GitHub updates"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Poll Interval (minutes)</span>
               <input
                 type="number"
@@ -1954,7 +1954,7 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="admin-role" className="space-y-2">
             <span className="text-sm font-medium">Ticket Mode</span>
             <select
               value={draftConfig.tickets?.mode ?? 'thread'}
@@ -1976,7 +1976,7 @@ export function ConfigEditor() {
             </p>
           </label>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Support Role ID</span>
               <input
                 type="text"
@@ -1992,7 +1992,7 @@ export function ConfigEditor() {
                 placeholder="Role ID for support staff"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Category Channel ID</span>
               <input
                 type="text"
@@ -2008,7 +2008,7 @@ export function ConfigEditor() {
                 placeholder="Category for tickets"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Auto-Close Hours</span>
               <input
                 type="number"
@@ -2030,7 +2030,7 @@ export function ConfigEditor() {
                 Hours of inactivity before warning (then +24h to close)
               </p>
             </label>
-            <label className="space-y-2">
+            <label htmlFor="admin-role" className="space-y-2">
               <span className="text-sm font-medium">Max Open Per User</span>
               <input
                 type="number"
