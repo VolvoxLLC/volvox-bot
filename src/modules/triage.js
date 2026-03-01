@@ -23,17 +23,23 @@ import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
 
+import { addToHistory } from './ai.js';
+
 import {
   channelBuffers,
   clearEvaluatedMessages,
   consumePendingReeval,
   pushToBuffer,
 } from './triage-buffer.js';
+
 import { getDynamicInterval, isChannelEligible, resolveTriageConfig } from './triage-config.js';
-import { addToHistory } from './ai.js';
+
 import { checkTriggerWords, sanitizeText } from './triage-filter.js';
+
 import { parseClassifyResult, parseRespondResult } from './triage-parse.js';
+
 import { buildClassifyPrompt, buildRespondPrompt } from './triage-prompt.js';
+
 import {
   buildStatsAndLog,
   fetchChannelContext,
@@ -610,7 +616,7 @@ export async function accumulateMessage(message, msgConfig) {
     entry.content,
     entry.author,
     entry.messageId,
-    message.guild?.id || null
+    message.guild?.id || null,
   );
 
   // Check for trigger words -- instant evaluation
