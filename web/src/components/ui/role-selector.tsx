@@ -61,6 +61,7 @@ export function RoleSelector({
       abortControllerRef.current = controller;
 
       setLoading(true);
+      setRoles([]);
       setError(null);
 
       try {
