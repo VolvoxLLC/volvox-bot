@@ -178,7 +178,17 @@ export async function sendResponses(
               const msgOpts = { content: chunks[i] };
               if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
               if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
-              await safeSend(channel, msgOpts);
+              const sentMsg = await safeSend(channel, msgOpts);
+              if (sentMsg && !Array.isArray(sentMsg)) {
+                addToHistory(
+                  channelId,
+                  'assistant',
+                  chunks[i],
+                  null,
+                  sentMsg.id,
+                  channel.guild?.id || null,
+                );
+              }
             }
           }
         } catch (err) {
@@ -216,7 +226,6 @@ export async function sendResponses(
         if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
         if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
         const sentMsg = await safeSend(channel, msgOpts);
-        
         // Log AI response to conversation history
         if (sentMsg && !Array.isArray(sentMsg)) {
           addToHistory(
@@ -225,7 +234,7 @@ export async function sendResponses(
             chunks[i],
             null, // username - bot doesn't have one in this context
             sentMsg.id,
-            channel.guild?.id || null
+            channel.guild?.id || null,
           );
         }
       }
