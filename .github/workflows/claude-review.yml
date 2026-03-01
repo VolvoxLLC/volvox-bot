@@ -1,22 +1,17 @@
 name: Claude Code Review
 
 on:
-  issue_comment:
-    types: [created]
   pull_request_review_comment:
     types: [created]
 
 concurrency:
-  group: claude-review-${{ github.event.issue.number || github.event.pull_request.number }}
+  group: claude-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   claude-review:
-    # Only run when the comment includes @claude (customize trigger text if you want)
-    if: >
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
-
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
       pull-requests: write
@@ -24,12 +19,23 @@ jobs:
       id-token: write
 
     steps:
+      - name: Debug event
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "action=${{ github.event.action }}"
+          echo "body<<EOF"
+          echo "${{ github.event.comment.body }}"
+          echo "EOF"
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       - name: Claude Code Review
+        if: >
+          (github.event_name == 'pull_request_review_comment' &&
+           contains(github.event.comment.body, '@claude'))
         uses: anthropics/claude-code-action@v1.0.64
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -40,33 +46,4 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: |
-            Run /code-review --comment on PR #${{ github.event.issue.number || github.event.pull_request.number }} in ${{ github.repository }}.
-
-            In addition to CLAUDE.md and AGENTS.md (which the plugin reads automatically),
-            enforce these project-specific rules that the plugin cannot infer:
-
-            HARD RULES (flag as high-confidence issues):
-            • Winston logger only — zero console.log/warn/error in src/ files
-            • ESM only — no require(), use node: protocol for builtins
-            • Config via getConfig(), mutations via setConfigValue() — never import config.json directly
-            • Custom error classes from src/utils/errors.js — no raw throw new Error()
-            • Parameterized SQL only — no string interpolation in queries
-            • New modules must be registered in src/modules/events.js
-            • Test coverage must stay ≥ 80% (statements, branches, functions, lines)
-
-            DISCORD-SPECIFIC RULES:
-            • Messages over 2000 chars must use the splitMessage utility
-            • New gateway events require matching intent declarations
-            • Moderation commands: DM the target before kick/ban, use ephemeral replies
-            • Duration caps: timeout ≤ 28d, slowmode ≤ 6h
-
-            DOCS:
-            • AGENTS.md must be updated when new files or patterns are added
-            • .env.example must be updated when new env vars are introduced
-
-            OUTPUT RULES:
-            • ONLY report issues — zero praise, positives, or compliments
-            • If zero issues found, do NOT post a comment — just approve silently
-            • After the review comment, submit a verdict:
-              - Issues found → `gh pr review ${{ github.event.issue.number || github.event.pull_request.number }} --request-changes -b "See review comment for details."`
-              - Zero issues → `gh pr review ${{ github.event.issue.number || github.event.pull_request.number }} --approve`
+            Run /code-review --comment on PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
