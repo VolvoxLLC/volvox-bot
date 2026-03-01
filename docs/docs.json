@@ -1,27 +1,41 @@
 {
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
   "name": "Volvox Bot",
-  "theme": {
-    "colors": {
-      "primary": {
-        "light": "#4ade80",
-        "dark": "#16a34a"
-      },
-      "anchors": {
-        "from": "#22c55e",
-        "to": "#16a34a"
-      }
-    }
+  "colors": {
+    "primary": "#22c55e",
+    "light": "#4ade80",
+    "dark": "#16a34a"
   },
+  "favicon": "/favicon.svg",
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "introduction",
-          "authentication"
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "authentication"
+            ]
+          }
         ]
+      },
+      {
+        "tab": "API Reference",
+        "openapi": "openapi.json"
       }
     ]
   },
-  "openapi": "openapi.json"
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/VolvoxLLC/volvox-bot",
+      "discord": "https://discord.gg/volvox"
+    }
+  }
 }
