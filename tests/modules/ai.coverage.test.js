@@ -180,10 +180,14 @@ describe('ai module coverage', () => {
 
       // Give the fire-and-forget a tick to run
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO conversations'),
-        ['ch1', 'user', 'hello', 'testuser', null, null]
-      );
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO conversations'), [
+        'ch1',
+        'user',
+        'hello',
+        'testuser',
+        null,
+        null,
+      ]);
     });
 
     it('logs error when DB write fails', async () => {
