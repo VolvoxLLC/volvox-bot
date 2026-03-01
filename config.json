@@ -262,6 +262,10 @@
     "staleAfterDays": 7,
     "xpReward": 50
   },
+  "auditLog": {
+    "enabled": true,
+    "retentionDays": 90
+  },
   "reminders": {
     "enabled": false,
     "maxPerUser": 25

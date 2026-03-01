@@ -7,9 +7,11 @@
 
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { runMaintenance } from '../utils/dbMaintenance.js';
 import { getNextCronRun, parseCron } from '../utils/cronParser.js';
 import { safeSend } from '../utils/safeSend.js';
 import { checkDailyChallenge } from './challengeScheduler.js';
+import { getConfig } from './config.js';
 import { closeExpiredPolls } from './pollHandler.js';
 import { checkReminders } from './reminderHandler.js';
 import { expireStaleReviews } from './reviewHandler.js';
@@ -98,10 +100,44 @@ async function pollScheduledMessages(client) {
     if (tickCount % 5 === 0) {
       await checkAutoClose(client);
     }
+    // DB maintenance once per hour (every 60th tick)
+    if (tickCount % 60 === 0) {
+      void runMaintenance(pool).catch((err) => {
+        logError('DB maintenance task failed', { error: err.message });
+      });
+    }
+    // Purge expired audit log entries (every 6 hours / 360th tick)
+    if (tickCount % 360 === 0) {
+      await purgeExpiredAuditLogs();
+    }
   } catch (err) {
     logError('Scheduler poll error', { error: err.message });
   } finally {
     pollInFlight = false;
+  }
+}
+
+/**
+ * Purge audit log entries older than the configured retention period.
+ * Runs as a periodic maintenance task within the scheduler.
+ */
+async function purgeExpiredAuditLogs() {
+  try {
+    const pool = getPool();
+    const config = getConfig();
+    const retentionDays = Number(config?.auditLog?.retentionDays);
+    if (!retentionDays || retentionDays <= 0 || !Number.isFinite(retentionDays)) return;
+
+    const { rowCount } = await pool.query(
+      'DELETE FROM audit_logs WHERE created_at < NOW() - make_interval(days => $1)',
+      [retentionDays],
+    );
+
+    if (rowCount > 0) {
+      info('Purged expired audit log entries', { deleted: rowCount, retentionDays });
+    }
+  } catch (err) {
+    logError('Failed to purge audit log entries', { error: err.message });
   }
 }
 
