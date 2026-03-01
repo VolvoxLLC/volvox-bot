@@ -40,7 +40,7 @@ const MAX_CONTENT_LENGTH = 10000;
  * @param {Object} query - Express req.query
  * @returns {{ page: number, limit: number, offset: number }}
  */
-function parsePagination(query) {
+export function parsePagination(query) {
   let page = Number.parseInt(query.page, 10) || 1;
   let limit = Number.parseInt(query.limit, 10) || 25;
   if (page < 1) page = 1;
