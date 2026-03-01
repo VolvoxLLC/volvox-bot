@@ -76,6 +76,7 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 import { info, warn } from '../../src/logger.js';
+import { addToHistory } from '../../src/modules/ai.js';
 import { isSpam } from '../../src/modules/spam.js';
 import {
   accumulateMessage,
@@ -83,7 +84,6 @@ import {
   startTriage,
   stopTriage,
 } from '../../src/modules/triage.js';
-import { addToHistory } from '../../src/modules/ai.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -250,9 +250,21 @@ describe('triage module', () => {
     });
 
     it('should call addToHistory with correct args for guild message', () => {
-      const msg = makeMessage('ch1', 'hello world', { id: 'msg-99', username: 'alice', userId: 'u99', guild: { id: 'g1' } });
+      const msg = makeMessage('ch1', 'hello world', {
+        id: 'msg-99',
+        username: 'alice',
+        userId: 'u99',
+        guild: { id: 'g1' },
+      });
       accumulateMessage(msg, config);
-      expect(addToHistory).toHaveBeenCalledWith('ch1', 'user', 'hello world', 'alice', 'msg-99', 'g1');
+      expect(addToHistory).toHaveBeenCalledWith(
+        'ch1',
+        'user',
+        'hello world',
+        'alice',
+        'msg-99',
+        'g1',
+      );
     });
 
     it('should call addToHistory with null guildId for DM (no guild)', () => {
