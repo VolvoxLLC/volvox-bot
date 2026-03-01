@@ -13,6 +13,7 @@ interface ModerationSectionProps {
   onFieldChange: (field: string, value: unknown) => void;
   onDmNotificationChange: (action: string, value: boolean) => void;
   onEscalationChange: (enabled: boolean) => void;
+  onProtectRolesChange: (field: string, value: unknown) => void;
 }
 
 export function ModerationSection({
@@ -22,6 +23,7 @@ export function ModerationSection({
   onFieldChange,
   onDmNotificationChange,
   onEscalationChange,
+  onProtectRolesChange,
 }: ModerationSectionProps) {
   if (!draftConfig.moderation) return null;
 
@@ -96,6 +98,80 @@ export function ModerationSection({
             aria-label="Toggle escalation"
           />
         </div>
+
+        {/* Protect Roles sub-section */}
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Protect Roles from Moderation</legend>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-roles-enabled" className="text-sm text-muted-foreground">
+              Enabled
+            </Label>
+            <Switch
+              id="protect-roles-enabled"
+              checked={draftConfig.moderation?.protectRoles?.enabled ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('enabled', v)}
+              disabled={saving}
+              aria-label="Toggle protect roles"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-admins" className="text-sm text-muted-foreground">
+              Include admins
+            </Label>
+            <Switch
+              id="protect-admins"
+              checked={draftConfig.moderation?.protectRoles?.includeAdmins ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('includeAdmins', v)}
+              disabled={saving}
+              aria-label="Include admins"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-mods" className="text-sm text-muted-foreground">
+              Include moderators
+            </Label>
+            <Switch
+              id="protect-mods"
+              checked={draftConfig.moderation?.protectRoles?.includeModerators ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('includeModerators', v)}
+              disabled={saving}
+              aria-label="Include moderators"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-owner" className="text-sm text-muted-foreground">
+              Include server owner
+            </Label>
+            <Switch
+              id="protect-owner"
+              checked={draftConfig.moderation?.protectRoles?.includeServerOwner ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('includeServerOwner', v)}
+              disabled={saving}
+              aria-label="Include server owner"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="protect-role-ids" className="text-sm text-muted-foreground">
+              Additional protected role IDs (comma-separated)
+            </Label>
+            <Input
+              id="protect-role-ids"
+              type="text"
+              value={(draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', ')}
+              onChange={(e) =>
+                onProtectRolesChange(
+                  'roleIds',
+                  e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                )
+              }
+              disabled={saving}
+              placeholder="Role ID 1, Role ID 2"
+            />
+          </div>
+        </fieldset>
       </CardContent>
     </Card>
   );

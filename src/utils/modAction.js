@@ -5,7 +5,7 @@
  * case creation, mod log, success reply, and error handling.
  */
 
-import { debug, info, error as logError } from '../logger.js';
+import { debug, info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import {
   checkHierarchy,
@@ -94,9 +94,22 @@ export async function executeModAction(interaction, opts) {
 
     const { target, targetId, targetTag } = resolved;
 
-    // Protected-role check
+    // Self-moderation and protected-role checks
     if (!skipProtection && target) {
+      // Prevent mods from moderating themselves
+      if (target.id === interaction.user.id) {
+        return await safeEditReply(interaction, '\u274C You cannot moderate yourself.');
+      }
+
+      // Block moderation of admins/mods/owner as configured
       if (isProtectedTarget(target, interaction.guild, config)) {
+        warn('Moderation blocked: target is a protected role', {
+          action,
+          targetId: target.id,
+          targetTag,
+          moderatorId: interaction.user.id,
+          guildId: interaction.guildId,
+        });
         return await safeEditReply(
           interaction,
           '\u274C Cannot moderate administrators or moderators.',

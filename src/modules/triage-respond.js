@@ -8,6 +8,7 @@ import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
+import { isProtectedTarget } from './moderation.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
 
 /** Maximum characters to keep from fetched context messages. */
@@ -80,6 +81,26 @@ export async function sendModerationLog(client, classification, snapshot, channe
 
     // Find target messages from the snapshot
     const targets = snapshot.filter((m) => classification.targetMessageIds?.includes(m.messageId));
+
+    // Skip moderation log if any flagged user is a protected role (admin/mod/owner)
+    const guild = logChannel.guild;
+    if (guild && targets.length > 0) {
+      const guildConfig = config;
+      for (const t of targets) {
+        try {
+          const member = await guild.members.fetch(t.userId);
+          if (isProtectedTarget(member, guild, guildConfig)) {
+            warn('Triage skipped moderation log: target is a protected role', {
+              userId: t.userId,
+              channelId,
+            });
+            return;
+          }
+        } catch {
+          // Member not in guild or fetch failed — proceed with logging
+        }
+      }
+    }
 
     const actionLabels = {
       warn: '\u26A0\uFE0F Warn',

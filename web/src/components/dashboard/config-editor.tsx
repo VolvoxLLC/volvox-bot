@@ -573,6 +573,22 @@ export function ConfigEditor() {
     [updateDraftConfig],
   );
 
+  const updateProtectRolesField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          moderation: {
+            ...prev.moderation,
+            protectRoles: { ...prev.moderation?.protectRoles, [field]: value },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
   const updatePermissionsField = useCallback(
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => {
@@ -1019,6 +1035,68 @@ export function ConfigEditor() {
                   disabled={saving}
                   className={inputClasses}
                   placeholder="example.com, spam.net"
+                />
+              </label>
+            </fieldset>
+
+            {/* Protect Roles sub-section */}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Protect Roles from Moderation</legend>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Enabled</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.enabled ?? true}
+                  onChange={(v) => updateProtectRolesField('enabled', v)}
+                  disabled={saving}
+                  label="Protect Roles"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Include admins</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.includeAdmins ?? true}
+                  onChange={(v) => updateProtectRolesField('includeAdmins', v)}
+                  disabled={saving}
+                  label="Include admins"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Include moderators</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.includeModerators ?? true}
+                  onChange={(v) => updateProtectRolesField('includeModerators', v)}
+                  disabled={saving}
+                  label="Include moderators"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Include server owner</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.includeServerOwner ?? true}
+                  onChange={(v) => updateProtectRolesField('includeServerOwner', v)}
+                  disabled={saving}
+                  label="Include server owner"
+                />
+              </div>
+              <label className="space-y-2">
+                <span className="text-sm text-muted-foreground">
+                  Additional protected role IDs (comma-separated)
+                </span>
+                <input
+                  type="text"
+                  value={(draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', ')}
+                  onChange={(e) =>
+                    updateProtectRolesField(
+                      'roleIds',
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    )
+                  }
+                  disabled={saving}
+                  className={inputClasses}
+                  placeholder="Role ID 1, Role ID 2"
                 />
               </label>
             </fieldset>
