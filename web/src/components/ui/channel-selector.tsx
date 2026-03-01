@@ -258,6 +258,11 @@ export function ChannelSelector({
     [channels, selected],
   );
 
+  const unknownSelectedIds = React.useMemo(
+    () => selected.filter((id) => !channels.some((channel) => channel.id === id)),
+    [channels, selected],
+  );
+
   const atMaxSelection = maxSelections !== undefined && selected.length >= maxSelections;
 
   return (
@@ -334,7 +339,7 @@ export function ChannelSelector({
         </PopoverContent>
       </Popover>
 
-      {selectedChannels.length > 0 && (
+      {(selectedChannels.length > 0 || unknownSelectedIds.length > 0) && (
         <div className="flex flex-wrap gap-1">
           {selectedChannels.map((channel) => {
             const icon = getChannelIcon(channel.type);
@@ -354,6 +359,21 @@ export function ChannelSelector({
               </Badge>
             );
           })}
+          {unknownSelectedIds.map((id) => (
+            <Badge key={id} variant="secondary" className="flex items-center gap-1 pr-1">
+              <span className="text-muted-foreground scale-75"><Hash className="h-4 w-4" /></span>
+              <span className="truncate max-w-[150px]">#unknown-channel</span>
+              <button
+                type="button"
+                onClick={() => removeChannel(id)}
+                className="ml-1 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+                disabled={disabled}
+                aria-label={`Remove unknown channel ${id}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
         </div>
       )}
 
