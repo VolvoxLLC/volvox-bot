@@ -141,6 +141,20 @@ export const CONFIG_SCHEMA = {
       moderationLogChannel: { type: 'string', nullable: true },
     },
   },
+  auditLog: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      retentionDays: { type: 'number' },
+    },
+  },
+  reminders: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      maxPerUser: { type: 'number' },
+    },
+  },
 };
 
 /**
@@ -193,7 +207,9 @@ export function validateValue(value, schema, path) {
             }
           } else if (schema.items.type === 'object') {
             if (typeof item !== 'object' || item === null || Array.isArray(item)) {
-              errors.push(`${path}[${i}]: expected object, got ${Array.isArray(item) ? 'array' : item === null ? 'null' : typeof item}`);
+              errors.push(
+                `${path}[${i}]: expected object, got ${Array.isArray(item) ? 'array' : item === null ? 'null' : typeof item}`,
+              );
             } else if (schema.items.required) {
               for (const key of schema.items.required) {
                 if (!(key in item)) {

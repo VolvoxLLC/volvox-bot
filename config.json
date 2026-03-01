@@ -162,9 +162,11 @@
       "rank": "everyone",
       "leaderboard": "everyone",
       "profile": "everyone",
+      "remind": "everyone",
       "challenge": "everyone",
       "review": "everyone",
-      "showcase": "everyone"
+      "showcase": "everyone",
+      "reload": "admin"
     }
   },
   "help": {
@@ -260,5 +262,13 @@
     "channelId": null,
     "staleAfterDays": 7,
     "xpReward": 50
+  },
+  "auditLog": {
+    "enabled": true,
+    "retentionDays": 90
+  },
+  "reminders": {
+    "enabled": false,
+    "maxPerUser": 25
   }
 }
