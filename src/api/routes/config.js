@@ -101,7 +101,28 @@ function requireGlobalAdmin(req, res, next) {
 }
 
 /**
- * GET / — Retrieve current global config (readable sections only)
+ * @openapi
+ * /config:
+ *   get:
+ *     tags:
+ *       - Config
+ *     summary: Get global config
+ *     description: Returns the current global bot configuration. Restricted to API-secret callers or bot-owner OAuth users. Sensitive fields are masked.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     responses:
+ *       "200":
+ *         description: Current global config (readable sections, sensitive fields masked)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               description: Config object with section keys (ai, welcome, spam, moderation, etc.)
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
  */
 router.get('/', requireGlobalAdmin, (_req, res) => {
   const config = getConfig();
@@ -117,10 +138,71 @@ router.get('/', requireGlobalAdmin, (_req, res) => {
 });
 
 /**
- * PUT / — Update global config with schema validation
- * Body: { "ai": { ... }, "welcome": { ... } }
- * Only writable sections (ai, welcome, spam, moderation, triage) are accepted.
- * Values are merged into existing config via setConfigValue.
+ * @openapi
+ * /config:
+ *   put:
+ *     tags:
+ *       - Config
+ *     summary: Update global config
+ *     description: >
+ *       Replace writable config sections. Only writable sections (ai, welcome, spam,
+ *       moderation, triage) are accepted. Values are merged leaf-by-leaf into the
+ *       existing config. Restricted to API-secret callers or bot-owner OAuth users.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             description: Config sections to update
+ *             example:
+ *               ai:
+ *                 model: claude-3
+ *     responses:
+ *       "200":
+ *         description: Updated config (all writes succeeded)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       "207":
+ *         description: Partial success — some writes failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       path:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         enum: [success, failed]
+ *                       error:
+ *                         type: string
+ *                 config:
+ *                   type: object
+ *       "400":
+ *         description: Invalid request body or validation failure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ValidationError"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.put('/', requireGlobalAdmin, async (req, res) => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {

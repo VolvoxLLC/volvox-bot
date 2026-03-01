@@ -36,14 +36,110 @@ router.use(adaptGuildIdParam, requireGuildModerator);
 // ─── GET /cases ───────────────────────────────────────────────────────────────
 
 /**
- * List mod cases for a guild with optional filters and pagination.
- *
- * Query params:
- *   guildId  (required) — Discord guild ID
- *   targetId            — Filter by target user ID
- *   action              — Filter by action type (warn, kick, ban, …)
- *   page     (default 1)
- *   limit    (default 25, max 100)
+ * @openapi
+ * /moderation/cases:
+ *   get:
+ *     tags:
+ *       - Moderation
+ *     summary: List mod cases
+ *     description: Returns paginated moderation cases for a guild with optional filters by target user or action type.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Discord guild ID
+ *       - in: query
+ *         name: targetId
+ *         schema:
+ *           type: string
+ *         description: Filter by target user ID
+ *       - in: query
+ *         name: action
+ *         schema:
+ *           type: string
+ *           enum: [warn, kick, ban, mute, unmute, unban]
+ *         description: Filter by action type
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *     responses:
+ *       "200":
+ *         description: Paginated mod cases
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 cases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       case_number:
+ *                         type: integer
+ *                       action:
+ *                         type: string
+ *                       target_id:
+ *                         type: string
+ *                       target_tag:
+ *                         type: string
+ *                       moderator_id:
+ *                         type: string
+ *                       moderator_tag:
+ *                         type: string
+ *                       reason:
+ *                         type: string
+ *                         nullable: true
+ *                       duration:
+ *                         type: string
+ *                         nullable: true
+ *                       expires_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                       log_message_id:
+ *                         type: string
+ *                         nullable: true
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 pages:
+ *                   type: integer
+ *       "400":
+ *         description: Missing guildId
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.get('/cases', moderationRateLimit, async (req, res) => {
   const { guildId, targetId, action } = req.query;
@@ -109,6 +205,7 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
       cases: casesResult.rows,
       total,
       page,
+      limit,
       pages,
     });
   } catch (err) {
@@ -120,10 +217,100 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
 // ─── GET /cases/:caseNumber ────────────────────────────────────────────────────
 
 /**
- * Get a single mod case by case_number + guild, including any scheduled actions.
- *
- * Query params:
- *   guildId (required) — scoped to prevent cross-guild data exposure
+ * @openapi
+ * /moderation/cases/{caseNumber}:
+ *   get:
+ *     tags:
+ *       - Moderation
+ *     summary: Get mod case detail
+ *     description: Returns a single moderation case by case number, including any scheduled actions.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: caseNumber
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Discord guild ID (scopes the lookup)
+ *     responses:
+ *       "200":
+ *         description: Mod case with scheduled actions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 guild_id:
+ *                   type: string
+ *                 case_number:
+ *                   type: integer
+ *                 action:
+ *                   type: string
+ *                 target_id:
+ *                   type: string
+ *                 target_tag:
+ *                   type: string
+ *                 moderator_id:
+ *                   type: string
+ *                 moderator_tag:
+ *                   type: string
+ *                 reason:
+ *                   type: string
+ *                   nullable: true
+ *                 duration:
+ *                   type: string
+ *                   nullable: true
+ *                 expires_at:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                 scheduledActions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       action:
+ *                         type: string
+ *                       target_id:
+ *                         type: string
+ *                       execute_at:
+ *                         type: string
+ *                         format: date-time
+ *                       executed:
+ *                         type: boolean
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *       "400":
+ *         description: Invalid case number or missing guildId
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.get('/cases/:caseNumber', moderationRateLimit, async (req, res) => {
   const caseNumber = parseInt(req.params.caseNumber, 10);
@@ -186,10 +373,65 @@ router.get('/cases/:caseNumber', moderationRateLimit, async (req, res) => {
 // ─── GET /stats ───────────────────────────────────────────────────────────────
 
 /**
- * Get moderation stats summary for a guild.
- *
- * Query params:
- *   guildId (required)
+ * @openapi
+ * /moderation/stats:
+ *   get:
+ *     tags:
+ *       - Moderation
+ *     summary: Moderation statistics
+ *     description: Returns aggregate moderation statistics for a guild — totals, recent activity, breakdown by action, and top targets.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         description: Moderation stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalCases:
+ *                   type: integer
+ *                 last24h:
+ *                   type: integer
+ *                 last7d:
+ *                   type: integer
+ *                 byAction:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: integer
+ *                 topTargets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                       tag:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *       "400":
+ *         description: Missing guildId
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.get('/stats', moderationRateLimit, async (req, res) => {
   const { guildId } = req.query;
@@ -265,12 +507,94 @@ router.get('/stats', moderationRateLimit, async (req, res) => {
 // ─── GET /user/:userId/history ────────────────────────────────────────────────
 
 /**
- * Get full moderation history for a specific user in a guild.
- *
- * Query params:
- *   guildId  (required) — Discord guild ID
- *   page     (default 1)
- *   limit    (default 25, max 100)
+ * @openapi
+ * /moderation/user/{userId}/history:
+ *   get:
+ *     tags:
+ *       - Moderation
+ *     summary: User moderation history
+ *     description: Returns full moderation history for a specific user in a guild with breakdown by action type.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Discord user ID
+ *       - in: query
+ *         name: guildId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *     responses:
+ *       "200":
+ *         description: User moderation history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 cases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       case_number:
+ *                         type: integer
+ *                       action:
+ *                         type: string
+ *                       reason:
+ *                         type: string
+ *                         nullable: true
+ *                       moderator_tag:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 pages:
+ *                   type: integer
+ *                 byAction:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: integer
+ *       "400":
+ *         description: Missing guildId or userId
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
  */
 router.get('/user/:userId/history', moderationRateLimit, async (req, res) => {
   const { userId } = req.params;
@@ -341,6 +665,7 @@ router.get('/user/:userId/history', moderationRateLimit, async (req, res) => {
       cases: casesResult.rows,
       total,
       page,
+      limit,
       pages,
       byAction,
     });
