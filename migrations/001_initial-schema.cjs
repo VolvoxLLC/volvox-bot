@@ -20,6 +20,26 @@ exports.up = (pgm) => {
       PRIMARY KEY (guild_id, key)
     )
   `);
+  // Backfill: guild_id and composite PK were added after the initial config table.
+  // Uses a DO block to conditionally add the column and re-key if needed.
+  pgm.sql(`
+    DO $$
+    DECLARE pk_name TEXT;
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'config' AND column_name = 'guild_id'
+      ) THEN
+        ALTER TABLE config ADD COLUMN guild_id TEXT NOT NULL DEFAULT 'global';
+        SELECT conname INTO pk_name FROM pg_constraint
+        WHERE conrelid = 'config'::regclass AND contype = 'p';
+        IF pk_name IS NOT NULL THEN
+          EXECUTE format('ALTER TABLE config DROP CONSTRAINT %I', pk_name);
+        END IF;
+        ALTER TABLE config ADD PRIMARY KEY (guild_id, key);
+      END IF;
+    END $$
+  `);
 
   // 2. conversations
   pgm.sql(`
@@ -33,6 +53,9 @@ exports.up = (pgm) => {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Backfill: guild_id was added after the initial table in some databases.
+  // ADD COLUMN IF NOT EXISTS ensures idempotency when the table pre-dates this migration.
+  pgm.sql('ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guild_id TEXT');
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_conversations_guild_id ON conversations (guild_id)');
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_conversations_channel_created ON conversations (channel_id, created_at)');
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations (created_at)');
@@ -100,6 +123,9 @@ exports.up = (pgm) => {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Backfill: these columns were added after the initial ai_usage table in some databases.
+  pgm.sql('ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS user_id TEXT DEFAULT NULL');
+  pgm.sql('ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS search_count INTEGER NOT NULL DEFAULT 0');
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_ai_usage_guild_created ON ai_usage (guild_id, created_at)');
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_ai_usage_created_at ON ai_usage (created_at)');
   pgm.sql('CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created ON ai_usage (user_id, created_at) WHERE user_id IS NOT NULL');
