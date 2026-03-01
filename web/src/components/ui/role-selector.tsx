@@ -25,6 +25,7 @@ export interface DiscordRole {
 interface RoleSelectorProps {
   guildId: string;
   selected: string[];
+  id?: string;
   onChange: (selected: string[]) => void;
   placeholder?: string;
   disabled?: boolean;
@@ -57,6 +58,7 @@ export function RoleSelector({
   disabled = false,
   className,
   maxSelections,
+  id,
 }: RoleSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [roles, setRoles] = React.useState<DiscordRole[]>([]);
@@ -167,6 +169,7 @@ export function RoleSelector({
             aria-expanded={open}
             disabled={disabled || loading}
             className="w-full justify-between"
+            id={id}
           >
             <span className="truncate">
               {selected.length > 0
