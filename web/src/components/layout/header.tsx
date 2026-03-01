@@ -18,6 +18,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { MobileSidebar } from './mobile-sidebar';
 
+/**
+ * Renders the top navigation header for the Bill Bot Dashboard, including branding, a theme toggle, and a session-aware user menu.
+ *
+ * If the session reports a `RefreshTokenError`, initiates sign-out and redirects to `/login`; a guard prevents duplicate sign-out attempts.
+ *
+ * @returns The header element for the dashboard
+ */
 export function Header() {
   const { data: session, status } = useSession();
   const signingOut = useRef(false);

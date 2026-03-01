@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { RoleSelector } from '@/components/ui/role-selector';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -20,6 +21,24 @@ type GuildConfig = DeepPartial<BotConfig>;
 const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
+/**
+ * Generate a UUID with fallback for environments without crypto.randomUUID.
+ *
+ * @returns A UUID v4 string.
+ */
+function generateId(): string {
+  // Use crypto.randomUUID if available
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback: generate a UUID-like string
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 const DEFAULT_ACTIVITY_BADGES = [
   { days: 90, label: '👑 Legend' },
   { days: 30, label: '🌳 Veteran' },
@@ -27,7 +46,14 @@ const DEFAULT_ACTIVITY_BADGES = [
   { days: 0, label: '🌱 Newcomer' },
 ] as const;
 
-/** Parse a number input value, enforcing optional min/max constraints. Returns undefined if invalid. */
+/**
+ * Parse a numeric text input into a number, applying optional minimum/maximum bounds.
+ *
+ * @param raw - The input string to parse; an empty string yields `undefined`.
+ * @param min - Optional lower bound; if the parsed value is less than `min`, `min` is returned.
+ * @param max - Optional upper bound; if the parsed value is greater than `max`, `max` is returned.
+ * @returns `undefined` if `raw` is empty or cannot be parsed as a finite number, otherwise the parsed number (clamped to `min`/`max` when provided).
+ */
 function parseNumberInput(raw: string, min?: number, max?: number): number | undefined {
   if (raw === '') return undefined;
   const num = Number(raw);
@@ -35,32 +61,6 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
   if (min !== undefined && num < min) return min;
   if (max !== undefined && num > max) return max;
   return num;
-}
-
-function parseRoleMenuOptions(raw: string) {
-  return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [label = '', roleId = '', ...descParts] = line.split('|');
-      const description = descParts.join('|').trim();
-      return {
-        label: label.trim(),
-        roleId: roleId.trim(),
-        ...(description ? { description } : {}),
-      };
-    })
-    .filter((opt) => opt.label && opt.roleId)
-    .slice(0, 25);
-}
-
-function stringifyRoleMenuOptions(
-  options: Array<{ label?: string; roleId?: string; description?: string }> = [],
-) {
-  return options
-    .map((opt) => [opt.label ?? '', opt.roleId ?? '', opt.description ?? ''].join('|'))
-    .join('\n');
 }
 
 /**
@@ -110,11 +110,13 @@ function isGuildConfig(data: unknown): data is GuildConfig {
 }
 
 /**
- * Renders the configuration editor for a selected guild, allowing viewing and editing of AI, welcome, moderation, and triage settings.
+ * Edit a guild's bot configuration through a multi-section UI.
  *
- * The component loads the guild's authoritative config from the API, keeps a mutable draft for user edits, computes and applies patch updates per top-level section, warns on unsaved changes, and provides keyboard and UI controls for saving or discarding edits.
+ * Loads the authoritative config for the selected guild, maintains a mutable draft for user edits,
+ * computes and applies per-section patches to persist changes, and provides controls to save,
+ * discard, and validate edits (including an unsaved-changes warning and keyboard shortcut).
  *
- * @returns The editor UI as JSX when a guild is selected and the draft config is available; `null` while no draft is present (or when rendering is handled by loading/error/no-selection states).
+ * @returns The editor UI as JSX when a guild is selected and a draft config exists; `null` otherwise.
  */
 export function ConfigEditor() {
   const [guildId, setGuildId] = useState<string>('');
@@ -128,7 +130,6 @@ export function ConfigEditor() {
   const [draftConfig, setDraftConfig] = useState<GuildConfig | null>(null);
 
   /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
-  const [roleMenuRaw, setRoleMenuRaw] = useState('');
   const [dmStepsRaw, setDmStepsRaw] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
@@ -197,9 +198,15 @@ export function ConfigEditor() {
         throw new Error('Invalid config response');
       }
 
+      // Ensure role menu options have stable IDs
+      if (data.welcome?.roleMenu?.options) {
+        data.welcome.roleMenu.options = data.welcome.roleMenu.options.map((opt) => ({
+          ...opt,
+          id: opt.id || generateId(),
+        }));
+      }
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
-      setRoleMenuRaw(stringifyRoleMenuOptions(data.welcome?.roleMenu?.options ?? []));
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
@@ -226,6 +233,13 @@ export function ConfigEditor() {
   // Currently only validates system prompt length; extend with additional checks as needed.
   const hasValidationErrors = useMemo(() => {
     if (!draftConfig) return false;
+    // Role menu validation: all options must have non-empty label and roleId
+    const roleMenuEnabled = draftConfig.welcome?.roleMenu?.enabled ?? false;
+    const roleMenuOptions = draftConfig.welcome?.roleMenu?.options ?? [];
+    const hasRoleMenuErrors = roleMenuOptions.some(
+      (opt) => !opt.label?.trim() || !opt.roleId?.trim(),
+    );
+    if (roleMenuEnabled && hasRoleMenuErrors) return true;
     const promptLength = draftConfig.ai?.systemPrompt?.length ?? 0;
     return promptLength > SYSTEM_PROMPT_MAX_LENGTH;
   }, [draftConfig]);
@@ -371,7 +385,6 @@ export function ConfigEditor() {
   const discardChanges = useCallback(() => {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
-    setRoleMenuRaw(stringifyRoleMenuOptions(savedConfig.welcome?.roleMenu?.options ?? []));
     setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
     toast.success('Changes discarded.');
   }, [savedConfig]);
@@ -725,9 +738,10 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="welcome-message" className="space-y-2">
             <span className="text-sm font-medium">Welcome Message</span>
             <textarea
+              id="welcome-message"
               value={draftConfig.welcome?.message ?? ''}
               onChange={(e) => updateWelcomeMessage(e.target.value)}
               rows={4}
@@ -742,9 +756,10 @@ export function ConfigEditor() {
           </p>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <label className="space-y-2">
+            <label htmlFor="rules-channel-id" className="space-y-2">
               <span className="text-sm font-medium">Rules Channel ID</span>
               <input
+                id="rules-channel-id"
                 type="text"
                 value={draftConfig.welcome?.rulesChannel ?? ''}
                 onChange={(e) => updateWelcomeField('rulesChannel', e.target.value.trim() || null)}
@@ -753,9 +768,10 @@ export function ConfigEditor() {
                 placeholder="Channel where Accept Rules button lives"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="verified-role-id" className="space-y-2">
               <span className="text-sm font-medium">Verified Role ID</span>
               <input
+                id="verified-role-id"
                 type="text"
                 value={draftConfig.welcome?.verifiedRole ?? ''}
                 onChange={(e) => updateWelcomeField('verifiedRole', e.target.value.trim() || null)}
@@ -764,9 +780,10 @@ export function ConfigEditor() {
                 placeholder="Role granted after rules acceptance"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="intro-channel-id" className="space-y-2">
               <span className="text-sm font-medium">Intro Channel ID</span>
               <input
+                id="intro-channel-id"
                 type="text"
                 value={draftConfig.welcome?.introChannel ?? ''}
                 onChange={(e) => updateWelcomeField('introChannel', e.target.value.trim() || null)}
@@ -790,21 +807,78 @@ export function ConfigEditor() {
                 label="Role Menu"
               />
             </div>
-            <textarea
-              value={roleMenuRaw}
-              onChange={(e) => setRoleMenuRaw(e.target.value)}
-              onBlur={() => {
-                const parsed = parseRoleMenuOptions(roleMenuRaw);
-                updateWelcomeRoleMenu('options', parsed);
-                setRoleMenuRaw(stringifyRoleMenuOptions(parsed));
-              }}
-              rows={5}
-              disabled={saving}
-              className={inputClasses}
-              placeholder={
-                'Format: Label|RoleID|Description (optional)\nOne option per line (max 25).'
-              }
-            />
+            <div className="space-y-3">
+              {(draftConfig.welcome?.roleMenu?.options ?? []).map((opt, i) => (
+                <div key={opt.id} className="flex flex-col gap-2 rounded-md border p-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={opt.label ?? ''}
+                      onChange={(e) => {
+                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                        opts[i] = { ...opts[i], label: e.target.value };
+                        updateWelcomeRoleMenu('options', opts);
+                      }}
+                      disabled={saving}
+                      className={`${inputClasses} flex-1`}
+                      placeholder="Label (shown in menu)"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])].filter(
+                          (o) => o.id !== opt.id,
+                        );
+                        updateWelcomeRoleMenu('options', opts);
+                      }}
+                      disabled={saving}
+                      aria-label={`Remove role option ${opt.label || i + 1}`}
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                  <RoleSelector
+                    guildId={guildId}
+                    selected={opt.roleId ? [opt.roleId] : []}
+                    onChange={(selected) => {
+                      const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                      opts[i] = { ...opts[i], roleId: selected[0] ?? '' };
+                      updateWelcomeRoleMenu('options', opts);
+                    }}
+                    placeholder="Select role"
+                    disabled={saving}
+                    maxSelections={1}
+                  />
+                  <input
+                    type="text"
+                    value={opt.description ?? ''}
+                    onChange={(e) => {
+                      const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                      opts[i] = { ...opts[i], description: e.target.value || undefined };
+                      updateWelcomeRoleMenu('options', opts);
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                    placeholder="Description (optional)"
+                  />
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const opts = [
+                    ...(draftConfig.welcome?.roleMenu?.options ?? []),
+                    { id: generateId(), label: '', roleId: '' },
+                  ];
+                  updateWelcomeRoleMenu('options', opts);
+                }}
+                disabled={saving || (draftConfig.welcome?.roleMenu?.options ?? []).length >= 25}
+              >
+                + Add Role Option
+              </Button>
+            </div>
           </fieldset>
 
           <fieldset className="space-y-2 rounded-md border p-3">
@@ -858,9 +932,10 @@ export function ConfigEditor() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <label className="space-y-2">
+            <label htmlFor="alert-channel-id" className="space-y-2">
               <span className="text-sm font-medium">Alert Channel ID</span>
               <input
+                id="alert-channel-id"
                 type="text"
                 value={draftConfig.moderation?.alertChannelId ?? ''}
                 onChange={(e) => updateModerationField('alertChannelId', e.target.value)}
@@ -915,9 +990,10 @@ export function ConfigEditor() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <label className="space-y-2">
+                <label htmlFor="max-messages" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Max Messages</span>
                   <input
+                    id="max-messages"
                     type="number"
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.maxMessages ?? 10}
@@ -929,9 +1005,10 @@ export function ConfigEditor() {
                     className={inputClasses}
                   />
                 </label>
-                <label className="space-y-2">
+                <label htmlFor="window-seconds" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Window (seconds)</span>
                   <input
+                    id="window-seconds"
                     type="number"
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.windowSeconds ?? 10}
@@ -945,9 +1022,10 @@ export function ConfigEditor() {
                 </label>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <label className="space-y-2">
+                <label htmlFor="mute-after-triggers" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Mute After Triggers</span>
                   <input
+                    id="mute-after-triggers"
                     type="number"
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteAfterTriggers ?? 3}
@@ -959,9 +1037,10 @@ export function ConfigEditor() {
                     className={inputClasses}
                   />
                 </label>
-                <label className="space-y-2">
+                <label htmlFor="mute-window-s" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Mute Window (s)</span>
                   <input
+                    id="mute-window-s"
                     type="number"
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteWindowSeconds ?? 300}
@@ -973,9 +1052,10 @@ export function ConfigEditor() {
                     className={inputClasses}
                   />
                 </label>
-                <label className="space-y-2">
+                <label htmlFor="mute-duration-s" className="space-y-2">
                   <span className="text-sm text-muted-foreground">Mute Duration (s)</span>
                   <input
+                    id="mute-duration-s"
                     type="number"
                     min={1}
                     value={draftConfig.moderation?.rateLimit?.muteDurationSeconds ?? 300}
@@ -1002,9 +1082,10 @@ export function ConfigEditor() {
                   label="Link Filtering"
                 />
               </div>
-              <label className="space-y-2">
+              <label htmlFor="blocked-domains" className="space-y-2">
                 <span className="text-sm text-muted-foreground">Blocked Domains</span>
                 <input
+                  id="blocked-domains"
                   type="text"
                   value={(draftConfig.moderation?.linkFilter?.blockedDomains ?? []).join(', ')}
                   onChange={(e) =>
@@ -1046,9 +1127,10 @@ export function ConfigEditor() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <label className="space-y-2">
+            <label htmlFor="classify-model" className="space-y-2">
               <span className="text-sm font-medium">Classify Model</span>
               <input
+                id="classify-model"
                 type="text"
                 value={draftConfig.triage?.classifyModel ?? ''}
                 onChange={(e) => updateTriageField('classifyModel', e.target.value)}
@@ -1057,9 +1139,10 @@ export function ConfigEditor() {
                 placeholder="e.g. claude-haiku-4-5"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="respond-model" className="space-y-2">
               <span className="text-sm font-medium">Respond Model</span>
               <input
+                id="respond-model"
                 type="text"
                 value={draftConfig.triage?.respondModel ?? ''}
                 onChange={(e) => updateTriageField('respondModel', e.target.value)}
@@ -1069,9 +1152,10 @@ export function ConfigEditor() {
               />
             </label>
             <div className="grid grid-cols-2 gap-4">
-              <label className="space-y-2">
+              <label htmlFor="classify-budget" className="space-y-2">
                 <span className="text-sm font-medium">Classify Budget</span>
                 <input
+                  id="classify-budget"
                   type="number"
                   step="0.01"
                   min={0}
@@ -1084,9 +1168,10 @@ export function ConfigEditor() {
                   className={inputClasses}
                 />
               </label>
-              <label className="space-y-2">
+              <label htmlFor="respond-budget" className="space-y-2">
                 <span className="text-sm font-medium">Respond Budget</span>
                 <input
+                  id="respond-budget"
                   type="number"
                   step="0.01"
                   min={0}
@@ -1101,9 +1186,10 @@ export function ConfigEditor() {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <label className="space-y-2">
+              <label htmlFor="default-interval-ms" className="space-y-2">
                 <span className="text-sm font-medium">Default Interval (ms)</span>
                 <input
+                  id="default-interval-ms"
                   type="number"
                   min={1}
                   value={draftConfig.triage?.defaultInterval ?? 3000}
@@ -1115,9 +1201,10 @@ export function ConfigEditor() {
                   className={inputClasses}
                 />
               </label>
-              <label className="space-y-2">
+              <label htmlFor="timeout-ms" className="space-y-2">
                 <span className="text-sm font-medium">Timeout (ms)</span>
                 <input
+                  id="timeout-ms"
                   type="number"
                   min={1}
                   value={draftConfig.triage?.timeout ?? 30000}
@@ -1131,9 +1218,10 @@ export function ConfigEditor() {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <label className="space-y-2">
+              <label htmlFor="context-messages" className="space-y-2">
                 <span className="text-sm font-medium">Context Messages</span>
                 <input
+                  id="context-messages"
                   type="number"
                   min={1}
                   value={draftConfig.triage?.contextMessages ?? 10}
@@ -1145,9 +1233,10 @@ export function ConfigEditor() {
                   className={inputClasses}
                 />
               </label>
-              <label className="space-y-2">
+              <label htmlFor="max-buffer-size" className="space-y-2">
                 <span className="text-sm font-medium">Max Buffer Size</span>
                 <input
+                  id="max-buffer-size"
                   type="number"
                   min={1}
                   value={draftConfig.triage?.maxBufferSize ?? 30}
@@ -1196,9 +1285,10 @@ export function ConfigEditor() {
                 label="Status Reactions"
               />
             </div>
-            <label className="space-y-2">
+            <label htmlFor="moderation-log-channel" className="space-y-2">
               <span className="text-sm font-medium">Moderation Log Channel</span>
               <input
+                id="moderation-log-channel"
                 type="text"
                 value={draftConfig.triage?.moderationLogChannel ?? ''}
                 onChange={(e) => updateTriageField('moderationLogChannel', e.target.value)}
@@ -1228,9 +1318,10 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="channel-id" className="space-y-2">
             <span className="text-sm font-medium">Channel ID</span>
             <input
+              id="channel-id"
               type="text"
               value={draftConfig.starboard?.channelId ?? ''}
               onChange={(e) => updateStarboardField('channelId', e.target.value)}
@@ -1240,9 +1331,10 @@ export function ConfigEditor() {
             />
           </label>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="threshold" className="space-y-2">
               <span className="text-sm font-medium">Threshold</span>
               <input
+                id="threshold"
                 type="number"
                 min={1}
                 value={draftConfig.starboard?.threshold ?? 3}
@@ -1254,10 +1346,11 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="emoji" className="space-y-2">
               <span className="text-sm font-medium">Emoji</span>
               <div className="flex items-center gap-2">
                 <input
+                  id="emoji"
                   type="text"
                   value={draftConfig.starboard?.emoji ?? '*'}
                   onChange={(e) => updateStarboardField('emoji', e.target.value.trim() || '*')}
@@ -1293,9 +1386,10 @@ export function ConfigEditor() {
               label="Self-Star Allowed"
             />
           </div>
-          <label className="space-y-2">
+          <label htmlFor="ignored-channels" className="space-y-2">
             <span className="text-sm font-medium">Ignored Channels</span>
             <input
+              id="ignored-channels"
               type="text"
               value={(draftConfig.starboard?.ignoredChannels ?? []).join(', ')}
               onChange={(e) =>
@@ -1334,33 +1428,42 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="admin-role-id" className="space-y-2">
             <span className="text-sm font-medium">Admin Role ID</span>
-            <input
-              type="text"
-              value={draftConfig.permissions?.adminRoleId ?? ''}
-              onChange={(e) => updatePermissionsField('adminRoleId', e.target.value.trim() || null)}
-              disabled={saving}
-              className={inputClasses}
-              placeholder="Discord role ID for admins"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Moderator Role ID</span>
-            <input
-              type="text"
-              value={draftConfig.permissions?.moderatorRoleId ?? ''}
-              onChange={(e) =>
-                updatePermissionsField('moderatorRoleId', e.target.value.trim() || null)
+            <RoleSelector
+              id="admin-role-id"
+              guildId={guildId}
+              selected={
+                draftConfig.permissions?.adminRoleId ? [draftConfig.permissions.adminRoleId] : []
               }
+              onChange={(selected) => updatePermissionsField('adminRoleId', selected[0] ?? null)}
+              placeholder="Select admin role"
               disabled={saving}
-              className={inputClasses}
-              placeholder="Discord role ID for moderators"
+              maxSelections={1}
             />
           </label>
-          <label className="space-y-2">
+          <label htmlFor="moderator-role-id" className="space-y-2">
+            <span className="text-sm font-medium">Moderator Role ID</span>
+            <RoleSelector
+              id="moderator-role-id"
+              guildId={guildId}
+              selected={
+                draftConfig.permissions?.moderatorRoleId
+                  ? [draftConfig.permissions.moderatorRoleId]
+                  : []
+              }
+              onChange={(selected) =>
+                updatePermissionsField('moderatorRoleId', selected[0] ?? null)
+              }
+              placeholder="Select moderator role"
+              disabled={saving}
+              maxSelections={1}
+            />
+          </label>
+          <label htmlFor="bot-owners" className="space-y-2">
             <span className="text-sm font-medium">Bot Owners</span>
             <input
+              id="bot-owners"
               type="text"
               value={(draftConfig.permissions?.botOwners ?? []).join(', ')}
               onChange={(e) =>
@@ -1397,9 +1500,10 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="max-context-memories" className="space-y-2">
             <span className="text-sm font-medium">Max Context Memories</span>
             <input
+              id="max-context-memories"
               type="number"
               min={1}
               value={draftConfig.memory?.maxContextMemories ?? 10}
@@ -1592,9 +1696,10 @@ export function ConfigEditor() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="xp-per-message-min" className="space-y-2">
               <span className="text-sm font-medium">XP per Message (min)</span>
               <input
+                id="xp-per-message-min"
                 type="number"
                 min={1}
                 max={100}
@@ -1614,9 +1719,10 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="xp-per-message-max" className="space-y-2">
               <span className="text-sm font-medium">XP per Message (max)</span>
               <input
+                id="xp-per-message-max"
                 type="number"
                 min={1}
                 max={100}
@@ -1636,9 +1742,10 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="xp-cooldown-seconds" className="space-y-2">
               <span className="text-sm font-medium">XP Cooldown (seconds)</span>
               <input
+                id="xp-cooldown-seconds"
                 type="number"
                 min={0}
                 value={draftConfig.reputation?.xpCooldownSeconds ?? 60}
@@ -1654,9 +1761,10 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="announce-channel-id" className="space-y-2">
               <span className="text-sm font-medium">Announce Channel ID</span>
               <input
+                id="announce-channel-id"
                 type="text"
                 value={draftConfig.reputation?.announceChannelId ?? ''}
                 onChange={(e) =>
@@ -1674,11 +1782,12 @@ export function ConfigEditor() {
               />
             </label>
           </div>
-          <label className="space-y-2">
+          <label htmlFor="level-thresholds-comma-separated" className="space-y-2">
             <span className="text-sm font-medium">
               Level Thresholds (comma-separated XP values)
             </span>
             <input
+              id="level-thresholds-comma-separated"
               type="text"
               value={(
                 draftConfig.reputation?.levelThresholds ?? [
@@ -1730,9 +1839,10 @@ export function ConfigEditor() {
             Auto-post a daily coding challenge with hint and solve tracking.
           </p>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="challenge-channel-id" className="space-y-2">
               <span className="text-sm font-medium">Challenge Channel ID</span>
               <input
+                id="challenge-channel-id"
                 type="text"
                 value={draftConfig.challenges?.channelId ?? ''}
                 onChange={(e) =>
@@ -1752,9 +1862,10 @@ export function ConfigEditor() {
                 placeholder="Channel ID for daily challenges"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="post-time-hh-mm" className="space-y-2">
               <span className="text-sm font-medium">Post Time (HH:MM)</span>
               <input
+                id="post-time-hh-mm"
                 type="text"
                 value={draftConfig.challenges?.postTime ?? '09:00'}
                 onChange={(e) =>
@@ -1815,9 +1926,10 @@ export function ConfigEditor() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="feed-channel-id" className="space-y-2">
               <span className="text-sm font-medium">Feed Channel ID</span>
               <input
+                id="feed-channel-id"
                 type="text"
                 value={draftConfig.github?.feed?.channelId ?? ''}
                 onChange={(e) =>
@@ -1834,9 +1946,10 @@ export function ConfigEditor() {
                 placeholder="Channel ID for GitHub updates"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="poll-interval-minutes" className="space-y-2">
               <span className="text-sm font-medium">Poll Interval (minutes)</span>
               <input
+                id="poll-interval-minutes"
                 type="number"
                 min={1}
                 value={draftConfig.github?.feed?.pollIntervalMinutes ?? 5}
@@ -1878,9 +1991,10 @@ export function ConfigEditor() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="space-y-2">
+          <label htmlFor="ticket-mode" className="space-y-2">
             <span className="text-sm font-medium">Ticket Mode</span>
             <select
+              id="ticket-mode"
               value={draftConfig.tickets?.mode ?? 'thread'}
               onChange={(e) =>
                 updateDraftConfig((prev) => ({
@@ -1900,9 +2014,10 @@ export function ConfigEditor() {
             </p>
           </label>
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <label htmlFor="support-role-id" className="space-y-2">
               <span className="text-sm font-medium">Support Role ID</span>
               <input
+                id="support-role-id"
                 type="text"
                 value={draftConfig.tickets?.supportRole ?? ''}
                 onChange={(e) =>
@@ -1916,9 +2031,10 @@ export function ConfigEditor() {
                 placeholder="Role ID for support staff"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="category-channel-id" className="space-y-2">
               <span className="text-sm font-medium">Category Channel ID</span>
               <input
+                id="category-channel-id"
                 type="text"
                 value={draftConfig.tickets?.category ?? ''}
                 onChange={(e) =>
@@ -1932,9 +2048,10 @@ export function ConfigEditor() {
                 placeholder="Category for tickets"
               />
             </label>
-            <label className="space-y-2">
+            <label htmlFor="auto-close-hours" className="space-y-2">
               <span className="text-sm font-medium">Auto-Close Hours</span>
               <input
+                id="auto-close-hours"
                 type="number"
                 min="1"
                 max="720"
@@ -1954,9 +2071,10 @@ export function ConfigEditor() {
                 Hours of inactivity before warning (then +24h to close)
               </p>
             </label>
-            <label className="space-y-2">
+            <label htmlFor="max-open-per-user" className="space-y-2">
               <span className="text-sm font-medium">Max Open Per User</span>
               <input
+                id="max-open-per-user"
                 type="number"
                 min="1"
                 max="20"
