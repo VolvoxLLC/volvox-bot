@@ -450,8 +450,23 @@ export function stopTempbanScheduler() {
  * @returns {boolean} True if the target should not be moderated
  */
 export function isProtectedTarget(target, guild, config) {
-  const protectRoles = config.moderation?.protectRoles;
-  if (!protectRoles?.enabled) return false;
+  /**
+   * When the protectRoles block is missing from persisted configuration,
+   * fall back to the intended defaults: protection enabled, include owner,
+   * admins, and moderators (matches config.json defaults and web UI defaults).
+   */
+  const defaultProtectRoles = {
+    enabled: true,
+    includeAdmins: true,
+    includeModerators: true,
+    includeServerOwner: true,
+    roleIds: [],
+  };
+
+  const protectRoles = config.moderation?.protectRoles ?? defaultProtectRoles;
+  if (!protectRoles.enabled) {
+    return false;
+  }
 
   // Server owner is always protected when enabled
   if (protectRoles.includeServerOwner && target.id === guild.ownerId) {

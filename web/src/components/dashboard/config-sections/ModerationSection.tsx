@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +27,14 @@ export function ModerationSection({
   onEscalationChange,
   onProtectRolesChange,
 }: ModerationSectionProps) {
+  const [roleIdsRaw, setRoleIdsRaw] = useState(
+    (draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', '),
+  );
+
+  useEffect(() => {
+    setRoleIdsRaw((draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
+  }, [draftConfig.moderation?.protectRoles?.roleIds]);
+
   if (!draftConfig.moderation) return null;
 
   return (
@@ -157,11 +167,12 @@ export function ModerationSection({
             <Input
               id="protect-role-ids"
               type="text"
-              value={(draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', ')}
-              onChange={(e) =>
+              value={roleIdsRaw}
+              onChange={(e) => setRoleIdsRaw(e.target.value)}
+              onBlur={() =>
                 onProtectRolesChange(
                   'roleIds',
-                  e.target.value
+                  roleIdsRaw
                     .split(',')
                     .map((s) => s.trim())
                     .filter(Boolean),

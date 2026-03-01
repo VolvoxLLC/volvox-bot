@@ -130,6 +130,7 @@ export function ConfigEditor() {
   /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
   const [roleMenuRaw, setRoleMenuRaw] = useState('');
   const [dmStepsRaw, setDmStepsRaw] = useState('');
+  const [protectRoleIdsRaw, setProtectRoleIdsRaw] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -201,6 +202,7 @@ export function ConfigEditor() {
       setDraftConfig(structuredClone(data));
       setRoleMenuRaw(stringifyRoleMenuOptions(data.welcome?.roleMenu?.options ?? []));
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
+      setProtectRoleIdsRaw((data.moderation?.protectRoles?.roleIds ?? []).join(', '));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
       const msg = (err as Error).message || 'Failed to load config';
@@ -373,6 +375,7 @@ export function ConfigEditor() {
     setDraftConfig(structuredClone(savedConfig));
     setRoleMenuRaw(stringifyRoleMenuOptions(savedConfig.welcome?.roleMenu?.options ?? []));
     setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
+    setProtectRoleIdsRaw((savedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
     toast.success('Changes discarded.');
   }, [savedConfig]);
 
@@ -1084,11 +1087,12 @@ export function ConfigEditor() {
                 </span>
                 <input
                   type="text"
-                  value={(draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', ')}
-                  onChange={(e) =>
+                  value={protectRoleIdsRaw}
+                  onChange={(e) => setProtectRoleIdsRaw(e.target.value)}
+                  onBlur={() =>
                     updateProtectRolesField(
                       'roleIds',
-                      e.target.value
+                      protectRoleIdsRaw
                         .split(',')
                         .map((s) => s.trim())
                         .filter(Boolean),

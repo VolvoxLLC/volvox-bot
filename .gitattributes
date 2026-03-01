@@ -16,4 +16,3 @@
 *.zip binary
 *.tar binary
 *.gz binary
-*.lock binary

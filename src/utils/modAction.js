@@ -112,7 +112,7 @@ export async function executeModAction(interaction, opts) {
         });
         return await safeEditReply(
           interaction,
-          '\u274C Cannot moderate administrators or moderators.',
+          '\u274C Cannot moderate protected users (server owner, admins, or moderators).',
         );
       }
     }
