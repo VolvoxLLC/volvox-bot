@@ -46,8 +46,40 @@ function safeGetPool() {
 // ─── GET /:id/members/export — CSV export (must be before /:userId) ──────────
 
 /**
- * GET /:id/members/export — Export all members with stats as CSV
- * Streams a CSV file with enriched member data.
+ * @openapi
+ * /guilds/{id}/members/export:
+ *   get:
+ *     tags:
+ *       - Members
+ *     summary: Export members as CSV
+ *     description: Streams a CSV file with enriched member data (stats, XP, warnings). May take a while for large guilds.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *     responses:
+ *       "200":
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get(
   '/:id/members/export',
@@ -148,13 +180,119 @@ router.get(
 // ─── GET /:id/members — Enhanced member list ─────────────────────────────────
 
 /**
- * GET /:id/members — Enhanced member list with bot data
- * Query params:
- *   limit  (default 25, max 100)
- *   after  — cursor for Discord pagination
- *   search — filter by username/displayName
- *   sort   — messages|xp|warnings|joined (default: joined)
- *   order  — asc|desc (default: desc)
+ * @openapi
+ * /guilds/{id}/members:
+ *   get:
+ *     tags:
+ *       - Members
+ *     summary: List members
+ *     description: Returns enriched member list with stats, XP, and warning counts. Supports search, sort, and cursor-based pagination.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           minimum: 1
+ *           maximum: 100
+ *       - in: query
+ *         name: after
+ *         schema:
+ *           type: string
+ *         description: Cursor for Discord pagination (member ID)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by username or display name
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [messages, xp, warnings, joined]
+ *           default: joined
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *     responses:
+ *       "200":
+ *         description: Enriched member list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 members:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       displayName:
+ *                         type: string
+ *                       avatar:
+ *                         type: string
+ *                       roles:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                       joinedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       messages_sent:
+ *                         type: integer
+ *                       days_active:
+ *                         type: integer
+ *                       last_active:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                       xp:
+ *                         type: integer
+ *                       level:
+ *                         type: integer
+ *                       warning_count:
+ *                         type: integer
+ *                 nextAfter:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Cursor for next page
+ *                 total:
+ *                   type: integer
+ *                   description: Total guild member count
+ *                 filteredTotal:
+ *                   type: integer
+ *                   description: Only present when search is active
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   let limit = Number.parseInt(req.query.limit, 10) || 25;
@@ -295,7 +433,130 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 // ─── GET /:id/members/:userId — Member detail ────────────────────────────────
 
 /**
- * GET /:id/members/:userId — Full member profile with stats, XP, and warnings
+ * @openapi
+ * /guilds/{id}/members/{userId}:
+ *   get:
+ *     tags:
+ *       - Members
+ *     summary: Get member detail
+ *     description: Returns full member profile including stats, XP, level progression, roles, and recent warnings.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Discord user ID
+ *     responses:
+ *       "200":
+ *         description: Member detail
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 username:
+ *                   type: string
+ *                 displayName:
+ *                   type: string
+ *                 avatar:
+ *                   type: string
+ *                 roles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       color:
+ *                         type: string
+ *                 joinedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 stats:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     messages_sent:
+ *                       type: integer
+ *                     reactions_given:
+ *                       type: integer
+ *                     reactions_received:
+ *                       type: integer
+ *                     days_active:
+ *                       type: integer
+ *                     first_seen:
+ *                       type: string
+ *                       format: date-time
+ *                     last_active:
+ *                       type: string
+ *                       format: date-time
+ *                 reputation:
+ *                   type: object
+ *                   properties:
+ *                     xp:
+ *                       type: integer
+ *                     level:
+ *                       type: integer
+ *                     messages_count:
+ *                       type: integer
+ *                     voice_minutes:
+ *                       type: integer
+ *                     helps_given:
+ *                       type: integer
+ *                     last_xp_gain:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     next_level_xp:
+ *                       type: integer
+ *                       nullable: true
+ *                 warnings:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                     recent:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           case_number:
+ *                             type: integer
+ *                           action:
+ *                             type: string
+ *                           reason:
+ *                             type: string
+ *                           moderator_tag:
+ *                             type: string
+ *                           created_at:
+ *                             type: string
+ *                             format: date-time
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get(
   '/:id/members/:userId',
@@ -409,10 +670,91 @@ router.get(
 // ─── GET /:id/members/:userId/cases — Full moderation history ─────────────────
 
 /**
- * GET /:id/members/:userId/cases — Paginated mod case history for a user
- * Query params:
- *   page  (default 1)
- *   limit (default 25, max 100)
+ * @openapi
+ * /guilds/{id}/members/{userId}/cases:
+ *   get:
+ *     tags:
+ *       - Members
+ *     summary: Member mod case history
+ *     description: Returns paginated moderation case history for a specific member.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *     responses:
+ *       "200":
+ *         description: Member case history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 cases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       case_number:
+ *                         type: integer
+ *                       action:
+ *                         type: string
+ *                       reason:
+ *                         type: string
+ *                         nullable: true
+ *                       moderator_id:
+ *                         type: string
+ *                       moderator_tag:
+ *                         type: string
+ *                       duration:
+ *                         type: string
+ *                         nullable: true
+ *                       expires_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 pages:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get(
   '/:id/members/:userId/cases',
@@ -472,9 +814,78 @@ router.get(
 // ─── POST /:id/members/:userId/xp — Admin XP adjustment ──────────────────────
 
 /**
- * POST /:id/members/:userId/xp — Adjust a member's XP
- * Body: { amount: number, reason?: string }
- * Positive or negative adjustment. Returns updated XP/level.
+ * @openapi
+ * /guilds/{id}/members/{userId}/xp:
+ *   post:
+ *     tags:
+ *       - Members
+ *     summary: Adjust member XP
+ *     description: Add or remove XP for a member. XP floors at 0. Amount must be a non-zero integer between -1,000,000 and 1,000,000.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: integer
+ *                 description: XP adjustment (positive or negative, max ±1,000,000)
+ *               reason:
+ *                 type: string
+ *                 description: Optional reason for the adjustment
+ *     responses:
+ *       "200":
+ *         description: Updated XP/level
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 xp:
+ *                   type: integer
+ *                 level:
+ *                   type: integer
+ *                 adjustment:
+ *                   type: integer
+ *                 reason:
+ *                   type: string
+ *                   nullable: true
+ *       "400":
+ *         description: Invalid amount
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.post(
   '/:id/members/:userId/xp',
