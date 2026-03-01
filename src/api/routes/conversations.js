@@ -432,7 +432,7 @@ router.get(
       // Fetch messages in a bounded time window around the anchor (±2 hours)
       // to avoid loading the entire channel history
       const messagesResult = await dbPool.query(
-        `SELECT id, channel_id, role, content, username, created_at
+        `SELECT id, channel_id, role, content, username, created_at, discord_message_id
          FROM conversations
          WHERE guild_id = $1 AND channel_id = $2
            AND created_at BETWEEN ($3::timestamptz - interval '2 hours')
@@ -455,6 +455,7 @@ router.get(
         content: msg.content,
         username: msg.username,
         createdAt: msg.created_at,
+        discordMessageId: msg.discord_message_id || null,
       }));
 
       const durationMs = targetConvo.lastTime - targetConvo.firstTime;
@@ -478,14 +479,22 @@ router.get(
         }
       }
 
+      const channelName =
+        req.guild?.channels?.cache?.get(anchor.channel_id)?.name || null;
+
       const enrichedMessages = messages.map((m) => ({
         ...m,
         flagStatus: flaggedMessageIds.get(m.id) || null,
+        messageUrl:
+          m.discordMessageId && guildId
+            ? `https://discord.com/channels/${guildId}/${anchor.channel_id}/${m.discordMessageId}`
+            : null,
       }));
 
       res.json({
         messages: enrichedMessages,
         channelId: anchor.channel_id,
+        channelName,
         duration: Math.round(durationMs / 1000),
         tokenEstimate: estimateTokens(messages.map((m) => m.content || '').join('')),
       });

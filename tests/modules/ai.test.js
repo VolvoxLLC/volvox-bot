@@ -154,6 +154,7 @@ describe('ai module', () => {
         'user',
         'hello',
         'testuser',
+        null,
       ]);
     });
   });
