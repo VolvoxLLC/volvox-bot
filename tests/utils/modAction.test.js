@@ -317,7 +317,7 @@ describe('executeModAction', () => {
     expect(createCase).not.toHaveBeenCalled();
   });
 
-  it('should allow self-targeting when skipProtection is true', async () => {
+  it('should block self-targeting even when skipProtection is true', async () => {
     const interaction = createInteraction();
     const selfTarget = { ...mockTarget, id: 'mod1' };
     const optsWithSelf = defaultOpts({
@@ -327,7 +327,11 @@ describe('executeModAction', () => {
 
     await executeModAction(interaction, optsWithSelf);
 
-    expect(createCase).toHaveBeenCalled();
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.stringContaining('cannot moderate yourself'),
+    );
+    expect(createCase).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------

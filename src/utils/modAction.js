@@ -94,14 +94,13 @@ export async function executeModAction(interaction, opts) {
 
     const { target, targetId, targetTag } = resolved;
 
-    // Self-moderation and protected-role checks
-    if (!skipProtection && target) {
-      // Prevent mods from moderating themselves
-      if (target.id === interaction.user.id) {
-        return await safeEditReply(interaction, '\u274C You cannot moderate yourself.');
-      }
+    // Self-moderation is always blocked, even when skipProtection is true
+    if (target && target.id === interaction.user.id) {
+      return await safeEditReply(interaction, '\u274C You cannot moderate yourself.');
+    }
 
-      // Block moderation of admins/mods/owner as configured
+    // Protected-role check (skipped when skipProtection is true)
+    if (!skipProtection && target) {
       if (isProtectedTarget(target, interaction.guild, config)) {
         warn('Moderation blocked: target is a protected role', {
           action,
@@ -110,10 +109,7 @@ export async function executeModAction(interaction, opts) {
           moderatorId: interaction.user.id,
           guildId: interaction.guildId,
         });
-        return await safeEditReply(
-          interaction,
-          '\u274C Cannot moderate protected users (server owner, admins, or moderators).',
-        );
+        return await safeEditReply(interaction, '\u274C Cannot moderate a protected user.');
       }
     }
 
