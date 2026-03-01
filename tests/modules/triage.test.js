@@ -62,6 +62,19 @@ vi.mock('../../src/modules/ai.js', () => ({
   stopConversationCleanup: vi.fn(),
 }));
 
+let mockGlobalConfig = {};
+
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn((guildId) => mockGlobalConfig),
+  loadConfigFromFile: vi.fn(),
+  loadConfig: vi.fn().mockResolvedValue(undefined),
+  onConfigChange: vi.fn(),
+  offConfigChange: vi.fn(),
+  clearConfigListeners: vi.fn(),
+  setConfigValue: vi.fn().mockResolvedValue(undefined),
+  resetConfig: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { info, warn } from '../../src/logger.js';
 import { isSpam } from '../../src/modules/spam.js';
 import {
@@ -205,6 +218,7 @@ describe('triage module', () => {
     config = makeConfig();
     healthMonitor = makeHealthMonitor();
     await startTriage(client, config, healthMonitor);
+    mockGlobalConfig = config;
   });
 
   afterEach(() => {
@@ -236,6 +250,7 @@ describe('triage module', () => {
 
     it('should skip when triage is disabled', async () => {
       const disabledConfig = makeConfig({ triage: { enabled: false } });
+      mockGlobalConfig = disabledConfig;
       accumulateMessage(makeMessage('ch1', 'hello'), disabledConfig);
       await evaluateNow('ch1', config, client, healthMonitor);
 
@@ -244,6 +259,7 @@ describe('triage module', () => {
 
     it('should skip excluded channels', async () => {
       const excConfig = makeConfig({ triage: { excludeChannels: ['ch1'] } });
+      mockGlobalConfig = excConfig;
       accumulateMessage(makeMessage('ch1', 'hello'), excConfig);
       await evaluateNow('ch1', config, client, healthMonitor);
 
@@ -252,6 +268,7 @@ describe('triage module', () => {
 
     it('should skip channels not in allow list when allow list is non-empty', async () => {
       const restrictedConfig = makeConfig({ triage: { channels: ['allowed-ch'] } });
+      mockGlobalConfig = restrictedConfig;
       accumulateMessage(makeMessage('not-allowed-ch', 'hello'), restrictedConfig);
       await evaluateNow('not-allowed-ch', config, client, healthMonitor);
 
@@ -288,6 +305,7 @@ describe('triage module', () => {
 
     it('should respect maxBufferSize cap', async () => {
       const smallConfig = makeConfig({ triage: { maxBufferSize: 3 } });
+      mockGlobalConfig = smallConfig;
       for (let i = 0; i < 5; i++) {
         accumulateMessage(makeMessage('ch1', `msg ${i}`), smallConfig);
       }
@@ -314,6 +332,7 @@ describe('triage module', () => {
   describe('checkTriggerWords', () => {
     it('should force evaluation when trigger words match', async () => {
       const twConfig = makeConfig({ triage: { triggerWords: ['help'] } });
+      mockGlobalConfig = twConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -336,6 +355,7 @@ describe('triage module', () => {
 
     it('should trigger on moderation keywords', async () => {
       const modConfig = makeConfig({ triage: { moderationKeywords: ['badword'] } });
+      mockGlobalConfig = modConfig;
       const classResult = {
         classification: 'moderate',
         reasoning: 'bad content',
@@ -1185,6 +1205,7 @@ describe('triage module', () => {
   describe('trigger word evaluation', () => {
     it('should call evaluateNow on trigger word detection', async () => {
       const twConfig = makeConfig({ triage: { triggerWords: ['urgent'] } });
+      mockGlobalConfig = twConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'trigger',
