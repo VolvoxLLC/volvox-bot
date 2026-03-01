@@ -2,8 +2,20 @@
 
 import { SessionProvider } from 'next-auth/react';
 import type { ReactNode } from 'react';
+import { useTheme } from 'next-themes';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
+
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme();
+  return (
+    <Toaster
+      position="bottom-right"
+      theme={(resolvedTheme as 'light' | 'dark') ?? 'system'}
+      richColors
+    />
+  );
+}
 
 /**
  * Wraps application UI with NextAuth session context, theme provider, and a global toast container.
@@ -26,7 +38,7 @@ export function Providers({ children }: { children: ReactNode }) {
         disableTransitionOnChange={false}
       >
         {children}
-        <Toaster position="bottom-right" theme="system" richColors />
+        <ThemedToaster />
       </ThemeProvider>
     </SessionProvider>
   );
