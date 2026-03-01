@@ -33,7 +33,7 @@ export function getBotOwnerIds(config) {
  * @param {Object} config - Bot configuration
  * @returns {boolean} True if member is a bot owner
  */
-function isBotOwner(member, config) {
+export function isBotOwner(member, config) {
   const owners = getBotOwnerIds(config);
   if (owners.length === 0) {
     return false;

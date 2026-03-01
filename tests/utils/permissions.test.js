@@ -13,6 +13,7 @@ import {
   getPermissionError,
   hasPermission,
   isAdmin,
+  isBotOwner,
   isGuildAdmin,
   isModerator,
 } from '../../src/utils/permissions.js';
@@ -447,5 +448,25 @@ describe('getPermissionError', () => {
     const msg = getPermissionError('modlog', 'moderator');
     expect(msg).toContain('/modlog');
     expect(msg).toContain('moderator');
+  });
+});
+
+describe('isBotOwner', () => {
+  it('should return true for a bot owner', () => {
+    const member = { id: BOT_OWNER_ID };
+    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
+    expect(isBotOwner(member, config)).toBe(true);
+  });
+
+  it('should return false for a non-owner', () => {
+    const member = { id: '000000000000000000' };
+    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
+    expect(isBotOwner(member, config)).toBe(false);
+  });
+
+  it('should return false when botOwners is empty', () => {
+    const member = { id: BOT_OWNER_ID };
+    const config = { permissions: { botOwners: [] } };
+    expect(isBotOwner(member, config)).toBe(false);
   });
 });
