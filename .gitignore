@@ -4,6 +4,7 @@ node_modules/
 /logs/
 coverage/
 .next/
+package-lock.json
 
 # Auto Claude data directory and files
 .auto-claude/

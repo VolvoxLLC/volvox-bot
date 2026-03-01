@@ -35,10 +35,14 @@
 | `src/modules/events.js` | Event handler registration (wires modules to Discord events) |
 | `src/api/server.js` | Express API server setup (createApp, startServer, stopServer) |
 | `src/api/index.js` | API route mounting |
+| `src/api/middleware/auditLog.js` | Audit logging middleware for authenticated mutating API requests |
 | `src/api/routes/guilds.js` | Guild REST API endpoints (info, channels, roles, config, stats, members, moderation, analytics, actions) |
+| `src/api/routes/auditLog.js` | Audit log retrieval endpoint (filters + pagination) |
 | `web/src/components/dashboard/analytics-dashboard.tsx` | Analytics dashboard React component — charts, KPIs, date range controls |
 | `web/src/types/analytics.ts` | Shared analytics TypeScript contracts used by dashboard UI and analytics API responses |
 | `web/src/app/api/guilds/[guildId]/analytics/route.ts` | Next.js API route — proxies analytics requests to bot API with param allowlisting |
+| `web/src/app/dashboard/audit-log/page.tsx` | Audit log dashboard page (filterable audit timeline + detail rows) |
+| `web/src/app/api/guilds/[guildId]/audit-log/route.ts` | Next.js API route — proxies guild audit log queries to bot API |
 | `web/src/components/dashboard/channel-selector.tsx` | Channel picker component — single or multi-select Discord channel picker with Zustand store integration |
 | `web/src/components/dashboard/role-selector.tsx` | Role picker component — single or multi-select Discord role picker with color dots |
 | `web/src/components/dashboard/array-editor.tsx` | Tag-input component for editing string arrays (Enter to add, Backspace to remove) |
@@ -61,9 +65,11 @@
 | `src/utils/duration.js` | Duration parsing — "1h", "7d" ↔ ms with human-readable formatting |
 | `src/commands/announce.js` | Scheduled message command — `/announce` with create/list/delete subcommands (moderator-only); stores schedules to `scheduled_messages` table |
 | `src/commands/afk.js` | AFK command — `/afk set [reason]` and `/afk clear`; exports `buildPingSummary` used by the handler module |
+| `src/commands/reload.js` | Reload command — `/reload` reloads config, commands, triage, and opt-outs (bot owner only) |
 | `src/modules/afkHandler.js` | AFK message handler — detects AFK mentions, sends inline notices (rate-limited), auto-clears AFK on return, DMs ping summary |
 | `src/modules/scheduler.js` | Scheduled message poller — cron expression parser (`parseCron`, `getNextCronRun`), due-message dispatcher via `safeSend`, 60s interval started/stopped via `startScheduler`/`stopScheduler` |
 | `migrations/002_scheduled-messages.cjs` | Migration — creates `scheduled_messages` table (id, guild_id, channel_id, content, cron_expression, next_run, is_one_time, created_by) |
+| `migrations/015_audit_logs.cjs` | Migration — creates `audit_logs` table + indexes for guild timeline and retention cleanup |
 | `config.json` | Default configuration (seeded to DB on first run) |
 | `.env.example` | Environment variable template |
 
@@ -141,6 +147,7 @@ Duration-based commands (timeout, tempban, slowmode) use `parseDuration()` from 
 | `mod_scheduled_actions` | Scheduled operations (tempban expiry). Polled every 60s by the tempban scheduler |
 | `afk_status` | Active AFK records — one row per (guild_id, user_id); upserted on `/afk set`, deleted on return or `/afk clear` |
 | `afk_pings` | Pings logged while a user is AFK — accumulated until the user returns, then DM-summarised and deleted |
+| `audit_logs` | Admin audit trail for mutating API actions (guild/user/action/target + JSON details + IP + created_at) |
 
 ## How to Add a Module
 

@@ -242,7 +242,7 @@ async function importIndex({
   mocks.fs.readdirSync.mockReset().mockReturnValue(readdirFiles);
   mocks.fs.readFileSync.mockReset().mockImplementation((path) => {
     // Return valid package.json for version reads regardless of other state
-    if (String(path).endsWith('package.json')) return JSON.stringify({ version: '1.0.0' });
+    if (String(path).endsWith('package.json')) return JSON.stringify({ version: '0.1.0' });
     return (
       stateRaw ??
       JSON.stringify({ conversationHistory: [['ch1', [{ role: 'user', content: 'hi' }]]] })

@@ -28,8 +28,47 @@ function getDbPool(req) {
 // ─── GET /:id/tickets/stats ───────────────────────────────────────────────────
 
 /**
- * GET /:id/tickets/stats — Ticket statistics for a guild.
- * Returns open count, avg resolution time, and tickets this week.
+ * @openapi
+ * /guilds/{id}/tickets/stats:
+ *   get:
+ *     tags:
+ *       - Tickets
+ *     summary: Ticket statistics
+ *     description: Returns ticket statistics — open count, average resolution time, and tickets created this week.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *     responses:
+ *       "200":
+ *         description: Ticket stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 openCount:
+ *                   type: integer
+ *                 avgResolutionSeconds:
+ *                   type: integer
+ *                 ticketsThisWeek:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get(
   '/:id/tickets/stats',
@@ -78,7 +117,86 @@ router.get(
 // ─── GET /:id/tickets/:ticketId ───────────────────────────────────────────────
 
 /**
- * GET /:id/tickets/:ticketId — Ticket detail with transcript.
+ * @openapi
+ * /guilds/{id}/tickets/{ticketId}:
+ *   get:
+ *     tags:
+ *       - Tickets
+ *     summary: Get ticket detail
+ *     description: Returns a single ticket with full details and transcript.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: path
+ *         name: ticketId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Ticket ID
+ *     responses:
+ *       "200":
+ *         description: Ticket detail
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 guild_id:
+ *                   type: string
+ *                 user_id:
+ *                   type: string
+ *                 topic:
+ *                   type: string
+ *                   nullable: true
+ *                 status:
+ *                   type: string
+ *                   enum: [open, closed]
+ *                 thread_id:
+ *                   type: string
+ *                   nullable: true
+ *                 channel_id:
+ *                   type: string
+ *                   nullable: true
+ *                 closed_by:
+ *                   type: string
+ *                   nullable: true
+ *                 close_reason:
+ *                   type: string
+ *                   nullable: true
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                 closed_at:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *       "400":
+ *         description: Invalid ticket ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "404":
+ *         $ref: "#/components/responses/NotFound"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get(
   '/:id/tickets/:ticketId',
@@ -116,13 +234,104 @@ router.get(
 // ─── GET /:id/tickets ─────────────────────────────────────────────────────────
 
 /**
- * GET /:id/tickets — List tickets with pagination and filters.
- *
- * Query params:
- *   status  — Filter by status (open, closed)
- *   user    — Filter by user ID
- *   page    — Page number (default 1)
- *   limit   — Items per page (default 25, max 100)
+ * @openapi
+ * /guilds/{id}/tickets:
+ *   get:
+ *     tags:
+ *       - Tickets
+ *     summary: List tickets
+ *     description: Returns paginated tickets with optional status and user filters.
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Guild ID
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [open, closed]
+ *       - in: query
+ *         name: user
+ *         schema:
+ *           type: string
+ *         description: Filter by user ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *     responses:
+ *       "200":
+ *         description: Paginated ticket list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tickets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       guild_id:
+ *                         type: string
+ *                       user_id:
+ *                         type: string
+ *                       topic:
+ *                         type: string
+ *                         nullable: true
+ *                       status:
+ *                         type: string
+ *                         enum: [open, closed]
+ *                       thread_id:
+ *                         type: string
+ *                         nullable: true
+ *                       channel_id:
+ *                         type: string
+ *                         nullable: true
+ *                       closed_by:
+ *                         type: string
+ *                         nullable: true
+ *                       close_reason:
+ *                         type: string
+ *                         nullable: true
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       closed_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ *       "503":
+ *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:id/tickets', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { id: guildId } = req.params;

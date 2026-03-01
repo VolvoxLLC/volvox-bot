@@ -52,12 +52,12 @@ describe('restartTracker', () => {
         'RETURNING id': { rows: [{ id: 42 }] },
       });
 
-      const id = await recordRestart(pool, 'startup', '1.0.0');
+      const id = await recordRestart(pool, 'startup', '0.1.0');
 
       expect(id).toBe(42);
       // Should directly INSERT (no ensureTable call)
       expect(pool.query.mock.calls[0][0]).toContain('INSERT INTO bot_restarts');
-      expect(pool.query.mock.calls[0][1]).toEqual(['startup', '1.0.0']);
+      expect(pool.query.mock.calls[0][1]).toEqual(['startup', '0.1.0']);
     });
 
     it('sets startedAt to a recent timestamp', async () => {
@@ -152,8 +152,8 @@ describe('restartTracker', () => {
   describe('getRestarts', () => {
     it('returns rows from the database', async () => {
       const rows = [
-        { id: 2, timestamp: new Date(), reason: 'startup', version: '1.0.0', uptime_seconds: 300 },
-        { id: 1, timestamp: new Date(), reason: 'startup', version: '1.0.0', uptime_seconds: 120 },
+        { id: 2, timestamp: new Date(), reason: 'startup', version: '0.1.0', uptime_seconds: 300 },
+        { id: 1, timestamp: new Date(), reason: 'startup', version: '0.1.0', uptime_seconds: 120 },
       ];
       const pool = makePool({ 'FROM bot_restarts': { rows } });
 

@@ -415,8 +415,8 @@ describe("AnalyticsDashboard", () => {
     expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
     const exportedBlob = createObjectURLSpy.mock.calls[0]?.[0] as Blob;
     expect(exportedBlob.type).toContain("text/csv");
-    expect(createdAnchor?.download).toContain("analytics-guild-1");
-    expect(createdAnchor?.href).toBe("blob:analytics");
+    expect((createdAnchor as unknown as HTMLAnchorElement).download).toContain("analytics-guild-1");
+    expect((createdAnchor as unknown as HTMLAnchorElement).href).toBe("blob:analytics");
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(revokeObjectURLSpy).toHaveBeenCalledWith("blob:analytics");
   });

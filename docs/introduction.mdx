@@ -1,0 +1,35 @@
+---
+title: Introduction
+description: 'Volvox Bot API documentation'
+---
+
+# Volvox Bot API
+
+The Volvox Bot REST API powers the web dashboard and provides programmatic access to guild management, moderation, analytics, AI conversations, and community features.
+
+## Base URL
+
+```
+https://your-domain.com/api/v1
+```
+
+> **Deployment note:** `your-domain.com` is a placeholder. Replace it with your production API domain before publishing these docs.
+
+## Features
+
+- **Guild Management** — Server settings, analytics, member management
+- **Moderation** — Cases, warnings, bans, timeouts
+- **AI Conversations** — Chat history, flagging, search
+- **Community** — Leaderboards, showcases, public profiles
+- **Tickets** — Support ticket system
+- **Config** — Bot configuration CRUD
+
+## Rate Limiting
+
+All endpoints return rate limit headers:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Max requests per window |
+| `X-RateLimit-Remaining` | Requests remaining |
+| `X-RateLimit-Reset` | Unix timestamp when window resets |
