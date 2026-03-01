@@ -1,7 +1,7 @@
 {
   "name": "bill-bot",
-  "packageManager": "pnpm@10.29.3",
-  "version": "1.0.0",
+  "packageManager": "pnpm@10.30.3",
+  "version": "0.1.0",
   "description": "Volvox Discord bot - AI chat, welcome messages, and moderation",
   "main": "src/index.js",
   "type": "module",
@@ -22,17 +22,17 @@
     "docs:generate": "node scripts/generate-openapi.js"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.44",
+    "@anthropic-ai/claude-code": "^2.1.63",
     "@anthropic-ai/sdk": "^0.78.0",
     "@sentry/node": "^10.40.0",
     "discord.js": "^14.25.1",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "ioredis": "^5.9.3",
+    "ioredis": "^5.10.0",
     "jsonwebtoken": "^9.0.3",
     "mem0ai": "^2.2.3",
     "node-pg-migrate": "^8.0.4",
-    "pg": "^8.18.0",
+    "pg": "^8.19.0",
     "swagger-jsdoc": "^6.2.8",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
@@ -52,7 +52,7 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.0",
+    "@biomejs/biome": "^2.4.4",
     "@vitest/coverage-v8": "^4.0.18",
     "supertest": "^7.2.2",
     "vitest": "^4.0.18"

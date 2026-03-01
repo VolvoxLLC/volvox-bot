@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Volvox Bot API",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "description": "REST API for the Volvox Discord bot — guild management, moderation, analytics, AI conversations, and more."
   },
   "servers": [
