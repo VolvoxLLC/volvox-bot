@@ -108,11 +108,9 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
 
   // Merge caller-provided aria-describedby with form field IDs
   const callerDescribedBy = props['aria-describedby'];
-  const fieldDescribedBy = !error 
-    ? formDescriptionId 
-    : `${formDescriptionId} ${formMessageId}`;
-  const ariaDescribedBy = callerDescribedBy 
-    ? `${fieldDescribedBy} ${callerDescribedBy}` 
+  const fieldDescribedBy = !error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`;
+  const ariaDescribedBy = callerDescribedBy
+    ? `${fieldDescribedBy} ${callerDescribedBy}`
     : fieldDescribedBy;
 
   return (

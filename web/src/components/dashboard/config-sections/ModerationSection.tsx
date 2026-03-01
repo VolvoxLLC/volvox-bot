@@ -67,9 +67,10 @@ export function ModerationSection({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>Alert Channel</Label>
+          <Label htmlFor="alert-channel">Alert Channel</Label>
           {guildId ? (
             <ChannelSelector
+              id="alert-channel"
               guildId={guildId}
               selected={selectedChannels}
               onChange={handleChannelChange}

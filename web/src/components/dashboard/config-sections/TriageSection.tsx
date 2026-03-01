@@ -172,9 +172,10 @@ export function TriageSection({
           />
         </div>
         <div className="space-y-2">
-          <Label>Moderation Log Channel</Label>
+          <Label htmlFor="moderation-log-channel">Moderation Log Channel</Label>
           {guildId ? (
             <ChannelSelector
+              id="moderation-log-channel"
               guildId={guildId}
               selected={selectedChannels}
               onChange={handleChannelChange}

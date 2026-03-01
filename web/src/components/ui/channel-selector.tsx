@@ -61,6 +61,7 @@ interface ChannelSelectorProps {
   className?: string;
   maxSelections?: number;
   filter?: ChannelTypeFilter;
+  id?: string;
 }
 
 function getChannelIcon(type: number) {
@@ -173,6 +174,7 @@ export function ChannelSelector({
   className,
   maxSelections,
   filter = 'all',
+  id,
 }: ChannelSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [channels, setChannels] = React.useState<DiscordChannel[]>([]);
@@ -296,6 +298,7 @@ export function ChannelSelector({
             aria-expanded={open}
             disabled={disabled || loading}
             className="w-full justify-between"
+            id={id}
           >
             <span className="truncate">
               {selected.length > 0
