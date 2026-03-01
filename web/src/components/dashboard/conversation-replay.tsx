@@ -67,8 +67,11 @@ function shouldShowTimestamp(current: string, previous: string | null): boolean 
 }
 
 /**
- * Chat-style conversation replay component.
- * User messages on the right (blue), assistant on the left (gray), system messages small/italic.
+ * Render a chat-style replay of a conversation with header metrics and per-message flagging.
+ *
+ * @param channelName - Optional channel display name shown in the header; falls back to `channelId` when not provided.
+ * @param onFlagSubmitted - Callback invoked after a flag is successfully submitted.
+ * @returns The rendered conversation replay React element.
  */
 export function ConversationReplay({
   messages,
