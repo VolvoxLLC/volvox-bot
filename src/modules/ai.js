@@ -195,13 +195,14 @@ export async function getHistoryAsync(channelId) {
 }
 
 /**
- * Add message to conversation history
- * Writes to both in-memory cache and DB (write-through)
- * @param {string} channelId - Channel ID
- * @param {string} role - Message role (user/assistant)
- * @param {string} content - Message content
- * @param {string} [username] - Optional username
- * @param {string} [discordMessageId] - Optional native Discord message ID (used to build jump URLs in the dashboard)
+ * Append a message to the in-memory conversation history for a channel and attempt to persist it to the database.
+ *
+ * Also attempts a fire-and-forget write to the DB; database errors are logged and do not throw.
+ * @param {string} channelId - Channel identifier used to scope the conversation.
+ * @param {string} role - Message role (e.g., "user" or "assistant").
+ * @param {string} content - Message text content.
+ * @param {string} [username] - Optional display name associated with the message.
+ * @param {string} [discordMessageId] - Optional native Discord message ID (used to construct jump URLs in the dashboard).
  */
 export function addToHistory(channelId, role, content, username, discordMessageId) {
   if (!conversationHistory.has(channelId)) {
