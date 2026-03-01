@@ -707,8 +707,20 @@ router.get('/flags', conversationsRateLimit, requireGuildAdmin, validateGuild, a
  *                         type: string
  *                         nullable: true
  *                         enum: [open, resolved, dismissed]
+ *                       discordMessageId:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Native Discord message ID for constructing jump URLs
+ *                       messageUrl:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Full Discord jump URL for the message (null if no discord_message_id)
  *                 channelId:
  *                   type: string
+ *                 channelName:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Human-readable channel name from the Discord guild cache
  *                 duration:
  *                   type: integer
  *                   description: Duration in seconds
@@ -816,8 +828,7 @@ router.get(
         }
       }
 
-      const channelName =
-        req.guild?.channels?.cache?.get(anchor.channel_id)?.name || null;
+      const channelName = req.guild?.channels?.cache?.get(anchor.channel_id)?.name || null;
 
       const enrichedMessages = messages.map((m) => ({
         ...m,
