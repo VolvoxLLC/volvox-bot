@@ -180,6 +180,13 @@ export function ConfigEditor() {
         throw new Error('Invalid config response');
       }
 
+      // Ensure role menu options have stable IDs
+      if (data.welcome?.roleMenu?.options) {
+        data.welcome.roleMenu.options = data.welcome.roleMenu.options.map((opt) => ({
+          ...opt,
+          id: opt.id || crypto.randomUUID(),
+        }));
+      }
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
@@ -208,6 +215,12 @@ export function ConfigEditor() {
   // Currently only validates system prompt length; extend with additional checks as needed.
   const hasValidationErrors = useMemo(() => {
     if (!draftConfig) return false;
+    // Role menu validation: all options must have non-empty label and roleId
+    const roleMenuOptions = draftConfig.welcome?.roleMenu?.options ?? [];
+    const hasRoleMenuErrors = roleMenuOptions.some(
+      (opt) => !opt.label?.trim() || !opt.roleId?.trim(),
+    );
+    if (hasRoleMenuErrors) return true;
     const promptLength = draftConfig.ai?.systemPrompt?.length ?? 0;
     return promptLength > SYSTEM_PROMPT_MAX_LENGTH;
   }, [draftConfig]);
@@ -773,7 +786,7 @@ export function ConfigEditor() {
             </div>
             <div className="space-y-3">
               {(draftConfig.welcome?.roleMenu?.options ?? []).map((opt, i) => (
-                <div key={i} className="flex flex-col gap-2 rounded-md border p-2">
+                <div key={opt.id} className="flex flex-col gap-2 rounded-md border p-2">
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -791,10 +804,15 @@ export function ConfigEditor() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])].filter((_, idx) => idx !== i);
+                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])].filter(
+                          (o) => o.id !== opt.id,
+                        );
                         updateWelcomeRoleMenu('options', opts);
                       }}
-                      disabled={saving || (draftConfig.welcome?.roleMenu?.options ?? []).length <= 1}
+                      disabled={
+                        saving || (draftConfig.welcome?.roleMenu?.options ?? []).length <= 1
+                      }
+                      aria-label={`Remove role option ${opt.label || i + 1}`}
                     >
                       ✕
                     </Button>
@@ -829,7 +847,10 @@ export function ConfigEditor() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const opts = [...(draftConfig.welcome?.roleMenu?.options ?? []), { label: '', roleId: '' }];
+                  const opts = [
+                    ...(draftConfig.welcome?.roleMenu?.options ?? []),
+                    { id: crypto.randomUUID(), label: '', roleId: '' },
+                  ];
                   updateWelcomeRoleMenu('options', opts);
                 }}
                 disabled={saving || (draftConfig.welcome?.roleMenu?.options ?? []).length >= 25}
@@ -1370,7 +1391,9 @@ export function ConfigEditor() {
             <span className="text-sm font-medium">Admin Role ID</span>
             <RoleSelector
               guildId={guildId}
-              selected={draftConfig.permissions?.adminRoleId ? [draftConfig.permissions.adminRoleId] : []}
+              selected={
+                draftConfig.permissions?.adminRoleId ? [draftConfig.permissions.adminRoleId] : []
+              }
               onChange={(selected) => updatePermissionsField('adminRoleId', selected[0] ?? null)}
               placeholder="Select admin role"
               disabled={saving}
@@ -1381,8 +1404,14 @@ export function ConfigEditor() {
             <span className="text-sm font-medium">Moderator Role ID</span>
             <RoleSelector
               guildId={guildId}
-              selected={draftConfig.permissions?.moderatorRoleId ? [draftConfig.permissions.moderatorRoleId] : []}
-              onChange={(selected) => updatePermissionsField('moderatorRoleId', selected[0] ?? null)}
+              selected={
+                draftConfig.permissions?.moderatorRoleId
+                  ? [draftConfig.permissions.moderatorRoleId]
+                  : []
+              }
+              onChange={(selected) =>
+                updatePermissionsField('moderatorRoleId', selected[0] ?? null)
+              }
               placeholder="Select moderator role"
               disabled={saving}
               maxSelections={1}
