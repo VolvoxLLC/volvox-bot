@@ -103,12 +103,6 @@ function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPri
   );
 }
 
-/**
- * Renders a form control wrapper that attaches accessible IDs and error state to a Radix Slot.
- *
- * @param props - Props forwarded to the underlying Radix `Slot` element.
- * @returns A `Slot` element with `id`, `aria-describedby`, `aria-invalid`, `data-slot="form-control"`, and any provided props.
- */
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 

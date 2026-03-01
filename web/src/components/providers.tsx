@@ -6,6 +6,17 @@ import type { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme();
+  return (
+    <Toaster
+      position="bottom-right"
+      theme={(resolvedTheme as 'light' | 'dark') ?? 'system'}
+      richColors
+    />
+  );
+}
+
 /**
  * Render a global Toaster whose visual theme follows the resolved app theme.
  *
