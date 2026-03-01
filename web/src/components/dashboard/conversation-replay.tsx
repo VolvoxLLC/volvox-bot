@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Clock, Flag, Hash, Zap } from 'lucide-react';
+import { AlertTriangle, Clock, ExternalLink, Flag, Hash, Zap } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,11 +30,13 @@ export interface ConversationMessage {
   username: string;
   createdAt: string;
   flagStatus?: string | null;
+  messageUrl?: string | null;
 }
 
 interface ConversationReplayProps {
   messages: ConversationMessage[];
   channelId: string;
+  channelName?: string | null;
   duration: number;
   tokenEstimate: number;
   guildId: string;
@@ -71,6 +73,7 @@ function shouldShowTimestamp(current: string, previous: string | null): boolean 
 export function ConversationReplay({
   messages,
   channelId,
+  channelName,
   duration,
   tokenEstimate,
   guildId,
@@ -133,7 +136,7 @@ export function ConversationReplay({
       <div className="flex flex-wrap items-center gap-3">
         <Badge variant="outline" className="gap-1">
           <Hash className="h-3 w-3" />
-          {channelId}
+          {channelName ?? channelId}
         </Badge>
         <Badge variant="outline" className="gap-1">
           <Clock className="h-3 w-3" />
@@ -219,6 +222,20 @@ export function ConversationReplay({
                         <AlertTriangle className="h-3 w-3" />
                         Flagged
                       </div>
+                    )}
+
+                    {/* Jump to original Discord message */}
+                    {msg.messageUrl && (
+                      <a
+                        href={msg.messageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex items-center gap-1 text-xs opacity-60 hover:opacity-100 transition-opacity"
+                        aria-label="View original message in Discord"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View in Discord
+                      </a>
                     )}
                   </div>
                 </div>

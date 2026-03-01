@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { info, error as logError } from '../../logger.js';
 import { escapeIlike } from '../../utils/escapeIlike.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { requireGuildAdmin, validateGuild } from './guilds.js';
+import { parsePagination, requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
 
@@ -18,22 +18,6 @@ const conversationsRateLimit = rateLimit({ windowMs: 60 * 1000, max: 60 });
 
 /** Conversation grouping gap in minutes */
 const CONVERSATION_GAP_MINUTES = 15;
-
-/**
- * Parse pagination query params with defaults and capping.
- *
- * @param {Object} query - Express req.query
- * @returns {{ page: number, limit: number, offset: number }}
- */
-function parsePagination(query) {
-  let page = Number.parseInt(query.page, 10) || 1;
-  let limit = Number.parseInt(query.limit, 10) || 25;
-  if (page < 1) page = 1;
-  if (limit < 1) limit = 1;
-  if (limit > 100) limit = 100;
-  const offset = (page - 1) * limit;
-  return { page, limit, offset };
-}
 
 /**
  * Estimate token count from text content.
@@ -288,15 +272,19 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
       values.push(req.query.channel);
     }
 
+    let fromFilterApplied = false;
     if (req.query.from && typeof req.query.from === 'string') {
       const from = new Date(req.query.from);
       if (!Number.isNaN(from.getTime())) {
         paramIndex++;
         whereParts.push(`created_at >= $${paramIndex}`);
         values.push(from.toISOString());
+        fromFilterApplied = true;
       }
-    } else {
+    }
+    if (!fromFilterApplied) {
       // Default: last 30 days to prevent unbounded scans on active servers
+      // Also applies when 'from' is provided but invalid, preventing unbounded queries
       paramIndex++;
       whereParts.push(`created_at >= $${paramIndex}`);
       values.push(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
@@ -319,11 +307,14 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
       `SELECT id, channel_id, role, content, username, created_at
          FROM conversations
          WHERE ${whereClause}
-         ORDER BY created_at ASC
+         ORDER BY created_at DESC
          LIMIT 10000 -- capped to prevent runaway memory; 30-day default window keeps this reasonable`,
       values,
     );
 
+    // Reverse to ASC order so groupMessagesIntoConversations sees chronological messages.
+    // Fetching DESC first ensures we get the most recent 10k rows, not the oldest.
+    result.rows.reverse();
     const allConversations = groupMessagesIntoConversations(result.rows);
     const total = allConversations.length;
 
@@ -778,7 +769,7 @@ router.get(
       // Fetch messages in a bounded time window around the anchor (±2 hours)
       // to avoid loading the entire channel history
       const messagesResult = await dbPool.query(
-        `SELECT id, channel_id, role, content, username, created_at
+        `SELECT id, channel_id, role, content, username, created_at, discord_message_id
          FROM conversations
          WHERE guild_id = $1 AND channel_id = $2
            AND created_at BETWEEN ($3::timestamptz - interval '2 hours')
@@ -801,6 +792,7 @@ router.get(
         content: msg.content,
         username: msg.username,
         createdAt: msg.created_at,
+        discordMessageId: msg.discord_message_id || null,
       }));
 
       const durationMs = targetConvo.lastTime - targetConvo.firstTime;
@@ -824,14 +816,22 @@ router.get(
         }
       }
 
+      const channelName =
+        req.guild?.channels?.cache?.get(anchor.channel_id)?.name || null;
+
       const enrichedMessages = messages.map((m) => ({
         ...m,
         flagStatus: flaggedMessageIds.get(m.id) || null,
+        messageUrl:
+          m.discordMessageId && guildId
+            ? `https://discord.com/channels/${guildId}/${anchor.channel_id}/${m.discordMessageId}`
+            : null,
       }));
 
       res.json({
         messages: enrichedMessages,
         channelId: anchor.channel_id,
+        channelName,
         duration: Math.round(durationMs / 1000),
         tokenEstimate: estimateTokens(messages.map((m) => m.content || '').join('')),
       });
