@@ -21,6 +21,24 @@ type GuildConfig = DeepPartial<BotConfig>;
 const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
+/**
+ * Generate a UUID with fallback for environments without crypto.randomUUID.
+ *
+ * @returns A UUID v4 string.
+ */
+function generateId(): string {
+  // Use crypto.randomUUID if available
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback: generate a UUID-like string
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 const DEFAULT_ACTIVITY_BADGES = [
   { days: 90, label: '👑 Legend' },
   { days: 30, label: '🌳 Veteran' },
@@ -184,7 +202,7 @@ export function ConfigEditor() {
       if (data.welcome?.roleMenu?.options) {
         data.welcome.roleMenu.options = data.welcome.roleMenu.options.map((opt) => ({
           ...opt,
-          id: opt.id || crypto.randomUUID(),
+          id: opt.id || generateId(),
         }));
       }
       setSavedConfig(data);
@@ -216,11 +234,12 @@ export function ConfigEditor() {
   const hasValidationErrors = useMemo(() => {
     if (!draftConfig) return false;
     // Role menu validation: all options must have non-empty label and roleId
+    const roleMenuEnabled = draftConfig.welcome?.roleMenu?.enabled ?? false;
     const roleMenuOptions = draftConfig.welcome?.roleMenu?.options ?? [];
     const hasRoleMenuErrors = roleMenuOptions.some(
       (opt) => !opt.label?.trim() || !opt.roleId?.trim(),
     );
-    if (hasRoleMenuErrors) return true;
+    if (roleMenuEnabled && hasRoleMenuErrors) return true;
     const promptLength = draftConfig.ai?.systemPrompt?.length ?? 0;
     return promptLength > SYSTEM_PROMPT_MAX_LENGTH;
   }, [draftConfig]);
@@ -809,9 +828,7 @@ export function ConfigEditor() {
                         );
                         updateWelcomeRoleMenu('options', opts);
                       }}
-                      disabled={
-                        saving || (draftConfig.welcome?.roleMenu?.options ?? []).length <= 1
-                      }
+                      disabled={saving}
                       aria-label={`Remove role option ${opt.label || i + 1}`}
                     >
                       ✕
@@ -849,7 +866,7 @@ export function ConfigEditor() {
                 onClick={() => {
                   const opts = [
                     ...(draftConfig.welcome?.roleMenu?.options ?? []),
-                    { id: crypto.randomUUID(), label: '', roleId: '' },
+                    { id: generateId(), label: '', roleId: '' },
                   ];
                   updateWelcomeRoleMenu('options', opts);
                 }}

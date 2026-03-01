@@ -27,7 +27,7 @@ export interface WelcomeDynamic {
 
 /** Self-assignable role menu option. */
 export interface WelcomeRoleOption {
-  id: string;
+  id?: string;
   label: string;
   roleId: string;
   description?: string;
