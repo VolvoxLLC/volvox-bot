@@ -1,5 +1,9 @@
-const inputClasses =
-  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+'use client';
+
+import { useId } from 'react';
+
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface NumberFieldProps {
   label: string;
@@ -11,10 +15,12 @@ interface NumberFieldProps {
 }
 
 export function NumberField({ label, value, onChange, disabled, min, step }: NumberFieldProps) {
+  const id = useId();
   return (
-    <label className="space-y-2">
-      <span className="text-sm font-medium">{label}</span>
-      <input
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
         type="number"
         step={step}
         min={min}
@@ -27,8 +33,7 @@ export function NumberField({ label, value, onChange, disabled, min, step }: Num
           onChange(num);
         }}
         disabled={disabled}
-        className={inputClasses}
       />
-    </label>
+    </div>
   );
 }

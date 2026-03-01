@@ -1,11 +1,10 @@
 'use client';
 
-import { ToggleSwitch } from '@/components/dashboard/toggle-switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import type { GuildConfig } from '@/lib/config-utils';
-
-const inputClasses =
-  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 interface WelcomeSectionProps {
   draftConfig: GuildConfig;
@@ -28,27 +27,27 @@ export function WelcomeSection({
             <CardTitle className="text-base">Welcome Messages</CardTitle>
             <CardDescription>Greet new members when they join the server.</CardDescription>
           </div>
-          <ToggleSwitch
+          <Switch
             checked={draftConfig.welcome?.enabled ?? false}
-            onChange={onEnabledChange}
+            onCheckedChange={onEnabledChange}
             disabled={saving}
-            label="Welcome Messages"
+            aria-label="Toggle Welcome Messages"
           />
         </div>
       </CardHeader>
       <CardContent>
-        <label className="space-y-2">
-          <span className="text-sm font-medium">Welcome Message</span>
-          <textarea
+        <div className="space-y-2">
+          <Label htmlFor="welcome-message">Welcome Message</Label>
+          <Textarea
+            id="welcome-message"
             value={draftConfig.welcome?.message ?? ''}
             onChange={(e) => onMessageChange(e.target.value)}
             rows={4}
             disabled={saving}
-            className={inputClasses}
             placeholder="Welcome message template..."
             aria-describedby="welcome-message-hint"
           />
-        </label>
+        </div>
         <p id="welcome-message-hint" className="mt-1 text-xs text-muted-foreground">
           Use {'{user}'} for the member mention and {'{memberCount}'} for the server member count.
         </p>

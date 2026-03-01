@@ -1,11 +1,10 @@
 'use client';
 
-import { ToggleSwitch } from '@/components/dashboard/toggle-switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import type { GuildConfig } from '@/lib/config-utils';
-
-const inputClasses =
-  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 interface ModerationSectionProps {
   draftConfig: GuildConfig;
@@ -36,56 +35,65 @@ export function ModerationSection({
               Configure moderation, escalation, and logging settings.
             </CardDescription>
           </div>
-          <ToggleSwitch
+          <Switch
             checked={draftConfig.moderation?.enabled ?? false}
-            onChange={onEnabledChange}
+            onCheckedChange={onEnabledChange}
             disabled={saving}
-            label="Moderation"
+            aria-label="Toggle Moderation"
           />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <label className="space-y-2">
-          <span className="text-sm font-medium">Alert Channel ID</span>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="alert-channel">Alert Channel ID</Label>
+          <Input
+            id="alert-channel"
             type="text"
             value={draftConfig.moderation?.alertChannelId ?? ''}
             onChange={(e) => onFieldChange('alertChannelId', e.target.value)}
             disabled={saving}
-            className={inputClasses}
             placeholder="Channel ID for moderation alerts"
           />
-        </label>
+        </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Auto-delete flagged messages</span>
-          <ToggleSwitch
+          <Label htmlFor="auto-delete" className="text-sm font-medium">
+            Auto-delete flagged messages
+          </Label>
+          <Switch
+            id="auto-delete"
             checked={draftConfig.moderation?.autoDelete ?? false}
-            onChange={(v) => onFieldChange('autoDelete', v)}
+            onCheckedChange={(v) => onFieldChange('autoDelete', v)}
             disabled={saving}
-            label="Auto Delete"
+            aria-label="Toggle auto-delete"
           />
         </div>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">DM Notifications</legend>
           {(['warn', 'timeout', 'kick', 'ban'] as const).map((action) => (
             <div key={action} className="flex items-center justify-between">
-              <span className="text-sm capitalize text-muted-foreground">{action}</span>
-              <ToggleSwitch
+              <Label htmlFor={`dm-${action}`} className="text-sm capitalize text-muted-foreground">
+                {action}
+              </Label>
+              <Switch
+                id={`dm-${action}`}
                 checked={draftConfig.moderation?.dmNotifications?.[action] ?? false}
-                onChange={(v) => onDmNotificationChange(action, v)}
+                onCheckedChange={(v) => onDmNotificationChange(action, v)}
                 disabled={saving}
-                label={`DM on ${action}`}
+                aria-label={`DM on ${action}`}
               />
             </div>
           ))}
         </fieldset>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Escalation Enabled</span>
-          <ToggleSwitch
+          <Label htmlFor="escalation" className="text-sm font-medium">
+            Escalation Enabled
+          </Label>
+          <Switch
+            id="escalation"
             checked={draftConfig.moderation?.escalation?.enabled ?? false}
-            onChange={(v) => onEscalationChange(v)}
+            onCheckedChange={(v) => onEscalationChange(v)}
             disabled={saving}
-            label="Escalation"
+            aria-label="Toggle escalation"
           />
         </div>
       </CardContent>
