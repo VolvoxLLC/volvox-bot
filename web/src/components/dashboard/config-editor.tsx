@@ -839,7 +839,6 @@ export function ConfigEditor() {
                     </Button>
                   </div>
                   <RoleSelector
-                    id="admin-role"
                     guildId={guildId}
                     selected={opt.roleId ? [opt.roleId] : []}
                     onChange={(selected) => {
