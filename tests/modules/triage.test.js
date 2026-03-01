@@ -50,6 +50,17 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
   debug: vi.fn(),
 }));
+vi.mock('../../src/modules/ai.js', () => ({
+  addToHistory: vi.fn(),
+  _setPoolGetter: vi.fn(),
+  setPool: vi.fn(),
+  getConversationHistory: vi.fn().mockReturnValue(new Map()),
+  setConversationHistory: vi.fn(),
+  getHistoryAsync: vi.fn().mockResolvedValue([]),
+  initConversationHistory: vi.fn().mockResolvedValue(undefined),
+  startConversationCleanup: vi.fn(),
+  stopConversationCleanup: vi.fn(),
+}));
 
 import { info, warn } from '../../src/logger.js';
 import { isSpam } from '../../src/modules/spam.js';
