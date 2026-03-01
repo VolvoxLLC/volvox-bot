@@ -173,6 +173,7 @@ export function ChannelSelector({
 
       setLoading(true);
       setError(null);
+      setChannels([]);
 
       try {
         const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/channels`, {
