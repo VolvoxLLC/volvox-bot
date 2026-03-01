@@ -65,6 +65,7 @@
 | `src/utils/duration.js` | Duration parsing — "1h", "7d" ↔ ms with human-readable formatting |
 | `src/commands/announce.js` | Scheduled message command — `/announce` with create/list/delete subcommands (moderator-only); stores schedules to `scheduled_messages` table |
 | `src/commands/afk.js` | AFK command — `/afk set [reason]` and `/afk clear`; exports `buildPingSummary` used by the handler module |
+| `src/commands/reload.js` | Reload command — `/reload` reloads config, commands, triage, and opt-outs (bot owner only) |
 | `src/modules/afkHandler.js` | AFK message handler — detects AFK mentions, sends inline notices (rate-limited), auto-clears AFK on return, DMs ping summary |
 | `src/modules/scheduler.js` | Scheduled message poller — cron expression parser (`parseCron`, `getNextCronRun`), due-message dispatcher via `safeSend`, 60s interval started/stopped via `startScheduler`/`stopScheduler` |
 | `migrations/002_scheduled-messages.cjs` | Migration — creates `scheduled_messages` table (id, guild_id, channel_id, content, cron_expression, next_run, is_one_time, created_by) |
