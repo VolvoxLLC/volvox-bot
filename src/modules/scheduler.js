@@ -7,6 +7,7 @@
 
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { runMaintenance } from '../utils/dbMaintenance.js';
 import { safeSend } from '../utils/safeSend.js';
 import { checkDailyChallenge } from './challengeScheduler.js';
 import { getConfig } from './config.js';
@@ -198,7 +199,12 @@ async function pollScheduledMessages(client) {
     if (tickCount % 5 === 0) {
       await checkAutoClose(client);
     }
-
+    // DB maintenance once per hour (every 60th tick)
+    if (tickCount % 60 === 0) {
+      void runMaintenance(pool).catch((err) => {
+        logError('DB maintenance task failed', { error: err.message });
+      });
+    }
     // Purge expired audit log entries (every 6 hours / 360th tick)
     if (tickCount % 360 === 0) {
       await purgeExpiredAuditLogs();

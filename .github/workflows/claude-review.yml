@@ -11,8 +11,8 @@ concurrency:
 jobs:
   claude-review:
     if: >-
-      (github.event.action == 'review_requested' && github.event.requested_reviewer.login == 'claude[bot]') ||
-      (github.event.action == 'synchronize' && contains(toJSON(github.event.pull_request.requested_reviewers), 'claude[bot]'))
+      (github.event.action == 'review_requested' && github.event.requested_reviewer.login == 'claude') ||
+      (github.event.action == 'synchronize' && contains(toJSON(github.event.pull_request.requested_reviewers), 'claude'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
