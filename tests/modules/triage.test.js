@@ -65,7 +65,7 @@ vi.mock('../../src/modules/ai.js', () => ({
 let mockGlobalConfig = {};
 
 vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn((guildId) => mockGlobalConfig),
+  getConfig: vi.fn((_guildId) => mockGlobalConfig),
   loadConfigFromFile: vi.fn(),
   loadConfig: vi.fn().mockResolvedValue(undefined),
   onConfigChange: vi.fn(),
@@ -83,6 +83,7 @@ import {
   startTriage,
   stopTriage,
 } from '../../src/modules/triage.js';
+import { addToHistory } from '../../src/modules/ai.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -246,6 +247,19 @@ describe('triage module', () => {
 
       expect(mockClassifierSend).toHaveBeenCalled();
       expect(mockResponderSend).toHaveBeenCalled();
+    });
+
+    it('should call addToHistory with correct args for guild message', () => {
+      const msg = makeMessage('ch1', 'hello world', { id: 'msg-99', username: 'alice', userId: 'u99', guild: { id: 'g1' } });
+      accumulateMessage(msg, config);
+      expect(addToHistory).toHaveBeenCalledWith('ch1', 'user', 'hello world', 'alice', 'msg-99', 'g1');
+    });
+
+    it('should call addToHistory with null guildId for DM (no guild)', () => {
+      const msg = makeMessage('ch1', 'dm message', { id: 'msg-dm', username: 'bob', userId: 'u2' });
+      // No guild property — guild?.id resolves to undefined, coerced to null
+      accumulateMessage(msg, config);
+      expect(addToHistory).toHaveBeenCalledWith('ch1', 'user', 'dm message', 'bob', 'msg-dm', null);
     });
 
     it('should skip when triage is disabled', async () => {
@@ -535,6 +549,7 @@ describe('triage module', () => {
 
     it('should suppress moderation response when moderationResponse is false', async () => {
       const modConfig = makeConfig({ triage: { moderationResponse: false } });
+      mockGlobalConfig = modConfig;
       const classResult = {
         classification: 'moderate',
         reasoning: 'spam detected',
@@ -903,6 +918,7 @@ describe('triage module', () => {
 
     it('should use config.triage.defaultInterval as base interval', () => {
       const customConfig = makeConfig({ triage: { defaultInterval: 20000 } });
+      mockGlobalConfig = customConfig;
       accumulateMessage(makeMessage('ch1', 'single'), customConfig);
       vi.advanceTimersByTime(19999);
       expect(mockClassifierSend).not.toHaveBeenCalled();
@@ -957,6 +973,7 @@ describe('triage module', () => {
 
     it('should evict oldest channels when over 100-channel cap', async () => {
       const longConfig = makeConfig({ triage: { defaultInterval: 999999 } });
+      mockGlobalConfig = longConfig;
 
       const classResult = {
         classification: 'ignore',
@@ -1034,6 +1051,7 @@ describe('triage module', () => {
 
     it('should NOT add 👀 reaction when statusReactions is false', async () => {
       const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      mockGlobalConfig = noReactConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -1084,6 +1102,7 @@ describe('triage module', () => {
 
     it('should NOT add 🔍 reaction when statusReactions is false', async () => {
       const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      mockGlobalConfig = noReactConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -1113,6 +1132,7 @@ describe('triage module', () => {
 
     it('should transition 👀 → 💬 → removed (no thinking tokens)', async () => {
       const noThinkConfig = makeConfig({ triage: { thinkingTokens: 0 } });
+      mockGlobalConfig = noThinkConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -1159,6 +1179,7 @@ describe('triage module', () => {
 
     it('should NOT add or remove reactions when statusReactions is false', async () => {
       const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      mockGlobalConfig = noReactConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
