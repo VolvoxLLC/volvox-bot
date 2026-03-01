@@ -26,6 +26,7 @@ export const SAFE_CONFIG_KEYS = new Set([
   'challenges',
   'review',
   'auditLog',
+  'reminders',
 ]);
 
 export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];

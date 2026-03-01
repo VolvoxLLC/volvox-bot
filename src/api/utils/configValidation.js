@@ -148,6 +148,13 @@ export const CONFIG_SCHEMA = {
       retentionDays: { type: 'number' },
     },
   },
+  reminders: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      maxPerUser: { type: 'number' },
+    },
+  },
 };
 
 /**
