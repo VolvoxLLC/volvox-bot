@@ -149,13 +149,10 @@ describe('ai module', () => {
 
       addToHistory('ch1', 'user', 'hello', 'testuser');
 
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO conversations'), [
-        'ch1',
-        'user',
-        'hello',
-        'testuser',
-        null,
-      ]);
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO conversations'),
+        ['ch1', 'user', 'hello', 'testuser', null, null]
+      );
     });
   });
 

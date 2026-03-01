@@ -8,6 +8,7 @@ import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
+import { addToHistory } from './ai.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
 
 /** Maximum characters to keep from fetched context messages. */
@@ -214,7 +215,19 @@ export async function sendResponses(
         const msgOpts = { content: chunks[i] };
         if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
         if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
-        await safeSend(channel, msgOpts);
+        const sentMsg = await safeSend(channel, msgOpts);
+        
+        // Log AI response to conversation history
+        if (sentMsg && !Array.isArray(sentMsg)) {
+          addToHistory(
+            channelId,
+            'assistant',
+            chunks[i],
+            null, // username - bot doesn't have one in this context
+            sentMsg.id,
+            channel.guild?.id || null
+          );
+        }
       }
 
       info('Triage response sent', {

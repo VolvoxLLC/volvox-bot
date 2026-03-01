@@ -202,9 +202,10 @@ export async function getHistoryAsync(channelId) {
  * @param {string} role - Message role (e.g., "user" or "assistant").
  * @param {string} content - Message text content.
  * @param {string} [username] - Optional display name associated with the message.
- * @param {string} [discordMessageId] - Optional native Discord message ID (used to construct jump URLs in the dashboard).
+ * @param {string} [discordMessageId] - Optional native Discord message ID
+ * @param {string} [guildId] - Optional guild ID for the conversation (used to construct jump URLs in the dashboard).
  */
-export function addToHistory(channelId, role, content, username, discordMessageId) {
+export function addToHistory(channelId, role, content, username, discordMessageId, guildId) {
   if (!conversationHistory.has(channelId)) {
     conversationHistory.set(channelId, []);
   }
@@ -223,15 +224,16 @@ export function addToHistory(channelId, role, content, username, discordMessageI
   if (pool) {
     pool
       .query(
-        `INSERT INTO conversations (channel_id, role, content, username, discord_message_id)
-       VALUES ($1, $2, $3, $4, $5)`,
-        [channelId, role, content, username || null, discordMessageId || null],
+        `INSERT INTO conversations (channel_id, role, content, username, discord_message_id, guild_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+        [channelId, role, content, username || null, discordMessageId || null, guildId || null],
       )
       .catch((err) => {
         logError('Failed to persist message to DB', {
           channelId,
           role,
           username: username || null,
+          guildId: guildId || null,
           error: err.message,
         });
       });
