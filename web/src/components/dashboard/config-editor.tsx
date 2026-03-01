@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { RoleSelector } from '@/components/ui/role-selector';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -35,32 +36,6 @@ function parseNumberInput(raw: string, min?: number, max?: number): number | und
   if (min !== undefined && num < min) return min;
   if (max !== undefined && num > max) return max;
   return num;
-}
-
-function parseRoleMenuOptions(raw: string) {
-  return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [label = '', roleId = '', ...descParts] = line.split('|');
-      const description = descParts.join('|').trim();
-      return {
-        label: label.trim(),
-        roleId: roleId.trim(),
-        ...(description ? { description } : {}),
-      };
-    })
-    .filter((opt) => opt.label && opt.roleId)
-    .slice(0, 25);
-}
-
-function stringifyRoleMenuOptions(
-  options: Array<{ label?: string; roleId?: string; description?: string }> = [],
-) {
-  return options
-    .map((opt) => [opt.label ?? '', opt.roleId ?? '', opt.description ?? ''].join('|'))
-    .join('\n');
 }
 
 /**
@@ -128,7 +103,6 @@ export function ConfigEditor() {
   const [draftConfig, setDraftConfig] = useState<GuildConfig | null>(null);
 
   /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
-  const [roleMenuRaw, setRoleMenuRaw] = useState('');
   const [dmStepsRaw, setDmStepsRaw] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
@@ -199,7 +173,6 @@ export function ConfigEditor() {
 
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
-      setRoleMenuRaw(stringifyRoleMenuOptions(data.welcome?.roleMenu?.options ?? []));
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
@@ -371,7 +344,6 @@ export function ConfigEditor() {
   const discardChanges = useCallback(() => {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
-    setRoleMenuRaw(stringifyRoleMenuOptions(savedConfig.welcome?.roleMenu?.options ?? []));
     setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
     toast.success('Changes discarded.');
   }, [savedConfig]);
@@ -790,21 +762,72 @@ export function ConfigEditor() {
                 label="Role Menu"
               />
             </div>
-            <textarea
-              value={roleMenuRaw}
-              onChange={(e) => setRoleMenuRaw(e.target.value)}
-              onBlur={() => {
-                const parsed = parseRoleMenuOptions(roleMenuRaw);
-                updateWelcomeRoleMenu('options', parsed);
-                setRoleMenuRaw(stringifyRoleMenuOptions(parsed));
-              }}
-              rows={5}
-              disabled={saving}
-              className={inputClasses}
-              placeholder={
-                'Format: Label|RoleID|Description (optional)\nOne option per line (max 25).'
-              }
-            />
+            <div className="space-y-3">
+              {(draftConfig.welcome?.roleMenu?.options ?? []).map((opt, i) => (
+                <div key={i} className="flex flex-col gap-2 rounded-md border p-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={opt.label ?? ''}
+                      onChange={(e) => {
+                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                        opts[i] = { ...opts[i], label: e.target.value };
+                        updateWelcomeRoleMenu('options', opts);
+                      }}
+                      disabled={saving}
+                      className={`${inputClasses} flex-1`}
+                      placeholder="Label (shown in menu)"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])].filter((_, idx) => idx !== i);
+                        updateWelcomeRoleMenu('options', opts);
+                      }}
+                      disabled={saving || (draftConfig.welcome?.roleMenu?.options ?? []).length <= 1}
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                  <RoleSelector
+                    guildId={guildId}
+                    selected={opt.roleId ? [opt.roleId] : []}
+                    onChange={(selected) => {
+                      const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                      opts[i] = { ...opts[i], roleId: selected[0] ?? '' };
+                      updateWelcomeRoleMenu('options', opts);
+                    }}
+                    placeholder="Select role"
+                    disabled={saving}
+                    maxSelections={1}
+                  />
+                  <input
+                    type="text"
+                    value={opt.description ?? ''}
+                    onChange={(e) => {
+                      const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                      opts[i] = { ...opts[i], description: e.target.value || undefined };
+                      updateWelcomeRoleMenu('options', opts);
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                    placeholder="Description (optional)"
+                  />
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const opts = [...(draftConfig.welcome?.roleMenu?.options ?? []), { label: '', roleId: '' }];
+                  updateWelcomeRoleMenu('options', opts);
+                }}
+                disabled={saving || (draftConfig.welcome?.roleMenu?.options ?? []).length >= 25}
+              >
+                + Add Role Option
+              </Button>
+            </div>
           </fieldset>
 
           <fieldset className="space-y-2 rounded-md border p-3">
@@ -1336,26 +1359,24 @@ export function ConfigEditor() {
         <CardContent className="space-y-4">
           <label className="space-y-2">
             <span className="text-sm font-medium">Admin Role ID</span>
-            <input
-              type="text"
-              value={draftConfig.permissions?.adminRoleId ?? ''}
-              onChange={(e) => updatePermissionsField('adminRoleId', e.target.value.trim() || null)}
+            <RoleSelector
+              guildId={guildId}
+              selected={draftConfig.permissions?.adminRoleId ? [draftConfig.permissions.adminRoleId] : []}
+              onChange={(selected) => updatePermissionsField('adminRoleId', selected[0] ?? null)}
+              placeholder="Select admin role"
               disabled={saving}
-              className={inputClasses}
-              placeholder="Discord role ID for admins"
+              maxSelections={1}
             />
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium">Moderator Role ID</span>
-            <input
-              type="text"
-              value={draftConfig.permissions?.moderatorRoleId ?? ''}
-              onChange={(e) =>
-                updatePermissionsField('moderatorRoleId', e.target.value.trim() || null)
-              }
+            <RoleSelector
+              guildId={guildId}
+              selected={draftConfig.permissions?.moderatorRoleId ? [draftConfig.permissions.moderatorRoleId] : []}
+              onChange={(selected) => updatePermissionsField('moderatorRoleId', selected[0] ?? null)}
+              placeholder="Select moderator role"
               disabled={saving}
-              className={inputClasses}
-              placeholder="Discord role ID for moderators"
+              maxSelections={1}
             />
           </label>
           <label className="space-y-2">

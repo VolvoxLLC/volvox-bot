@@ -1,9 +1,11 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 import type { GuildConfig } from '@/lib/config-utils';
 import { NumberField } from './NumberField';
 
@@ -20,7 +22,16 @@ export function TriageSection({
   onEnabledChange,
   onFieldChange,
 }: TriageSectionProps) {
+  const guildId = useGuildSelection();
+
   if (!draftConfig.triage) return null;
+
+  const moderationLogChannel = draftConfig.triage?.moderationLogChannel ?? '';
+  const selectedChannels = moderationLogChannel ? [moderationLogChannel] : [];
+
+  const handleChannelChange = (channels: string[]) => {
+    onFieldChange('moderationLogChannel', channels[0] ?? '');
+  };
 
   return (
     <Card>
@@ -150,15 +161,20 @@ export function TriageSection({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="mod-log-channel">Moderation Log Channel</Label>
-          <Input
-            id="mod-log-channel"
-            type="text"
-            value={draftConfig.triage?.moderationLogChannel ?? ''}
-            onChange={(e) => onFieldChange('moderationLogChannel', e.target.value)}
-            disabled={saving}
-            placeholder="Channel ID for moderation logs"
-          />
+          <Label>Moderation Log Channel</Label>
+          {guildId ? (
+            <ChannelSelector
+              guildId={guildId}
+              selected={selectedChannels}
+              onChange={handleChannelChange}
+              placeholder="Select moderation log channel..."
+              disabled={saving}
+              maxSelections={1}
+              filter="text"
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">Select a server first</p>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -1,9 +1,10 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 import type { GuildConfig } from '@/lib/config-utils';
 
 interface ModerationSectionProps {
@@ -23,7 +24,16 @@ export function ModerationSection({
   onDmNotificationChange,
   onEscalationChange,
 }: ModerationSectionProps) {
+  const guildId = useGuildSelection();
+
   if (!draftConfig.moderation) return null;
+
+  const alertChannelId = draftConfig.moderation?.alertChannelId ?? '';
+  const selectedChannels = alertChannelId ? [alertChannelId] : [];
+
+  const handleChannelChange = (channels: string[]) => {
+    onFieldChange('alertChannelId', channels[0] ?? '');
+  };
 
   return (
     <Card>
@@ -45,15 +55,20 @@ export function ModerationSection({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="alert-channel">Alert Channel ID</Label>
-          <Input
-            id="alert-channel"
-            type="text"
-            value={draftConfig.moderation?.alertChannelId ?? ''}
-            onChange={(e) => onFieldChange('alertChannelId', e.target.value)}
-            disabled={saving}
-            placeholder="Channel ID for moderation alerts"
-          />
+          <Label>Alert Channel</Label>
+          {guildId ? (
+            <ChannelSelector
+              guildId={guildId}
+              selected={selectedChannels}
+              onChange={handleChannelChange}
+              placeholder="Select alert channel..."
+              disabled={saving}
+              maxSelections={1}
+              filter="text"
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">Select a server first</p>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <Label htmlFor="auto-delete" className="text-sm font-medium">
