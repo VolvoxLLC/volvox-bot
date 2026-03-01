@@ -14,6 +14,29 @@ import { resolveMessageId, sanitizeText } from './triage-filter.js';
 /** Maximum characters to keep from fetched context messages. */
 const CONTEXT_MESSAGE_CHAR_LIMIT = 500;
 
+// ── History helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Log an assistant message (or multiple messages when safeSend splits into an array)
+ * to conversation history.
+ *
+ * `safeSend` can return either a single Message object or an array of Message objects
+ * when the content was split across multiple Discord messages. Both cases are handled
+ * here so history is never silently dropped.
+ *
+ * @param {string} channelId - The channel the message was sent in.
+ * @param {string|null} guildId - The guild ID, or null for DMs.
+ * @param {string} fallbackContent - Text to use when the sent message has no `.content`.
+ * @param {import('discord.js').Message|import('discord.js').Message[]|null} sentMsg - Return value of safeSend.
+ */
+function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
+  const sentMessages = Array.isArray(sentMsg) ? sentMsg : [sentMsg];
+  for (const m of sentMessages) {
+    if (!m?.id) continue;
+    addToHistory(channelId, 'assistant', m.content || fallbackContent, null, m.id, guildId || null);
+  }
+}
+
 // ── Channel context fetching ─────────────────────────────────────────────────
 
 /**
@@ -179,16 +202,7 @@ export async function sendResponses(
               if (debugEmbed && i === 0) msgOpts.embeds = [debugEmbed];
               if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
               const sentMsg = await safeSend(channel, msgOpts);
-              if (sentMsg && !Array.isArray(sentMsg)) {
-                addToHistory(
-                  channelId,
-                  'assistant',
-                  chunks[i],
-                  null,
-                  sentMsg.id,
-                  channel.guild?.id || null,
-                );
-              }
+              logAssistantHistory(channelId, channel.guild?.id || null, chunks[i], sentMsg);
             }
           }
         } catch (err) {
@@ -227,16 +241,7 @@ export async function sendResponses(
         if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
         const sentMsg = await safeSend(channel, msgOpts);
         // Log AI response to conversation history
-        if (sentMsg && !Array.isArray(sentMsg)) {
-          addToHistory(
-            channelId,
-            'assistant',
-            chunks[i],
-            null, // username - bot doesn't have one in this context
-            sentMsg.id,
-            channel.guild?.id || null,
-          );
-        }
+        logAssistantHistory(channelId, channel.guild?.id || null, chunks[i], sentMsg);
       }
 
       info('Triage response sent', {
