@@ -14,11 +14,14 @@ jobs:
   claude-review:
     # Only run when the comment includes @claude
     if: >
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request &&
-       contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' &&
-       contains(github.event.comment.body, '@claude'))
+      !endsWith(github.actor, '[bot]') &&
+      (
+        (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude'))
+      )
 
     runs-on: ubuntu-latest
     permissions:
