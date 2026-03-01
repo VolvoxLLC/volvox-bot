@@ -235,6 +235,7 @@ export function RoleSelector({
                   onClick={() => removeRole(role.id)}
                   className="ml-1 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
                   disabled={disabled}
+                  aria-label={`Remove ${role.name}`}
                 >
                   <X className="h-3 w-3" />
                 </button>

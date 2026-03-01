@@ -31,6 +31,7 @@ export function AiSection({
             </div>
             <div className="flex items-center gap-2">
               <Switch
+                id="ai-toggle"
                 checked={draftConfig.ai?.enabled ?? false}
                 onCheckedChange={onEnabledChange}
                 disabled={saving}
