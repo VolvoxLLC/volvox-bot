@@ -1,7 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
@@ -14,6 +17,7 @@ interface ModerationSectionProps {
   onFieldChange: (field: string, value: unknown) => void;
   onDmNotificationChange: (action: string, value: boolean) => void;
   onEscalationChange: (enabled: boolean) => void;
+  onProtectRolesChange: (field: string, value: unknown) => void;
 }
 
 /**
@@ -35,8 +39,16 @@ export function ModerationSection({
   onFieldChange,
   onDmNotificationChange,
   onEscalationChange,
+  onProtectRolesChange,
 }: ModerationSectionProps) {
   const guildId = useGuildSelection();
+  const [roleIdsRaw, setRoleIdsRaw] = useState(
+    (draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', '),
+  );
+
+  useEffect(() => {
+    setRoleIdsRaw((draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
+  }, [draftConfig.moderation?.protectRoles?.roleIds]);
 
   if (!draftConfig.moderation) return null;
 
@@ -124,6 +136,81 @@ export function ModerationSection({
             aria-label="Toggle escalation"
           />
         </div>
+
+        {/* Protect Roles sub-section */}
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Protect Roles from Moderation</legend>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-roles-enabled" className="text-sm text-muted-foreground">
+              Enabled
+            </Label>
+            <Switch
+              id="protect-roles-enabled"
+              checked={draftConfig.moderation?.protectRoles?.enabled ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('enabled', v)}
+              disabled={saving}
+              aria-label="Toggle protect roles"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-admins" className="text-sm text-muted-foreground">
+              Include admins
+            </Label>
+            <Switch
+              id="protect-admins"
+              checked={draftConfig.moderation?.protectRoles?.includeAdmins ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('includeAdmins', v)}
+              disabled={saving}
+              aria-label="Include admins"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-mods" className="text-sm text-muted-foreground">
+              Include moderators
+            </Label>
+            <Switch
+              id="protect-mods"
+              checked={draftConfig.moderation?.protectRoles?.includeModerators ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('includeModerators', v)}
+              disabled={saving}
+              aria-label="Include moderators"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="protect-owner" className="text-sm text-muted-foreground">
+              Include server owner
+            </Label>
+            <Switch
+              id="protect-owner"
+              checked={draftConfig.moderation?.protectRoles?.includeServerOwner ?? true}
+              onCheckedChange={(v) => onProtectRolesChange('includeServerOwner', v)}
+              disabled={saving}
+              aria-label="Include server owner"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="protect-role-ids" className="text-sm text-muted-foreground">
+              Additional protected role IDs (comma-separated)
+            </Label>
+            <Input
+              id="protect-role-ids"
+              type="text"
+              value={roleIdsRaw}
+              onChange={(e) => setRoleIdsRaw(e.target.value)}
+              onBlur={() =>
+                onProtectRolesChange(
+                  'roleIds',
+                  roleIdsRaw
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                )
+              }
+              disabled={saving}
+              placeholder="Role ID 1, Role ID 2"
+            />
+          </div>
+        </fieldset>
       </CardContent>
     </Card>
   );
