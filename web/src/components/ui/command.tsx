@@ -12,6 +12,13 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
+/**
+ * Wraps CommandPrimitive as the command-palette root, injecting a data-slot and base styling while forwarding all props.
+ *
+ * @param className - Additional CSS classes to merge with the component's base styling
+ * @param props - Remaining props forwarded to the underlying CommandPrimitive
+ * @returns The underlying CommandPrimitive element configured as the command palette root
+ */
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
     <CommandPrimitive

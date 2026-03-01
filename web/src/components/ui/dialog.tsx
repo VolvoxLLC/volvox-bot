@@ -6,18 +6,41 @@ import type * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+/**
+ * Render a Dialog root element, forwarding received props to the underlying Radix Dialog Root.
+ *
+ * @param props - Props passed to the Dialog root component.
+ * @returns A React element that renders the dialog root.
+ */
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root {...props} />;
 }
 
+/**
+ * Renders a Radix Dialog Trigger element that forwards all received props and sets a `data-slot="dialog-trigger"`.
+ *
+ * @param props - Props forwarded to the underlying Radix Dialog Trigger
+ * @returns The Dialog trigger element with forwarded props and the `data-slot="dialog-trigger"` attribute
+ */
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
 }
 
+/**
+ * Renders a Dialog Portal element and forwards all received props to the underlying portal.
+ *
+ * @returns A React element representing the dialog portal.
+ */
 function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
   return <DialogPrimitive.Portal {...props} />;
 }
 
+/**
+ * Render a dialog close control using Radix UI's Close primitive.
+ *
+ * @param props - Props forwarded to Radix Dialog Close primitive
+ * @returns A React element for closing the dialog with `data-slot="dialog-close"`
+ */
 function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
@@ -38,6 +61,12 @@ function DialogOverlay({
   );
 }
 
+/**
+ * Renders dialog content inside a portal with its overlay and an optional close control.
+ *
+ * @param showCloseButton - When `true` (default), renders a close button in the top-right corner of the dialog.
+ * @returns The dialog content element with overlay and optional close button.
+ */
 function DialogContent({
   className,
   children,

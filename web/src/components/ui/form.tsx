@@ -82,6 +82,13 @@ function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
+/**
+ * Renders a form field label that is linked to the field control and indicates validation state.
+ *
+ * @param props - Props forwarded to the underlying Label component; `className` will be merged with
+ *   an error-aware style and `htmlFor` is set to the field's control id.
+ * @returns The label element for the current form field with `data-error` and `htmlFor` applied.
+ */
 function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
   const { error, formItemId } = useFormField();
 
@@ -96,6 +103,12 @@ function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPri
   );
 }
 
+/**
+ * Renders a form control wrapper that attaches accessible IDs and error state to a Radix Slot.
+ *
+ * @param props - Props forwarded to the underlying Radix `Slot` element.
+ * @returns A `Slot` element with `id`, `aria-describedby`, `aria-invalid`, `data-slot="form-control"`, and any provided props.
+ */
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 

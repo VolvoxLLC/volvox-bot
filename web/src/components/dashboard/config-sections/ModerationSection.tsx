@@ -16,6 +16,18 @@ interface ModerationSectionProps {
   onEscalationChange: (enabled: boolean) => void;
 }
 
+/**
+ * Render the Moderation settings section, including alert channel selection, auto-delete,
+ * DM notification toggles, and escalation controls.
+ *
+ * @param draftConfig - The current draft guild configuration containing moderation settings.
+ * @param saving - Whether a save operation is in progress; when true, interactive controls are disabled.
+ * @param onEnabledChange - Callback invoked with the new enabled state when moderation is toggled.
+ * @param onFieldChange - Generic field update callback, called with field name and new value (e.g., 'alertChannelId', 'autoDelete').
+ * @param onDmNotificationChange - Callback invoked with an action ('warn' | 'timeout' | 'kick' | 'ban') and boolean to toggle DM notifications for that action.
+ * @param onEscalationChange - Callback invoked with the new escalation enabled state.
+ * @returns The rendered moderation Card element, or `null` if `draftConfig.moderation` is not present.
+ */
 export function ModerationSection({
   draftConfig,
   saving,

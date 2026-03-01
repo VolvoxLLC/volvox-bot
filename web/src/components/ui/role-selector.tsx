@@ -37,6 +37,18 @@ function discordColorToHex(color: number): string | null {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
 
+/**
+ * Render a role selection UI for a guild, allowing users to search, select, and remove roles.
+ *
+ * @param guildId - The guild ID used to fetch available roles; when not provided no fetch is performed.
+ * @param selected - Array of selected role IDs.
+ * @param onChange - Callback invoked with the updated array of selected role IDs whenever the selection changes.
+ * @param placeholder - Text shown in the trigger when no roles are selected.
+ * @param disabled - When true, disables user interaction with the selector.
+ * @param className - Optional additional CSS class names applied to the outer container.
+ * @param maxSelections - Optional maximum number of roles that may be selected; further selections are prevented when reached.
+ * @returns A React element that displays the role picker, selected role badges, and selection controls.
+ */
 export function RoleSelector({
   guildId,
   selected,

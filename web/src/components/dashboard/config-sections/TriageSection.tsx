@@ -16,6 +16,17 @@ interface TriageSectionProps {
   onFieldChange: (field: string, value: unknown) => void;
 }
 
+/**
+ * Renders the Triage configuration UI for editing classifier, responder, budget, timing, toggles, and moderation log channel.
+ *
+ * Renders nothing if `draftConfig.triage` is not present.
+ *
+ * @param draftConfig - Guild configuration draft containing the `triage` settings to display and edit.
+ * @param saving - When true, input controls are disabled to prevent changes during a save operation.
+ * @param onEnabledChange - Invoked with the new enabled state when the Triage master switch is toggled.
+ * @param onFieldChange - Invoked with `(field, value)` for individual field updates; used for all editable triage fields including `moderationLogChannel`.
+ * @returns The Triage configuration card element, or `null` when triage configuration is absent.
+ */
 export function TriageSection({
   draftConfig,
   saving,

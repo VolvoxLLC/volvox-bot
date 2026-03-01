@@ -28,7 +28,14 @@ const DEFAULT_ACTIVITY_BADGES = [
   { days: 0, label: '🌱 Newcomer' },
 ] as const;
 
-/** Parse a number input value, enforcing optional min/max constraints. Returns undefined if invalid. */
+/**
+ * Parse a numeric text input into a number, applying optional minimum/maximum bounds.
+ *
+ * @param raw - The input string to parse; an empty string yields `undefined`.
+ * @param min - Optional lower bound; if the parsed value is less than `min`, `min` is returned.
+ * @param max - Optional upper bound; if the parsed value is greater than `max`, `max` is returned.
+ * @returns `undefined` if `raw` is empty or cannot be parsed as a finite number, otherwise the parsed number (clamped to `min`/`max` when provided).
+ */
 function parseNumberInput(raw: string, min?: number, max?: number): number | undefined {
   if (raw === '') return undefined;
   const num = Number(raw);
@@ -85,11 +92,13 @@ function isGuildConfig(data: unknown): data is GuildConfig {
 }
 
 /**
- * Renders the configuration editor for a selected guild, allowing viewing and editing of AI, welcome, moderation, and triage settings.
+ * Edit a guild's bot configuration through a multi-section UI.
  *
- * The component loads the guild's authoritative config from the API, keeps a mutable draft for user edits, computes and applies patch updates per top-level section, warns on unsaved changes, and provides keyboard and UI controls for saving or discarding edits.
+ * Loads the authoritative config for the selected guild, maintains a mutable draft for user edits,
+ * computes and applies per-section patches to persist changes, and provides controls to save,
+ * discard, and validate edits (including an unsaved-changes warning and keyboard shortcut).
  *
- * @returns The editor UI as JSX when a guild is selected and the draft config is available; `null` while no draft is present (or when rendering is handled by loading/error/no-selection states).
+ * @returns The editor UI as JSX when a guild is selected and a draft config exists; `null` otherwise.
  */
 export function ConfigEditor() {
   const [guildId, setGuildId] = useState<string>('');
