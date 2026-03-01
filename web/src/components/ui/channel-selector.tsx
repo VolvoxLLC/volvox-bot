@@ -212,10 +212,14 @@ export function ChannelSelector({
           return a.name.localeCompare(b.name);
         });
 
-        setChannels(sortedChannels);
+        if (abortControllerRef.current === controller) {
+          setChannels(sortedChannels);
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Failed to load channels');
+        if (abortControllerRef.current === controller) {
+          setError(err instanceof Error ? err.message : 'Failed to load channels');
+        }
       } finally {
         if (abortControllerRef.current === controller) {
           setLoading(false);
