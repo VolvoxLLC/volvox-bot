@@ -24,14 +24,13 @@ import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 // ── Sub-module imports ───────────────────────────────────────────────────────
 
 import { addToHistory } from './ai.js';
-
+import { getConfig } from './config.js';
 import {
   channelBuffers,
   clearEvaluatedMessages,
   consumePendingReeval,
   pushToBuffer,
 } from './triage-buffer.js';
-
 import { getDynamicInterval, isChannelEligible, resolveTriageConfig } from './triage-config.js';
 
 import { checkTriggerWords, sanitizeText } from './triage-filter.js';
@@ -560,10 +559,12 @@ export function stopTriage() {
  * If configured trigger words are present, forces an immediate evaluation (and falls back to scheduling if forcing fails); otherwise schedules a dynamic evaluation timer for the channel.
  *
  * @param {import('discord.js').Message} message - The Discord message to accumulate.
- * @param {Object} msgConfig - Bot configuration containing triage settings (e.g., enabled, maxBufferSize, trigger words).
+ * @param {Object} _msgConfig - Ignored; retained for backwards compatibility. Live config is
+ *   fetched via {@link getConfig} on each invocation to avoid stale references.
  */
-export async function accumulateMessage(message, msgConfig) {
-  const triageConfig = msgConfig.triage;
+export async function accumulateMessage(message, _msgConfig) {
+  const liveConfig = getConfig(message.guild?.id || null);
+  const triageConfig = liveConfig.triage;
   if (!triageConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
 
@@ -620,17 +621,17 @@ export async function accumulateMessage(message, msgConfig) {
   );
 
   // Check for trigger words -- instant evaluation
-  if (checkTriggerWords(message.content, msgConfig)) {
+  if (checkTriggerWords(message.content, liveConfig)) {
     info('Trigger word detected, forcing evaluation', { channelId });
-    evaluateNow(channelId, msgConfig, client, healthMonitor).catch((err) => {
+    evaluateNow(channelId, liveConfig, client, healthMonitor).catch((err) => {
       logError('Trigger word evaluateNow failed', { channelId, error: err.message });
-      scheduleEvaluation(channelId, msgConfig);
+      scheduleEvaluation(channelId, liveConfig);
     });
     return;
   }
 
   // Schedule or reset the dynamic timer
-  scheduleEvaluation(channelId, msgConfig);
+  scheduleEvaluation(channelId, liveConfig);
 }
 
 const MAX_REEVAL_DEPTH = 3;
