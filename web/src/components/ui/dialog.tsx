@@ -29,6 +29,7 @@ function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive
 /**
  * Renders a Dialog Portal element and forwards all received props to the underlying portal.
  *
+ * @param props - Props forwarded to Radix Dialog Portal primitive
  * @returns A React element representing the dialog portal.
  */
 function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
