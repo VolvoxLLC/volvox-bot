@@ -17,6 +17,34 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: (t, opts) => t.editReply(opts),
 }));
 
+vi.mock('../../src/modules/pollHandler.js', () => ({
+  closeExpiredPolls: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/modules/reminderHandler.js', () => ({
+  checkReminders: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/modules/challengeScheduler.js', () => ({
+  checkDailyChallenge: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/modules/reviewHandler.js', () => ({
+  expireStaleReviews: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/modules/ticketHandler.js', () => ({
+  checkAutoClose: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/utils/dbMaintenance.js', () => ({
+  runMaintenance: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({}),
+}));
+
 import { getPool } from '../../src/db.js';
 import {
   getNextCronRun,
@@ -24,6 +52,7 @@ import {
   startScheduler,
   stopScheduler,
 } from '../../src/modules/scheduler.js';
+import { checkAutoClose } from '../../src/modules/ticketHandler.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('scheduler module', () => {
@@ -403,6 +432,21 @@ describe('scheduler module', () => {
 
       // Should not throw
       expect(getPool).toHaveBeenCalled();
+    });
+
+    it('should call checkAutoClose on every 5th tick', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      startScheduler(mockClient);
+
+      // Run enough ticks so that at least one is divisible by 5
+      // tickCount starts at 0 and increments each poll
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      expect(checkAutoClose).toHaveBeenCalled();
     });
   });
 });

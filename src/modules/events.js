@@ -26,6 +26,7 @@ import { trackMessage, trackReaction } from './engagement.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
 import { checkRateLimit } from './rateLimit.js';
+import { handleReminderDismiss, handleReminderSnooze } from './reminderHandler.js';
 import { handleXpGain } from './reputation.js';
 import { handleReviewClaim } from './reviewHandler.js';
 import { isSpam, sendSpamAlert } from './spam.js';
@@ -631,6 +632,49 @@ export function registerChallengeButtonHandler(client) {
  * @param {Object} config - Bot configuration
  * @param {Object} healthMonitor - Health monitor instance
  */
+
+/**
+ * Register an interactionCreate handler for reminder snooze/dismiss buttons.
+ * Listens for button clicks with customId matching `reminder_snooze_<id>_<duration>`
+ * or `reminder_dismiss_<id>`.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerReminderButtonHandler(client) {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    const isSnooze = interaction.customId.startsWith('reminder_snooze_');
+    const isDismiss = interaction.customId.startsWith('reminder_dismiss_');
+    if (!isSnooze && !isDismiss) return;
+
+    try {
+      if (isSnooze) {
+        await handleReminderSnooze(interaction);
+      } else {
+        await handleReminderDismiss(interaction);
+      }
+    } catch (err) {
+      logError('Reminder button handler failed', {
+        customId: interaction.customId,
+        userId: interaction.user?.id,
+        error: err.message,
+      });
+
+      if (!interaction.replied && !interaction.deferred) {
+        try {
+          await safeReply(interaction, {
+            content: '❌ Something went wrong processing your request.',
+            ephemeral: true,
+          });
+        } catch {
+          // Ignore
+        }
+      }
+    }
+  });
+}
+
 export function registerEventHandlers(client, config, healthMonitor) {
   registerReadyHandler(client, config, healthMonitor);
   registerGuildMemberAddHandler(client, config);
@@ -644,6 +688,7 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerTicketOpenButtonHandler(client);
   registerTicketModalHandler(client);
   registerTicketCloseButtonHandler(client);
+  registerReminderButtonHandler(client);
   registerWelcomeOnboardingHandlers(client);
   registerErrorHandlers(client);
 }

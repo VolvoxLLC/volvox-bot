@@ -1,27 +1,38 @@
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [synchronize, review_requested]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
 
 concurrency:
-  group: claude-review-${{ github.event.pull_request.number }}
+  group: claude-review-${{ github.event.issue.number || github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   claude-review:
-    if: >-
-      (github.event.action == 'review_requested' && github.event.requested_reviewer.login == 'claude[bot]') ||
-      (github.event.action == 'synchronize' && contains(toJSON(github.event.pull_request.requested_reviewers), 'claude[bot]'))
+    # Only run when the comment includes @claude
+    if: >
+      !endsWith(github.actor, '[bot]') &&
+      (
+        (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude'))
+      )
+
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+      issues: write
       id-token: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@6.0.2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
@@ -36,7 +47,7 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: |
-            Run /code-review --comment on PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Run /code-review --comment on PR #${{ github.event.issue.number || github.event.pull_request.number }} in ${{ github.repository }}.
 
             In addition to CLAUDE.md and AGENTS.md (which the plugin reads automatically),
             enforce these project-specific rules that the plugin cannot infer:
@@ -64,5 +75,5 @@ jobs:
             • ONLY report issues — zero praise, positives, or compliments
             • If zero issues found, do NOT post a comment — just approve silently
             • After the review comment, submit a verdict:
-              - Issues found → `gh pr review ${{ github.event.pull_request.number }} --request-changes -b "See review comment for details."`
-              - Zero issues → `gh pr review ${{ github.event.pull_request.number }} --approve`
+              - Issues found → `gh pr review ${{ github.event.issue.number || github.event.pull_request.number }} --request-changes -b "See review comment for details."`
+              - Zero issues → `gh pr review ${{ github.event.issue.number || github.event.pull_request.number }} --approve`

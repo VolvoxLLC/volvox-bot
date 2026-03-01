@@ -1492,7 +1492,10 @@ export function ConfigEditor() {
           </p>
           {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
             (badge: { days?: number; label?: string }, i: number) => (
-              <div key={i} className="flex items-center gap-2">
+              <div
+                key={`badge-${badge.days ?? 0}-${badge.label ?? i}`}
+                className="flex items-center gap-2"
+              >
                 <Input
                   className="w-20"
                   type="number"
