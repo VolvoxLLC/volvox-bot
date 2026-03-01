@@ -111,7 +111,7 @@ function buildConversationSummary(convo, guild) {
     ? firstMsg.content.slice(0, 100) + (firstMsg.content.length > 100 ? '…' : '')
     : '';
 
-  const channelName = guild?.channels?.cache?.get(convo.channelId)?.name || convo.channelId;
+  const channelName = guild?.channels?.cache?.get(convo.channelId)?.name || null;
 
   return {
     id: convo.id,
@@ -301,7 +301,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
 
     const whereClause = whereParts.join(' AND ');
 
-    // Fetch matching messages for grouping (capped at 5000 rows to prevent memory exhaustion)
+    // Fetch matching messages for grouping (capped at 10000 rows to prevent memory exhaustion)
     // Time-based grouping requires sorted rows; paginate after grouping
     const result = await dbPool.query(
       `SELECT id, channel_id, role, content, username, created_at
