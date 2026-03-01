@@ -4,7 +4,9 @@
  */
 
 import { Router } from 'express';
+import { auditLogMiddleware } from './middleware/auditLog.js';
 import { requireAuth } from './middleware/auth.js';
+import auditLogRouter from './routes/auditLog.js';
 import authRouter from './routes/auth.js';
 import communityRouter from './routes/community.js';
 import configRouter from './routes/config.js';
@@ -28,25 +30,29 @@ router.use('/community', communityRouter);
 router.use('/auth', authRouter);
 
 // Global config routes — require API secret or OAuth2 JWT
-router.use('/config', requireAuth(), configRouter);
+router.use('/config', requireAuth(), auditLogMiddleware(), configRouter);
 
 // Member management routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/members/* before the basic guilds endpoint)
-router.use('/guilds', requireAuth(), membersRouter);
+router.use('/guilds', requireAuth(), auditLogMiddleware(), membersRouter);
 
 // Conversation routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/conversations/* before the catch-all guild endpoint)
-router.use('/guilds/:id/conversations', requireAuth(), conversationsRouter);
+router.use('/guilds/:id/conversations', requireAuth(), auditLogMiddleware(), conversationsRouter);
 
 // Ticket routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/tickets/* before the catch-all guild endpoint)
-router.use('/guilds', requireAuth(), ticketsRouter);
+router.use('/guilds', requireAuth(), auditLogMiddleware(), ticketsRouter);
 
 // Guild routes — require API secret or OAuth2 JWT
-router.use('/guilds', requireAuth(), guildsRouter);
+router.use('/guilds', requireAuth(), auditLogMiddleware(), guildsRouter);
 
 // Moderation routes — require API secret or OAuth2 JWT
-router.use('/moderation', requireAuth(), moderationRouter);
+router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter);
+
+// Audit log routes — require API secret or OAuth2 JWT
+// GET-only; no audit middleware needed (reads are not mutating actions)
+router.use('/guilds', requireAuth(), auditLogRouter);
 
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
