@@ -171,7 +171,6 @@ describe('cache.js — with Redis', () => {
       setex: vi.fn().mockResolvedValue('OK'),
       del: vi.fn().mockResolvedValue(1),
       scan: vi.fn().mockResolvedValue(['0', []]),
-      flushdb: vi.fn().mockResolvedValue('OK'),
     };
 
     const redisMod = await import('../../src/redis.js');
