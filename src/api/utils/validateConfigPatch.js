@@ -2,12 +2,20 @@ import { isMasked, SENSITIVE_FIELDS } from './configAllowlist.js';
 import { validateSingleValue } from './configValidation.js';
 
 /**
+ * Keys that must never appear as path segments — prototype pollution vectors.
+ * Mirrors the same constant in src/modules/config.js (validatePathSegments).
+ * Defined here so the API boundary validates independently of inner-layer defenses.
+ */
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
  * Validate and normalize a config PATCH request body containing a dotted config path and its value.
  *
  * Ensures `body.path` is a non-empty string with at least one dot, contains no empty segments,
  * does not exceed 200 characters, and is no deeper than 10 segments. Ensures `body.value` is present
  * and delegates semantic validation of the value to shared validators. Verifies the top-level key
- * (first path segment) is included in `SAFE_CONFIG_KEYS`.
+ * (first path segment) is included in `SAFE_CONFIG_KEYS`. Rejects any path segment that is a
+ * prototype pollution vector (`__proto__`, `constructor`, `prototype`).
  *
  * @param {Object} body - Request body expected to contain `path` (string) and `value`.
  * @param {Set<string>} SAFE_CONFIG_KEYS - Allowlist of writable top-level config keys.
@@ -39,6 +47,18 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
   // Check for empty segments (handles leading/trailing dots like ".ai.key")
   if (segments.some((s) => s === '')) {
     return { error: 'Config path contains empty segments', status: 400 };
+  }
+
+  // Defense-in-depth: reject prototype pollution vectors at the API boundary.
+  // The inner layer (setConfigValue → validatePathSegments) also catches these,
+  // but the API surface should be the primary gatekeeping point.
+  for (const segment of segments) {
+    if (DANGEROUS_KEYS.has(segment)) {
+      return {
+        error: `Invalid config path: '${segment}' is a reserved key`,
+        status: 400,
+      };
+    }
   }
 
   const topLevelKey = segments[0];
