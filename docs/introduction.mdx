@@ -5,7 +5,7 @@ description: 'Volvox Bot API documentation'
 
 # Volvox Bot API
 
-The Volvox Bot REST API powers the web dashboard and provides programmatic access to guild management, moderation, analytics, AI conversations, and community features.
+The Volvox Bot REST API powers the web dashboard and provides programmatic access to guild management, moderation, analytics, AI conversations, config backup, and community features.
 
 ## Base URL
 
@@ -18,11 +18,15 @@ https://your-domain.com/api/v1
 ## Features
 
 - **Guild Management** — Server settings, analytics, member management
-- **Moderation** — Cases, warnings, bans, timeouts
+- **Moderation** — Cases, warnings, bans, timeouts, mod history
 - **AI Conversations** — Chat history, flagging, search
+- **AI Feedback** — 👍/👎 reaction stats, daily trend, recent feedback
+- **Config** — Bot configuration CRUD with allowlist enforcement
+- **Config Backup** — Export, import, snapshot, and restore server configuration
 - **Community** — Leaderboards, showcases, public profiles
 - **Tickets** — Support ticket system
-- **Config** — Bot configuration CRUD
+- **Audit Log** — History of all mutating API actions
+- **Webhooks** — Config update push notifications
 
 ## Rate Limiting
 
@@ -33,3 +37,15 @@ All endpoints return rate limit headers:
 | `X-RateLimit-Limit` | Max requests per window |
 | `X-RateLimit-Remaining` | Requests remaining |
 | `X-RateLimit-Reset` | Unix timestamp when window resets |
+
+Community endpoints (leaderboard, showcases, stats, profiles) are rate limited to **30 requests/minute** per IP and require no authentication.
+
+Authenticated endpoints vary by route — see individual endpoint docs for specifics.
+
+## Authentication
+
+See the [Authentication](./authentication) page for details on API key and OAuth2 session authentication.
+
+## Versioning
+
+All endpoints are prefixed with `/api/v1`. Breaking changes will be introduced under a new version prefix.
