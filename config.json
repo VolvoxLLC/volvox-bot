@@ -1,286 +1,294 @@
 {
-  "ai": {
-    "enabled": true,
-    "systemPrompt": "You are Volvox Bot, the friendly AI assistant for the Volvox developer community Discord server.\n\nYou're witty, snarky (but warm), and deeply knowledgeable about programming, software development, and tech.\n\nKey traits:\n- Helpful but not boring\n- Can roast people lightly when appropriate\n- Enthusiastic about cool tech and projects\n- Supportive of beginners learning to code\n- Concise - this is Discord, not an essay\n\nIf asked about your own infrastructure, model, or internals \u2014 say you don't know the specifics\nand suggest asking a server admin. Don't guess or speculate about what you run on.\n\nCRITICAL RULES:\n- NEVER type @everyone or @here \u2014 these ping hundreds of people\n- NEVER use mass mention pings under any circumstances\n- If you need to address the group, say \"everyone\" or \"folks\" without the @ symbol\n\nKeep responses under 2000 chars. Use Discord markdown when helpful.",
-    "channels": [],
-    "historyLength": 20,
-    "historyTTLDays": 30,
-    "threadMode": {
-      "enabled": false,
-      "autoArchiveMinutes": 60,
-      "reuseWindowMinutes": 30
-    },
-    "blockedChannelIds": [],
-    "feedback": {
-      "enabled": false
-    }
-  },
-  "triage": {
-    "enabled": true,
-    "defaultInterval": 3000,
-    "maxBufferSize": 30,
-    "triggerWords": [
-      "volvox"
-    ],
-    "moderationKeywords": [],
-    "classifyModel": "claude-haiku-4-5",
-    "classifyBudget": 0.05,
-    "respondModel": "claude-sonnet-4-6",
-    "respondBudget": 0.2,
-    "thinkingTokens": 1024,
-    "classifyBaseUrl": null,
-    "classifyApiKey": null,
-    "respondBaseUrl": null,
-    "respondApiKey": null,
-    "streaming": false,
-    "tokenRecycleLimit": 20000,
-    "contextMessages": 10,
-    "timeout": 30000,
-    "moderationResponse": true,
-    "channels": [],
-    "excludeChannels": [],
-    "debugFooter": true,
-    "debugFooterLevel": "verbose",
-    "moderationLogChannel": "1473219285651292201",
-    "statusReactions": true
-  },
-  "welcome": {
-    "enabled": true,
-    "channelId": "1438631182379253814",
-    "message": "Welcome to Volvox, {user}! \ud83c\udf31 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask \u2014 we're here to help. \ud83d\udc9a",
-    "dynamic": {
-      "enabled": true,
-      "timezone": "America/New_York",
-      "activityWindowMinutes": 45,
-      "milestoneInterval": 25,
-      "highlightChannels": [
-        "1438631182379253814",
-        "1444154471704957069",
-        "1446317676988465242"
-      ],
-      "excludeChannels": []
-    },
-    "rulesChannel": null,
-    "verifiedRole": null,
-    "introChannel": null,
-    "roleMenu": {
-      "enabled": false,
-      "options": []
-    },
-    "dmSequence": {
-      "enabled": false,
-      "steps": []
-    }
-  },
-  "moderation": {
-    "enabled": true,
-    "alertChannelId": "1438665401243275284",
-    "autoDelete": false,
-    "dmNotifications": {
-      "warn": true,
-      "timeout": true,
-      "kick": true,
-      "ban": true
-    },
-    "escalation": {
-      "enabled": false,
-      "thresholds": [
-        {
-          "warns": 3,
-          "withinDays": 7,
-          "action": "timeout",
-          "duration": "1h"
+    "ai": {
+        "enabled": true,
+        "systemPrompt": "You are Volvox Bot, the friendly AI assistant for the Volvox developer community Discord server.\n\nYou're witty, snarky (but warm), and deeply knowledgeable about programming, software development, and tech.\n\nKey traits:\n- Helpful but not boring\n- Can roast people lightly when appropriate\n- Enthusiastic about cool tech and projects\n- Supportive of beginners learning to code\n- Concise - this is Discord, not an essay\n\nIf asked about your own infrastructure, model, or internals — say you don't know the specifics\nand suggest asking a server admin. Don't guess or speculate about what you run on.\n\nCRITICAL RULES:\n- NEVER type @everyone or @here — these ping hundreds of people\n- NEVER use mass mention pings under any circumstances\n- If you need to address the group, say \"everyone\" or \"folks\" without the @ symbol\n\nKeep responses under 2000 chars. Use Discord markdown when helpful.",
+        "channels": [],
+        "historyLength": 20,
+        "historyTTLDays": 30,
+        "threadMode": {
+            "enabled": false,
+            "autoArchiveMinutes": 60,
+            "reuseWindowMinutes": 30
         },
-        {
-          "warns": 5,
-          "withinDays": 30,
-          "action": "ban"
+        "blockedChannelIds": [],
+        "feedback": {
+            "enabled": false
         }
-      ]
+    },
+    "triage": {
+        "enabled": true,
+        "defaultInterval": 3000,
+        "maxBufferSize": 30,
+        "triggerWords": [
+            "volvox"
+        ],
+        "moderationKeywords": [],
+        "classifyModel": "claude-haiku-4-5",
+        "classifyBudget": 0.05,
+        "respondModel": "claude-sonnet-4-6",
+        "respondBudget": 0.2,
+        "thinkingTokens": 1024,
+        "classifyBaseUrl": null,
+        "classifyApiKey": null,
+        "respondBaseUrl": null,
+        "respondApiKey": null,
+        "streaming": false,
+        "tokenRecycleLimit": 20000,
+        "contextMessages": 10,
+        "timeout": 30000,
+        "moderationResponse": true,
+        "channels": [],
+        "excludeChannels": [],
+        "debugFooter": true,
+        "debugFooterLevel": "verbose",
+        "moderationLogChannel": "1473219285651292201",
+        "statusReactions": true
+    },
+    "welcome": {
+        "enabled": true,
+        "channelId": "1438631182379253814",
+        "message": "Welcome to Volvox, {user}! 🌱 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask — we're here to help. 💚",
+        "dynamic": {
+            "enabled": true,
+            "timezone": "America/New_York",
+            "activityWindowMinutes": 45,
+            "milestoneInterval": 25,
+            "highlightChannels": [
+                "1438631182379253814",
+                "1444154471704957069",
+                "1446317676988465242"
+            ],
+            "excludeChannels": []
+        },
+        "rulesChannel": null,
+        "verifiedRole": null,
+        "introChannel": null,
+        "roleMenu": {
+            "enabled": false,
+            "options": []
+        },
+        "dmSequence": {
+            "enabled": false,
+            "steps": []
+        }
+    },
+    "moderation": {
+        "enabled": true,
+        "alertChannelId": "1438665401243275284",
+        "autoDelete": false,
+        "dmNotifications": {
+            "warn": true,
+            "timeout": true,
+            "kick": true,
+            "ban": true
+        },
+        "escalation": {
+            "enabled": false,
+            "thresholds": [
+                {
+                    "warns": 3,
+                    "withinDays": 7,
+                    "action": "timeout",
+                    "duration": "1h"
+                },
+                {
+                    "warns": 5,
+                    "withinDays": 30,
+                    "action": "ban"
+                }
+            ]
+        },
+        "logging": {
+            "channels": {
+                "default": null,
+                "warns": null,
+                "bans": null,
+                "kicks": null,
+                "timeouts": null,
+                "purges": null,
+                "locks": null
+            }
+        },
+        "protectRoles": {
+            "enabled": true,
+            "roleIds": [],
+            "includeAdmins": true,
+            "includeModerators": true,
+            "includeServerOwner": true
+        }
+    },
+    "memory": {
+        "enabled": true,
+        "maxContextMemories": 5,
+        "autoExtract": true
+    },
+    "starboard": {
+        "enabled": false,
+        "channelId": null,
+        "threshold": 3,
+        "emoji": "*",
+        "selfStarAllowed": false,
+        "ignoredChannels": []
     },
     "logging": {
-      "channels": {
-        "default": null,
-        "warns": null,
-        "bans": null,
-        "kicks": null,
-        "timeouts": null,
-        "purges": null,
-        "locks": null
-      }
+        "level": "info",
+        "fileOutput": true,
+        "database": {
+            "enabled": false,
+            "minLevel": "info",
+            "retentionDays": 30,
+            "batchSize": 10,
+            "flushIntervalMs": 5000
+        }
     },
-    "protectRoles": {
-      "enabled": true,
-      "roleIds": [],
-      "includeAdmins": true,
-      "includeModerators": true,
-      "includeServerOwner": true
-    }
-  },
-  "memory": {
-    "enabled": true,
-    "maxContextMemories": 5,
-    "autoExtract": true
-  },
-  "starboard": {
-    "enabled": false,
-    "channelId": null,
-    "threshold": 3,
-    "emoji": "*",
-    "selfStarAllowed": false,
-    "ignoredChannels": []
-  },
-  "logging": {
-    "level": "info",
-    "fileOutput": true,
-    "database": {
-      "enabled": false,
-      "minLevel": "info",
-      "retentionDays": 30,
-      "batchSize": 10,
-      "flushIntervalMs": 5000
-    }
-  },
-  "permissions": {
-    "enabled": true,
-    "adminRoleId": null,
-    "moderatorRoleId": null,
-    "botOwners": [],
-    "usePermissions": true,
-    "allowedCommands": {
-      "ping": "everyone",
-      "memory": "everyone",
-      "config": "admin",
-      "warn": "admin",
-      "kick": "admin",
-      "timeout": "admin",
-      "untimeout": "admin",
-      "ban": "admin",
-      "tempban": "admin",
-      "unban": "admin",
-      "softban": "admin",
-      "purge": "admin",
-      "case": "admin",
-      "history": "admin",
-      "lock": "admin",
-      "unlock": "admin",
-      "slowmode": "admin",
-      "modlog": "moderator",
-      "announce": "moderator",
-      "tldr": "everyone",
-      "afk": "everyone",
-      "github": "everyone",
-      "rank": "everyone",
-      "leaderboard": "everyone",
-      "profile": "everyone",
-      "remind": "everyone",
-      "challenge": "everyone",
-      "review": "everyone",
-      "showcase": "everyone",
-      "reload": "admin"
-    }
-  },
-  "help": {
-    "enabled": false
-  },
-  "announce": {
-    "enabled": false
-  },
-  "snippet": {
-    "enabled": false
-  },
-  "poll": {
-    "enabled": false
-  },
-  "showcase": {
-    "enabled": false
-  },
-  "github": {
-    "feed": {
-      "enabled": false,
-      "channelId": null,
-      "repos": [],
-      "events": [
-        "pr",
-        "issue",
-        "release",
-        "push"
-      ]
-    }
-  },
-  "tldr": {
-    "enabled": false,
-    "defaultMessages": 50,
-    "maxMessages": 200,
-    "cooldownSeconds": 300
-  },
-  "afk": {
-    "enabled": false
-  },
-  "engagement": {
-    "enabled": false,
-    "trackMessages": true,
-    "trackReactions": true,
-    "activityBadges": [
-      {
-        "days": 90,
-        "label": "\ud83d\udc51 Legend"
-      },
-      {
-        "days": 30,
-        "label": "\ud83c\udf33 Veteran"
-      },
-      {
-        "days": 7,
-        "label": "\ud83c\udf3f Regular"
-      },
-      {
-        "days": 0,
-        "label": "\ud83c\udf31 Newcomer"
-      }
-    ]
-  },
-  "reputation": {
-    "enabled": false,
-    "xpPerMessage": [
-      5,
-      15
-    ],
-    "xpCooldownSeconds": 60,
-    "announceChannelId": null,
-    "levelThresholds": [
-      100,
-      300,
-      600,
-      1000,
-      1500,
-      2500,
-      4000,
-      6000,
-      8500,
-      12000
-    ],
-    "roleRewards": {}
-  },
-  "challenges": {
-    "enabled": false,
-    "channelId": null,
-    "postTime": "09:00",
-    "timezone": "America/New_York"
-  },
-  "review": {
-    "enabled": false,
-    "channelId": null,
-    "staleAfterDays": 7,
-    "xpReward": 50
-  },
-  "auditLog": {
-    "enabled": true,
-    "retentionDays": 90
-  },
-  "reminders": {
-    "enabled": false,
-    "maxPerUser": 25
+    "permissions": {
+        "enabled": true,
+        "adminRoleId": null,
+        "moderatorRoleId": null,
+        "botOwners": [],
+        "usePermissions": true,
+        "allowedCommands": {
+            "ping": "everyone",
+            "memory": "everyone",
+            "config": "admin",
+            "warn": "admin",
+            "kick": "admin",
+            "timeout": "admin",
+            "untimeout": "admin",
+            "ban": "admin",
+            "tempban": "admin",
+            "unban": "admin",
+            "softban": "admin",
+            "purge": "admin",
+            "case": "admin",
+            "history": "admin",
+            "lock": "admin",
+            "unlock": "admin",
+            "slowmode": "admin",
+            "modlog": "moderator",
+            "announce": "moderator",
+            "tldr": "everyone",
+            "afk": "everyone",
+            "github": "everyone",
+            "rank": "everyone",
+            "leaderboard": "everyone",
+            "profile": "everyone",
+            "remind": "everyone",
+            "challenge": "everyone",
+            "review": "everyone",
+            "showcase": "everyone",
+            "reload": "admin"
+        }
+    },
+    "help": {
+        "enabled": false
+    },
+    "announce": {
+        "enabled": false
+    },
+    "snippet": {
+        "enabled": false
+    },
+    "poll": {
+        "enabled": false
+    },
+    "showcase": {
+        "enabled": false
+    },
+    "github": {
+        "feed": {
+            "enabled": false,
+            "channelId": null,
+            "repos": [],
+            "events": [
+                "pr",
+                "issue",
+                "release",
+                "push"
+            ]
+        }
+    },
+    "tldr": {
+        "enabled": false,
+        "defaultMessages": 50,
+        "maxMessages": 200,
+        "cooldownSeconds": 300
+    },
+    "afk": {
+        "enabled": false
+    },
+    "engagement": {
+        "enabled": false,
+        "trackMessages": true,
+        "trackReactions": true,
+        "activityBadges": [
+            {
+                "days": 90,
+                "label": "👑 Legend"
+            },
+            {
+                "days": 30,
+                "label": "🌳 Veteran"
+            },
+            {
+                "days": 7,
+                "label": "🌿 Regular"
+            },
+            {
+                "days": 0,
+                "label": "🌱 Newcomer"
+            }
+        ]
+    },
+    "reputation": {
+        "enabled": false,
+        "xpPerMessage": [
+            5,
+            15
+        ],
+        "xpCooldownSeconds": 60,
+        "announceChannelId": null,
+        "levelThresholds": [
+            100,
+            300,
+            600,
+            1000,
+            1500,
+            2500,
+            4000,
+            6000,
+            8500,
+            12000
+        ],
+        "roleRewards": {}
+    },
+    "challenges": {
+        "enabled": false,
+        "channelId": null,
+        "postTime": "09:00",
+        "timezone": "America/New_York"
+    },
+    "review": {
+        "enabled": false,
+        "channelId": null,
+        "staleAfterDays": 7,
+        "xpReward": 50
+    },
+    "auditLog": {
+        "enabled": true,
+        "retentionDays": 90
+    },
+    "reminders": {
+        "enabled": false,
+        "maxPerUser": 25
+    },
+    "quietMode": {
+        "enabled": false,
+        "allowedRoles": [
+            "moderator"
+        ],
+        "defaultDurationMinutes": 30,
+        "maxDurationMinutes": 1440
   },
   "voice": {
     "enabled": false,
