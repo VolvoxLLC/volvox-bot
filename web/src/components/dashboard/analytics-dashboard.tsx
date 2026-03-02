@@ -31,6 +31,7 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import {
   endOfDayIso,
@@ -50,7 +51,6 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Custom', value: 'custom' },
 ];
 
-const PIE_COLORS = ['#5865F2', '#22C55E', '#F59E0B', '#A855F7', '#06B6D4'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -102,6 +102,7 @@ function formatDeltaPercent(deltaPercent: number | null): string {
 
 export function AnalyticsDashboard() {
   const [now] = useState(() => new Date());
+  const chart = useChartTheme();
   const guildId = useGuildSelection({
     onGuildChange: () => setChannelFilter(null),
   });
@@ -256,9 +257,9 @@ export function AnalyticsDashboard() {
     () =>
       (analytics?.aiUsage.byModel ?? []).map((entry, index) => ({
         ...entry,
-        fill: PIE_COLORS[index % PIE_COLORS.length],
+        fill: chart.palette[index % chart.palette.length],
       })),
-    [analytics?.aiUsage.byModel],
+    [analytics?.aiUsage.byModel, chart.palette],
   );
 
   const tokenBreakdownData = useMemo(
@@ -638,7 +639,7 @@ export function AnalyticsDashboard() {
             <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={analytics?.messageVolume ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis dataKey="label" minTickGap={20} />
                   <YAxis allowDecimals={false} />
                   <Tooltip />
@@ -647,7 +648,7 @@ export function AnalyticsDashboard() {
                     type="monotone"
                     dataKey="messages"
                     name="Messages"
-                    stroke="#5865F2"
+                    stroke={chart.primary}
                     strokeWidth={2}
                     dot={false}
                   />
@@ -655,7 +656,7 @@ export function AnalyticsDashboard() {
                     type="monotone"
                     dataKey="aiRequests"
                     name="AI Requests"
-                    stroke="#22C55E"
+                    stroke={chart.success}
                     strokeWidth={2}
                     dot={false}
                   />
@@ -692,13 +693,13 @@ export function AnalyticsDashboard() {
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={tokenBreakdownData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis dataKey="label" />
                   <YAxis allowDecimals={false} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="prompt" name="Prompt tokens" fill="#5865F2" />
-                  <Bar dataKey="completion" name="Completion tokens" fill="#22C55E" />
+                  <Bar dataKey="prompt" name="Prompt tokens" fill={chart.primary} />
+                  <Bar dataKey="completion" name="Completion tokens" fill={chart.success} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -722,13 +723,13 @@ export function AnalyticsDashboard() {
                   layout="vertical"
                   margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis type="number" allowDecimals={false} />
                   <YAxis type="category" dataKey="name" width={120} />
                   <Tooltip />
                   <Bar
                     dataKey="messages"
-                    fill="#22C55E"
+                    fill={chart.success}
                     radius={[0, 6, 6, 0]}
                     onClick={(_value, index) => {
                       const selected = topChannels[index]?.channelId;
@@ -739,7 +740,7 @@ export function AnalyticsDashboard() {
                     {topChannels.map((channel) => (
                       <Cell
                         key={channel.channelId}
-                        fill={channel.channelId === channelFilter ? '#5865F2' : '#22C55E'}
+                        fill={channel.channelId === channelFilter ? chart.primary : chart.success}
                       />
                     ))}
                   </Bar>

@@ -16,6 +16,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
 interface FeedbackStats {
@@ -30,14 +31,13 @@ interface FeedbackStats {
   }>;
 }
 
-const PIE_COLORS = ['#22C55E', '#EF4444'];
-
 /**
  * AI Feedback Stats dashboard card.
  * Shows 👍/👎 aggregate counts, approval ratio, and daily trend.
  */
 export function AiFeedbackStats() {
   const { selectedGuild, apiBase } = useGuildSelection();
+  const chart = useChartTheme();
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,10 +144,10 @@ export function AiFeedbackStats() {
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
-                        {pieData.map((_, index) => (
+                        {pieData.map((entry, index) => (
                           <Cell
-                            key={`cell-${index}`}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            key={entry.name}
+                            fill={chart.palette[index % chart.palette.length]}
                           />
                         ))}
                       </Pie>
@@ -165,7 +165,7 @@ export function AiFeedbackStats() {
                         data={stats.trend}
                         margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                         <XAxis
                           dataKey="date"
                           tick={{ fontSize: 10 }}
@@ -174,8 +174,8 @@ export function AiFeedbackStats() {
                         <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="positive" name="👍" fill="#22C55E" stackId="a" />
-                        <Bar dataKey="negative" name="👎" fill="#EF4444" stackId="a" />
+                        <Bar dataKey="positive" name="👍" fill={chart.success} stackId="a" />
+                        <Bar dataKey="negative" name="👎" fill={chart.danger} stackId="a" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
