@@ -778,7 +778,28 @@ describe('guilds routes', () => {
             },
           ],
         })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              tracked_users: 25,
+              total_messages_sent: 500,
+              total_reactions_given: 120,
+              total_reactions_received: 98,
+              avg_messages_per_user: 20.0,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              total_users: 20,
+              total_xp: 8500,
+              avg_level: 3.5,
+              max_level: 12,
+            },
+          ],
+        });
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -803,6 +824,21 @@ describe('guilds routes', () => {
       expect(res.body.topChannels).toEqual(res.body.channelActivity);
       expect(res.body.commandUsage).toEqual({ source: 'logs', items: [] });
       expect(res.body.heatmap).toHaveLength(1);
+      // New: user engagement metrics
+      expect(res.body.userEngagement).toEqual({
+        trackedUsers: 25,
+        totalMessagesSent: 500,
+        totalReactionsGiven: 120,
+        totalReactionsReceived: 98,
+        avgMessagesPerUser: 20,
+      });
+      // New: XP economy
+      expect(res.body.xpEconomy).toEqual({
+        totalUsers: 20,
+        totalXp: 8500,
+        avgLevel: 3.5,
+        maxLevel: 12,
+      });
     });
 
     it('should return 400 for invalid custom range params', async () => {
@@ -824,6 +860,8 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ count: 0 }] })
         .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
@@ -841,6 +879,8 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
 
@@ -880,7 +920,9 @@ describe('guilds routes', () => {
           ],
         })
         .mockResolvedValueOnce({ rows: [{ cost_usd: '0.0200' }] })
-        .mockResolvedValueOnce({ rows: [{ command_name: 'help', uses: 5 }] });
+        .mockResolvedValueOnce({ rows: [{ command_name: 'help', uses: 5 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week&compare=1&channelId=ch1')
@@ -910,7 +952,9 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ count: 0 }] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockRejectedValueOnce(new Error('command logs missing'));
+        .mockRejectedValueOnce(new Error('command logs missing'))
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -928,6 +972,8 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ count: 0 }] })
         .mockRejectedValueOnce(new Error('logs relation missing'))
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
@@ -938,6 +984,67 @@ describe('guilds routes', () => {
       expect(res.body.aiUsage.byModel).toEqual([]);
       expect(res.body.kpis.aiCostUsd).toBe(0);
       expect(res.body.kpis.newMembers).toBeTypeOf('number');
+    });
+
+    it('should return null userEngagement when user_stats query fails', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 0, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockRejectedValueOnce(new Error('user_stats table missing'))
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.userEngagement).toBeNull();
+    });
+
+    it('should return null xpEconomy when reputation query fails', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 0, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockRejectedValueOnce(new Error('reputation table missing'));
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.xpEconomy).toBeNull();
+    });
+
+    it('should return userEngagement and xpEconomy as null when tables return empty rows', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 5, ai_requests: 2, active_users: 3 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }) // userEngagementResult: empty
+        .mockResolvedValueOnce({ rows: [] }); // xpEconomyResult: empty
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.userEngagement).toBeNull();
+      expect(res.body.xpEconomy).toBeNull();
     });
   });
 

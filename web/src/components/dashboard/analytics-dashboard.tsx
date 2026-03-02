@@ -7,9 +7,12 @@ import {
   Bot,
   Coins,
   Download,
+  FileText,
+  Heart,
   MessageSquare,
   Minus,
   RefreshCw,
+  Star,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -33,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
 import {
   endOfDayIso,
   formatDateInput,
@@ -486,6 +490,16 @@ export function AnalyticsDashboard() {
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => analytics && exportAnalyticsPdf(analytics)}
+            disabled={!analytics}
+          >
+            <FileText className="h-4 w-4" />
+            Export PDF
+          </Button>
         </div>
       </div>
 
@@ -791,6 +805,130 @@ export function AnalyticsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {(analytics?.userEngagement ?? analytics?.xpEconomy) ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {analytics?.userEngagement ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>User engagement metrics</CardTitle>
+                <CardDescription>
+                  Aggregate engagement from message and reaction activity.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    Tracked users
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Tracked users value"
+                  >
+                    {formatNumber(analytics.userEngagement.trackedUsers)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MessageSquare className="h-4 w-4" />
+                    Avg messages / user
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Average messages per user value"
+                  >
+                    {analytics.userEngagement.avgMessagesPerUser.toFixed(1)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Heart className="h-4 w-4" />
+                    Reactions given
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total reactions given value"
+                  >
+                    {formatNumber(analytics.userEngagement.totalReactionsGiven)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Activity className="h-4 w-4" />
+                    Reactions received
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total reactions received value"
+                  >
+                    {formatNumber(analytics.userEngagement.totalReactionsReceived)}
+                  </output>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {analytics?.xpEconomy ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>XP economy</CardTitle>
+                <CardDescription>Reputation and level distribution across members.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    Users with XP
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Users with XP value"
+                  >
+                    {formatNumber(analytics.xpEconomy.totalUsers)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Star className="h-4 w-4" />
+                    Total XP distributed
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total XP distributed value"
+                  >
+                    {formatNumber(analytics.xpEconomy.totalXp)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Activity className="h-4 w-4" />
+                    Average level
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Average level value"
+                  >
+                    {analytics.xpEconomy.avgLevel.toFixed(1)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Star className="h-4 w-4" />
+                    Highest level
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Highest level value"
+                  >
+                    {formatNumber(analytics.xpEconomy.maxLevel)}
+                  </output>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>
