@@ -20,6 +20,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // safe wrapper applies identically to either target type.
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
+import { isChannelBlocked } from './ai.js';
 import { handleHintButton, handleSolveButton } from './challengeScheduler.js';
 import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
@@ -32,7 +33,6 @@ import { handleReviewClaim } from './reviewHandler.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
-import { isChannelBlocked } from './ai.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 import {
