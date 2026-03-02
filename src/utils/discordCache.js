@@ -9,7 +9,7 @@
  */
 
 import { debug, warn } from '../logger.js';
-import { cacheGet, cacheSet, TTL } from './cache.js';
+import { cacheDelPattern, cacheGet, cacheSet, TTL } from './cache.js';
 
 /**
  * Fetch a channel with caching.
@@ -175,7 +175,6 @@ export async function fetchMemberCached(guild, userId) {
  * @returns {Promise<void>}
  */
 export async function invalidateGuildCache(guildId) {
-  const { cacheDelPattern } = await import('./cache.js');
   await cacheDelPattern(`discord:guild:${guildId}:*`);
   debug('Invalidated guild cache', { guildId });
 }
