@@ -7,6 +7,8 @@
 
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
+import { getFeedbackStats, getFeedbackTrend } from '../../modules/aiFeedback.js';
+import { send500, send503 } from '../errors.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
@@ -86,9 +88,7 @@ const feedbackRateLimit = rateLimit({ windowMs: 60 * 1000, max: 60 });
  */
 router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
-  if (!dbPool) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
+  if (!dbPool) return send503(res);
 
   const guildId = req.params.id;
 
@@ -101,50 +101,14 @@ router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async 
   }
 
   try {
-    const [statsResult, trendResult] = await Promise.all([
-      dbPool.query(
-        `SELECT
-           COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
-           COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative,
-           COUNT(*)::int AS total
-         FROM ai_feedback
-         WHERE guild_id = $1`,
-        [guildId],
-      ),
-      dbPool.query(
-        `SELECT
-           DATE(created_at) AS date,
-           COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
-           COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative
-         FROM ai_feedback
-         WHERE guild_id = $1
-           AND created_at >= NOW() - ($2 * interval '1 day')
-         GROUP BY DATE(created_at)
-         ORDER BY date ASC`,
-        [guildId, days],
-      ),
+    const [stats, trend] = await Promise.all([
+      getFeedbackStats(guildId),
+      getFeedbackTrend(guildId, days),
     ]);
 
-    const row = statsResult.rows[0];
-    const positive = row?.positive || 0;
-    const negative = row?.negative || 0;
-    const total = row?.total || 0;
-    const ratio = total > 0 ? Math.round((positive / total) * 100) : null;
-
-    res.json({
-      positive,
-      negative,
-      total,
-      ratio,
-      trend: trendResult.rows.map((r) => ({
-        date: r.date,
-        positive: r.positive,
-        negative: r.negative,
-      })),
-    });
+    res.json({ ...stats, trend });
   } catch (err) {
-    logError('Failed to fetch AI feedback stats', { error: err.message, guild: guildId });
-    res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
+    return send500(res, 'Failed to fetch AI feedback stats', err, logError, { guild: guildId });
   }
 });
 
@@ -214,9 +178,7 @@ router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async 
  */
 router.get('/recent', feedbackRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
-  if (!dbPool) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
+  if (!dbPool) return send503(res);
 
   const guildId = req.params.id;
 
@@ -259,8 +221,7 @@ router.get('/recent', feedbackRateLimit, requireGuildAdmin, validateGuild, async
       })),
     });
   } catch (err) {
-    logError('Failed to fetch recent AI feedback', { error: err.message, guild: guildId });
-    res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
+    return send500(res, 'Failed to fetch recent AI feedback', err, logError, { guild: guildId });
   }
 });
 
