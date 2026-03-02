@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity,
   Bot,
   ClipboardList,
   Clock,
@@ -63,6 +64,11 @@ const navigation = [
     name: 'Audit Log',
     href: '/dashboard/audit-log',
     icon: ClipboardList,
+  },
+  {
+    name: 'Performance',
+    href: '/dashboard/performance',
+    icon: Activity,
   },
   {
     name: 'Logs',

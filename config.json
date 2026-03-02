@@ -42,7 +42,8 @@
     "debugFooter": true,
     "debugFooterLevel": "verbose",
     "moderationLogChannel": "1473219285651292201",
-    "statusReactions": true
+    "statusReactions": true,
+    "dailyBudgetUsd": 10
   },
   "welcome": {
     "enabled": true,
@@ -281,5 +282,23 @@
   "reminders": {
     "enabled": false,
     "maxPerUser": 25
+  },
+  "aiAutoMod": {
+    "enabled": false,
+    "model": "claude-haiku-4-5",
+    "thresholds": {
+      "toxicity": 0.7,
+      "spam": 0.8,
+      "harassment": 0.7
+    },
+    "actions": {
+      "toxicity": "flag",
+      "spam": "delete",
+      "harassment": "warn"
+    },
+    "timeoutDurationMs": 300000,
+    "flagChannelId": null,
+    "autoDelete": true,
+    "exemptRoleIds": []
   }
 }

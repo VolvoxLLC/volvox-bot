@@ -11,6 +11,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { parseDuration } from '../utils/duration.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
+import { fireEvent } from './webhookNotifier.js';
 
 /**
  * Color map for mod log embeds by action type.
@@ -146,6 +147,17 @@ export async function createCase(guildId, data) {
       target: data.targetTag,
       moderator: data.moderatorTag,
     });
+
+    // Fire webhook notification — fire-and-forget, don't block case creation
+    fireEvent('moderation.action', guildId, {
+      action: data.action,
+      caseNumber: createdCase.case_number,
+      targetId: data.targetId,
+      targetTag: data.targetTag,
+      moderatorId: data.moderatorId,
+      moderatorTag: data.moderatorTag,
+      reason: data.reason || null,
+    }).catch(() => {});
 
     return createdCase;
   } catch (err) {

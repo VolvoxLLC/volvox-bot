@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, RotateCcw, Save } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection'
 import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { ConfigDiff } from './config-diff';
+import { ConfigDiffModal } from './config-diff-modal';
 import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
 
@@ -123,6 +124,11 @@ export function ConfigEditor() {
   const [guildId, setGuildId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showDiffModal, setShowDiffModal] = useState(false);
+  const [prevSavedConfig, setPrevSavedConfig] = useState<{
+    guildId: string;
+    config: GuildConfig;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /** The config as last fetched from the API (the "saved" state). */
@@ -247,6 +253,12 @@ export function ConfigEditor() {
     return promptLength > SYSTEM_PROMPT_MAX_LENGTH;
   }, [draftConfig]);
 
+  /** Top-level config sections that have pending changes. */
+  const changedSections = useMemo(() => {
+    if (!savedConfig || !draftConfig) return [];
+    const patches = computePatches(savedConfig, draftConfig);
+    return [...new Set(patches.map((p) => p.path.split('.')[0]))];
+  }, [savedConfig, draftConfig]);
   // ── Warn on unsaved changes before navigation ──────────────────
   useEffect(() => {
     if (!hasChanges) return;
@@ -261,7 +273,47 @@ export function ConfigEditor() {
   }, [hasChanges]);
 
   // ── Save changes (batched: parallel PATCH per section) ─────────
-  const saveChanges = useCallback(async () => {
+  // ── Open diff modal before saving ─────────────────────────────
+  const openDiffModal = useCallback(() => {
+    if (!guildId || !savedConfig || !draftConfig) return;
+    if (hasValidationErrors) {
+      toast.error('Cannot save', {
+        description: 'Fix validation errors before saving.',
+      });
+      return;
+    }
+    if (!hasChanges) {
+      toast.info('No changes to save.');
+      return;
+    }
+    setShowDiffModal(true);
+  }, [guildId, savedConfig, draftConfig, hasValidationErrors, hasChanges]);
+
+  // ── Revert a single top-level section to saved state ──────────
+  const revertSection = useCallback(
+    (section: string) => {
+      if (!savedConfig) return;
+      setDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          [section]: (savedConfig as Record<string, unknown>)[section],
+        } as GuildConfig;
+      });
+      // Keep raw string mirrors consistent
+      if (section === 'welcome') {
+        setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
+      }
+      if (section === 'moderation') {
+        setProtectRoleIdsRaw((savedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
+      }
+      toast.success(`Reverted ${section} changes.`);
+    },
+    [savedConfig],
+  );
+
+  // ── Execute the save (called from diff modal confirm) ──────────
+  const executeSave = useCallback(async () => {
     if (!guildId || !savedConfig || !draftConfig) return;
 
     if (hasValidationErrors) {
@@ -273,6 +325,7 @@ export function ConfigEditor() {
 
     const patches = computePatches(savedConfig, draftConfig);
     if (patches.length === 0) {
+      setShowDiffModal(false);
       toast.info('No changes to save.');
       return;
     }
@@ -359,6 +412,9 @@ export function ConfigEditor() {
         });
       } else {
         toast.success('Config saved successfully!');
+        setShowDiffModal(false);
+        // Store previous config for undo (1 level deep; scoped to current guild)
+        setPrevSavedConfig({ guildId, config: structuredClone(savedConfig) as GuildConfig });
         // Full success: reload to get the authoritative version from the server
         await fetchConfig(guildId);
       }
@@ -370,19 +426,41 @@ export function ConfigEditor() {
     }
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
-  // ── Keyboard shortcut: Ctrl/Cmd+S to save ──────────────────────
+  // Clear undo snapshot when guild changes to prevent cross-guild config corruption
+  useEffect(() => {
+    setPrevSavedConfig(null);
+  }, []);
+
+  // ── Undo last save ─────────────────────────────────────────────
+  const undoLastSave = useCallback(() => {
+    if (!prevSavedConfig) return;
+    // Guard: discard snapshot if guild changed since save
+    if (prevSavedConfig.guildId !== guildId) {
+      setPrevSavedConfig(null);
+      return;
+    }
+    setDraftConfig(structuredClone(prevSavedConfig.config));
+    setDmStepsRaw((prevSavedConfig.config.welcome?.dmSequence?.steps ?? []).join('\n'));
+    setProtectRoleIdsRaw(
+      (prevSavedConfig.config.moderation?.protectRoles?.roleIds ?? []).join(', '),
+    );
+    setPrevSavedConfig(null);
+    toast.info('Reverted to previous saved state. Save again to apply.');
+  }, [prevSavedConfig, guildId]);
+
+  // ── Keyboard shortcut: Ctrl/Cmd+S → open diff preview ─────────
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         if (hasChanges && !saving && !hasValidationErrors) {
-          saveChanges();
+          openDiffModal();
         }
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [hasChanges, saving, hasValidationErrors, saveChanges]);
+  }, [hasChanges, saving, hasValidationErrors, openDiffModal]);
 
   // ── Discard edits ──────────────────────────────────────────────
   const discardChanges = useCallback(() => {
@@ -532,6 +610,19 @@ export function ConfigEditor() {
             ...prev.moderation,
             escalation: { ...prev.moderation?.escalation, enabled },
           },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateAiAutoModField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          aiAutoMod: { ...prev.aiAutoMod, [field]: value },
         } as GuildConfig;
       });
     },
@@ -698,23 +789,46 @@ export function ConfigEditor() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Undo last save — visible only after a successful save with no new changes */}
+          {prevSavedConfig && !hasChanges && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={undoLastSave}
+              disabled={saving}
+              aria-label="Undo last save"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
+              Undo Last Save
+            </Button>
+          )}
           <DiscardChangesButton
             onReset={discardChanges}
             disabled={saving || !hasChanges}
             sectionLabel="all unsaved changes"
           />
-          <Button
-            onClick={saveChanges}
-            disabled={saving || !hasChanges || hasValidationErrors}
-            aria-keyshortcuts="Control+S Meta+S"
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+          {/* Save button with unsaved-changes indicator dot */}
+          <div className="relative">
+            <Button
+              onClick={openDiffModal}
+              disabled={saving || !hasChanges || hasValidationErrors}
+              aria-keyshortcuts="Control+S Meta+S"
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+              )}
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+            {hasChanges && !saving && (
+              <span
+                className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-yellow-400 ring-2 ring-background"
+                aria-hidden="true"
+                title="Unsaved changes"
+              />
             )}
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -1227,6 +1341,119 @@ export function ConfigEditor() {
                   placeholder="Role ID 1, Role ID 2"
                 />
               </label>
+            </fieldset>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Auto-Moderation section */}
+      {draftConfig.aiAutoMod && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">AI Auto-Moderation</CardTitle>
+                <CardDescription>
+                  Use Claude AI to analyze messages and take automatic moderation actions.
+                </CardDescription>
+              </div>
+              <ToggleSwitch
+                checked={Boolean(draftConfig.aiAutoMod?.enabled)}
+                onChange={(v) => updateAiAutoModField('enabled', v)}
+                disabled={saving}
+                label="AI Auto-Moderation"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <label htmlFor="ai-automod-flag-channel" className="space-y-2">
+              <span className="text-sm font-medium">Flag Review Channel ID</span>
+              <input
+                id="ai-automod-flag-channel"
+                type="text"
+                value={(draftConfig.aiAutoMod?.flagChannelId as string) ?? ''}
+                onChange={(e) => updateAiAutoModField('flagChannelId', e.target.value || null)}
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Channel ID where flagged messages are posted"
+              />
+            </label>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Auto-delete flagged messages</span>
+              <ToggleSwitch
+                checked={Boolean(draftConfig.aiAutoMod?.autoDelete ?? true)}
+                onChange={(v) => updateAiAutoModField('autoDelete', v)}
+                disabled={saving}
+                label="Auto-delete"
+              />
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Thresholds (0–100)</legend>
+              <p className="text-muted-foreground text-xs">
+                Confidence threshold (%) above which the action triggers.
+              </p>
+              {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
+                <label
+                  key={cat}
+                  htmlFor={`ai-threshold-${cat}`}
+                  className="flex items-center gap-3"
+                >
+                  <span className="w-24 text-sm capitalize">{cat}</span>
+                  <input
+                    id={`ai-threshold-${cat}`}
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={Math.round(
+                      (((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {})[cat] ??
+                        0.7) * 100,
+                    )}
+                    onChange={(e) => {
+                      const raw = Number(e.target.value);
+                      const v = isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
+                      updateAiAutoModField('thresholds', {
+                        ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {}),
+                        [cat]: v,
+                      });
+                    }}
+                    disabled={saving}
+                    className={`${inputClasses} w-24`}
+                  />
+                  <span className="text-muted-foreground text-xs">%</span>
+                </label>
+              ))}
+            </fieldset>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Actions</legend>
+              {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
+                <label key={cat} htmlFor={`ai-action-${cat}`} className="flex items-center gap-3">
+                  <span className="w-24 text-sm capitalize">{cat}</span>
+                  <select
+                    id={`ai-action-${cat}`}
+                    value={
+                      ((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {})[cat] ??
+                      'flag'
+                    }
+                    onChange={(e) => {
+                      updateAiAutoModField('actions', {
+                        ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {}),
+                        [cat]: e.target.value,
+                      });
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  >
+                    <option value="none">No action</option>
+                    <option value="delete">Delete message</option>
+                    <option value="flag">Flag for review</option>
+                    <option value="warn">Warn user</option>
+                    <option value="timeout">Timeout user</option>
+                    <option value="kick">Kick user</option>
+                    <option value="ban">Ban user</option>
+                  </select>
+                </label>
+              ))}
             </fieldset>
           </CardContent>
         </Card>
@@ -2235,8 +2462,22 @@ export function ConfigEditor() {
           </div>
         </CardContent>
       </Card>
-      {/* Diff view */}
+      {/* Inline diff view — shows pending changes below the form */}
       {hasChanges && savedConfig && <ConfigDiff original={savedConfig} modified={draftConfig} />}
+
+      {/* Diff modal — shown before saving to require explicit confirmation */}
+      {savedConfig && (
+        <ConfigDiffModal
+          open={showDiffModal}
+          onOpenChange={setShowDiffModal}
+          original={savedConfig}
+          modified={draftConfig}
+          changedSections={changedSections}
+          onConfirm={executeSave}
+          onRevertSection={revertSection}
+          saving={saving}
+        />
+      )}
     </div>
   );
 }
