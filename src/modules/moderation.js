@@ -446,10 +446,11 @@ export function stopTempbanScheduler() {
  * configured under `moderation.protectRoles`.
  * @param {import('discord.js').GuildMember} target - Target member to check
  * @param {import('discord.js').Guild} guild - Discord guild
- * @param {Object} config - Bot configuration
+ * @param {Object} [config] - Optional pre-fetched bot configuration; fetched internally if omitted
  * @returns {boolean} True if the target should not be moderated
  */
-export function isProtectedTarget(target, guild, config) {
+export function isProtectedTarget(target, guild, config = null) {
+  if (!config) config = getConfig(guild.id);
   /**
    * When the protectRoles block is missing from persisted configuration,
    * fall back to the intended defaults: protection enabled, include owner,
