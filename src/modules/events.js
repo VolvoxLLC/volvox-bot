@@ -610,8 +610,18 @@ export function registerErrorHandlers(client) {
     process.on('unhandledRejection', (err) => {
       logError('Unhandled rejection', { error: err?.message || String(err), stack: err?.stack });
     });
-    process.on('uncaughtException', (err) => {
-      logError('Uncaught exception', { error: err.message, stack: err.stack });
+    process.on('uncaughtException', async (err) => {
+      logError('Uncaught exception — shutting down', {
+        error: err?.message || String(err),
+        stack: err?.stack,
+      });
+      try {
+        const { Sentry } = await import('../sentry.js');
+        await Sentry.flush(2000);
+      } catch {
+        // ignore — best-effort flush
+      }
+      process.exit(1);
     });
     processHandlersRegistered = true;
   }
