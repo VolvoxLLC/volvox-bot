@@ -53,6 +53,7 @@ import { loadOptOuts } from './modules/optout.js';
 import { seedBuiltinTemplates } from './modules/roleMenuTemplates.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
+import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
@@ -280,6 +281,7 @@ async function gracefulShutdown(signal) {
   stopTempbanScheduler();
   stopScheduler();
   stopGithubFeed();
+  stopVoiceFlush();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -475,6 +477,7 @@ async function startup() {
     startTempbanScheduler(client);
     startScheduler(client);
     startGithubFeed(client);
+    startVoiceFlush();
   }
 
   // Load commands and login
