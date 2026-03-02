@@ -6,17 +6,13 @@ Coding agent workspace for VolvoxLLC/volvox-bot Discord bot development.
 
 Before doing anything else:
 
-1. Read `SOUL.md` — coding standards and persona
-2. Read `CODING.md` — detailed coding standards and sub-agent config
-3. Read `MEMORY.md` — long-term context and decisions
-4. Read `memory/YYYY-MM-DD.md` (today + yesterday) — recent session notes
+1. Read `CLAUDE.md` — coding standards and persona
 
 ## Before Ending Session
 
 After completing infrastructure work:
 
-- Update **MEMORY.md** with technical decisions
-- Update **memory/YYYY-MM-DD.md** with session notes
+- Update **CLAUDE.md** with technical decisions and session notes
 - **Self-check:** "Did I document the important stuff?"
 
 ## Code Quality Standards
@@ -49,11 +45,12 @@ src/
 ├── commands/             # Slash commands
 ├── api/                  # REST API (Express)
 │   ├── routes/           # API endpoints
+│   ├── middleware/       # Auth, rate limiting
+│   │   └── redisRateLimit.js # Distributed rate limiting
 │   └── utils/            # Helpers (configAllowlist, validation)
 ├── utils/
 │   ├── cache.js          # Redis cache wrapper
-│   ├── discordCache.js   # Discord API response caching
-│   └── redisRateLimit.js # Distributed rate limiting
+│   └── discordCache.js   # Discord API response caching
 └── transports/
     └── sentry.js         # Sentry Winston transport
 
@@ -62,7 +59,6 @@ web/                      # Next.js dashboard
 │   ├── app/              # App router pages
 │   ├── components/       # React components
 │   └── lib/              # Utilities
-└── docs/                 # Documentation
 ```
 
 ## Key Patterns
@@ -97,7 +93,7 @@ web/                      # Next.js dashboard
 - All queries use parameterized SQL
 
 ### Web Dashboard
-- Next.js 14 with App Router
+- Next.js 16 with App Router
 - Discord OAuth2 authentication
 - Dark/light theme support
 - Mobile-responsive design
@@ -117,8 +113,7 @@ web/                      # Next.js dashboard
 ### Adding a New Command
 1. Create file in `src/commands/`
 2. Export slash command builder + execute function
-3. Register in `src/index.js`
-4. Add tests in `tests/commands/`
+3. Add tests in `tests/commands/`
 
 ### Adding a New API Endpoint
 1. Create route in `src/api/routes/`
@@ -140,9 +135,8 @@ pnpm test:watch        # Watch mode
 ## Linting & Formatting
 
 ```bash
-pnpm lint              # Check for issues
+pnpm lint              # Check for issues + formatting
 pnpm lint:fix          # Auto-fix issues
-pnpm format:check      # Check formatting
 pnpm format            # Format code
 ```
 

@@ -56,10 +56,10 @@ AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community.
 Discord User
      │
      ▼
-┌─────────────┐     ┌──────────────┐     ┌─────────┐
-│  Volvox Bot  │────▶│   Claude     │────▶│  Claude  │
-│  (Node.js)  │◀────│   (API)      │◀────│  (AI)    │
-└──────┬──────┘     └──────────────┘     └─────────┘
+┌─────────────┐     ┌──────────────┐
+│  Volvox Bot  │────▶│   Claude API │
+│  (Node.js)  │◀────│   (Anthropic)│
+└──────┬──────┘     └──────────────┘
        │
        ├──────────────┬──────────────┐
        ▼              ▼              ▼
@@ -128,12 +128,12 @@ pnpm start
 | `DISCORD_TOKEN` | Discord bot token |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
 
 ### Optional
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `REDIS_URL` | Redis connection string (recommended) | — |
 | `GUILD_ID` | Guild ID for dev command deployment | — |
 | `BOT_API_SECRET` | Secret for web dashboard API | — |
 | `WEBHOOK_SECRET` | Secret for webhook HMAC signing | `SESSION_SECRET` |
@@ -146,7 +146,7 @@ pnpm start
 |----------|-------------|
 | `NEXTAUTH_URL` | Dashboard canonical URL |
 | `NEXTAUTH_SECRET` | JWT encryption secret |
-| `DISCORD_CLIENT_ID` | Discord OAuth2 client ID |
+| `DISCORD_CLIENT_ID` | Discord OAuth2 client ID (required for `pnpm deploy`) |
 | `DISCORD_CLIENT_SECRET` | Discord OAuth2 client secret |
 
 ## ⚙️ Configuration
@@ -175,10 +175,10 @@ pnpm lint              # Lint check
 
 ## 📚 Documentation
 
-- **[Dashboard Guide](docs/dashboard.md)** — Web dashboard usage
-- **[Backup Guide](docs/backup.md)** — Backup/restore workflows
-- **[Troubleshooting](docs/troubleshooting.md)** — Common issues
-- **[API Reference](docs/api.md)** — REST API docs
+- **Dashboard Guide** — Coming soon
+- **Backup Guide** — Coming soon
+- **Troubleshooting** — Coming soon
+- **API Reference** — Coming soon
 
 ## 🤝 Contributing
 
