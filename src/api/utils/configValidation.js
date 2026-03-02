@@ -131,7 +131,7 @@ export const CONFIG_SCHEMA = {
         type: 'object',
         properties: {
           enabled: { type: 'boolean' },
-          roleIds: { type: 'array' },
+          roleIds: { type: 'array', items: { type: 'string' } },
           includeAdmins: { type: 'boolean' },
           includeModerators: { type: 'boolean' },
           includeServerOwner: { type: 'boolean' },

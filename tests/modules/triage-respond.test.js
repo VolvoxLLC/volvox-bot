@@ -347,6 +347,34 @@ describe('triage-respond', () => {
 
       expect(safeSend).toHaveBeenCalled();
     });
+
+    it('should skip the protected-role fetch loop when protectRoles is explicitly disabled', async () => {
+      const mockFetch = vi.fn();
+      const mockGuild = { members: { fetch: mockFetch } };
+      const mockLogChannel = { id: 'log-channel', guild: mockGuild };
+      const mockClient = {
+        channels: { fetch: vi.fn().mockResolvedValue(mockLogChannel) },
+      };
+
+      const classification = {
+        recommendedAction: 'warn',
+        violatedRule: 'Rule 1',
+        reasoning: 'Rude message',
+        targetMessageIds: ['msg1'],
+      };
+      const snapshot = [{ messageId: 'msg1', author: 'BadUser', userId: 'user1', content: 'msg' }];
+      const config = {
+        triage: { moderationLogChannel: 'log-channel' },
+        moderation: { protectRoles: { enabled: false } },
+      };
+
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config);
+
+      // Member fetch should not be called since protection is disabled
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(isProtectedTarget).not.toHaveBeenCalled();
+      expect(safeSend).toHaveBeenCalled();
+    });
   });
 
   describe('sendResponses', () => {

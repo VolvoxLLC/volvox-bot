@@ -142,21 +142,24 @@ export async function sendModerationLog(client, classification, snapshot, channe
     // Skip moderation log if any flagged user is a protected role (admin/mod/owner)
     const guild = logChannel.guild;
     if (guild && targets.length > 0) {
-      const seenUserIds = new Set();
-      for (const t of targets) {
-        if (seenUserIds.has(t.userId)) continue;
-        seenUserIds.add(t.userId);
-        try {
-          const member = await guild.members.fetch(t.userId);
-          if (isProtectedTarget(member, guild, config)) {
-            warn('Triage skipped moderation log: target is a protected role', {
-              userId: t.userId,
-              channelId,
-            });
-            return;
+      // Skip the expensive member-fetch loop when protection is explicitly disabled.
+      if (config.moderation?.protectRoles?.enabled !== false) {
+        const seenUserIds = new Set();
+        for (const t of targets) {
+          if (seenUserIds.has(t.userId)) continue;
+          seenUserIds.add(t.userId);
+          try {
+            const member = await guild.members.fetch(t.userId);
+            if (isProtectedTarget(member, guild)) {
+              warn('Triage skipped moderation log: target is a protected role', {
+                userId: t.userId,
+                channelId,
+              });
+              return;
+            }
+          } catch {
+            // Member not in guild or fetch failed — proceed with logging
           }
-        } catch {
-          // Member not in guild or fetch failed — proceed with logging
         }
       }
     }
