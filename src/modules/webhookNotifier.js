@@ -217,8 +217,7 @@ export async function fireEvent(eventType, guildId, data = {}) {
   // Filter to endpoints that subscribe to this event
   const targets = endpoints.filter(
     (ep) =>
-      ep &&
-      ep.url &&
+      ep?.url &&
       ep.enabled !== false &&
       (Array.isArray(ep.events) ? ep.events.includes(eventType) : true),
   );

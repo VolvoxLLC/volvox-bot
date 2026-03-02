@@ -112,7 +112,7 @@ export function registerConfigListeners({ dbPool, config }) {
   });
 
   // ── Webhook notifications for config changes ─────────────────────────
-  onConfigChange('*', async (newValue, _oldValue, path, guildId) => {
+  onConfigChange('*', async (_newValue, _oldValue, path, guildId) => {
     // Skip internal/logging changes and notification webhook updates (avoid recursion)
     if (path.startsWith('logging.') || path.startsWith('notifications.')) return;
     const targetGuildId = guildId && guildId !== 'global' ? guildId : null;
