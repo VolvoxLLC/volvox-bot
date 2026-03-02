@@ -106,15 +106,11 @@ router.get(
         }
       }
 
-      let stats, trend;
-      try {
-        [stats, trend] = await Promise.all([
-          getFeedbackStats(guildId, pool),
-          getFeedbackTrend(guildId, days, pool),
-        ]);
-      } catch (_err) {
-        return res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
-      }
+      // Let errors bubble up to the outer catch block
+      const [stats, trend] = await Promise.all([
+        getFeedbackStats(guildId, pool),
+        getFeedbackTrend(guildId, days, pool),
+      ]);
 
       res.json({
         ...stats,
@@ -212,12 +208,8 @@ router.get(
         }
       }
 
-      let rawFeedback;
-      try {
-        rawFeedback = await getRecentFeedback(guildId, limit, pool);
-      } catch (_err) {
-        return res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
-      }
+      // Let errors bubble up to the outer catch block
+      const rawFeedback = await getRecentFeedback(guildId, limit, pool);
 
       // Normalize DB row keys to camelCase (handles both raw SQL and aliased results)
       const feedback = rawFeedback.map((row) => ({
