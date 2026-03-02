@@ -396,7 +396,8 @@ async function emitConfigChangeEvents(fullPath, newValue, oldValue, guildId) {
       !isExact &&
       listener.path.endsWith('.*') &&
       fullPath.startsWith(listener.path.replace(/\.\*$/, '.'));
-    if (isExact || isPrefix) {
+    const isWildcard = listener.path === '*';
+    if (isExact || isPrefix || isWildcard) {
       try {
         const result = listener.callback(newValue, oldValue, fullPath, guildId);
         if (result && typeof result.then === 'function') {
