@@ -16,7 +16,7 @@ exports.up = (pgm) => {
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       feedback_type TEXT NOT NULL CHECK (feedback_type IN ('positive', 'negative')),
-      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(message_id, user_id)
     )
   `);
@@ -30,10 +30,16 @@ exports.up = (pgm) => {
     CREATE INDEX IF NOT EXISTS idx_ai_feedback_message_id
     ON ai_feedback(message_id)
   `);
+
+  pgm.sql(`
+    CREATE INDEX IF NOT EXISTS idx_ai_feedback_guild_created
+    ON ai_feedback(guild_id, created_at)
+  `);
 };
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.down = (pgm) => {
+  pgm.sql(`DROP INDEX IF EXISTS idx_ai_feedback_guild_created`);
   pgm.sql(`DROP INDEX IF EXISTS idx_ai_feedback_message_id`);
   pgm.sql(`DROP INDEX IF EXISTS idx_ai_feedback_guild_id`);
   pgm.sql(`DROP TABLE IF EXISTS ai_feedback`);
