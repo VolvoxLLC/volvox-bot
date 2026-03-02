@@ -230,8 +230,9 @@ export async function cacheGetOrSet(key, factory, ttlSeconds = 60) {
 }
 
 /**
- * Clear all cache entries (both Redis namespace and in-memory).
- * Use with caution — primarily for testing.
+ * Clear all app cache entries (both Redis and in-memory).
+ * Uses SCAN + DEL to remove only app-prefixed keys instead of
+ * flushdb(), which is dangerous in shared Redis environments.
  *
  * @returns {Promise<void>}
  */
@@ -239,10 +240,24 @@ export async function cacheClear() {
   const redis = getRedis();
   if (redis) {
     try {
-      await redis.flushdb();
+      // Scan and delete all known app-prefixed keys instead of flushdb()
+      const prefixes = [
+        'rl:*', 'reputation:*', 'rank:*', 'leaderboard:*',
+        'discord:*', 'config:*', 'session:*',
+      ];
+      for (const pattern of prefixes) {
+        let cursor = '0';
+        do {
+          const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+          cursor = nextCursor;
+          if (keys.length > 0) {
+            await redis.del(...keys);
+          }
+        } while (cursor !== '0');
+      }
     } catch (err) {
       recordError();
-      warn('Redis flush error', { error: err.message });
+      warn('Redis cache clear error', { error: err.message });
     }
   }
   memoryCache.clear();
