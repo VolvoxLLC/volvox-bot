@@ -142,6 +142,8 @@ export function ConfigEditor() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** True while the initial config load is in progress — suppresses auto-save. */
   const isLoadingConfigRef = useRef(false);
+  /** Ref tracking latest draftConfig for race-condition detection during save. */
+  const draftConfigRef = useRef<GuildConfig | null>(null);
 
   const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
     setDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
@@ -176,7 +178,7 @@ export function ConfigEditor() {
   }, []);
 
   // ── Load config when guild changes ─────────────────────────────
-  const fetchConfig = useCallback(async (id: string) => {
+  const fetchConfig = useCallback(async (id: string, { skipSaveStatusReset = false } = {}) => {
     if (!id) return;
 
     abortRef.current?.abort();
@@ -218,8 +220,10 @@ export function ConfigEditor() {
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
       // Reset status after a successful reload; clear any stale error
-      setSaveStatus('idle');
-      // Use a microtask so the state setter for draftConfig fires before we clear the flag
+      if (!skipSaveStatusReset) {
+        setSaveStatus('idle');
+      }
+      // Use a macrotask so the state setter for draftConfig fires before we clear the flag
       setTimeout(() => {
         isLoadingConfigRef.current = false;
       }, 0);
@@ -227,6 +231,7 @@ export function ConfigEditor() {
       setProtectRoleIdsRaw((data.moderation?.protectRoles?.roleIds ?? []).join(', '));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
+      isLoadingConfigRef.current = false;
       const msg = (err as Error).message || 'Failed to load config';
       setError(msg);
       toast.error('Failed to load config', { description: msg });
@@ -239,6 +244,11 @@ export function ConfigEditor() {
     fetchConfig(guildId);
     return () => abortRef.current?.abort();
   }, [guildId, fetchConfig]);
+
+  // Keep draftConfigRef in sync for race-condition detection in saveChanges
+  useEffect(() => {
+    draftConfigRef.current = draftConfig;
+  }, [draftConfig]);
 
   // ── Derived state ──────────────────────────────────────────────
   const hasChanges = useMemo(() => {
@@ -287,6 +297,9 @@ export function ConfigEditor() {
 
     const patches = computePatches(savedConfig, draftConfig);
     if (patches.length === 0) return;
+
+    // Snapshot draft before saving to detect changes made during in-flight save
+    const draftSnapshot = draftConfig;
 
     // Group patches by top-level section for batched requests
     const bySection = new Map<string, Array<{ path: string; value: unknown }>>();
@@ -372,8 +385,15 @@ export function ConfigEditor() {
         });
       } else {
         setSaveStatus('saved');
-        // Full success: reload to get the authoritative version from the server
-        await fetchConfig(guildId);
+        // Full success: check if draft changed during save (user edited while saving)
+        if (deepEqual(draftConfigRef.current, draftSnapshot)) {
+          // No changes during save — safe to reload authoritative version
+          await fetchConfig(guildId, { skipSaveStatusReset: true });
+        } else {
+          // Draft changed during save — don't overwrite user's new changes
+          // Update savedConfig to reflect what was successfully persisted
+          setSavedConfig(structuredClone(draftSnapshot));
+        }
       }
     } catch (err) {
       const msg = (err as Error).message || 'Failed to save config';
@@ -385,7 +405,6 @@ export function ConfigEditor() {
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
   // ── Auto-save: debounce 500ms after draft changes ──────────────
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally omits saveChanges and saving to prevent re-trigger loops
   useEffect(() => {
     // Don't auto-save during initial config load or if no changes
     if (isLoadingConfigRef.current || !hasChanges || hasValidationErrors || saving) return;
@@ -404,7 +423,7 @@ export function ConfigEditor() {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [draftConfig, hasChanges, hasValidationErrors]);
+  }, [draftConfig, hasChanges, hasValidationErrors, saving, saveChanges]);
 
   // ── Keyboard shortcut: Ctrl/Cmd+S to save ──────────────────────
   useEffect(() => {
