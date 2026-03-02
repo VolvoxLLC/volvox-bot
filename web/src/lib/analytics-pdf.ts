@@ -4,8 +4,8 @@
  * No external dependencies required.
  */
 
-import type { DashboardAnalytics } from '@/types/analytics';
 import { formatNumber, formatUsd } from '@/lib/analytics-utils';
+import type { DashboardAnalytics } from '@/types/analytics';
 
 function esc(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '—';

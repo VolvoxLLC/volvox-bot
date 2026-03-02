@@ -9,10 +9,10 @@ import {
   Download,
   FileText,
   Heart,
-  Star,
   MessageSquare,
   Minus,
   RefreshCw,
+  Star,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -32,11 +32,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
 import {
   endOfDayIso,
   formatDateInput,
@@ -822,7 +822,10 @@ export function AnalyticsDashboard() {
                     <Users className="h-4 w-4" />
                     Tracked users
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Tracked users value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Tracked users value"
+                  >
                     {formatNumber(analytics.userEngagement.trackedUsers)}
                   </output>
                 </div>
@@ -831,7 +834,10 @@ export function AnalyticsDashboard() {
                     <MessageSquare className="h-4 w-4" />
                     Avg messages / user
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Average messages per user value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Average messages per user value"
+                  >
                     {analytics.userEngagement.avgMessagesPerUser.toFixed(1)}
                   </output>
                 </div>
@@ -840,7 +846,10 @@ export function AnalyticsDashboard() {
                     <Heart className="h-4 w-4" />
                     Reactions given
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Total reactions given value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total reactions given value"
+                  >
                     {formatNumber(analytics.userEngagement.totalReactionsGiven)}
                   </output>
                 </div>
@@ -849,7 +858,10 @@ export function AnalyticsDashboard() {
                     <Activity className="h-4 w-4" />
                     Reactions received
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Total reactions received value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total reactions received value"
+                  >
                     {formatNumber(analytics.userEngagement.totalReactionsReceived)}
                   </output>
                 </div>
@@ -869,7 +881,10 @@ export function AnalyticsDashboard() {
                     <Users className="h-4 w-4" />
                     Users with XP
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Users with XP value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Users with XP value"
+                  >
                     {formatNumber(analytics.xpEconomy.totalUsers)}
                   </output>
                 </div>
@@ -878,7 +893,10 @@ export function AnalyticsDashboard() {
                     <Star className="h-4 w-4" />
                     Total XP distributed
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Total XP distributed value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total XP distributed value"
+                  >
                     {formatNumber(analytics.xpEconomy.totalXp)}
                   </output>
                 </div>
@@ -887,7 +905,10 @@ export function AnalyticsDashboard() {
                     <Activity className="h-4 w-4" />
                     Average level
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Average level value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Average level value"
+                  >
                     {analytics.xpEconomy.avgLevel.toFixed(1)}
                   </output>
                 </div>
@@ -896,7 +917,10 @@ export function AnalyticsDashboard() {
                     <Star className="h-4 w-4" />
                     Highest level
                   </div>
-                  <output className="mt-2 block text-2xl font-semibold" aria-label="Highest level value">
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Highest level value"
+                  >
                     {formatNumber(analytics.xpEconomy.maxLevel)}
                   </output>
                 </div>
