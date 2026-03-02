@@ -44,11 +44,13 @@ import {
   stopConversationCleanup,
 } from './modules/ai.js';
 import { getConfig, loadConfig } from './modules/config.js';
+
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { seedBuiltinTemplates } from './modules/roleMenuTemplates.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
@@ -66,6 +68,7 @@ import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
+
 import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
@@ -381,6 +384,11 @@ async function startup() {
 
     // Record this startup in the restart history table
     await recordRestart(dbPool, 'startup', BOT_VERSION);
+
+    // Seed built-in role menu templates (idempotent)
+    await seedBuiltinTemplates().catch((err) =>
+      warn('Failed to seed built-in role menu templates', { error: err.message }),
+    );
   } else {
     warn('DATABASE_URL not set — using config.json only (no persistence)');
   }
