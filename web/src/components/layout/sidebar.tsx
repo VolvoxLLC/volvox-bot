@@ -3,6 +3,7 @@
 import {
   Bot,
   ClipboardList,
+  Clock,
   LayoutDashboard,
   MessageSquare,
   MessagesSquare,
@@ -27,6 +28,11 @@ const navigation = [
     name: 'Moderation',
     href: '/dashboard/moderation',
     icon: Shield,
+  },
+  {
+    name: 'Temp Roles',
+    href: '/dashboard/temp-roles',
+    icon: Clock,
   },
   {
     name: 'AI Chat',

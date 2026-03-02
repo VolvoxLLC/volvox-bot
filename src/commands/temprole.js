@@ -23,17 +23,12 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('assign')
       .setDescription('Assign a role that expires after a set duration')
-      .addUserOption((opt) =>
-        opt.setName('user').setDescription('Target user').setRequired(true),
-      )
+      .addUserOption((opt) => opt.setName('user').setDescription('Target user').setRequired(true))
       .addRoleOption((opt) =>
         opt.setName('role').setDescription('Role to assign').setRequired(true),
       )
       .addStringOption((opt) =>
-        opt
-          .setName('duration')
-          .setDescription('Duration (e.g. 1h, 7d, 2w)')
-          .setRequired(true),
+        opt.setName('duration').setDescription('Duration (e.g. 1h, 7d, 2w)').setRequired(true),
       )
       .addStringOption((opt) =>
         opt.setName('reason').setDescription('Reason for assignment').setRequired(false),
@@ -43,9 +38,7 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('revoke')
       .setDescription('Remove a temporary role before it expires')
-      .addUserOption((opt) =>
-        opt.setName('user').setDescription('Target user').setRequired(true),
-      )
+      .addUserOption((opt) => opt.setName('user').setDescription('Target user').setRequired(true))
       .addRoleOption((opt) =>
         opt.setName('role').setDescription('Role to revoke').setRequired(true),
       ),
@@ -103,10 +96,7 @@ async function handleAssign(interaction) {
     try {
       member = await interaction.guild.members.fetch(user.id);
     } catch {
-      return await safeEditReply(
-        interaction,
-        '❌ That user is not in this server.',
-      );
+      return await safeEditReply(interaction, '❌ That user is not in this server.');
     }
 
     // Bot hierarchy check
@@ -228,10 +218,7 @@ async function handleList(interaction) {
 
     if (rows.length === 0) {
       const suffix = user ? ` for **${user.tag}**` : '';
-      return await safeEditReply(
-        interaction,
-        `📋 No active temporary role assignments${suffix}.`,
-      );
+      return await safeEditReply(interaction, `📋 No active temporary role assignments${suffix}.`);
     }
 
     const embed = new EmbedBuilder()

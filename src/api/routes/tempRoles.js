@@ -6,12 +6,11 @@
  */
 
 import { Router } from 'express';
-import { error as logError, info } from '../../logger.js';
+import { info, error as logError } from '../../logger.js';
 import { assignTempRole, listTempRoles, revokeTempRole } from '../../modules/tempRoleHandler.js';
 import { formatDuration, parseDuration } from '../../utils/duration.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { parsePagination } from './guilds.js';
-import { requireGuildModerator } from './guilds.js';
+import { parsePagination, requireGuildModerator } from './guilds.js';
 
 const router = Router();
 

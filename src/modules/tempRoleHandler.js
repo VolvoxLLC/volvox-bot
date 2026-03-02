@@ -8,7 +8,7 @@
  */
 
 import { getPool } from '../db.js';
-import { error as logError, info } from '../logger.js';
+import { info, error as logError } from '../logger.js';
 
 /** @type {ReturnType<typeof setInterval> | null} */
 let schedulerInterval = null;
@@ -50,7 +50,18 @@ export async function assignTempRole({
       (guild_id, user_id, user_tag, role_id, role_name, moderator_id, moderator_tag, reason, duration, expires_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
-    [guildId, userId, userTag, roleId, roleName, moderatorId, moderatorTag, reason, duration, expiresAt],
+    [
+      guildId,
+      userId,
+      userTag,
+      roleId,
+      roleName,
+      moderatorId,
+      moderatorTag,
+      reason,
+      duration,
+      expiresAt,
+    ],
   );
 
   info('Temp role assigned', { guildId, userId, roleId, roleName, duration });

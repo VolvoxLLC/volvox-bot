@@ -57,7 +57,6 @@ router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter)
 // Temp role routes — require API secret or OAuth2 JWT
 router.use('/temp-roles', requireAuth(), auditLogMiddleware(), tempRolesRouter);
 
-
 // Audit log routes — require API secret or OAuth2 JWT
 // GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
