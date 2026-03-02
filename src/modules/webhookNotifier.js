@@ -15,7 +15,7 @@
  *   member.flagged      - AI flagged a member's message
  */
 
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from './config.js';
@@ -57,12 +57,14 @@ export function signPayload(secret, body) {
  * @param {string} url - Endpoint URL
  * @param {string} secret - HMAC secret (empty string = no signature header)
  * @param {string} body - Serialised JSON payload
+ * @param {string} deliveryId - Unique identifier for this delivery (used for idempotency)
  * @returns {Promise<{ok: boolean, status: number, text: string}>}
  */
-async function attemptDelivery(url, secret, body) {
+async function attemptDelivery(url, secret, body, deliveryId) {
   const headers = {
     'Content-Type': 'application/json',
     'User-Agent': 'VolvoxBot-Webhooks/1.0',
+    'X-Delivery-Id': deliveryId,
   };
 
   if (secret) {
@@ -113,10 +115,11 @@ function sleep(ms) {
  */
 export async function deliverToEndpoint(guildId, endpoint, payload) {
   const body = JSON.stringify(payload);
+  const deliveryId = randomUUID();
   const pool = getPool();
 
   for (let attempt = 1; attempt <= RETRY_DELAYS_MS.length + 1; attempt++) {
-    const result = await attemptDelivery(endpoint.url, endpoint.secret || '', body);
+    const result = await attemptDelivery(endpoint.url, endpoint.secret || '', body, deliveryId);
 
     // Log this attempt
     if (pool) {
@@ -275,7 +278,8 @@ export async function testEndpoint(guildId, endpoint) {
     data: { message: 'This is a test webhook from VolvoxBot.' },
   };
   const body = JSON.stringify(payload);
-  return attemptDelivery(endpoint.url, endpoint.secret || '', body);
+  const deliveryId = randomUUID();
+  return attemptDelivery(endpoint.url, endpoint.secret || '', body, deliveryId);
 }
 
 /**
