@@ -30,11 +30,14 @@ export async function fetchChannelCached(client, channelId) {
   const cacheKey = `discord:channel:${channelId}`;
   const cached = await cacheGet(cacheKey);
   if (cached) {
-    // We can't reconstruct a full Channel object from cached data,
-    // but we can avoid the API call by checking if it appeared in DJS cache
-    // during the async gap
+    // Re-check DJS cache in case it was populated during the async gap
     const recheckDjs = client.channels.cache.get(channelId);
     if (recheckDjs) return recheckDjs;
+
+    // Return the cached metadata directly — callers that only need
+    // id/name/type/guildId can use this without an API call
+    debug('Returning Redis-cached channel metadata', { channelId });
+    return cached;
   }
 
   // Fetch from Discord API
