@@ -1,7 +1,7 @@
 'use client';
 
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -42,33 +42,46 @@ export function AiFeedbackStats() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    if (!selectedGuild || !apiBase) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`${apiBase}/guilds/${selectedGuild.id}/ai-feedback/stats?days=30`, {
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const data = (await res.json()) as FeedbackStats;
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load feedback stats');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedGuild, apiBase]);
-
   useEffect(() => {
-    void fetchStats();
-  }, [fetchStats]);
+    const abortController = new AbortController();
+
+    async function fetchWithAbort() {
+      if (!selectedGuild || !apiBase) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(
+          `${apiBase}/guilds/${selectedGuild.id}/ai-feedback/stats?days=30`,
+          { credentials: 'include', signal: abortController.signal },
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = (await res.json()) as FeedbackStats;
+        if (!abortController.signal.aborted) {
+          setStats(data);
+        }
+      } catch (err) {
+        if (!abortController.signal.aborted) {
+          setError(err instanceof Error ? err.message : 'Failed to load feedback stats');
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void fetchWithAbort();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [selectedGuild, apiBase]);
 
   if (!selectedGuild) return null;
 
