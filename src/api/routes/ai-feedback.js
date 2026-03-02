@@ -7,6 +7,7 @@
 
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
+import { getFeedbackStats, getFeedbackTrend, getRecentFeedback } from '../../modules/aiFeedback.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
@@ -84,69 +85,37 @@ const feedbackRateLimit = rateLimit({ windowMs: 60 * 1000, max: 60 });
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
-  const { dbPool } = req.app.locals;
-  if (!dbPool) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
+router.get(
+  '/stats',
+  feedbackRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res, next) => {
+    try {
+      const guildId = req.params.id;
 
-  const guildId = req.params.id;
+      let days = 30;
+      if (req.query.days !== undefined) {
+        const parsed = Number.parseInt(req.query.days, 10);
+        if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 90) {
+          days = parsed;
+        }
+      }
 
-  let days = 30;
-  if (req.query.days !== undefined) {
-    const parsed = Number.parseInt(req.query.days, 10);
-    if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 90) {
-      days = parsed;
+      const [stats, trend] = await Promise.all([
+        getFeedbackStats(guildId),
+        getFeedbackTrend(guildId, days),
+      ]);
+
+      res.json({
+        ...stats,
+        trend,
+      });
+    } catch (err) {
+      next(err);
     }
-  }
-
-  try {
-    const [statsResult, trendResult] = await Promise.all([
-      dbPool.query(
-        `SELECT
-           COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
-           COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative,
-           COUNT(*)::int AS total
-         FROM ai_feedback
-         WHERE guild_id = $1`,
-        [guildId],
-      ),
-      dbPool.query(
-        `SELECT
-           DATE(created_at) AS date,
-           COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
-           COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative
-         FROM ai_feedback
-         WHERE guild_id = $1
-           AND created_at >= NOW() - ($2 * interval '1 day')
-         GROUP BY DATE(created_at)
-         ORDER BY date ASC`,
-        [guildId, days],
-      ),
-    ]);
-
-    const row = statsResult.rows[0];
-    const positive = row?.positive || 0;
-    const negative = row?.negative || 0;
-    const total = row?.total || 0;
-    const ratio = total > 0 ? Math.round((positive / total) * 100) : null;
-
-    res.json({
-      positive,
-      negative,
-      total,
-      ratio,
-      trend: trendResult.rows.map((r) => ({
-        date: r.date,
-        positive: r.positive,
-        negative: r.negative,
-      })),
-    });
-  } catch (err) {
-    logError('Failed to fetch AI feedback stats', { error: err.message, guild: guildId });
-    res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
-  }
-});
+  },
+);
 
 // ── GET /recent ──────────────────────────────────────────────────────────────
 
@@ -212,46 +181,29 @@ router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async 
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/recent', feedbackRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
-  const { dbPool } = req.app.locals;
-  if (!dbPool) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
+router.get(
+  '/recent',
+  feedbackRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res, next) => {
+    try {
+      const guildId = req.params.id;
 
-  const guildId = req.params.id;
+      let limit = 25;
+      if (req.query.limit !== undefined) {
+        const parsed = Number.parseInt(req.query.limit, 10);
+        if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 100) {
+          limit = parsed;
+        }
+      }
 
-  let limit = 25;
-  if (req.query.limit !== undefined) {
-    const parsed = Number.parseInt(req.query.limit, 10);
-    if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 100) {
-      limit = parsed;
+      const feedback = await getRecentFeedback(guildId, limit);
+      res.json({ feedback });
+    } catch (err) {
+      next(err);
     }
-  }
-
-  try {
-    const result = await dbPool.query(
-      `SELECT id, message_id, channel_id, user_id, feedback_type, created_at
-       FROM ai_feedback
-       WHERE guild_id = $1
-       ORDER BY created_at DESC
-       LIMIT $2`,
-      [guildId, limit],
-    );
-
-    res.json({
-      feedback: result.rows.map((r) => ({
-        id: r.id,
-        messageId: r.message_id,
-        channelId: r.channel_id,
-        userId: r.user_id,
-        feedbackType: r.feedback_type,
-        createdAt: r.created_at,
-      })),
-    });
-  } catch (err) {
-    logError('Failed to fetch recent AI feedback', { error: err.message, guild: guildId });
-    res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
-  }
-});
+  },
+);
 
 export default router;

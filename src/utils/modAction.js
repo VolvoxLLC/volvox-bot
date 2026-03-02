@@ -5,11 +5,12 @@
  * case creation, mod log, success reply, and error handling.
  */
 
-import { debug, info, error as logError } from '../logger.js';
+import { debug, info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import {
   checkHierarchy,
   createCase,
+  isProtectedTarget,
   sendDmNotification,
   sendModLogEmbed,
   shouldSendDm,
@@ -35,6 +36,7 @@ import { safeEditReply } from './safeSend.js';
  *   command — they are passed to `actionFn` but excluded from case data by the
  *   `...extraCaseData` spread (callers must destructure them out).
  * @param {boolean} [opts.skipHierarchy=false] - Skip role hierarchy check
+ * @param {boolean} [opts.skipProtection=false] - Skip protected-role check (e.g. unban)
  * @param {boolean} [opts.skipDm=false] - Skip DM notification
  * @param {string} [opts.dmAction] - Override action name for DM (e.g. tempban uses 'ban')
  * @param {Function} [opts.afterCase] - async (caseData, interaction, config) => void
@@ -49,6 +51,7 @@ export async function executeModAction(interaction, opts) {
     actionFn,
     extractOptions,
     skipHierarchy = false,
+    skipProtection = false,
     skipDm = false,
     dmAction,
     afterCase,
@@ -90,6 +93,25 @@ export async function executeModAction(interaction, opts) {
     }
 
     const { target, targetId, targetTag } = resolved;
+
+    // Self-moderation is always blocked, even when skipProtection is true
+    if (target && target.id === interaction.user.id) {
+      return await safeEditReply(interaction, '\u274C You cannot moderate yourself.');
+    }
+
+    // Protected-role check (skipped when skipProtection is true)
+    if (!skipProtection && target) {
+      if (isProtectedTarget(target, interaction.guild, config)) {
+        warn('Moderation blocked: target is a protected role', {
+          action,
+          targetId: target.id,
+          targetTag,
+          moderatorId: interaction.user.id,
+          guildId: interaction.guildId,
+        });
+        return await safeEditReply(interaction, '\u274C Cannot moderate a protected user.');
+      }
+    }
 
     // Hierarchy check
     if (!skipHierarchy && target) {

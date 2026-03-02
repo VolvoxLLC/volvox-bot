@@ -107,6 +107,13 @@
         "purges": null,
         "locks": null
       }
+    },
+    "protectRoles": {
+      "enabled": true,
+      "roleIds": [],
+      "includeAdmins": true,
+      "includeModerators": true,
+      "includeServerOwner": true
     }
   },
   "memory": {
