@@ -108,7 +108,7 @@ export async function sendModerationLog(client, classification, snapshot, channe
 
     // Skip moderation log if any flagged user is a protected role (admin/mod/owner)
     const guild = logChannel.guild;
-    if (guild && targets.length > 0) {
+    if (guild && targets.length > 0 && config.moderation?.protectRoles?.enabled !== false) {
       const seenUserIds = new Set();
       for (const t of targets) {
         if (seenUserIds.has(t.userId)) continue;
