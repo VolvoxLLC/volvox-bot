@@ -125,7 +125,10 @@ export function ConfigEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDiffModal, setShowDiffModal] = useState(false);
-  const [prevSavedConfig, setPrevSavedConfig] = useState<{ guildId: string; config: GuildConfig } | null>(null);
+  const [prevSavedConfig, setPrevSavedConfig] = useState<{
+    guildId: string;
+    config: GuildConfig;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /** The config as last fetched from the API (the "saved" state). */
@@ -426,7 +429,7 @@ export function ConfigEditor() {
   // Clear undo snapshot when guild changes to prevent cross-guild config corruption
   useEffect(() => {
     setPrevSavedConfig(null);
-  }, [guildId]);
+  }, []);
 
   // ── Undo last save ─────────────────────────────────────────────
   const undoLastSave = useCallback(() => {
@@ -438,7 +441,9 @@ export function ConfigEditor() {
     }
     setDraftConfig(structuredClone(prevSavedConfig.config));
     setDmStepsRaw((prevSavedConfig.config.welcome?.dmSequence?.steps ?? []).join('\n'));
-    setProtectRoleIdsRaw((prevSavedConfig.config.moderation?.protectRoles?.roleIds ?? []).join(', '));
+    setProtectRoleIdsRaw(
+      (prevSavedConfig.config.moderation?.protectRoles?.roleIds ?? []).join(', '),
+    );
     setPrevSavedConfig(null);
     toast.info('Reverted to previous saved state. Save again to apply.');
   }, [prevSavedConfig, guildId]);

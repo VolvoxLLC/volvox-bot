@@ -18,7 +18,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
-import type { AiFeedbackStats } from '@/types/analytics';
+import type { AiFeedbackStats as AiFeedbackStatsType } from '@/types/analytics';
 
 const PIE_COLORS = ['#22C55E', '#EF4444'];
 
@@ -28,7 +28,7 @@ const PIE_COLORS = ['#22C55E', '#EF4444'];
  */
 export function AiFeedbackStats() {
   const guildId = useGuildSelection();
-  const [stats, setStats] = useState<AiFeedbackStats | null>(null);
+  const [stats, setStats] = useState<AiFeedbackStatsType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
