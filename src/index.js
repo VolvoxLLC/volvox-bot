@@ -48,6 +48,7 @@ import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
+import { startTempRoleScheduler, stopTempRoleScheduler } from './modules/tempRoleHandler.js';
 import { loadOptOuts } from './modules/optout.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
@@ -275,6 +276,7 @@ async function gracefulShutdown(signal) {
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
+  stopTempRoleScheduler();
   stopScheduler();
   stopGithubFeed();
 
@@ -465,6 +467,7 @@ async function startup() {
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {
     startTempbanScheduler(client);
+    startTempRoleScheduler(client);
     startScheduler(client);
     startGithubFeed(client);
   }

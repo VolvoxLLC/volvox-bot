@@ -16,6 +16,7 @@ import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
+import tempRolesRouter from './routes/tempRoles.js';
 import ticketsRouter from './routes/tickets.js';
 import webhooksRouter from './routes/webhooks.js';
 
@@ -53,6 +54,9 @@ router.use('/guilds', requireAuth(), auditLogMiddleware(), guildsRouter);
 
 // Moderation routes — require API secret or OAuth2 JWT
 router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter);
+// Temp role routes — require API secret or OAuth2 JWT
+router.use('/temp-roles', requireAuth(), auditLogMiddleware(), tempRolesRouter);
+
 
 // Audit log routes — require API secret or OAuth2 JWT
 // GET-only; no audit middleware needed (reads are not mutating actions)
