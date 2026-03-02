@@ -43,6 +43,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
+import { startScheduledBackups, stopScheduledBackups } from './modules/backup.js';
 import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
 import { loadAliasesFromDb, resolveAlias } from './modules/commandAliases.js';
 import { getConfig, loadConfig } from './modules/config.js';
@@ -325,10 +326,10 @@ async function gracefulShutdown(signal) {
   stopTempbanScheduler();
   stopScheduler();
   stopGithubFeed();
+  stopScheduledBackups();
   perfMonitor.stop();
   stopBotStatus();
   stopVoiceFlush();
-
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
     await stopServer();
@@ -539,9 +540,9 @@ async function startup() {
     startTempbanScheduler(client);
     startScheduler(client);
     startGithubFeed(client);
+    startScheduledBackups();
     startVoiceFlush();
   }
-
   // Load commands and login
   await loadCommands();
   await client.login(token);
