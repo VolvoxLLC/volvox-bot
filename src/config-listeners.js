@@ -9,8 +9,8 @@
  */
 
 import { addPostgresTransport, error, info, removePostgresTransport } from './logger.js';
-import { fireEvent } from './modules/webhookNotifier.js';
 import { onConfigChange } from './modules/config.js';
+import { fireEvent } from './modules/webhookNotifier.js';
 import { cacheDelPattern } from './utils/cache.js';
 
 /** @type {import('winston').transport | null} */

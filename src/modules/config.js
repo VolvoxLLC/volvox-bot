@@ -360,7 +360,6 @@ export function getAllGuildIds() {
   return [...configCache.keys()].filter((id) => id !== 'global');
 }
 
-
 export function onConfigChange(pathOrPrefix, callback) {
   listeners.push({ path: pathOrPrefix, callback });
 }

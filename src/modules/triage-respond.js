@@ -10,10 +10,10 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
-import { fireEvent } from './webhookNotifier.js';
 import { FEEDBACK_EMOJI, registerAiMessage } from './aiFeedback.js';
 import { isProtectedTarget } from './moderation.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
+import { fireEvent } from './webhookNotifier.js';
 
 /** Maximum characters to keep from fetched context messages. */
 const CONTEXT_MESSAGE_CHAR_LIMIT = 500;

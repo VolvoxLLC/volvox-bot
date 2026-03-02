@@ -16,7 +16,7 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
-import { error as logError, info, warn } from '../../src/logger.js';
+import { info, error as logError, warn } from '../../src/logger.js';
 import { getConfig } from '../../src/modules/config.js';
 import {
   deliverToEndpoint,
@@ -98,7 +98,12 @@ describe('webhookNotifier', () => {
       url: 'https://example.com/hook',
       secret: 'mysecret',
     };
-    const payload = { event: 'test', timestamp: '2026-01-01T00:00:00Z', guild_id: 'guild1', data: {} };
+    const payload = {
+      event: 'test',
+      timestamp: '2026-01-01T00:00:00Z',
+      guild_id: 'guild1',
+      data: {},
+    };
 
     it('should deliver successfully on first attempt', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -110,11 +115,14 @@ describe('webhookNotifier', () => {
       const result = await deliverToEndpoint('guild1', endpoint, payload);
       expect(result).toBe(true);
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(info).toHaveBeenCalledWith('Webhook delivered', expect.objectContaining({
-        guildId: 'guild1',
-        endpointId: 'ep1',
-        attempt: 1,
-      }));
+      expect(info).toHaveBeenCalledWith(
+        'Webhook delivered',
+        expect.objectContaining({
+          guildId: 'guild1',
+          endpointId: 'ep1',
+          attempt: 1,
+        }),
+      );
     });
 
     it('should include HMAC signature header', async () => {
@@ -182,7 +190,10 @@ describe('webhookNotifier', () => {
       vi.useRealTimers();
 
       expect(result).toBe(false);
-      expect(logError).toHaveBeenCalledWith('Webhook delivery failed after all retries', expect.any(Object));
+      expect(logError).toHaveBeenCalledWith(
+        'Webhook delivery failed after all retries',
+        expect.any(Object),
+      );
     });
 
     it('should handle network errors (fetch throws)', async () => {
@@ -294,7 +305,12 @@ describe('webhookNotifier', () => {
       getConfig.mockReturnValue({
         notifications: {
           webhooks: [
-            { id: 'ep1', url: 'https://example.com/hook', events: ['moderation.action'], enabled: true },
+            {
+              id: 'ep1',
+              url: 'https://example.com/hook',
+              events: ['moderation.action'],
+              enabled: true,
+            },
           ],
         },
       });
@@ -341,7 +357,12 @@ describe('webhookNotifier', () => {
       getConfig.mockReturnValue({
         notifications: {
           webhooks: [
-            { id: 'ep1', url: 'https://example.com/hook', events: ['moderation.action'], enabled: true },
+            {
+              id: 'ep1',
+              url: 'https://example.com/hook',
+              events: ['moderation.action'],
+              enabled: true,
+            },
           ],
         },
       });
@@ -359,7 +380,9 @@ describe('webhookNotifier', () => {
     });
 
     it('should handle config errors gracefully (returns without firing)', async () => {
-      getConfig.mockImplementation(() => { throw new Error('config not loaded'); });
+      getConfig.mockImplementation(() => {
+        throw new Error('config not loaded');
+      });
       await expect(fireEvent('bot.error', 'guild1', {})).resolves.not.toThrow();
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -370,16 +393,23 @@ describe('webhookNotifier', () => {
   describe('getDeliveryLog', () => {
     it('should query the delivery log for a guild', async () => {
       const rows = [
-        { id: 1, endpoint_id: 'ep1', event_type: 'bot.error', status: 'success', attempt: 1, delivered_at: '2026-01-01' },
+        {
+          id: 1,
+          endpoint_id: 'ep1',
+          event_type: 'bot.error',
+          status: 'success',
+          attempt: 1,
+          delivered_at: '2026-01-01',
+        },
       ];
       mockPool.query.mockResolvedValueOnce({ rows });
 
       const result = await getDeliveryLog('guild1');
       expect(result).toEqual(rows);
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT'),
-        ['guild1', 50],
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('SELECT'), [
+        'guild1',
+        50,
+      ]);
     });
 
     it('should return empty array when no pool', async () => {
@@ -391,10 +421,7 @@ describe('webhookNotifier', () => {
     it('should cap limit at 100', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] });
       await getDeliveryLog('guild1', 9999);
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.any(String),
-        ['guild1', 100],
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), ['guild1', 100]);
     });
 
     it('should default limit to 50', async () => {

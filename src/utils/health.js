@@ -181,4 +181,3 @@ export function measureEventLoopLag() {
     setImmediate(() => resolve(Date.now() - start));
   });
 }
-

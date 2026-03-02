@@ -17,7 +17,7 @@
 
 import { createHmac } from 'node:crypto';
 import { getPool } from '../db.js';
-import { error as logError, info, warn } from '../logger.js';
+import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from './config.js';
 
 /** @type {string[]} All supported event types */

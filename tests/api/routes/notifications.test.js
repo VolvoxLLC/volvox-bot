@@ -119,8 +119,7 @@ describe('notifications routes', () => {
     });
 
     it('should return 401 without auth', async () => {
-      const res = await request(app)
-        .get(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks`);
+      const res = await request(app).get(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks`);
 
       expect(res.status).toBe(401);
     });
@@ -216,7 +215,11 @@ describe('notifications routes', () => {
     });
 
     it('should return 400 when exceeding 20 endpoints', async () => {
-      const existing = Array.from({ length: 20 }, (_, i) => ({ id: `ep${i}`, url: 'https://x.com', events: ['bot.error'] }));
+      const existing = Array.from({ length: 20 }, (_, i) => ({
+        id: `ep${i}`,
+        url: 'https://x.com',
+        events: ['bot.error'],
+      }));
       getConfig.mockReturnValue({ notifications: { webhooks: existing } });
 
       const res = await request(app)
@@ -261,11 +264,7 @@ describe('notifications routes', () => {
         .set(authHeaders());
 
       expect(res.status).toBe(204);
-      expect(setConfigValue).toHaveBeenCalledWith(
-        'notifications.webhooks',
-        [],
-        GUILD_ID,
-      );
+      expect(setConfigValue).toHaveBeenCalledWith('notifications.webhooks', [], GUILD_ID);
     });
 
     it('should return 404 when endpoint not found', async () => {
@@ -278,8 +277,9 @@ describe('notifications routes', () => {
     });
 
     it('should return 401 without auth', async () => {
-      const res = await request(app)
-        .delete(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks/uuid-1`);
+      const res = await request(app).delete(
+        `/api/v1/guilds/${GUILD_ID}/notifications/webhooks/uuid-1`,
+      );
 
       expect(res.status).toBe(401);
     });
@@ -310,8 +310,9 @@ describe('notifications routes', () => {
     });
 
     it('should return 401 without auth', async () => {
-      const res = await request(app)
-        .post(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks/uuid-1/test`);
+      const res = await request(app).post(
+        `/api/v1/guilds/${GUILD_ID}/notifications/webhooks/uuid-1/test`,
+      );
 
       expect(res.status).toBe(401);
     });
@@ -322,7 +323,14 @@ describe('notifications routes', () => {
   describe('GET /guilds/:guildId/notifications/deliveries', () => {
     it('should return delivery log', async () => {
       const rows = [
-        { id: 1, endpoint_id: 'ep1', event_type: 'bot.error', status: 'success', attempt: 1, delivered_at: '2026-01-01' },
+        {
+          id: 1,
+          endpoint_id: 'ep1',
+          event_type: 'bot.error',
+          status: 'success',
+          attempt: 1,
+          delivered_at: '2026-01-01',
+        },
       ];
       getDeliveryLog.mockResolvedValueOnce(rows);
 
@@ -346,8 +354,7 @@ describe('notifications routes', () => {
     });
 
     it('should return 401 without auth', async () => {
-      const res = await request(app)
-        .get(`/api/v1/guilds/${GUILD_ID}/notifications/deliveries`);
+      const res = await request(app).get(`/api/v1/guilds/${GUILD_ID}/notifications/deliveries`);
 
       expect(res.status).toBe(401);
     });

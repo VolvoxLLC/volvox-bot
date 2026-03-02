@@ -8,7 +8,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import { error as logError, info } from '../../logger.js';
+import { info, error as logError } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { getDeliveryLog, testEndpoint, WEBHOOK_EVENTS } from '../../modules/webhookNotifier.js';
 
