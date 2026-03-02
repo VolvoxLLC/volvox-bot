@@ -92,6 +92,11 @@ router.get(
   async (req, res, next) => {
     try {
       const guildId = req.params.id;
+      const pool = req.app.locals.dbPool;
+
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       let days = 30;
       if (req.query.days !== undefined) {
@@ -101,10 +106,15 @@ router.get(
         }
       }
 
-      const [stats, trend] = await Promise.all([
-        getFeedbackStats(guildId),
-        getFeedbackTrend(guildId, days),
-      ]);
+      let stats, trend;
+      try {
+        [stats, trend] = await Promise.all([
+          getFeedbackStats(guildId, pool),
+          getFeedbackTrend(guildId, days, pool),
+        ]);
+      } catch (_err) {
+        return res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
+      }
 
       res.json({
         ...stats,
@@ -188,6 +198,11 @@ router.get(
   async (req, res, next) => {
     try {
       const guildId = req.params.id;
+      const pool = req.app.locals.dbPool;
+
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       let limit = 25;
       if (req.query.limit !== undefined) {
@@ -197,7 +212,23 @@ router.get(
         }
       }
 
-      const feedback = await getRecentFeedback(guildId, limit);
+      let rawFeedback;
+      try {
+        rawFeedback = await getRecentFeedback(guildId, limit, pool);
+      } catch (_err) {
+        return res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
+      }
+
+      // Normalize DB row keys to camelCase (handles both raw SQL and aliased results)
+      const feedback = rawFeedback.map((row) => ({
+        id: row.id,
+        messageId: row.messageId ?? row.message_id,
+        channelId: row.channelId ?? row.channel_id,
+        userId: row.userId ?? row.user_id,
+        feedbackType: row.feedbackType ?? row.feedback_type,
+        createdAt: row.createdAt ?? row.created_at,
+      }));
+
       res.json({ feedback });
     } catch (err) {
       next(err);
