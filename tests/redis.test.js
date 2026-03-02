@@ -24,11 +24,11 @@ describe('redis.js', () => {
     vi.resetModules();
     delete process.env.REDIS_URL;
     redis = await import('../src/redis.js');
-    redis._resetRedis();
+    await redis._resetRedis();
   });
 
-  afterEach(() => {
-    redis._resetRedis();
+  afterEach(async () => {
+    await redis._resetRedis();
     delete process.env.REDIS_URL;
   });
 
@@ -52,7 +52,7 @@ describe('redis.js', () => {
       }));
 
       const freshRedis = await import('../src/redis.js');
-      freshRedis._resetRedis();
+      await freshRedis._resetRedis();
 
       const client = freshRedis.initRedis();
       expect(client).not.toBeNull();
@@ -63,7 +63,7 @@ describe('redis.js', () => {
       vi.resetModules();
       process.env.REDIS_URL = 'redis://localhost:6379';
       const freshRedis = await import('../src/redis.js');
-      freshRedis._resetRedis();
+      await freshRedis._resetRedis();
 
       const client1 = freshRedis.initRedis();
       const client2 = freshRedis.initRedis();
