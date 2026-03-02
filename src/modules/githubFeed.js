@@ -16,6 +16,33 @@ import { getConfig } from './config.js';
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Regex for valid GitHub owner/repo name segments.
+ * Allows alphanumeric characters, dots, hyphens, and underscores.
+ * Prevents path traversal (e.g. `../../users/admin`) via the `gh` CLI.
+ *
+ * @see https://github.com/VolvoxLLC/volvox-bot/issues/160
+ */
+export const VALID_GH_NAME = /^[a-zA-Z0-9._-]+$/;
+
+/**
+ * Return true when both owner and repo are safe to pass to the `gh` CLI.
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @returns {boolean}
+ */
+export function isValidGhRepo(owner, repo) {
+  return (
+    typeof owner === 'string' &&
+    typeof repo === 'string' &&
+    owner.length > 0 &&
+    repo.length > 0 &&
+    VALID_GH_NAME.test(owner) &&
+    VALID_GH_NAME.test(repo)
+  );
+}
+
 /** @type {ReturnType<typeof setInterval> | null} */
 let feedInterval = null;
 
@@ -33,6 +60,10 @@ let pollInFlight = false;
  * @returns {Promise<object[]>} Array of event objects (up to 10)
  */
 export async function fetchRepoEvents(owner, repo) {
+  if (!isValidGhRepo(owner, repo)) {
+    logWarn('GitHub feed: invalid owner/repo format, refusing CLI call', { owner, repo });
+    return [];
+  }
   const { stdout } = await execFileAsync(
     'gh',
     ['api', `repos/${owner}/${repo}/events?per_page=10`],
@@ -256,8 +287,8 @@ async function pollGuildFeed(client, guildId, feedConfig) {
 
   for (const repoFullName of repos) {
     const [owner, repo] = repoFullName.split('/');
-    if (!owner || !repo) {
-      logWarn('GitHub feed: invalid repo format', { guildId, repo: repoFullName });
+    if (!isValidGhRepo(owner, repo)) {
+      logWarn('GitHub feed: invalid owner/repo format, skipping', { guildId, repo: repoFullName });
       continue;
     }
 
