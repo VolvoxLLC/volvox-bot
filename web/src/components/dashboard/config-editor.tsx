@@ -131,6 +131,7 @@ export function ConfigEditor() {
 
   /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
   const [dmStepsRaw, setDmStepsRaw] = useState('');
+  const [protectRoleIdsRaw, setProtectRoleIdsRaw] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -208,6 +209,7 @@ export function ConfigEditor() {
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
+      setProtectRoleIdsRaw((data.moderation?.protectRoles?.roleIds ?? []).join(', '));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
       const msg = (err as Error).message || 'Failed to load config';
@@ -386,6 +388,7 @@ export function ConfigEditor() {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
     setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
+    setProtectRoleIdsRaw((savedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
     toast.success('Changes discarded.');
   }, [savedConfig]);
 
@@ -579,6 +582,29 @@ export function ConfigEditor() {
           moderation: {
             ...prev.moderation,
             linkFilter: { ...prev.moderation?.linkFilter, [field]: value },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateProtectRolesField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        const existingProtectRoles = prev.moderation?.protectRoles ?? {
+          enabled: true,
+          includeAdmins: true,
+          includeModerators: true,
+          includeServerOwner: true,
+          roleIds: [],
+        };
+        return {
+          ...prev,
+          moderation: {
+            ...prev.moderation,
+            protectRoles: { ...existingProtectRoles, [field]: value },
           },
         } as GuildConfig;
       });
@@ -1100,6 +1126,69 @@ export function ConfigEditor() {
                   disabled={saving}
                   className={inputClasses}
                   placeholder="example.com, spam.net"
+                />
+              </label>
+            </fieldset>
+
+            {/* Protect Roles sub-section */}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Protect Roles from Moderation</legend>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Enabled</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.enabled ?? true}
+                  onChange={(v) => updateProtectRolesField('enabled', v)}
+                  disabled={saving}
+                  label="Protect Roles"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Include admins</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.includeAdmins ?? true}
+                  onChange={(v) => updateProtectRolesField('includeAdmins', v)}
+                  disabled={saving}
+                  label="Include admins"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Include moderators</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.includeModerators ?? true}
+                  onChange={(v) => updateProtectRolesField('includeModerators', v)}
+                  disabled={saving}
+                  label="Include moderators"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Include server owner</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.protectRoles?.includeServerOwner ?? true}
+                  onChange={(v) => updateProtectRolesField('includeServerOwner', v)}
+                  disabled={saving}
+                  label="Include server owner"
+                />
+              </div>
+              <label className="space-y-2">
+                <span className="text-sm text-muted-foreground">
+                  Additional protected role IDs (comma-separated)
+                </span>
+                <input
+                  type="text"
+                  value={protectRoleIdsRaw}
+                  onChange={(e) => setProtectRoleIdsRaw(e.target.value)}
+                  onBlur={() =>
+                    updateProtectRolesField(
+                      'roleIds',
+                      protectRoleIdsRaw
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    )
+                  }
+                  disabled={saving}
+                  className={inputClasses}
+                  placeholder="Role ID 1, Role ID 2"
                 />
               </label>
             </fieldset>

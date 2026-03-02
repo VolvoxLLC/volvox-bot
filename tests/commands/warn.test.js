@@ -14,6 +14,7 @@ vi.mock('../../src/modules/moderation.js', () => ({
   sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
   checkEscalation: vi.fn().mockResolvedValue(null),
   checkHierarchy: vi.fn().mockReturnValue(null),
+  isProtectedTarget: vi.fn().mockReturnValue(false),
   shouldSendDm: vi.fn().mockReturnValue(true),
 }));
 
