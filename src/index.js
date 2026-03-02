@@ -20,7 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
-import { closeRedis } from './api/utils/redisClient.js';
+import { closeRedisClient as closeRedis, initRedis } from './redis.js';
+import { stopCacheCleanup } from './utils/cache.js';
 import {
   registerConfigListeners,
   removeLoggingTransport,
@@ -313,6 +314,7 @@ async function gracefulShutdown(signal) {
 
   // 4.5. Close Redis connection (no-op if Redis was never configured)
   try {
+    stopCacheCleanup();
     await closeRedis();
   } catch (err) {
     error('Failed to close Redis connection', { error: err.message });
@@ -365,6 +367,9 @@ async function startup() {
   let dbPool = null;
   if (process.env.DATABASE_URL) {
     dbPool = await initDb();
+
+    // Initialize Redis (gracefully degrades if REDIS_URL not set)
+    initRedis();
     info('Database initialized');
 
     // Record this startup in the restart history table

@@ -1,64 +1,32 @@
 /**
- * Redis Client
- * Lazily-initialised ioredis client for session storage.
- * If REDIS_URL is not configured, getRedisClient() returns null and all
- * callers fall back to the in-memory implementation.
+ * Redis Client (API Compatibility Layer)
+ * Re-exports from the centralized src/redis.js module.
+ *
+ * Existing code that imports from this file continues to work without changes.
+ * New code should import directly from src/redis.js.
+ *
+ * @see https://github.com/VolvoxLLC/volvox-bot/issues/177
  */
 
-import Redis from 'ioredis';
-import { error as logError, warn } from '../../logger.js';
-
-/** @type {Redis | null} */
-let _client = null;
-let _initialized = false;
+import { closeRedisClient, getRedis, _resetRedis } from '../../redis.js';
 
 /**
- * Return the ioredis client, initialising it on first call.
+ * Return the ioredis client.
  * Returns null if REDIS_URL is not configured.
  *
- * @returns {Redis | null}
+ * @returns {import('ioredis').Redis | null}
  */
 export function getRedisClient() {
-  if (_initialized) return _client;
-  _initialized = true;
-
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) return null;
-
-  try {
-    _client = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: true,
-      lazyConnect: false,
-    });
-
-    _client.on('error', (err) => {
-      logError('Redis connection error', { error: err.message });
-    });
-  } catch (err) {
-    logError('Failed to initialise Redis client', { error: err.message });
-    _client = null;
-  }
-
-  return _client;
+  return getRedis();
 }
 
 /**
  * Gracefully close the Redis connection.
- * Safe to call even if Redis was never configured.
  *
  * @returns {Promise<void>}
  */
 export async function closeRedis() {
-  if (!_client) return;
-  try {
-    await _client.quit();
-  } catch (err) {
-    warn('Redis quit error during shutdown', { error: err.message });
-  } finally {
-    _client = null;
-    _initialized = false;
-  }
+  return closeRedisClient();
 }
 
 /**
@@ -66,6 +34,5 @@ export async function closeRedis() {
  * @internal
  */
 export function _resetRedisClient() {
-  _client = null;
-  _initialized = false;
+  _resetRedis();
 }
