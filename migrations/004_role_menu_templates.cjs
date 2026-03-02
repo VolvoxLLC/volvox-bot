@@ -29,7 +29,7 @@ exports.up = (pgm) => {
 
   pgm.sql(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_rmt_name_guild
-      ON role_menu_templates (name, COALESCE(created_by_guild_id, '__builtin__'))
+      ON role_menu_templates (LOWER(name), COALESCE(created_by_guild_id, '__builtin__'))
   `);
 
   pgm.sql(`
