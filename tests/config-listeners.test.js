@@ -91,6 +91,9 @@ vi.mock('../src/utils/cache.js', () => ({
       expect(registeredKeys).toContain('ai.*');
       expect(registeredKeys).toContain('spam.*');
       expect(registeredKeys).toContain('moderation.*');
+      expect(registeredKeys).toContain('welcome.*');
+      expect(registeredKeys).toContain('starboard.*');
+      expect(registeredKeys).toContain('reputation.*');
     });
 
     it('registers exactly 11 listeners', () => {

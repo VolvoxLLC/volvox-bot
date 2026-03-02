@@ -24,11 +24,11 @@ describe('redis.js', () => {
     vi.resetModules();
     delete process.env.REDIS_URL;
     redis = await import('../src/redis.js');
-    redis._resetRedis();
+    await redis._resetRedis();
   });
 
-  afterEach(() => {
-    redis._resetRedis();
+  afterEach(async () => {
+    await redis._resetRedis();
     delete process.env.REDIS_URL;
   });
 
