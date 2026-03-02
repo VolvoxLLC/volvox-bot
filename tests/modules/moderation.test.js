@@ -808,41 +808,26 @@ describe('moderation module', () => {
         },
       };
 
-      mockPool.query
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 1,
-              guild_id: 'guild1',
-              action: 'unban',
-              target_id: 'user1',
-              case_id: 5,
-              execute_at: new Date(),
-              executed: false,
-            },
-          ],
-        })
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // claim executed row
-        .mockResolvedValueOnce({ rows: [] }); // log_message_id update
+      // Scheduler transaction uses one connection from pool.connect()
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            guild_id: 'guild1',
+            action: 'unban',
+            target_id: 'user1',
+            case_id: 5,
+            execute_at: new Date(),
+            executed: false,
+          },
+        ],
+      });
 
+      // Transaction connection: BEGIN, lock, UPDATE, COMMIT
       mockConnection.query
         .mockResolvedValueOnce({}) // BEGIN
-        .mockResolvedValueOnce({}) // advisory lock
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 7,
-              case_number: 7,
-              action: 'unban',
-              target_id: 'user1',
-              target_tag: 'User#0001',
-              moderator_id: 'bot1',
-              moderator_tag: 'Bot#0001',
-              reason: 'Tempban expired (case #5)',
-              created_at: new Date().toISOString(),
-            },
-          ],
-        })
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // SELECT FOR UPDATE SKIP LOCKED
+        .mockResolvedValueOnce({}) // UPDATE executed = TRUE
         .mockResolvedValueOnce({}); // COMMIT
 
       vi.useFakeTimers();
@@ -850,8 +835,8 @@ describe('moderation module', () => {
       await vi.advanceTimersByTimeAsync(100);
 
       expect(mockGuild.members.unban).toHaveBeenCalledWith('user1', 'Tempban expired');
-      expect(mockPool.query).toHaveBeenCalledWith(
-        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1 AND executed = FALSE RETURNING id',
+      expect(mockConnection.query).toHaveBeenCalledWith(
+        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1',
         [1],
       );
 
@@ -902,32 +887,39 @@ describe('moderation module', () => {
         channels: { fetch: vi.fn() },
       };
 
-      mockPool.query
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 99,
-              guild_id: 'guild1',
-              action: 'unban',
-              target_id: 'user1',
-              case_id: 5,
-              execute_at: new Date(),
-              executed: false,
-            },
-          ],
-        })
-        .mockResolvedValueOnce({ rows: [{ id: 99 }] }); // claim executed row
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 99,
+            guild_id: 'guild1',
+            action: 'unban',
+            target_id: 'user1',
+            case_id: 5,
+            execute_at: new Date(),
+            executed: false,
+          },
+        ],
+      });
+
+      // Transaction connection: BEGIN, lock, UPDATE, COMMIT
+      mockConnection.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] }) // SELECT FOR UPDATE SKIP LOCKED
+        .mockResolvedValueOnce({}) // UPDATE executed = TRUE
+        .mockResolvedValueOnce({}); // COMMIT
 
       vi.useFakeTimers();
       startTempbanScheduler(mockClient);
       await vi.advanceTimersByTimeAsync(100);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1 AND executed = FALSE RETURNING id',
+      // Row should be marked as executed (via connection transaction)
+      expect(mockConnection.query).toHaveBeenCalledWith(
+        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1',
         [99],
       );
+      // Error should be logged (after commit, not causing rollback)
       expect(loggerError).toHaveBeenCalledWith(
-        'Failed to process expired tempban',
+        'Failed to unban tempban target (marked as executed to prevent retry)',
         expect.objectContaining({ id: 99, targetId: 'user1' }),
       );
 
