@@ -18,6 +18,8 @@
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt, promptPath } from '../prompts/index.js';
 import { safeSend } from '../utils/safeSend.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
+import { checkGuildBudget } from '../utils/guildSpend.js';
 import { CLIProcess, CLIProcessError } from './cli-process.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
@@ -331,6 +333,55 @@ function extractMemories(snapshot, parsed) {
  */
 async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
+
+  // ── Guild daily budget gate ─────────────────────────────────────────────
+  // Skip evaluation if the guild has exhausted its daily AI spend cap.
+  // This prevents runaway costs from high-volume guilds.
+  const dailyBudgetUsd = evalConfig.triage?.dailyBudgetUsd;
+  if (dailyBudgetUsd != null && dailyBudgetUsd > 0) {
+    try {
+      const ch = await fetchChannelCached(evalClient, channelId);
+      const guildId = ch?.guildId;
+      if (guildId) {
+        const budget = await checkGuildBudget(guildId, dailyBudgetUsd);
+        if (budget.status === 'exceeded') {
+          warn('Guild daily AI budget exceeded — skipping triage evaluation', {
+            guildId,
+            channelId,
+            spend: budget.spend,
+            budget: budget.budget,
+          });
+          // Phase 3: post a one-time alert to the moderation log channel (fire-and-forget)
+          const logChannelId = evalConfig.triage?.moderationLogChannel;
+          if (logChannelId) {
+            fetchChannelCached(evalClient, logChannelId)
+              .then((logCh) => {
+                if (logCh) {
+                  return safeSend(
+                    logCh,
+                    `⚠️ **AI spend cap reached** for guild \`${guildId}\` — daily budget of $${budget.budget.toFixed(2)} exceeded (spent $${budget.spend.toFixed(4)}). Triage evaluations are paused until the window resets.`,
+                  );
+                }
+              })
+              .catch(() => {});
+          }
+          return;
+        }
+        if (budget.status === 'warning') {
+          warn('Guild approaching daily AI budget limit', {
+            guildId,
+            channelId,
+            spend: budget.spend,
+            budget: budget.budget,
+            pct: Math.round(budget.pct * 100),
+          });
+        }
+      }
+    } catch (budgetErr) {
+      // Non-fatal: if budget check errors, allow evaluation to continue
+      debug('Guild budget check failed (non-fatal)', { channelId, error: budgetErr?.message });
+    }
+  }
 
   try {
     // Step 1: Classify
