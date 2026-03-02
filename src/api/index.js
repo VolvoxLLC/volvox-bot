@@ -18,6 +18,7 @@ import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
 import ticketsRouter from './routes/tickets.js';
 import webhooksRouter from './routes/webhooks.js';
+import performanceRouter from './routes/performance.js';
 
 const router = Router();
 
@@ -58,7 +59,11 @@ router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter)
 // GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
 
+// Performance metrics — require x-api-secret (authenticated via route handler)
+router.use('/performance', performanceRouter);
+
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
 
 export default router;
+

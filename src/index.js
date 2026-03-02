@@ -55,6 +55,7 @@ import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
 import { HealthMonitor } from './utils/health.js';
+import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
@@ -118,6 +119,9 @@ client.commands = new Collection();
 
 // Initialize health monitor
 const healthMonitor = HealthMonitor.getInstance();
+
+// Initialize performance monitor (singleton; start() called in ClientReady handler)
+const perfMonitor = PerformanceMonitor.getInstance();
 
 /**
  * Save conversation history to disk
@@ -232,7 +236,9 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
 
+    const _cmdStart = Date.now();
     await command.execute(interaction);
+    perfMonitor.recordResponseTime(commandName, Date.now() - _cmdStart, 'command');
     info('Command executed', {
       command: commandName,
       user: interaction.user.tag,
@@ -277,6 +283,7 @@ async function gracefulShutdown(signal) {
   stopTempbanScheduler();
   stopScheduler();
   stopGithubFeed();
+  perfMonitor.stop();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -458,6 +465,9 @@ async function startup() {
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
+
+  // Start performance monitor
+  perfMonitor.start();
 
   // Start triage module (per-channel message classification + response)
   await startTriage(client, config, healthMonitor);

@@ -6,6 +6,7 @@
 import express from 'express';
 import { error, info, warn } from '../logger.js';
 import apiRouter from './index.js';
+import { PerformanceMonitor } from '../modules/performanceMonitor.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { stopAuthCleanup } from './routes/auth.js';
 import { swaggerSpec } from './swagger.js';
@@ -67,6 +68,17 @@ export function createApp(client, dbPool) {
 
   // Raw OpenAPI spec (JSON) — public for Mintlify
   app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+
+  // Response time tracking for performance monitoring
+  app.use('/api/v1', (req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      const label = `${req.method} ${req.path}`;
+      PerformanceMonitor.getInstance().recordResponseTime(label, duration, 'api');
+    });
+    next();
+  });
 
   // Mount API routes under /api/v1
   app.use('/api/v1', apiRouter);
