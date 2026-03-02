@@ -1,12 +1,6 @@
 import { isMasked, SENSITIVE_FIELDS } from './configAllowlist.js';
 import { validateSingleValue } from './configValidation.js';
-
-/**
- * Keys that must never appear as path segments — prototype pollution vectors.
- * Mirrors the same constant in src/modules/config.js (validatePathSegments).
- * Defined here so the API boundary validates independently of inner-layer defenses.
- */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+import { DANGEROUS_KEYS } from './dangerousKeys.js';
 
 /**
  * Validate and normalize a config PATCH request body containing a dotted config path and its value.

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { DANGEROUS_KEYS } from '../api/utils/dangerousKeys.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', '..', 'config.json');
@@ -793,8 +794,6 @@ export async function resetConfig(section, guildId = 'global') {
   return globalConfig;
 }
 
-/** Keys that must never be used as path segments (prototype pollution vectors) */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
  * Validate that no path segment is a prototype-pollution vector.

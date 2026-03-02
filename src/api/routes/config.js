@@ -14,6 +14,7 @@ import {
   stripMaskedWrites,
 } from '../utils/configAllowlist.js';
 import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
+import { DANGEROUS_KEYS } from '../utils/dangerousKeys.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 // Re-export validateSingleValue so existing callers that import it from this
@@ -53,8 +54,6 @@ export function validateConfigSchema(config) {
   return errors;
 }
 
-/** Keys that must be skipped during object traversal to prevent prototype pollution. */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
  * Flattens a nested object into dot-notated leaf path/value pairs, using the provided prefix as the root path.
