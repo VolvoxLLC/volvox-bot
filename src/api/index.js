@@ -9,6 +9,7 @@ import { requireAuth } from './middleware/auth.js';
 import aiFeedbackRouter from './routes/ai-feedback.js';
 import auditLogRouter from './routes/auditLog.js';
 import authRouter from './routes/auth.js';
+import backupRouter from './routes/backup.js';
 import communityRouter from './routes/community.js';
 import configRouter from './routes/config.js';
 import conversationsRouter from './routes/conversations.js';
@@ -60,5 +61,8 @@ router.use('/guilds', requireAuth(), auditLogRouter);
 
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
+
+// Backup routes — require API secret or OAuth2 JWT
+router.use('/backups', requireAuth(), auditLogMiddleware(), backupRouter);
 
 export default router;

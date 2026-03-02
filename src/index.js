@@ -43,6 +43,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
+import { startScheduledBackups, stopScheduledBackups } from './modules/backup.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
@@ -277,6 +278,7 @@ async function gracefulShutdown(signal) {
   stopTempbanScheduler();
   stopScheduler();
   stopGithubFeed();
+  stopScheduledBackups();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -467,6 +469,7 @@ async function startup() {
     startTempbanScheduler(client);
     startScheduler(client);
     startGithubFeed(client);
+    startScheduledBackups();
   }
 
   // Load commands and login
