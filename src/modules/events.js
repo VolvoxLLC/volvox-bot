@@ -35,6 +35,7 @@ import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
+import { handleVoiceStateUpdate } from './voice.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 import {
   handleRoleMenuSelection,
@@ -42,7 +43,6 @@ import {
   ROLE_MENU_SELECT_ID,
   RULES_ACCEPT_BUTTON_ID,
 } from './welcomeOnboarding.js';
-import { handleVoiceStateUpdate } from './voice.js';
 
 /** @type {boolean} Guard against duplicate process-level handler registration */
 let processHandlersRegistered = false;

@@ -8,7 +8,7 @@
  */
 
 import { getPool } from '../db.js';
-import { error as logError, info } from '../logger.js';
+import { info, error as logError } from '../logger.js';
 import { getConfig } from './config.js';
 
 /**
@@ -113,12 +113,15 @@ export async function closeSession(guildId, userId) {
     await pool.query(
       `UPDATE voice_sessions
          SET left_at = $1, duration_seconds = $2
-       WHERE guild_id = $3
-         AND user_id  = $4
-         AND channel_id = $5
-         AND left_at IS NULL
-       ORDER BY joined_at DESC
-       LIMIT 1`,
+       WHERE id = (
+         SELECT id FROM voice_sessions
+          WHERE guild_id  = $3
+            AND user_id   = $4
+            AND channel_id = $5
+            AND left_at IS NULL
+          ORDER BY joined_at DESC
+          LIMIT 1
+       )`,
       [leftAt.toISOString(), durationSeconds, guildId, userId, session.channelId],
     );
   } catch (err) {
@@ -343,11 +346,14 @@ export async function flushActiveSessions() {
  */
 export function startVoiceFlush() {
   if (flushInterval) return;
-  flushInterval = setInterval(() => {
-    flushActiveSessions().catch((err) =>
-      logError('Voice session flush error', { error: err.message }),
-    );
-  }, 5 * 60 * 1000);
+  flushInterval = setInterval(
+    () => {
+      flushActiveSessions().catch((err) =>
+        logError('Voice session flush error', { error: err.message }),
+      );
+    },
+    5 * 60 * 1000,
+  );
   flushInterval.unref();
 }
 

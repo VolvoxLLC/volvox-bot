@@ -116,7 +116,8 @@ async function handleLeaderboard(interaction) {
       // Fall back to mention format
     }
 
-    const periodLabel = period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'All Time';
+    const periodLabel =
+      period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'All Time';
 
     const lines = rows.map((row, i) => {
       const displayName = memberMap.get(row.user_id) ?? `<@${row.user_id}>`;
