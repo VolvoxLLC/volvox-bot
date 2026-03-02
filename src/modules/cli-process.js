@@ -169,12 +169,15 @@ function buildEnv(flags) {
     MAX_THINKING_TOKENS: String(flags.thinkingTokens ?? 4096),
   };
 
-  // Prefer explicit override from flags, fall back to process env.
+  // Auth priority: explicit apiKey flag > ANTHROPIC_API_KEY env > CLAUDE_CODE_OAUTH_TOKEN env.
+  // When flags.apiKey is provided we intentionally omit CLAUDE_CODE_OAUTH_TOKEN
+  // to avoid conflicting auth headers in the subprocess.
   if (flags.apiKey) {
     env.ANTHROPIC_API_KEY = flags.apiKey;
-    // Omit CLAUDE_CODE_OAUTH_TOKEN — avoids conflicting auth headers.
   } else if (process.env.ANTHROPIC_API_KEY) {
     env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+  } else if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+    env.CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
   }
 
   // baseUrl is set from admin config (triage.classifyBaseUrl / respondBaseUrl),
