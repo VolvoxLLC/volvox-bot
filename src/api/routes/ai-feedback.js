@@ -143,7 +143,7 @@ router.get(
       res.json({ positive, negative, total, ratio, trend });
     } catch (err) {
       error('Failed to fetch AI feedback stats', {
-        error: err.message,
+        error: err?.message,
         guildId: req.params.id,
       });
       res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
@@ -261,7 +261,7 @@ router.get(
       res.json({ feedback });
     } catch (err) {
       error('Failed to fetch recent AI feedback', {
-        error: err.message,
+        error: err?.message,
         guildId: req.params.id,
       });
       res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
