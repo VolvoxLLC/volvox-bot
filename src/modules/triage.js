@@ -636,7 +636,8 @@ export async function accumulateMessage(message, msgConfig) {
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
 
   // Skip blocked channels (no triage processing)
-  const parentId = message.channel.parentId;
+  // Only check parentId for threads - for regular channels, parentId is the category ID
+  const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
   if (isChannelBlocked(message.channel.id, parentId, message.guild?.id)) return;
 
   // Skip empty or attachment-only messages
