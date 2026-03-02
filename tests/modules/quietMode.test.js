@@ -21,9 +21,6 @@ vi.mock('../../src/utils/permissions.js', () => ({
   isModerator: vi.fn().mockReturnValue(false),
 }));
 
-import { getRedis } from '../../src/redis.js';
-import { safeReply } from '../../src/utils/safeSend.js';
-import { isAdmin, isModerator } from '../../src/utils/permissions.js';
 import {
   _clearMemoryStore,
   clearQuiet,
@@ -35,6 +32,9 @@ import {
   parseDurationFromContent,
   setQuiet,
 } from '../../src/modules/quietMode.js';
+import { getRedis } from '../../src/redis.js';
+import { isAdmin, isModerator } from '../../src/utils/permissions.js';
+import { safeReply } from '../../src/utils/safeSend.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

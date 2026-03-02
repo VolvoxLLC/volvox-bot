@@ -10,10 +10,10 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/173
  */
 
-import { error as logError, info } from '../logger.js';
+import { info, error as logError } from '../logger.js';
 import { getRedis } from '../redis.js';
-import { safeReply } from '../utils/safeSend.js';
 import { isAdmin, isModerator } from '../utils/permissions.js';
+import { safeReply } from '../utils/safeSend.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -189,9 +189,7 @@ export function parseDurationFromContent(content, defaultSeconds = DEFAULT_DURAT
   }
 
   // "30 minutes" / "for 1 hour" / "2 hrs"
-  const longMatch = text.match(
-    /\b(\d+)\s+(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?)\b/,
-  );
+  const longMatch = text.match(/\b(\d+)\s+(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?)\b/);
   if (longMatch) {
     const value = parseInt(longMatch[1], 10);
     const unit = UNIT_MAP[longMatch[2]];

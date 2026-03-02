@@ -27,6 +27,7 @@ import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
+import { handleQuietCommand, isQuietMode } from './quietMode.js';
 import { checkRateLimit } from './rateLimit.js';
 import { handleReminderDismiss, handleReminderSnooze } from './reminderHandler.js';
 import { handleXpGain } from './reputation.js';
@@ -35,7 +36,6 @@ import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
-import { handleQuietCommand, isQuietMode } from './quietMode.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 import {
   handleRoleMenuSelection,
