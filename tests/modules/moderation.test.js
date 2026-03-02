@@ -50,6 +50,7 @@ import {
   checkEscalation,
   checkHierarchy,
   createCase,
+  isProtectedTarget,
   scheduleAction,
   sendDmNotification,
   sendModLogEmbed,
@@ -587,6 +588,173 @@ describe('moderation module', () => {
       const target = { roles: { highest: { position: 5 } } };
       const botMember = { roles: { highest: { position: 8 } } };
       expect(checkHierarchy(moderator, target, botMember)).toBeNull();
+    });
+  });
+
+  describe('isProtectedTarget', () => {
+    const makeTarget = (id, roleIds = []) => ({
+      id,
+      roles: { cache: { keys: () => roleIds } },
+    });
+
+    const makeGuild = (ownerId) => ({ ownerId });
+
+    it('returns false when protectRoles is disabled', () => {
+      const target = makeTarget('user1', ['admin-role']);
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: { protectRoles: { enabled: false } },
+        permissions: { adminRoleId: 'admin-role' },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(false);
+    });
+
+    it('returns false when protectRoles config is absent', () => {
+      const target = makeTarget('user1');
+      const guild = makeGuild('owner1');
+      const config = { moderation: {} };
+      expect(isProtectedTarget(target, guild, config)).toBe(false);
+    });
+
+    it('returns true for server owner when includeServerOwner is true', () => {
+      const target = makeTarget('owner1');
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: [],
+            includeAdmins: false,
+            includeModerators: false,
+            includeServerOwner: true,
+          },
+        },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(true);
+    });
+
+    it('returns false for server owner when includeServerOwner is false', () => {
+      const target = makeTarget('owner1');
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: [],
+            includeAdmins: false,
+            includeModerators: false,
+            includeServerOwner: false,
+          },
+        },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(false);
+    });
+
+    it('returns true for user with adminRoleId when includeAdmins is true', () => {
+      const target = makeTarget('user1', ['admin-role']);
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: [],
+            includeAdmins: true,
+            includeModerators: false,
+            includeServerOwner: false,
+          },
+        },
+        permissions: { adminRoleId: 'admin-role' },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(true);
+    });
+
+    it('returns false for admin role when includeAdmins is false', () => {
+      const target = makeTarget('user1', ['admin-role']);
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: [],
+            includeAdmins: false,
+            includeModerators: false,
+            includeServerOwner: false,
+          },
+        },
+        permissions: { adminRoleId: 'admin-role' },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(false);
+    });
+
+    it('returns true for user with moderatorRoleId when includeModerators is true', () => {
+      const target = makeTarget('user1', ['mod-role']);
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: [],
+            includeAdmins: false,
+            includeModerators: true,
+            includeServerOwner: false,
+          },
+        },
+        permissions: { moderatorRoleId: 'mod-role' },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(true);
+    });
+
+    it('returns true for user with a custom roleId in protectRoles.roleIds', () => {
+      const target = makeTarget('user1', ['custom-role']);
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: ['custom-role'],
+            includeAdmins: false,
+            includeModerators: false,
+            includeServerOwner: false,
+          },
+        },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(true);
+    });
+
+    it('returns false for regular user with no protected roles', () => {
+      const target = makeTarget('user1', ['regular-role']);
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: [],
+            includeAdmins: true,
+            includeModerators: true,
+            includeServerOwner: true,
+          },
+        },
+        permissions: { adminRoleId: 'admin-role', moderatorRoleId: 'mod-role' },
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(false);
+    });
+
+    it('returns false when no protectedRoleIds resolve (no adminRoleId set) and user is non-owner', () => {
+      const target = makeTarget('user1', ['some-role']);
+      const guild = makeGuild('owner1');
+      const config = {
+        moderation: {
+          protectRoles: {
+            enabled: true,
+            roleIds: [],
+            includeAdmins: true,
+            includeModerators: true,
+            includeServerOwner: false,
+          },
+        },
+        permissions: {},
+      };
+      expect(isProtectedTarget(target, guild, config)).toBe(false);
     });
   });
 
