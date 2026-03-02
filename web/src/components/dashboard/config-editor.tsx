@@ -423,7 +423,7 @@ export function ConfigEditor() {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [draftConfig, hasChanges, hasValidationErrors, saving, saveChanges]);
+  }, [hasChanges, hasValidationErrors, saving, saveChanges]);
 
   // ── Keyboard shortcut: Ctrl/Cmd+S to save ──────────────────────
   useEffect(() => {
@@ -592,6 +592,19 @@ export function ConfigEditor() {
             ...prev.moderation,
             escalation: { ...prev.moderation?.escalation, enabled },
           },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateAiAutoModField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          aiAutoMod: { ...prev.aiAutoMod, [field]: value },
         } as GuildConfig;
       });
     },
@@ -1273,6 +1286,119 @@ export function ConfigEditor() {
                   placeholder="Role ID 1, Role ID 2"
                 />
               </label>
+            </fieldset>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Auto-Moderation section */}
+      {draftConfig.aiAutoMod && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">AI Auto-Moderation</CardTitle>
+                <CardDescription>
+                  Use Claude AI to analyze messages and take automatic moderation actions.
+                </CardDescription>
+              </div>
+              <ToggleSwitch
+                checked={Boolean(draftConfig.aiAutoMod?.enabled)}
+                onChange={(v) => updateAiAutoModField('enabled', v)}
+                disabled={saving}
+                label="AI Auto-Moderation"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <label htmlFor="ai-automod-flag-channel" className="space-y-2">
+              <span className="text-sm font-medium">Flag Review Channel ID</span>
+              <input
+                id="ai-automod-flag-channel"
+                type="text"
+                value={(draftConfig.aiAutoMod?.flagChannelId as string) ?? ''}
+                onChange={(e) => updateAiAutoModField('flagChannelId', e.target.value || null)}
+                disabled={saving}
+                className={inputClasses}
+                placeholder="Channel ID where flagged messages are posted"
+              />
+            </label>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Auto-delete flagged messages</span>
+              <ToggleSwitch
+                checked={Boolean(draftConfig.aiAutoMod?.autoDelete ?? true)}
+                onChange={(v) => updateAiAutoModField('autoDelete', v)}
+                disabled={saving}
+                label="Auto-delete"
+              />
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Thresholds (0–100)</legend>
+              <p className="text-muted-foreground text-xs">
+                Confidence threshold (%) above which the action triggers.
+              </p>
+              {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
+                <label
+                  key={cat}
+                  htmlFor={`ai-threshold-${cat}`}
+                  className="flex items-center gap-3"
+                >
+                  <span className="w-24 text-sm capitalize">{cat}</span>
+                  <input
+                    id={`ai-threshold-${cat}`}
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={Math.round(
+                      (((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {})[cat] ??
+                        0.7) * 100,
+                    )}
+                    onChange={(e) => {
+                      const raw = Number(e.target.value);
+                      const v = isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
+                      updateAiAutoModField('thresholds', {
+                        ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {}),
+                        [cat]: v,
+                      });
+                    }}
+                    disabled={saving}
+                    className={`${inputClasses} w-24`}
+                  />
+                  <span className="text-muted-foreground text-xs">%</span>
+                </label>
+              ))}
+            </fieldset>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Actions</legend>
+              {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
+                <label key={cat} htmlFor={`ai-action-${cat}`} className="flex items-center gap-3">
+                  <span className="w-24 text-sm capitalize">{cat}</span>
+                  <select
+                    id={`ai-action-${cat}`}
+                    value={
+                      ((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {})[cat] ??
+                      'flag'
+                    }
+                    onChange={(e) => {
+                      updateAiAutoModField('actions', {
+                        ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {}),
+                        [cat]: e.target.value,
+                      });
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  >
+                    <option value="none">No action</option>
+                    <option value="delete">Delete message</option>
+                    <option value="flag">Flag for review</option>
+                    <option value="warn">Warn user</option>
+                    <option value="timeout">Timeout user</option>
+                    <option value="kick">Kick user</option>
+                    <option value="ban">Ban user</option>
+                  </select>
+                </label>
+              ))}
             </fieldset>
           </CardContent>
         </Card>

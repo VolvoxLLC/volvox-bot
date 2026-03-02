@@ -45,17 +45,18 @@ import {
 } from './modules/ai.js';
 import { startScheduledBackups, stopScheduledBackups } from './modules/backup.js';
 import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
+import { loadAliasesFromDb, resolveAlias } from './modules/commandAliases.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
 import { fireEventAllGuilds } from './modules/webhookNotifier.js';
-import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
 import {
@@ -127,6 +128,9 @@ client.commands = new Collection();
 
 // Initialize health monitor
 const healthMonitor = HealthMonitor.getInstance();
+
+// Initialize performance monitor (singleton; start() called in ClientReady handler)
+const perfMonitor = PerformanceMonitor.getInstance();
 
 /** @type {ReturnType<typeof setInterval> | null} Health degraded check interval */
 let healthCheckInterval = null;
@@ -246,10 +250,16 @@ client.on('interactionCreate', async (interaction) => {
   try {
     info('Slash command received', { command: commandName, user: interaction.user.tag });
 
-    // Permission check
+    // Resolve alias → target command (per-guild custom aliases).
+    // Do this early so permission checks and command lookup both use the
+    // resolved (canonical) command name rather than the alias name.
+    const resolvedCommandName = resolveAlias(interaction.guildId, commandName) || commandName;
+
+    // Permission check (using resolved command name so alias permissions mirror target)
     const guildConfig = getConfig(interaction.guildId);
-    if (!hasPermission(member, commandName, guildConfig)) {
-      const permLevel = guildConfig.permissions?.allowedCommands?.[commandName] || 'administrator';
+    if (!hasPermission(member, resolvedCommandName, guildConfig)) {
+      const permLevel =
+        guildConfig.permissions?.allowedCommands?.[resolvedCommandName] || 'administrator';
       await safeReply(interaction, {
         content: getPermissionError(commandName, permLevel),
         ephemeral: true,
@@ -259,7 +269,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     // Execute command from collection
-    const command = client.commands.get(commandName);
+    const command = client.commands.get(resolvedCommandName);
     if (!command) {
       await safeReply(interaction, {
         content: '❌ Command not found.',
@@ -268,9 +278,12 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
 
+    const _cmdStart = Date.now();
     await command.execute(interaction);
+    perfMonitor.recordResponseTime(commandName, Date.now() - _cmdStart, 'command');
     info('Command executed', {
-      command: commandName,
+      command: resolvedCommandName,
+      alias: resolvedCommandName !== commandName ? commandName : undefined,
       user: interaction.user.tag,
       guildId: interaction.guildId,
       channelId: interaction.channelId,
@@ -314,6 +327,7 @@ async function gracefulShutdown(signal) {
   stopScheduler();
   stopGithubFeed();
   stopScheduledBackups();
+  perfMonitor.stop();
   stopBotStatus();
   stopVoiceFlush();
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
@@ -486,6 +500,11 @@ async function startup() {
   // Load opt-out preferences from DB before enabling memory features
   await loadOptOuts();
 
+  // Load command aliases from DB into memory cache
+  if (dbPool) {
+    await loadAliasesFromDb(dbPool);
+  }
+
   // Check mem0 availability for user memory features (with timeout to avoid blocking startup).
   // AbortController prevents a late-resolving health check from calling markAvailable()
   // after the timeout has already called markUnavailable().
@@ -509,6 +528,9 @@ async function startup() {
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
+
+  // Start performance monitor
+  perfMonitor.start();
 
   // Start triage module (per-channel message classification + response)
   await startTriage(client, config, healthMonitor);
