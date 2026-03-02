@@ -14,6 +14,7 @@ vi.mock('../../src/logger.js', () => ({
 import {
   _setPoolGetter,
   clearAiMessages,
+  deleteFeedback,
   getFeedbackStats,
   getFeedbackTrend,
   isAiMessage,
@@ -147,6 +148,48 @@ describe('aiFeedback module', () => {
 
       const stats = await getFeedbackStats('g1');
       expect(stats.ratio).toBeNull();
+    });
+  });
+
+  // ── deleteFeedback ─────────────────────────────────────────────────────────
+
+  describe('deleteFeedback', () => {
+    it('does nothing when no pool is configured', async () => {
+      await deleteFeedback({ messageId: 'm1', userId: 'u1' });
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
+    it('executes correct DELETE query', async () => {
+      mockPool.query.mockResolvedValue({ rowCount: 1 });
+      setPool(mockPool);
+
+      await deleteFeedback({ messageId: 'm1', userId: 'u1' });
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'DELETE FROM ai_feedback WHERE message_id = $1 AND user_id = $2',
+        ['m1', 'u1'],
+      );
+    });
+
+    it('scopes deletion to feedbackType when provided', async () => {
+      mockPool.query.mockResolvedValue({ rowCount: 1 });
+      setPool(mockPool);
+
+      await deleteFeedback({ messageId: 'm1', userId: 'u1', feedbackType: 'positive' });
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'DELETE FROM ai_feedback WHERE message_id = $1 AND user_id = $2 AND feedback_type = $3',
+        ['m1', 'u1', 'positive'],
+      );
+    });
+
+    it('handles DB errors gracefully without throwing', async () => {
+      mockPool.query.mockRejectedValue(new Error('DB error'));
+      setPool(mockPool);
+
+      await expect(
+        deleteFeedback({ messageId: 'm1', userId: 'u1' }),
+      ).resolves.toBeUndefined();
     });
   });
 
