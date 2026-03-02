@@ -110,5 +110,6 @@ describe('rateLimit middleware', () => {
     expect(res.json).toHaveBeenCalledWith({
       error: 'Too many authentication attempts',
     });
+    expect(next).toHaveBeenCalledTimes(1); // only the first (allowed) request called next
   });
 });
