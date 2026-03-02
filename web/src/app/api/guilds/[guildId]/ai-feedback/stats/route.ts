@@ -35,9 +35,18 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  const days = request.nextUrl.searchParams.get('days');
-  if (days !== null) {
-    upstreamUrl.searchParams.set('days', days);
+  // Validate and clamp 'days' param to prevent unbounded/expensive lookback queries
+  const rawDays = request.nextUrl.searchParams.get('days');
+  if (rawDays !== null) {
+    const parsed = parseInt(rawDays, 10);
+    if (Number.isNaN(parsed)) {
+      return NextResponse.json(
+        { error: 'Invalid days parameter: must be an integer' },
+        { status: 400 },
+      );
+    }
+    const clampedDays = Math.min(90, Math.max(1, parsed));
+    upstreamUrl.searchParams.set('days', String(clampedDays));
   }
 
   return proxyToBotApi(

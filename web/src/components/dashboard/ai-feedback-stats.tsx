@@ -17,19 +17,8 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-import { getBotApiBaseUrl } from '@/lib/bot-api';
 
-interface FeedbackStats {
-  positive: number;
-  negative: number;
-  total: number;
-  ratio: number | null;
-  trend: Array<{
-    date: string;
-    positive: number;
-    negative: number;
-  }>;
-}
+import type { AiFeedbackStats as AiFeedbackStatsType } from '@/types/analytics';
 
 const PIE_COLORS = ['#22C55E', '#EF4444'];
 
@@ -38,41 +27,43 @@ const PIE_COLORS = ['#22C55E', '#EF4444'];
  * Shows 👍/👎 aggregate counts, approval ratio, and daily trend.
  */
 export function AiFeedbackStats() {
-  const selectedGuild = useGuildSelection();
-  const [stats, setStats] = useState<FeedbackStats | null>(null);
+  const guildId = useGuildSelection();
+  const [stats, setStats] = useState<AiFeedbackStatsType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    const apiBase = getBotApiBaseUrl();
-    if (!selectedGuild || !apiBase) return;
+    if (!guildId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${apiBase}/guilds/${selectedGuild}/ai-feedback/stats?days=30`, {
-        credentials: 'include',
-      });
+      const res = await fetch(
+        `/api/guilds/${encodeURIComponent(guildId)}/ai-feedback/stats?days=30`,
+        {
+          credentials: 'include',
+        },
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
 
-      const data = (await res.json()) as FeedbackStats;
+      const data = (await res.json()) as AiFeedbackStats;
       setStats(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feedback stats');
     } finally {
       setLoading(false);
     }
-  }, [selectedGuild]);
+  }, [guildId]);
 
   useEffect(() => {
     void fetchStats();
   }, [fetchStats]);
 
-  if (!selectedGuild) return null;
+  if (!guildId) return null;
 
   const pieData =
     stats && stats.total > 0
@@ -148,11 +139,8 @@ export function AiFeedbackStats() {
                         }
                         labelLine={false}
                       >
-                        {pieData.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
-                          />
+                        {pieData.map((entry, index) => (
+                          <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
