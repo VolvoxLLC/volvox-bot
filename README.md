@@ -200,6 +200,11 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `logging.channels.timeouts` | string | Channel for timeout events |
 | `logging.channels.purges` | string | Channel for purge events |
 | `logging.channels.locks` | string | Channel for lock/unlock events |
+| `protectRoles.enabled` | boolean | Enable role protection (prevents moderating admins/mods/owner) |
+| `protectRoles.includeServerOwner` | boolean | Include server owner in protection |
+| `protectRoles.includeAdmins` | boolean | Include admin role in protection |
+| `protectRoles.includeModerators` | boolean | Include moderator role in protection |
+| `protectRoles.roleIds` | string[] | Additional role IDs to protect from moderation |
 
 **Escalation thresholds** are objects with: `warns` (count), `withinDays` (window), `action` ("timeout" or "ban"), `duration` (for timeout, e.g. "1h").
 

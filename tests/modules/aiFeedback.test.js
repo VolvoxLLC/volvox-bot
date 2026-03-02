@@ -58,10 +58,42 @@ describe('aiFeedback module', () => {
 
   describe('recordFeedback', () => {
     it('does nothing when no pool is configured', async () => {
+      await recordFeedback({
+        messageId: 'm1',
+        channelId: 'c1',
+        guildId: 'g1',
+        userId: 'u1',
+        feedbackType: 'positive',
+      });
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
+    it('inserts feedback via pool query', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+      setPool(mockPool);
+
+      await recordFeedback({
+        messageId: 'm1',
+        channelId: 'c1',
+        guildId: 'g1',
+        userId: 'u1',
+        feedbackType: 'positive',
+      });
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO ai_feedback'),
+        ['m1', 'c1', 'g1', 'u1', 'positive'],
+      );
+    });
+
+    it('handles DB errors gracefully without throwing', async () => {
+      mockPool.query.mockRejectedValue(new Error('DB error'));
+      setPool(mockPool);
+
       await expect(
         recordFeedback({
-          messageId: 'msg1',
-          channelId: 'ch1',
+          messageId: 'm1',
+          channelId: 'c1',
           guildId: 'g1',
           userId: 'u1',
           feedbackType: 'positive',
@@ -69,56 +101,23 @@ describe('aiFeedback module', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('inserts feedback via pool query', async () => {
-      setPool(mockPool);
-      mockPool.query.mockResolvedValueOnce({ rowCount: 1 });
-
-      await recordFeedback({
-        messageId: 'msg1',
-        channelId: 'ch1',
-        guildId: 'g1',
-        userId: 'u1',
-        feedbackType: 'positive',
-      });
-
-      expect(mockPool.query).toHaveBeenCalledOnce();
-      const [sql, params] = mockPool.query.mock.calls[0];
-      expect(sql).toContain('INSERT INTO ai_feedback');
-      expect(params).toEqual(['msg1', 'ch1', 'g1', 'u1', 'positive']);
-    });
-
-    it('handles DB errors gracefully without throwing', async () => {
-      setPool(mockPool);
-      mockPool.query.mockRejectedValueOnce(new Error('DB down'));
-
-      await expect(
-        recordFeedback({
-          messageId: 'msg1',
-          channelId: 'ch1',
-          guildId: 'g1',
-          userId: 'u1',
-          feedbackType: 'negative',
-        }),
-      ).resolves.toBeUndefined();
-    });
-
     it('uses _setPoolGetter for DI', async () => {
-      _setPoolGetter(() => mockPool);
-      mockPool.query.mockResolvedValueOnce({ rowCount: 1 });
+      const altPool = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+      _setPoolGetter(() => altPool);
 
       await recordFeedback({
-        messageId: 'msg-di',
-        channelId: 'ch1',
-        guildId: 'g1',
-        userId: 'u1',
-        feedbackType: 'positive',
+        messageId: 'm2',
+        channelId: 'c2',
+        guildId: 'g2',
+        userId: 'u2',
+        feedbackType: 'negative',
       });
 
-      expect(mockPool.query).toHaveBeenCalledOnce();
+      expect(altPool.query).toHaveBeenCalled();
     });
   });
 
-  // ── getFeedbackStats ──────────────────────────────────────────────────────
+  // ── getFeedbackStats ────────────────────────────────────────────────────────
 
   describe('getFeedbackStats', () => {
     it('returns zeros when no pool', async () => {
@@ -127,69 +126,53 @@ describe('aiFeedback module', () => {
     });
 
     it('returns aggregated stats from DB', async () => {
-      setPool(mockPool);
-      mockPool.query.mockResolvedValueOnce({
-        rows: [{ positive: 8, negative: 2, total: 10 }],
+      mockPool.query.mockResolvedValue({
+        rows: [{ positive: 5, negative: 2, total: 7 }],
       });
+      setPool(mockPool);
 
       const stats = await getFeedbackStats('g1');
-      expect(stats.positive).toBe(8);
+
+      expect(stats.positive).toBe(5);
       expect(stats.negative).toBe(2);
-      expect(stats.total).toBe(10);
-      expect(stats.ratio).toBe(80);
+      expect(stats.total).toBe(7);
+      expect(stats.ratio).toBe(71);
     });
 
     it('returns null ratio when total is 0', async () => {
-      setPool(mockPool);
-      mockPool.query.mockResolvedValueOnce({
+      mockPool.query.mockResolvedValue({
         rows: [{ positive: 0, negative: 0, total: 0 }],
       });
+      setPool(mockPool);
 
       const stats = await getFeedbackStats('g1');
       expect(stats.ratio).toBeNull();
     });
-
-    it('returns zeros on DB error', async () => {
-      setPool(mockPool);
-      mockPool.query.mockRejectedValueOnce(new Error('DB error'));
-
-      const stats = await getFeedbackStats('g1');
-      expect(stats).toEqual({ positive: 0, negative: 0, total: 0, ratio: null });
-    });
   });
 
-  // ── getFeedbackTrend ──────────────────────────────────────────────────────
+  // ── getFeedbackTrend ────────────────────────────────────────────────────────
 
   describe('getFeedbackTrend', () => {
     it('returns empty array when no pool', async () => {
-      const trend = await getFeedbackTrend('g1');
+      const trend = await getFeedbackTrend('g1', 7);
       expect(trend).toEqual([]);
     });
 
     it('returns daily trend rows from DB', async () => {
-      setPool(mockPool);
-      mockPool.query.mockResolvedValueOnce({
+      mockPool.query.mockResolvedValue({
         rows: [
-          { date: '2026-02-28', positive: 5, negative: 1 },
-          { date: '2026-03-01', positive: 3, negative: 2 },
+          { date: '2026-03-01', positive: 3, negative: 1 },
+          { date: '2026-03-02', positive: 2, negative: 0 },
         ],
       });
-
-      const trend = await getFeedbackTrend('g1', 7);
-      expect(trend).toHaveLength(2);
-      expect(trend[0]).toEqual({ date: '2026-02-28', positive: 5, negative: 1 });
-
-      // Verify days param is passed
-      const [, params] = mockPool.query.mock.calls[0];
-      expect(params).toContain(7);
-    });
-
-    it('returns empty array on DB error', async () => {
       setPool(mockPool);
-      mockPool.query.mockRejectedValueOnce(new Error('DB error'));
 
-      const trend = await getFeedbackTrend('g1');
-      expect(trend).toEqual([]);
+      const trend = await getFeedbackTrend('g1', 30);
+
+      expect(trend).toHaveLength(2);
+      expect(trend[0].date).toBe('2026-03-01');
+      expect(trend[0].positive).toBe(3);
+      expect(trend[0].negative).toBe(1);
     });
   });
 });

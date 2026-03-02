@@ -20,7 +20,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // safe wrapper applies identically to either target type.
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
-import { FEEDBACK_EMOJI, isAiMessage, recordFeedback } from './aiFeedback.js';
+import { deleteFeedback, FEEDBACK_EMOJI, isAiMessage, recordFeedback } from './aiFeedback.js';
 import { handleHintButton, handleSolveButton } from './challengeScheduler.js';
 import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
@@ -344,6 +344,20 @@ export function registerReactionHandlers(client, _config) {
     if (!guildId) return;
 
     const guildConfig = getConfig(guildId);
+
+    // AI feedback tracking (reaction removed)
+    if (guildConfig.ai?.feedback?.enabled && isAiMessage(reaction.message.id)) {
+      const emoji = reaction.emoji.name;
+      const isFeedbackEmoji = emoji === FEEDBACK_EMOJI.positive || emoji === FEEDBACK_EMOJI.negative;
+
+      if (isFeedbackEmoji) {
+        deleteFeedback({
+          messageId: reaction.message.id,
+          userId: user.id,
+        }).catch(() => {});
+      }
+    }
+
     if (!guildConfig.starboard?.enabled) return;
 
     try {

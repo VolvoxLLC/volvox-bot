@@ -441,6 +441,57 @@ export function stopTempbanScheduler() {
 }
 
 /**
+ * Check if a target member is protected from moderation actions.
+ * Protected members include the server owner, admins, moderators, and any custom role IDs
+ * configured under `moderation.protectRoles`.
+ * @param {import('discord.js').GuildMember} target - Target member to check
+ * @param {import('discord.js').Guild} guild - Discord guild
+ * @param {Object} config - Bot configuration
+ * @returns {boolean} True if the target should not be moderated
+ */
+export function isProtectedTarget(target, guild, config) {
+  /**
+   * When the protectRoles block is missing from persisted configuration,
+   * fall back to the intended defaults: protection enabled, include owner,
+   * admins, and moderators (matches config.json defaults and web UI defaults).
+   */
+  const defaultProtectRoles = {
+    enabled: true,
+    includeAdmins: true,
+    includeModerators: true,
+    includeServerOwner: true,
+    roleIds: [],
+  };
+
+  // Deep-merge defaults so a partial persisted object (e.g. only roleIds set)
+  // never leaves enabled/include* as undefined/falsy.
+  const protectRoles = { ...defaultProtectRoles, ...config.moderation?.protectRoles };
+  if (!protectRoles.enabled) {
+    return false;
+  }
+
+  // Server owner is always protected when enabled
+  if (protectRoles.includeServerOwner && target.id === guild.ownerId) {
+    return true;
+  }
+
+  const protectedRoleIds = [
+    ...(protectRoles.includeAdmins && config.permissions?.adminRoleId
+      ? [config.permissions.adminRoleId]
+      : []),
+    ...(protectRoles.includeModerators && config.permissions?.moderatorRoleId
+      ? [config.permissions.moderatorRoleId]
+      : []),
+    ...(Array.isArray(protectRoles.roleIds) ? protectRoles.roleIds : []),
+  ].filter(Boolean);
+
+  if (protectedRoleIds.length === 0) return false;
+
+  const memberRoleIds = [...target.roles.cache.keys()];
+  return protectedRoleIds.some((roleId) => memberRoleIds.includes(roleId));
+}
+
+/**
  * Check if the moderator (and optionally the bot) can moderate a target member.
  * @param {import('discord.js').GuildMember} moderator - The moderator
  * @param {import('discord.js').GuildMember} target - The target member
