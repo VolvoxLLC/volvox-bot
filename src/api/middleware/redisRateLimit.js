@@ -32,7 +32,6 @@ export function redisRateLimit({ windowMs = 15 * 60 * 1000, max = 100, keyPrefix
     }
 
     const ip = req.ip;
-    const windowSec = Math.ceil(windowMs / 1000);
     const key = `${keyPrefix}:${ip}`;
 
     try {
@@ -43,8 +42,14 @@ export function redisRateLimit({ windowMs = 15 * 60 * 1000, max = 100, keyPrefix
         .pttl(key)
         .exec();
 
-      const count = results[0][1]; // [err, value] tuples from multi
-      const pttl = results[1][1];
+      // multi().exec() returns [[err, value], ...] tuples — check each command
+      const [incrErr, count] = results[0];
+      const [pttlErr, pttl] = results[1];
+
+      if (incrErr || pttlErr) {
+        // Pipeline command failed — fall back gracefully
+        return fallback(req, res, next);
+      }
 
       // Set TTL on first request (when key was just created with INCR)
       if (pttl === -1) {
