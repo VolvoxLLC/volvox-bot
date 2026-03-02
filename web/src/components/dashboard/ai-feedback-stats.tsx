@@ -1,7 +1,6 @@
 'use client';
 
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -17,7 +16,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-import type { FeedbackStats } from '@/types/api';
+import { useAiFeedbackStats } from '@/hooks/use-ai-feedback-stats';
 
 const PIE_COLORS = ['#22C55E', '#EF4444'];
 
@@ -26,40 +25,10 @@ const PIE_COLORS = ['#22C55E', '#EF4444'];
  * Shows 👍/👎 aggregate counts, approval ratio, and daily trend.
  */
 export function AiFeedbackStats() {
-  const { selectedGuild, apiBase } = useGuildSelection();
-  const [stats, setStats] = useState<FeedbackStats | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const guildId = useGuildSelection();
+  const { stats, loading, error } = useAiFeedbackStats(30);
 
-  const fetchStats = useCallback(async () => {
-    if (!selectedGuild || !apiBase) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`${apiBase}/guilds/${selectedGuild.id}/ai-feedback/stats?days=30`, {
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const data = (await res.json()) as FeedbackStats;
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load feedback stats');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedGuild, apiBase]);
-
-  useEffect(() => {
-    void fetchStats();
-  }, [fetchStats]);
-
-  if (!selectedGuild) return null;
+  if (!guildId) return null;
 
   const pieData =
     stats && stats.total > 0
