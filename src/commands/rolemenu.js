@@ -117,7 +117,7 @@ export const data = new SlashCommandBuilder()
 
 // ── Permission guard ──────────────────────────────────────────────────────────
 
-function hasModeatorPerms(interaction, guildConfig) {
+function hasModeratorPerms(interaction, guildConfig) {
   return (
     interaction.member.permissions.has(PermissionFlagsBits.Administrator) ||
     isModerator(interaction.member, guildConfig)
@@ -311,7 +311,7 @@ export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
   const guildConfig = getConfig(interaction.guildId);
-  if (!hasModeatorPerms(interaction, guildConfig)) {
+  if (!hasModeratorPerms(interaction, guildConfig)) {
     await safeEditReply(interaction, {
       content: '❌ You need moderator or administrator permissions to use this command.',
     });
