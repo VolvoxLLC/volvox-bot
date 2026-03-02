@@ -146,10 +146,9 @@ router.post('/:guildId/notifications/webhooks', async (req, res, next) => {
   }
 
   // Validate URL against SSRF
-  try {
-    validateUrlForSsrfSync(url);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
+  const ssrfResult = validateUrlForSsrfSync(url);
+  if (!ssrfResult.valid) {
+    return res.status(400).json({ error: ssrfResult.error });
   }
 
   if (!Array.isArray(events) || events.length === 0) {
