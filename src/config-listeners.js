@@ -62,12 +62,12 @@ export function registerConfigListeners({ dbPool, config }) {
     'logging.database.flushIntervalMs',
     'logging.database.minLevel',
   ]) {
-    onConfigChange(key, async (_newValue, _oldValue, guildId) => {
+    onConfigChange(key, async (_newValue, _oldValue, changePath, guildId) => {
       if (guildId && guildId !== 'global') return;
       transportLock = transportLock
-        .then(() => updateLoggingTransport(path))
+        .then(() => updateLoggingTransport(changePath))
         .catch((err) =>
-          error('Failed to update PostgreSQL logging transport', { path, error: err.message }),
+          error('Failed to update PostgreSQL logging transport', { path: changePath, error: err.message }),
         );
       await transportLock;
     });
@@ -90,19 +90,19 @@ export function registerConfigListeners({ dbPool, config }) {
   // ── Cache invalidation on config changes ────────────────────────────
   // When channel-related config changes, invalidate Discord API caches
   // so the bot picks up the new channel references immediately.
-  onConfigChange('welcome.*', async (_newValue, _oldValue, guildId) => {
+  onConfigChange('welcome.*', async (_newValue, _oldValue, _path, guildId) => {
     if (guildId && guildId !== 'global') {
       await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
     }
   });
-  onConfigChange('starboard.*', async (_newValue, _oldValue, guildId) => {
+  onConfigChange('starboard.*', async (_newValue, _oldValue, _path, guildId) => {
     if (guildId && guildId !== 'global') {
       await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
     }
   });
-  onConfigChange('reputation.*', async (_newValue, _oldValue, guildId) => {
+  onConfigChange('reputation.*', async (_newValue, _oldValue, _path, guildId) => {
     if (guildId && guildId !== 'global') {
-      await cacheDelPattern(`leaderboard:${guildId}:*`).catch(() => {});
+      await cacheDelPattern(`leaderboard:${guildId}*`).catch(() => {});
       await cacheDelPattern(`reputation:${guildId}:*`).catch(() => {});
     }
   });
