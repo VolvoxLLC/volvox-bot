@@ -159,12 +159,12 @@ export async function deleteFeedback({ messageId, userId }) {
  * @param {string} guildId
  * @returns {Promise<{positive: number, negative: number, total: number, ratio: number|null}>}
  */
-export async function getFeedbackStats(guildId) {
-  const pool = getPool();
-  if (!pool) return { positive: 0, negative: 0, total: 0, ratio: null };
+export async function getFeedbackStats(guildId, pool) {
+  const resolvedPool = pool ?? getPool();
+  if (!resolvedPool) return { positive: 0, negative: 0, total: 0, ratio: null };
 
   try {
-    const result = await pool.query(
+    const result = await resolvedPool.query(
       `SELECT
          COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
          COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative,
@@ -183,7 +183,7 @@ export async function getFeedbackStats(guildId) {
     return { positive, negative, total, ratio };
   } catch (err) {
     logError('Failed to fetch AI feedback stats', { guildId, error: err.message });
-    return { positive: 0, negative: 0, total: 0, ratio: null };
+    throw err;
   }
 }
 
@@ -193,12 +193,12 @@ export async function getFeedbackStats(guildId) {
  * @param {number} days - Number of days to look back (default 30)
  * @returns {Promise<Array<{date: string, positive: number, negative: number}>>}
  */
-export async function getFeedbackTrend(guildId, days = 30) {
-  const pool = getPool();
-  if (!pool) return [];
+export async function getFeedbackTrend(guildId, days = 30, pool) {
+  const resolvedPool = pool ?? getPool();
+  if (!resolvedPool) return [];
 
   try {
-    const result = await pool.query(
+    const result = await resolvedPool.query(
       `SELECT
          DATE(created_at) AS date,
          COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
@@ -218,7 +218,7 @@ export async function getFeedbackTrend(guildId, days = 30) {
     }));
   } catch (err) {
     logError('Failed to fetch AI feedback trend', { guildId, days, error: err.message });
-    return [];
+    throw err;
   }
 }
 
@@ -228,12 +228,12 @@ export async function getFeedbackTrend(guildId, days = 30) {
  * @param {number} limit - Max entries to return (default 50)
  * @returns {Promise<Array<{id: number, messageId: string, channelId: string, userId: string, feedbackType: string, createdAt: string}>>}
  */
-export async function getRecentFeedback(guildId, limit = 50) {
-  const pool = getPool();
-  if (!pool) return [];
+export async function getRecentFeedback(guildId, limit = 50, pool) {
+  const resolvedPool = pool ?? getPool();
+  if (!resolvedPool) return [];
 
   try {
-    const result = await pool.query(
+    const result = await resolvedPool.query(
       `SELECT
          id,
          message_id AS "messageId",
@@ -251,6 +251,6 @@ export async function getRecentFeedback(guildId, limit = 50) {
     return result.rows;
   } catch (err) {
     logError('Failed to fetch recent AI feedback', { guildId, limit, error: err.message });
-    return [];
+    throw err;
   }
 }

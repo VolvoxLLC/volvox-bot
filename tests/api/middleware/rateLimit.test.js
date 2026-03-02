@@ -92,4 +92,24 @@ describe('rateLimit middleware', () => {
     middleware(req, res, next);
     expect(next).toHaveBeenCalled();
   });
+
+  it('should use custom message when provided', () => {
+    const middleware = rateLimit({
+      windowMs: 60000,
+      max: 1,
+      message: 'Too many authentication attempts',
+    });
+
+    // First request passes
+    middleware(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+
+    // Second request blocked with custom message
+    middleware(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Too many authentication attempts',
+    });
+    expect(next).toHaveBeenCalledTimes(1); // only the first (allowed) request called next
+  });
 });
