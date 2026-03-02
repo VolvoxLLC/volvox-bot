@@ -139,10 +139,10 @@ export async function deleteFeedback({ messageId, userId }) {
   }
 
   try {
-    await pool.query(
-      `DELETE FROM ai_feedback WHERE message_id = $1 AND user_id = $2`,
-      [messageId, userId],
-    );
+    await pool.query(`DELETE FROM ai_feedback WHERE message_id = $1 AND user_id = $2`, [
+      messageId,
+      userId,
+    ]);
 
     info('AI feedback deleted', { messageId, userId });
   } catch (err) {

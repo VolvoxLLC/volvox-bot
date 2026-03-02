@@ -6,7 +6,6 @@
  */
 
 import { Router } from 'express';
-import { error as logError } from '../../logger.js';
 import { getFeedbackStats, getFeedbackTrend, getRecentFeedback } from '../../modules/aiFeedback.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
@@ -85,31 +84,37 @@ const feedbackRateLimit = rateLimit({ windowMs: 60 * 1000, max: 60 });
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async (req, res, next) => {
-  try {
-    const guildId = req.params.id;
+router.get(
+  '/stats',
+  feedbackRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res, next) => {
+    try {
+      const guildId = req.params.id;
 
-    let days = 30;
-    if (req.query.days !== undefined) {
-      const parsed = Number.parseInt(req.query.days, 10);
-      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 90) {
-        days = parsed;
+      let days = 30;
+      if (req.query.days !== undefined) {
+        const parsed = Number.parseInt(req.query.days, 10);
+        if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 90) {
+          days = parsed;
+        }
       }
+
+      const [stats, trend] = await Promise.all([
+        getFeedbackStats(guildId),
+        getFeedbackTrend(guildId, days),
+      ]);
+
+      res.json({
+        ...stats,
+        trend,
+      });
+    } catch (err) {
+      next(err);
     }
-
-    const [stats, trend] = await Promise.all([
-      getFeedbackStats(guildId),
-      getFeedbackTrend(guildId, days),
-    ]);
-
-    res.json({
-      ...stats,
-      trend,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+  },
+);
 
 // ── GET /recent ──────────────────────────────────────────────────────────────
 
@@ -175,23 +180,29 @@ router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async 
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/recent', feedbackRateLimit, requireGuildAdmin, validateGuild, async (req, res, next) => {
-  try {
-    const guildId = req.params.id;
+router.get(
+  '/recent',
+  feedbackRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res, next) => {
+    try {
+      const guildId = req.params.id;
 
-    let limit = 25;
-    if (req.query.limit !== undefined) {
-      const parsed = Number.parseInt(req.query.limit, 10);
-      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 100) {
-        limit = parsed;
+      let limit = 25;
+      if (req.query.limit !== undefined) {
+        const parsed = Number.parseInt(req.query.limit, 10);
+        if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 100) {
+          limit = parsed;
+        }
       }
-    }
 
-    const feedback = await getRecentFeedback(guildId, limit);
-    res.json({ feedback });
-  } catch (err) {
-    next(err);
-  }
-});
+      const feedback = await getRecentFeedback(guildId, limit);
+      res.json({ feedback });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 export default router;

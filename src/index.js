@@ -20,8 +20,6 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
-import { closeRedisClient as closeRedis, initRedis } from './redis.js';
-import { stopCacheCleanup } from './utils/cache.js';
 import {
   registerConfigListeners,
   removeLoggingTransport,
@@ -53,7 +51,9 @@ import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderatio
 import { loadOptOuts } from './modules/optout.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
+import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
+import { stopCacheCleanup } from './utils/cache.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';

@@ -8,7 +8,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/177
  */
 
-import { closeRedisClient, getRedis, _resetRedis } from '../../redis.js';
+import { _resetRedis, closeRedisClient, getRedis } from '../../redis.js';
 
 /**
  * Return the ioredis client.

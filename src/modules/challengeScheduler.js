@@ -6,11 +6,11 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/52
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { createRequire } from 'node:module';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { getConfig } from './config.js';
 
 const require = createRequire(import.meta.url);

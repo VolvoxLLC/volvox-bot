@@ -242,8 +242,13 @@ export async function cacheClear() {
     try {
       // Scan and delete all known app-prefixed keys instead of flushdb()
       const prefixes = [
-        'rl:*', 'reputation:*', 'rank:*', 'leaderboard:*',
-        'discord:*', 'config:*', 'session:*',
+        'rl:*',
+        'reputation:*',
+        'rank:*',
+        'leaderboard:*',
+        'discord:*',
+        'config:*',
+        'session:*',
       ];
       for (const pattern of prefixes) {
         let cursor = '0';

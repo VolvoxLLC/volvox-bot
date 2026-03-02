@@ -145,7 +145,10 @@ export function AiFeedbackStats() {
                         labelLine={false}
                       >
                         {pieData.map((_, index) => (
-                          <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={PIE_COLORS[index % PIE_COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip />

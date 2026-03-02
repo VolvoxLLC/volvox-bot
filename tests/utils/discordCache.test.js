@@ -106,7 +106,10 @@ describe('discordCache.js', () => {
     it('fetches and caches guild roles', async () => {
       const roles = new Map([
         ['1', { id: '1', name: '@everyone', color: 0, position: 0, permissions: { bitfield: 0n } }],
-        ['2', { id: '2', name: 'Admin', color: 0xff0000, position: 1, permissions: { bitfield: 8n } }],
+        [
+          '2',
+          { id: '2', name: 'Admin', color: 0xff0000, position: 1, permissions: { bitfield: 8n } },
+        ],
       ]);
 
       const guild = {

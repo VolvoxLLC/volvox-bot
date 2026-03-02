@@ -50,11 +50,9 @@ describe('config-listeners', () => {
     setInitialTransport = mod.setInitialTransport;
   });
 
-
-vi.mock('../src/utils/cache.js', () => ({
-  cacheDelPattern: vi.fn().mockResolvedValue(0),
-}));
-
+  vi.mock('../src/utils/cache.js', () => ({
+    cacheDelPattern: vi.fn().mockResolvedValue(0),
+  }));
 
   afterEach(() => {
     vi.clearAllMocks();
@@ -408,7 +406,6 @@ vi.mock('../src/utils/cache.js', () => ({
       });
     });
   });
-
 
   // ── Cache invalidation listeners ───────────────────────────────────────
 

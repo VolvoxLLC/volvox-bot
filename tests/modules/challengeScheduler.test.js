@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mock dependencies ───────────────────────────────────────────────────────
 
-
 // Mock discordCache to pass through to the underlying client.channels.fetch
 vi.mock('../../src/utils/discordCache.js', () => ({
   fetchChannelCached: vi.fn().mockImplementation(async (client, channelId) => {

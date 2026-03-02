@@ -3,8 +3,8 @@
  * Handles dynamic welcome messages for new members
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { info, error as logError } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { isReturningMember } from './welcomeOnboarding.js';
 

@@ -5,10 +5,10 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/47
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeReply } from '../utils/safeSend.js';
 
 const POLL_COLOR = 0x5865f2;

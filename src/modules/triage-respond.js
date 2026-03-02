@@ -3,10 +3,10 @@
  * Discord message dispatch, moderation audit logging, and channel context fetching.
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';

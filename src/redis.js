@@ -9,7 +9,7 @@
  */
 
 import Redis from 'ioredis';
-import { debug, error as logError, info, warn } from './logger.js';
+import { debug, info, error as logError, warn } from './logger.js';
 
 /** @type {import('ioredis').Redis | null} */
 let client = null;

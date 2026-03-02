@@ -8,11 +8,11 @@
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
+import { invalidateReputationCache } from '../utils/reputationCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 import { getConfig } from './config.js';
 import { REPUTATION_DEFAULTS } from './reputationDefaults.js';
-import { invalidateReputationCache } from '../utils/reputationCache.js';
 
 /** In-memory cooldown map: `${guildId}:${userId}` → Date of last XP gain */
 const cooldowns = new Map();

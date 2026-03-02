@@ -67,7 +67,10 @@ export function registerConfigListeners({ dbPool, config }) {
       transportLock = transportLock
         .then(() => updateLoggingTransport(changePath))
         .catch((err) =>
-          error('Failed to update PostgreSQL logging transport', { path: changePath, error: err.message }),
+          error('Failed to update PostgreSQL logging transport', {
+            path: changePath,
+            error: err.message,
+          }),
         );
       await transportLock;
     });

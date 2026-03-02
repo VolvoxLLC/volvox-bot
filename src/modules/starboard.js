@@ -6,10 +6,10 @@
  * Handles dedup (update vs repost), star removal, and self-star prevention.
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { debug, info, error as logError, warn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 
 /** Default starboard configuration values */
