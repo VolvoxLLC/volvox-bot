@@ -50,6 +50,12 @@ describe('config-listeners', () => {
     setInitialTransport = mod.setInitialTransport;
   });
 
+
+vi.mock('../src/utils/cache.js', () => ({
+  cacheDelPattern: vi.fn().mockResolvedValue(0),
+}));
+
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -87,10 +93,10 @@ describe('config-listeners', () => {
       expect(registeredKeys).toContain('moderation.*');
     });
 
-    it('registers exactly 8 listeners', () => {
+    it('registers exactly 11 listeners', () => {
       const config = { logging: { database: { enabled: false } } };
       registerConfigListeners({ dbPool: {}, config });
-      expect(onConfigChange).toHaveBeenCalledTimes(8);
+      expect(onConfigChange).toHaveBeenCalledTimes(11);
     });
   });
 

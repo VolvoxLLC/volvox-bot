@@ -1,6 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock child_process for gh CLI calls
+
+// Mock discordCache to pass through to the underlying client.channels.fetch
+vi.mock('../../src/utils/discordCache.js', () => ({
+  fetchChannelCached: vi.fn().mockImplementation(async (client, channelId) => {
+    if (!channelId) return null;
+    const cached = client.channels?.cache?.get?.(channelId);
+    if (cached) return cached;
+    if (client.channels?.fetch) {
+      return client.channels.fetch(channelId).catch(() => null);
+    }
+    return null;
+  }),
+  fetchGuildChannelsCached: vi.fn().mockResolvedValue([]),
+  fetchGuildRolesCached: vi.fn().mockResolvedValue([]),
+  fetchMemberCached: vi.fn().mockResolvedValue(null),
+  invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('node:child_process', () => ({
   execFile: vi.fn(),
 }));

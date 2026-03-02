@@ -10,6 +10,7 @@
 
 import { addPostgresTransport, error, info, removePostgresTransport } from './logger.js';
 import { onConfigChange } from './modules/config.js';
+import { cacheDelPattern } from './utils/cache.js';
 
 /** @type {import('winston').transport | null} */
 let pgTransport = null;
@@ -84,6 +85,26 @@ export function registerConfigListeners({ dbPool, config }) {
   });
   onConfigChange('moderation.*', (newValue, _oldValue, path, guildId) => {
     info('Moderation config updated', { path, newValue, guildId });
+  });
+
+  // ── Cache invalidation on config changes ────────────────────────────
+  // When channel-related config changes, invalidate Discord API caches
+  // so the bot picks up the new channel references immediately.
+  onConfigChange('welcome.*', async (_newValue, _oldValue, path, guildId) => {
+    if (guildId && guildId !== 'global') {
+      await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
+    }
+  });
+  onConfigChange('starboard.*', async (_newValue, _oldValue, path, guildId) => {
+    if (guildId && guildId !== 'global') {
+      await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
+    }
+  });
+  onConfigChange('reputation.*', async (_newValue, _oldValue, path, guildId) => {
+    if (guildId && guildId !== 'global') {
+      await cacheDelPattern(`leaderboard:${guildId}:*`).catch(() => {});
+      await cacheDelPattern(`reputation:${guildId}:*`).catch(() => {});
+    }
   });
 }
 
