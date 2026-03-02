@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isBlockedIp, validateUrlForSsrfSync, validateUrlForSsrf } from '../../../src/api/utils/ssrfProtection.js';
+import {
+  isBlockedIp,
+  validateUrlForSsrf,
+  validateUrlForSsrfSync,
+} from '../../../src/api/utils/ssrfProtection.js';
 
 describe('isBlockedIp', () => {
   describe('loopback addresses', () => {

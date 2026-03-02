@@ -145,7 +145,14 @@ function isBlockedHostname(hostname) {
   }
 
   // Block hostnames that end with .local, .localhost, .internal, .localdomain
-  const blockedSuffixes = ['.local', '.localhost', '.internal', '.localdomain', '.home', '.home.arpa'];
+  const blockedSuffixes = [
+    '.local',
+    '.localhost',
+    '.internal',
+    '.localdomain',
+    '.home',
+    '.home.arpa',
+  ];
   if (blockedSuffixes.some((suffix) => normalized.endsWith(suffix))) {
     return true;
   }
@@ -157,7 +164,10 @@ function isBlockedHostname(hostname) {
   }
 
   // IPv6 check (basic patterns)
-  if (normalized.includes(':') && (normalized.startsWith('::1') || normalized.startsWith('fe80:'))) {
+  if (
+    normalized.includes(':') &&
+    (normalized.startsWith('::1') || normalized.startsWith('fe80:'))
+  ) {
     return true;
   }
 
@@ -200,9 +210,7 @@ export async function validateUrlForSsrf(urlString, options = {}) {
   if (!allowedProtocols.includes(url.protocol)) {
     return {
       valid: false,
-      error: allowHttp
-        ? 'URL must use HTTP or HTTPS protocol'
-        : 'URL must use HTTPS protocol',
+      error: allowHttp ? 'URL must use HTTP or HTTPS protocol' : 'URL must use HTTPS protocol',
     };
   }
 
@@ -264,9 +272,7 @@ export function validateUrlForSsrfSync(urlString, options = {}) {
   if (!allowedProtocols.includes(url.protocol)) {
     return {
       valid: false,
-      error: allowHttp
-        ? 'URL must use HTTP or HTTPS protocol'
-        : 'URL must use HTTPS protocol',
+      error: allowHttp ? 'URL must use HTTP or HTTPS protocol' : 'URL must use HTTPS protocol',
     };
   }
 
