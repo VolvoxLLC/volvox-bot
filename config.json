@@ -289,5 +289,11 @@
         ],
         "defaultDurationMinutes": 30,
         "maxDurationMinutes": 1440
-    }
+  },
+  "voice": {
+    "enabled": false,
+    "xpPerMinute": 2,
+    "dailyXpCap": 120,
+    "logChannel": null
+  }
 }

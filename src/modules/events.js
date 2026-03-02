@@ -36,6 +36,7 @@ import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
+import { handleVoiceStateUpdate } from './voice.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 import {
   handleRoleMenuSelection,
@@ -772,6 +773,7 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerTicketCloseButtonHandler(client);
   registerReminderButtonHandler(client);
   registerWelcomeOnboardingHandlers(client);
+  registerVoiceStateHandler(client);
   registerErrorHandlers(client);
 }
 
@@ -895,5 +897,18 @@ export function registerTicketCloseButtonHandler(client) {
         content: `❌ ${err.message}`,
       });
     }
+  });
+}
+
+/**
+ * Register the voiceStateUpdate handler for voice channel activity tracking.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerVoiceStateHandler(client) {
+  client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+    await handleVoiceStateUpdate(oldState, newState).catch((err) => {
+      logError('Voice state update handler error', { error: err.message });
+    });
   });
 }
