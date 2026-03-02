@@ -20,7 +20,7 @@ export function rateLimit({
   max = 100,
   message = DEFAULT_MESSAGE,
 } = {}) {
-  const errorMessage = (typeof message === 'string' && message.trim()) ? message : DEFAULT_MESSAGE;
+  const errorMessage = typeof message === 'string' && message.trim() ? message : DEFAULT_MESSAGE;
 
   /** @type {Map<string, { count: number, resetAt: number }>} */
 
