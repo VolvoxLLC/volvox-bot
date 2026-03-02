@@ -43,7 +43,7 @@ export function buildConversationText(context, buffer) {
     const time = m.timestamp ? new Date(m.timestamp).toISOString().slice(11, 19) : '';
     const timePrefix = time ? `[${time}] ` : '';
     const replyPrefix = m.replyTo
-      ? `(replying to ${escapePromptDelimiters(m.replyTo.author)}: "${escapePromptDelimiters(m.replyTo.content.slice(0, 100))}")\n  `
+      ? `(replying to ${escapePromptDelimiters(m.replyTo.author)}: "${escapePromptDelimiters((m.replyTo.content ?? '').slice(0, 100))}")\n  `
       : '';
     return `${timePrefix}[${m.messageId}] ${escapePromptDelimiters(m.author)} (<@${m.userId}>): ${replyPrefix}${escapePromptDelimiters(m.content)}`;
   };
