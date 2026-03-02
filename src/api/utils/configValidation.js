@@ -166,6 +166,23 @@ export const CONFIG_SCHEMA = {
       maxPerUser: { type: 'number' },
     },
   },
+  quietMode: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      maxDurationMinutes: { type: 'number' },
+      allowedRoles: { type: 'array' },
+    },
+  },
+  voice: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      xpPerMinute: { type: 'number' },
+      dailyXpCap: { type: 'number' },
+      logChannel: { type: 'string', nullable: true },
+    },
+  },
 };
 
 /**
