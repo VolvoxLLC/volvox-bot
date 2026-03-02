@@ -243,14 +243,16 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
           }
         }
 
-        // Quiet mode: suppress AI responses when quiet mode is active
-        try {
-          if (await isQuietMode(message.guild.id, message.channel.id)) return;
-        } catch (qmErr) {
-          logError('Quiet mode check failed', {
-            channelId: message.channel.id,
-            error: qmErr?.message,
-          });
+        // Quiet mode: suppress AI responses when quiet mode is active (gated on feature enabled)
+        if (guildConfig.quietMode?.enabled) {
+          try {
+            if (await isQuietMode(message.guild.id, message.channel.id)) return;
+          } catch (qmErr) {
+            logError('Quiet mode check failed', {
+              channelId: message.channel.id,
+              error: qmErr?.message,
+            });
+          }
         }
 
         // Accumulate the message into the triage buffer (for context).
@@ -287,15 +289,17 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Triage: accumulate message for periodic evaluation (fire-and-forget)
     // Gated on ai.enabled — this is the master kill-switch for all AI responses.
     // accumulateMessage also checks triage.enabled internally.
-    // Skip accumulation when quiet mode is active in this channel.
+    // Skip accumulation when quiet mode is active in this channel (gated on feature enabled).
     if (guildConfig.ai?.enabled) {
-      try {
-        if (await isQuietMode(message.guild.id, message.channel.id)) return;
-      } catch (qmErr) {
-        logError('Quiet mode check failed (accumulate)', {
-          channelId: message.channel.id,
-          error: qmErr?.message,
-        });
+      if (guildConfig.quietMode?.enabled) {
+        try {
+          if (await isQuietMode(message.guild.id, message.channel.id)) return;
+        } catch (qmErr) {
+          logError('Quiet mode check failed (accumulate)', {
+            channelId: message.channel.id,
+            error: qmErr?.message,
+          });
+        }
       }
       try {
         const p = accumulateMessage(message, guildConfig);

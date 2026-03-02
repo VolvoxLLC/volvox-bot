@@ -74,6 +74,11 @@ export async function setQuiet(guildId, channelId, untilMs, byUserId) {
   const key = buildKey(guildId, channelId);
   const ttlSeconds = Math.ceil((untilMs - Date.now()) / 1000);
 
+  // Guard against invalid TTL (0, negative, or NaN) which would error in Redis
+  if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0) {
+    throw new Error(`Invalid quiet mode TTL: ${ttlSeconds} seconds`);
+  }
+
   if (redis) {
     try {
       await redis.set(key, JSON.stringify({ until: untilMs, by: byUserId }), 'EX', ttlSeconds);
@@ -173,10 +178,20 @@ const UNIT_MAP = {
  *
  * @param {string} content - Message content (will be lowercased internally)
  * @param {number} [defaultSeconds] - Fallback when nothing matches
- * @returns {number} Duration in seconds, clamped to [MIN_DURATION_SECONDS, MAX_DURATION_SECONDS]
+ * @param {Object} [config] - Per-guild config with quietMode.maxDurationMinutes
+ * @returns {number} Duration in seconds, clamped to [MIN_DURATION_SECONDS, maxSeconds]
  */
-export function parseDurationFromContent(content, defaultSeconds = DEFAULT_DURATION_SECONDS) {
+export function parseDurationFromContent(content, defaultSeconds = DEFAULT_DURATION_SECONDS, config = null) {
   const text = content.toLowerCase();
+
+  // Determine effective max duration from config or fallback to hardcoded limit
+  const configuredMaxMinutes = config?.quietMode?.maxDurationMinutes;
+  const maxSeconds = (Number.isFinite(configuredMaxMinutes) && configuredMaxMinutes > 0)
+    ? Math.min(configuredMaxMinutes * 60, MAX_DURATION_SECONDS)
+    : MAX_DURATION_SECONDS;
+
+  // Helper to clamp to valid range
+  const clamp = (seconds) => Math.min(Math.max(seconds, MIN_DURATION_SECONDS), maxSeconds);
 
   // "30m" / "2h" / "1d" (no space between number and single-char unit)
   const shortMatch = text.match(/\b(\d+)\s*([smhd])\b/);
@@ -184,7 +199,7 @@ export function parseDurationFromContent(content, defaultSeconds = DEFAULT_DURAT
     const value = parseInt(shortMatch[1], 10);
     const unit = UNIT_MAP[shortMatch[2]];
     if (unit && value > 0) {
-      return Math.min(Math.max(value * unit, MIN_DURATION_SECONDS), MAX_DURATION_SECONDS);
+      return clamp(value * unit);
     }
   }
 
@@ -194,11 +209,12 @@ export function parseDurationFromContent(content, defaultSeconds = DEFAULT_DURAT
     const value = parseInt(longMatch[1], 10);
     const unit = UNIT_MAP[longMatch[2]];
     if (unit && value > 0) {
-      return Math.min(Math.max(value * unit, MIN_DURATION_SECONDS), MAX_DURATION_SECONDS);
+      return clamp(value * unit);
     }
   }
 
-  return defaultSeconds;
+  // Clamp defaultSeconds too
+  return clamp(defaultSeconds);
 }
 
 // ── Permission helpers ────────────────────────────────────────────────────────
@@ -311,9 +327,8 @@ export async function handleQuietCommand(message, config) {
 
     const quietConfig = config.quietMode;
     const defaultSecs = (quietConfig?.defaultDurationMinutes ?? 30) * 60;
-    const maxSecs = (quietConfig?.maxDurationMinutes ?? 1440) * 60;
 
-    const durationSecs = Math.min(parseDurationFromContent(cleanContent, defaultSecs), maxSecs);
+    const durationSecs = parseDurationFromContent(cleanContent, defaultSecs, config);
     const untilMs = Date.now() + durationSecs * 1000;
 
     await setQuiet(guild.id, channel.id, untilMs, author.id);
