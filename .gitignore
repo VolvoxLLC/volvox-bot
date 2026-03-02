@@ -38,3 +38,4 @@ web/.env.local
 web/.env.*.local
 web/tsconfig.tsbuildinfo
 
+# Worktree marker

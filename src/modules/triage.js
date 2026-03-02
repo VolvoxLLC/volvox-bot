@@ -626,11 +626,11 @@ export function stopTriage() {
  * If configured trigger words are present, forces an immediate evaluation (and falls back to scheduling if forcing fails); otherwise schedules a dynamic evaluation timer for the channel.
  *
  * @param {import('discord.js').Message} message - The Discord message to accumulate.
- * @param {Object} _msgConfig - Ignored; retained for backwards compatibility. Live config is
- *   fetched via {@link getConfig} on each invocation to avoid stale references.
+ * @param {Object} [msgConfig] - Optional config override. When provided, used directly instead
+ *   of calling {@link getConfig}. Live config is fetched via getConfig when not provided.
  */
-export async function accumulateMessage(message, _msgConfig) {
-  const liveConfig = getConfig(message.guild?.id || null);
+export async function accumulateMessage(message, msgConfig) {
+  const liveConfig = msgConfig || getConfig(message.guild?.id || null);
   const triageConfig = liveConfig.triage;
   if (!triageConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
