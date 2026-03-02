@@ -102,7 +102,7 @@ export function registerConfigListeners({ dbPool, config }) {
   });
   onConfigChange('reputation.*', async (_newValue, _oldValue, path, guildId) => {
     if (guildId && guildId !== 'global') {
-      await cacheDelPattern(`leaderboard:${guildId}:*`).catch(() => {});
+      await cacheDelPattern(`leaderboard:${guildId}*`).catch(() => {});
       await cacheDelPattern(`reputation:${guildId}:*`).catch(() => {});
     }
   });

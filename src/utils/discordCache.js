@@ -34,10 +34,10 @@ export async function fetchChannelCached(client, channelId) {
     const recheckDjs = client.channels.cache.get(channelId);
     if (recheckDjs) return recheckDjs;
 
-    // Return the cached metadata directly — callers that only need
-    // id/name/type/guildId can use this without an API call
-    debug('Returning Redis-cached channel metadata', { channelId });
-    return cached;
+    // Cached data is metadata only — not a real Discord.js Channel object.
+    // Callers (safeSend, channel.messages.fetch, etc.) need a real Channel,
+    // so we fall through to the API fetch even on a cache hit.
+    debug('Redis cache hit for channel metadata; fetching real channel from API', { channelId });
   }
 
   // Fetch from Discord API
