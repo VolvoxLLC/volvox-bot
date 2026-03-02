@@ -11,11 +11,12 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
-import { info } from '../../src/logger.js';
+import { info, error as logError } from '../../src/logger.js';
 import {
   assignTempRole,
   listTempRoles,
   revokeTempRole,
+  revokeTempRoleById,
   startTempRoleScheduler,
   stopTempRoleScheduler,
 } from '../../src/modules/tempRoleHandler.js';
@@ -73,6 +74,29 @@ describe('tempRoleHandler', () => {
         expect.objectContaining({ roleId: 'r1' }),
       );
     });
+
+    it('throws on database error', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('DB connection failed'));
+
+      await expect(
+        assignTempRole({
+          guildId: 'g1',
+          userId: 'u1',
+          userTag: 'User#0001',
+          roleId: 'r1',
+          roleName: 'VIP',
+          moderatorId: 'mod1',
+          moderatorTag: 'Mod#0001',
+          duration: '1 day',
+          expiresAt: new Date(),
+        }),
+      ).rejects.toThrow('Failed to assign temp role');
+
+      expect(logError).toHaveBeenCalledWith(
+        'Failed to assign temp role',
+        expect.objectContaining({ error: 'DB connection failed' }),
+      );
+    });
   });
 
   // ── revokeTempRole ────────────────────────────────────────────────────────
@@ -94,6 +118,53 @@ describe('tempRoleHandler', () => {
 
       const result = await revokeTempRole('g1', 'u1', 'nonexistent');
       expect(result).toBeNull();
+    });
+
+    it('throws on database error', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('DB error'));
+
+      await expect(revokeTempRole('g1', 'u1', 'r1')).rejects.toThrow('Failed to revoke temp role');
+
+      expect(logError).toHaveBeenCalledWith(
+        'Failed to revoke temp role',
+        expect.objectContaining({ error: 'DB error' }),
+      );
+    });
+  });
+
+  // ── revokeTempRoleById ────────────────────────────────────────────────────
+
+  describe('revokeTempRoleById', () => {
+    it('revokes by record id and returns the row', async () => {
+      const fakeRow = { id: 42, guild_id: 'g1', user_id: 'u1', role_id: 'r1', removed: true };
+      mockPool.query.mockResolvedValueOnce({ rows: [fakeRow] });
+
+      const result = await revokeTempRoleById(42, 'g1');
+
+      expect(result).toEqual(fakeRow);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE id = $1 AND guild_id = $2'),
+        [42, 'g1'],
+      );
+      expect(info).toHaveBeenCalledWith('Temp role revoked by ID', expect.any(Object));
+    });
+
+    it('returns null when record not found', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await revokeTempRoleById(999, 'g1');
+      expect(result).toBeNull();
+    });
+
+    it('throws on database error', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('DB error'));
+
+      await expect(revokeTempRoleById(42, 'g1')).rejects.toThrow('Failed to revoke temp role');
+
+      expect(logError).toHaveBeenCalledWith(
+        'Failed to revoke temp role by ID',
+        expect.objectContaining({ error: 'DB error' }),
+      );
     });
   });
 
@@ -132,6 +203,17 @@ describe('tempRoleHandler', () => {
       expect(result.rows).toHaveLength(0);
       expect(result.total).toBe(0);
     });
+
+    it('throws on database error', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('DB error'));
+
+      await expect(listTempRoles('g1')).rejects.toThrow('Failed to list temp roles');
+
+      expect(logError).toHaveBeenCalledWith(
+        'Failed to list temp roles',
+        expect.objectContaining({ error: 'DB error' }),
+      );
+    });
   });
 
   // ── scheduler ─────────────────────────────────────────────────────────────
@@ -159,21 +241,6 @@ describe('tempRoleHandler', () => {
       // info called once (not twice for "started")
       const startedCalls = info.mock.calls.filter(([msg]) => msg === 'Temp role scheduler started');
       expect(startedCalls).toHaveLength(1);
-    });
-
-    it('calls scheduler start and confirms interval registration', () => {
-      // Pool query for initial poll (no expired rows) - the async call happens but we don't await it
-      mockPool.query.mockResolvedValue({ rows: [] });
-
-      const mockClient = { guilds: { fetch: vi.fn() } };
-      startTempRoleScheduler(mockClient);
-
-      // Confirm scheduler started (interval set)
-      expect(info).toHaveBeenCalledWith('Temp role scheduler started');
-
-      // Confirm the pool was queried (initial poll fired)
-      // It's async so we check the mock was called (even if not resolved yet)
-      // A simple tick to let the initial async call start
     });
   });
 });

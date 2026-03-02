@@ -7,7 +7,12 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { authorizeGuildAdmin, buildUpstreamUrl, getBotApiConfig } from '@/lib/bot-api-proxy';
+import {
+  authorizeGuildAdmin,
+  buildUpstreamUrl,
+  getBotApiConfig,
+  proxyToBotApi,
+} from '@/lib/bot-api-proxy';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,15 +48,7 @@ export async function DELETE(
 
   upstream.searchParams.set('guildId', guildId);
 
-  try {
-    const res = await fetch(upstream.toString(), {
-      method: 'DELETE',
-      headers: { 'x-api-secret': config.secret },
-    });
-
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json({ error: 'Failed to revoke temp role' }, { status: 502 });
-  }
+  return proxyToBotApi(upstream, config.secret, LOG_PREFIX, 'Failed to revoke temp role', {
+    method: 'DELETE',
+  });
 }

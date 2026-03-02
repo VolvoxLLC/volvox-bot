@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import { info, error as logError } from '../../logger.js';
-import { assignTempRole, listTempRoles, revokeTempRole } from '../../modules/tempRoleHandler.js';
+import { assignTempRole, listTempRoles, revokeTempRoleById } from '../../modules/tempRoleHandler.js';
 import { formatDuration, parseDuration } from '../../utils/duration.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parsePagination, requireGuildModerator } from './guilds.js';
@@ -19,6 +19,7 @@ const tempRoleRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
 /**
  * Adapt ?guildId= query param to :id path param for requireGuildModerator.
+ * Only use on routes that need guild id in params (GET list).
  */
 function adaptGuildIdParam(req, _res, next) {
   if (req.query.guildId) {
@@ -27,8 +28,18 @@ function adaptGuildIdParam(req, _res, next) {
   next();
 }
 
+/**
+ * Adapt req.body.guildId to :id path param for requireGuildModerator.
+ * Used for POST route where guildId is in the body, not query string.
+ */
+function adaptBodyGuildId(req, _res, next) {
+  if (req.body?.guildId) {
+    req.params.id = req.body.guildId;
+  }
+  next();
+}
+
 router.use(tempRoleRateLimit);
-router.use(adaptGuildIdParam, requireGuildModerator);
 
 // ─── GET /temp-roles ──────────────────────────────────────────────────────────
 
@@ -56,9 +67,15 @@ router.use(adaptGuildIdParam, requireGuildModerator);
  *       "200":
  *         description: Paginated list of active temp roles
  */
-router.get('/', async (req, res) => {
+router.get('/', adaptGuildIdParam, requireGuildModerator, async (req, res) => {
   try {
     const guildId = req.query.guildId;
+
+    // Validate guildId is present and is a string
+    if (!guildId || typeof guildId !== 'string') {
+      return res.status(400).json({ error: 'guildId is required and must be a string' });
+    }
+
     const userId = req.query.userId || undefined;
     const { page, limit, offset } = parsePagination(req.query);
 
@@ -98,28 +115,20 @@ router.get('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const guildId = req.query.guildId;
+
+    // Validate guildId is present and is a string
+    if (!guildId || typeof guildId !== 'string') {
+      return res.status(400).json({ error: 'guildId is required and must be a string' });
+    }
+
     const id = Number.parseInt(req.params.id, 10);
 
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ error: 'Invalid id' });
     }
 
-    const pool = (await import('../../db.js')).getPool();
-
-    // Fetch the record first to get user/role IDs
-    const { rows: existing } = await pool.query(
-      'SELECT * FROM temp_roles WHERE id = $1 AND guild_id = $2 AND removed = FALSE',
-      [id, guildId],
-    );
-
-    if (existing.length === 0) {
-      return res.status(404).json({ error: 'Temp role not found or already removed' });
-    }
-
-    const record = existing[0];
-
-    // Mark removed in DB
-    const updated = await revokeTempRole(guildId, record.user_id, record.role_id);
+    // Revoke by specific record id (not by user/role which can affect multiple rows)
+    const updated = await revokeTempRoleById(id, guildId);
     if (!updated) {
       return res.status(404).json({ error: 'Temp role not found or already removed' });
     }
@@ -129,9 +138,9 @@ router.delete('/:id', async (req, res) => {
       const client = res.app.locals.client;
       if (client) {
         const guild = await client.guilds.fetch(guildId);
-        const member = await guild.members.fetch(record.user_id).catch(() => null);
+        const member = await guild.members.fetch(updated.user_id).catch(() => null);
         if (member) {
-          await member.roles.remove(record.role_id, 'Temp role revoked via dashboard');
+          await member.roles.remove(updated.role_id, 'Temp role revoked via dashboard');
         }
       }
     } catch (discordErr) {
@@ -140,8 +149,8 @@ router.delete('/:id', async (req, res) => {
 
     info('Temp role revoked via dashboard', {
       guildId,
-      userId: record.user_id,
-      roleId: record.role_id,
+      userId: updated.user_id,
+      roleId: updated.role_id,
       moderatorId: req.user?.id,
     });
 
@@ -177,7 +186,7 @@ router.delete('/:id', async (req, res) => {
  *       "201": { description: Assigned }
  *       "400": { description: Invalid input }
  */
-router.post('/', async (req, res) => {
+router.post('/', adaptBodyGuildId, requireGuildModerator, async (req, res) => {
   try {
     const { guildId, userId, roleId, duration: durationStr, reason } = req.body || {};
 

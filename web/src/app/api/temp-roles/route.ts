@@ -72,19 +72,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const upstream = buildUpstreamUrl(config.baseUrl, '/temp-roles', LOG_PREFIX);
   if (upstream instanceof NextResponse) return upstream;
 
-  try {
-    const res = await fetch(upstream.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-secret': config.secret,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (_err) {
-    return NextResponse.json({ error: 'Failed to assign temp role' }, { status: 502 });
-  }
+  return proxyToBotApi(upstream, config.secret, LOG_PREFIX, 'Failed to assign temp role', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
