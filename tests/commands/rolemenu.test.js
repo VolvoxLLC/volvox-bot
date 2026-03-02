@@ -54,11 +54,21 @@ vi.mock('../../src/modules/roleMenuTemplates.js', () => ({
 
 vi.mock('discord.js', () => {
   class MockEmbed {
-    setTitle() { return this; }
-    setColor() { return this; }
-    setDescription() { return this; }
-    setFooter() { return this; }
-    addFields() { return this; }
+    setTitle() {
+      return this;
+    }
+    setColor() {
+      return this;
+    }
+    setDescription() {
+      return this;
+    }
+    setFooter() {
+      return this;
+    }
+    addFields() {
+      return this;
+    }
   }
 
   function chainable() {
@@ -70,9 +80,16 @@ vi.mock('discord.js', () => {
   }
 
   class MockSlashCommandBuilder {
-    setName() { return this; }
-    setDescription() { return this; }
-    addSubcommandGroup(fn) { fn(chainable()); return this; }
+    setName() {
+      return this;
+    }
+    setDescription() {
+      return this;
+    }
+    addSubcommandGroup(fn) {
+      fn(chainable());
+      return this;
+    }
   }
 
   return {
@@ -258,11 +275,7 @@ describe('/rolemenu command', () => {
       const interaction = makeInteraction({ subcommand: 'apply', name: 'color-roles' });
       await execute(interaction);
 
-      expect(mockSetConfigValue).toHaveBeenCalledWith(
-        'welcome.roleMenu.enabled',
-        true,
-        'guild1',
-      );
+      expect(mockSetConfigValue).toHaveBeenCalledWith('welcome.roleMenu.enabled', true, 'guild1');
       expect(mockSetConfigValue).toHaveBeenCalledWith(
         'welcome.roleMenu.options',
         expect.any(Array),

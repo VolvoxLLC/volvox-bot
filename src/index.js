@@ -44,11 +44,13 @@ import {
   stopConversationCleanup,
 } from './modules/ai.js';
 import { getConfig, loadConfig } from './modules/config.js';
+
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { seedBuiltinTemplates } from './modules/roleMenuTemplates.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
@@ -59,7 +61,7 @@ import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
-import { seedBuiltinTemplates } from './modules/roleMenuTemplates.js';
+
 import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent

@@ -84,14 +84,14 @@ export function validateTemplateName(name) {
  * @returns {string|null} Error message, or null if valid.
  */
 export function validateTemplateOptions(options) {
-  if (!Array.isArray(options) || options.length === 0) return 'Template must have at least one option.';
+  if (!Array.isArray(options) || options.length === 0)
+    return 'Template must have at least one option.';
   if (options.length > MAX_OPTIONS) return `Templates support at most ${MAX_OPTIONS} options.`;
   for (const [i, opt] of options.entries()) {
     if (!opt || typeof opt !== 'object') return `Option ${i + 1} is not a valid object.`;
     if (typeof opt.label !== 'string' || !opt.label.trim())
       return `Option ${i + 1} must have a non-empty label.`;
-    if (opt.label.trim().length > 100)
-      return `Option ${i + 1} label must be ≤100 characters.`;
+    if (opt.label.trim().length > 100) return `Option ${i + 1} label must be ≤100 characters.`;
   }
   return null;
 }
@@ -151,7 +151,13 @@ export async function getTemplateByName(guildId, name) {
  * @param {Array<{label: string, description?: string, roleId?: string}>} params.options
  * @returns {Promise<object>} The created row.
  */
-export async function createTemplate({ guildId, name, description = '', category = 'custom', options }) {
+export async function createTemplate({
+  guildId,
+  name,
+  description = '',
+  category = 'custom',
+  options,
+}) {
   const pool = getPool();
   const { rows } = await pool.query(
     `INSERT INTO role_menu_templates
@@ -208,7 +214,10 @@ export async function setTemplateShared(guildId, name, shared) {
   if (rows[0]) {
     info('Role menu template sharing updated', { guildId, name: name.trim(), shared });
   } else {
-    warn('setTemplateShared: template not found or not owned by guild', { guildId, name: name.trim() });
+    warn('setTemplateShared: template not found or not owned by guild', {
+      guildId,
+      name: name.trim(),
+    });
   }
   return rows[0] ?? null;
 }

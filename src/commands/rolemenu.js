@@ -19,11 +19,7 @@ import { info } from '../logger.js';
 import { getConfig, setConfigValue } from '../modules/config.js';
 import {
   applyTemplateToOptions,
-
   createTemplate,
-
-    createTemplate,
-
   deleteTemplate,
   getTemplateByName,
   listTemplates,
@@ -142,7 +138,8 @@ async function handleList(interaction) {
   const byCategory = {};
   for (const tpl of templates) {
     const cat = tpl.category || 'custom';
-    (byCategory[cat] ??= []).push(tpl);
+    byCategory[cat] = byCategory[cat] || [];
+    byCategory[cat].push(tpl);
   }
 
   const embed = new EmbedBuilder()
