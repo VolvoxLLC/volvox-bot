@@ -4,8 +4,10 @@ import { Loader2, Save } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import type { BotConfig, DeepPartial } from '@/types/config';
@@ -410,6 +412,16 @@ export function ConfigEditor() {
     [updateDraftConfig],
   );
 
+  const updateAiBlockedChannels = useCallback(
+    (channels: string[]) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, ai: { ...prev.ai, blockedChannelIds: channels } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
   const updateWelcomeEnabled = useCallback(
     (enabled: boolean) => {
       updateDraftConfig((prev) => {
@@ -720,6 +732,31 @@ export function ConfigEditor() {
         disabled={saving}
         maxLength={SYSTEM_PROMPT_MAX_LENGTH}
       />
+
+      {/* AI Blocked Channels */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Blocked Channels</CardTitle>
+          <CardDescription>
+            The AI will not respond in these channels (or their threads).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {guildId ? (
+            <ChannelSelector
+              id="ai-blocked-channels"
+              guildId={guildId}
+              selected={(draftConfig.ai?.blockedChannelIds ?? []) as string[]}
+              onChange={updateAiBlockedChannels}
+              placeholder="Select channels to block AI in..."
+              disabled={saving}
+              filter="text"
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">Select a server first</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Welcome section */}
       <Card>
