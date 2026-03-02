@@ -157,3 +157,27 @@ class HealthMonitor {
 }
 
 export { HealthMonitor };
+
+/**
+ * Memory usage threshold (%) above which health.degraded is fired.
+ * heapUsed / heapTotal > this fraction triggers the event.
+ */
+export const MEMORY_DEGRADED_THRESHOLD = 0.8;
+
+/**
+ * Event loop lag threshold in ms above which health.degraded is fired.
+ */
+export const EVENT_LOOP_LAG_THRESHOLD_MS = 100;
+
+/**
+ * Measure approximate event loop lag in milliseconds.
+ * Schedules a setImmediate and measures how long it took.
+ *
+ * @returns {Promise<number>} Lag in milliseconds
+ */
+export function measureEventLoopLag() {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    setImmediate(() => resolve(Date.now() - start));
+  });
+}

@@ -5,12 +5,34 @@
 
 import { loadPrompt } from '../prompts/index.js';
 
+// ── Prompt injection defense ──────────────────────────────────────────────────
+
+/**
+ * Escape XML-style delimiter characters in user-supplied content to prevent
+ * prompt injection attacks. A crafted message containing `</messages-to-evaluate>`
+ * could otherwise break out of its designated section and inject instructions.
+ *
+ * Replaces `&` with `&amp;`, `<` with `&lt;`, and `>` with `&gt;` so the LLM sees
+ * literal characters without interpreting them as structural delimiters or entities.
+ *
+ * @param {*} text - Raw user-supplied message content (non-strings pass through)
+ * @returns {*} Escaped text safe for insertion between XML-style tags, or the original value when the input is not a string
+ */
+export function escapePromptDelimiters(text) {
+  if (typeof text !== 'string') return text;
+  // Escape & first so subsequent replacements don't double-encode (prevents &lt; bypass)
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ── Conversation text formatting ─────────────────────────────────────────────
 
 /**
  * Build conversation text with message IDs for prompts.
  * Splits output into <recent-history> (context) and <messages-to-evaluate> (buffer).
  * Includes timestamps and reply context when available.
+ *
+ * User-supplied content (message body and reply excerpts) is passed through
+ * {@link escapePromptDelimiters} to neutralise prompt-injection attempts.
  *
  * @param {Array} context - Historical messages fetched from Discord API
  * @param {Array} buffer - Buffered messages to evaluate
@@ -21,9 +43,9 @@ export function buildConversationText(context, buffer) {
     const time = m.timestamp ? new Date(m.timestamp).toISOString().slice(11, 19) : '';
     const timePrefix = time ? `[${time}] ` : '';
     const replyPrefix = m.replyTo
-      ? `(replying to ${m.replyTo.author}: "${m.replyTo.content.slice(0, 100)}")\n  `
+      ? `(replying to ${escapePromptDelimiters(m.replyTo.author)}: "${escapePromptDelimiters((m.replyTo.content ?? '').slice(0, 100))}")\n  `
       : '';
-    return `${timePrefix}[${m.messageId}] ${m.author} (<@${m.userId}>): ${replyPrefix}${m.content}`;
+    return `${timePrefix}[${m.messageId}] ${escapePromptDelimiters(m.author)} (<@${m.userId}>): ${replyPrefix}${escapePromptDelimiters(m.content)}`;
   };
 
   let text = '';
