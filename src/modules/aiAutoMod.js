@@ -300,8 +300,11 @@ async function executeAction(message, client, result, autoModConfig, guildConfig
       }).catch((err) => logError('AI auto-mod: createCase (ban) failed', { error: err?.message }));
       break;
 
-    case 'flag':
     case 'delete':
+      await message.delete().catch(() => {});
+      break;
+
+    case 'flag':
     default:
       break;
   }
