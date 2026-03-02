@@ -69,6 +69,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 vi.mock('../../src/modules/ai.js', () => ({
   addToHistory: vi.fn(),
+  isChannelBlocked: vi.fn().mockReturnValue(false),
   _setPoolGetter: vi.fn(),
   setPool: vi.fn(),
   getConversationHistory: vi.fn().mockReturnValue(new Map()),

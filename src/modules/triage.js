@@ -25,7 +25,7 @@ import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
 
-import { addToHistory } from './ai.js';
+import { addToHistory, isChannelBlocked } from './ai.js';
 import { getConfig } from './config.js';
 import {
   channelBuffers,
@@ -634,6 +634,10 @@ export async function accumulateMessage(message, msgConfig) {
   const triageConfig = liveConfig.triage;
   if (!triageConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
+
+  // Skip blocked channels (no triage processing)
+  const parentId = message.channel.parentId;
+  if (isChannelBlocked(message.channel.id, parentId, message.guild?.id)) return;
 
   // Skip empty or attachment-only messages
   if (!message.content || message.content.trim() === '') return;
