@@ -111,6 +111,16 @@ export const CONFIG_SCHEMA = {
           },
         },
       },
+      protectRoles: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          roleIds: { type: 'array' },
+          includeAdmins: { type: 'boolean' },
+          includeModerators: { type: 'boolean' },
+          includeServerOwner: { type: 'boolean' },
+        },
+      },
     },
   },
   triage: {

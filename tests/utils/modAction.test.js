@@ -5,6 +5,7 @@ vi.mock('../../src/modules/moderation.js', () => ({
   sendDmNotification: vi.fn().mockResolvedValue(undefined),
   sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
   checkHierarchy: vi.fn().mockReturnValue(null),
+  isProtectedTarget: vi.fn().mockReturnValue(false),
   shouldSendDm: vi.fn().mockReturnValue(true),
 }));
 
@@ -28,11 +29,12 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn().mockImplementation((_inter, msg) => Promise.resolve(msg)),
 }));
 
-import { debug, error as logError } from '../../src/logger.js';
+import { debug, error as logError, warn } from '../../src/logger.js';
 import { getConfig } from '../../src/modules/config.js';
 import {
   checkHierarchy,
   createCase,
+  isProtectedTarget,
   sendDmNotification,
   sendModLogEmbed,
   shouldSendDm,
@@ -259,6 +261,77 @@ describe('executeModAction', () => {
     expect(checkHierarchy).not.toHaveBeenCalled();
     // Pipeline should continue normally
     expect(createCase).toHaveBeenCalled();
+  });
+
+  // ---------------------------------------------------------------
+  // Protected-role check
+  // ---------------------------------------------------------------
+  it('should return early with error when target is protected', async () => {
+    const interaction = createInteraction();
+    isProtectedTarget.mockReturnValueOnce(true);
+
+    await executeModAction(interaction, defaultOpts());
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.stringContaining('Cannot moderate'),
+    );
+    expect(createCase).not.toHaveBeenCalled();
+  });
+
+  it('should log a warning when protection blocks moderation', async () => {
+    const interaction = createInteraction();
+    isProtectedTarget.mockReturnValueOnce(true);
+
+    await executeModAction(interaction, defaultOpts());
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('protected role'),
+      expect.objectContaining({ targetId: 'target1' }),
+    );
+  });
+
+  it('should not check protection when skipProtection is true', async () => {
+    const interaction = createInteraction();
+
+    await executeModAction(interaction, defaultOpts({ skipProtection: true }));
+
+    expect(isProtectedTarget).not.toHaveBeenCalled();
+    expect(createCase).toHaveBeenCalled();
+  });
+
+  it('should return early when moderator targets themselves', async () => {
+    // Target has same id as the moderator
+    const interaction = createInteraction();
+    const selfTarget = { ...mockTarget, id: 'mod1' };
+    const optsWithSelf = defaultOpts({
+      getTarget: () => ({ target: selfTarget, targetId: 'mod1', targetTag: 'Mod#0001' }),
+    });
+
+    await executeModAction(interaction, optsWithSelf);
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.stringContaining('cannot moderate yourself'),
+    );
+    expect(createCase).not.toHaveBeenCalled();
+  });
+
+  it('should block self-targeting even when skipProtection is true', async () => {
+    const interaction = createInteraction();
+    const selfTarget = { ...mockTarget, id: 'mod1' };
+    const optsWithSelf = defaultOpts({
+      skipProtection: true,
+      getTarget: () => ({ target: selfTarget, targetId: 'mod1', targetTag: 'Mod#0001' }),
+    });
+
+    await executeModAction(interaction, optsWithSelf);
+
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.stringContaining('cannot moderate yourself'),
+    );
+    expect(createCase).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------
