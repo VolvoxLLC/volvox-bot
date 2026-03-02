@@ -41,6 +41,18 @@ const MAX_LOG_ENTRIES = 100;
 const FETCH_TIMEOUT_MS = 10000;
 
 /**
+ * Safely get the database pool, returning null if not available or on error.
+ * @returns {import('pg').Pool | null}
+ */
+function safeGetPool() {
+  try {
+    return getPool();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Sign a payload with HMAC-SHA256 using the endpoint secret.
  *
  * @param {string} secret - Shared secret for the endpoint
@@ -116,7 +128,8 @@ function sleep(ms) {
 export async function deliverToEndpoint(guildId, endpoint, payload) {
   const body = JSON.stringify(payload);
   const deliveryId = randomUUID();
-  const pool = getPool();
+  // Use defensive pool access to handle potential exceptions
+  const pool = safeGetPool();
 
   for (let attempt = 1; attempt <= RETRY_DELAYS_MS.length + 1; attempt++) {
     const result = await attemptDelivery(endpoint.url, endpoint.secret || '', body, deliveryId);
@@ -134,7 +147,7 @@ export async function deliverToEndpoint(guildId, endpoint, payload) {
             payload.event,
             payload,
             result.ok ? 'success' : 'failed',
-            result.status ?? null,
+            result.status || null,
             result.text?.slice(0, 2000) || null,
             attempt,
           ],
@@ -248,7 +261,8 @@ export async function fireEvent(eventType, guildId, data = {}) {
  * @returns {Promise<Object[]>} Delivery log entries, newest first
  */
 export async function getDeliveryLog(guildId, limit = 50) {
-  const pool = getPool();
+  // Use defensive pool access
+  const pool = safeGetPool();
   if (!pool) return [];
 
   const { rows } = await pool.query(
