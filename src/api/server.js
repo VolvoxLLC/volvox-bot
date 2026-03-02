@@ -11,6 +11,7 @@ import { rateLimit } from './middleware/rateLimit.js';
 import { stopAuthCleanup } from './routes/auth.js';
 import { swaggerSpec } from './swagger.js';
 import { stopGuildCacheCleanup } from './utils/discordApi.js';
+import { setupAuditStream, stopAuditStream } from './ws/auditStream.js';
 import { setupLogStream, stopLogStream } from './ws/logStream.js';
 
 /** @type {import('node:http').Server | null} */
@@ -144,6 +145,14 @@ export async function startServer(client, dbPool, options = {}) {
         }
       }
 
+      // Attach audit log real-time WebSocket stream
+      try {
+        setupAuditStream(server);
+      } catch (err) {
+        error('Failed to setup audit log WebSocket stream', { error: err.message });
+        // Non-fatal — HTTP server still works without audit WS streaming
+      }
+
       resolve(server);
     });
     server.once('error', (err) => {
@@ -162,6 +171,9 @@ export async function startServer(client, dbPool, options = {}) {
 export async function stopServer() {
   // Stop WebSocket log stream before closing HTTP server
   await stopLogStream();
+
+  // Stop audit log WebSocket stream
+  await stopAuditStream();
 
   stopAuthCleanup();
   stopGuildCacheCleanup();

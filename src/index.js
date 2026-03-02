@@ -51,10 +51,17 @@ import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderatio
 import { loadOptOuts } from './modules/optout.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
+import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
+import { fireEventAllGuilds } from './modules/webhookNotifier.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
-import { HealthMonitor } from './utils/health.js';
+import {
+  EVENT_LOOP_LAG_THRESHOLD_MS,
+  HealthMonitor,
+  MEMORY_DEGRADED_THRESHOLD,
+  measureEventLoopLag,
+} from './utils/health.js';
 import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
@@ -122,6 +129,33 @@ const healthMonitor = HealthMonitor.getInstance();
 
 // Initialize performance monitor (singleton; start() called in ClientReady handler)
 const perfMonitor = PerformanceMonitor.getInstance();
+
+/** @type {ReturnType<typeof setInterval> | null} Health degraded check interval */
+let healthCheckInterval = null;
+
+/**
+ * Start the periodic health degraded check.
+ * Fires health.degraded webhook when memory >80% or event loop lag >100ms.
+ *
+ * @param {string[]} guildIds - Guild IDs to notify
+ */
+function startHealthDegradedCheck() {
+  if (healthCheckInterval) return;
+  healthCheckInterval = setInterval(async () => {
+    const mem = process.memoryUsage();
+    const memRatio = mem.heapTotal > 0 ? mem.heapUsed / mem.heapTotal : 0;
+    const lag = await measureEventLoopLag();
+    const degraded = memRatio > MEMORY_DEGRADED_THRESHOLD || lag > EVENT_LOOP_LAG_THRESHOLD_MS;
+    if (degraded) {
+      fireEventAllGuilds('health.degraded', {
+        memoryUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+        memoryTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+        memoryRatio: Math.round(memRatio * 100),
+        eventLoopLagMs: lag,
+      }).catch(() => {});
+    }
+  }, 60_000).unref();
+}
 
 /**
  * Save conversation history to disk
@@ -284,6 +318,7 @@ async function gracefulShutdown(signal) {
   stopScheduler();
   stopGithubFeed();
   perfMonitor.stop();
+  stopVoiceFlush();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -334,7 +369,13 @@ async function gracefulShutdown(signal) {
   info('Disconnecting from Discord');
   client.destroy();
 
-  // 7. Log clean exit
+  // 7. Stop health check interval
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+  }
+
+  // 8. Log clean exit
   info('Shutdown complete');
   process.exit(0);
 }
@@ -351,12 +392,19 @@ client.on('error', (err) => {
     code: err.code,
     source: 'discord_client',
   });
+  fireEventAllGuilds('bot.error', { message: err.message, code: err.code }).catch(() => {});
 });
 
 client.on('shardDisconnect', (event, shardId) => {
   if (event.code !== 1000) {
     warn('Shard disconnected unexpectedly', { shardId, code: event.code, source: 'discord_shard' });
+    fireEventAllGuilds('bot.disconnected', { shardId, code: event.code }).catch(() => {});
   }
+});
+
+client.on('shardResume', (shardId, replayedEvents) => {
+  info('Shard reconnected', { shardId, replayedEvents, source: 'discord_shard' });
+  fireEventAllGuilds('bot.reconnected', { shardId, replayedEvents }).catch(() => {});
 });
 
 // Start bot
@@ -477,6 +525,7 @@ async function startup() {
     startTempbanScheduler(client);
     startScheduler(client);
     startGithubFeed(client);
+    startVoiceFlush();
   }
 
   // Load commands and login
@@ -495,6 +544,9 @@ async function startup() {
       }
     })
     .catch(() => {});
+
+  // Start periodic health degraded check (fires webhooks on threshold breach)
+  startHealthDegradedCheck();
 
   // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
   {

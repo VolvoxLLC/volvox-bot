@@ -94,10 +94,10 @@ describe('config-listeners', () => {
       expect(registeredKeys).toContain('reputation.*');
     });
 
-    it('registers exactly 11 listeners', () => {
+    it('registers exactly 12 listeners', () => {
       const config = { logging: { database: { enabled: false } } };
       registerConfigListeners({ dbPool: {}, config });
-      expect(onConfigChange).toHaveBeenCalledTimes(11);
+      expect(onConfigChange).toHaveBeenCalledTimes(12);
     });
   });
 
