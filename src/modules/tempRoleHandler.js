@@ -95,7 +95,12 @@ export async function revokeTempRoleById(id, guildId) {
     );
 
     if (rows.length > 0) {
-      info('Temp role revoked by ID', { id, guildId, userId: rows[0].user_id, roleId: rows[0].role_id });
+      info('Temp role revoked by ID', {
+        id,
+        guildId,
+        userId: rows[0].user_id,
+        roleId: rows[0].role_id,
+      });
     }
 
     return rows[0] || null;

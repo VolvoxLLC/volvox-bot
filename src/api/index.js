@@ -17,9 +17,9 @@ import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
-import tempRolesRouter from './routes/tempRoles.js';
 import notificationsRouter from './routes/notifications.js';
 import performanceRouter from './routes/performance.js';
+import tempRolesRouter from './routes/tempRoles.js';
 import webhooksRouter from './routes/webhooks.js';
 
 const router = Router();
