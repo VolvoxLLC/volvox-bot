@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
+import { error } from '../../logger.js';
 
 const router = Router({ mergeParams: true });
 
@@ -88,7 +89,7 @@ router.get(
   feedbackRateLimit,
   requireGuildAdmin,
   validateGuild,
-  async (req, res, _next) => {
+  async (req, res) => {
     try {
       const { dbPool } = req.app.locals;
       if (!dbPool) return res.status(503).json({ error: 'Database not available' });
@@ -140,7 +141,11 @@ router.get(
       }));
 
       res.json({ positive, negative, total, ratio, trend });
-    } catch (_err) {
+    } catch (err) {
+      error('Failed to fetch AI feedback stats', {
+        error: err.message,
+        guildId: req.params.id,
+      });
       res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
     }
   },
@@ -215,7 +220,7 @@ router.get(
   feedbackRateLimit,
   requireGuildAdmin,
   validateGuild,
-  async (req, res, _next) => {
+  async (req, res) => {
     try {
       const { dbPool } = req.app.locals;
       if (!dbPool) return res.status(503).json({ error: 'Database not available' });
@@ -254,7 +259,11 @@ router.get(
         createdAt: r.createdAt ?? r.created_at,
       }));
       res.json({ feedback });
-    } catch (_err) {
+    } catch (err) {
+      error('Failed to fetch recent AI feedback', {
+        error: err.message,
+        guildId: req.params.id,
+      });
       res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
     }
   },
