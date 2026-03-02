@@ -35,12 +35,15 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  const allowedParams = ['days'];
-  for (const key of allowedParams) {
-    const value = request.nextUrl.searchParams.get(key);
-    if (value !== null) {
-      upstreamUrl.searchParams.set(key, value);
+  // Validate and clamp 'days' param to prevent unbounded/expensive lookback queries
+  const rawDays = request.nextUrl.searchParams.get('days');
+  if (rawDays !== null) {
+    const parsed = parseInt(rawDays, 10);
+    if (isNaN(parsed)) {
+      return NextResponse.json({ error: 'Invalid days parameter: must be an integer' }, { status: 400 });
     }
+    const clampedDays = Math.min(90, Math.max(1, parsed));
+    upstreamUrl.searchParams.set('days', String(clampedDays));
   }
 
   return proxyToBotApi(
