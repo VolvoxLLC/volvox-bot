@@ -18,6 +18,7 @@ import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
 import ticketsRouter from './routes/tickets.js';
 import webhooksRouter from './routes/webhooks.js';
+import welcomeRouter from './routes/welcome.js';
 
 const router = Router();
 
@@ -57,6 +58,9 @@ router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter)
 // Audit log routes — require API secret or OAuth2 JWT
 // GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
+
+// Welcome routes — require API secret or OAuth2 JWT
+router.use('/guilds/:id/welcome', requireAuth(), auditLogMiddleware(), welcomeRouter);
 
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);

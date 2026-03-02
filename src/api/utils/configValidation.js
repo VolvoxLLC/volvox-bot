@@ -36,6 +36,22 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'boolean' },
       channelId: { type: 'string', nullable: true },
       message: { type: 'string' },
+      variants: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+      channels: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            channelId: { type: 'string' },
+            message: { type: 'string' },
+            variants: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['channelId'],
+        },
+      },
       dynamic: {
         type: 'object',
         properties: {
