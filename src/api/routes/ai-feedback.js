@@ -6,7 +6,6 @@
  */
 
 import { Router } from 'express';
-import { getFeedbackStats, getFeedbackTrend, getRecentFeedback } from '../../modules/aiFeedback.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
@@ -89,8 +88,11 @@ router.get(
   feedbackRateLimit,
   requireGuildAdmin,
   validateGuild,
-  async (req, res, next) => {
+  async (req, res, _next) => {
     try {
+      const { dbPool } = req.app.locals;
+      if (!dbPool) return res.status(503).json({ error: 'Database not available' });
+
       const guildId = req.params.id;
 
       let days = 30;
@@ -101,17 +103,45 @@ router.get(
         }
       }
 
-      const [stats, trend] = await Promise.all([
-        getFeedbackStats(guildId),
-        getFeedbackTrend(guildId, days),
+      const [statsResult, trendResult] = await Promise.all([
+        dbPool.query(
+          `SELECT
+             COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
+             COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative,
+             COUNT(*)::int AS total
+           FROM ai_feedback
+           WHERE guild_id = $1`,
+          [guildId],
+        ),
+        dbPool.query(
+          `SELECT
+             DATE(created_at) AS date,
+             COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
+             COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative
+           FROM ai_feedback
+           WHERE guild_id = $1
+             AND created_at >= NOW() - INTERVAL '1 days' * $2
+           GROUP BY DATE(created_at)
+           ORDER BY date ASC`,
+          [guildId, days],
+        ),
       ]);
 
-      res.json({
-        ...stats,
-        trend,
-      });
-    } catch (err) {
-      next(err);
+      const row = statsResult.rows[0];
+      const positive = row?.positive || 0;
+      const negative = row?.negative || 0;
+      const total = row?.total || 0;
+      const ratio = total > 0 ? Math.round((positive / total) * 100) : null;
+
+      const trend = trendResult.rows.map((r) => ({
+        date: r.date,
+        positive: r.positive || 0,
+        negative: r.negative || 0,
+      }));
+
+      res.json({ positive, negative, total, ratio, trend });
+    } catch (_err) {
+      res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
     }
   },
 );
@@ -185,8 +215,11 @@ router.get(
   feedbackRateLimit,
   requireGuildAdmin,
   validateGuild,
-  async (req, res, next) => {
+  async (req, res, _next) => {
     try {
+      const { dbPool } = req.app.locals;
+      if (!dbPool) return res.status(503).json({ error: 'Database not available' });
+
       const guildId = req.params.id;
 
       let limit = 25;
@@ -197,10 +230,32 @@ router.get(
         }
       }
 
-      const feedback = await getRecentFeedback(guildId, limit);
+      const result = await dbPool.query(
+        `SELECT
+           id,
+           message_id AS "messageId",
+           channel_id AS "channelId",
+           user_id AS "userId",
+           feedback_type AS "feedbackType",
+           created_at AS "createdAt"
+         FROM ai_feedback
+         WHERE guild_id = $1
+         ORDER BY created_at DESC
+         LIMIT $2`,
+        [guildId, limit],
+      );
+
+      const feedback = result.rows.map((r) => ({
+        id: r.id,
+        messageId: r.messageId ?? r.message_id,
+        channelId: r.channelId ?? r.channel_id,
+        userId: r.userId ?? r.user_id,
+        feedbackType: r.feedbackType ?? r.feedback_type,
+        createdAt: r.createdAt ?? r.created_at,
+      }));
       res.json({ feedback });
-    } catch (err) {
-      next(err);
+    } catch (_err) {
+      res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
     }
   },
 );

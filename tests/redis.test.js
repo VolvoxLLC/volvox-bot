@@ -8,23 +8,23 @@ vi.mock('../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-// Mock ioredis
+// Mock ioredis — use function constructor so `new Redis()` returns a proper instance
 vi.mock('ioredis', () => {
-  const RedisMock = vi.fn().mockImplementation(() => ({
-    on: vi.fn(),
-    quit: vi.fn().mockResolvedValue('OK'),
-  }));
+  const RedisMock = vi.fn().mockImplementation(function () {
+    this.on = vi.fn();
+    this.quit = vi.fn().mockResolvedValue('OK');
+  });
   return { default: RedisMock };
 });
 
-describe('redis.js', () => {
-  let redis;
+import Redis from 'ioredis';
+import * as redis from '../src/redis.js';
 
+describe('redis.js', () => {
   beforeEach(async () => {
-    vi.resetModules();
     delete process.env.REDIS_URL;
-    redis = await import('../src/redis.js');
     await redis._resetRedis();
+    vi.mocked(Redis).mockClear();
   });
 
   afterEach(async () => {
@@ -38,35 +38,20 @@ describe('redis.js', () => {
       expect(client).toBeNull();
     });
 
-    it('creates client when REDIS_URL is set', async () => {
-      vi.resetModules();
+    it('creates client when REDIS_URL is set', () => {
       process.env.REDIS_URL = 'redis://localhost:6379';
 
-      // Re-mock ioredis with a proper class implementation
-      const mockClient = {
-        on: vi.fn(),
-        quit: vi.fn().mockResolvedValue('OK'),
-      };
-      vi.doMock('ioredis', () => ({
-        default: vi.fn().mockImplementation(() => mockClient),
-      }));
-
-      const freshRedis = await import('../src/redis.js');
-      await freshRedis._resetRedis();
-
-      const client = freshRedis.initRedis();
+      const client = redis.initRedis();
       expect(client).not.toBeNull();
-      expect(mockClient.on).toHaveBeenCalled();
+      // Event handlers are registered (connect, ready, close, error, reconnecting)
+      expect(client.on).toHaveBeenCalled();
     });
 
-    it('returns same client on subsequent calls (singleton)', async () => {
-      vi.resetModules();
+    it('returns same client on subsequent calls (singleton)', () => {
       process.env.REDIS_URL = 'redis://localhost:6379';
-      const freshRedis = await import('../src/redis.js');
-      await freshRedis._resetRedis();
 
-      const client1 = freshRedis.initRedis();
-      const client2 = freshRedis.initRedis();
+      const client1 = redis.initRedis();
+      const client2 = redis.initRedis();
       expect(client1).toBe(client2);
     });
   });
