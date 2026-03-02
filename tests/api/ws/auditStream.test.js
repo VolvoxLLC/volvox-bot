@@ -98,10 +98,12 @@ describe('Audit Log WebSocket Stream', () => {
 
   beforeEach(async () => {
     vi.stubEnv('BOT_API_SECRET', TEST_SECRET);
+    // Use short auth timeout for faster tests (100ms instead of 10s)
+    vi.stubEnv('AUDIT_STREAM_AUTH_TIMEOUT_MS', '100');
     const result = await createTestServer();
     httpServer = result.server;
     port = result.port;
-    setupAuditStream(httpServer);
+    await setupAuditStream(httpServer);
   });
 
   afterEach(async () => {
@@ -121,10 +123,10 @@ describe('Audit Log WebSocket Stream', () => {
 
   it('should close unauthenticated clients after auth timeout', async () => {
     const ws = await connectWs(port);
-    // We don't send auth — wait for close with code 4001
-    const code = await waitForClose(ws, 12_000);
+    // We don't send auth — wait for close with code 4001 (uses 100ms timeout from env)
+    const code = await waitForClose(ws, 500);
     expect(code).toBe(4001);
-  }, 15_000);
+  }, 2_000);
 
   // ─── Authentication ───────────────────────────────────────────────────────
 

@@ -68,7 +68,8 @@ function buildFilters(guildId, query) {
     paramIndex++;
   }
 
-  if (query.startDate) {
+  // Guard against array query params — Express can pass string|string[]|undefined
+  if (typeof query.startDate === 'string') {
     const start = new Date(query.startDate);
     if (!Number.isNaN(start.getTime())) {
       conditions.push(`created_at >= $${paramIndex}`);
@@ -77,7 +78,7 @@ function buildFilters(guildId, query) {
     }
   }
 
-  if (query.endDate) {
+  if (typeof query.endDate === 'string') {
     const end = new Date(query.endDate);
     if (!Number.isNaN(end.getTime())) {
       conditions.push(`created_at <= $${paramIndex}`);
@@ -99,7 +100,8 @@ function buildFilters(guildId, query) {
 export function escapeCsvValue(value) {
   if (value === null || value === undefined) return '';
   const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
-  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+  // RFC 4180: also check for \r (CRLF) to properly handle Windows line endings
+  if (str.includes(',') || str.includes('\n') || str.includes('\r') || str.includes('"')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;

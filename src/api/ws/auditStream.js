@@ -26,8 +26,10 @@ const MAX_CLIENTS = 10;
 /** Heartbeat interval in milliseconds */
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
-/** Auth timeout — clients must authenticate within this window */
-const AUTH_TIMEOUT_MS = 10_000;
+/** Auth timeout — clients must authenticate within this window (configurable via env) */
+function getAuthTimeoutMs() {
+  return Number(process.env.AUDIT_STREAM_AUTH_TIMEOUT_MS) || 10_000;
+}
 
 /** @type {WebSocketServer | null} */
 let wss = null;
@@ -198,7 +200,7 @@ function handleConnection(ws) {
     if (!ws.authenticated) {
       ws.close(4001, 'Authentication timeout');
     }
-  }, AUTH_TIMEOUT_MS);
+  }, getAuthTimeoutMs());
 
   ws.on('pong', () => {
     ws.isAlive = true;
@@ -256,11 +258,12 @@ export function broadcastAuditEntry(entry) {
  * Attaches to path `/ws/audit-log`.
  *
  * @param {import('node:http').Server} httpServer
+ * @returns {Promise<void>}
  */
-export function setupAuditStream(httpServer) {
+export async function setupAuditStream(httpServer) {
   if (wss) {
     warn('setupAuditStream called while already running — cleaning up previous instance');
-    stopAuditStream();
+    await stopAuditStream();
   }
 
   wss = new WebSocketServer({ server: httpServer, path: '/ws/audit-log' });
@@ -276,7 +279,20 @@ export function setupAuditStream(httpServer) {
         continue;
       }
       ws.isAlive = false;
-      ws.ping();
+      // Guard ping() with readyState check and try/catch to avoid crashing the interval
+      try {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.ping();
+        }
+      } catch (err) {
+        logError('Audit stream ping failed', { error: err.message });
+        cleanupClient(ws);
+        try {
+          ws.terminate();
+        } catch {
+          // Ignore terminate errors
+        }
+      }
     }
   }, HEARTBEAT_INTERVAL_MS);
 
