@@ -6,7 +6,7 @@
  */
 
 import { debug } from '../logger.js';
-import { cacheDel, cacheGet, cacheGetOrSet, cacheSet, TTL } from './cache.js';
+import { cacheDel, cacheDelPattern, cacheGet, cacheGetOrSet, cacheSet, TTL } from './cache.js';
 
 /**
  * Get cached reputation data for a user.
@@ -44,8 +44,8 @@ export async function setReputationCache(guildId, userId, data) {
 export async function invalidateReputationCache(guildId, userId) {
   await cacheDel(`reputation:${guildId}:${userId}`);
   await cacheDel(`rank:${guildId}:${userId}`);
-  // Also invalidate leaderboard since rankings may have changed
-  await cacheDel(`leaderboard:${guildId}`);
+  // Also invalidate all paginated leaderboard keys for this guild
+  await cacheDelPattern(`leaderboard:${guildId}:*`);
 }
 
 /**
@@ -78,5 +78,5 @@ export async function getRankCached(guildId, userId, fetchFn) {
  * @returns {Promise<void>}
  */
 export async function invalidateLeaderboard(guildId) {
-  await cacheDel(`leaderboard:${guildId}`);
+  await cacheDelPattern(`leaderboard:${guildId}:*`);
 }
