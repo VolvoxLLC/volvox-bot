@@ -33,6 +33,6 @@ export async function closeRedis() {
  * Reset internal state — for testing only.
  * @internal
  */
-export function _resetRedisClient() {
-  _resetRedis();
+export async function _resetRedisClient() {
+  await _resetRedis();
 }
