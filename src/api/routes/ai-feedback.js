@@ -6,9 +6,9 @@
  */
 
 import { Router } from 'express';
+import { getFeedbackStats, getFeedbackTrend, getRecentFeedback } from '../../modules/aiFeedback.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
-import { error } from '../../logger.js';
 
 const router = Router({ mergeParams: true });
 
@@ -89,12 +89,18 @@ router.get(
   feedbackRateLimit,
   requireGuildAdmin,
   validateGuild,
-  async (req, res) => {
-    try {
-      const { dbPool } = req.app.locals;
-      if (!dbPool) return res.status(503).json({ error: 'Database not available' });
+  async (req, res, next) => {
+    if (!req.app.locals.dbPool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
 
+    try {
       const guildId = req.params.id;
+      const pool = req.app.locals.dbPool;
+
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       let days = 30;
       if (req.query.days !== undefined) {
@@ -104,49 +110,18 @@ router.get(
         }
       }
 
-      const [statsResult, trendResult] = await Promise.all([
-        dbPool.query(
-          `SELECT
-             COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
-             COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative,
-             COUNT(*)::int AS total
-           FROM ai_feedback
-           WHERE guild_id = $1`,
-          [guildId],
-        ),
-        dbPool.query(
-          `SELECT
-             DATE(created_at) AS date,
-             COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
-             COUNT(*) FILTER (WHERE feedback_type = 'negative')::int AS negative
-           FROM ai_feedback
-           WHERE guild_id = $1
-             AND created_at >= NOW() - INTERVAL '1 days' * $2
-           GROUP BY DATE(created_at)
-           ORDER BY date ASC`,
-          [guildId, days],
-        ),
+      // Let errors bubble up to the outer catch block
+      const [stats, trend] = await Promise.all([
+        getFeedbackStats(guildId, pool),
+        getFeedbackTrend(guildId, days, pool),
       ]);
 
-      const row = statsResult.rows[0];
-      const positive = row?.positive || 0;
-      const negative = row?.negative || 0;
-      const total = row?.total || 0;
-      const ratio = total > 0 ? Math.round((positive / total) * 100) : null;
-
-      const trend = trendResult.rows.map((r) => ({
-        date: r.date,
-        positive: r.positive || 0,
-        negative: r.negative || 0,
-      }));
-
-      res.json({ positive, negative, total, ratio, trend });
-    } catch (err) {
-      error('Failed to fetch AI feedback stats', {
-        error: err?.message,
-        guildId: req.params.id,
+      res.json({
+        ...stats,
+        trend,
       });
-      res.status(500).json({ error: 'Failed to fetch AI feedback stats' });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -220,12 +195,18 @@ router.get(
   feedbackRateLimit,
   requireGuildAdmin,
   validateGuild,
-  async (req, res) => {
-    try {
-      const { dbPool } = req.app.locals;
-      if (!dbPool) return res.status(503).json({ error: 'Database not available' });
+  async (req, res, next) => {
+    if (!req.app.locals.dbPool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
 
+    try {
       const guildId = req.params.id;
+      const pool = req.app.locals.dbPool;
+
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       let limit = 25;
       if (req.query.limit !== undefined) {
@@ -235,36 +216,22 @@ router.get(
         }
       }
 
-      const result = await dbPool.query(
-        `SELECT
-           id,
-           message_id AS "messageId",
-           channel_id AS "channelId",
-           user_id AS "userId",
-           feedback_type AS "feedbackType",
-           created_at AS "createdAt"
-         FROM ai_feedback
-         WHERE guild_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2`,
-        [guildId, limit],
-      );
+      // Let errors bubble up to the outer catch block
+      const rawFeedback = await getRecentFeedback(guildId, limit, pool);
 
-      const feedback = result.rows.map((r) => ({
-        id: r.id,
-        messageId: r.messageId ?? r.message_id,
-        channelId: r.channelId ?? r.channel_id,
-        userId: r.userId ?? r.user_id,
-        feedbackType: r.feedbackType ?? r.feedback_type,
-        createdAt: r.createdAt ?? r.created_at,
+      // Normalize DB row keys to camelCase (handles both raw SQL and aliased results)
+      const feedback = rawFeedback.map((row) => ({
+        id: row.id,
+        messageId: row.messageId ?? row.message_id,
+        channelId: row.channelId ?? row.channel_id,
+        userId: row.userId ?? row.user_id,
+        feedbackType: row.feedbackType ?? row.feedback_type,
+        createdAt: row.createdAt ?? row.created_at,
       }));
+
       res.json({ feedback });
     } catch (err) {
-      error('Failed to fetch recent AI feedback', {
-        error: err?.message,
-        guildId: req.params.id,
-      });
-      res.status(500).json({ error: 'Failed to fetch recent AI feedback' });
+      next(err);
     }
   },
 );

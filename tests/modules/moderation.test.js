@@ -46,6 +46,7 @@ vi.mock('../../src/utils/duration.js', () => ({
 
 import { getPool } from '../../src/db.js';
 import { error as loggerError, warn as loggerWarn } from '../../src/logger.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   checkEscalation,
   checkHierarchy,
@@ -597,29 +598,29 @@ describe('moderation module', () => {
       roles: { cache: { keys: () => roleIds } },
     });
 
-    const makeGuild = (ownerId) => ({ ownerId });
+    const makeGuild = (ownerId) => ({ id: 'guild1', ownerId });
 
     it('returns false when protectRoles is disabled', () => {
       const target = makeTarget('user1', ['admin-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: { protectRoles: { enabled: false } },
         permissions: { adminRoleId: 'admin-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns false when protectRoles config is absent', () => {
       const target = makeTarget('user1');
       const guild = makeGuild('owner1');
-      const config = { moderation: {} };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      getConfig.mockReturnValueOnce({ moderation: {} });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns true for server owner when includeServerOwner is true', () => {
       const target = makeTarget('owner1');
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -629,14 +630,14 @@ describe('moderation module', () => {
             includeServerOwner: true,
           },
         },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns false for server owner when includeServerOwner is false', () => {
       const target = makeTarget('owner1');
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -646,14 +647,14 @@ describe('moderation module', () => {
             includeServerOwner: false,
           },
         },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns true for user with adminRoleId when includeAdmins is true', () => {
       const target = makeTarget('user1', ['admin-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -664,14 +665,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { adminRoleId: 'admin-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns false for admin role when includeAdmins is false', () => {
       const target = makeTarget('user1', ['admin-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -682,14 +683,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { adminRoleId: 'admin-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns true for user with moderatorRoleId when includeModerators is true', () => {
       const target = makeTarget('user1', ['mod-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -700,14 +701,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { moderatorRoleId: 'mod-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns true for user with a custom roleId in protectRoles.roleIds', () => {
       const target = makeTarget('user1', ['custom-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -717,14 +718,14 @@ describe('moderation module', () => {
             includeServerOwner: false,
           },
         },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns false for regular user with no protected roles', () => {
       const target = makeTarget('user1', ['regular-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -735,14 +736,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { adminRoleId: 'admin-role', moderatorRoleId: 'mod-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns false when no protectedRoleIds resolve (no adminRoleId set) and user is non-owner', () => {
       const target = makeTarget('user1', ['some-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -753,8 +754,8 @@ describe('moderation module', () => {
           },
         },
         permissions: {},
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
   });
 

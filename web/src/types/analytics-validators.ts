@@ -167,5 +167,34 @@ export function isDashboardAnalyticsPayload(value: unknown): value is DashboardA
     return false;
   }
 
+  // userEngagement is optional (null when user_stats table is empty or query fails)
+  if (value.userEngagement !== undefined && value.userEngagement !== null) {
+    const ue = value.userEngagement;
+    if (
+      !isRecord(ue) ||
+      !isFiniteNumber(ue.trackedUsers) ||
+      !isFiniteNumber(ue.totalMessagesSent) ||
+      !isFiniteNumber(ue.totalReactionsGiven) ||
+      !isFiniteNumber(ue.totalReactionsReceived) ||
+      !isFiniteNumber(ue.avgMessagesPerUser)
+    ) {
+      return false;
+    }
+  }
+
+  // xpEconomy is optional (null when reputation table is empty or query fails)
+  if (value.xpEconomy !== undefined && value.xpEconomy !== null) {
+    const xp = value.xpEconomy;
+    if (
+      !isRecord(xp) ||
+      !isFiniteNumber(xp.totalUsers) ||
+      !isFiniteNumber(xp.totalXp) ||
+      !isFiniteNumber(xp.avgLevel) ||
+      !isFiniteNumber(xp.maxLevel)
+    ) {
+      return false;
+    }
+  }
+
   return true;
 }

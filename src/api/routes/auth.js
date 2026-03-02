@@ -108,6 +108,13 @@ export function stopAuthCleanup() {
 /** Rate limiter for OAuth initiation — 10 requests per 15 minutes per IP */
 const oauthRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 
+/** Rate limiter for OAuth callback — 10 attempts per minute per IP (prevents code brute-force and Discord rate-limit exhaustion) */
+const callbackRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: 'Too many authentication attempts',
+});
+
 /**
  * @openapi
  * /auth/discord:
@@ -208,6 +215,8 @@ router.get('/discord', oauthRateLimit, (_req, res) => {
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/Error"
+ *       "429":
+ *         $ref: "#/components/responses/RateLimited"
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  *       "502":
@@ -217,7 +226,7 @@ router.get('/discord', oauthRateLimit, (_req, res) => {
  *             schema:
  *               $ref: "#/components/schemas/Error"
  */
-router.get('/discord/callback', async (req, res) => {
+router.get('/discord/callback', callbackRateLimit, async (req, res) => {
   cleanExpiredStates();
 
   const { code, state } = req.query;

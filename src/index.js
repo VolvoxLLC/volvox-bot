@@ -43,18 +43,29 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
+import { startScheduledBackups, stopScheduledBackups } from './modules/backup.js';
+import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
+import { loadAliasesFromDb, resolveAlias } from './modules/commandAliases.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
+import { startTempRoleScheduler, stopTempRoleScheduler } from './modules/tempRoleHandler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
-import { closeRedisClient as closeRedis, initRedis } from './redis.js';
+import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
+import { fireEventAllGuilds } from './modules/webhookNotifier.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
-import { HealthMonitor } from './utils/health.js';
+import {
+  EVENT_LOOP_LAG_THRESHOLD_MS,
+  HealthMonitor,
+  MEMORY_DEGRADED_THRESHOLD,
+  measureEventLoopLag,
+} from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
@@ -118,6 +129,36 @@ client.commands = new Collection();
 
 // Initialize health monitor
 const healthMonitor = HealthMonitor.getInstance();
+
+// Initialize performance monitor (singleton; start() called in ClientReady handler)
+const perfMonitor = PerformanceMonitor.getInstance();
+
+/** @type {ReturnType<typeof setInterval> | null} Health degraded check interval */
+let healthCheckInterval = null;
+
+/**
+ * Start the periodic health degraded check.
+ * Fires health.degraded webhook when memory >80% or event loop lag >100ms.
+ *
+ * @param {string[]} guildIds - Guild IDs to notify
+ */
+function startHealthDegradedCheck() {
+  if (healthCheckInterval) return;
+  healthCheckInterval = setInterval(async () => {
+    const mem = process.memoryUsage();
+    const memRatio = mem.heapTotal > 0 ? mem.heapUsed / mem.heapTotal : 0;
+    const lag = await measureEventLoopLag();
+    const degraded = memRatio > MEMORY_DEGRADED_THRESHOLD || lag > EVENT_LOOP_LAG_THRESHOLD_MS;
+    if (degraded) {
+      fireEventAllGuilds('health.degraded', {
+        memoryUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+        memoryTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+        memoryRatio: Math.round(memRatio * 100),
+        eventLoopLagMs: lag,
+      }).catch(() => {});
+    }
+  }, 60_000).unref();
+}
 
 /**
  * Save conversation history to disk
@@ -210,10 +251,16 @@ client.on('interactionCreate', async (interaction) => {
   try {
     info('Slash command received', { command: commandName, user: interaction.user.tag });
 
-    // Permission check
+    // Resolve alias → target command (per-guild custom aliases).
+    // Do this early so permission checks and command lookup both use the
+    // resolved (canonical) command name rather than the alias name.
+    const resolvedCommandName = resolveAlias(interaction.guildId, commandName) || commandName;
+
+    // Permission check (using resolved command name so alias permissions mirror target)
     const guildConfig = getConfig(interaction.guildId);
-    if (!hasPermission(member, commandName, guildConfig)) {
-      const permLevel = guildConfig.permissions?.allowedCommands?.[commandName] || 'administrator';
+    if (!hasPermission(member, resolvedCommandName, guildConfig)) {
+      const permLevel =
+        guildConfig.permissions?.allowedCommands?.[resolvedCommandName] || 'administrator';
       await safeReply(interaction, {
         content: getPermissionError(commandName, permLevel),
         ephemeral: true,
@@ -223,7 +270,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     // Execute command from collection
-    const command = client.commands.get(commandName);
+    const command = client.commands.get(resolvedCommandName);
     if (!command) {
       await safeReply(interaction, {
         content: '❌ Command not found.',
@@ -232,9 +279,12 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
 
+    const _cmdStart = Date.now();
     await command.execute(interaction);
+    perfMonitor.recordResponseTime(commandName, Date.now() - _cmdStart, 'command');
     info('Command executed', {
-      command: commandName,
+      command: resolvedCommandName,
+      alias: resolvedCommandName !== commandName ? commandName : undefined,
       user: interaction.user.tag,
       guildId: interaction.guildId,
       channelId: interaction.channelId,
@@ -275,9 +325,13 @@ async function gracefulShutdown(signal) {
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
+  stopTempRoleScheduler();
   stopScheduler();
   stopGithubFeed();
-
+  stopScheduledBackups();
+  perfMonitor.stop();
+  stopBotStatus();
+  stopVoiceFlush();
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
     await stopServer();
@@ -327,7 +381,13 @@ async function gracefulShutdown(signal) {
   info('Disconnecting from Discord');
   client.destroy();
 
-  // 7. Log clean exit
+  // 7. Stop health check interval
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+  }
+
+  // 8. Log clean exit
   info('Shutdown complete');
   process.exit(0);
 }
@@ -344,12 +404,19 @@ client.on('error', (err) => {
     code: err.code,
     source: 'discord_client',
   });
+  fireEventAllGuilds('bot.error', { message: err.message, code: err.code }).catch(() => {});
 });
 
 client.on('shardDisconnect', (event, shardId) => {
   if (event.code !== 1000) {
     warn('Shard disconnected unexpectedly', { shardId, code: event.code, source: 'discord_shard' });
+    fireEventAllGuilds('bot.disconnected', { shardId, code: event.code }).catch(() => {});
   }
+});
+
+client.on('shardResume', (shardId, replayedEvents) => {
+  info('Shard reconnected', { shardId, replayedEvents, source: 'discord_shard' });
+  fireEventAllGuilds('bot.reconnected', { shardId, replayedEvents }).catch(() => {});
 });
 
 // Start bot
@@ -435,6 +502,11 @@ async function startup() {
   // Load opt-out preferences from DB before enabling memory features
   await loadOptOuts();
 
+  // Load command aliases from DB into memory cache
+  if (dbPool) {
+    await loadAliasesFromDb(dbPool);
+  }
+
   // Check mem0 availability for user memory features (with timeout to avoid blocking startup).
   // AbortController prevents a late-resolving health check from calling markAvailable()
   // after the timeout has already called markUnavailable().
@@ -459,19 +531,27 @@ async function startup() {
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
 
+  // Start performance monitor
+  perfMonitor.start();
+
   // Start triage module (per-channel message classification + response)
   await startTriage(client, config, healthMonitor);
 
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {
     startTempbanScheduler(client);
+    startTempRoleScheduler(client);
     startScheduler(client);
     startGithubFeed(client);
+    startScheduledBackups();
+    startVoiceFlush();
   }
-
   // Load commands and login
   await loadCommands();
   await client.login(token);
+
+  // Start bot status/activity rotation (runs after login so client.user is available)
+  startBotStatus(client);
 
   // Set Sentry context now that we know the bot identity (no-op if disabled)
   import('./sentry.js')
@@ -485,6 +565,9 @@ async function startup() {
       }
     })
     .catch(() => {});
+
+  // Start periodic health degraded check (fires webhooks on threshold breach)
+  startHealthDegradedCheck();
 
   // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
   {

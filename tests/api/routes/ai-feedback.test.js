@@ -1,5 +1,9 @@
 /**
  * Tests for src/api/routes/ai-feedback.js
+ *
+ * The route delegates all SQL to the aiFeedback module.
+ * These tests mock the module functions so route behaviour
+ * can be verified independently of the DB layer.
  */
 
 import request from 'supertest';
@@ -23,7 +27,19 @@ vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
   stopJwtCleanup: vi.fn(),
 }));
 
+// Mock the aiFeedback module so route tests don't need a real DB pool
+vi.mock('../../../src/modules/aiFeedback.js', () => ({
+  getFeedbackStats: vi.fn(),
+  getFeedbackTrend: vi.fn(),
+  getRecentFeedback: vi.fn(),
+}));
+
 import { createApp } from '../../../src/api/server.js';
+import {
+  getFeedbackStats,
+  getFeedbackTrend,
+  getRecentFeedback,
+} from '../../../src/modules/aiFeedback.js';
 
 const TEST_SECRET = 'test-feedback-secret';
 const GUILD_ID = 'guild1';
@@ -45,6 +61,7 @@ function authed(req) {
 describe('ai-feedback routes', () => {
   let app;
   let mockPool;
+  let client;
 
   beforeEach(() => {
     vi.stubEnv('BOT_API_SECRET', TEST_SECRET);
@@ -54,13 +71,18 @@ describe('ai-feedback routes', () => {
       connect: vi.fn(),
     };
 
-    const client = {
+    client = {
       guilds: { cache: new Map([[GUILD_ID, mockGuild]]) },
       ws: { status: 0, ping: 42 },
       user: { tag: 'Bot#1234' },
     };
 
     app = createApp(client, mockPool);
+
+    // Sensible defaults — individual tests override as needed
+    getFeedbackStats.mockResolvedValue({ positive: 0, negative: 0, total: 0, ratio: null });
+    getFeedbackTrend.mockResolvedValue([]);
+    getRecentFeedback.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -72,17 +94,13 @@ describe('ai-feedback routes', () => {
 
   describe('GET /api/v1/guilds/:id/ai-feedback/stats', () => {
     it('returns 503 when DB is unavailable', async () => {
-      const client = {
-        guilds: { cache: new Map([[GUILD_ID, mockGuild]]) },
-        ws: { status: 0, ping: 42 },
-        user: { tag: 'Bot#1234' },
-      };
       const noDbApp = createApp(client, null);
 
       const res = await authed(
         request(noDbApp).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/stats`),
       );
       expect(res.status).toBe(503);
+      expect(res.body.error).toBe('Database unavailable');
     });
 
     it('returns 401 without auth', async () => {
@@ -91,11 +109,8 @@ describe('ai-feedback routes', () => {
     });
 
     it('returns aggregate stats with default 30-day window', async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ positive: 10, negative: 3, total: 13 }] })
-        .mockResolvedValueOnce({
-          rows: [{ date: '2026-03-01', positive: 5, negative: 1 }],
-        });
+      getFeedbackStats.mockResolvedValueOnce({ positive: 10, negative: 3, total: 13, ratio: 77 });
+      getFeedbackTrend.mockResolvedValueOnce([{ date: '2026-03-01', positive: 5, negative: 1 }]);
 
       const res = await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/stats`));
 
@@ -103,14 +118,17 @@ describe('ai-feedback routes', () => {
       expect(res.body.positive).toBe(10);
       expect(res.body.negative).toBe(3);
       expect(res.body.total).toBe(13);
-      expect(res.body.ratio).toBe(77); // Math.round(10/13*100)
+      expect(res.body.ratio).toBe(77);
       expect(res.body.trend).toHaveLength(1);
+      expect(res.body.trend[0]).toEqual({ date: '2026-03-01', positive: 5, negative: 1 });
+
+      // Module functions should be called with correct args
+      expect(getFeedbackStats).toHaveBeenCalledWith(GUILD_ID);
+      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 30);
     });
 
     it('returns null ratio when total is 0', async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ positive: 0, negative: 0, total: 0 }] })
-        .mockResolvedValueOnce({ rows: [] });
+      // defaults from beforeEach already return zeros
 
       const res = await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/stats`));
 
@@ -120,38 +138,26 @@ describe('ai-feedback routes', () => {
     });
 
     it('accepts custom days param', async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ positive: 1, negative: 0, total: 1 }] })
-        .mockResolvedValueOnce({ rows: [] });
-
       const res = await authed(
         request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/stats?days=7`),
       );
 
       expect(res.status).toBe(200);
-      // Verify trend query used days=7
-      const trendCall = mockPool.query.mock.calls[1];
-      expect(trendCall[1]).toContain(7);
+      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 7);
     });
 
     it('ignores out-of-range days param (uses default 30)', async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ positive: 0, negative: 0, total: 0 }] })
-        .mockResolvedValueOnce({ rows: [] });
-
       await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/stats?days=999`));
 
-      const trendCall = mockPool.query.mock.calls[1];
-      expect(trendCall[1]).toContain(30);
+      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 30);
     });
 
-    it('returns 500 on DB error', async () => {
-      mockPool.query.mockRejectedValue(new Error('DB down'));
+    it('returns 500 on module error', async () => {
+      getFeedbackStats.mockRejectedValueOnce(new Error('DB down'));
 
       const res = await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/stats`));
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to fetch AI feedback stats');
     });
   });
 
@@ -159,31 +165,27 @@ describe('ai-feedback routes', () => {
 
   describe('GET /api/v1/guilds/:id/ai-feedback/recent', () => {
     it('returns 503 when DB is unavailable', async () => {
-      const client = {
-        guilds: { cache: new Map([[GUILD_ID, mockGuild]]) },
-        ws: { status: 0, ping: 42 },
-        user: { tag: 'Bot#1234' },
-      };
       const noDbApp = createApp(client, null);
 
       const res = await authed(
         request(noDbApp).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/recent`),
       );
       expect(res.status).toBe(503);
+      expect(res.body.error).toBe('Database unavailable');
     });
 
     it('returns recent feedback entries', async () => {
-      const fakeRows = [
+      const fakeEntries = [
         {
           id: 1,
-          message_id: 'msg-1',
-          channel_id: 'ch-1',
-          user_id: 'u-1',
-          feedback_type: 'positive',
-          created_at: '2026-03-01T12:00:00Z',
+          messageId: 'msg-1',
+          channelId: 'ch-1',
+          userId: 'u-1',
+          feedbackType: 'positive',
+          createdAt: '2026-03-01T12:00:00Z',
         },
       ];
-      mockPool.query.mockResolvedValueOnce({ rows: fakeRows });
+      getRecentFeedback.mockResolvedValueOnce(fakeEntries);
 
       const res = await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/recent`));
 
@@ -194,30 +196,23 @@ describe('ai-feedback routes', () => {
     });
 
     it('accepts custom limit param', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
-
       await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/recent?limit=10`));
 
-      const [, params] = mockPool.query.mock.calls[0];
-      expect(params).toContain(10);
+      expect(getRecentFeedback).toHaveBeenCalledWith(GUILD_ID, 10);
     });
 
-    it('clamps limit to 100 (uses default 25 for out-of-range)', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
-
+    it('clamps out-of-range limit to default (25)', async () => {
       await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/recent?limit=999`));
 
-      const [, params] = mockPool.query.mock.calls[0];
-      expect(params).toContain(25); // falls back to default
+      expect(getRecentFeedback).toHaveBeenCalledWith(GUILD_ID, 25);
     });
 
-    it('returns 500 on DB error', async () => {
-      mockPool.query.mockRejectedValue(new Error('DB down'));
+    it('returns 500 on module error', async () => {
+      getRecentFeedback.mockRejectedValueOnce(new Error('DB down'));
 
       const res = await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/recent`));
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to fetch recent AI feedback');
     });
   });
 });

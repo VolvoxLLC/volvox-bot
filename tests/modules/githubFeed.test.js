@@ -97,6 +97,7 @@ vi.mock('discord.js', () => {
 
 import { execFile } from 'node:child_process';
 import { getPool } from '../../src/db.js';
+import { warn } from '../../src/logger.js';
 import { getConfig } from '../../src/modules/config.js';
 import {
   buildEmbed,
@@ -105,8 +106,10 @@ import {
   buildPushEmbed,
   buildReleaseEmbed,
   fetchRepoEvents,
+  isValidGhRepo,
   startGithubFeed,
   stopGithubFeed,
+  VALID_GH_NAME,
 } from '../../src/modules/githubFeed.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
@@ -665,5 +668,135 @@ describe('buildPushEmbed - edge cases', () => {
     const embed = buildPushEmbed(event);
     expect(embed).not.toBeNull();
     expect(embed._data.fields.find((f) => f.name === 'Commits')?.value).toContain('???????');
+  });
+});
+
+// ── Security: owner/repo validation (issue #160) ──────────────────────────
+
+describe('isValidGhRepo', () => {
+  it('accepts simple alphanumeric names', () => {
+    expect(isValidGhRepo('VolvoxLLC', 'volvox-bot')).toBe(true);
+  });
+
+  it('accepts names with dots, hyphens, and underscores', () => {
+    expect(isValidGhRepo('my.org', 'repo_name-2')).toBe(true);
+  });
+
+  it('rejects path traversal in owner', () => {
+    expect(isValidGhRepo('../../etc', 'passwd')).toBe(false);
+  });
+
+  it('rejects path traversal in repo', () => {
+    expect(isValidGhRepo('owner', '../../users/admin')).toBe(false);
+  });
+
+  it('rejects slashes in owner', () => {
+    expect(isValidGhRepo('owner/extra', 'repo')).toBe(false);
+  });
+
+  it('rejects slashes in repo', () => {
+    expect(isValidGhRepo('owner', 'repo/extra')).toBe(false);
+  });
+
+  it('rejects empty owner', () => {
+    expect(isValidGhRepo('', 'repo')).toBe(false);
+  });
+
+  it('rejects empty repo', () => {
+    expect(isValidGhRepo('owner', '')).toBe(false);
+  });
+
+  it('rejects non-string owner', () => {
+    expect(isValidGhRepo(null, 'repo')).toBe(false);
+    expect(isValidGhRepo(undefined, 'repo')).toBe(false);
+    expect(isValidGhRepo(42, 'repo')).toBe(false);
+  });
+
+  it('rejects non-string repo', () => {
+    expect(isValidGhRepo('owner', null)).toBe(false);
+  });
+
+  it('rejects spaces in names', () => {
+    expect(isValidGhRepo('owner name', 'repo')).toBe(false);
+    expect(isValidGhRepo('owner', 'repo name')).toBe(false);
+  });
+
+  it('rejects shell metacharacters', () => {
+    expect(isValidGhRepo('owner;id', 'repo')).toBe(false);
+    expect(isValidGhRepo('owner', 'repo&&evil')).toBe(false);
+    expect(isValidGhRepo('owner', 'repo$(evil)')).toBe(false);
+  });
+
+  it('rejects pure-dot owner/repo (path traversal bypass)', () => {
+    expect(isValidGhRepo('.', 'repo')).toBe(false);
+    expect(isValidGhRepo('..', 'repo')).toBe(false);
+    expect(isValidGhRepo('owner', '..')).toBe(false);
+    expect(isValidGhRepo('..', '..')).toBe(false);
+  });
+});
+
+describe('VALID_GH_NAME regex', () => {
+  it('matches valid names', () => {
+    expect(VALID_GH_NAME.test('VolvoxLLC')).toBe(true);
+    expect(VALID_GH_NAME.test('my-repo_v2.0')).toBe(true);
+  });
+
+  it('does not match path traversal', () => {
+    expect(VALID_GH_NAME.test('../etc')).toBe(false);
+    expect(VALID_GH_NAME.test('foo/bar')).toBe(false);
+  });
+
+  it('rejects pure-dot names (path traversal bypass)', () => {
+    expect(VALID_GH_NAME.test('.')).toBe(false);
+    expect(VALID_GH_NAME.test('..')).toBe(false);
+    expect(VALID_GH_NAME.test('...')).toBe(false);
+  });
+});
+
+describe('fetchRepoEvents - validation guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns [] and warns for path traversal in owner', async () => {
+    const result = await fetchRepoEvents('../../etc', 'passwd');
+    expect(result).toEqual([]);
+    expect(execFile).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      'GitHub feed: invalid owner/repo format, refusing CLI call',
+      expect.objectContaining({ owner: '../../etc', repo: 'passwd' }),
+    );
+  });
+
+  it('returns [] and warns for path traversal in repo', async () => {
+    const result = await fetchRepoEvents('owner', '../../users/admin');
+    expect(result).toEqual([]);
+    expect(execFile).not.toHaveBeenCalled();
+  });
+
+  it('returns [] for empty owner', async () => {
+    const result = await fetchRepoEvents('', 'repo');
+    expect(result).toEqual([]);
+    expect(execFile).not.toHaveBeenCalled();
+  });
+
+  it('returns [] for empty repo', async () => {
+    const result = await fetchRepoEvents('owner', '');
+    expect(result).toEqual([]);
+    expect(execFile).not.toHaveBeenCalled();
+  });
+
+  it('proceeds with gh CLI for valid owner/repo', async () => {
+    execFile.mockImplementation((_cmd, _args, _opts, cb) => {
+      cb(null, { stdout: JSON.stringify([{ id: '1', type: 'PushEvent' }]) });
+    });
+    const result = await fetchRepoEvents('VolvoxLLC', 'volvox-bot');
+    expect(result).toHaveLength(1);
+    expect(execFile).toHaveBeenCalledWith(
+      'gh',
+      ['api', 'repos/VolvoxLLC/volvox-bot/events?per_page=10'],
+      { timeout: 30_000 },
+      expect.any(Function),
+    );
   });
 });

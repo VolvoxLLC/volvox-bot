@@ -11,6 +11,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { parseDuration } from '../utils/duration.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
+import { fireEvent } from './webhookNotifier.js';
 
 /**
  * Color map for mod log embeds by action type.
@@ -146,6 +147,17 @@ export async function createCase(guildId, data) {
       target: data.targetTag,
       moderator: data.moderatorTag,
     });
+
+    // Fire webhook notification — fire-and-forget, don't block case creation
+    fireEvent('moderation.action', guildId, {
+      action: data.action,
+      caseNumber: createdCase.case_number,
+      targetId: data.targetId,
+      targetTag: data.targetTag,
+      moderatorId: data.moderatorId,
+      moderatorTag: data.moderatorTag,
+      reason: data.reason || null,
+    }).catch(() => {});
 
     return createdCase;
   } catch (err) {
@@ -447,10 +459,11 @@ export function stopTempbanScheduler() {
  * configured under `moderation.protectRoles`.
  * @param {import('discord.js').GuildMember} target - Target member to check
  * @param {import('discord.js').Guild} guild - Discord guild
- * @param {Object} config - Bot configuration
  * @returns {boolean} True if the target should not be moderated
  */
-export function isProtectedTarget(target, guild, config) {
+export function isProtectedTarget(target, guild) {
+  // Fetch config per-invocation so live config edits take effect immediately.
+  const config = getConfig(guild.id);
   /**
    * When the protectRoles block is missing from persisted configuration,
    * fall back to the intended defaults: protection enabled, include owner,
