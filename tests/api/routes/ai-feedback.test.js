@@ -176,11 +176,11 @@ describe('ai-feedback routes', () => {
       const fakeRows = [
         {
           id: 1,
-          message_id: 'msg-1',
-          channel_id: 'ch-1',
-          user_id: 'u-1',
-          feedback_type: 'positive',
-          created_at: '2026-03-01T12:00:00Z',
+          messageId: 'msg-1',
+          channelId: 'ch-1',
+          userId: 'u-1',
+          feedbackType: 'positive',
+          createdAt: '2026-03-01T12:00:00Z',
         },
       ];
       mockPool.query.mockResolvedValueOnce({ rows: fakeRows });
