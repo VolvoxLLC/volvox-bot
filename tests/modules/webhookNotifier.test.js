@@ -30,9 +30,13 @@ import {
 describe('webhookNotifier', () => {
   let mockFetch;
   let mockPool;
+  let originalFetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Save original fetch before any mocks
+    originalFetch = global.fetch;
 
     mockPool = {
       query: vi.fn().mockResolvedValue({ rows: [] }),
@@ -49,7 +53,8 @@ describe('webhookNotifier', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete global.fetch;
+    // Restore original fetch instead of deleting
+    global.fetch = originalFetch;
   });
 
   // ── signPayload ──────────────────────────────────────────────────────────
