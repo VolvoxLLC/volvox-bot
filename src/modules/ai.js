@@ -195,14 +195,18 @@ export async function getHistoryAsync(channelId) {
 }
 
 /**
- * Add message to conversation history
- * Writes to both in-memory cache and DB (write-through)
- * @param {string} channelId - Channel ID
- * @param {string} role - Message role (user/assistant)
- * @param {string} content - Message content
- * @param {string} [username] - Optional username
+ * Append a message to the in-memory conversation history for a channel and attempt to persist it to the database.
+ *
+ * The in-memory history is trimmed to the configured maximum length. If a database pool is configured, the message
+ * is written to the conversations table in a fire-and-forget manner; DB errors are logged and do not throw.
+ * @param {string} channelId - Channel identifier that scopes the conversation.
+ * @param {string} role - Message role (e.g., "user" or "assistant").
+ * @param {string} content - Message text content.
+ * @param {string} [username] - Optional display name associated with the message.
+ * @param {string} [discordMessageId] - Optional native Discord message ID.
+ * @param {string} [guildId] - Optional guild ID for the conversation (used for dashboard/jump URLs).
  */
-export function addToHistory(channelId, role, content, username) {
+export function addToHistory(channelId, role, content, username, discordMessageId, guildId) {
   if (!conversationHistory.has(channelId)) {
     conversationHistory.set(channelId, []);
   }
@@ -221,15 +225,16 @@ export function addToHistory(channelId, role, content, username) {
   if (pool) {
     pool
       .query(
-        `INSERT INTO conversations (channel_id, role, content, username)
-       VALUES ($1, $2, $3, $4)`,
-        [channelId, role, content, username || null],
+        `INSERT INTO conversations (channel_id, role, content, username, discord_message_id, guild_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+        [channelId, role, content, username || null, discordMessageId || null, guildId || null],
       )
       .catch((err) => {
         logError('Failed to persist message to DB', {
           channelId,
           role,
           username: username || null,
+          guildId: guildId || null,
           error: err.message,
         });
       });

@@ -82,6 +82,13 @@ function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
+/**
+ * Renders a form field label that is linked to the field control and indicates validation state.
+ *
+ * @param props - Props forwarded to the underlying Label component; `className` will be merged with
+ *   an error-aware style and `htmlFor` is set to the field's control id.
+ * @returns The label element for the current form field with `data-error` and `htmlFor` applied.
+ */
 function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
   const { error, formItemId } = useFormField();
 
@@ -99,12 +106,19 @@ function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPri
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 
+  // Merge caller-provided aria-describedby with form field IDs
+  const callerDescribedBy = props['aria-describedby'];
+  const fieldDescribedBy = !error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`;
+  const ariaDescribedBy = callerDescribedBy
+    ? `${fieldDescribedBy} ${callerDescribedBy}`
+    : fieldDescribedBy;
+
   return (
     <Slot
       {...props}
       data-slot="form-control"
       id={formItemId}
-      aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
+      aria-describedby={ariaDescribedBy}
       aria-invalid={!!error}
     />
   );

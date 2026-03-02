@@ -50,8 +50,33 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
   debug: vi.fn(),
 }));
+vi.mock('../../src/modules/ai.js', () => ({
+  addToHistory: vi.fn(),
+  _setPoolGetter: vi.fn(),
+  setPool: vi.fn(),
+  getConversationHistory: vi.fn().mockReturnValue(new Map()),
+  setConversationHistory: vi.fn(),
+  getHistoryAsync: vi.fn().mockResolvedValue([]),
+  initConversationHistory: vi.fn().mockResolvedValue(undefined),
+  startConversationCleanup: vi.fn(),
+  stopConversationCleanup: vi.fn(),
+}));
+
+let mockGlobalConfig = {};
+
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn((_guildId) => mockGlobalConfig),
+  loadConfigFromFile: vi.fn(),
+  loadConfig: vi.fn().mockResolvedValue(undefined),
+  onConfigChange: vi.fn(),
+  offConfigChange: vi.fn(),
+  clearConfigListeners: vi.fn(),
+  setConfigValue: vi.fn().mockResolvedValue(undefined),
+  resetConfig: vi.fn().mockResolvedValue(undefined),
+}));
 
 import { info, warn } from '../../src/logger.js';
+import { addToHistory } from '../../src/modules/ai.js';
 import { isSpam } from '../../src/modules/spam.js';
 import {
   accumulateMessage,
@@ -194,6 +219,7 @@ describe('triage module', () => {
     config = makeConfig();
     healthMonitor = makeHealthMonitor();
     await startTriage(client, config, healthMonitor);
+    mockGlobalConfig = config;
   });
 
   afterEach(() => {
@@ -223,8 +249,34 @@ describe('triage module', () => {
       expect(mockResponderSend).toHaveBeenCalled();
     });
 
+    it('should call addToHistory with correct args for guild message', () => {
+      const msg = makeMessage('ch1', 'hello world', {
+        id: 'msg-99',
+        username: 'alice',
+        userId: 'u99',
+        guild: { id: 'g1' },
+      });
+      accumulateMessage(msg, config);
+      expect(addToHistory).toHaveBeenCalledWith(
+        'ch1',
+        'user',
+        'hello world',
+        'alice',
+        'msg-99',
+        'g1',
+      );
+    });
+
+    it('should call addToHistory with null guildId for DM (no guild)', () => {
+      const msg = makeMessage('ch1', 'dm message', { id: 'msg-dm', username: 'bob', userId: 'u2' });
+      // No guild property — guild?.id resolves to undefined, coerced to null
+      accumulateMessage(msg, config);
+      expect(addToHistory).toHaveBeenCalledWith('ch1', 'user', 'dm message', 'bob', 'msg-dm', null);
+    });
+
     it('should skip when triage is disabled', async () => {
       const disabledConfig = makeConfig({ triage: { enabled: false } });
+      mockGlobalConfig = disabledConfig;
       accumulateMessage(makeMessage('ch1', 'hello'), disabledConfig);
       await evaluateNow('ch1', config, client, healthMonitor);
 
@@ -233,6 +285,7 @@ describe('triage module', () => {
 
     it('should skip excluded channels', async () => {
       const excConfig = makeConfig({ triage: { excludeChannels: ['ch1'] } });
+      mockGlobalConfig = excConfig;
       accumulateMessage(makeMessage('ch1', 'hello'), excConfig);
       await evaluateNow('ch1', config, client, healthMonitor);
 
@@ -241,6 +294,7 @@ describe('triage module', () => {
 
     it('should skip channels not in allow list when allow list is non-empty', async () => {
       const restrictedConfig = makeConfig({ triage: { channels: ['allowed-ch'] } });
+      mockGlobalConfig = restrictedConfig;
       accumulateMessage(makeMessage('not-allowed-ch', 'hello'), restrictedConfig);
       await evaluateNow('not-allowed-ch', config, client, healthMonitor);
 
@@ -277,6 +331,7 @@ describe('triage module', () => {
 
     it('should respect maxBufferSize cap', async () => {
       const smallConfig = makeConfig({ triage: { maxBufferSize: 3 } });
+      mockGlobalConfig = smallConfig;
       for (let i = 0; i < 5; i++) {
         accumulateMessage(makeMessage('ch1', `msg ${i}`), smallConfig);
       }
@@ -303,6 +358,7 @@ describe('triage module', () => {
   describe('checkTriggerWords', () => {
     it('should force evaluation when trigger words match', async () => {
       const twConfig = makeConfig({ triage: { triggerWords: ['help'] } });
+      mockGlobalConfig = twConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -325,6 +381,7 @@ describe('triage module', () => {
 
     it('should trigger on moderation keywords', async () => {
       const modConfig = makeConfig({ triage: { moderationKeywords: ['badword'] } });
+      mockGlobalConfig = modConfig;
       const classResult = {
         classification: 'moderate',
         reasoning: 'bad content',
@@ -504,6 +561,7 @@ describe('triage module', () => {
 
     it('should suppress moderation response when moderationResponse is false', async () => {
       const modConfig = makeConfig({ triage: { moderationResponse: false } });
+      mockGlobalConfig = modConfig;
       const classResult = {
         classification: 'moderate',
         reasoning: 'spam detected',
@@ -872,6 +930,7 @@ describe('triage module', () => {
 
     it('should use config.triage.defaultInterval as base interval', () => {
       const customConfig = makeConfig({ triage: { defaultInterval: 20000 } });
+      mockGlobalConfig = customConfig;
       accumulateMessage(makeMessage('ch1', 'single'), customConfig);
       vi.advanceTimersByTime(19999);
       expect(mockClassifierSend).not.toHaveBeenCalled();
@@ -926,6 +985,7 @@ describe('triage module', () => {
 
     it('should evict oldest channels when over 100-channel cap', async () => {
       const longConfig = makeConfig({ triage: { defaultInterval: 999999 } });
+      mockGlobalConfig = longConfig;
 
       const classResult = {
         classification: 'ignore',
@@ -1003,6 +1063,7 @@ describe('triage module', () => {
 
     it('should NOT add 👀 reaction when statusReactions is false', async () => {
       const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      mockGlobalConfig = noReactConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -1053,6 +1114,7 @@ describe('triage module', () => {
 
     it('should NOT add 🔍 reaction when statusReactions is false', async () => {
       const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      mockGlobalConfig = noReactConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -1082,6 +1144,7 @@ describe('triage module', () => {
 
     it('should transition 👀 → 💬 → removed (no thinking tokens)', async () => {
       const noThinkConfig = makeConfig({ triage: { thinkingTokens: 0 } });
+      mockGlobalConfig = noThinkConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -1128,6 +1191,7 @@ describe('triage module', () => {
 
     it('should NOT add or remove reactions when statusReactions is false', async () => {
       const noReactConfig = makeConfig({ triage: { statusReactions: false } });
+      mockGlobalConfig = noReactConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
@@ -1174,6 +1238,7 @@ describe('triage module', () => {
   describe('trigger word evaluation', () => {
     it('should call evaluateNow on trigger word detection', async () => {
       const twConfig = makeConfig({ triage: { triggerWords: ['urgent'] } });
+      mockGlobalConfig = twConfig;
       const classResult = {
         classification: 'respond',
         reasoning: 'trigger',

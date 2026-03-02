@@ -32,15 +32,12 @@ const MANAGE_GUILD_FLAG = 0x20;
 const MAX_CONTENT_LENGTH = 10000;
 
 /**
- * Parse pagination query params with defaults and capping.
+ * Parse pagination query parameters and return normalized page, limit, and offset.
  *
- * Currently used only by the moderation endpoint; the members endpoint
- * uses cursor-based pagination instead.
- *
- * @param {Object} query - Express req.query
- * @returns {{ page: number, limit: number, offset: number }}
+ * @param {Object} query - Query object (for example, Express `req.query`) possibly containing `page` and `limit`.
+ * @returns {{page: number, limit: number, offset: number}} page is at least 1, limit is between 1 and 100, offset equals `(page - 1) * limit`.
  */
-function parsePagination(query) {
+export function parsePagination(query) {
   let page = Number.parseInt(query.page, 10) || 1;
   let limit = Number.parseInt(query.limit, 10) || 25;
   if (page < 1) page = 1;

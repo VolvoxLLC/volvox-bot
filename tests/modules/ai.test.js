@@ -154,6 +154,25 @@ describe('ai module', () => {
         'user',
         'hello',
         'testuser',
+        null,
+        null,
+      ]);
+    });
+
+    it('should write guildId to DB when provided', () => {
+      const mockQuery = vi.fn().mockResolvedValue({});
+      const mockPool = { query: mockQuery };
+      setPool(mockPool);
+
+      addToHistory('ch1', 'user', 'hello', 'testuser', 'msg-123', 'guild-456');
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO conversations'), [
+        'ch1',
+        'user',
+        'hello',
+        'testuser',
+        'msg-123',
+        'guild-456',
       ]);
     });
   });

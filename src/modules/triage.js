@@ -23,6 +23,8 @@ import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
 
+import { addToHistory } from './ai.js';
+import { getConfig } from './config.js';
 import {
   channelBuffers,
   clearEvaluatedMessages,
@@ -30,9 +32,13 @@ import {
   pushToBuffer,
 } from './triage-buffer.js';
 import { getDynamicInterval, isChannelEligible, resolveTriageConfig } from './triage-config.js';
+
 import { checkTriggerWords, sanitizeText } from './triage-filter.js';
+
 import { parseClassifyResult, parseRespondResult } from './triage-parse.js';
+
 import { buildClassifyPrompt, buildRespondPrompt } from './triage-prompt.js';
+
 import {
   buildStatsAndLog,
   fetchChannelContext,
@@ -545,13 +551,20 @@ export function stopTriage() {
 }
 
 /**
- * Append a Discord message to the channel's triage buffer and trigger evaluation when necessary.
+ * Append a Discord message to the channel's triage buffer and trigger evaluation when conditions are met.
+ *
+ * Skips processing if triage is disabled, the channel is not eligible, or the message is empty/attachment-only.
+ * Truncates message content to 1000 characters and, when the message is a reply, captures up to 500 characters of the referenced message as reply context.
+ * Adds the entry to the per-channel bounded ring buffer and records the message in conversation history.
+ * If configured trigger words are present, forces an immediate evaluation (and falls back to scheduling if forcing fails); otherwise schedules a dynamic evaluation timer for the channel.
  *
  * @param {import('discord.js').Message} message - The Discord message to accumulate.
- * @param {Object} msgConfig - Bot configuration containing the `triage` settings.
+ * @param {Object} _msgConfig - Ignored; retained for backwards compatibility. Live config is
+ *   fetched via {@link getConfig} on each invocation to avoid stale references.
  */
-export async function accumulateMessage(message, msgConfig) {
-  const triageConfig = msgConfig.triage;
+export async function accumulateMessage(message, _msgConfig) {
+  const liveConfig = getConfig(message.guild?.id || null);
+  const triageConfig = liveConfig.triage;
   if (!triageConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
 
@@ -597,18 +610,28 @@ export async function accumulateMessage(message, msgConfig) {
   // Push to ring buffer (with truncation warning)
   pushToBuffer(channelId, entry, maxBufferSize);
 
+  // Log user message to conversation history
+  addToHistory(
+    channelId,
+    'user',
+    entry.content,
+    entry.author,
+    entry.messageId,
+    message.guild?.id || null,
+  );
+
   // Check for trigger words -- instant evaluation
-  if (checkTriggerWords(message.content, msgConfig)) {
+  if (checkTriggerWords(message.content, liveConfig)) {
     info('Trigger word detected, forcing evaluation', { channelId });
-    evaluateNow(channelId, msgConfig, client, healthMonitor).catch((err) => {
+    evaluateNow(channelId, liveConfig, client, healthMonitor).catch((err) => {
       logError('Trigger word evaluateNow failed', { channelId, error: err.message });
-      scheduleEvaluation(channelId, msgConfig);
+      scheduleEvaluation(channelId, liveConfig);
     });
     return;
   }
 
   // Schedule or reset the dynamic timer
-  scheduleEvaluation(channelId, msgConfig);
+  scheduleEvaluation(channelId, liveConfig);
 }
 
 const MAX_REEVAL_DEPTH = 3;

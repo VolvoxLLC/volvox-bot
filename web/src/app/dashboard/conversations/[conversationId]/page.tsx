@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 interface ConversationDetailResponse {
   messages: ConversationMessage[];
   channelId: string;
+  channelName?: string | null;
   duration: number;
   tokenEstimate: number;
 }
@@ -81,7 +82,7 @@ export default function ConversationDetailPage() {
           </h2>
           {data && (
             <p className="text-sm text-muted-foreground">
-              Channel {data.channelId.slice(-4)} · {data.messages.length} messages
+              #{data.channelName ?? data.channelId} · {data.messages.length} messages
             </p>
           )}
         </div>
@@ -118,6 +119,7 @@ export default function ConversationDetailPage() {
         <ConversationReplay
           messages={data.messages}
           channelId={data.channelId}
+          channelName={data.channelName}
           duration={data.duration}
           tokenEstimate={data.tokenEstimate}
           guildId={guildId}

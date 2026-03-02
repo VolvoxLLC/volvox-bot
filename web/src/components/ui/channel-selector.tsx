@@ -61,6 +61,7 @@ interface ChannelSelectorProps {
   className?: string;
   maxSelections?: number;
   filter?: ChannelTypeFilter;
+  id?: string;
 }
 
 function getChannelIcon(type: number) {
@@ -147,6 +148,23 @@ function filterChannelsByType(
   });
 }
 
+/**
+ * Renders a searchable popover UI for selecting Discord channels from a guild.
+ *
+ * Displays a button that opens a searchable list of channels fetched from the provided guild.
+ * Shows selected channels as removable badges, includes handling for unknown/removed channel IDs,
+ * and respects an optional maximum selection limit and channel-type filter.
+ *
+ * @param guildId - ID of the guild whose channels will be fetched and listed
+ * @param selected - Array of currently selected channel IDs
+ * @param onChange - Callback invoked with the updated array of selected channel IDs
+ * @param placeholder - Text shown when no channels are selected
+ * @param disabled - When true, disables interaction with the selector and remove buttons
+ * @param className - Additional class names applied to the root container
+ * @param maxSelections - Optional maximum number of channels that can be selected
+ * @param filter - Optional channel-type filter to limit which channels are shown
+ * @returns A JSX element that renders the channel selector UI
+ */
 export function ChannelSelector({
   guildId,
   selected,
@@ -156,6 +174,7 @@ export function ChannelSelector({
   className,
   maxSelections,
   filter = 'all',
+  id,
 }: ChannelSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [channels, setChannels] = React.useState<DiscordChannel[]>([]);
@@ -279,6 +298,7 @@ export function ChannelSelector({
             aria-expanded={open}
             disabled={disabled || loading}
             className="w-full justify-between"
+            id={id}
           >
             <span className="truncate">
               {selected.length > 0

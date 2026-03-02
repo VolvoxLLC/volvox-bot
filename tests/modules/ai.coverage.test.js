@@ -185,6 +185,8 @@ describe('ai module coverage', () => {
         'user',
         'hello',
         'testuser',
+        null,
+        null,
       ]);
     });
 
