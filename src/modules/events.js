@@ -27,6 +27,7 @@ import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
+import { handleQuietCommand, isQuietMode } from './quietMode.js';
 import { checkRateLimit } from './rateLimit.js';
 import { handleReminderDismiss, handleReminderSnooze } from './reminderHandler.js';
 import { handleXpGain } from './reputation.js';
@@ -228,6 +229,32 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       if (isChannelBlocked(message.channel.id, parentId, message.guild.id)) return;
 
       if ((isMentioned || isReply) && isAllowedChannel) {
+        // Quiet mode: handle commands first (even during quiet mode so users can unquiet)
+        if (isMentioned) {
+          try {
+            const wasQuietCommand = await handleQuietCommand(message, guildConfig);
+            if (wasQuietCommand) return;
+          } catch (qmErr) {
+            logError('Quiet mode command handler failed', {
+              channelId: message.channel.id,
+              userId: message.author.id,
+              error: qmErr?.message,
+            });
+          }
+        }
+
+        // Quiet mode: suppress AI responses when quiet mode is active (gated on feature enabled)
+        if (guildConfig.quietMode?.enabled) {
+          try {
+            if (await isQuietMode(message.guild.id, message.channel.id)) return;
+          } catch (qmErr) {
+            logError('Quiet mode check failed', {
+              channelId: message.channel.id,
+              error: qmErr?.message,
+            });
+          }
+        }
+
         // Accumulate the message into the triage buffer (for context).
         // Even bare @mentions with no text go through triage so the classifier
         // can use recent channel history to produce a meaningful response.
@@ -262,7 +289,18 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Triage: accumulate message for periodic evaluation (fire-and-forget)
     // Gated on ai.enabled — this is the master kill-switch for all AI responses.
     // accumulateMessage also checks triage.enabled internally.
+    // Skip accumulation when quiet mode is active in this channel (gated on feature enabled).
     if (guildConfig.ai?.enabled) {
+      if (guildConfig.quietMode?.enabled) {
+        try {
+          if (await isQuietMode(message.guild.id, message.channel.id)) return;
+        } catch (qmErr) {
+          logError('Quiet mode check failed (accumulate)', {
+            channelId: message.channel.id,
+            error: qmErr?.message,
+          });
+        }
+      }
       try {
         const p = accumulateMessage(message, guildConfig);
         p?.catch((err) => {
