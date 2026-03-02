@@ -150,7 +150,7 @@ Respond ONLY with valid JSON in this exact format:
 
   const flagged = triggeredCategories.length > 0;
 
-  const actionPriority = { ban: 5, kick: 4, timeout: 3, warn: 2, flag: 1, delete: 0, none: -1 };
+  const actionPriority = { ban: 5, kick: 4, timeout: 3, warn: 2, delete: 2, flag: 1, none: -1 };
   let action = 'none';
   for (const cat of triggeredCategories) {
     const catAction = cfg.actions[cat] ?? 'flag';
