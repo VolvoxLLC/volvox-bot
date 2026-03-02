@@ -133,6 +133,8 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `enabled` | boolean | Enable/disable AI responses |
 | `systemPrompt` | string | System prompt defining bot personality |
 | `channels` | string[] | Channel IDs to respond in (empty = all channels) |
+| `blockedChannelIds` | string[] | Channel IDs where AI responses are completely suppressed (threads inherit parent block) |
+| `feedback.enabled` | boolean | Enable 👍/👎 reaction tracking on AI messages (default: false) |
 | `historyLength` | number | Max conversation history entries per channel (default: 20) |
 | `historyTTLDays` | number | Days before old history is cleaned up (default: 30) |
 | `threadMode.enabled` | boolean | Enable threaded responses (default: false) |
