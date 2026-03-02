@@ -14,6 +14,7 @@ import {
   stripMaskedWrites,
 } from '../utils/configAllowlist.js';
 import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
+import { DANGEROUS_KEYS } from '../utils/dangerousKeys.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 // Re-export flattenToLeafPaths for backward compatibility
