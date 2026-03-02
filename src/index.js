@@ -520,6 +520,7 @@ async function startup() {
     startGithubFeed(client);
     startScheduledBackups();
     startVoiceFlush();
+  }
   // Load commands and login
   await loadCommands();
   await client.login(token);

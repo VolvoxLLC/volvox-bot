@@ -82,9 +82,7 @@ export function validateConfigSchema(config) {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.get("/", requireGlobalAdmin, (req, res) => {
-  const fs = require("fs");
-  try { fs.writeFileSync("/tmp/config-route.log", "Route handler called at " + Date.now()); } catch(e) {}
+router.get('/', requireGlobalAdmin, (req, res) => {
   const config = getConfig();
   const safeConfig = {};
 
