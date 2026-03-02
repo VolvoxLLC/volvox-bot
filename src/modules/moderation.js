@@ -447,7 +447,6 @@ export function stopTempbanScheduler() {
  * configured under `moderation.protectRoles`.
  * @param {import('discord.js').GuildMember} target - Target member to check
  * @param {import('discord.js').Guild} guild - Discord guild
- * @param {Object} config - Bot configuration
  * @returns {boolean} True if the target should not be moderated
  */
 export function isProtectedTarget(target, guild) {
