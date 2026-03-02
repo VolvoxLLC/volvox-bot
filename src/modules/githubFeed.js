@@ -23,7 +23,7 @@ const execFileAsync = promisify(execFile);
  *
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/160
  */
-export const VALID_GH_NAME = /^[a-zA-Z0-9._-]+$/;
+export const VALID_GH_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 
 /**
  * Return true when both owner and repo are safe to pass to the `gh` CLI.
