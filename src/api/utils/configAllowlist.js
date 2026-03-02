@@ -22,6 +22,7 @@ export const SAFE_CONFIG_KEYS = new Set([
   'afk',
   'reputation',
   'engagement',
+  'voice',
   'github',
   'challenges',
   'review',
