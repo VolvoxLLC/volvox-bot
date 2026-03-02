@@ -32,6 +32,7 @@ import { handleReviewClaim } from './reviewHandler.js';
 import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
+import { isChannelBlocked } from './ai.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 import {
@@ -219,6 +220,12 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       const isAllowedChannel =
         allowedChannels.length === 0 || allowedChannels.includes(channelIdToCheck);
 
+      // Check blocklist — blocked channels never get AI responses.
+      // For threads, parentId is also checked so blocking the parent channel
+      // blocks all its child threads.
+      const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
+      if (isChannelBlocked(message.channel.id, parentId)) return;
+
       if ((isMentioned || isReply) && isAllowedChannel) {
         // Accumulate the message into the triage buffer (for context).
         // Even bare @mentions with no text go through triage so the classifier
@@ -255,6 +262,9 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Gated on ai.enabled — this is the master kill-switch for all AI responses.
     // accumulateMessage also checks triage.enabled internally.
     if (guildConfig.ai?.enabled) {
+      // Skip blocked channels for triage as well
+      const triageParentId = message.channel.isThread?.() ? message.channel.parentId : null;
+      if (isChannelBlocked(message.channel.id, triageParentId)) return;
       try {
         const p = accumulateMessage(message, guildConfig);
         p?.catch((err) => {
