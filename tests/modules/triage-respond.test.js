@@ -37,7 +37,12 @@ vi.mock('../../src/modules/triage-filter.js', () => ({
   sanitizeText: vi.fn((text) => text),
 }));
 
+vi.mock('../../src/modules/moderation.js', () => ({
+  isProtectedTarget: vi.fn().mockReturnValue(false),
+}));
+
 import { warn } from '../../src/logger.js';
+import { isProtectedTarget } from '../../src/modules/moderation.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 beforeEach(() => {
@@ -259,6 +264,70 @@ describe('triage-respond', () => {
       await expect(
         sendModerationLog(mockClient, {}, [], 'channel1', config),
       ).resolves.not.toThrow();
+    });
+
+    it('should skip the moderation log when a target is a protected role', async () => {
+      isProtectedTarget.mockReturnValueOnce(true);
+
+      const mockMember = { id: 'user1' };
+      const mockGuild = {
+        members: { fetch: vi.fn().mockResolvedValue(mockMember) },
+      };
+      const mockLogChannel = { id: 'log-channel', guild: mockGuild };
+      const mockClient = {
+        channels: { fetch: vi.fn().mockResolvedValue(mockLogChannel) },
+      };
+
+      const classification = {
+        recommendedAction: 'ban',
+        violatedRule: 'Rule 1',
+        reasoning: 'Spamming',
+        targetMessageIds: ['msg1'],
+      };
+      const snapshot = [
+        { messageId: 'msg1', author: 'AdminUser', userId: 'user1', content: 'msg' },
+      ];
+      const config = {
+        triage: { moderationLogChannel: 'log-channel' },
+        moderation: { protectRoles: { enabled: true, includeAdmins: true } },
+      };
+
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config);
+
+      expect(safeSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('protected role'),
+        expect.objectContaining({ userId: 'user1' }),
+      );
+    });
+
+    it('should still send moderation log when target is not protected', async () => {
+      isProtectedTarget.mockReturnValue(false);
+
+      const mockMember = { id: 'user1' };
+      const mockGuild = {
+        members: { fetch: vi.fn().mockResolvedValue(mockMember) },
+      };
+      const mockLogChannel = { id: 'log-channel', guild: mockGuild };
+      const mockClient = {
+        channels: { fetch: vi.fn().mockResolvedValue(mockLogChannel) },
+      };
+
+      const classification = {
+        recommendedAction: 'warn',
+        violatedRule: 'Rule 1',
+        reasoning: 'Rude message',
+        targetMessageIds: ['msg1'],
+      };
+      const snapshot = [{ messageId: 'msg1', author: 'BadUser', userId: 'user1', content: 'msg' }];
+      const config = {
+        triage: { moderationLogChannel: 'log-channel' },
+        moderation: { protectRoles: { enabled: true } },
+      };
+
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config);
+
+      expect(safeSend).toHaveBeenCalled();
     });
   });
 

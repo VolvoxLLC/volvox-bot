@@ -11,6 +11,7 @@ vi.mock('../../src/modules/moderation.js', () => ({
   sendDmNotification: vi.fn().mockResolvedValue(undefined),
   sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
   checkHierarchy: vi.fn().mockReturnValue(null),
+  isProtectedTarget: vi.fn().mockReturnValue(false),
   shouldSendDm: vi.fn().mockReturnValue(true),
 }));
 
@@ -26,7 +27,12 @@ vi.mock('../../src/modules/config.js', () => ({
 vi.mock('../../src/logger.js', () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 
 import { adminOnly, data, execute } from '../../src/commands/kick.js';
-import { checkHierarchy, createCase, sendDmNotification } from '../../src/modules/moderation.js';
+import {
+  checkHierarchy,
+  createCase,
+  isProtectedTarget,
+  sendDmNotification,
+} from '../../src/modules/moderation.js';
 
 describe('kick command', () => {
   afterEach(() => {
@@ -73,6 +79,16 @@ describe('kick command', () => {
 
   it('should export adminOnly as true', () => {
     expect(adminOnly).toBe(true);
+  });
+
+  it('should reject when target is a protected role', async () => {
+    isProtectedTarget.mockReturnValueOnce(true);
+    const { interaction, mockMember } = createInteraction();
+
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('protected'));
+    expect(mockMember.kick).not.toHaveBeenCalled();
   });
 
   it('should kick a user successfully', async () => {
