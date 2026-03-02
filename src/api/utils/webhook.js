@@ -34,7 +34,11 @@ export function fireAndForgetWebhook(envVarName, payload) {
 
   // Sign payload with HMAC-SHA256 using WEBHOOK_SECRET (preferred) or SESSION_SECRET (fallback).
   // WEBHOOK_SECRET is the dedicated signing key — keep it separate from the JWT session secret.
-  const signingSecret = process.env.WEBHOOK_SECRET || process.env.SESSION_SECRET;
+  // Distinguish "unset" from "set-but-empty": only fall back to SESSION_SECRET when WEBHOOK_SECRET
+  // is completely absent from the environment (undefined). An explicitly-empty WEBHOOK_SECRET
+  // suppresses signing entirely — no silent fallback to SESSION_SECRET.
+  const _webhookSecret = process.env.WEBHOOK_SECRET;
+  const signingSecret = _webhookSecret !== undefined ? _webhookSecret : process.env.SESSION_SECRET;
   if (signingSecret) {
     headers['X-Webhook-Signature'] = createHmac('sha256', signingSecret).update(body).digest('hex');
   }
