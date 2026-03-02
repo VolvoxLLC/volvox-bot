@@ -43,18 +43,20 @@ describe('cache.js — in-memory fallback', () => {
 
     it('respects TTL expiration', async () => {
       vi.useFakeTimers();
-      await cache.cacheSet('test:ttl', 'value', 1); // 1 second TTL
+      try {
+        await cache.cacheSet('test:ttl', 'value', 1); // 1 second TTL
 
-      // Still valid
-      let result = await cache.cacheGet('test:ttl');
-      expect(result).toBe('value');
+        // Still valid
+        let result = await cache.cacheGet('test:ttl');
+        expect(result).toBe('value');
 
-      // Advance past TTL
-      vi.advanceTimersByTime(1500);
-      result = await cache.cacheGet('test:ttl');
-      expect(result).toBeNull();
-
-      vi.useRealTimers();
+        // Advance past TTL
+        vi.advanceTimersByTime(1500);
+        result = await cache.cacheGet('test:ttl');
+        expect(result).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('handles string values', async () => {
