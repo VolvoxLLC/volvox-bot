@@ -12,6 +12,7 @@ import { safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 import { getConfig } from './config.js';
 import { REPUTATION_DEFAULTS } from './reputationDefaults.js';
+import { invalidateReputationCache } from '../utils/reputationCache.js';
 
 /** In-memory cooldown map: `${guildId}:${userId}` → Date of last XP gain */
 const cooldowns = new Map();
@@ -115,6 +116,9 @@ export async function handleXpGain(message) {
 
   // Set cooldown AFTER successful DB write (sweep interval handles eviction)
   cooldowns.set(key, now);
+
+  // Invalidate cached reputation/leaderboard data for this user
+  invalidateReputationCache(message.guild.id, message.author.id).catch(() => {});
 
   const { xp: newXp, level: currentLevel } = rows[0];
   const thresholds = repCfg.levelThresholds;

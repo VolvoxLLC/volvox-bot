@@ -9,6 +9,7 @@
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
+import { cacheGet, cacheGetOrSet, cacheSet, TTL } from '../../utils/cache.js';
 import { computeLevel } from '../../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
 import { rateLimit } from '../middleware/rateLimit.js';
@@ -142,35 +143,43 @@ router.get('/:guildId/leaderboard', async (req, res) => {
   try {
     const repConfig = getRepConfig(guildId);
 
-    const [countResult, membersResult] = await Promise.all([
-      pool.query(
-        `SELECT COUNT(*)::int AS total
-         FROM user_stats us
-         INNER JOIN reputation r ON r.guild_id = us.guild_id AND r.user_id = us.user_id
-         WHERE us.guild_id = $1 AND us.public_profile = TRUE`,
-        [guildId],
-      ),
-      pool.query(
-        `SELECT us.user_id, r.xp, r.level
-         FROM user_stats us
-         INNER JOIN reputation r ON r.guild_id = us.guild_id AND r.user_id = us.user_id
-         WHERE us.guild_id = $1 AND us.public_profile = TRUE
-         ORDER BY r.xp DESC
-         LIMIT $2 OFFSET $3`,
-        [guildId, limit, offset],
-      ),
-    ]);
+    // Cache leaderboard DB results per guild+page (most expensive query)
+    const cacheKey = `leaderboard:${guildId}:${page}:${limit}`;
+    const dbResult = await cacheGetOrSet(cacheKey, async () => {
+      const [countResult, membersResult] = await Promise.all([
+        pool.query(
+          `SELECT COUNT(*)::int AS total
+           FROM user_stats us
+           INNER JOIN reputation r ON r.guild_id = us.guild_id AND r.user_id = us.user_id
+           WHERE us.guild_id = $1 AND us.public_profile = TRUE`,
+          [guildId],
+        ),
+        pool.query(
+          `SELECT us.user_id, r.xp, r.level
+           FROM user_stats us
+           INNER JOIN reputation r ON r.guild_id = us.guild_id AND r.user_id = us.user_id
+           WHERE us.guild_id = $1 AND us.public_profile = TRUE
+           ORDER BY r.xp DESC
+           LIMIT $2 OFFSET $3`,
+          [guildId, limit, offset],
+        ),
+      ]);
+      return {
+        total: countResult.rows[0]?.total ?? 0,
+        rows: membersResult.rows,
+      };
+    }, TTL.LEADERBOARD);
 
-    const total = countResult.rows[0]?.total ?? 0;
+    const { total, rows: memberRows } = dbResult;
     const { client } = req.app.locals;
     const guild = client?.guilds?.cache?.get(guildId);
 
-    const leaderboardUserIds = membersResult.rows.map((r) => r.user_id);
+    const leaderboardUserIds = memberRows.map((r) => r.user_id);
     const fetchedLeaderboardMembers = guild
       ? await guild.members.fetch({ user: leaderboardUserIds }).catch(() => new Map())
       : new Map();
 
-    const members = membersResult.rows.map((row, idx) => {
+    const members = memberRows.map((row, idx) => {
       const level = computeLevel(row.xp, repConfig.levelThresholds);
       let username = row.user_id;
       let displayName = row.user_id;

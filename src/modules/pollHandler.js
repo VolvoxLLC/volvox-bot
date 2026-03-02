@@ -5,6 +5,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/47
  */
 
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
@@ -257,7 +258,7 @@ export async function closePoll(pollId, client) {
   const poll = rows[0];
 
   try {
-    const channel = await client.channels.fetch(poll.channel_id).catch(() => null);
+    const channel = await fetchChannelCached(client, poll.channel_id);
     if (channel && poll.message_id) {
       const message = await channel.messages.fetch(poll.message_id).catch(() => null);
       if (message) {

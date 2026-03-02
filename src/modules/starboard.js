@@ -6,6 +6,7 @@
  * Handles dedup (update vs repost), star removal, and self-star prevention.
  */
 
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { debug, info, error as logError, warn } from '../logger.js';
@@ -277,7 +278,7 @@ export async function handleReactionAdd(reaction, user, client, config) {
   const existing = await findStarboardPost(message.id);
 
   try {
-    const starboardChannel = await client.channels.fetch(sbConfig.channelId);
+    const starboardChannel = await fetchChannelCached(client, sbConfig.channelId);
     if (!starboardChannel) {
       warn('Starboard channel not found', { channelId: sbConfig.channelId });
       return;
@@ -373,7 +374,7 @@ export async function handleReactionRemove(reaction, _user, client, config) {
   );
 
   try {
-    const starboardChannel = await client.channels.fetch(sbConfig.channelId);
+    const starboardChannel = await fetchChannelCached(client, sbConfig.channelId);
     if (!starboardChannel) {
       warn('Starboard channel not found on reaction remove', { channelId: sbConfig.channelId });
       return;

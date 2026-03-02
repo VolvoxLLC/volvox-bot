@@ -4,6 +4,7 @@
  * Also detects phishing TLD patterns (.xyz with suspicious keywords).
  */
 
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { EmbedBuilder } from 'discord.js';
 import { warn } from '../logger.js';
 import { isExempt } from '../utils/modExempt.js';
@@ -91,7 +92,7 @@ async function alertModChannel(message, config, matchedDomain, reason) {
   const alertChannelId = config.moderation?.alertChannelId;
   if (!alertChannelId) return;
 
-  const alertChannel = await message.client.channels.fetch(alertChannelId).catch(() => null);
+  const alertChannel = await fetchChannelCached(message.client, alertChannelId);
   if (!alertChannel) return;
 
   const embed = new EmbedBuilder()

@@ -5,6 +5,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/51
  */
 
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { EmbedBuilder } from 'discord.js';
@@ -247,7 +248,7 @@ async function pollGuildFeed(client, guildId, feedConfig) {
     return;
   }
 
-  const channel = await client.channels.fetch(channelId).catch(() => null);
+  const channel = await fetchChannelCached(client, channelId);
   if (!channel) {
     logWarn('GitHub feed: channel not found', { guildId, channelId });
     return;

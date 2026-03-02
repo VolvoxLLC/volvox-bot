@@ -5,6 +5,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/137
  */
 
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
@@ -102,7 +103,7 @@ async function sendReminderNotification(client, reminder) {
 
   // Fallback: channel mention
   try {
-    const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
+    const channel = await fetchChannelCached(client, reminder.channel_id);
     if (channel) {
       await safeSend(channel, {
         content: `<@${reminder.user_id}>`,

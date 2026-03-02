@@ -3,6 +3,7 @@
  * Handles dynamic welcome messages for new members
  */
 
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { info, error as logError } from '../logger.js';
 import { safeSend } from '../utils/safeSend.js';
 import { isReturningMember } from './welcomeOnboarding.js';
@@ -134,7 +135,7 @@ export async function sendWelcomeMessage(member, client, config) {
   if (!config.welcome?.enabled || !config.welcome?.channelId) return;
 
   try {
-    const channel = await client.channels.fetch(config.welcome.channelId);
+    const channel = await fetchChannelCached(client, config.welcome.channelId);
     if (!channel) return;
 
     const useDynamic = config.welcome?.dynamic?.enabled === true;

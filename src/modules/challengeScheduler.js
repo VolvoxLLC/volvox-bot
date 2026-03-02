@@ -6,6 +6,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/52
  */
 
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { createRequire } from 'node:module';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
@@ -188,7 +189,7 @@ export async function postDailyChallenge(client, guildId) {
     return false;
   }
 
-  const channel = await client.channels.fetch(channelId).catch(() => null);
+  const channel = await fetchChannelCached(client, channelId);
   if (!channel) {
     logWarn('Challenge channel not found', { guildId, channelId });
     return false;
