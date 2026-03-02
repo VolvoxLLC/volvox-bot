@@ -155,20 +155,44 @@ export async function addAlias({
     throw new Error(`Failed to register alias with Discord: ${err.message}`);
   }
 
-  // Persist to DB
-  await pool.query(
-    `INSERT INTO guild_command_aliases (guild_id, alias, target_command, discord_command_id, created_by)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (guild_id, alias) DO UPDATE
-       SET target_command = EXCLUDED.target_command,
-           discord_command_id = EXCLUDED.discord_command_id,
-           created_by = EXCLUDED.created_by,
-           created_at = NOW()`,
-    [guildId, alias, targetCommand, discordCommandId, createdBy],
-  );
+  // Persist to DB + update cache. If either fails, roll back the Discord
+  // guild command we just registered so we don't leave an orphaned command.
+  try {
+    await pool.query(
+      `INSERT INTO guild_command_aliases (guild_id, alias, target_command, discord_command_id, created_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (guild_id, alias) DO UPDATE
+         SET target_command = EXCLUDED.target_command,
+             discord_command_id = EXCLUDED.discord_command_id,
+             created_by = EXCLUDED.created_by,
+             created_at = NOW()`,
+      [guildId, alias, targetCommand, discordCommandId, createdBy],
+    );
 
-  // Update cache
-  updateCache(guildId, alias, targetCommand);
+    updateCache(guildId, alias, targetCommand);
+  } catch (dbErr) {
+    // Best-effort rollback: deregister the Discord command we just created
+    if (discordCommandId) {
+      try {
+        await getRest().delete(
+          Routes.applicationGuildCommand(clientId, guildId, discordCommandId),
+        );
+        warn('Rolled back Discord alias registration after DB failure', {
+          alias,
+          guildId,
+          discordCommandId,
+        });
+      } catch (rollbackErr) {
+        logError('Failed to roll back Discord alias registration', {
+          alias,
+          guildId,
+          discordCommandId,
+          error: rollbackErr.message,
+        });
+      }
+    }
+    throw dbErr;
+  }
 
   return { alias, targetCommand };
 }
