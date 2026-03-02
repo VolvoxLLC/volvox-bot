@@ -120,8 +120,8 @@ router.post('/:guildId/notifications/webhooks', async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid "url"' });
   }
 
-  if (!/^https?:\/\/.+/.test(url)) {
-    return res.status(400).json({ error: '"url" must be a valid HTTP/HTTPS URL' });
+  if (!/^https:\/\/.+/.test(url)) {
+    return res.status(400).json({ error: '"url" must be a valid HTTPS URL' });
   }
 
   if (!Array.isArray(events) || events.length === 0) {
