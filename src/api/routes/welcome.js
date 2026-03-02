@@ -5,7 +5,11 @@
 
 import { Router } from 'express';
 import { getConfig } from '../../modules/config.js';
-import { pickWelcomeVariant, renderWelcomeMessage, resolveWelcomeTemplate } from '../../modules/welcome.js';
+import {
+  pickWelcomeVariant,
+  renderWelcomeMessage,
+  resolveWelcomeTemplate,
+} from '../../modules/welcome.js';
 
 const router = Router({ mergeParams: true });
 
