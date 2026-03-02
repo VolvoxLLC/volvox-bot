@@ -19,7 +19,11 @@ import { info } from '../logger.js';
 import { getConfig, setConfigValue } from '../modules/config.js';
 import {
   applyTemplateToOptions,
+
   createTemplate,
+
+    createTemplate,
+
   deleteTemplate,
   getTemplateByName,
   listTemplates,
