@@ -17,7 +17,7 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'boolean' },
       systemPrompt: { type: 'string' },
       channels: { type: 'array' },
-      blockedChannelIds: { type: 'array' },
+      blockedChannelIds: { type: 'array', items: { type: 'string' } },
       historyLength: { type: 'number' },
       historyTTLDays: { type: 'number' },
       threadMode: {
