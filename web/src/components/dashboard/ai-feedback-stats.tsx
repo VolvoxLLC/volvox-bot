@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { getBotApiBaseUrl } from '@/lib/bot-api';
 
 interface FeedbackStats {
   positive: number;
@@ -37,19 +38,20 @@ const PIE_COLORS = ['#22C55E', '#EF4444'];
  * Shows 👍/👎 aggregate counts, approval ratio, and daily trend.
  */
 export function AiFeedbackStats() {
-  const guildId = useGuildSelection();
+  const selectedGuild = useGuildSelection();
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!guildId) return;
+    const apiBase = getBotApiBaseUrl();
+    if (!selectedGuild || !apiBase) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/guilds/${guildId}/ai-feedback/stats?days=30`, {
+      const res = await fetch(`${apiBase}/guilds/${selectedGuild}/ai-feedback/stats?days=30`, {
         credentials: 'include',
       });
 
@@ -64,13 +66,13 @@ export function AiFeedbackStats() {
     } finally {
       setLoading(false);
     }
-  }, [guildId]);
+  }, [selectedGuild]);
 
   useEffect(() => {
     void fetchStats();
   }, [fetchStats]);
 
-  if (!guildId) return null;
+  if (!selectedGuild) return null;
 
   const pieData =
     stats && stats.total > 0
