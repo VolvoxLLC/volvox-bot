@@ -17,18 +17,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-
-interface FeedbackStats {
-  positive: number;
-  negative: number;
-  total: number;
-  ratio: number | null;
-  trend: Array<{
-    date: string;
-    positive: number;
-    negative: number;
-  }>;
-}
+import type { FeedbackStats } from '@/types/api';
 
 const PIE_COLORS = ['#22C55E', '#EF4444'];
 
