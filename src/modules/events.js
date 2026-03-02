@@ -21,6 +21,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
 import { isChannelBlocked } from './ai.js';
+import { checkAiAutoMod } from './aiAutoMod.js';
 import { deleteFeedback, FEEDBACK_EMOJI, isAiMessage, recordFeedback } from './aiFeedback.js';
 import { handleHintButton, handleSolveButton } from './challengeScheduler.js';
 import { getConfig } from './config.js';
@@ -169,6 +170,19 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       warn('Spam detected', { userId: message.author.id, contentPreview: '[redacted]' });
       await sendSpamAlert(message, client, guildConfig);
       return;
+    }
+
+    // AI Auto-Moderation — analyze message with Claude for toxicity/spam/harassment
+    // Runs after basic spam check; gated on aiAutoMod.enabled in config
+    try {
+      const { flagged } = await checkAiAutoMod(message, client, guildConfig);
+      if (flagged) return;
+    } catch (aiModErr) {
+      logError('AI auto-mod check failed', {
+        channelId: message.channel.id,
+        userId: message.author.id,
+        error: aiModErr?.message,
+      });
     }
 
     // Feed welcome-context activity tracker
