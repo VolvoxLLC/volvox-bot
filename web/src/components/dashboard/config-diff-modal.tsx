@@ -69,11 +69,14 @@ export function ConfigDiffModal({
 
         {/* Changed sections with per-section revert buttons */}
         {changedSections.length > 0 && (
-          <div
-            className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-3"
+          <fieldset
             aria-label="Changed sections"
+            className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-3"
           >
-            <span className="text-xs text-muted-foreground">Changed sections:</span>
+            <legend className="sr-only">Changed sections</legend>
+            <span className="text-xs text-muted-foreground" aria-hidden="true">
+              Changed sections:
+            </span>
             {changedSections.map((section) => (
               <div key={section} className="flex items-center gap-1">
                 <span className="rounded border border-yellow-500/30 bg-yellow-500/20 px-2 py-0.5 text-xs capitalize text-yellow-300">
@@ -91,7 +94,7 @@ export function ConfigDiffModal({
                 </Button>
               </div>
             ))}
-          </div>
+          </fieldset>
         )}
 
         {/* Scrollable diff view */}
@@ -100,11 +103,7 @@ export function ConfigDiffModal({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
           <Button onClick={onConfirm} disabled={saving}>
