@@ -154,7 +154,8 @@ async function handleList(interaction) {
         .join(' · ');
       return `**${t.name}** — ${t.description || 'no description'} *(${badges})*`;
     });
-    embed.addFields({ name: `📂 ${cat}`, value: lines.join('\n'), inline: false });
+    const fieldValue = lines.join('\n').slice(0, 1020) + (lines.join('\n').length > 1020 ? '...' : '');
+    embed.addFields({ name: `📂 ${cat}`, value: fieldValue, inline: false });
   }
 
   await safeEditReply(interaction, { embeds: [embed] });

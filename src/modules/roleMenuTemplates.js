@@ -134,6 +134,11 @@ export async function getTemplateByName(guildId, name) {
        FROM role_menu_templates
       WHERE LOWER(name) = LOWER($1)
         AND (is_builtin = TRUE OR created_by_guild_id = $2 OR is_shared = TRUE)
+      ORDER BY
+        (created_by_guild_id = $2) DESC,
+        is_builtin DESC,
+        name ASC,
+        id ASC
       LIMIT 1`,
     [name.trim(), guildId],
   );
@@ -264,7 +269,7 @@ export function applyTemplateToOptions(template, existingOptions = []) {
       label: opt.label,
       ...(opt.description ? { description: opt.description } : {}),
       // Preserve an existing roleId if the label already has one
-      roleId: opt.roleId || existingByLabel[labelKey] || '',
+      roleId: existingByLabel[labelKey] || opt.roleId || '',
     };
   });
 }
