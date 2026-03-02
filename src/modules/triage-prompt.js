@@ -12,14 +12,15 @@ import { loadPrompt } from '../prompts/index.js';
  * prompt injection attacks. A crafted message containing `</messages-to-evaluate>`
  * could otherwise break out of its designated section and inject instructions.
  *
- * Replaces `<` with `&lt;` and `>` with `&gt;` so the LLM sees the literal
- * characters without interpreting them as structural delimiters.
+ * Replaces `&` with `&amp;`, `<` with `&lt;`, and `>` with `&gt;` so the LLM sees
+ * literal characters without interpreting them as structural delimiters or entities.
  *
  * @param {*} text - Raw user-supplied message content (non-strings pass through)
  * @returns {*} Escaped text safe for insertion between XML-style tags, or the original value when the input is not a string
  */
 export function escapePromptDelimiters(text) {
   if (typeof text !== 'string') return text;
+  // Escape & first so subsequent replacements don't double-encode (prevents &lt; bypass)
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
