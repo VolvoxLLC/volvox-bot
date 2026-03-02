@@ -42,7 +42,8 @@
     "debugFooter": true,
     "debugFooterLevel": "verbose",
     "moderationLogChannel": "1473219285651292201",
-    "statusReactions": true
+    "statusReactions": true,
+    "dailyBudgetUsd": 10
   },
   "welcome": {
     "enabled": true,
