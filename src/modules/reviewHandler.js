@@ -1,9 +1,8 @@
 /**
  * Review Handler Module
  * Business logic for review embed building, claim button interactions, and stale review cleanup.
- * Kept separate from the slash command definition so the scheduler can import { fetchChannelCached } from '../utils/discordCache.js';
-import it without
- * pulling in SlashCommandBuilder (which breaks index.test.js's discord.js mock).
+ * Kept separate from the slash command definition so the scheduler can
+ * import it without pulling in SlashCommandBuilder (which breaks index.test.js's discord.js mock).
  *
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/49
  */
