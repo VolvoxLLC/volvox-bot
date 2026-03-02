@@ -173,9 +173,18 @@ export async function closeRedisClient() {
 
 /**
  * Reset internal state — for testing only.
+ * Closes any existing connection before resetting to prevent leaks.
  * @internal
  */
-export function _resetRedis() {
+export async function _resetRedis() {
+  if (client) {
+    try {
+      await client.quit();
+    } catch {
+      // Ignore errors during test cleanup
+      client.disconnect();
+    }
+  }
   client = null;
   initialized = false;
   connected = false;
