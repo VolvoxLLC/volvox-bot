@@ -2,7 +2,7 @@
  * Tests for the auto-save feature in ConfigEditor.
  *
  * Covers:
- * - AutoSaveStatus component renders the correct UI for each state
+ * - AutoSaveStatus component renders the correct UI for idle, saving, saved, and error states
  * - ConfigEditor loads config without triggering auto-save (no PATCH on mount)
  * - Validation error banner appears when system prompt exceeds max length
  * - Retry button is present in the error state
@@ -94,6 +94,7 @@ describe('ConfigEditor auto-save integration', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('loads config without issuing any PATCH request', async () => {
@@ -110,7 +111,7 @@ describe('ConfigEditor auto-save integration', () => {
     // Wait for config to load
     await waitFor(
       () => {
-        expect(screen.getByTestId('system-prompt')).toBeTruthy();
+        expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -135,7 +136,7 @@ describe('ConfigEditor auto-save integration', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByTestId('system-prompt')).toBeTruthy();
+        expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -150,7 +151,7 @@ describe('ConfigEditor auto-save integration', () => {
       () => {
         expect(
           screen.getByText(/Fix validation errors before changes can be saved/),
-        ).toBeTruthy();
+        ).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -166,8 +167,40 @@ describe('ConfigEditor auto-save integration', () => {
 // ── Unit tests for AutoSaveStatus (via snapshot-style checks) ─────
 
 describe('auto-save status UI', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows no status indicator when idle', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(minimalConfig),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+
+    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
+    expect(screen.queryByText('Saving...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
+    expect(screen.queryByText('Save failed')).not.toBeInTheDocument();
+  });
+
   it('shows "Saving..." with a spinner while saving', async () => {
-    // Render a minimal page that mimics a long-running save by keeping fetch pending
     const fetchMock = vi.fn().mockImplementation((_url: string, opts: { method?: string }) => {
       if (opts?.method === 'PATCH') {
         // Never resolves — keeps saving state visible
@@ -184,20 +217,57 @@ describe('auto-save status UI', () => {
     const { ConfigEditor } = await import('@/components/dashboard/config-editor');
     render(<ConfigEditor />);
 
-    await waitFor(() => expect(screen.getByTestId('system-prompt')).toBeTruthy(), {
-      timeout: 3000,
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
     });
+
+    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
 
     // Trigger a change so auto-save will fire
     await act(async () => {
       fireEvent.change(screen.getByTestId('system-prompt'), { target: { value: 'Hello' } });
     });
 
-    // Wait for the 500ms debounce — use real timers here
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // Advance past the 500ms debounce
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
 
-    await waitFor(() => expect(screen.getByText('Saving...')).toBeTruthy(), { timeout: 3000 });
-  }, 10000);
+    expect(screen.getByText('Saving...')).toBeInTheDocument();
+  });
+
+  it('shows "Saved" after a successful save', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(minimalConfig),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+
+    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
+
+    // Change to trigger auto-save
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('system-prompt'), { target: { value: 'Updated prompt' } });
+    });
+
+    // Advance past debounce and let save + reload complete
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+  });
 
   it('shows "Save failed" with a Retry button when PATCH returns an error', async () => {
     let callCount = 0;
@@ -221,9 +291,11 @@ describe('auto-save status UI', () => {
     const { ConfigEditor } = await import('@/components/dashboard/config-editor');
     render(<ConfigEditor />);
 
-    await waitFor(() => expect(screen.getByTestId('system-prompt')).toBeTruthy(), {
-      timeout: 3000,
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
     });
+
+    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('system-prompt'), {
@@ -231,10 +303,15 @@ describe('auto-save status UI', () => {
       });
     });
 
-    // Wait for debounce + save attempt
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    // Advance past debounce + let save attempt complete
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
 
-    await waitFor(() => expect(screen.getByText('Save failed')).toBeTruthy(), { timeout: 5000 });
-    expect(screen.getByRole('button', { name: 'Retry save' })).toBeTruthy();
-  }, 15000);
+    expect(screen.getByText('Save failed')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry save' })).toBeInTheDocument();
+  });
 });
