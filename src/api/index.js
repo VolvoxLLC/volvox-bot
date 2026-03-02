@@ -17,9 +17,9 @@ import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
 import notificationsRouter from './routes/notifications.js';
+import performanceRouter from './routes/performance.js';
 import ticketsRouter from './routes/tickets.js';
 import webhooksRouter from './routes/webhooks.js';
-import performanceRouter from './routes/performance.js';
 
 const router = Router();
 
@@ -70,4 +70,3 @@ router.use('/guilds', requireAuth(), auditLogMiddleware(), notificationsRouter);
 router.use('/webhooks', requireAuth(), webhooksRouter);
 
 export default router;
-

@@ -148,7 +148,9 @@ describe('PUT /api/v1/performance/thresholds', () => {
 
   it('returns 401 without auth', async () => {
     const app = buildApp();
-    const res = await request(app).put('/api/v1/performance/thresholds').send({ memoryHeapMb: 256 });
+    const res = await request(app)
+      .put('/api/v1/performance/thresholds')
+      .send({ memoryHeapMb: 256 });
     expect(res.status).toBe(401);
   });
 

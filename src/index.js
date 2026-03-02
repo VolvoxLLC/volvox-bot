@@ -49,6 +49,7 @@ import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
@@ -62,7 +63,6 @@ import {
   MEMORY_DEGRADED_THRESHOLD,
   measureEventLoopLag,
 } from './utils/health.js';
-import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';

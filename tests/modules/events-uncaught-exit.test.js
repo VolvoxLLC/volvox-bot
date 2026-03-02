@@ -105,7 +105,7 @@ describe('registerErrorHandlers — uncaughtException exits process (issue #156)
     const { registerErrorHandlers } = await import('../../src/modules/events.js');
     registerErrorHandlers({ on: vi.fn() });
 
-    expect(capturedHandlers['uncaughtException']).toBeDefined();
+    expect(capturedHandlers.uncaughtException).toBeDefined();
   });
 
   it('calls process.exit(1) after logging an uncaught exception', async () => {
@@ -122,9 +122,9 @@ describe('registerErrorHandlers — uncaughtException exits process (issue #156)
     const { registerErrorHandlers } = await import('../../src/modules/events.js');
     registerErrorHandlers({ on: vi.fn() });
 
-    expect(capturedHandlers['uncaughtException']).toBeDefined();
+    expect(capturedHandlers.uncaughtException).toBeDefined();
 
-    await capturedHandlers['uncaughtException'](new Error('boom'));
+    await capturedHandlers.uncaughtException(new Error('boom'));
 
     expect(processExitSpy).toHaveBeenCalledWith(1);
   });
@@ -145,7 +145,7 @@ describe('registerErrorHandlers — uncaughtException exits process (issue #156)
     const { registerErrorHandlers } = await import('../../src/modules/events.js');
     registerErrorHandlers({ on: vi.fn() });
 
-    await capturedHandlers['uncaughtException'](new Error('boom while sentry is down'));
+    await capturedHandlers.uncaughtException(new Error('boom while sentry is down'));
 
     // Must still exit even when Sentry fails — handler has a catch block
     expect(processExitSpy).toHaveBeenCalledWith(1);

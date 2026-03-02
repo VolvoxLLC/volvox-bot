@@ -423,7 +423,7 @@ export function ConfigEditor() {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [draftConfig, hasChanges, hasValidationErrors, saving, saveChanges]);
+  }, [hasChanges, hasValidationErrors, saving, saveChanges]);
 
   // ── Keyboard shortcut: Ctrl/Cmd+S to save ──────────────────────
   useEffect(() => {

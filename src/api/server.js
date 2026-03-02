@@ -5,8 +5,8 @@
 
 import express from 'express';
 import { error, info, warn } from '../logger.js';
-import apiRouter from './index.js';
 import { PerformanceMonitor } from '../modules/performanceMonitor.js';
+import apiRouter from './index.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { stopAuthCleanup } from './routes/auth.js';
 import { swaggerSpec } from './swagger.js';
