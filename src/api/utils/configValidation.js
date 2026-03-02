@@ -166,6 +166,14 @@ export const CONFIG_SCHEMA = {
       maxPerUser: { type: 'number' },
     },
   },
+  quietMode: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      maxDurationMinutes: { type: 'number' },
+      allowedRoles: { type: 'array' },
+    },
+  },
 };
 
 /**
