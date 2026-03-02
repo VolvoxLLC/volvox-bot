@@ -4,7 +4,7 @@
  * Manages reusable role menu templates — pre-defined (built-in) and
  * custom guild-created.  Templates can be shared across guilds.
  *
- * @see https://github.com/VolvoxLLC/volvox-bot/issues/135
+ * @see https://github.com/VolvoxLLC/volvox-bot/issues/216 (role menu templates)
  */
 
 import { getPool } from '../db.js';
@@ -90,7 +90,14 @@ export function validateTemplateOptions(options) {
     if (!opt || typeof opt !== 'object') return `Option ${i + 1} is not a valid object.`;
     if (typeof opt.label !== 'string' || !opt.label.trim())
       return `Option ${i + 1} must have a non-empty label.`;
-    if (opt.label.trim().length > 100) return `Option ${i + 1} label must be ≤100 characters.`;
+    if (opt.label.trim().length > 100)
+      return `Option ${i + 1} label must be ≤100 characters.`;
+    // Validate optional description
+    if (opt.description !== undefined && typeof opt.description !== 'string')
+      return `Option ${i + 1} description must be a string.`;
+    // Validate optional roleId
+    if (opt.roleId !== undefined && typeof opt.roleId !== 'string')
+      return `Option ${i + 1} roleId must be a string.`;
   }
   return null;
 }
@@ -238,7 +245,7 @@ export async function seedBuiltinTemplates() {
       `INSERT INTO role_menu_templates
          (name, description, category, created_by_guild_id, is_builtin, is_shared, options)
        VALUES ($1, $2, $3, NULL, TRUE, TRUE, $4::jsonb)
-       ON CONFLICT (name, COALESCE(created_by_guild_id, '__builtin__')) DO NOTHING`,
+       ON CONFLICT ON CONSTRAINT idx_rmt_name_guild DO NOTHING`,
       [tpl.name, tpl.description, tpl.category, JSON.stringify(tpl.options)],
     );
   }
