@@ -15,12 +15,12 @@ import { loadPrompt } from '../prompts/index.js';
  * Replaces `<` with `&lt;` and `>` with `&gt;` so the LLM sees the literal
  * characters without interpreting them as structural delimiters.
  *
- * @param {string} text - Raw user-supplied message content
- * @returns {string} Escaped text safe for insertion between XML-style tags
+ * @param {*} text - Raw user-supplied message content (non-strings pass through)
+ * @returns {*} Escaped text safe for insertion between XML-style tags, or the original value when the input is not a string
  */
 export function escapePromptDelimiters(text) {
   if (typeof text !== 'string') return text;
-  return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ── Conversation text formatting ─────────────────────────────────────────────
@@ -42,9 +42,9 @@ export function buildConversationText(context, buffer) {
     const time = m.timestamp ? new Date(m.timestamp).toISOString().slice(11, 19) : '';
     const timePrefix = time ? `[${time}] ` : '';
     const replyPrefix = m.replyTo
-      ? `(replying to ${m.replyTo.author}: "${escapePromptDelimiters(m.replyTo.content.slice(0, 100))}")\n  `
+      ? `(replying to ${escapePromptDelimiters(m.replyTo.author)}: "${escapePromptDelimiters(m.replyTo.content.slice(0, 100))}")\n  `
       : '';
-    return `${timePrefix}[${m.messageId}] ${m.author} (<@${m.userId}>): ${replyPrefix}${escapePromptDelimiters(m.content)}`;
+    return `${timePrefix}[${m.messageId}] ${escapePromptDelimiters(m.author)} (<@${m.userId}>): ${replyPrefix}${escapePromptDelimiters(m.content)}`;
   };
 
   let text = '';
