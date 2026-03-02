@@ -300,6 +300,15 @@ describe('validateConfigPatch', () => {
       expect(result.status).toBe(400);
     });
 
+    it('should reject __proto__ as the first segment', () => {
+      // Verifies the dangerous-key check fires before the allowlist check —
+      // so even the top-level key is rejected if it is a pollution vector.
+      const body = { path: '__proto__.polluted', value: true };
+      const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+      expect(result.error).toBe("Invalid config path: '__proto__' is a reserved key");
+      expect(result.status).toBe(400);
+    });
+
     it('should reject __proto__ as the second segment', () => {
       const body = { path: 'welcome.__proto__', value: {} };
       const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
