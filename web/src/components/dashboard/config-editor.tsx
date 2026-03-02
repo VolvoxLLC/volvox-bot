@@ -1309,7 +1309,8 @@ export function ConfigEditor() {
                         0.7) * 100,
                     )}
                     onChange={(e) => {
-                      const v = Number(e.target.value) / 100;
+                      const raw = Number(e.target.value);
+                      const v = isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
                       updateAiAutoModField('thresholds', {
                         ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {}),
                         [cat]: v,
