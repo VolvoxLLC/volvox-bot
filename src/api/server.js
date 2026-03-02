@@ -5,11 +5,13 @@
 
 import express from 'express';
 import { error, info, warn } from '../logger.js';
+import { PerformanceMonitor } from '../modules/performanceMonitor.js';
 import apiRouter from './index.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { stopAuthCleanup } from './routes/auth.js';
 import { swaggerSpec } from './swagger.js';
 import { stopGuildCacheCleanup } from './utils/discordApi.js';
+import { setupAuditStream, stopAuditStream } from './ws/auditStream.js';
 import { setupLogStream, stopLogStream } from './ws/logStream.js';
 
 /** @type {import('node:http').Server | null} */
@@ -67,6 +69,17 @@ export function createApp(client, dbPool) {
 
   // Raw OpenAPI spec (JSON) — public for Mintlify
   app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+
+  // Response time tracking for performance monitoring
+  app.use('/api/v1', (req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      const label = `${req.method} ${req.path}`;
+      PerformanceMonitor.getInstance().recordResponseTime(label, duration, 'api');
+    });
+    next();
+  });
 
   // Mount API routes under /api/v1
   app.use('/api/v1', apiRouter);
@@ -132,6 +145,14 @@ export async function startServer(client, dbPool, options = {}) {
         }
       }
 
+      // Attach audit log real-time WebSocket stream
+      try {
+        setupAuditStream(server);
+      } catch (err) {
+        error('Failed to setup audit log WebSocket stream', { error: err.message });
+        // Non-fatal — HTTP server still works without audit WS streaming
+      }
+
       resolve(server);
     });
     server.once('error', (err) => {
@@ -150,6 +171,9 @@ export async function startServer(client, dbPool, options = {}) {
 export async function stopServer() {
   // Stop WebSocket log stream before closing HTTP server
   await stopLogStream();
+
+  // Stop audit log WebSocket stream
+  await stopAuditStream();
 
   stopAuthCleanup();
   stopGuildCacheCleanup();
