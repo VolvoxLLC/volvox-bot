@@ -333,6 +333,63 @@ describe('CLIProcess — short-lived mode', () => {
     await sendP;
   });
 
+  it('should not leak sensitive env vars to subprocess (security: #155)', async () => {
+    // Temporarily inject fake secrets into process.env to simulate the bot's runtime env
+    const origDiscordToken = process.env.DISCORD_TOKEN;
+    const origDbUrl = process.env.DATABASE_URL;
+    const origSecret = process.env.BOT_API_SECRET;
+    process.env.DISCORD_TOKEN = 'secret-discord-token';
+    process.env.DATABASE_URL = 'postgres://user:password@db:5432/prod';
+    process.env.BOT_API_SECRET = 'super-secret-api-key';
+
+    try {
+      const cli = new CLIProcess('test', { apiKey: 'sk-test' });
+      await cli.start();
+
+      const sendP = cli.send('hello');
+      await tick();
+
+      const [, , opts] = spawnMock.mock.calls[0];
+      const env = opts.env;
+
+      // Must have the necessary vars
+      expect(env.ANTHROPIC_API_KEY).toBe('sk-test');
+      expect(env.PATH).toBeDefined();
+      expect(env.HOME).toBeDefined();
+      expect(env.MAX_THINKING_TOKENS).toBeDefined();
+
+      // Must NOT leak secrets
+      expect(env.DISCORD_TOKEN).toBeUndefined();
+      expect(env.DATABASE_URL).toBeUndefined();
+      expect(env.BOT_API_SECRET).toBeUndefined();
+      expect(env.SESSION_SECRET).toBeUndefined();
+      expect(env.REDIS_URL).toBeUndefined();
+
+      const proc = lastSpawnedProc;
+      writeLine(proc, { type: 'result', is_error: false });
+      await tick();
+      proc.emit('exit', 0, null);
+      await sendP;
+    } finally {
+      // Restore process.env
+      if (origDiscordToken === undefined) {
+        delete process.env.DISCORD_TOKEN;
+      } else {
+        process.env.DISCORD_TOKEN = origDiscordToken;
+      }
+      if (origDbUrl === undefined) {
+        delete process.env.DATABASE_URL;
+      } else {
+        process.env.DATABASE_URL = origDbUrl;
+      }
+      if (origSecret === undefined) {
+        delete process.env.BOT_API_SECRET;
+      } else {
+        process.env.BOT_API_SECRET = origSecret;
+      }
+    }
+  });
+
   it('should include --dangerously-skip-permissions in args', async () => {
     const cli = new CLIProcess('test', {});
     await cli.start();
