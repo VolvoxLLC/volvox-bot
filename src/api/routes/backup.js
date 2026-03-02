@@ -8,7 +8,6 @@
  */
 
 import { Router } from 'express';
-import { warn } from '../../logger.js';
 import {
   createBackup,
   exportConfig,
@@ -19,28 +18,9 @@ import {
   restoreBackup,
   validateImportPayload,
 } from '../../modules/backup.js';
-import { getConfig } from '../../modules/config.js';
-import { getBotOwnerIds } from '../../utils/permissions.js';
+import { requireGlobalAdmin } from '../middleware/requireGlobalAdmin.js';
 
 const router = Router();
-
-/**
- * Middleware — restricts access to API-secret callers or bot-owner OAuth users.
- * Mirrors the requireGlobalAdmin guard used by the config routes.
- */
-function requireGlobalAdmin(req, res, next) {
-  if (req.authMethod === 'api-secret') return next();
-
-  if (req.authMethod === 'oauth') {
-    const botOwners = getBotOwnerIds(getConfig());
-    if (botOwners.includes(req.user?.userId)) return next();
-
-    return res.status(403).json({ error: 'Backup access requires bot owner permissions' });
-  }
-
-  warn('Unknown authMethod in backup route', { authMethod: req.authMethod, path: req.path });
-  return res.status(401).json({ error: 'Unauthorized' });
-}
 
 /**
  * @openapi
@@ -76,14 +56,18 @@ function requireGlobalAdmin(req, res, next) {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.get('/export', requireGlobalAdmin, (_req, res) => {
-  const payload = exportConfig();
-  const filename = `config-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+router.get(
+  '/export',
+  (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
+  (_req, res) => {
+    const payload = exportConfig();
+    const filename = `config-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.setHeader('Content-Type', 'application/json');
-  res.json(payload);
-});
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(payload);
+  },
+);
 
 /**
  * @openapi
@@ -140,21 +124,25 @@ router.get('/export', requireGlobalAdmin, (_req, res) => {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.post('/import', requireGlobalAdmin, async (req, res) => {
-  const payload = req.body;
+router.post(
+  '/import',
+  (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
+  async (req, res) => {
+    const payload = req.body;
 
-  const validationErrors = validateImportPayload(payload);
-  if (validationErrors.length > 0) {
-    return res.status(400).json({ error: 'Invalid import payload', details: validationErrors });
-  }
+    const validationErrors = validateImportPayload(payload);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: 'Invalid import payload', details: validationErrors });
+    }
 
-  try {
-    const result = await importConfig(payload);
-    return res.json(result);
-  } catch (err) {
-    return res.status(500).json({ error: 'Import failed', details: err.message });
-  }
-});
+    try {
+      const result = await importConfig(payload);
+      return res.json(result);
+    } catch (err) {
+      return res.status(500).json({ error: 'Import failed', details: err.message });
+    }
+  },
+);
 
 /**
  * @openapi
@@ -193,10 +181,14 @@ router.post('/import', requireGlobalAdmin, async (req, res) => {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.get('/', requireGlobalAdmin, (_req, res) => {
-  const backups = listBackups();
-  res.json(backups);
-});
+router.get(
+  '/',
+  (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
+  (_req, res) => {
+    const backups = listBackups();
+    res.json(backups);
+  },
+);
 
 /**
  * @openapi
@@ -234,14 +226,18 @@ router.get('/', requireGlobalAdmin, (_req, res) => {
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
-router.post('/', requireGlobalAdmin, (_req, res) => {
-  try {
-    const meta = createBackup();
-    return res.status(201).json({ id: meta.id, size: meta.size, createdAt: meta.createdAt });
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to create backup', details: err.message });
-  }
-});
+router.post(
+  '/',
+  (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
+  (_req, res) => {
+    try {
+      const meta = createBackup();
+      return res.status(201).json({ id: meta.id, size: meta.size, createdAt: meta.createdAt });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to create backup', details: err.message });
+    }
+  },
+);
 
 /**
  * @openapi
@@ -279,24 +275,28 @@ router.post('/', requireGlobalAdmin, (_req, res) => {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.get('/:id/download', requireGlobalAdmin, (req, res) => {
-  const { id } = req.params;
+router.get(
+  '/:id/download',
+  (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
+  (req, res) => {
+    const { id } = req.params;
 
-  try {
-    const payload = readBackup(id);
-    const filename = `${id}.json`;
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Type', 'application/json');
-    return res.json(payload);
-  } catch (err) {
-    const status = err.message.includes('not found')
-      ? 404
-      : err.message.includes('Invalid')
-        ? 400
-        : 500;
-    return res.status(status).json({ error: err.message });
-  }
-});
+    try {
+      const payload = readBackup(id);
+      const filename = `${id}.json`;
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/json');
+      return res.json(payload);
+    } catch (err) {
+      const status = err.message.includes('not found')
+        ? 404
+        : err.message.includes('Invalid')
+          ? 400
+          : 500;
+      return res.status(status).json({ error: err.message });
+    }
+  },
+);
 
 /**
  * @openapi
@@ -350,21 +350,25 @@ router.get('/:id/download', requireGlobalAdmin, (req, res) => {
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
-router.post('/:id/restore', requireGlobalAdmin, async (req, res) => {
-  const { id } = req.params;
+router.post(
+  '/:id/restore',
+  (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
+  async (req, res) => {
+    const { id } = req.params;
 
-  try {
-    const result = await restoreBackup(id);
-    return res.json(result);
-  } catch (err) {
-    const status = err.message.includes('not found')
-      ? 404
-      : err.message.includes('Invalid')
-        ? 400
-        : 500;
-    return res.status(status).json({ error: err.message });
-  }
-});
+    try {
+      const result = await restoreBackup(id);
+      return res.json(result);
+    } catch (err) {
+      const status = err.message.includes('not found')
+        ? 404
+        : err.message.includes('Invalid')
+          ? 400
+          : 500;
+      return res.status(status).json({ error: err.message });
+    }
+  },
+);
 
 /**
  * @openapi
@@ -413,10 +417,31 @@ router.post('/:id/restore', requireGlobalAdmin, async (req, res) => {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.post('/prune', requireGlobalAdmin, (req, res) => {
-  const retention = req.body ?? {};
-  const deleted = pruneBackups(retention);
-  return res.json({ deleted, count: deleted.length });
-});
+router.post(
+  '/prune',
+  (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
+  (req, res) => {
+    const retention = req.body ?? {};
+    const errors = [];
+
+    if (retention.daily !== undefined) {
+      if (!Number.isInteger(retention.daily) || retention.daily < 0) {
+        errors.push('daily must be a non-negative integer');
+      }
+    }
+    if (retention.weekly !== undefined) {
+      if (!Number.isInteger(retention.weekly) || retention.weekly < 0) {
+        errors.push('weekly must be a non-negative integer');
+      }
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ error: 'Invalid prune options', details: errors });
+    }
+
+    const deleted = pruneBackups(retention);
+    return res.json({ deleted, count: deleted.length });
+  },
+);
 
 export default router;

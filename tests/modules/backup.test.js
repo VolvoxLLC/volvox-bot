@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,7 +31,7 @@ vi.mock('../../src/api/utils/configAllowlist.js', () => ({
   SENSITIVE_FIELDS: new Set(['triage.classifyApiKey', 'triage.respondApiKey']),
 }));
 
-vi.mock('../../src/api/routes/config.js', () => ({
+vi.mock('../../src/utils/flattenToLeafPaths.js', () => ({
   flattenToLeafPaths: (obj, prefix) => {
     const results = [];
     for (const [key, value] of Object.entries(obj)) {
@@ -52,7 +52,6 @@ vi.mock('../../src/api/routes/config.js', () => ({
 import {
   createBackup,
   exportConfig,
-  getBackupDir,
   importConfig,
   listBackups,
   pruneBackups,

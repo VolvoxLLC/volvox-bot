@@ -14,11 +14,14 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+
+// TODO: Consider switching to fs.promises for async operations to improve performance
+// and avoid blocking the event loop with synchronous file system operations.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { flattenToLeafPaths } from '../api/routes/config.js';
 import { SAFE_CONFIG_KEYS, SENSITIVE_FIELDS } from '../api/utils/configAllowlist.js';
 import { info, error as logError, warn } from '../logger.js';
+import { flattenToLeafPaths } from '../utils/flattenToLeafPaths.js';
 import { getConfig, setConfigValue } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -123,9 +126,11 @@ export function validateImportPayload(payload) {
   }
 
   const errors = [];
-  for (const key of Object.keys(config)) {
+  for (const [key, value] of Object.entries(config)) {
     if (!SAFE_CONFIG_KEYS.has(key)) {
       errors.push(`"${key}" is not a writable config section`);
+    } else if (typeof value !== 'object' || value === null) {
+      errors.push(`"${key}" must be an object or array`);
     }
   }
 
@@ -173,7 +178,7 @@ export async function importConfig(payload) {
  * Generate a backup filename for the given date.
  *
  * @param {Date} [date] - Date to use (defaults to now)
- * @returns {string} Filename like "backup-2026-03-01T12-00-00.json"
+ * @returns {string} Filename like "backup-2026-03-01T12-00-00-000-0000.json" (includes milliseconds and sequence suffix)
  */
 function makeBackupFilename(date = new Date()) {
   // Include milliseconds for precision; append an incrementing sequence to guarantee uniqueness
@@ -276,8 +281,10 @@ export function listBackups(backupDir) {
  * @throws {Error} If backup file not found or invalid
  */
 export function readBackup(id, backupDir) {
-  // Prevent path traversal attacks
-  if (id.includes('/') || id.includes('..') || id.includes('\\')) {
+  // Validate ID against strict pattern: backup-YYYY-MM-DDTHH-mm-ss-SSS-NNNN
+  const BACKUP_ID_PATTERN =
+    /^backup-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}-[0-9]{4}$/;
+  if (!BACKUP_ID_PATTERN.test(id)) {
     throw new Error('Invalid backup ID');
   }
 

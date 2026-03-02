@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
-import { getBotOwnerIds } from '../../utils/permissions.js';
+import { flattenToLeafPaths } from '../../utils/flattenToLeafPaths.js';
 import {
   maskSensitiveFields,
   READABLE_CONFIG_KEYS,
@@ -15,6 +15,11 @@ import {
 } from '../utils/configAllowlist.js';
 import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
+
+// Re-export flattenToLeafPaths for backward compatibility
+export { flattenToLeafPaths };
+
+import { requireGlobalAdmin } from '../middleware/requireGlobalAdmin.js';
 
 // Re-export validateSingleValue so existing callers that import it from this
 // module continue to work without changes.
@@ -53,53 +58,6 @@ export function validateConfigSchema(config) {
   return errors;
 }
 
-/** Keys that must be skipped during object traversal to prevent prototype pollution. */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
-
-/**
- * Flattens a nested object into dot-notated leaf path/value pairs, using the provided prefix as the root path.
- * @param {Object} obj - The object to flatten.
- * @param {string} prefix - The starting dot-notated prefix (for example, "section").
- * @returns {Array<[string, any]>} An array of [path, value] pairs where path is the dot-notated key and value is the leaf value. Arrays and primitive values are treated as leaves; dangerous keys ('__proto__', 'constructor', 'prototype') are skipped.
- */
-export function flattenToLeafPaths(obj, prefix) {
-  const results = [];
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (DANGEROUS_KEYS.has(key)) continue;
-    const path = `${prefix}.${key}`;
-
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      results.push(...flattenToLeafPaths(value, path));
-    } else {
-      results.push([path, value]);
-    }
-  }
-
-  return results;
-}
-
-/**
- * Middleware: restrict to API-secret callers or bot-owner OAuth users.
- * Global config changes affect all guilds, so only trusted callers are allowed.
- */
-function requireGlobalAdmin(req, res, next) {
-  if (req.authMethod === 'api-secret') return next();
-
-  if (req.authMethod === 'oauth') {
-    const botOwners = getBotOwnerIds(getConfig());
-    if (botOwners.includes(req.user?.userId)) return next();
-
-    return res.status(403).json({ error: 'Global config access requires bot owner permissions' });
-  }
-
-  warn('Unknown authMethod in global config check', {
-    authMethod: req.authMethod,
-    path: req.path,
-  });
-  return res.status(401).json({ error: 'Unauthorized' });
-}
-
 /**
  * @openapi
  * /config:
@@ -124,7 +82,9 @@ function requireGlobalAdmin(req, res, next) {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.get('/', requireGlobalAdmin, (_req, res) => {
+router.get("/", requireGlobalAdmin, (req, res) => {
+  const fs = require("fs");
+  try { fs.writeFileSync("/tmp/config-route.log", "Route handler called at " + Date.now()); } catch(e) {}
   const config = getConfig();
   const safeConfig = {};
 
