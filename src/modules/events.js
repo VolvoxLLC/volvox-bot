@@ -29,6 +29,7 @@ import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
 import { handleQuietCommand, isQuietMode } from './quietMode.js';
 import { checkRateLimit } from './rateLimit.js';
+import { handleReactionRoleAdd, handleReactionRoleRemove } from './reactionRoles.js';
 import { handleReminderDismiss, handleReminderSnooze } from './reminderHandler.js';
 import { handleXpGain } from './reputation.js';
 import { handleReviewClaim } from './reviewHandler.js';
@@ -364,6 +365,16 @@ export function registerReactionHandlers(client, _config) {
       }
     }
 
+    // Reaction roles — check before the starboard early-return
+    try {
+      await handleReactionRoleAdd(reaction, user);
+    } catch (err) {
+      logError('Reaction role add handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
+    }
+
     if (!guildConfig.starboard?.enabled) return;
 
     try {
@@ -403,6 +414,16 @@ export function registerReactionHandlers(client, _config) {
           userId: user.id,
         }).catch(() => {});
       }
+    }
+
+    // Reaction roles — check before the starboard early-return
+    try {
+      await handleReactionRoleRemove(reaction, user);
+    } catch (err) {
+      logError('Reaction role remove handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
     }
 
     if (!guildConfig.starboard?.enabled) return;
