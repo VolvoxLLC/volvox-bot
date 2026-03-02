@@ -436,4 +436,26 @@ describe('checkAiAutoMod', () => {
     expect(result.categories).toContain('spam');
     expect(result.categories).toContain('harassment');
   });
+
+  it('deletes message when action is delete and autoDelete is false', async () => {
+    _mockCreate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
+    );
+    const guildConfig = {
+      aiAutoMod: {
+        enabled: true,
+        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
+        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
+        autoDelete: false,
+        flagChannelId: null,
+        exemptRoleIds: [],
+      },
+    };
+    const result = await checkAiAutoMod(message, client, guildConfig);
+    expect(result.flagged).toBe(true);
+    expect(result.action).toBe('delete');
+    // Message should be deleted even though autoDelete is false —
+    // the explicit 'delete' action enforces deletion independently.
+    expect(message.delete).toHaveBeenCalled();
+  });
 });
