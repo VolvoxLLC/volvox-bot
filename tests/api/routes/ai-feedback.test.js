@@ -123,8 +123,8 @@ describe('ai-feedback routes', () => {
       expect(res.body.trend[0]).toEqual({ date: '2026-03-01', positive: 5, negative: 1 });
 
       // Module functions should be called with correct args
-      expect(getFeedbackStats).toHaveBeenCalledWith(GUILD_ID);
-      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 30);
+      expect(getFeedbackStats).toHaveBeenCalledWith(GUILD_ID, mockPool);
+      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 30, mockPool);
     });
 
     it('returns null ratio when total is 0', async () => {
@@ -143,13 +143,13 @@ describe('ai-feedback routes', () => {
       );
 
       expect(res.status).toBe(200);
-      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 7);
+      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 7, mockPool);
     });
 
     it('ignores out-of-range days param (uses default 30)', async () => {
       await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/stats?days=999`));
 
-      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 30);
+      expect(getFeedbackTrend).toHaveBeenCalledWith(GUILD_ID, 30, mockPool);
     });
 
     it('returns 500 on module error', async () => {
@@ -198,13 +198,13 @@ describe('ai-feedback routes', () => {
     it('accepts custom limit param', async () => {
       await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/recent?limit=10`));
 
-      expect(getRecentFeedback).toHaveBeenCalledWith(GUILD_ID, 10);
+      expect(getRecentFeedback).toHaveBeenCalledWith(GUILD_ID, 10, mockPool);
     });
 
     it('clamps out-of-range limit to default (25)', async () => {
       await authed(request(app).get(`/api/v1/guilds/${GUILD_ID}/ai-feedback/recent?limit=999`));
 
-      expect(getRecentFeedback).toHaveBeenCalledWith(GUILD_ID, 25);
+      expect(getRecentFeedback).toHaveBeenCalledWith(GUILD_ID, 25, mockPool);
     });
 
     it('returns 500 on module error', async () => {
