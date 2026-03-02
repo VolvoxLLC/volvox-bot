@@ -102,8 +102,8 @@ router.get('/stats', feedbackRateLimit, requireGuildAdmin, validateGuild, async 
 
   try {
     const [stats, trend] = await Promise.all([
-      getFeedbackStats(guildId),
-      getFeedbackTrend(guildId, days),
+      getFeedbackStats(guildId, dbPool),
+      getFeedbackTrend(guildId, days, dbPool),
     ]);
 
     res.json({ ...stats, trend });

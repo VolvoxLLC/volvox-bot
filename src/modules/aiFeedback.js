@@ -163,18 +163,24 @@ export async function deleteFeedback({ messageId, guildId, userId }) {
 
 /**
  * Get aggregate feedback stats for a guild.
+ *
  * @param {string} guildId
+ * @param {import('pg').Pool} [injectedPool] - Optional pool override (e.g. from route context).
+ *   When provided, DB errors propagate to the caller.
+ *   When omitted, the shared pool is used and errors return safe defaults.
  * @returns {Promise<{positive: number, negative: number, total: number, ratio: number|null}>}
  */
-export async function getFeedbackStats(guildId) {
-  let pool;
-  try {
-    pool = getPool();
-  } catch {
-    return { positive: 0, negative: 0, total: 0, ratio: null };
+export async function getFeedbackStats(guildId, injectedPool = null) {
+  let pool = injectedPool;
+  if (!pool) {
+    try {
+      pool = getPool();
+    } catch {
+      return { positive: 0, negative: 0, total: 0, ratio: null };
+    }
   }
 
-  try {
+  const run = async () => {
     const result = await pool.query(
       `SELECT
          COUNT(*) FILTER (WHERE feedback_type = 'positive')::int AS positive,
@@ -192,6 +198,13 @@ export async function getFeedbackStats(guildId) {
     const ratio = total > 0 ? Math.round((positive / total) * 100) : null;
 
     return { positive, negative, total, ratio };
+  };
+
+  // If caller injected a pool, let errors propagate so routes can return 500
+  if (injectedPool) return run();
+
+  try {
+    return await run();
   } catch (err) {
     logError('Failed to fetch AI feedback stats', { guildId, error: err.message });
     return { positive: 0, negative: 0, total: 0, ratio: null };
@@ -200,19 +213,25 @@ export async function getFeedbackStats(guildId) {
 
 /**
  * Get daily feedback trend for the last N days for a guild.
+ *
  * @param {string} guildId
  * @param {number} [days=30]
+ * @param {import('pg').Pool} [injectedPool] - Optional pool override (e.g. from route context).
+ *   When provided, DB errors propagate to the caller.
+ *   When omitted, the shared pool is used and errors return an empty array.
  * @returns {Promise<Array<{date: string, positive: number, negative: number}>>}
  */
-export async function getFeedbackTrend(guildId, days = 30) {
-  let pool;
-  try {
-    pool = getPool();
-  } catch {
-    return [];
+export async function getFeedbackTrend(guildId, days = 30, injectedPool = null) {
+  let pool = injectedPool;
+  if (!pool) {
+    try {
+      pool = getPool();
+    } catch {
+      return [];
+    }
   }
 
-  try {
+  const run = async () => {
     const result = await pool.query(
       `SELECT
          DATE(created_at) AS date,
@@ -231,6 +250,13 @@ export async function getFeedbackTrend(guildId, days = 30) {
       positive: r.positive,
       negative: r.negative,
     }));
+  };
+
+  // If caller injected a pool, let errors propagate so routes can return 500
+  if (injectedPool) return run();
+
+  try {
+    return await run();
   } catch (err) {
     logError('Failed to fetch AI feedback trend', { guildId, error: err.message });
     return [];
