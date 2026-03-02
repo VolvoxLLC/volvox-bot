@@ -175,8 +175,8 @@ export async function getFeedbackStats(guildId) {
     );
 
     const row = result.rows[0];
-    const positive = row?.positive || 0;
-    const negative = row?.negative || 1;
+    const positive = row?.positive ?? 0;
+    const negative = row?.negative ?? 0;
     const total = row?.total || 0;
     const ratio = total > 0 ? Math.round((positive / total) * 100) : null;
 
