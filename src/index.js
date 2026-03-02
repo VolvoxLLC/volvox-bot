@@ -54,7 +54,6 @@ import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
 import { fireEventAllGuilds } from './modules/webhookNotifier.js';
-import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
 import {
