@@ -34,11 +34,12 @@ const pendingHydrations = new Map();
  *
  * @param {string} channelId - The channel ID to test.
  * @param {string|null} [parentId] - Optional parent channel ID (for threads).
+ * @param {string} guildId - The guild ID for per-guild configuration.
  * @returns {boolean} `true` when the channel is blocked, `false` otherwise.
  */
-export function isChannelBlocked(channelId, parentId = null) {
+export function isChannelBlocked(channelId, parentId = null, guildId) {
   try {
-    const config = getConfig();
+    const config = getConfig(guildId);
     const blocked = config?.ai?.blockedChannelIds;
     if (!Array.isArray(blocked) || blocked.length === 0) return false;
     if (blocked.includes(channelId)) return true;

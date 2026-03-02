@@ -224,7 +224,7 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       // For threads, parentId is also checked so blocking the parent channel
       // blocks all its child threads.
       const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
-      if (isChannelBlocked(message.channel.id, parentId)) return;
+      if (isChannelBlocked(message.channel.id, parentId, message.guild.id)) return;
 
       if ((isMentioned || isReply) && isAllowedChannel) {
         // Accumulate the message into the triage buffer (for context).
@@ -264,7 +264,7 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     if (guildConfig.ai?.enabled) {
       // Skip blocked channels for triage as well
       const triageParentId = message.channel.isThread?.() ? message.channel.parentId : null;
-      if (isChannelBlocked(message.channel.id, triageParentId)) return;
+      if (isChannelBlocked(message.channel.id, triageParentId, message.guild.id)) return;
       try {
         const p = accumulateMessage(message, guildConfig);
         p?.catch((err) => {
