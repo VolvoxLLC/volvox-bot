@@ -6,6 +6,7 @@
 
 import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import { info, warn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeReply, safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';
@@ -89,7 +90,7 @@ async function handleRepeatOffender(message, config, muteDurationMs) {
   const alertChannelId = config.moderation?.alertChannelId;
   if (!alertChannelId) return;
 
-  const alertChannel = await message.client.channels.fetch(alertChannelId).catch(() => null);
+  const alertChannel = await fetchChannelCached(message.client, alertChannelId);
   if (!alertChannel) return;
 
   const muteWindowMinutes = Math.round(muteWindowSeconds / 60);

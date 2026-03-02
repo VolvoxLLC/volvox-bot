@@ -10,6 +10,7 @@ export interface AiConfig {
   enabled: boolean;
   systemPrompt: string;
   channels: string[];
+  blockedChannelIds: string[];
   historyLength: number;
   historyTTLDays: number;
   threadMode: AiThreadMode;

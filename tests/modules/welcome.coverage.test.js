@@ -4,6 +4,23 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Mock discordCache to pass through to the underlying client.channels.fetch
+vi.mock('../../src/utils/discordCache.js', () => ({
+  fetchChannelCached: vi.fn().mockImplementation(async (client, channelId) => {
+    if (!channelId) return null;
+    const cached = client.channels?.cache?.get?.(channelId);
+    if (cached) return cached;
+    if (client.channels?.fetch) {
+      return client.channels.fetch(channelId).catch(() => null);
+    }
+    return null;
+  }),
+  fetchGuildChannelsCached: vi.fn().mockResolvedValue([]),
+  fetchGuildRolesCached: vi.fn().mockResolvedValue([]),
+  fetchMemberCached: vi.fn().mockResolvedValue(null),
+  invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/logger.js', () => ({
   info: vi.fn(),
   error: vi.fn(),
@@ -144,16 +161,15 @@ describe('welcome module coverage', () => {
       expect(args.content).toContain('<@user1>');
     });
 
-    it('logs error when channel fetch throws', async () => {
+    it('returns early without error when channel fetch returns null', async () => {
+      // fetchChannelCached returns null on error instead of throwing
       const client = makeClient(vi.fn(), new Error('Unknown Channel'));
       const member = makeMember();
       const config = { welcome: { enabled: true, channelId: 'ch1' } };
 
       await sendWelcomeMessage(member, client, config);
-      expect(logError).toHaveBeenCalledWith(
-        'Welcome error',
-        expect.objectContaining({ error: 'Unknown Channel' }),
-      );
+      // No error logged — fetchChannelCached handles the error gracefully
+      expect(logError).not.toHaveBeenCalled();
     });
   });
 
