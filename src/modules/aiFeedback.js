@@ -14,15 +14,35 @@ export const FEEDBACK_EMOJI = {
   negative: '👎',
 };
 
-/** Set of Discord message IDs known to be AI-generated, for reaction filtering */
+/**
+ * In-memory Set of Discord message IDs known to be AI-generated.
+ *
+ * **Limitations:**
+ * - Memory-only: cleared on every process restart. Reactions on messages sent
+ *   before the last restart will not be recognised as AI feedback.
+ * - Capped at AI_MESSAGE_ID_LIMIT entries (LRU-lite eviction). High-volume
+ *   bots sending >2 000 AI messages between restarts will silently miss the
+ *   oldest entries. If that becomes a concern, back this with Redis or a
+ *   DB lookup on cache-miss.
+ *
+ * For most deployments this trade-off is intentional: the Set keeps
+ * reaction-handler lookups O(1) without any I/O cost.
+ */
 const aiMessageIds = new Set();
 
-/** Maximum tracked AI message IDs in memory (LRU-lite: evict oldest when full) */
+/**
+ * Maximum tracked AI message IDs in memory.
+ * Oldest entry is evicted when the limit is reached (insertion-order LRU).
+ */
 const AI_MESSAGE_ID_LIMIT = 2000;
 
 /**
  * Register a Discord message ID as an AI-generated message so reaction
  * handlers can filter feedback reactions appropriately.
+ *
+ * When the in-memory cap is reached the oldest tracked ID is evicted.
+ * See the aiMessageIds comment above for caveats on memory-only storage.
+ *
  * @param {string} messageId - Discord message ID
  */
 export function registerAiMessage(messageId) {
@@ -32,6 +52,10 @@ export function registerAiMessage(messageId) {
     // Evict oldest entry (first inserted in iteration order)
     const first = aiMessageIds.values().next().value;
     aiMessageIds.delete(first);
+    warn('AI message ID cap reached; evicting oldest entry from in-memory set', {
+      evicted: first,
+      limit: AI_MESSAGE_ID_LIMIT,
+    });
   }
   aiMessageIds.add(messageId);
 }
