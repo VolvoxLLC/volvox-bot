@@ -18,17 +18,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
-interface FeedbackStats {
-  positive: number;
-  negative: number;
-  total: number;
-  ratio: number | null;
-  trend: Array<{
-    date: string;
-    positive: number;
-    negative: number;
-  }>;
-}
+import type { AiFeedbackStats } from '@/types/analytics';
 
 const PIE_COLORS = ['#22C55E', '#EF4444'];
 
@@ -38,7 +28,7 @@ const PIE_COLORS = ['#22C55E', '#EF4444'];
  */
 export function AiFeedbackStats() {
   const guildId = useGuildSelection();
-  const [stats, setStats] = useState<FeedbackStats | null>(null);
+  const [stats, setStats] = useState<AiFeedbackStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +50,7 @@ export function AiFeedbackStats() {
         throw new Error(`HTTP ${res.status}`);
       }
 
-      const data = (await res.json()) as FeedbackStats;
+      const data = (await res.json()) as AiFeedbackStats;
       setStats(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feedback stats');
