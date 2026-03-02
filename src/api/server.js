@@ -120,7 +120,7 @@ export async function startServer(client, dbPool, options = {}) {
   const port = isValidPort ? parsed : 3001;
 
   return new Promise((resolve, reject) => {
-    server = app.listen(port, () => {
+    server = app.listen(port, async () => {
       info('API server started', { port });
 
       // Attach WebSocket log stream if transport provided
@@ -135,7 +135,7 @@ export async function startServer(client, dbPool, options = {}) {
 
       // Attach audit log real-time WebSocket stream
       try {
-        setupAuditStream(server);
+        await setupAuditStream(server);
       } catch (err) {
         error('Failed to setup audit log WebSocket stream', { error: err.message });
         // Non-fatal — HTTP server still works without audit WS streaming
