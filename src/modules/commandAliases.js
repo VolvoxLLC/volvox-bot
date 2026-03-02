@@ -174,9 +174,7 @@ export async function addAlias({
     // Best-effort rollback: deregister the Discord command we just created
     if (discordCommandId) {
       try {
-        await getRest().delete(
-          Routes.applicationGuildCommand(clientId, guildId, discordCommandId),
-        );
+        await getRest().delete(Routes.applicationGuildCommand(clientId, guildId, discordCommandId));
         warn('Rolled back Discord alias registration after DB failure', {
           alias,
           guildId,

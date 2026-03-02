@@ -43,8 +43,8 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
-import { loadAliasesFromDb, resolveAlias } from './modules/commandAliases.js';
 import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
+import { loadAliasesFromDb, resolveAlias } from './modules/commandAliases.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
