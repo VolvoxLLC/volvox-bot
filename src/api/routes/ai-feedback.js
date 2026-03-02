@@ -230,10 +230,19 @@ router.get('/recent', feedbackRateLimit, requireGuildAdmin, validateGuild, async
 
   try {
     const result = await dbPool.query(
-      `SELECT id, message_id, channel_id, user_id, feedback_type, created_at
-       FROM ai_feedback
-       WHERE guild_id = $1
-       ORDER BY created_at DESC
+      `SELECT
+         af.id,
+         af.message_id,
+         af.channel_id,
+         af.user_id,
+         af.feedback_type,
+         af.created_at,
+         c.content AS ai_response_content
+       FROM ai_feedback af
+       LEFT JOIN conversations c
+         ON c.discord_message_id = af.message_id AND c.role = 'assistant'
+       WHERE af.guild_id = $1
+       ORDER BY af.created_at DESC
        LIMIT $2`,
       [guildId, limit],
     );
@@ -246,6 +255,7 @@ router.get('/recent', feedbackRateLimit, requireGuildAdmin, validateGuild, async
         userId: r.user_id,
         feedbackType: r.feedback_type,
         createdAt: r.created_at,
+        aiResponseContent: r.ai_response_content ?? null,
       })),
     });
   } catch (err) {
