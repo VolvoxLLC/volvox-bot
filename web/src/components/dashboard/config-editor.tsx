@@ -125,7 +125,7 @@ export function ConfigEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDiffModal, setShowDiffModal] = useState(false);
-  const [prevSavedConfig, setPrevSavedConfig] = useState<GuildConfig | null>(null);
+  const [prevSavedConfig, setPrevSavedConfig] = useState<{ guildId: string; config: GuildConfig } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /** The config as last fetched from the API (the "saved" state). */
@@ -410,8 +410,8 @@ export function ConfigEditor() {
       } else {
         toast.success('Config saved successfully!');
         setShowDiffModal(false);
-        // Store previous config for undo (1 level deep)
-        setPrevSavedConfig(structuredClone(savedConfig));
+        // Store previous config for undo (1 level deep; scoped to current guild)
+        setPrevSavedConfig({ guildId, config: structuredClone(savedConfig) as GuildConfig });
         // Full success: reload to get the authoritative version from the server
         await fetchConfig(guildId);
       }
@@ -423,15 +423,25 @@ export function ConfigEditor() {
     }
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
+  // Clear undo snapshot when guild changes to prevent cross-guild config corruption
+  useEffect(() => {
+    setPrevSavedConfig(null);
+  }, [guildId]);
+
   // ── Undo last save ─────────────────────────────────────────────
   const undoLastSave = useCallback(() => {
     if (!prevSavedConfig) return;
-    setDraftConfig(structuredClone(prevSavedConfig));
-    setDmStepsRaw((prevSavedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
-    setProtectRoleIdsRaw((prevSavedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
+    // Guard: discard snapshot if guild changed since save
+    if (prevSavedConfig.guildId !== guildId) {
+      setPrevSavedConfig(null);
+      return;
+    }
+    setDraftConfig(structuredClone(prevSavedConfig.config));
+    setDmStepsRaw((prevSavedConfig.config.welcome?.dmSequence?.steps ?? []).join('\n'));
+    setProtectRoleIdsRaw((prevSavedConfig.config.moderation?.protectRoles?.roleIds ?? []).join(', '));
     setPrevSavedConfig(null);
     toast.info('Reverted to previous saved state. Save again to apply.');
-  }, [prevSavedConfig]);
+  }, [prevSavedConfig, guildId]);
 
   // ── Keyboard shortcut: Ctrl/Cmd+S → open diff preview ─────────
   useEffect(() => {
