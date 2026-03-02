@@ -54,6 +54,7 @@ import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderatio
 import { loadOptOuts } from './modules/optout.js';
 import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
+import { startTempRoleScheduler, stopTempRoleScheduler } from './modules/tempRoleHandler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
 import { fireEventAllGuilds } from './modules/webhookNotifier.js';
@@ -324,6 +325,7 @@ async function gracefulShutdown(signal) {
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
+  stopTempRoleScheduler();
   stopScheduler();
   stopGithubFeed();
   stopScheduledBackups();
@@ -538,6 +540,7 @@ async function startup() {
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {
     startTempbanScheduler(client);
+    startTempRoleScheduler(client);
     startScheduler(client);
     startGithubFeed(client);
     startScheduledBackups();
