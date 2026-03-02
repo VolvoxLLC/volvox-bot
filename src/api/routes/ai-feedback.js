@@ -90,6 +90,10 @@ router.get(
   requireGuildAdmin,
   validateGuild,
   async (req, res, next) => {
+    if (!req.app.locals.dbPool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     try {
       const guildId = req.params.id;
 
@@ -186,6 +190,10 @@ router.get(
   requireGuildAdmin,
   validateGuild,
   async (req, res, next) => {
+    if (!req.app.locals.dbPool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     try {
       const guildId = req.params.id;
 
