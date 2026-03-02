@@ -611,7 +611,10 @@ export function registerErrorHandlers(client) {
       logError('Unhandled rejection', { error: err?.message || String(err), stack: err?.stack });
     });
     process.on('uncaughtException', async (err) => {
-      logError('Uncaught exception — shutting down', { error: err?.message || String(err), stack: err?.stack });
+      logError('Uncaught exception — shutting down', {
+        error: err?.message || String(err),
+        stack: err?.stack,
+      });
       try {
         const { Sentry } = await import('../sentry.js');
         await Sentry.flush(2000);
