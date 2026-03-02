@@ -154,7 +154,8 @@ async function handleList(interaction) {
         .join(' · ');
       return `**${t.name}** — ${t.description || 'no description'} *(${badges})*`;
     });
-    const fieldValue = lines.join('\n').slice(0, 1020) + (lines.join('\n').length > 1020 ? '...' : '');
+    const fieldValue =
+      lines.join('\n').slice(0, 1020) + (lines.join('\n').length > 1020 ? '...' : '');
     embed.addFields({ name: `📂 ${cat}`, value: fieldValue, inline: false });
   }
 
@@ -210,7 +211,7 @@ async function handleApply(interaction) {
   const newOptions = applyTemplateToOptions(tpl, existingOptions);
 
   // Filter out options with empty roleIds - Discord rejects empty select values
-  const validOptions = newOptions.filter(opt => opt.roleId && opt.roleId.trim());
+  const validOptions = newOptions.filter((opt) => opt.roleId && opt.roleId.trim());
   const hasInvalidOptions = validOptions.length !== newOptions.length;
 
   // Only enable role menu for non-built-in templates with valid roleIds

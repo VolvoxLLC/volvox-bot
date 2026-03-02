@@ -90,8 +90,7 @@ export function validateTemplateOptions(options) {
     if (!opt || typeof opt !== 'object') return `Option ${i + 1} is not a valid object.`;
     if (typeof opt.label !== 'string' || !opt.label.trim())
       return `Option ${i + 1} must have a non-empty label.`;
-    if (opt.label.trim().length > 100)
-      return `Option ${i + 1} label must be ≤100 characters.`;
+    if (opt.label.trim().length > 100) return `Option ${i + 1} label must be ≤100 characters.`;
     // Validate optional description
     if (opt.description !== undefined && typeof opt.description !== 'string')
       return `Option ${i + 1} description must be a string.`;

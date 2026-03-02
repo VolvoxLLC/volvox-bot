@@ -69,6 +69,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 vi.mock('../../src/modules/ai.js', () => ({
   addToHistory: vi.fn(),
+  isChannelBlocked: vi.fn().mockReturnValue(false),
   _setPoolGetter: vi.fn(),
   setPool: vi.fn(),
   getConversationHistory: vi.fn().mockReturnValue(new Map()),
@@ -332,6 +333,60 @@ describe('triage module', () => {
       expect(mockClassifierSend).toHaveBeenCalled();
     });
 
+    it('should skip blocked channels (early return, no addToHistory)', async () => {
+      const { isChannelBlocked } = await import('../../src/modules/ai.js');
+      isChannelBlocked.mockReturnValueOnce(true);
+
+      const msg = makeMessage('blocked-ch', 'hello world', {
+        id: 'msg-blocked',
+        username: 'alice',
+        userId: 'u99',
+        guild: { id: 'g1' },
+      });
+      accumulateMessage(msg, config);
+
+      // Should NOT call addToHistory when channel is blocked
+      expect(addToHistory).not.toHaveBeenCalled();
+      // Should NOT trigger any classifier activity
+      await evaluateNow('blocked-ch', config, client, healthMonitor);
+      expect(mockClassifierSend).not.toHaveBeenCalled();
+    });
+
+    it('should only check parentId for threads, not category channels', async () => {
+      const { isChannelBlocked } = await import('../../src/modules/ai.js');
+
+      // Regular text channel in a category - parentId is category ID
+      const categoryChannelMsg = makeMessage('ch1', 'hello', {
+        id: 'msg-cat',
+        guild: { id: 'g1' },
+      });
+      // Simulate a regular channel with a category parent
+      categoryChannelMsg.channel.parentId = 'category-123';
+      categoryChannelMsg.channel.isThread = () => false;
+
+      accumulateMessage(categoryChannelMsg, config);
+
+      // isChannelBlocked should be called with null parentId for non-thread channels
+      expect(isChannelBlocked).toHaveBeenCalledWith('ch1', null, 'g1');
+    });
+
+    it('should pass parentId for threads to isChannelBlocked', async () => {
+      const { isChannelBlocked } = await import('../../src/modules/ai.js');
+
+      // Thread - parentId is the parent channel ID
+      const threadMsg = makeMessage('thread-1', 'hello', {
+        id: 'msg-thread',
+        guild: { id: 'g1' },
+      });
+      threadMsg.channel.parentId = 'parent-channel-456';
+      threadMsg.channel.isThread = () => true;
+
+      accumulateMessage(threadMsg, config);
+
+      // isChannelBlocked should be called with the parent channel ID for threads
+      expect(isChannelBlocked).toHaveBeenCalledWith('thread-1', 'parent-channel-456', 'g1');
+    });
+
     it('should skip empty messages', async () => {
       accumulateMessage(makeMessage('ch1', ''), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -475,6 +530,36 @@ describe('triage module', () => {
     it('should not evaluate when buffer is empty', async () => {
       await evaluateNow('empty-ch', config, client, healthMonitor);
       expect(mockClassifierSend).not.toHaveBeenCalled();
+    });
+
+    it('should skip evaluation when channel becomes blocked after buffering', async () => {
+      const { isChannelBlocked } = await import('../../src/modules/ai.js');
+
+      // First, buffer a message while channel is NOT blocked
+      accumulateMessage(
+        makeMessage('ch-becomes-blocked', 'hello world', {
+          id: 'msg-buffered',
+          username: 'alice',
+          userId: 'u99',
+          guild: { id: 'g1' },
+        }),
+        config,
+      );
+
+      // Verify message was added to history (channel wasn't blocked at accumulate time)
+      expect(addToHistory).toHaveBeenCalled();
+
+      // Now block the channel
+      isChannelBlocked.mockReturnValue(true);
+
+      // Call evaluateNow - it should check blocked status and skip
+      await evaluateNow('ch-becomes-blocked', config, client, healthMonitor);
+
+      // Classifier should NOT have been called despite buffered messages
+      expect(mockClassifierSend).not.toHaveBeenCalled();
+
+      // Reset the mock to not affect subsequent tests
+      isChannelBlocked.mockReturnValue(false);
     });
 
     it('should set pendingReeval when concurrent evaluation requested', async () => {
