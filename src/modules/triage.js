@@ -17,9 +17,9 @@
 
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt, promptPath } from '../prompts/index.js';
-import { safeSend } from '../utils/safeSend.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { checkGuildBudget } from '../utils/guildSpend.js';
+import { safeSend } from '../utils/safeSend.js';
 import { CLIProcess, CLIProcessError } from './cli-process.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 

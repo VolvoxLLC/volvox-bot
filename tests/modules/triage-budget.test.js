@@ -110,9 +110,9 @@ vi.mock('../../src/modules/triage-respond.js', () => ({
 }));
 
 import { warn } from '../../src/logger.js';
-import { safeSend } from '../../src/utils/safeSend.js';
-import { accumulateMessage, evaluateNow, startTriage, stopTriage } from '../../src/modules/triage.js';
+import { accumulateMessage, startTriage, stopTriage } from '../../src/modules/triage.js';
 import { channelBuffers } from '../../src/modules/triage-buffer.js';
+import { safeSend } from '../../src/utils/safeSend.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -170,7 +170,12 @@ function mockClassifyResult(classification) {
   return {
     content: [{ type: 'text', text: JSON.stringify(classification) }],
     total_cost_usd: 0.001,
-    usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+    usage: {
+      input_tokens: 100,
+      output_tokens: 50,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
+    },
     model: 'claude-haiku-4-5',
     _durationMs: 100,
   };
@@ -222,7 +227,12 @@ describe('triage budget gate', () => {
   });
 
   it('logs warning and continues when spend is at 80%+ of budget', async () => {
-    mockCheckGuildBudget.mockResolvedValue({ status: 'warning', spend: 8.5, budget: 10, pct: 0.85 });
+    mockCheckGuildBudget.mockResolvedValue({
+      status: 'warning',
+      spend: 8.5,
+      budget: 10,
+      pct: 0.85,
+    });
 
     const classResult = {
       classification: 'ignore',
@@ -245,7 +255,12 @@ describe('triage budget gate', () => {
   });
 
   it('blocks evaluation and logs warning when budget is exceeded', async () => {
-    mockCheckGuildBudget.mockResolvedValue({ status: 'exceeded', spend: 12.5, budget: 10, pct: 1.25 });
+    mockCheckGuildBudget.mockResolvedValue({
+      status: 'exceeded',
+      spend: 12.5,
+      budget: 10,
+      pct: 1.25,
+    });
 
     const msg = makeMessage();
     await accumulateMessage(msg, config);
@@ -261,7 +276,12 @@ describe('triage budget gate', () => {
   });
 
   it('sends alert to moderation log channel when budget exceeded', async () => {
-    mockCheckGuildBudget.mockResolvedValue({ status: 'exceeded', spend: 10.5, budget: 10, pct: 1.05 });
+    mockCheckGuildBudget.mockResolvedValue({
+      status: 'exceeded',
+      spend: 10.5,
+      budget: 10,
+      pct: 1.05,
+    });
 
     const configWithLog = makeConfig({
       triage: { moderationLogChannel: 'log-ch-999' },

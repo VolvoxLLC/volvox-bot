@@ -64,7 +64,7 @@ describe('getGuildSpend', () => {
 
   it('uses 24-hour window by default', async () => {
     mockQuery.mockResolvedValue({ rows: [{ total: '0' }] });
-    const before = Date.now();
+    const _before = Date.now();
     await getGuildSpend('guild-123');
     const [, params] = mockQuery.mock.calls[0];
     const since = params[1];
