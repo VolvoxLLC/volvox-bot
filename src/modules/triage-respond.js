@@ -318,7 +318,7 @@ export async function buildStatsAndLog(
   };
 
   // Fetch channel once for guildId resolution + passing to sendResponses
-  const channel = await fetchChannelCached(client, channelId).catch(() => null);
+  const channel = await fetchChannelCached(client, channelId);
   const guildId = channel?.guildId;
 
   // Log AI usage analytics (fire-and-forget)
