@@ -225,7 +225,6 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
  */
 async function executeAction(message, client, result, autoModConfig, guildConfig) {
   const { member, guild } = message;
-  if (!member || !guild) return;
 
   const reason = `AI Auto-Mod: ${result.categories.join(', ')} — ${result.reason}`;
   const botId = client.user?.id ?? 'bot';
@@ -237,6 +236,7 @@ async function executeAction(message, client, result, autoModConfig, guildConfig
 
   switch (result.action) {
     case 'warn':
+      if (!member || !guild) break;
       await createCase(guild.id, {
         action: 'warn',
         targetId: member.user.id,
@@ -248,6 +248,7 @@ async function executeAction(message, client, result, autoModConfig, guildConfig
       break;
 
     case 'timeout': {
+      if (!member || !guild) break;
       const durationMs = autoModConfig.timeoutDurationMs ?? DEFAULTS.timeoutDurationMs;
       await member
         .timeout(durationMs, reason)
@@ -269,6 +270,7 @@ async function executeAction(message, client, result, autoModConfig, guildConfig
     }
 
     case 'kick':
+      if (!member || !guild) break;
       await member
         .kick(reason)
         .catch((err) =>
@@ -285,6 +287,7 @@ async function executeAction(message, client, result, autoModConfig, guildConfig
       break;
 
     case 'ban':
+      if (!member || !guild) break;
       await guild.members
         .ban(member.user.id, { reason, deleteMessageSeconds: 60 * 60 })
         .catch((err) =>
