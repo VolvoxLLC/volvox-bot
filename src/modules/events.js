@@ -27,7 +27,9 @@ import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
 import { checkLinks } from './linkFilter.js';
 import { handlePollVote } from './pollHandler.js';
+import { handleQuietCommand, isQuietMode } from './quietMode.js';
 import { checkRateLimit } from './rateLimit.js';
+import { handleReactionRoleAdd, handleReactionRoleRemove } from './reactionRoles.js';
 import { handleReminderDismiss, handleReminderSnooze } from './reminderHandler.js';
 import { handleXpGain } from './reputation.js';
 import { handleReviewClaim } from './reviewHandler.js';
@@ -35,6 +37,7 @@ import { isSpam, sendSpamAlert } from './spam.js';
 import { handleReactionAdd, handleReactionRemove } from './starboard.js';
 import { closeTicket, getTicketConfig, openTicket } from './ticketHandler.js';
 import { accumulateMessage, evaluateNow } from './triage.js';
+import { handleVoiceStateUpdate } from './voice.js';
 import { recordCommunityActivity, sendWelcomeMessage } from './welcome.js';
 import {
   handleRoleMenuSelection,
@@ -228,6 +231,32 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       if (isChannelBlocked(message.channel.id, parentId, message.guild.id)) return;
 
       if ((isMentioned || isReply) && isAllowedChannel) {
+        // Quiet mode: handle commands first (even during quiet mode so users can unquiet)
+        if (isMentioned) {
+          try {
+            const wasQuietCommand = await handleQuietCommand(message, guildConfig);
+            if (wasQuietCommand) return;
+          } catch (qmErr) {
+            logError('Quiet mode command handler failed', {
+              channelId: message.channel.id,
+              userId: message.author.id,
+              error: qmErr?.message,
+            });
+          }
+        }
+
+        // Quiet mode: suppress AI responses when quiet mode is active (gated on feature enabled)
+        if (guildConfig.quietMode?.enabled) {
+          try {
+            if (await isQuietMode(message.guild.id, message.channel.id)) return;
+          } catch (qmErr) {
+            logError('Quiet mode check failed', {
+              channelId: message.channel.id,
+              error: qmErr?.message,
+            });
+          }
+        }
+
         // Accumulate the message into the triage buffer (for context).
         // Even bare @mentions with no text go through triage so the classifier
         // can use recent channel history to produce a meaningful response.
@@ -262,7 +291,18 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Triage: accumulate message for periodic evaluation (fire-and-forget)
     // Gated on ai.enabled — this is the master kill-switch for all AI responses.
     // accumulateMessage also checks triage.enabled internally.
+    // Skip accumulation when quiet mode is active in this channel (gated on feature enabled).
     if (guildConfig.ai?.enabled) {
+      if (guildConfig.quietMode?.enabled) {
+        try {
+          if (await isQuietMode(message.guild.id, message.channel.id)) return;
+        } catch (qmErr) {
+          logError('Quiet mode check failed (accumulate)', {
+            channelId: message.channel.id,
+            error: qmErr?.message,
+          });
+        }
+      }
       try {
         const p = accumulateMessage(message, guildConfig);
         p?.catch((err) => {
@@ -325,6 +365,16 @@ export function registerReactionHandlers(client, _config) {
       }
     }
 
+    // Reaction roles — check before the starboard early-return
+    try {
+      await handleReactionRoleAdd(reaction, user);
+    } catch (err) {
+      logError('Reaction role add handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
+    }
+
     if (!guildConfig.starboard?.enabled) return;
 
     try {
@@ -364,6 +414,16 @@ export function registerReactionHandlers(client, _config) {
           userId: user.id,
         }).catch(() => {});
       }
+    }
+
+    // Reaction roles — check before the starboard early-return
+    try {
+      await handleReactionRoleRemove(reaction, user);
+    } catch (err) {
+      logError('Reaction role remove handler failed', {
+        messageId: reaction.message.id,
+        error: err.message,
+      });
     }
 
     if (!guildConfig.starboard?.enabled) return;
@@ -741,6 +801,7 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerTicketCloseButtonHandler(client);
   registerReminderButtonHandler(client);
   registerWelcomeOnboardingHandlers(client);
+  registerVoiceStateHandler(client);
   registerErrorHandlers(client);
 }
 
@@ -864,5 +925,18 @@ export function registerTicketCloseButtonHandler(client) {
         content: `❌ ${err.message}`,
       });
     }
+  });
+}
+
+/**
+ * Register the voiceStateUpdate handler for voice channel activity tracking.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerVoiceStateHandler(client) {
+  client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+    await handleVoiceStateUpdate(oldState, newState).catch((err) => {
+      logError('Voice state update handler error', { error: err.message });
+    });
   });
 }
