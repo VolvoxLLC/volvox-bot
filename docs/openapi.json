@@ -3,7 +3,7 @@
   "info": {
     "title": "Volvox Bot API",
     "version": "0.1.0",
-    "description": "REST API for the Volvox Discord bot — guild management, moderation, analytics, AI conversations, and more."
+    "description": "REST API for the Volvox Discord bot — guild management, moderation, analytics, AI conversations, config backup, and more."
   },
   "servers": [
     {
@@ -25,92 +25,33 @@
         "description": "JWT token provided in the Authorization header as Bearer <token>."
       }
     },
-    "schemas": {
-      "Error": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "description": "Human-readable error message"
-          }
-        },
-        "required": [
-          "error"
-        ]
-      },
-      "ValidationError": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string"
-          },
-          "details": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Individual validation failure messages"
-          }
-        },
-        "required": [
-          "error"
-        ]
-      },
-      "PaginatedResponse": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "integer",
-            "description": "Total number of items"
-          },
-          "page": {
-            "type": "integer",
-            "description": "Current page number"
-          },
-          "limit": {
-            "type": "integer",
-            "description": "Items per page"
-          }
-        }
-      }
-    },
-    "headers": {
-      "X-RateLimit-Limit": {
-        "description": "Maximum number of requests allowed in the window",
-        "schema": {
-          "type": "integer"
-        }
-      },
-      "X-RateLimit-Remaining": {
-        "description": "Number of requests remaining in the current window",
-        "schema": {
-          "type": "integer"
-        }
-      },
-      "X-RateLimit-Reset": {
-        "description": "Unix timestamp (seconds) when the rate limit window resets",
-        "schema": {
-          "type": "number"
-        }
-      }
-    },
     "responses": {
       "Unauthorized": {
-        "description": "Missing or invalid authentication",
+        "description": "Missing or invalid authentication credentials",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
       },
       "Forbidden": {
-        "description": "Insufficient permissions",
+        "description": "Insufficient permissions for this resource",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
@@ -120,7 +61,12 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
@@ -130,38 +76,12 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        },
-        "headers": {
-          "X-RateLimit-Limit": {
-            "$ref": "#/components/headers/X-RateLimit-Limit"
-          },
-          "X-RateLimit-Remaining": {
-            "$ref": "#/components/headers/X-RateLimit-Remaining"
-          },
-          "X-RateLimit-Reset": {
-            "$ref": "#/components/headers/X-RateLimit-Reset"
-          }
-        }
-      },
-      "ServerError": {
-        "description": "Internal server error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      },
-      "ServiceUnavailable": {
-        "description": "Database or external service unavailable",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
@@ -169,6 +89,203 @@
     }
   },
   "paths": {
+    "/guilds/{id}/ai-feedback/stats": {
+      "get": {
+        "tags": [
+          "AI Feedback"
+        ],
+        "summary": "Get AI feedback statistics",
+        "description": "Returns aggregate 👍/👎 feedback counts and daily trend for a guild.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Guild ID"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 1,
+              "maximum": 90
+            },
+            "description": "Number of days for the trend window"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Feedback statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "positive": {
+                      "type": "integer"
+                    },
+                    "negative": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "ratio": {
+                      "type": "integer",
+                      "nullable": true,
+                      "description": "Positive feedback percentage (0–100), or null if no feedback"
+                    },
+                    "trend": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "positive": {
+                            "type": "integer"
+                          },
+                          "negative": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/guilds/{id}/ai-feedback/recent": {
+      "get": {
+        "tags": [
+          "AI Feedback"
+        ],
+        "summary": "Get recent feedback entries",
+        "description": "Returns the most recent feedback entries for a guild (newest first).",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Guild ID"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent feedback entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "feedback": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "messageId": {
+                            "type": "string"
+                          },
+                          "channelId": {
+                            "type": "string"
+                          },
+                          "userId": {
+                            "type": "string"
+                          },
+                          "feedbackType": {
+                            "type": "string",
+                            "enum": [
+                              "positive",
+                              "negative"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
     "/auth/discord": {
       "get": {
         "tags": [
@@ -1464,12 +1581,27 @@
                               "resolved",
                               "dismissed"
                             ]
+                          },
+                          "discordMessageId": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Native Discord message ID for constructing jump URLs"
+                          },
+                          "messageUrl": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Full Discord jump URL for the message (null if no discord_message_id)"
                           }
                         }
                       }
                     },
                     "channelId": {
                       "type": "string"
+                    },
+                    "channelName": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Human-readable channel name from the Discord guild cache"
                     },
                     "duration": {
                       "type": "integer",
