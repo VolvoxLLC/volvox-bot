@@ -51,6 +51,7 @@ import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
+import { PerformanceMonitor } from './modules/performanceMonitor.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
@@ -126,6 +127,9 @@ client.commands = new Collection();
 
 // Initialize health monitor
 const healthMonitor = HealthMonitor.getInstance();
+
+// Initialize performance monitor (singleton; start() called in ClientReady handler)
+const perfMonitor = PerformanceMonitor.getInstance();
 
 /** @type {ReturnType<typeof setInterval> | null} Health degraded check interval */
 let healthCheckInterval = null;
@@ -273,7 +277,9 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
 
+    const _cmdStart = Date.now();
     await command.execute(interaction);
+    perfMonitor.recordResponseTime(commandName, Date.now() - _cmdStart, 'command');
     info('Command executed', {
       command: resolvedCommandName,
       alias: resolvedCommandName !== commandName ? commandName : undefined,
@@ -317,6 +323,9 @@ async function gracefulShutdown(signal) {
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
+  stopScheduler();
+  stopGithubFeed();
+  perfMonitor.stop();
   stopBotStatus();
   stopVoiceFlush();
 
@@ -518,6 +527,9 @@ async function startup() {
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
+
+  // Start performance monitor
+  perfMonitor.start();
 
   // Start triage module (per-channel message classification + response)
   await startTriage(client, config, healthMonitor);

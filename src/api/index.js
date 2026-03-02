@@ -17,6 +17,7 @@ import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
 import notificationsRouter from './routes/notifications.js';
+import performanceRouter from './routes/performance.js';
 import ticketsRouter from './routes/tickets.js';
 import webhooksRouter from './routes/webhooks.js';
 
@@ -58,6 +59,9 @@ router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter)
 // Audit log routes — require API secret or OAuth2 JWT
 // GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
+
+// Performance metrics — require x-api-secret (authenticated via route handler)
+router.use('/performance', performanceRouter);
 
 // Notification webhook management routes — require API secret or OAuth2 JWT
 router.use('/guilds', requireAuth(), auditLogMiddleware(), notificationsRouter);
