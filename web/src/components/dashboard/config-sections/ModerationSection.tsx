@@ -195,14 +195,24 @@ export function ModerationSection({
               id="protect-role-ids"
               type="text"
               value={roleIdsRaw}
-              onChange={(e) => setRoleIdsRaw(e.target.value)}
-              onBlur={() =>
+              onChange={(e) => {
+                const raw = e.target.value;
+                setRoleIdsRaw(raw);
                 onProtectRolesChange(
                   'roleIds',
-                  roleIdsRaw
+                  raw
                     .split(',')
                     .map((s) => s.trim())
                     .filter(Boolean),
+                );
+              }}
+              onBlur={(e) =>
+                setRoleIdsRaw(
+                  e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .join(', '),
                 )
               }
               disabled={saving}

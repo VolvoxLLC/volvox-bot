@@ -1212,14 +1212,24 @@ export function ConfigEditor() {
                 <input
                   type="text"
                   value={protectRoleIdsRaw}
-                  onChange={(e) => setProtectRoleIdsRaw(e.target.value)}
-                  onBlur={() =>
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setProtectRoleIdsRaw(raw);
                     updateProtectRolesField(
                       'roleIds',
-                      protectRoleIdsRaw
+                      raw
                         .split(',')
                         .map((s) => s.trim())
                         .filter(Boolean),
+                    );
+                  }}
+                  onBlur={(e) =>
+                    setProtectRoleIdsRaw(
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                        .join(', '),
                     )
                   }
                   disabled={saving}
