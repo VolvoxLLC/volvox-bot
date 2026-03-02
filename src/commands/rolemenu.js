@@ -211,7 +211,7 @@ async function handleApply(interaction) {
   const newOptions = applyTemplateToOptions(tpl, existingOptions);
 
   // Filter out options with empty roleIds - Discord rejects empty select values
-  const validOptions = newOptions.filter((opt) => opt.roleId && opt.roleId.trim());
+  const validOptions = newOptions.filter((opt) => opt.roleId?.trim());
   const hasInvalidOptions = validOptions.length !== newOptions.length;
 
   // Only enable role menu for non-built-in templates with valid roleIds

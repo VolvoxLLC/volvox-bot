@@ -739,7 +739,10 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
       return;
     }
   } catch (err) {
-    debug('Failed to fetch channel for blocked check, continuing', { channelId, error: err?.message });
+    debug('Failed to fetch channel for blocked check, continuing', {
+      channelId,
+      error: err?.message,
+    });
   }
 
   // Cancel any existing in-flight evaluation (abort before checking guard)

@@ -223,7 +223,7 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
  * @param {Object} autoModConfig - AI auto-mod config
  * @param {Object} guildConfig - Full guild config
  */
-async function executeAction(message, client, result, autoModConfig, guildConfig) {
+async function executeAction(message, client, result, autoModConfig, _guildConfig) {
   const { member, guild } = message;
 
   const reason = `AI Auto-Mod: ${result.categories.join(', ')} — ${result.reason}`;

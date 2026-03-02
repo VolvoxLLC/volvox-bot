@@ -228,7 +228,9 @@ describe('readBackup', () => {
   });
 
   it('throws for unknown id', () => {
-    expect(() => readBackup('backup-9999-01-01T00-00-00-000-0000', tmpDir)).toThrow('Backup not found');
+    expect(() => readBackup('backup-9999-01-01T00-00-00-000-0000', tmpDir)).toThrow(
+      'Backup not found',
+    );
   });
 
   it('throws for path-traversal attempts', () => {
@@ -239,7 +241,9 @@ describe('readBackup', () => {
   it('throws for corrupted backup', () => {
     const badFile = join(tmpDir, 'backup-2020-01-01T00-00-00-000-0000.json');
     writeFileSync(badFile, 'not json', 'utf8');
-    expect(() => readBackup('backup-2020-01-01T00-00-00-000-0000', tmpDir)).toThrow('Backup file is corrupted');
+    expect(() => readBackup('backup-2020-01-01T00-00-00-000-0000', tmpDir)).toThrow(
+      'Backup file is corrupted',
+    );
   });
 });
 

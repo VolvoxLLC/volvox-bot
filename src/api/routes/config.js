@@ -6,7 +6,6 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
-import { flattenToLeafPaths } from '../../utils/flattenToLeafPaths.js';
 import {
   maskSensitiveFields,
   READABLE_CONFIG_KEYS,
@@ -17,8 +16,8 @@ import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
 import { DANGEROUS_KEYS } from '../utils/dangerousKeys.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
-// Re-export flattenToLeafPaths for backward compatibility
-export { flattenToLeafPaths };
+// Re-export flattenToLeafPaths for backward compatibility - use local definition
+// (import removed to avoid redeclare error)
 
 import { requireGlobalAdmin } from '../middleware/requireGlobalAdmin.js';
 
@@ -106,7 +105,7 @@ export function flattenToLeafPaths(obj, prefix) {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.get('/', requireGlobalAdmin, (req, res) => {
+router.get('/', requireGlobalAdmin, (_req, res) => {
   const config = getConfig();
   const safeConfig = {};
 
