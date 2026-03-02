@@ -117,9 +117,6 @@ export async function handleXpGain(message) {
   // Set cooldown AFTER successful DB write (sweep interval handles eviction)
   cooldowns.set(key, now);
 
-  // Invalidate cached reputation/leaderboard data for this user
-  invalidateReputationCache(message.guild.id, message.author.id).catch(() => {});
-
   const { xp: newXp, level: currentLevel } = rows[0];
   const thresholds = repCfg.levelThresholds;
   const newLevel = computeLevel(newXp, thresholds);
@@ -193,4 +190,8 @@ export async function handleXpGain(message) {
       }
     }
   }
+
+  // Invalidate cached reputation/leaderboard data AFTER all DB writes complete
+  // to prevent stale data from being re-cached in the gap between invalidation and write
+  invalidateReputationCache(message.guild.id, message.author.id).catch(() => {});
 }
