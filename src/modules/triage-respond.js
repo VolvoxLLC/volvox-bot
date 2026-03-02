@@ -147,7 +147,7 @@ export async function sendModerationLog(client, classification, snapshot, channe
         seenUserIds.add(t.userId);
         try {
           const member = await guild.members.fetch(t.userId);
-          if (isProtectedTarget(member, guild, config)) {
+          if (isProtectedTarget(member, guild)) {
             warn('Triage skipped moderation log: target is a protected role', {
               userId: t.userId,
               channelId,

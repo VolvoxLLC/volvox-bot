@@ -450,7 +450,9 @@ export function stopTempbanScheduler() {
  * @param {Object} config - Bot configuration
  * @returns {boolean} True if the target should not be moderated
  */
-export function isProtectedTarget(target, guild, config) {
+export function isProtectedTarget(target, guild) {
+  // Fetch config per-invocation so live config edits take effect immediately.
+  const config = getConfig(guild.id);
   /**
    * When the protectRoles block is missing from persisted configuration,
    * fall back to the intended defaults: protection enabled, include owner,
