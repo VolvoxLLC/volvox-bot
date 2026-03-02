@@ -355,6 +355,89 @@ describe('events module', () => {
       expect(evaluateNow).not.toHaveBeenCalled();
     });
 
+    // ── Blocked channels ──────────────────────────────────────────────
+
+    it('should not send AI response in blocked channel (mention)', async () => {
+      setup({ ai: { enabled: true, channels: [], blockedChannelIds: ['blocked-ch'] } });
+      const message = {
+        author: { bot: false, username: 'user', id: 'user-1' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> help',
+        channel: {
+          id: 'blocked-ch',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: vi.fn(),
+      };
+      await onCallbacks.messageCreate(message);
+      expect(evaluateNow).not.toHaveBeenCalled();
+    });
+
+    it('should not accumulate messages in blocked channel (non-mention)', async () => {
+      setup({ ai: { enabled: true, channels: [], blockedChannelIds: ['blocked-ch'] } });
+      const message = {
+        author: { bot: false, username: 'user', id: 'user-1' },
+        guild: { id: 'g1' },
+        content: 'regular message',
+        channel: {
+          id: 'blocked-ch',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(accumulateMessage).not.toHaveBeenCalled();
+      expect(evaluateNow).not.toHaveBeenCalled();
+    });
+
+    it('should not send AI response in thread whose parent is blocked', async () => {
+      setup({ ai: { enabled: true, channels: [], blockedChannelIds: ['parent-ch'] } });
+      const message = {
+        author: { bot: false, username: 'user', id: 'user-1' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> help',
+        channel: {
+          id: 'thread-ch',
+          parentId: 'parent-ch',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(true),
+        },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: vi.fn(),
+      };
+      await onCallbacks.messageCreate(message);
+      expect(evaluateNow).not.toHaveBeenCalled();
+    });
+
+    it('should allow AI in non-blocked channels when blocklist is configured', async () => {
+      setup({ ai: { enabled: true, channels: [], blockedChannelIds: ['blocked-ch'] } });
+      const message = {
+        author: { bot: false, username: 'user', id: 'user-1' },
+        guild: { id: 'g1' },
+        content: '<@bot-user-id> help',
+        channel: {
+          id: 'allowed-ch',
+          sendTyping: vi.fn().mockResolvedValue(undefined),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
+        mentions: { has: vi.fn().mockReturnValue(true), repliedUser: null },
+        reference: null,
+        reply: vi.fn().mockResolvedValue(undefined),
+      };
+      await onCallbacks.messageCreate(message);
+      expect(evaluateNow).toHaveBeenCalledWith('allowed-ch', config, client, null);
+    });
+
     // ── Non-mention ───────────────────────────────────────────────────
 
     it('should call accumulateMessage only (not evaluateNow) for non-mention', async () => {
