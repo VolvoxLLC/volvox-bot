@@ -16,61 +16,54 @@ import {
   YAxis,
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
-interface FeedbackStats {
-  positive: number;
-  negative: number;
-  total: number;
-  ratio: number | null;
-  trend: Array<{
-    date: string;
-    positive: number;
-    negative: number;
-  }>;
-}
-
-const PIE_COLORS = ['#22C55E', '#EF4444'];
+import type { AiFeedbackStats as AiFeedbackStatsType } from '@/types/analytics';
 
 /**
  * AI Feedback Stats dashboard card.
  * Shows 👍/👎 aggregate counts, approval ratio, and daily trend.
  */
 export function AiFeedbackStats() {
-  const { selectedGuild, apiBase } = useGuildSelection();
-  const [stats, setStats] = useState<FeedbackStats | null>(null);
+  const guildId = useGuildSelection();
+  const chart = useChartTheme();
+  const [stats, setStats] = useState<AiFeedbackStatsType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!selectedGuild || !apiBase) return;
+    if (!guildId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${apiBase}/guilds/${selectedGuild.id}/ai-feedback/stats?days=30`, {
-        credentials: 'include',
-      });
+      const res = await fetch(
+        `/api/guilds/${encodeURIComponent(guildId)}/ai-feedback/stats?days=30`,
+        {
+          credentials: 'include',
+        },
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
 
-      const data = (await res.json()) as FeedbackStats;
+      const data = (await res.json()) as AiFeedbackStats;
       setStats(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feedback stats');
     } finally {
       setLoading(false);
     }
-  }, [selectedGuild, apiBase]);
+  }, [guildId]);
 
   useEffect(() => {
     void fetchStats();
   }, [fetchStats]);
 
-  if (!selectedGuild) return null;
+  if (!guildId) return null;
 
   const pieData =
     stats && stats.total > 0
@@ -141,13 +134,15 @@ export function AiFeedbackStats() {
                         innerRadius={50}
                         outerRadius={75}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                        }
                         labelLine={false}
                       >
-                        {pieData.map((_, index) => (
+                        {pieData.map((entry, index) => (
                           <Cell
-                            key={`cell-${index}`}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            key={entry.name}
+                            fill={chart.palette[index % chart.palette.length]}
                           />
                         ))}
                       </Pie>
@@ -165,7 +160,7 @@ export function AiFeedbackStats() {
                         data={stats.trend}
                         margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                         <XAxis
                           dataKey="date"
                           tick={{ fontSize: 10 }}
@@ -174,8 +169,8 @@ export function AiFeedbackStats() {
                         <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="positive" name="👍" fill="#22C55E" stackId="a" />
-                        <Bar dataKey="negative" name="👎" fill="#EF4444" stackId="a" />
+                        <Bar dataKey="positive" name="👍" fill={chart.success} stackId="a" />
+                        <Bar dataKey="negative" name="👎" fill={chart.danger} stackId="a" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

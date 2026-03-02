@@ -1,8 +1,10 @@
 'use client';
 
 import {
+  Activity,
   Bot,
   ClipboardList,
+  Clock,
   LayoutDashboard,
   MessageSquare,
   MessagesSquare,
@@ -27,6 +29,11 @@ const navigation = [
     name: 'Moderation',
     href: '/dashboard/moderation',
     icon: Shield,
+  },
+  {
+    name: 'Temp Roles',
+    href: '/dashboard/temp-roles',
+    icon: Clock,
   },
   {
     name: 'AI Chat',
@@ -57,6 +64,11 @@ const navigation = [
     name: 'Audit Log',
     href: '/dashboard/audit-log',
     icon: ClipboardList,
+  },
+  {
+    name: 'Performance',
+    href: '/dashboard/performance',
+    icon: Activity,
   },
   {
     name: 'Logs',

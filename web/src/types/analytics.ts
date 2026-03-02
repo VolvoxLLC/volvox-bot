@@ -81,3 +81,16 @@ export interface DashboardAnalytics {
     messages: number;
   }>;
 }
+
+/** Shape of the /guilds/:id/ai-feedback/stats API response. */
+export interface AiFeedbackStats {
+  positive: number;
+  negative: number;
+  total: number;
+  ratio: number | null;
+  trend: Array<{
+    date: string;
+    positive: number;
+    negative: number;
+  }>;
+}
