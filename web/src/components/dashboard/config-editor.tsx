@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Save } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -136,6 +136,15 @@ export function ConfigEditor() {
 
   const abortRef = useRef<AbortController | null>(null);
 
+  /** Auto-save status indicator. */
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  /** Debounce timer for auto-save. */
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** True while the initial config load is in progress — suppresses auto-save. */
+  const isLoadingConfigRef = useRef(false);
+  /** Ref tracking latest draftConfig for race-condition detection during save. */
+  const draftConfigRef = useRef<GuildConfig | null>(null);
+
   const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
     setDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
   }, []);
@@ -169,7 +178,7 @@ export function ConfigEditor() {
   }, []);
 
   // ── Load config when guild changes ─────────────────────────────
-  const fetchConfig = useCallback(async (id: string) => {
+  const fetchConfig = useCallback(async (id: string, { skipSaveStatusReset = false } = {}) => {
     if (!id) return;
 
     abortRef.current?.abort();
@@ -178,6 +187,7 @@ export function ConfigEditor() {
 
     setLoading(true);
     setError(null);
+    isLoadingConfigRef.current = true;
 
     try {
       const res = await fetch(`/api/guilds/${encodeURIComponent(id)}/config`, {
@@ -209,10 +219,19 @@ export function ConfigEditor() {
       }
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
+      // Reset status after a successful reload; clear any stale error
+      if (!skipSaveStatusReset) {
+        setSaveStatus('idle');
+      }
+      // Use a macrotask so the state setter for draftConfig fires before we clear the flag
+      setTimeout(() => {
+        isLoadingConfigRef.current = false;
+      }, 0);
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
       setProtectRoleIdsRaw((data.moderation?.protectRoles?.roleIds ?? []).join(', '));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
+      isLoadingConfigRef.current = false;
       const msg = (err as Error).message || 'Failed to load config';
       setError(msg);
       toast.error('Failed to load config', { description: msg });
@@ -225,6 +244,11 @@ export function ConfigEditor() {
     fetchConfig(guildId);
     return () => abortRef.current?.abort();
   }, [guildId, fetchConfig]);
+
+  // Keep draftConfigRef in sync for race-condition detection in saveChanges
+  useEffect(() => {
+    draftConfigRef.current = draftConfig;
+  }, [draftConfig]);
 
   // ── Derived state ──────────────────────────────────────────────
   const hasChanges = useMemo(() => {
@@ -272,10 +296,10 @@ export function ConfigEditor() {
     }
 
     const patches = computePatches(savedConfig, draftConfig);
-    if (patches.length === 0) {
-      toast.info('No changes to save.');
-      return;
-    }
+    if (patches.length === 0) return;
+
+    // Snapshot draft before saving to detect changes made during in-flight save
+    const draftSnapshot = draftConfig;
 
     // Group patches by top-level section for batched requests
     const bySection = new Map<string, Array<{ path: string; value: unknown }>>();
@@ -290,6 +314,7 @@ export function ConfigEditor() {
     }
 
     setSaving(true);
+    setSaveStatus('saving');
 
     // Shared AbortController for all section saves - aborts all in-flight requests on 401
     const saveAbortController = new AbortController();
@@ -354,21 +379,51 @@ export function ConfigEditor() {
             return updated;
           });
         }
+        setSaveStatus('error');
         toast.error('Some sections failed to save', {
           description: `Failed: ${failedSections.join(', ')}`,
         });
       } else {
-        toast.success('Config saved successfully!');
-        // Full success: reload to get the authoritative version from the server
-        await fetchConfig(guildId);
+        setSaveStatus('saved');
+        // Full success: check if draft changed during save (user edited while saving)
+        if (deepEqual(draftConfigRef.current, draftSnapshot)) {
+          // No changes during save — safe to reload authoritative version
+          await fetchConfig(guildId, { skipSaveStatusReset: true });
+        } else {
+          // Draft changed during save — don't overwrite user's new changes
+          // Update savedConfig to reflect what was successfully persisted
+          setSavedConfig(structuredClone(draftSnapshot));
+        }
       }
     } catch (err) {
       const msg = (err as Error).message || 'Failed to save config';
+      setSaveStatus('error');
       toast.error('Failed to save config', { description: msg });
     } finally {
       setSaving(false);
     }
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
+
+  // ── Auto-save: debounce 500ms after draft changes ──────────────
+  useEffect(() => {
+    // Don't auto-save during initial config load or if no changes
+    if (isLoadingConfigRef.current || !hasChanges || hasValidationErrors || saving) return;
+
+    // Clear any pending timer
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      void saveChanges();
+    }, 500);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [draftConfig, hasChanges, hasValidationErrors, saving, saveChanges]);
 
   // ── Keyboard shortcut: Ctrl/Cmd+S to save ──────────────────────
   useEffect(() => {
@@ -376,7 +431,12 @@ export function ConfigEditor() {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         if (hasChanges && !saving && !hasValidationErrors) {
-          saveChanges();
+          // Cancel any pending debounce timer and save immediately
+          if (autoSaveTimerRef.current) {
+            clearTimeout(autoSaveTimerRef.current);
+            autoSaveTimerRef.current = null;
+          }
+          void saveChanges();
         }
       }
     }
@@ -697,38 +757,24 @@ export function ConfigEditor() {
             Manage AI, welcome messages, and other settings.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Auto-save status indicator */}
+          <AutoSaveStatus status={saveStatus} onRetry={saveChanges} />
           <DiscardChangesButton
             onReset={discardChanges}
             disabled={saving || !hasChanges}
             sectionLabel="all unsaved changes"
           />
-          <Button
-            onClick={saveChanges}
-            disabled={saving || !hasChanges || hasValidationErrors}
-            aria-keyshortcuts="Control+S Meta+S"
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" aria-hidden="true" />
-            )}
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
         </div>
       </div>
 
-      {/* Unsaved changes banner */}
-      {hasChanges && (
+      {/* Validation error banner */}
+      {hasChanges && hasValidationErrors && (
         <output
           aria-live="polite"
-          className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          You have unsaved changes.{' '}
-          <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
-            Ctrl+S
-          </kbd>{' '}
-          to save.
+          Fix validation errors before changes can be saved.
         </output>
       )}
 
@@ -2238,6 +2284,58 @@ export function ConfigEditor() {
       {/* Diff view */}
       {hasChanges && savedConfig && <ConfigDiff original={savedConfig} modified={draftConfig} />}
     </div>
+  );
+}
+
+// ── Auto-Save Status Indicator ────────────────────────────────
+
+interface AutoSaveStatusProps {
+  status: 'idle' | 'saving' | 'saved' | 'error';
+  onRetry: () => void;
+}
+
+/**
+ * Displays the current auto-save status with an icon and text.
+ *
+ * Shows nothing when idle, a spinner while saving, a check icon on success,
+ * and an error state with a retry button on failure.
+ */
+function AutoSaveStatus({ status, onRetry }: AutoSaveStatusProps) {
+  if (status === 'idle') return null;
+
+  if (status === 'saving') {
+    return (
+      <output className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        Saving...
+      </output>
+    );
+  }
+
+  if (status === 'saved') {
+    return (
+      <output className="flex items-center gap-1.5 text-sm text-green-500">
+        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+        Saved
+      </output>
+    );
+  }
+
+  // error state
+  return (
+    <output className="flex items-center gap-1.5 text-sm text-destructive">
+      <AlertCircle className="h-4 w-4" aria-hidden="true" />
+      Save failed
+      <button
+        type="button"
+        onClick={onRetry}
+        className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label="Retry save"
+      >
+        <RefreshCw className="h-3 w-3" aria-hidden="true" />
+        Retry
+      </button>
+    </output>
   );
 }
 
