@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { auditLogMiddleware } from './middleware/auditLog.js';
 import { requireAuth } from './middleware/auth.js';
+import aiFeedbackRouter from './routes/ai-feedback.js';
 import auditLogRouter from './routes/auditLog.js';
 import authRouter from './routes/auth.js';
 import communityRouter from './routes/community.js';
@@ -35,6 +36,9 @@ router.use('/config', requireAuth(), auditLogMiddleware(), configRouter);
 // Member management routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/members/* before the basic guilds endpoint)
 router.use('/guilds', requireAuth(), auditLogMiddleware(), membersRouter);
+
+// AI Feedback routes — require API secret or OAuth2 JWT
+router.use('/guilds/:id/ai-feedback', requireAuth(), auditLogMiddleware(), aiFeedbackRouter);
 
 // Conversation routes — require API secret or OAuth2 JWT
 // (mounted before guilds to handle /:id/conversations/* before the catch-all guild endpoint)
