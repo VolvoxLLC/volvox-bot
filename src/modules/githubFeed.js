@@ -5,12 +5,12 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/51
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
 

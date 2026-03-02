@@ -4,9 +4,9 @@
  * Also detects phishing TLD patterns (.xyz with suspicious keywords).
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { EmbedBuilder } from 'discord.js';
 import { warn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';

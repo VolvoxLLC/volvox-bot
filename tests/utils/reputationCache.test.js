@@ -64,7 +64,10 @@ describe('reputationCache.js', () => {
 
   describe('getLeaderboardCached', () => {
     it('calls factory on miss and caches result', async () => {
-      const leaderboard = [{ userId: 'u1', xp: 500 }, { userId: 'u2', xp: 300 }];
+      const leaderboard = [
+        { userId: 'u1', xp: 500 },
+        { userId: 'u2', xp: 300 },
+      ];
       const factory = vi.fn().mockResolvedValue(leaderboard);
 
       const result = await repCache.getLeaderboardCached('guild1', factory);

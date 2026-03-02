@@ -4,9 +4,9 @@
  * Actions on trigger: delete excess messages, warn user, temp-mute on repeat.
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import { info, warn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeReply, safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';

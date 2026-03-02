@@ -9,15 +9,19 @@
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
-import { cacheGetOrSet, TTL } from '../../utils/cache.js';
 import { computeLevel } from '../../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
-import { rateLimit } from '../middleware/rateLimit.js';
+import { cacheGetOrSet, TTL } from '../../utils/cache.js';
+import { redisRateLimit } from '../middleware/redisRateLimit.js';
 
 const router = Router();
 
 /** Aggressive rate limiter for public endpoints: 30 req/min per IP */
-const communityRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
+const communityRateLimit = redisRateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  keyPrefix: 'rl:community',
+});
 router.use(communityRateLimit);
 
 /**
@@ -145,30 +149,34 @@ router.get('/:guildId/leaderboard', async (req, res) => {
 
     // Cache leaderboard DB results per guild+page (most expensive query)
     const cacheKey = `leaderboard:${guildId}:${page}:${limit}`;
-    const dbResult = await cacheGetOrSet(cacheKey, async () => {
-      const [countResult, membersResult] = await Promise.all([
-        pool.query(
-          `SELECT COUNT(*)::int AS total
+    const dbResult = await cacheGetOrSet(
+      cacheKey,
+      async () => {
+        const [countResult, membersResult] = await Promise.all([
+          pool.query(
+            `SELECT COUNT(*)::int AS total
            FROM user_stats us
            INNER JOIN reputation r ON r.guild_id = us.guild_id AND r.user_id = us.user_id
            WHERE us.guild_id = $1 AND us.public_profile = TRUE`,
-          [guildId],
-        ),
-        pool.query(
-          `SELECT us.user_id, r.xp, r.level
+            [guildId],
+          ),
+          pool.query(
+            `SELECT us.user_id, r.xp, r.level
            FROM user_stats us
            INNER JOIN reputation r ON r.guild_id = us.guild_id AND r.user_id = us.user_id
            WHERE us.guild_id = $1 AND us.public_profile = TRUE
            ORDER BY r.xp DESC
            LIMIT $2 OFFSET $3`,
-          [guildId, limit, offset],
-        ),
-      ]);
-      return {
-        total: countResult.rows[0]?.total ?? 0,
-        rows: membersResult.rows,
-      };
-    }, TTL.LEADERBOARD);
+            [guildId, limit, offset],
+          ),
+        ]);
+        return {
+          total: countResult.rows[0]?.total ?? 0,
+          rows: membersResult.rows,
+        };
+      },
+      TTL.LEADERBOARD,
+    );
 
     const { total, rows: memberRows } = dbResult;
     const { client } = req.app.locals;

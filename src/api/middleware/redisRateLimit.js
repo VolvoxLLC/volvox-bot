@@ -36,11 +36,7 @@ export function redisRateLimit({ windowMs = 15 * 60 * 1000, max = 100, keyPrefix
 
     try {
       // Atomic increment + TTL set via pipeline
-      const results = await redis
-        .multi()
-        .incr(key)
-        .pttl(key)
-        .exec();
+      const results = await redis.multi().incr(key).pttl(key).exec();
 
       // multi().exec() returns [[err, value], ...] tuples — check each command
       const [incrErr, count] = results[0];

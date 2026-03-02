@@ -45,12 +45,16 @@ export async function fetchChannelCached(client, channelId) {
     const channel = await client.channels.fetch(channelId);
     if (channel) {
       // Cache minimal metadata for future health checks
-      await cacheSet(cacheKey, {
-        id: channel.id,
-        name: channel.name ?? null,
-        type: channel.type,
-        guildId: channel.guildId ?? null,
-      }, TTL.CHANNEL_DETAIL);
+      await cacheSet(
+        cacheKey,
+        {
+          id: channel.id,
+          name: channel.name ?? null,
+          type: channel.type,
+          guildId: channel.guildId ?? null,
+        },
+        TTL.CHANNEL_DETAIL,
+      );
       debug('Fetched and cached channel', { channelId, name: channel.name });
     }
     return channel;
@@ -151,11 +155,15 @@ export async function fetchMemberCached(guild, userId) {
   try {
     const member = await guild.members.fetch(userId);
     if (member) {
-      await cacheSet(cacheKey, {
-        id: member.id,
-        displayName: member.displayName,
-        joinedAt: member.joinedAt?.toISOString() ?? null,
-      }, TTL.MEMBERS);
+      await cacheSet(
+        cacheKey,
+        {
+          id: member.id,
+          displayName: member.displayName,
+          joinedAt: member.joinedAt?.toISOString() ?? null,
+        },
+        TTL.MEMBERS,
+      );
     }
     return member;
   } catch (err) {

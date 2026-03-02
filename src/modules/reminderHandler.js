@@ -5,12 +5,12 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/137
  */
 
-import { fetchChannelCached } from '../utils/discordCache.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { getNextCronRun } from '../utils/cronParser.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 
 /** Snooze durations in milliseconds, keyed by button suffix */

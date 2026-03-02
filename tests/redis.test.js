@@ -48,7 +48,10 @@ describe('redis.js', () => {
         quit: vi.fn().mockResolvedValue('OK'),
       };
       vi.doMock('ioredis', () => ({
-        default: vi.fn().mockImplementation(function () { return mockClient; }),
+        // biome-ignore lint/complexity/useArrowFunction: new Redis() requires a regular function mock
+        default: vi.fn().mockImplementation(function () {
+          return mockClient;
+        }),
       }));
 
       const freshRedis = await import('../src/redis.js');

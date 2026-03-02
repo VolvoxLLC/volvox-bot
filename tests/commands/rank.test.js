@@ -23,6 +23,12 @@ vi.mock('../../src/modules/reputation.js', async (importOriginal) => {
   };
 });
 
+vi.mock('../../src/utils/reputationCache.js', () => ({
+  getReputationCached: vi.fn().mockResolvedValue(null), // always cache miss → hits DB
+  setReputationCache: vi.fn().mockResolvedValue(undefined),
+  getRankCached: vi.fn().mockImplementation((_guildId, _userId, factory) => factory()),
+}));
+
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn(),
 }));

@@ -10,7 +10,6 @@ const mockResponderStart = vi.fn().mockResolvedValue(undefined);
 const mockClassifierClose = vi.fn();
 const mockResponderClose = vi.fn();
 
-
 // Mock discordCache to pass through to the underlying client.channels.fetch
 vi.mock('../../src/utils/discordCache.js', () => ({
   fetchChannelCached: vi.fn().mockImplementation(async (client, channelId) => {

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock logger
 vi.mock('../../../src/logger.js', () => ({
@@ -26,7 +26,7 @@ vi.mock('../../../src/api/middleware/rateLimit.js', () => ({
 describe('redisRateLimit', () => {
   let redisRateLimit;
   let getRedis;
-  let rateLimit;
+  let _rateLimit;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -34,7 +34,7 @@ describe('redisRateLimit', () => {
     getRedis = redisMod.getRedis;
 
     const rateLimitMod = await import('../../../src/api/middleware/rateLimit.js');
-    rateLimit = rateLimitMod.rateLimit;
+    _rateLimit = rateLimitMod.rateLimit;
 
     const mod = await import('../../../src/api/middleware/redisRateLimit.js');
     redisRateLimit = mod.redisRateLimit;
@@ -47,7 +47,9 @@ describe('redisRateLimit', () => {
   function makeRes() {
     const headers = {};
     return {
-      set: vi.fn((k, v) => { headers[k] = v; }),
+      set: vi.fn((k, v) => {
+        headers[k] = v;
+      }),
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
       _headers: headers,

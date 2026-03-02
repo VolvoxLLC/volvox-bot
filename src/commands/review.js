@@ -15,6 +15,7 @@ import {
   STATUS_LABELS,
   updateReviewMessage,
 } from '../modules/reviewHandler.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
@@ -159,10 +160,10 @@ async function handleRequest(interaction, pool, guildConfig) {
   let targetChannel = interaction.channel;
 
   if (reviewChannelId && reviewChannelId !== interaction.channelId) {
-    try {
-      const fetched = await interaction.client.channels.fetch(reviewChannelId);
-      if (fetched) targetChannel = fetched;
-    } catch {
+    const fetched = await fetchChannelCached(interaction.client, reviewChannelId);
+    if (fetched) {
+      targetChannel = fetched;
+    } else {
       warn('Review channel not found, using current channel', {
         reviewChannelId,
         guildId: interaction.guildId,
