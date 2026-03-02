@@ -209,13 +209,19 @@ async function handleApply(interaction) {
   const existingOptions = merge ? (guildConfig?.welcome?.roleMenu?.options ?? []) : [];
   const newOptions = applyTemplateToOptions(tpl, existingOptions);
 
-  await setConfigValue('welcome.roleMenu.enabled', true, interaction.guildId);
-  await setConfigValue('welcome.roleMenu.options', newOptions, interaction.guildId);
+  // Filter out options with empty roleIds - Discord rejects empty select values
+  const validOptions = newOptions.filter(opt => opt.roleId && opt.roleId.trim());
+  const hasInvalidOptions = validOptions.length !== newOptions.length;
+
+  // Only enable role menu for non-built-in templates with valid roleIds
+  const shouldEnable = !tpl.is_builtin && validOptions.length > 0;
+  await setConfigValue('welcome.roleMenu.enabled', shouldEnable, interaction.guildId);
+  await setConfigValue('welcome.roleMenu.options', validOptions, interaction.guildId);
 
   info('Role menu template applied', {
     guildId: interaction.guildId,
     template: tpl.name,
-    optionCount: newOptions.length,
+    optionCount: validOptions.length,
     merge,
     userId: interaction.user.id,
   });
@@ -224,8 +230,12 @@ async function handleApply(interaction) {
     ? '\n\n> ⚠️ Built-in templates have no role IDs. Use the config editor to assign a **roleId** to each option before posting the role menu.'
     : '';
 
+  const filterNote = hasInvalidOptions
+    ? '\n\n⚠️ Some options had empty roleIds and were filtered out. Add roleIds in the config editor before posting.'
+    : '';
+
   await safeEditReply(interaction, {
-    content: `✅ Applied template **${tpl.name}** to role menu config (${newOptions.length} option${newOptions.length !== 1 ? 's' : ''}).${merge ? ' Merged with existing options.' : ''}${builtinNote}\n\nRun \`/welcome setup\` to post the updated role menu.`,
+    content: `✅ Applied template **${tpl.name}** to role menu config (${validOptions.length} option${validOptions.length !== 1 ? 's' : ''}).${merge ? ' Merged with existing options.' : ''}${builtinNote}${filterNote}\n\nRun \`/welcome setup\` to post the updated role menu.`,
   });
 }
 
