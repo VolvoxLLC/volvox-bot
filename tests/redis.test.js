@@ -48,14 +48,15 @@ describe('redis.js', () => {
         quit: vi.fn().mockResolvedValue('OK'),
       };
       vi.doMock('ioredis', () => ({
-        // biome-ignore lint/complexity/useArrowFunction: new Redis() requires a regular function mock
-        default: vi.fn().mockImplementation(function () {
-          return mockClient;
-        }),
+        default: class MockRedis {
+          constructor() {
+            Object.assign(this, mockClient);
+          }
+        },
       }));
 
       const freshRedis = await import('../src/redis.js');
-      freshRedis._resetRedis();
+      await freshRedis._resetRedis();
 
       const client = freshRedis.initRedis();
       expect(client).not.toBeNull();
@@ -66,7 +67,7 @@ describe('redis.js', () => {
       vi.resetModules();
       process.env.REDIS_URL = 'redis://localhost:6379';
       const freshRedis = await import('../src/redis.js');
-      freshRedis._resetRedis();
+      await freshRedis._resetRedis();
 
       const client1 = freshRedis.initRedis();
       const client2 = freshRedis.initRedis();

@@ -51,10 +51,17 @@ import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderatio
 import { loadOptOuts } from './modules/optout.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
+import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
+import { fireEventAllGuilds } from './modules/webhookNotifier.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
-import { HealthMonitor } from './utils/health.js';
+import {
+  EVENT_LOOP_LAG_THRESHOLD_MS,
+  HealthMonitor,
+  MEMORY_DEGRADED_THRESHOLD,
+  measureEventLoopLag,
+} from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';

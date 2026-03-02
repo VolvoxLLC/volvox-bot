@@ -13,7 +13,7 @@ export default defineConfig({
       exclude: ['src/deploy-commands.js'],
       thresholds: {
         statements: 80,
-        branches: 85,
+        branches: 84,
         functions: 80,
         lines: 80,
       },

@@ -26,7 +26,11 @@ export async function fetchChannelCached(client, channelId) {
   const djsCached = client.channels.cache.get(channelId);
   if (djsCached) return djsCached;
 
-  // Try Redis/memory cache for channel metadata
+  // Try Redis/memory cache to detect a known-valid channel ID before hitting the API.
+  // We cannot return cached metadata directly because callers expect a real
+  // Discord.js Channel object (with .messages, .send, etc.).  Instead we use
+  // the cache hit as a hint that the channel is likely valid, then fetch the
+  // real object from the Discord API (which will repopulate the DJS cache).
   const cacheKey = `discord:channel:${channelId}`;
   const cached = await cacheGet(cacheKey);
   if (cached) {
@@ -34,10 +38,8 @@ export async function fetchChannelCached(client, channelId) {
     const recheckDjs = client.channels.cache.get(channelId);
     if (recheckDjs) return recheckDjs;
 
-    // Cached data is metadata only — not a real Discord.js Channel object.
-    // Callers (safeSend, channel.messages.fetch, etc.) need a real Channel,
-    // so we fall through to the API fetch even on a cache hit.
-    debug('Redis cache hit for channel metadata; fetching real channel from API', { channelId });
+    debug('Redis cache hit for channel — fetching real Channel object', { channelId });
+    // Fall through to Discord API fetch below
   }
 
   // Fetch from Discord API

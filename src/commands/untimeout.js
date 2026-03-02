@@ -24,6 +24,7 @@ export async function execute(interaction) {
   await executeModAction(interaction, {
     action: 'untimeout',
     skipDm: true,
+    skipProtection: true,
     getTarget: (inter) => {
       const target = inter.options.getMember('user');
       if (!target) return { earlyReturn: '\u274C User is not in this server.' };

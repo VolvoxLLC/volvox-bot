@@ -9,7 +9,9 @@
  */
 
 import { addPostgresTransport, error, info, removePostgresTransport } from './logger.js';
+import { reloadBotStatus } from './modules/botStatus.js';
 import { onConfigChange } from './modules/config.js';
+import { fireEvent } from './modules/webhookNotifier.js';
 import { cacheDelPattern } from './utils/cache.js';
 
 /** @type {import('winston').transport | null} */
@@ -62,12 +64,15 @@ export function registerConfigListeners({ dbPool, config }) {
     'logging.database.flushIntervalMs',
     'logging.database.minLevel',
   ]) {
-    onConfigChange(key, async (_newValue, _oldValue, path, guildId) => {
+    onConfigChange(key, async (_newValue, _oldValue, changePath, guildId) => {
       if (guildId && guildId !== 'global') return;
       transportLock = transportLock
-        .then(() => updateLoggingTransport(path))
+        .then(() => updateLoggingTransport(changePath))
         .catch((err) =>
-          error('Failed to update PostgreSQL logging transport', { path, error: err.message }),
+          error('Failed to update PostgreSQL logging transport', {
+            path: changePath,
+            error: err.message,
+          }),
         );
       await transportLock;
     });
@@ -100,11 +105,36 @@ export function registerConfigListeners({ dbPool, config }) {
       await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
     }
   });
+  // ── Bot status / presence hot-reload ───────────────────────────────
+  for (const key of [
+    'botStatus',
+    'botStatus.enabled',
+    'botStatus.status',
+    'botStatus.activityType',
+    'botStatus.activities',
+    'botStatus.rotateIntervalMs',
+  ]) {
+    onConfigChange(key, (_newValue, _oldValue, _path, guildId) => {
+      // Bot presence is global — ignore per-guild overrides here
+      if (guildId && guildId !== 'global') return;
+      reloadBotStatus();
+    });
+  }
+
   onConfigChange('reputation.*', async (_newValue, _oldValue, _path, guildId) => {
     if (guildId && guildId !== 'global') {
       await cacheDelPattern(`leaderboard:${guildId}*`).catch(() => {});
       await cacheDelPattern(`reputation:${guildId}:*`).catch(() => {});
     }
+  });
+
+  // ── Webhook notifications for config changes ─────────────────────────
+  onConfigChange('*', async (_newValue, _oldValue, path, guildId) => {
+    // Skip internal/logging changes and notification webhook updates (avoid recursion)
+    if (path.startsWith('logging.') || path.startsWith('notifications.')) return;
+    const targetGuildId = guildId && guildId !== 'global' ? guildId : null;
+    if (!targetGuildId) return;
+    await fireEvent('config.changed', targetGuildId, { path }).catch(() => {});
   });
 }
 

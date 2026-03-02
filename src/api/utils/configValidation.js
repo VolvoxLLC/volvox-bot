@@ -17,6 +17,7 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'boolean' },
       systemPrompt: { type: 'string' },
       channels: { type: 'array' },
+      blockedChannelIds: { type: 'array' },
       historyLength: { type: 'number' },
       historyTTLDays: { type: 'number' },
       threadMode: {
@@ -35,6 +36,22 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'boolean' },
       channelId: { type: 'string', nullable: true },
       message: { type: 'string' },
+      variants: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+      channels: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            channelId: { type: 'string' },
+            message: { type: 'string' },
+            variants: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['channelId'],
+        },
+      },
       dynamic: {
         type: 'object',
         properties: {
@@ -110,6 +127,16 @@ export const CONFIG_SCHEMA = {
           },
         },
       },
+      protectRoles: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          roleIds: { type: 'array', items: { type: 'string' } },
+          includeAdmins: { type: 'boolean' },
+          includeModerators: { type: 'boolean' },
+          includeServerOwner: { type: 'boolean' },
+        },
+      },
     },
   },
   triage: {
@@ -153,6 +180,23 @@ export const CONFIG_SCHEMA = {
     properties: {
       enabled: { type: 'boolean' },
       maxPerUser: { type: 'number' },
+    },
+  },
+  quietMode: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      maxDurationMinutes: { type: 'number' },
+      allowedRoles: { type: 'array' },
+    },
+  },
+  voice: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      xpPerMinute: { type: 'number' },
+      dailyXpCap: { type: 'number' },
+      logChannel: { type: 'string', nullable: true },
     },
   },
 };

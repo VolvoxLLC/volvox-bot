@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { DANGEROUS_KEYS } from '../api/utils/dangerousKeys.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configPath = join(__dirname, '..', '..', 'config.json');
@@ -350,6 +351,16 @@ function getNestedValue(obj, pathParts) {
  * @param {string} pathOrPrefix - Dot-notation path or prefix with wildcard
  * @param {Function} callback - Called with (newValue, oldValue, fullPath, guildId)
  */
+/**
+ * Get all guild IDs that have config entries (including 'global').
+ * Used by webhook notifier to fire bot-level events to all guilds.
+ *
+ * @returns {string[]} Array of guild IDs (excluding 'global')
+ */
+export function getAllGuildIds() {
+  return [...configCache.keys()].filter((id) => id !== 'global');
+}
+
 export function onConfigChange(pathOrPrefix, callback) {
   listeners.push({ path: pathOrPrefix, callback });
 }
@@ -386,7 +397,8 @@ async function emitConfigChangeEvents(fullPath, newValue, oldValue, guildId) {
       !isExact &&
       listener.path.endsWith('.*') &&
       fullPath.startsWith(listener.path.replace(/\.\*$/, '.'));
-    if (isExact || isPrefix) {
+    const isWildcard = listener.path === '*';
+    if (isExact || isPrefix || isWildcard) {
       try {
         const result = listener.callback(newValue, oldValue, fullPath, guildId);
         if (result && typeof result.then === 'function') {
@@ -782,8 +794,6 @@ export async function resetConfig(section, guildId = 'global') {
   return globalConfig;
 }
 
-/** Keys that must never be used as path segments (prototype pollution vectors) */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
  * Validate that no path segment is a prototype-pollution vector.

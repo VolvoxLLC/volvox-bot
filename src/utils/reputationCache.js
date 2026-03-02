@@ -42,7 +42,11 @@ export async function setReputationCache(guildId, userId, data) {
  * @returns {Promise<void>}
  */
 export async function invalidateReputationCache(guildId, userId) {
-  await cacheDel(`reputation:${guildId}:${userId}`);
+  await Promise.allSettled([
+    cacheDel(`reputation:${guildId}:${userId}`),
+    cacheDel(`rank:${guildId}:${userId}`),
+    cacheDelPattern(`leaderboard:${guildId}:*`),
+  ]);
   await cacheDel(`rank:${guildId}:${userId}`);
   // Also invalidate all paginated leaderboard keys for this guild
   await cacheDelPattern(`leaderboard:${guildId}:*`);

@@ -11,6 +11,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { parseDuration } from '../utils/duration.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
+import { fireEvent } from './webhookNotifier.js';
 
 /**
  * Color map for mod log embeds by action type.
@@ -146,6 +147,17 @@ export async function createCase(guildId, data) {
       target: data.targetTag,
       moderator: data.moderatorTag,
     });
+
+    // Fire webhook notification — fire-and-forget, don't block case creation
+    fireEvent('moderation.action', guildId, {
+      action: data.action,
+      caseNumber: createdCase.case_number,
+      targetId: data.targetId,
+      targetTag: data.targetTag,
+      moderatorId: data.moderatorId,
+      moderatorTag: data.moderatorTag,
+      reason: data.reason || null,
+    }).catch(() => {});
 
     return createdCase;
   } catch (err) {
@@ -439,6 +451,58 @@ export function stopTempbanScheduler() {
     schedulerInterval = null;
     info('Tempban scheduler stopped');
   }
+}
+
+/**
+ * Check if a target member is protected from moderation actions.
+ * Protected members include the server owner, admins, moderators, and any custom role IDs
+ * configured under `moderation.protectRoles`.
+ * @param {import('discord.js').GuildMember} target - Target member to check
+ * @param {import('discord.js').Guild} guild - Discord guild
+ * @returns {boolean} True if the target should not be moderated
+ */
+export function isProtectedTarget(target, guild) {
+  // Fetch config per-invocation so live config edits take effect immediately.
+  const config = getConfig(guild.id);
+  /**
+   * When the protectRoles block is missing from persisted configuration,
+   * fall back to the intended defaults: protection enabled, include owner,
+   * admins, and moderators (matches config.json defaults and web UI defaults).
+   */
+  const defaultProtectRoles = {
+    enabled: true,
+    includeAdmins: true,
+    includeModerators: true,
+    includeServerOwner: true,
+    roleIds: [],
+  };
+
+  // Deep-merge defaults so a partial persisted object (e.g. only roleIds set)
+  // never leaves enabled/include* as undefined/falsy.
+  const protectRoles = { ...defaultProtectRoles, ...config.moderation?.protectRoles };
+  if (!protectRoles.enabled) {
+    return false;
+  }
+
+  // Server owner is always protected when enabled
+  if (protectRoles.includeServerOwner && target.id === guild.ownerId) {
+    return true;
+  }
+
+  const protectedRoleIds = [
+    ...(protectRoles.includeAdmins && config.permissions?.adminRoleId
+      ? [config.permissions.adminRoleId]
+      : []),
+    ...(protectRoles.includeModerators && config.permissions?.moderatorRoleId
+      ? [config.permissions.moderatorRoleId]
+      : []),
+    ...(Array.isArray(protectRoles.roleIds) ? protectRoles.roleIds : []),
+  ].filter(Boolean);
+
+  if (protectedRoleIds.length === 0) return false;
+
+  const memberRoleIds = [...target.roles.cache.keys()];
+  return protectedRoleIds.some((roleId) => memberRoleIds.includes(roleId));
 }
 
 /**
