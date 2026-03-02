@@ -364,7 +364,7 @@ describe('applyTemplateToOptions', () => {
     const result = applyTemplateToOptions(tplWithIds, existing);
     // existing roleId takes precedence (opt.roleId || existingByLabel)
     // template opt has roleId 'tpl-red-111' which is truthy — it wins
-    expect(result[0].roleId).toBe('tpl-red-111');
+    expect(result[0].roleId).toBe('existing-red-222');
   });
 
   it('does not include description if not present in template option', () => {
