@@ -129,9 +129,10 @@ export async function recordFeedback({ messageId, channelId, guildId, userId, fe
  * @param {Object} opts
  * @param {string} opts.messageId - Discord message ID
  * @param {string} opts.userId - Discord user ID
+ * @param {'positive'|'negative'} [opts.feedbackType] - Optional feedback type to scope deletion
  * @returns {Promise<void>}
  */
-export async function deleteFeedback({ messageId, userId }) {
+export async function deleteFeedback({ messageId, userId, feedbackType }) {
   const pool = getPool();
   if (!pool) {
     warn('No DB pool — cannot delete AI feedback', { messageId, userId });
@@ -139,16 +140,22 @@ export async function deleteFeedback({ messageId, userId }) {
   }
 
   try {
-    await pool.query(`DELETE FROM ai_feedback WHERE message_id = $1 AND user_id = $2`, [
-      messageId,
-      userId,
-    ]);
+    let sql = 'DELETE FROM ai_feedback WHERE message_id = $1 AND user_id = $2';
+    const params = [messageId, userId];
 
-    info('AI feedback deleted', { messageId, userId });
+    if (feedbackType) {
+      sql += ' AND feedback_type = $3';
+      params.push(feedbackType);
+    }
+
+    await pool.query(sql, params);
+
+    info('AI feedback deleted', { messageId, userId, feedbackType });
   } catch (err) {
     logError('Failed to delete AI feedback', {
       messageId,
       userId,
+      feedbackType,
       error: err.message,
     });
   }
