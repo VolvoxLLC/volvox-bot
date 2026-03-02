@@ -255,6 +255,21 @@ describe('ai module', () => {
       });
       expect(isChannelBlocked('ch1')).toBe(false);
     });
+
+    it('should pass guildId to getConfig for guild-scoped lookup', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: ['ch1'] } });
+      isChannelBlocked('ch1', null, 'guild-123');
+      expect(getConfig).toHaveBeenCalledWith('guild-123');
+    });
+
+    it('should use guild-specific blocklist when guildId is provided', () => {
+      getConfig.mockImplementation((guildId) => {
+        if (guildId === 'guild-A') return { ai: { blockedChannelIds: ['ch1'] } };
+        return { ai: { blockedChannelIds: [] } };
+      });
+      expect(isChannelBlocked('ch1', null, 'guild-A')).toBe(true);
+      expect(isChannelBlocked('ch1', null, 'guild-B')).toBe(false);
+    });
   });
 
   // ── cleanup scheduler ─────────────────────────────────────────────────
