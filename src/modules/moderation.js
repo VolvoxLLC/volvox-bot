@@ -371,18 +371,33 @@ async function pollTempbans(client) {
     );
 
     for (const row of rows) {
-      // Claim this row to prevent concurrent polls from processing it twice.
-      const claim = await pool.query(
-        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1 AND executed = FALSE RETURNING id',
-        [row.id],
-      );
-      if (claim.rows.length === 0) {
-        continue;
-      }
-
+      // Use a transaction to ensure atomicity:
+      // 1. Lock the row with FOR UPDATE SKIP LOCKED
+      // 2. Execute Discord unban
+      // 3. Only mark executed after successful unban
+      const txClient = await pool.connect();
       try {
+        await txClient.query('BEGIN');
+
+        // Lock the row - skip if already executed by another poll
+        const { rows: lockRows } = await txClient.query(
+          'SELECT id FROM mod_scheduled_actions WHERE id = $1 AND executed = FALSE FOR UPDATE SKIP LOCKED',
+          [row.id],
+        );
+        if (lockRows.length === 0) {
+          await txClient.query('ROLLBACK');
+          continue; // Already handled by another poll
+        }
+
+        // Execute the Discord unban FIRST (before marking executed)
         const guild = await client.guilds.fetch(row.guild_id);
         await guild.members.unban(row.target_id, 'Tempban expired');
+
+        // Only mark executed AFTER successful unban
+        await txClient.query('UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1', [
+          row.id,
+        ]);
+        await txClient.query('COMMIT');
 
         const targetUser = await client.users.fetch(row.target_id).catch(() => null);
 
@@ -404,12 +419,16 @@ async function pollTempbans(client) {
           targetId: row.target_id,
         });
       } catch (err) {
+        await txClient.query('ROLLBACK').catch(() => {});
         logError('Failed to process expired tempban', {
           error: err.message,
           id: row.id,
           guildId: row.guild_id,
           targetId: row.target_id,
         });
+        // Action remains unexecuted (executed = FALSE) and will be retried on next poll
+      } finally {
+        txClient.release();
       }
     }
   } catch (err) {
