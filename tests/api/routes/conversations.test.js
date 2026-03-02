@@ -298,25 +298,19 @@ describe('conversations routes', () => {
 
     it('should return paginated conversations', async () => {
       const baseTime = new Date('2024-01-15T10:00:00Z');
-      // Mock returns rows in DESC order (newest first), matching ORDER BY created_at DESC.
-      // The route reverses them before grouping so the conversation anchor is still the oldest message.
+      // The new SQL CTE returns pre-aggregated conversation summary rows.
+      // Each row represents a single conversation (not individual messages).
       mockPool.query.mockResolvedValueOnce({
         rows: [
           {
-            id: 2,
-            channel_id: 'ch1',
-            role: 'assistant',
-            content: 'Hi there!',
-            username: 'bot',
-            created_at: new Date(baseTime.getTime() + 60000).toISOString(),
-          },
-          {
             id: 1,
             channel_id: 'ch1',
-            role: 'user',
-            content: 'Hello world',
-            username: 'alice',
-            created_at: baseTime.toISOString(),
+            first_msg_time: baseTime.toISOString(),
+            last_msg_time: new Date(baseTime.getTime() + 60000).toISOString(),
+            message_count: 2,
+            preview_content: 'Hello world',
+            participant_pairs: ['alice:::user', 'bot:::assistant'],
+            total_conversations: 1,
           },
         ],
       });
@@ -325,15 +319,16 @@ describe('conversations routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('conversations');
-      expect(res.body).toHaveProperty('total');
+      expect(res.body).toHaveProperty('total', 1);
       expect(res.body).toHaveProperty('page');
       expect(res.body.conversations).toHaveLength(1);
       expect(res.body.conversations[0]).toHaveProperty('id', 1);
       expect(res.body.conversations[0]).toHaveProperty('channelId', 'ch1');
       expect(res.body.conversations[0]).toHaveProperty('channelName', 'general');
       expect(res.body.conversations[0]).toHaveProperty('messageCount', 2);
-      expect(res.body.conversations[0]).toHaveProperty('preview');
+      expect(res.body.conversations[0]).toHaveProperty('preview', 'Hello world');
       expect(res.body.conversations[0].participants).toBeInstanceOf(Array);
+      expect(res.body.conversations[0].participants).toHaveLength(2);
     });
 
     it('should support search query', async () => {
