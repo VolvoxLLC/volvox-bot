@@ -28,6 +28,7 @@ export const SAFE_CONFIG_KEYS = new Set([
   'review',
   'auditLog',
   'reminders',
+  'botStatus',
   'quietMode',
 ]);
 

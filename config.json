@@ -282,6 +282,17 @@
         "enabled": false,
         "maxPerUser": 25
     },
+    "botStatus": {
+        "enabled": true,
+        "status": "online",
+        "activityType": "Playing",
+        "activities": [
+            "with {memberCount} members",
+            "in {guildCount} servers",
+            "your assistant | Volvox"
+        ],
+        "rotateIntervalMs": 30000
+    },
     "quietMode": {
         "enabled": false,
         "allowedRoles": [
@@ -289,11 +300,11 @@
         ],
         "defaultDurationMinutes": 30,
         "maxDurationMinutes": 1440
-  },
-  "voice": {
-    "enabled": false,
-    "xpPerMinute": 2,
-    "dailyXpCap": 120,
-    "logChannel": null
-  }
+    },
+    "voice": {
+        "enabled": false,
+        "xpPerMinute": 2,
+        "dailyXpCap": 120,
+        "logChannel": null
+    }
 }
