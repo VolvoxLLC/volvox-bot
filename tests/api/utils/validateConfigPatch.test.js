@@ -277,4 +277,54 @@ describe('validateConfigPatch', () => {
       expect(result.status).toBe(400);
     });
   });
+
+  describe('prototype pollution prevention', () => {
+    it('should reject __proto__ in path', () => {
+      const body = { path: 'ai.__proto__.polluted', value: true };
+      const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+      expect(result.error).toBe("Invalid config path: '__proto__' is a reserved key");
+      expect(result.status).toBe(400);
+    });
+
+    it('should reject constructor in path', () => {
+      const body = { path: 'ai.constructor.prototype', value: true };
+      const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+      expect(result.error).toBe("Invalid config path: 'constructor' is a reserved key");
+      expect(result.status).toBe(400);
+    });
+
+    it('should reject prototype in path', () => {
+      const body = { path: 'ai.prototype.polluted', value: true };
+      const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+      expect(result.error).toBe("Invalid config path: 'prototype' is a reserved key");
+      expect(result.status).toBe(400);
+    });
+
+    it('should reject __proto__ as the second segment', () => {
+      const body = { path: 'welcome.__proto__', value: {} };
+      const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+      expect(result.error).toBe("Invalid config path: '__proto__' is a reserved key");
+      expect(result.status).toBe(400);
+    });
+
+    it('should reject deeply nested prototype pollution', () => {
+      const body = { path: 'moderation.logging.channels.__proto__', value: 'x' };
+      const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+      expect(result.error).toBe("Invalid config path: '__proto__' is a reserved key");
+      expect(result.status).toBe(400);
+    });
+
+    it('should not block keys that merely contain dangerous strings as substrings', () => {
+      // "myprototype" and "notconstructor" contain dangerous strings as substrings
+      // but are NOT exact matches — they should not be blocked by our prototype check.
+      // (They may fail schema validation for other reasons, but never with the reserved-key message.)
+      const body1 = { path: 'ai.myprototype', value: true };
+      const result1 = validateConfigPatchBody(body1, SAFE_CONFIG_KEYS);
+      expect(result1.error).not.toBe("Invalid config path: 'myprototype' is a reserved key");
+
+      const body2 = { path: 'ai.notconstructor', value: 'val' };
+      const result2 = validateConfigPatchBody(body2, SAFE_CONFIG_KEYS);
+      expect(result2.error).not.toBe("Invalid config path: 'notconstructor' is a reserved key");
+    });
+  });
 });
