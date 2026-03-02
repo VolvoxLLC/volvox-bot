@@ -21,6 +21,9 @@ const flushPromises = async () => {
 describe('fireAndForgetWebhook', () => {
   beforeEach(() => {
     vi.stubEnv('TEST_WEBHOOK_URL', 'https://example.com/hook');
+    // Prevent inherited CI runner env from breaking no-secret assertions
+    vi.stubEnv('WEBHOOK_SECRET', undefined);
+    vi.stubEnv('SESSION_SECRET', undefined);
   });
 
   afterEach(() => {
