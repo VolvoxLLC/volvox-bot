@@ -11,6 +11,7 @@ import { Router } from 'express';
 import { info, error as logError } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { getDeliveryLog, testEndpoint, WEBHOOK_EVENTS } from '../../modules/webhookNotifier.js';
+import { validateUrlForSsrfSync } from '../utils/ssrfProtection.js';
 
 const router = Router();
 
@@ -120,8 +121,10 @@ router.post('/:guildId/notifications/webhooks', async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid "url"' });
   }
 
-  if (!/^https:\/\/.+/.test(url)) {
-    return res.status(400).json({ error: '"url" must be a valid HTTPS URL' });
+  // SSRF-safe URL validation - require HTTPS to prevent DNS rebinding attacks
+  const urlValidation = validateUrlForSsrfSync(url);
+  if (!urlValidation.valid) {
+    return res.status(400).json({ error: urlValidation.error });
   }
 
   if (!Array.isArray(events) || events.length === 0) {

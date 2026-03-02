@@ -252,6 +252,52 @@ describe('notifications routes', () => {
 
       expect(res.status).toBe(401);
     });
+
+    // ── SSRF Protection ─────────────────────────────────────────────────────
+
+    const blockedUrls = [
+      { url: 'https://localhost/webhook', desc: 'localhost' },
+      { url: 'https://localhost:8080/webhook', desc: 'localhost with port' },
+      { url: 'https://127.0.0.1/webhook', desc: '127.0.0.1 loopback' },
+      { url: 'https://127.0.0.1:3000/webhook', desc: '127.0.0.1 with port' },
+      { url: 'https://169.254.169.254/latest/meta-data/', desc: 'AWS metadata endpoint' },
+      { url: 'https://10.0.0.1/webhook', desc: '10.x private range' },
+      { url: 'https://10.255.255.255/webhook', desc: '10.x upper bound' },
+      { url: 'https://172.16.0.1/webhook', desc: '172.16.x private range' },
+      { url: 'https://172.31.255.255/webhook', desc: '172.31.x private range upper' },
+      { url: 'https://192.168.0.1/webhook', desc: '192.168.x private range' },
+      { url: 'https://192.168.255.255/webhook', desc: '192.168.x upper bound' },
+      { url: 'https://0.0.0.0/webhook', desc: '0.0.0.0 this-network' },
+      { url: 'https://myserver.local/webhook', desc: 'local domain' },
+      { url: 'https://api.internal/webhook', desc: 'internal domain' },
+      { url: 'https://app.localhost/webhook', desc: 'localhost domain' },
+    ];
+
+    it.each(blockedUrls)('should reject $desc', async ({ url }) => {
+      const res = await request(app)
+        .post(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks`)
+        .set(authHeaders())
+        .send({ url, events: ['bot.error'] });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/not allowed|blocked|private|internal/i);
+    });
+
+    const allowedUrls = [
+      { url: 'https://example.com/webhook', desc: 'public domain' },
+      { url: 'https://api.example.com/v1/webhook', desc: 'public domain with path' },
+      { url: 'https://example.com:8443/webhook', desc: 'public domain with port' },
+      { url: 'https://example.com/webhook?token=abc', desc: 'public domain with query' },
+    ];
+
+    it.each(allowedUrls)('should accept $desc', async ({ url }) => {
+      const res = await request(app)
+        .post(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks`)
+        .set(authHeaders())
+        .send({ url, events: ['bot.error'] });
+
+      expect(res.status).toBe(201);
+    });
   });
 
   // ── DELETE /guilds/:guildId/notifications/webhooks/:endpointId ────────────
