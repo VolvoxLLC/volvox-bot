@@ -390,6 +390,113 @@ describe('CLIProcess — short-lived mode', () => {
     }
   });
 
+  it('should forward CLAUDE_CODE_OAUTH_TOKEN when no API key is set', async () => {
+    const origApiKey = process.env.ANTHROPIC_API_KEY;
+    const origOAuth = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    delete process.env.ANTHROPIC_API_KEY;
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = 'oauth-token-123';
+
+    try {
+      const cli = new CLIProcess('test', {});
+      await cli.start();
+
+      const sendP = cli.send('hello');
+      await tick();
+
+      const [, , opts] = spawnMock.mock.calls[0];
+      const env = opts.env;
+
+      expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe('oauth-token-123');
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+
+      const proc = lastSpawnedProc;
+      writeLine(proc, { type: 'result', is_error: false });
+      await tick();
+      proc.emit('exit', 0, null);
+      await sendP;
+    } finally {
+      if (origApiKey === undefined) {
+        delete process.env.ANTHROPIC_API_KEY;
+      } else {
+        process.env.ANTHROPIC_API_KEY = origApiKey;
+      }
+      if (origOAuth === undefined) {
+        delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+      } else {
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = origOAuth;
+      }
+    }
+  });
+
+  it('should prefer ANTHROPIC_API_KEY over CLAUDE_CODE_OAUTH_TOKEN', async () => {
+    const origApiKey = process.env.ANTHROPIC_API_KEY;
+    const origOAuth = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    process.env.ANTHROPIC_API_KEY = 'sk-env-key';
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = 'oauth-token-456';
+
+    try {
+      const cli = new CLIProcess('test', {});
+      await cli.start();
+
+      const sendP = cli.send('hello');
+      await tick();
+
+      const [, , opts] = spawnMock.mock.calls[0];
+      const env = opts.env;
+
+      expect(env.ANTHROPIC_API_KEY).toBe('sk-env-key');
+      expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+
+      const proc = lastSpawnedProc;
+      writeLine(proc, { type: 'result', is_error: false });
+      await tick();
+      proc.emit('exit', 0, null);
+      await sendP;
+    } finally {
+      if (origApiKey === undefined) {
+        delete process.env.ANTHROPIC_API_KEY;
+      } else {
+        process.env.ANTHROPIC_API_KEY = origApiKey;
+      }
+      if (origOAuth === undefined) {
+        delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+      } else {
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = origOAuth;
+      }
+    }
+  });
+
+  it('should omit CLAUDE_CODE_OAUTH_TOKEN when flags.apiKey is set', async () => {
+    const origOAuth = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = 'oauth-token-789';
+
+    try {
+      const cli = new CLIProcess('test', { apiKey: 'sk-flag-key' });
+      await cli.start();
+
+      const sendP = cli.send('hello');
+      await tick();
+
+      const [, , opts] = spawnMock.mock.calls[0];
+      const env = opts.env;
+
+      expect(env.ANTHROPIC_API_KEY).toBe('sk-flag-key');
+      expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+
+      const proc = lastSpawnedProc;
+      writeLine(proc, { type: 'result', is_error: false });
+      await tick();
+      proc.emit('exit', 0, null);
+      await sendP;
+    } finally {
+      if (origOAuth === undefined) {
+        delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+      } else {
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = origOAuth;
+      }
+    }
+  });
+
   it('should include --dangerously-skip-permissions in args', async () => {
     const cli = new CLIProcess('test', {});
     await cli.start();
