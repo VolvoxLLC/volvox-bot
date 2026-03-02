@@ -342,62 +342,64 @@ function extractMemories(snapshot, parsed) {
 async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
 
-  // ── Guild daily budget gate ─────────────────────────────────────────────
-  // Skip evaluation if the guild has exhausted its daily AI spend cap.
-  // This prevents runaway costs from high-volume guilds.
-  const dailyBudgetUsd = evalConfig.triage?.dailyBudgetUsd;
-  if (dailyBudgetUsd != null && dailyBudgetUsd > 0) {
-    try {
-      const ch = await fetchChannelCached(evalClient, channelId);
-      const guildId = ch?.guildId;
-      if (guildId) {
-        const budget = await checkGuildBudget(guildId, dailyBudgetUsd);
-        if (budget.status === 'exceeded') {
-          warn('Guild daily AI budget exceeded — skipping triage evaluation', {
-            guildId,
-            channelId,
-            spend: budget.spend,
-            budget: budget.budget,
-          });
-          // Post a throttled alert to the moderation log channel — at most once per
-          // BUDGET_ALERT_COOLDOWN_MS — to avoid spamming on every evaluation attempt.
-          const logChannelId = evalConfig.triage?.moderationLogChannel;
-          if (logChannelId) {
-            const now = Date.now();
-            const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
-            if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
-              budgetAlertSentAt.set(guildId, now);
-              fetchChannelCached(evalClient, logChannelId)
-                .then((logCh) => {
-                  if (logCh) {
-                    return safeSend(
-                      logCh,
-                      `⚠️ **AI spend cap reached** for guild \`${guildId}\` — daily budget of $${budget.budget.toFixed(2)} exceeded (spent $${budget.spend.toFixed(4)}). Triage evaluations are paused until the window resets.`,
-                    );
-                  }
-                })
-                .catch(() => {});
-            }
-          }
-          return;
-        }
-        if (budget.status === 'warning') {
-          warn('Guild approaching daily AI budget limit', {
-            guildId,
-            channelId,
-            spend: budget.spend,
-            budget: budget.budget,
-            pct: Math.round(budget.pct * 100),
-          });
-        }
-      }
-    } catch (budgetErr) {
-      // Non-fatal: if budget check errors, allow evaluation to continue
-      debug('Guild budget check failed (non-fatal)', { channelId, error: budgetErr?.message });
-    }
-  }
-
   try {
+    // ── Guild daily budget gate ─────────────────────────────────────────────
+    // Skip evaluation if the guild has exhausted its daily AI spend cap.
+    // This prevents runaway costs from high-volume guilds.
+    // NOTE: kept inside the try block so the finally { clearEvaluatedMessages }
+    // always runs — even when we return early due to budget exhaustion.
+    const dailyBudgetUsd = evalConfig.triage?.dailyBudgetUsd;
+    if (dailyBudgetUsd != null && dailyBudgetUsd > 0) {
+      try {
+        const ch = await fetchChannelCached(evalClient, channelId);
+        const guildId = ch?.guildId;
+        if (guildId) {
+          const budget = await checkGuildBudget(guildId, dailyBudgetUsd);
+          if (budget.status === 'exceeded') {
+            warn('Guild daily AI budget exceeded — skipping triage evaluation', {
+              guildId,
+              channelId,
+              spend: budget.spend,
+              budget: budget.budget,
+            });
+            // Post a throttled alert to the moderation log channel — at most once per
+            // BUDGET_ALERT_COOLDOWN_MS — to avoid spamming on every evaluation attempt.
+            const logChannelId = evalConfig.triage?.moderationLogChannel;
+            if (logChannelId) {
+              const now = Date.now();
+              const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
+              if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
+                budgetAlertSentAt.set(guildId, now);
+                fetchChannelCached(evalClient, logChannelId)
+                  .then((logCh) => {
+                    if (logCh) {
+                      return safeSend(
+                        logCh,
+                        `⚠️ **AI spend cap reached** for guild \`${guildId}\` — daily budget of $${budget.budget.toFixed(2)} exceeded (spent $${budget.spend.toFixed(4)}). Triage evaluations are paused until the window resets.`,
+                      );
+                    }
+                  })
+                  .catch(() => {});
+              }
+            }
+            return;
+          }
+          if (budget.status === 'warning') {
+            warn('Guild approaching daily AI budget limit', {
+              guildId,
+              channelId,
+              spend: budget.spend,
+              budget: budget.budget,
+              pct: Math.round(budget.pct * 100),
+            });
+          }
+        }
+      } catch (budgetErr) {
+        // Non-fatal: if budget check errors, allow evaluation to continue
+        debug('Guild budget check failed (non-fatal)', { channelId, error: budgetErr?.message });
+      }
+    }
+
     // Step 1: Classify
     const classResult = await runClassification(channelId, snapshot, evalConfig, evalClient);
     if (!classResult) return;
