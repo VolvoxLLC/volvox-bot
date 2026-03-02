@@ -1,41 +1,49 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Volvox Bot",
-  "colors": {
-    "primary": "#22c55e",
-    "light": "#4ade80",
-    "dark": "#16a34a"
-  },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "tabs": [
-      {
-        "tab": "Documentation",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "introduction",
-              "authentication"
-            ]
-          }
+    "$schema": "https://mintlify.com/docs.json",
+    "theme": "mint",
+    "name": "Volvox Bot",
+    "colors": {
+        "primary": "#22c55e",
+        "light": "#4ade80",
+        "dark": "#16a34a"
+    },
+    "favicon": "/favicon.svg",
+    "navigation": {
+        "tabs": [
+            {
+                "tab": "Documentation",
+                "groups": [
+                    {
+                        "group": "Getting Started",
+                        "pages": [
+                            "introduction",
+                            "authentication"
+                        ]
+                    },
+                    {
+                        "group": "Guides",
+                        "pages": [
+                            "dashboard",
+                            "backup",
+                            "troubleshooting"
+                        ]
+                    }
+                ]
+            },
+            {
+                "tab": "API Reference",
+                "openapi": "openapi.json"
+            }
         ]
-      },
-      {
-        "tab": "API Reference",
-        "openapi": "openapi.json"
-      }
-    ]
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/VolvoxLLC/volvox-bot",
-      "discord": "https://discord.gg/volvox"
+    },
+    "logo": {
+        "light": "/logo/light.svg",
+        "dark": "/logo/dark.svg"
+    },
+    "footer": {
+        "socials": {
+            "github": "https://github.com/VolvoxLLC/volvox-bot",
+            "discord": "https://discord.gg/volvox"
+        }
     }
-  }
 }
