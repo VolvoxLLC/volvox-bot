@@ -37,21 +37,24 @@ const PIE_COLORS = ['#22C55E', '#EF4444'];
  * Shows 👍/👎 aggregate counts, approval ratio, and daily trend.
  */
 export function AiFeedbackStats() {
-  const { selectedGuild, apiBase } = useGuildSelection();
+  const guildId = useGuildSelection();
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!selectedGuild || !apiBase) return;
+    if (!guildId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${apiBase}/guilds/${selectedGuild.id}/ai-feedback/stats?days=30`, {
-        credentials: 'include',
-      });
+      const res = await fetch(
+        `/api/guilds/${encodeURIComponent(guildId)}/ai-feedback/stats?days=30`,
+        {
+          credentials: 'include',
+        },
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
@@ -64,13 +67,13 @@ export function AiFeedbackStats() {
     } finally {
       setLoading(false);
     }
-  }, [selectedGuild, apiBase]);
+  }, [guildId]);
 
   useEffect(() => {
     void fetchStats();
   }, [fetchStats]);
 
-  if (!selectedGuild) return null;
+  if (!guildId) return null;
 
   const pieData =
     stats && stats.total > 0
@@ -141,14 +144,13 @@ export function AiFeedbackStats() {
                         innerRadius={50}
                         outerRadius={75}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                        }
                         labelLine={false}
                       >
-                        {pieData.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
-                          />
+                        {pieData.map((entry, index) => (
+                          <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
