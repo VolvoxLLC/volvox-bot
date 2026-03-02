@@ -59,6 +59,7 @@ import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
+import { seedBuiltinTemplates } from './modules/roleMenuTemplates.js';
 import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
@@ -374,6 +375,11 @@ async function startup() {
 
     // Record this startup in the restart history table
     await recordRestart(dbPool, 'startup', BOT_VERSION);
+
+    // Seed built-in role menu templates (idempotent)
+    await seedBuiltinTemplates().catch((err) =>
+      warn('Failed to seed built-in role menu templates', { error: err.message }),
+    );
   } else {
     warn('DATABASE_URL not set — using config.json only (no persistence)');
   }
