@@ -390,15 +390,61 @@ async function pollTempbans(client) {
         }
 
         // Execute the Discord unban FIRST (before marking executed)
+        // Track any error for logging, but don't throw - we still mark as executed
+        // to prevent infinite retry on non-recoverable errors
+        let unbanError = null;
         const guild = await client.guilds.fetch(row.guild_id);
-        await guild.members.unban(row.target_id, 'Tempban expired');
+        try {
+          await guild.members.unban(row.target_id, 'Tempban expired');
+        } catch (err) {
+          unbanError = err;
+          // Unknown Ban (code 10026) means already unbanned - not really an error
+          const isAlreadyUnbanned = err?.code === 10026 || /Unknown Ban/i.test(err?.message || '');
+          if (isAlreadyUnbanned) {
+            info('Tempban target already unbanned; finalizing scheduled action', {
+              id: row.id,
+              guildId: row.guild_id,
+              targetId: row.target_id,
+            });
+            unbanError = null; // Clear error - this is success
+          }
+        }
 
-        // Only mark executed AFTER successful unban
+        // Mark executed regardless of unban outcome to prevent infinite retry
         await txClient.query('UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1', [
           row.id,
         ]);
         await txClient.query('COMMIT');
 
+        // Log unban failure AFTER successful commit (if there was a real error)
+        if (unbanError) {
+          logError('Failed to unban tempban target (marked as executed to prevent retry)', {
+            error: unbanError.message,
+            id: row.id,
+            guildId: row.guild_id,
+            targetId: row.target_id,
+          });
+        }
+      } catch (err) {
+        // Only reach here on transaction/DB errors (not unban errors)
+        await txClient.query('ROLLBACK').catch(() => {});
+        logError('Failed to process expired tempban', {
+          error: err.message,
+          id: row.id,
+          guildId: row.guild_id,
+          targetId: row.target_id,
+        });
+        // Action remains unexecuted (executed = FALSE) and will be retried on next poll
+        txClient.release();
+        continue; // Skip post-commit work since transaction failed
+      }
+
+      // Transaction succeeded - release client before post-commit work
+      txClient.release();
+
+      // Post-commit work (outside transaction): create case, send mod-log
+      // These are non-critical - failures here don't affect the unban itself
+      try {
         const targetUser = await client.users.fetch(row.target_id).catch(() => null);
 
         // Create unban case
@@ -419,16 +465,13 @@ async function pollTempbans(client) {
           targetId: row.target_id,
         });
       } catch (err) {
-        await txClient.query('ROLLBACK').catch(() => {});
-        logError('Failed to process expired tempban', {
+        // Log but don't retry - the unban itself succeeded, just the logging failed
+        logError('Post-commit work failed for tempban (unban already executed)', {
           error: err.message,
           id: row.id,
           guildId: row.guild_id,
           targetId: row.target_id,
         });
-        // Action remains unexecuted (executed = FALSE) and will be retried on next poll
-      } finally {
-        txClient.release();
       }
     }
   } catch (err) {
