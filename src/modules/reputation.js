@@ -8,6 +8,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
+import { invalidateReputationCache } from '../utils/reputationCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 import { getConfig } from './config.js';
@@ -189,4 +190,8 @@ export async function handleXpGain(message) {
       }
     }
   }
+
+  // Invalidate cached reputation/leaderboard data AFTER all DB writes complete
+  // to prevent stale data from being re-cached in the gap between invalidation and write
+  invalidateReputationCache(message.guild.id, message.author.id).catch(() => {});
 }

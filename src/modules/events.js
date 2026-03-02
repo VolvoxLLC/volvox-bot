@@ -21,6 +21,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
 import { isChannelBlocked } from './ai.js';
+import { deleteFeedback, FEEDBACK_EMOJI, isAiMessage, recordFeedback } from './aiFeedback.js';
 import { handleHintButton, handleSolveButton } from './challengeScheduler.js';
 import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
@@ -262,7 +263,6 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Gated on ai.enabled — this is the master kill-switch for all AI responses.
     // accumulateMessage also checks triage.enabled internally.
     if (guildConfig.ai?.enabled) {
-
       try {
         const p = accumulateMessage(message, guildConfig);
         p?.catch((err) => {
@@ -304,6 +304,27 @@ export function registerReactionHandlers(client, _config) {
     // Engagement tracking (fire-and-forget)
     trackReaction(reaction, user).catch(() => {});
 
+    // AI feedback tracking
+    if (guildConfig.ai?.feedback?.enabled && isAiMessage(reaction.message.id)) {
+      const emoji = reaction.emoji.name;
+      const feedbackType =
+        emoji === FEEDBACK_EMOJI.positive
+          ? 'positive'
+          : emoji === FEEDBACK_EMOJI.negative
+            ? 'negative'
+            : null;
+
+      if (feedbackType) {
+        recordFeedback({
+          messageId: reaction.message.id,
+          channelId: reaction.message.channel?.id || reaction.message.channelId,
+          guildId,
+          userId: user.id,
+          feedbackType,
+        }).catch(() => {});
+      }
+    }
+
     if (!guildConfig.starboard?.enabled) return;
 
     try {
@@ -330,6 +351,21 @@ export function registerReactionHandlers(client, _config) {
     if (!guildId) return;
 
     const guildConfig = getConfig(guildId);
+
+    // AI feedback tracking (reaction removed)
+    if (guildConfig.ai?.feedback?.enabled && isAiMessage(reaction.message.id)) {
+      const emoji = reaction.emoji.name;
+      const isFeedbackEmoji =
+        emoji === FEEDBACK_EMOJI.positive || emoji === FEEDBACK_EMOJI.negative;
+
+      if (isFeedbackEmoji) {
+        deleteFeedback({
+          messageId: reaction.message.id,
+          userId: user.id,
+        }).catch(() => {});
+      }
+    }
+
     if (!guildConfig.starboard?.enabled) return;
 
     try {

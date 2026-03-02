@@ -10,6 +10,7 @@ import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { getNextCronRun } from '../utils/cronParser.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 
 /** Snooze durations in milliseconds, keyed by button suffix */
@@ -102,7 +103,7 @@ async function sendReminderNotification(client, reminder) {
 
   // Fallback: channel mention
   try {
-    const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
+    const channel = await fetchChannelCached(client, reminder.channel_id);
     if (channel) {
       await safeSend(channel, {
         content: `<@${reminder.user_id}>`,

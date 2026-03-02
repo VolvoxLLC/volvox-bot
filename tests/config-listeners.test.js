@@ -50,6 +50,10 @@ describe('config-listeners', () => {
     setInitialTransport = mod.setInitialTransport;
   });
 
+  vi.mock('../src/utils/cache.js', () => ({
+    cacheDelPattern: vi.fn().mockResolvedValue(0),
+  }));
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -85,12 +89,15 @@ describe('config-listeners', () => {
       expect(registeredKeys).toContain('ai.*');
       expect(registeredKeys).toContain('spam.*');
       expect(registeredKeys).toContain('moderation.*');
+      expect(registeredKeys).toContain('welcome.*');
+      expect(registeredKeys).toContain('starboard.*');
+      expect(registeredKeys).toContain('reputation.*');
     });
 
-    it('registers exactly 8 listeners', () => {
+    it('registers exactly 11 listeners', () => {
       const config = { logging: { database: { enabled: false } } };
       registerConfigListeners({ dbPool: {}, config });
-      expect(onConfigChange).toHaveBeenCalledTimes(8);
+      expect(onConfigChange).toHaveBeenCalledTimes(11);
     });
   });
 
@@ -400,6 +407,57 @@ describe('config-listeners', () => {
     });
   });
 
+  // ── Cache invalidation listeners ───────────────────────────────────────
+
+  describe('cache invalidation listeners (welcome, starboard, reputation)', () => {
+    let cacheDelPatternMock;
+
+    beforeEach(async () => {
+      const cacheMod = await import('../src/utils/cache.js');
+      cacheDelPatternMock = cacheMod.cacheDelPattern;
+    });
+
+    it('welcome.* invalidates guild channel cache for guild-scoped changes', async () => {
+      const listeners = registerAndCapture({}, {});
+
+      await listeners['welcome.*'](null, null, 'welcome.channelId', 'guild-42');
+
+      expect(cacheDelPatternMock).toHaveBeenCalledWith('discord:guild:guild-42:*');
+    });
+
+    it('welcome.* does not invalidate cache for global changes', async () => {
+      const listeners = registerAndCapture({}, {});
+
+      await listeners['welcome.*'](null, null, 'welcome.channelId', 'global');
+
+      expect(cacheDelPatternMock).not.toHaveBeenCalled();
+    });
+
+    it('starboard.* invalidates guild channel cache for guild-scoped changes', async () => {
+      const listeners = registerAndCapture({}, {});
+
+      await listeners['starboard.*'](null, null, 'starboard.channelId', 'guild-99');
+
+      expect(cacheDelPatternMock).toHaveBeenCalledWith('discord:guild:guild-99:*');
+    });
+
+    it('reputation.* invalidates leaderboard and reputation caches for guild-scoped changes', async () => {
+      const listeners = registerAndCapture({}, {});
+
+      await listeners['reputation.*'](null, null, 'reputation.xpPerMessage', 'guild-77');
+
+      expect(cacheDelPatternMock).toHaveBeenCalledWith('leaderboard:guild-77*');
+      expect(cacheDelPatternMock).toHaveBeenCalledWith('reputation:guild-77:*');
+    });
+
+    it('reputation.* does not invalidate cache for global changes', async () => {
+      const listeners = registerAndCapture({}, {});
+
+      await listeners['reputation.*'](null, null, 'reputation.xpPerMessage', 'global');
+
+      expect(cacheDelPatternMock).not.toHaveBeenCalled();
+    });
+  });
   // ── Disabled + no transport = no-op ────────────────────────────────────
 
   describe('disabled with no existing transport', () => {

@@ -9,6 +9,7 @@ import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
 import { getNextCronRun, parseCron } from '../utils/cronParser.js';
 import { runMaintenance } from '../utils/dbMaintenance.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { checkDailyChallenge } from './challengeScheduler.js';
 import { getConfig } from './config.js';
@@ -47,7 +48,7 @@ async function pollScheduledMessages(client) {
 
     for (const msg of rows) {
       try {
-        const channel = await client.channels.fetch(msg.channel_id).catch(() => null);
+        const channel = await fetchChannelCached(client, msg.channel_id);
         if (!channel) {
           logWarn('Scheduled message channel not found', {
             id: msg.id,

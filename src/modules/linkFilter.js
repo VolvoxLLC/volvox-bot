@@ -6,6 +6,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { warn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';
@@ -91,7 +92,7 @@ async function alertModChannel(message, config, matchedDomain, reason) {
   const alertChannelId = config.moderation?.alertChannelId;
   if (!alertChannelId) return;
 
-  const alertChannel = await message.client.channels.fetch(alertChannelId).catch(() => null);
+  const alertChannel = await fetchChannelCached(message.client, alertChannelId);
   if (!alertChannel) return;
 
   const embed = new EmbedBuilder()

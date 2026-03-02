@@ -88,7 +88,7 @@ describe('redisClient coverage', () => {
       const client = getRedisClient();
       expect(client).toBeNull();
       expect(logError).toHaveBeenCalledWith(
-        'Failed to initialise Redis client',
+        'Failed to initialize Redis client',
         expect.objectContaining({ error: 'Connection refused' }),
       );
     });

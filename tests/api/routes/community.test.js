@@ -26,6 +26,16 @@ vi.mock('../../../src/modules/config.js', () => ({
   setConfigValue: vi.fn(),
 }));
 
+// Mock cache to pass through (no caching in tests)
+vi.mock('../../../src/utils/cache.js', () => ({
+  cacheGet: vi.fn().mockResolvedValue(null),
+  cacheSet: vi.fn().mockResolvedValue(undefined),
+  cacheGetOrSet: vi.fn().mockImplementation(async (_key, factory) => factory()),
+  cacheDel: vi.fn().mockResolvedValue(undefined),
+  cacheDelPattern: vi.fn().mockResolvedValue(0),
+  TTL: { LEADERBOARD: 300 },
+}));
+
 vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
   handleOAuthJwt: vi.fn().mockResolvedValue(false),
   stopJwtCleanup: vi.fn(),
