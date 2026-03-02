@@ -20,6 +20,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // safe wrapper applies identically to either target type.
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
+import { FEEDBACK_EMOJI, isAiMessage, recordFeedback } from './aiFeedback.js';
 import { handleHintButton, handleSolveButton } from './challengeScheduler.js';
 import { getConfig } from './config.js';
 import { trackMessage, trackReaction } from './engagement.js';
@@ -295,6 +296,27 @@ export function registerReactionHandlers(client, _config) {
 
     // Engagement tracking (fire-and-forget)
     trackReaction(reaction, user).catch(() => {});
+
+    // AI feedback tracking
+    if (guildConfig.ai?.feedback?.enabled && isAiMessage(reaction.message.id)) {
+      const emoji = reaction.emoji.name;
+      const feedbackType =
+        emoji === FEEDBACK_EMOJI.positive
+          ? 'positive'
+          : emoji === FEEDBACK_EMOJI.negative
+            ? 'negative'
+            : null;
+
+      if (feedbackType) {
+        recordFeedback({
+          messageId: reaction.message.id,
+          channelId: reaction.message.channel?.id || reaction.message.channelId,
+          guildId,
+          userId: user.id,
+          feedbackType,
+        }).catch(() => {});
+      }
+    }
 
     if (!guildConfig.starboard?.enabled) return;
 
