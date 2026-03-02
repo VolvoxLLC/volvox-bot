@@ -8,12 +8,33 @@
 
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import { info, error as logError } from '../../logger.js';
+import { info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { getDeliveryLog, testEndpoint, WEBHOOK_EVENTS } from '../../modules/webhookNotifier.js';
 import { validateUrlForSsrfSync } from '../utils/ssrfProtection.js';
 
 const router = Router();
+
+/**
+ * Redact a URL for safe logging by replacing any query string or credentials.
+ * @param {string} url - URL to redact
+ * @returns {string} URL with query string replaced by [REDACTED]
+ */
+function redactUrl(url) {
+  try {
+    const parsed = new URL(url);
+    // Redact query string (may contain secrets)
+    parsed.search = '?[REDACTED]';
+    // Redact password in userinfo if present
+    if (parsed.password) {
+      parsed.password = '[REDACTED]';
+    }
+    return parsed.toString();
+  } catch {
+    // If URL parsing fails, return a safe placeholder
+    return '[INVALID URL]';
+  }
+}
 
 /**
  * Mask the secret field from an endpoint object for safe GET responses.
@@ -50,7 +71,7 @@ function maskEndpoint(ep) {
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.get('/:guildId/notifications/webhooks', async (req, res) => {
+router.get('/:guildId/notifications/webhooks', async (req, res, next) => {
   const { guildId } = req.params;
 
   try {
@@ -60,8 +81,7 @@ router.get('/:guildId/notifications/webhooks', async (req, res) => {
       : [];
     return res.json(webhooks);
   } catch (err) {
-    logError('Failed to list webhook endpoints', { guildId, error: err.message });
-    return res.status(500).json({ error: 'Failed to retrieve webhook endpoints' });
+    next(err);
   }
 });
 
@@ -113,7 +133,7 @@ router.get('/:guildId/notifications/webhooks', async (req, res) => {
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.post('/:guildId/notifications/webhooks', async (req, res) => {
+router.post('/:guildId/notifications/webhooks', async (req, res, next) => {
   const { guildId } = req.params;
   const { url, events, secret, enabled = true } = req.body || {};
 
@@ -121,10 +141,15 @@ router.post('/:guildId/notifications/webhooks', async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid "url"' });
   }
 
-  // SSRF-safe URL validation - require HTTPS to prevent DNS rebinding attacks
-  const urlValidation = validateUrlForSsrfSync(url);
-  if (!urlValidation.valid) {
-    return res.status(400).json({ error: urlValidation.error });
+  if (!/^https:\/\/.+/.test(url)) {
+    return res.status(400).json({ error: '"url" must be a valid HTTPS URL' });
+  }
+
+  // Validate URL against SSRF
+  try {
+    validateUrlForSsrfSync(url);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
   }
 
   if (!Array.isArray(events) || events.length === 0) {
@@ -139,6 +164,16 @@ router.post('/:guildId/notifications/webhooks', async (req, res) => {
     });
   }
 
+  // Validate secret type before persisting
+  if (secret !== undefined && typeof secret !== 'string') {
+    return res.status(400).json({ error: '"secret" must be a string' });
+  }
+
+  // Validate enabled type before persisting
+  if (enabled !== undefined && typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: '"enabled" must be a boolean' });
+  }
+
   try {
     const cfg = getConfig(guildId);
     const existing = Array.isArray(cfg?.notifications?.webhooks) ? cfg.notifications.webhooks : [];
@@ -151,18 +186,22 @@ router.post('/:guildId/notifications/webhooks', async (req, res) => {
       id: randomUUID(),
       url,
       events,
-      enabled: Boolean(enabled),
-      ...(secret ? { secret } : {}),
+      enabled: typeof enabled === 'boolean' ? enabled : true,
+      ...(secret && typeof secret === 'string' ? { secret } : {}),
     };
 
     const updated = [...existing, newEndpoint];
     await setConfigValue('notifications.webhooks', updated, guildId);
 
-    info('Webhook endpoint added', { guildId, endpointId: newEndpoint.id, url });
+    // Use redacted URL for logging to avoid leaking secrets in query params
+    info('Webhook endpoint added', {
+      guildId,
+      endpointId: newEndpoint.id,
+      url: redactUrl(url),
+    });
     return res.status(201).json(maskEndpoint(newEndpoint));
   } catch (err) {
-    logError('Failed to add webhook endpoint', { guildId, error: err.message });
-    return res.status(500).json({ error: 'Failed to add webhook endpoint' });
+    next(err);
   }
 });
 
@@ -195,7 +234,7 @@ router.post('/:guildId/notifications/webhooks', async (req, res) => {
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.delete('/:guildId/notifications/webhooks/:endpointId', async (req, res) => {
+router.delete('/:guildId/notifications/webhooks/:endpointId', async (req, res, next) => {
   const { guildId, endpointId } = req.params;
 
   try {
@@ -211,8 +250,7 @@ router.delete('/:guildId/notifications/webhooks/:endpointId', async (req, res) =
     info('Webhook endpoint removed', { guildId, endpointId });
     return res.status(204).end();
   } catch (err) {
-    logError('Failed to remove webhook endpoint', { guildId, error: err.message });
-    return res.status(500).json({ error: 'Failed to remove webhook endpoint' });
+    next(err);
   }
 });
 
@@ -245,7 +283,7 @@ router.delete('/:guildId/notifications/webhooks/:endpointId', async (req, res) =
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.post('/:guildId/notifications/webhooks/:endpointId/test', async (req, res) => {
+router.post('/:guildId/notifications/webhooks/:endpointId/test', async (req, res, next) => {
   const { guildId, endpointId } = req.params;
 
   try {
@@ -264,8 +302,7 @@ router.post('/:guildId/notifications/webhooks/:endpointId/test', async (req, res
       body: result.text?.slice(0, 500),
     });
   } catch (err) {
-    logError('Failed to test webhook endpoint', { guildId, error: err.message });
-    return res.status(500).json({ error: 'Failed to test webhook endpoint' });
+    next(err);
   }
 });
 
@@ -298,16 +335,18 @@ router.post('/:guildId/notifications/webhooks/:endpointId/test', async (req, res
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.get('/:guildId/notifications/deliveries', async (req, res) => {
+router.get('/:guildId/notifications/deliveries', async (req, res, next) => {
   const { guildId } = req.params;
-  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+
+  // Clamp limit to positive range (1-100) to prevent DB errors from negative values
+  const rawLimit = parseInt(req.query.limit, 10) || 50;
+  const limit = Math.max(1, Math.min(rawLimit, 100));
 
   try {
     const log = await getDeliveryLog(guildId, limit);
     return res.json(log);
   } catch (err) {
-    logError('Failed to fetch delivery log', { guildId, error: err.message });
-    return res.status(500).json({ error: 'Failed to fetch delivery log' });
+    next(err);
   }
 });
 
