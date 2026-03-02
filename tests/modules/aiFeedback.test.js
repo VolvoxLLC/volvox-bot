@@ -11,15 +11,32 @@ vi.mock('../../src/logger.js', () => ({
   debug: vi.fn(),
 }));
 
+// Mock db.js so tests can control the pool without real PG connections.
+// Mirrors real db.js: getPool() throws when not initialized (pool is null).
+let _mockPool = null;
+vi.mock('../../src/db.js', () => ({
+  getPool: vi.fn(() => {
+    if (!_mockPool) throw new Error('Database not initialized');
+    return _mockPool;
+  }),
+}));
+
+// Mock config — feedback enabled by default in tests so recordFeedback/deleteFeedback proceed
+let _feedbackEnabled = true;
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn((_guildId) => ({
+    ai: { feedback: { enabled: _feedbackEnabled } },
+  })),
+}));
+
 import {
-  _setPoolGetter,
   clearAiMessages,
+  deleteFeedback,
   getFeedbackStats,
   getFeedbackTrend,
   isAiMessage,
   recordFeedback,
   registerAiMessage,
-  setPool,
 } from '../../src/modules/aiFeedback.js';
 
 describe('aiFeedback module', () => {
@@ -27,10 +44,12 @@ describe('aiFeedback module', () => {
 
   beforeEach(() => {
     clearAiMessages();
-    setPool(null);
-    _setPoolGetter(null);
+    _feedbackEnabled = true;
     mockPool = { query: vi.fn() };
+    _mockPool = mockPool;
     vi.clearAllMocks();
+    // Re-apply after clearAllMocks so the pool getter still works
+    _mockPool = mockPool;
   });
 
   // ── registerAiMessage / isAiMessage ──────────────────────────────────────
@@ -52,12 +71,26 @@ describe('aiFeedback module', () => {
       expect(isAiMessage('msg-a')).toBe(false);
       expect(isAiMessage('msg-b')).toBe(false);
     });
+
+    it('does not evict when re-adding an existing messageId', () => {
+      // Fill up near capacity
+      registerAiMessage('existing');
+      // Re-adding should not evict 'existing' or grow the set
+      const sizeBefore = 1;
+      registerAiMessage('existing');
+      expect(isAiMessage('existing')).toBe(true);
+      // Adding a second unique entry should work
+      registerAiMessage('new-one');
+      expect(isAiMessage('new-one')).toBe(true);
+      expect(isAiMessage('existing')).toBe(true);
+    });
   });
 
   // ── recordFeedback ────────────────────────────────────────────────────────
 
   describe('recordFeedback', () => {
     it('does nothing when no pool is configured', async () => {
+      _mockPool = null;
       await expect(
         recordFeedback({
           messageId: 'msg1',
@@ -69,8 +102,19 @@ describe('aiFeedback module', () => {
       ).resolves.toBeUndefined();
     });
 
+    it('does nothing when feedback is disabled in guild config', async () => {
+      _feedbackEnabled = false;
+      await recordFeedback({
+        messageId: 'msg1',
+        channelId: 'ch1',
+        guildId: 'g1',
+        userId: 'u1',
+        feedbackType: 'positive',
+      });
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
     it('inserts feedback via pool query', async () => {
-      setPool(mockPool);
       mockPool.query.mockResolvedValueOnce({ rowCount: 1 });
 
       await recordFeedback({
@@ -87,8 +131,23 @@ describe('aiFeedback module', () => {
       expect(params).toEqual(['msg1', 'ch1', 'g1', 'u1', 'positive']);
     });
 
+    it('ON CONFLICT updates feedback_type and updated_at, not created_at', async () => {
+      mockPool.query.mockResolvedValueOnce({ rowCount: 1 });
+
+      await recordFeedback({
+        messageId: 'msg1',
+        channelId: 'ch1',
+        guildId: 'g1',
+        userId: 'u1',
+        feedbackType: 'negative',
+      });
+
+      const [sql] = mockPool.query.mock.calls[0];
+      expect(sql).toContain('updated_at = NOW()');
+      expect(sql).not.toContain('created_at = NOW()');
+    });
+
     it('handles DB errors gracefully without throwing', async () => {
-      setPool(mockPool);
       mockPool.query.mockRejectedValueOnce(new Error('DB down'));
 
       await expect(
@@ -101,20 +160,41 @@ describe('aiFeedback module', () => {
         }),
       ).resolves.toBeUndefined();
     });
+  });
 
-    it('uses _setPoolGetter for DI', async () => {
-      _setPoolGetter(() => mockPool);
+  // ── deleteFeedback ────────────────────────────────────────────────────────
+
+  describe('deleteFeedback', () => {
+    it('does nothing when no pool is configured', async () => {
+      _mockPool = null;
+      await expect(
+        deleteFeedback({ messageId: 'msg1', guildId: 'g1', userId: 'u1' }),
+      ).resolves.toBeUndefined();
+    });
+
+    it('does nothing when feedback is disabled in guild config', async () => {
+      _feedbackEnabled = false;
+      await deleteFeedback({ messageId: 'msg1', guildId: 'g1', userId: 'u1' });
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
+    it('deletes feedback row via pool query', async () => {
       mockPool.query.mockResolvedValueOnce({ rowCount: 1 });
 
-      await recordFeedback({
-        messageId: 'msg-di',
-        channelId: 'ch1',
-        guildId: 'g1',
-        userId: 'u1',
-        feedbackType: 'positive',
-      });
+      await deleteFeedback({ messageId: 'msg1', guildId: 'g1', userId: 'u1' });
 
       expect(mockPool.query).toHaveBeenCalledOnce();
+      const [sql, params] = mockPool.query.mock.calls[0];
+      expect(sql).toContain('DELETE FROM ai_feedback');
+      expect(params).toEqual(['msg1', 'u1', 'g1']);
+    });
+
+    it('handles DB errors gracefully without throwing', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('DB down'));
+
+      await expect(
+        deleteFeedback({ messageId: 'msg1', guildId: 'g1', userId: 'u1' }),
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -122,12 +202,12 @@ describe('aiFeedback module', () => {
 
   describe('getFeedbackStats', () => {
     it('returns zeros when no pool', async () => {
+      _mockPool = null;
       const stats = await getFeedbackStats('g1');
       expect(stats).toEqual({ positive: 0, negative: 0, total: 0, ratio: null });
     });
 
     it('returns aggregated stats from DB', async () => {
-      setPool(mockPool);
       mockPool.query.mockResolvedValueOnce({
         rows: [{ positive: 8, negative: 2, total: 10 }],
       });
@@ -140,7 +220,6 @@ describe('aiFeedback module', () => {
     });
 
     it('returns null ratio when total is 0', async () => {
-      setPool(mockPool);
       mockPool.query.mockResolvedValueOnce({
         rows: [{ positive: 0, negative: 0, total: 0 }],
       });
@@ -150,7 +229,6 @@ describe('aiFeedback module', () => {
     });
 
     it('returns zeros on DB error', async () => {
-      setPool(mockPool);
       mockPool.query.mockRejectedValueOnce(new Error('DB error'));
 
       const stats = await getFeedbackStats('g1');
@@ -162,12 +240,12 @@ describe('aiFeedback module', () => {
 
   describe('getFeedbackTrend', () => {
     it('returns empty array when no pool', async () => {
+      _mockPool = null;
       const trend = await getFeedbackTrend('g1');
       expect(trend).toEqual([]);
     });
 
     it('returns daily trend rows from DB', async () => {
-      setPool(mockPool);
       mockPool.query.mockResolvedValueOnce({
         rows: [
           { date: '2026-02-28', positive: 5, negative: 1 },
@@ -185,7 +263,6 @@ describe('aiFeedback module', () => {
     });
 
     it('returns empty array on DB error', async () => {
-      setPool(mockPool);
       mockPool.query.mockRejectedValueOnce(new Error('DB error'));
 
       const trend = await getFeedbackTrend('g1');

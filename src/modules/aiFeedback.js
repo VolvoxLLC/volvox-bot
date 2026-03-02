@@ -4,7 +4,9 @@
  * Gated behind ai.feedback.enabled per guild config (opt-in).
  */
 
+import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
+import { getConfig } from './config.js';
 
 /** Emoji constants for feedback reactions */
 export const FEEDBACK_EMOJI = {
@@ -24,6 +26,8 @@ const AI_MESSAGE_ID_LIMIT = 2000;
  * @param {string} messageId - Discord message ID
  */
 export function registerAiMessage(messageId) {
+  // If already tracked, skip — no eviction needed
+  if (aiMessageIds.has(messageId)) return;
   if (aiMessageIds.size >= AI_MESSAGE_ID_LIMIT) {
     // Evict oldest entry (first inserted in iteration order)
     const first = aiMessageIds.values().next().value;
@@ -48,40 +52,12 @@ export function clearAiMessages() {
   aiMessageIds.clear();
 }
 
-// ── Pool injection ────────────────────────────────────────────────────────────
-
-/** @type {Function|null} */
-let _getPoolFn = null;
-
-/**
- * Set a pool getter function (for dependency injection / testing).
- * @param {Function} fn
- */
-export function _setPoolGetter(fn) {
-  _getPoolFn = fn;
-}
-
-/** @type {import('pg').Pool|null} */
-let _poolRef = null;
-
-/**
- * Set the database pool reference.
- * @param {import('pg').Pool|null} pool
- */
-export function setPool(pool) {
-  _poolRef = pool;
-}
-
-function getPool() {
-  if (_getPoolFn) return _getPoolFn();
-  return _poolRef;
-}
-
 // ── Core operations ───────────────────────────────────────────────────────────
 
 /**
  * Record user feedback for an AI message.
  * Upserts: if the user already reacted, the feedback_type is updated.
+ * Re-checks guild config on every call so live toggles are honoured.
  * @param {Object} opts
  * @param {string} opts.messageId - Discord message ID
  * @param {string} opts.channelId - Discord channel ID
@@ -91,8 +67,14 @@ function getPool() {
  * @returns {Promise<void>}
  */
 export async function recordFeedback({ messageId, channelId, guildId, userId, feedbackType }) {
-  const pool = getPool();
-  if (!pool) {
+  // Re-check live guild config so runtime toggles are honoured
+  const cfg = getConfig(guildId);
+  if (!cfg.ai?.feedback?.enabled) return;
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch {
     warn('No DB pool — cannot record AI feedback', { messageId, userId, feedbackType });
     return;
   }
@@ -102,7 +84,7 @@ export async function recordFeedback({ messageId, channelId, guildId, userId, fe
       `INSERT INTO ai_feedback (message_id, channel_id, guild_id, user_id, feedback_type)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (message_id, user_id)
-       DO UPDATE SET feedback_type = EXCLUDED.feedback_type, created_at = NOW()`,
+       DO UPDATE SET feedback_type = EXCLUDED.feedback_type, updated_at = NOW()`,
       [messageId, channelId, guildId, userId, feedbackType],
     );
 
@@ -118,13 +100,55 @@ export async function recordFeedback({ messageId, channelId, guildId, userId, fe
 }
 
 /**
+ * Delete user feedback when they remove their 👍/👎 reaction.
+ * Re-checks guild config on every call so live toggles are honoured.
+ * @param {Object} opts
+ * @param {string} opts.messageId - Discord message ID
+ * @param {string} opts.guildId - Discord guild ID
+ * @param {string} opts.userId - Discord user ID
+ * @returns {Promise<void>}
+ */
+export async function deleteFeedback({ messageId, guildId, userId }) {
+  // Re-check live guild config so runtime toggles are honoured
+  const cfg = getConfig(guildId);
+  if (!cfg.ai?.feedback?.enabled) return;
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch {
+    warn('No DB pool — cannot delete AI feedback', { messageId, userId });
+    return;
+  }
+
+  try {
+    await pool.query(
+      `DELETE FROM ai_feedback WHERE message_id = $1 AND user_id = $2 AND guild_id = $3`,
+      [messageId, userId, guildId],
+    );
+
+    info('AI feedback removed', { messageId, userId, guildId });
+  } catch (err) {
+    logError('Failed to delete AI feedback', {
+      messageId,
+      userId,
+      error: err.message,
+    });
+  }
+}
+
+/**
  * Get aggregate feedback stats for a guild.
  * @param {string} guildId
  * @returns {Promise<{positive: number, negative: number, total: number, ratio: number|null}>}
  */
 export async function getFeedbackStats(guildId) {
-  const pool = getPool();
-  if (!pool) return { positive: 0, negative: 0, total: 0, ratio: null };
+  let pool;
+  try {
+    pool = getPool();
+  } catch {
+    return { positive: 0, negative: 0, total: 0, ratio: null };
+  }
 
   try {
     const result = await pool.query(
@@ -157,8 +181,12 @@ export async function getFeedbackStats(guildId) {
  * @returns {Promise<Array<{date: string, positive: number, negative: number}>>}
  */
 export async function getFeedbackTrend(guildId, days = 30) {
-  const pool = getPool();
-  if (!pool) return [];
+  let pool;
+  try {
+    pool = getPool();
+  } catch {
+    return [];
+  }
 
   try {
     const result = await pool.query(
