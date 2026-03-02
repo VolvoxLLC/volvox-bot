@@ -50,14 +50,14 @@ describe('reputationCache.js', () => {
     it('clears user reputation and leaderboard cache', async () => {
       await repCache.setReputationCache('guild1', 'user1', { xp: 100, level: 2 });
 
-      // Also set a leaderboard entry via raw cache
-      await cache.cacheSet('leaderboard:guild1', [{ userId: 'user1' }], 300);
+      // Set paginated leaderboard entries via raw cache
+      await cache.cacheSet('leaderboard:guild1:1:25', [{ userId: 'user1' }], 300);
       await cache.cacheSet('rank:guild1:user1', { rank: 1 }, 60);
 
       await repCache.invalidateReputationCache('guild1', 'user1');
 
       expect(await repCache.getReputationCached('guild1', 'user1')).toBeNull();
-      expect(await cache.cacheGet('leaderboard:guild1')).toBeNull();
+      expect(await cache.cacheGet('leaderboard:guild1:1:25')).toBeNull();
       expect(await cache.cacheGet('rank:guild1:user1')).toBeNull();
     });
   });
@@ -91,10 +91,12 @@ describe('reputationCache.js', () => {
   });
 
   describe('invalidateLeaderboard', () => {
-    it('clears leaderboard cache for guild', async () => {
-      await cache.cacheSet('leaderboard:guild1', [{ rank: 1 }], 300);
+    it('clears all paginated leaderboard cache keys for guild', async () => {
+      await cache.cacheSet('leaderboard:guild1:1:25', [{ rank: 1 }], 300);
+      await cache.cacheSet('leaderboard:guild1:2:25', [{ rank: 26 }], 300);
       await repCache.invalidateLeaderboard('guild1');
-      expect(await cache.cacheGet('leaderboard:guild1')).toBeNull();
+      expect(await cache.cacheGet('leaderboard:guild1:1:25')).toBeNull();
+      expect(await cache.cacheGet('leaderboard:guild1:2:25')).toBeNull();
     });
   });
 });
