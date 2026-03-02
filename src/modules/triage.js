@@ -68,6 +68,14 @@ let classifierProcess = null;
 /** @type {CLIProcess|null} */
 let responderProcess = null;
 
+// ── Budget alert throttle ────────────────────────────────────────────────────
+// Track the last time a budget-exceeded alert was posted per guild so we don't
+// spam the moderation log channel on every evaluation attempt.
+/** @type {Map<string, number>} guildId → timestamp of last alert (ms) */
+const budgetAlertSentAt = new Map();
+/** Minimum gap between budget-exceeded alerts for the same guild (1 hour). */
+const BUDGET_ALERT_COOLDOWN_MS = 60 * 60 * 1_000;
+
 // ── Two-step CLI evaluation ──────────────────────────────────────────────────
 
 /**
@@ -351,19 +359,25 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
             spend: budget.spend,
             budget: budget.budget,
           });
-          // Phase 3: post a one-time alert to the moderation log channel (fire-and-forget)
+          // Post a throttled alert to the moderation log channel — at most once per
+          // BUDGET_ALERT_COOLDOWN_MS — to avoid spamming on every evaluation attempt.
           const logChannelId = evalConfig.triage?.moderationLogChannel;
           if (logChannelId) {
-            fetchChannelCached(evalClient, logChannelId)
-              .then((logCh) => {
-                if (logCh) {
-                  return safeSend(
-                    logCh,
-                    `⚠️ **AI spend cap reached** for guild \`${guildId}\` — daily budget of $${budget.budget.toFixed(2)} exceeded (spent $${budget.spend.toFixed(4)}). Triage evaluations are paused until the window resets.`,
-                  );
-                }
-              })
-              .catch(() => {});
+            const now = Date.now();
+            const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
+            if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
+              budgetAlertSentAt.set(guildId, now);
+              fetchChannelCached(evalClient, logChannelId)
+                .then((logCh) => {
+                  if (logCh) {
+                    return safeSend(
+                      logCh,
+                      `⚠️ **AI spend cap reached** for guild \`${guildId}\` — daily budget of $${budget.budget.toFixed(2)} exceeded (spent $${budget.spend.toFixed(4)}). Triage evaluations are paused until the window resets.`,
+                    );
+                  }
+                })
+                .catch(() => {});
+            }
           }
           return;
         }
