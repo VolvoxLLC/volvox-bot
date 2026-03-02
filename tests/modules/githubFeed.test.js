@@ -726,6 +726,13 @@ describe('isValidGhRepo', () => {
     expect(isValidGhRepo('owner', 'repo&&evil')).toBe(false);
     expect(isValidGhRepo('owner', 'repo$(evil)')).toBe(false);
   });
+
+  it('rejects pure-dot owner/repo (path traversal bypass)', () => {
+    expect(isValidGhRepo('.', 'repo')).toBe(false);
+    expect(isValidGhRepo('..', 'repo')).toBe(false);
+    expect(isValidGhRepo('owner', '..')).toBe(false);
+    expect(isValidGhRepo('..', '..')).toBe(false);
+  });
 });
 
 describe('VALID_GH_NAME regex', () => {
@@ -737,6 +744,12 @@ describe('VALID_GH_NAME regex', () => {
   it('does not match path traversal', () => {
     expect(VALID_GH_NAME.test('../etc')).toBe(false);
     expect(VALID_GH_NAME.test('foo/bar')).toBe(false);
+  });
+
+  it('rejects pure-dot names (path traversal bypass)', () => {
+    expect(VALID_GH_NAME.test('.')).toBe(false);
+    expect(VALID_GH_NAME.test('..')).toBe(false);
+    expect(VALID_GH_NAME.test('...')).toBe(false);
   });
 });
 
