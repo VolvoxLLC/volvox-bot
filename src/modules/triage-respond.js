@@ -10,6 +10,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
+import { fireEvent } from './webhookNotifier.js';
 import { FEEDBACK_EMOJI, registerAiMessage } from './aiFeedback.js';
 import { isProtectedTarget } from './moderation.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
@@ -245,6 +246,15 @@ export async function sendResponses(
 
   if (type === 'moderate') {
     warn('Moderation flagged', { channelId, reasoning: classification.reasoning });
+    // Fire member.flagged webhook notification
+    const guildId = channel?.guild?.id;
+    if (guildId) {
+      fireEvent('member.flagged', guildId, {
+        channelId,
+        reasoning: classification.reasoning?.slice(0, 500),
+        flaggedUsers: classification.flaggedUsers?.map((u) => u.userId || u) || [],
+      }).catch(() => {});
+    }
 
     if (triageConfig.moderationResponse !== false && responses.length > 0) {
       for (const r of responses) {
