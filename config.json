@@ -281,5 +281,11 @@
   "reminders": {
     "enabled": false,
     "maxPerUser": 25
+  },
+  "voice": {
+    "enabled": false,
+    "xpPerMinute": 2,
+    "dailyXpCap": 120,
+    "logChannel": null
   }
 }
