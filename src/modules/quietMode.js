@@ -181,14 +181,19 @@ const UNIT_MAP = {
  * @param {Object} [config] - Per-guild config with quietMode.maxDurationMinutes
  * @returns {number} Duration in seconds, clamped to [MIN_DURATION_SECONDS, maxSeconds]
  */
-export function parseDurationFromContent(content, defaultSeconds = DEFAULT_DURATION_SECONDS, config = null) {
+export function parseDurationFromContent(
+  content,
+  defaultSeconds = DEFAULT_DURATION_SECONDS,
+  config = null,
+) {
   const text = content.toLowerCase();
 
   // Determine effective max duration from config or fallback to hardcoded limit
   const configuredMaxMinutes = config?.quietMode?.maxDurationMinutes;
-  const maxSeconds = (Number.isFinite(configuredMaxMinutes) && configuredMaxMinutes > 0)
-    ? Math.min(configuredMaxMinutes * 60, MAX_DURATION_SECONDS)
-    : MAX_DURATION_SECONDS;
+  const maxSeconds =
+    Number.isFinite(configuredMaxMinutes) && configuredMaxMinutes > 0
+      ? Math.min(configuredMaxMinutes * 60, MAX_DURATION_SECONDS)
+      : MAX_DURATION_SECONDS;
 
   // Helper to clamp to valid range
   const clamp = (seconds) => Math.min(Math.max(seconds, MIN_DURATION_SECONDS), maxSeconds);
