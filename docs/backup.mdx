@@ -1,0 +1,221 @@
+---
+title: Config Backup & Restore
+description: 'Export, import, and manage server configuration snapshots'
+---
+
+# Config Backup & Restore
+
+Volvox Bot includes a built-in backup system for exporting, versioning, and restoring server configuration. This is particularly useful for:
+
+- Migrating configuration between environments (dev → staging → prod)
+- Creating snapshots before making large config changes
+- Disaster recovery
+
+## How It Works
+
+Backups are JSON files stored in `data/backups/` (or a custom path) on the bot server. Each file is named with a timestamp and monotonic counter:
+
+```
+backup-2026-03-01T23-15-00-000-0001.json
+```
+
+**Sensitive fields are automatically redacted** — API keys, tokens, and secrets appear as `[REDACTED]` in exported files. You must re-enter them after restore.
+
+The default retention policy keeps the last 7 daily backups and 4 weekly backups.
+
+## Authentication
+
+All backup endpoints require **bot owner** access:
+- **API key callers** — set `x-api-secret` header to `BOT_API_SECRET`
+- **OAuth callers** — must have a Discord user ID listed in `permissions.botOwners`
+
+Regular guild admins cannot access backup endpoints.
+
+## API Endpoints
+
+### Export current config
+
+```bash
+GET /api/v1/backups/export
+```
+
+Downloads the current live config as JSON with sensitive fields redacted.
+
+```bash
+curl -H "x-api-secret: YOUR_SECRET" \
+  https://your-domain.com/api/v1/backups/export \
+  -o my-config.json
+```
+
+**Response:** `200 OK`
+```json
+{
+  "config": { ... },
+  "exportedAt": "2026-03-01T23:15:00.000Z",
+  "version": 1
+}
+```
+
+---
+
+### Import config
+
+```bash
+POST /api/v1/backups/import
+Content-Type: application/json
+```
+
+Validates and applies a config JSON payload. Runs the same validation as the config editor — only keys in `SAFE_CONFIG_KEYS` are writable.
+
+```bash
+curl -X POST \
+  -H "x-api-secret: YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d @my-config.json \
+  https://your-domain.com/api/v1/backups/import
+```
+
+**Request body:** The same JSON format returned by `/export` (the `config` field only, or the full export payload).
+
+**Response:** `200 OK`
+```json
+{ "ok": true, "message": "Config imported successfully" }
+```
+
+---
+
+### Create a backup snapshot
+
+```bash
+POST /api/v1/backups
+```
+
+Creates a named backup of the current config and saves it to the backup directory.
+
+**Response:** `201 Created`
+```json
+{
+  "filename": "backup-2026-03-01T23-15-00-000-0001.json",
+  "savedAt": "2026-03-01T23:15:00.000Z"
+}
+```
+
+---
+
+### List backups
+
+```bash
+GET /api/v1/backups
+```
+
+Returns all backup files sorted by creation time (newest first).
+
+**Response:** `200 OK`
+```json
+{
+  "backups": [
+    {
+      "filename": "backup-2026-03-01T23-15-00-000-0001.json",
+      "createdAt": "2026-03-01T23:15:00.000Z",
+      "size": 4096
+    }
+  ]
+}
+```
+
+---
+
+### Read a backup
+
+```bash
+GET /api/v1/backups/:filename
+```
+
+Returns the contents of a specific backup file.
+
+**Response:** `200 OK` — full backup JSON.
+
+---
+
+### Restore from backup
+
+```bash
+POST /api/v1/backups/:filename/restore
+```
+
+Restores config from a named backup file. Applies the same validation as import.
+
+**Response:** `200 OK`
+```json
+{ "ok": true, "restoredFrom": "backup-2026-03-01T23-15-00-000-0001.json" }
+```
+
+---
+
+### Delete a backup
+
+```bash
+DELETE /api/v1/backups/:filename
+```
+
+Permanently deletes a backup file.
+
+**Response:** `200 OK`
+```json
+{ "ok": true }
+```
+
+---
+
+### Prune old backups
+
+```bash
+POST /api/v1/backups/prune
+```
+
+Applies the retention policy: keeps the last N daily backups and M weekly backups, deletes the rest.
+
+**Request body (optional):**
+```json
+{ "daily": 7, "weekly": 4 }
+```
+
+**Response:** `200 OK`
+```json
+{ "deleted": 3, "kept": 8 }
+```
+
+## Workflow Examples
+
+### Migrate dev config to production
+
+```bash
+# 1. Export from dev
+curl -H "x-api-secret: DEV_SECRET" \
+  https://dev.example.com/api/v1/backups/export \
+  -o dev-config.json
+
+# 2. Review — check for [REDACTED] fields you need to fill in
+cat dev-config.json | jq '.config | keys'
+
+# 3. Import to production (fill in secrets first)
+curl -X POST \
+  -H "x-api-secret: PROD_SECRET" \
+  -H "Content-Type: application/json" \
+  -d @dev-config.json \
+  https://prod.example.com/api/v1/backups/import
+```
+
+### Snapshot before a major change
+
+```bash
+# Create a named snapshot
+curl -X POST -H "x-api-secret: SECRET" \
+  https://your-domain.com/api/v1/backups
+
+# Make your changes...
+
+# If something breaks, restore the snapshot
+curl -X POST -H "x-api-secret: SECRET" \
+  https://your-domain.com/api/v1/backups/backup-2026-03-01T23-15-00-000-0001.json/restore
+```

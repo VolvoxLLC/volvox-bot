@@ -1,0 +1,142 @@
+---
+title: Dashboard Guide
+description: 'Using the Volvox Bot web admin dashboard'
+---
+
+# Web Dashboard
+
+The Volvox Bot admin dashboard (`web/`) is a Next.js application that provides a browser-based interface for managing your Discord server's bot configuration, moderation actions, and analytics.
+
+## Getting Started
+
+### Requirements
+
+- Node.js 22+
+- pnpm
+- A running Volvox Bot instance with `BOT_API_PORT` exposed (default: 3001)
+- Discord OAuth2 application credentials
+
+### Setup
+
+```bash
+cd web
+cp .env.example .env.local
+# Fill in your Discord OAuth2 credentials and bot API URL
+pnpm install --legacy-peer-deps
+pnpm dev
+```
+
+The dashboard will be available at `http://localhost:3000`.
+
+> **Note:** `--legacy-peer-deps` is required due to NextAuth v4 + Next.js 16 peer dependency constraints.
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXTAUTH_URL` | Canonical URL of the dashboard (e.g. `http://localhost:3000`) |
+| `NEXTAUTH_SECRET` | Random secret for JWT encryption. Generate with `openssl rand -base64 48` |
+| `DISCORD_CLIENT_ID` | Discord OAuth2 application client ID |
+| `DISCORD_CLIENT_SECRET` | Discord OAuth2 application client secret |
+| `BOT_API_URL` | URL of the bot's REST API (e.g. `http://localhost:3001/api/v1`) |
+| `BOT_API_SECRET` | Shared secret matching `BOT_API_SECRET` in the bot's `.env` |
+
+## Signing In
+
+1. Navigate to the dashboard URL
+2. Click **Sign in with Discord**
+3. Authorize the OAuth2 app — you'll only see servers where you and the bot are both present
+4. Select your server from the server picker
+
+Sessions persist via NextAuth.js JWTs. Discord tokens are refreshed automatically when they expire.
+
+## Dashboard Pages
+
+### Overview
+
+The landing page after server selection. Shows:
+- **KPI cards** — Member count, messages today, AI responses, active users
+- **Activity chart** — Message volume over the last 7 days
+- **Top channels** — Most active channels by message count
+
+### Config
+
+Configure all bot settings from the browser. Changes are applied live and persisted to the database.
+
+- Use the section tabs (AI, Triage, Moderation, Starboard, etc.) to navigate
+- **Role fields** use Discord-synced dropdown pickers — no manual ID copy-paste
+- **Channel fields** use Discord-synced channel selectors with category grouping
+- Changes save on blur/submit and show a success/error toast
+
+### Analytics
+
+Detailed activity analytics for the guild:
+- **Message volume** — Line chart with channel-level filtering
+- **AI usage** — Token usage, response counts, model breakdown by day
+- **Activity heatmap** — Hour × day grid showing peak usage times
+- **Top contributors** — Most active members by message count
+
+### Moderation
+
+View and manage mod actions:
+- **Cases table** — All warnings, bans, kicks, timeouts with search and filter
+- **Quick actions** — Issue warnings or timeouts directly from the dashboard
+- **Case detail** — View full case history with reason and executor
+
+### Members
+
+Member management panel:
+- **Member list** — All guild members with XP, join date, and role badges
+- **Member detail** — Click any member for their full mod history, XP breakdown, and case list
+- **XP editor** — Adjust a member's XP directly (requires admin)
+- **Export** — Download member data as CSV
+
+### AI Conversations
+
+Browse and manage AI conversation history:
+- **Conversation list** — All conversations with timestamp, channel, and message count
+- **Search** — Full-text search across conversation content
+- **Flag** — Mark conversations for review
+- **Flagged view** — Filter to show only flagged conversations
+
+### AI Feedback
+
+> Requires `ai.feedback.enabled: true` in config.
+
+When AI feedback is enabled, users can react 👍 or 👎 to the bot's responses. This page shows:
+- **Aggregate stats card** — Total positive, negative, and approval ratio (%)
+- **Daily trend chart** — Feedback sentiment over the past 30 days (configurable)
+- **Recent feedback list** — Individual reactions with message link, user, and timestamp
+
+Use this data to gauge how well the bot's responses are landing and iterate on the system prompt.
+
+### Audit Log
+
+History of all mutating API actions performed by dashboard users or API key callers:
+- **Action type** — config edit, member kick, case create, etc.
+- **Executor** — Who performed the action (Discord user ID + username)
+- **Target** — The affected resource (user, config key, etc.)
+- **Timestamp** — When it happened
+
+Retention is controlled by `auditLog.retentionDays` in config (default: 90 days).
+
+### Tickets
+
+Manage support tickets opened via the `/ticket` command:
+- **Ticket list** — All open/closed tickets with status, opener, and channel
+- **Ticket detail** — View the full message thread for a ticket
+- **Close/reopen** — Manage ticket state from the dashboard
+
+## Themes
+
+The dashboard supports **dark mode** and **light mode** with system preference detection. Use the theme toggle in the top-right corner to switch.
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Can't see my server | Ensure bot is in the server. Check `BOT_API_URL` and `BOT_API_SECRET` in `.env.local`. |
+| "Session expired" errors | Verify `NEXTAUTH_SECRET` is set and consistent (don't change it between restarts). |
+| Config saves fail | Check `BOT_API_URL` points to the running bot API. Verify the config key is in `SAFE_CONFIG_KEYS`. |
+| Role/channel dropdowns empty | Check bot has `View Channels`, `Read Message History`, and `Manage Roles` permissions in the server. |
+| AI feedback page shows no data | Set `ai.feedback.enabled: true` in config and ensure users have started reacting to bot messages. |

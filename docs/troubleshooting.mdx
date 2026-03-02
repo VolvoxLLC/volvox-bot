@@ -1,0 +1,193 @@
+---
+title: Troubleshooting
+description: 'Common issues and how to fix them'
+---
+
+# Troubleshooting
+
+## Bot Issues
+
+### Bot doesn't respond to messages
+
+**Check Message Content Intent**
+
+Go to the [Discord Developer Portal](https://discord.com/developers/applications) → Your App → **Bot** → Privileged Gateway Intents. Make sure:
+- ✅ **Message Content Intent** is enabled
+- ✅ **Server Members Intent** is enabled
+
+Without Message Content Intent, the bot cannot read message content in most channels.
+
+**Check `ai.enabled`**
+
+Verify `ai.enabled` is `true` in config. Use `/config ai.enabled` to check.
+
+**Check `ai.channels` and `ai.blockedChannelIds`**
+
+If `ai.channels` is non-empty, the bot only responds in those specific channel IDs. If the channel you're testing in isn't listed, it won't respond.
+
+Also check `ai.blockedChannelIds` — if the channel is listed there, AI responses are suppressed regardless of other settings.
+
+**Check the API key**
+
+Verify `ANTHROPIC_API_KEY` is set and valid in your `.env` file. You can test it:
+```bash
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d '{"model":"claude-haiku-4-5","max_tokens":10,"messages":[{"role":"user","content":"Hi"}]}'
+```
+
+---
+
+### Slash commands not appearing
+
+1. Run `pnpm deploy` to register commands with Discord
+2. If using `GUILD_ID` for faster dev deployment, confirm the bot is in that specific guild
+3. Global commands (without `GUILD_ID`) take up to **1 hour** to propagate worldwide
+4. Check bot has **Use Application Commands** permission in the server
+
+---
+
+### Bot crashes on startup
+
+**Database connection failure**
+```
+Error: connect ECONNREFUSED 127.0.0.1:5432
+```
+Verify `DATABASE_URL` is set and PostgreSQL is running. If using Docker: `docker compose ps`.
+
+**Missing environment variables**
+Check the `.env` file has all required variables. At minimum: `DISCORD_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL`.
+
+**Migration errors**
+The bot runs migrations automatically via `initDb()`. If migrations fail:
+```bash
+# Check migration files
+ls migrations/
+
+# Manually check DB schema
+psql $DATABASE_URL -c "\dt"
+```
+
+---
+
+### Redis connection warnings
+
+```
+Redis not configured (REDIS_URL not set) — caching disabled
+```
+
+This is **expected behavior** when `REDIS_URL` is not set. The bot runs fine without Redis. To enable caching:
+```bash
+# In .env
+REDIS_URL=redis://localhost:6379
+```
+
+If you have Redis configured but see connection errors, check the Redis service is running and the URL is correct.
+
+---
+
+### Moderation commands fail silently
+
+**Role protection is blocking the action**
+
+If the target user is a server admin, moderator, or the server owner, moderation actions are blocked by default (`moderation.protectRoles.enabled: true`). This is intentional to prevent accidental staff moderation.
+
+To allow moderating a specific protected user, configure `moderation.protectRoles.roleIds` to exempt specific roles.
+
+**Bot role hierarchy**
+
+The bot's role must be **above** the target user's highest role in the server's role list. Discord enforces this — the bot cannot kick, ban, or timeout users with equal or higher roles.
+
+**Permission level mismatch**
+
+Verify the executing user has the required level. Most mod commands require `adminRoleId`. Check `permissions.allowedCommands` in config.
+
+---
+
+### AI feedback not working
+
+1. Confirm `ai.feedback.enabled: true` in config (it's `false` by default)
+2. Ensure the bot has **Add Reactions** permission in the channels where AI responds
+3. The bot tracks the last **2000 AI message IDs** in memory. Feedback only registers on recently sent messages.
+4. Check the `ai-feedback` route is mounted in `src/api/index.js` (it's mounted at `/guilds/:id/ai-feedback`)
+
+---
+
+### Starboard not working
+
+- Confirm `starboard.enabled: true` and `starboard.channelId` is set
+- Ensure the bot has **View Channel** and **Send Messages** in the starboard channel
+- The bot requires `GuildMessageReactions` intent and `Partials.Message` + `Partials.Reaction` in client options — these are set by default in `src/index.js`
+- `starboard.selfStarAllowed: false` prevents users from starring their own messages
+
+---
+
+## Dashboard Issues
+
+### "Server not found" or can't see my server
+
+The dashboard only shows **mutual guilds** — servers where both the logged-in Discord user and the bot are present.
+
+1. Confirm the bot is in the target server (check Discord → Server Settings → Integrations)
+2. Verify `BOT_API_URL` in `.env.local` points to the running bot REST API (default: `http://localhost:3001/api/v1`)
+3. Confirm `BOT_API_SECRET` matches `BOT_API_SECRET` in the bot's `.env`
+
+---
+
+### Config changes not saving
+
+**No database**
+
+Without `DATABASE_URL`, config is in-memory only and resets on restart. Set `DATABASE_URL` to a PostgreSQL instance for persistence.
+
+**Key not in SAFE_CONFIG_KEYS**
+
+The bot's API enforces an allowlist for writable keys. If a new config section was added without updating `src/api/utils/configAllowlist.js`, saves for that section will be rejected silently (or with a 400 error).
+
+Add the new keys to `SAFE_CONFIG_KEYS` in `configAllowlist.js`.
+
+**Check the audit log**
+
+The audit log records all API actions including config writes. Check it for `4xx` responses that reveal exactly which key failed.
+
+---
+
+### "Session expired" on dashboard
+
+This usually means `NEXTAUTH_SECRET` changed between restarts, invalidating existing JWTs.
+
+1. Set a stable `NEXTAUTH_SECRET` value in `.env.local` (don't regenerate it between deploys)
+2. Generate once with: `openssl rand -base64 48`
+3. Restart the dashboard
+
+---
+
+### Role/channel dropdowns are empty
+
+The dashboard fetches roles and channels from the bot's API (`GET /api/v1/guilds/:id/roles` and `/channels`). If they're empty:
+
+1. Bot must have `View Channels` permission in the server
+2. For roles: bot needs `Manage Roles` to see all roles
+3. Check `BOT_API_URL` is reachable from the dashboard server
+
+---
+
+## Common Error Codes
+
+| Status | Meaning |
+|--------|---------|
+| `401 Unauthorized` | Missing or invalid `x-api-secret` header or Bearer JWT |
+| `403 Forbidden` | Valid auth but insufficient permissions (e.g., regular admin trying backup endpoints) |
+| `404 Not Found` | Resource doesn't exist (guild, case, backup file, etc.) |
+| `429 Too Many Requests` | Rate limit hit. Check `X-RateLimit-Reset` header for when to retry |
+| `500 Internal Server Error` | Unexpected server error — check bot logs. Errors are reported to Sentry if `SENTRY_DSN` is configured |
+
+---
+
+## Getting Help
+
+- **GitHub Issues:** [github.com/VolvoxLLC/volvox-bot/issues](https://github.com/VolvoxLLC/volvox-bot/issues)
+- **Discord:** [discord.gg/volvox](https://discord.gg/volvox)
+- **Logs:** Run with `LOG_LEVEL=debug` for verbose output
