@@ -262,9 +262,7 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Gated on ai.enabled — this is the master kill-switch for all AI responses.
     // accumulateMessage also checks triage.enabled internally.
     if (guildConfig.ai?.enabled) {
-      // Skip blocked channels for triage as well
-      const triageParentId = message.channel.isThread?.() ? message.channel.parentId : null;
-      if (isChannelBlocked(message.channel.id, triageParentId, message.guild.id)) return;
+
       try {
         const p = accumulateMessage(message, guildConfig);
         p?.catch((err) => {
