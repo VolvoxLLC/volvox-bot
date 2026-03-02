@@ -138,6 +138,7 @@ All configuration lives in `config.json` and can be updated at runtime via the `
 | `threadMode.enabled` | boolean | Enable threaded responses (default: false) |
 | `threadMode.autoArchiveMinutes` | number | Thread auto-archive timeout (default: 60) |
 | `threadMode.reuseWindowMinutes` | number | Window for reusing existing threads (default: 30) |
+| `feedback.enabled` | boolean | Enable 👍/👎 reaction feedback on AI responses (default: false) |
 
 ### Triage (`triage`)
 
