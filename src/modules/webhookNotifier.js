@@ -131,7 +131,7 @@ export async function deliverToEndpoint(guildId, endpoint, payload) {
             payload.event,
             payload,
             result.ok ? 'success' : 'failed',
-            result.status || null,
+            result.status ?? null,
             result.text?.slice(0, 2000) || null,
             attempt,
           ],
