@@ -98,6 +98,9 @@ function buildFilters(guildId, query) {
  * @returns {string}
  */
 export function escapeCsvValue(value) {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
   if (value === null || value === undefined) return '';
   const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
   // RFC 4180: also check for \r (CRLF) to properly handle Windows line endings
