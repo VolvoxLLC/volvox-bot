@@ -5,6 +5,7 @@
  */
 
 import { Router } from 'express';
+import { getRedisStats } from '../../redis.js';
 import { isValidSecret } from '../middleware/auth.js';
 
 /** Lazy-loaded queryLogs — optional diagnostic feature, not required for health */
@@ -169,6 +170,9 @@ router.get('/', async (req, res) => {
         body.pool = null;
       }
     }
+
+    // Redis stats (authenticated only)
+    body.redis = getRedisStats();
 
     // Error counts from logs table (optional — partial data on failure)
     const queryLogs = await getQueryLogs();

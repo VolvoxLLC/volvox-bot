@@ -6,6 +6,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
@@ -84,7 +85,7 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
  */
 export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15) {
   try {
-    const channel = await client.channels.fetch(channelId);
+    const channel = await fetchChannelCached(client, channelId);
     if (!channel?.messages) {
       warn('Channel fetch returned no messages API', { channelId });
       return [];
@@ -131,7 +132,7 @@ export async function sendModerationLog(client, classification, snapshot, channe
   if (!logChannelId) return;
 
   try {
-    const logChannel = await client.channels.fetch(logChannelId);
+    const logChannel = await fetchChannelCached(client, logChannelId);
     if (!logChannel) return;
 
     // Find target messages from the snapshot
@@ -350,7 +351,7 @@ export async function buildStatsAndLog(
   };
 
   // Fetch channel once for guildId resolution + passing to sendResponses
-  const channel = await client.channels.fetch(channelId).catch(() => null);
+  const channel = await fetchChannelCached(client, channelId);
   const guildId = channel?.guildId;
 
   // Log AI usage analytics (fire-and-forget)

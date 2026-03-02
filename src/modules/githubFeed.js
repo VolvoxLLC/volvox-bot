@@ -10,6 +10,7 @@ import { promisify } from 'node:util';
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
 
@@ -247,7 +248,7 @@ async function pollGuildFeed(client, guildId, feedConfig) {
     return;
   }
 
-  const channel = await client.channels.fetch(channelId).catch(() => null);
+  const channel = await fetchChannelCached(client, channelId);
   if (!channel) {
     logWarn('GitHub feed: channel not found', { guildId, channelId });
     return;

@@ -7,6 +7,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { parseDuration } from '../utils/duration.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
@@ -215,7 +216,7 @@ export async function sendModLogEmbed(client, config, caseData) {
   const channelId = channels[actionKey] || channels.default;
   if (!channelId) return null;
 
-  const channel = await client.channels.fetch(channelId).catch(() => null);
+  const channel = await fetchChannelCached(client, channelId);
   if (!channel) return null;
 
   const embed = new EmbedBuilder()

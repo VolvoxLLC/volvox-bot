@@ -348,7 +348,8 @@ export function registerReactionHandlers(client, _config) {
     // AI feedback tracking (reaction removed)
     if (guildConfig.ai?.feedback?.enabled && isAiMessage(reaction.message.id)) {
       const emoji = reaction.emoji.name;
-      const isFeedbackEmoji = emoji === FEEDBACK_EMOJI.positive || emoji === FEEDBACK_EMOJI.negative;
+      const isFeedbackEmoji =
+        emoji === FEEDBACK_EMOJI.positive || emoji === FEEDBACK_EMOJI.negative;
 
       if (isFeedbackEmoji) {
         deleteFeedback({
