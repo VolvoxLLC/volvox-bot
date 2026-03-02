@@ -20,7 +20,10 @@ export function rateLimit({
   max = 100,
   message = DEFAULT_MESSAGE,
 } = {}) {
+  const errorMessage = (typeof message === 'string' && message.trim()) ? message : DEFAULT_MESSAGE;
+
   /** @type {Map<string, { count: number, resetAt: number }>} */
+
   const clients = new Map();
 
   // Periodically clean up expired entries to prevent memory leaks
@@ -56,7 +59,7 @@ export function rateLimit({
     if (entry.count > max) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       res.set('Retry-After', String(retryAfter));
-      return res.status(429).json({ error: message });
+      return res.status(429).json({ error: errorMessage });
     }
 
     next();
