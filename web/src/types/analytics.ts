@@ -98,3 +98,16 @@ export interface DashboardAnalytics {
   userEngagement: UserEngagementMetrics | null;
   xpEconomy: XpEconomy | null;
 }
+
+/** Shape of the /guilds/:id/ai-feedback/stats API response. */
+export interface AiFeedbackStats {
+  positive: number;
+  negative: number;
+  total: number;
+  ratio: number | null;
+  trend: Array<{
+    date: string;
+    positive: number;
+    negative: number;
+  }>;
+}

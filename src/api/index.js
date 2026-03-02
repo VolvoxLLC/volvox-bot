@@ -9,6 +9,7 @@ import { requireAuth } from './middleware/auth.js';
 import aiFeedbackRouter from './routes/ai-feedback.js';
 import auditLogRouter from './routes/auditLog.js';
 import authRouter from './routes/auth.js';
+import backupRouter from './routes/backup.js';
 import communityRouter from './routes/community.js';
 import configRouter from './routes/config.js';
 import conversationsRouter from './routes/conversations.js';
@@ -16,7 +17,9 @@ import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
-import ticketsRouter from './routes/tickets.js';
+import notificationsRouter from './routes/notifications.js';
+import performanceRouter from './routes/performance.js';
+import tempRolesRouter from './routes/tempRoles.js';
 import webhooksRouter from './routes/webhooks.js';
 
 const router = Router();
@@ -53,12 +56,23 @@ router.use('/guilds', requireAuth(), auditLogMiddleware(), guildsRouter);
 
 // Moderation routes — require API secret or OAuth2 JWT
 router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter);
+// Temp role routes — require API secret or OAuth2 JWT
+router.use('/temp-roles', requireAuth(), auditLogMiddleware(), tempRolesRouter);
 
 // Audit log routes — require API secret or OAuth2 JWT
 // GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
 
+// Performance metrics — require x-api-secret (authenticated via route handler)
+router.use('/performance', performanceRouter);
+
+// Notification webhook management routes — require API secret or OAuth2 JWT
+router.use('/guilds', requireAuth(), auditLogMiddleware(), notificationsRouter);
+
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
+
+// Backup routes — require API secret or OAuth2 JWT
+router.use('/backups', requireAuth(), auditLogMiddleware(), backupRouter);
 
 export default router;
