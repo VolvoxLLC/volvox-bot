@@ -43,6 +43,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
+import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
@@ -54,7 +55,6 @@ import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
 import { startVoiceFlush, stopVoiceFlush } from './modules/voice.js';
 import { fireEventAllGuilds } from './modules/webhookNotifier.js';
-import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
 import {
@@ -318,6 +318,7 @@ async function gracefulShutdown(signal) {
   stopScheduler();
   stopGithubFeed();
   perfMonitor.stop();
+  stopBotStatus();
   stopVoiceFlush();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
@@ -531,6 +532,9 @@ async function startup() {
   // Load commands and login
   await loadCommands();
   await client.login(token);
+
+  // Start bot status/activity rotation (runs after login so client.user is available)
+  startBotStatus(client);
 
   // Set Sentry context now that we know the bot identity (no-op if disabled)
   import('./sentry.js')

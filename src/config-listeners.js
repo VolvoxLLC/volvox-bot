@@ -9,6 +9,7 @@
  */
 
 import { addPostgresTransport, error, info, removePostgresTransport } from './logger.js';
+import { reloadBotStatus } from './modules/botStatus.js';
 import { onConfigChange } from './modules/config.js';
 import { fireEvent } from './modules/webhookNotifier.js';
 import { cacheDelPattern } from './utils/cache.js';
@@ -104,6 +105,22 @@ export function registerConfigListeners({ dbPool, config }) {
       await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
     }
   });
+  // ── Bot status / presence hot-reload ───────────────────────────────
+  for (const key of [
+    'botStatus',
+    'botStatus.enabled',
+    'botStatus.status',
+    'botStatus.activityType',
+    'botStatus.activities',
+    'botStatus.rotateIntervalMs',
+  ]) {
+    onConfigChange(key, (_newValue, _oldValue, _path, guildId) => {
+      // Bot presence is global — ignore per-guild overrides here
+      if (guildId && guildId !== 'global') return;
+      reloadBotStatus();
+    });
+  }
+
   onConfigChange('reputation.*', async (_newValue, _oldValue, _path, guildId) => {
     if (guildId && guildId !== 'global') {
       await cacheDelPattern(`leaderboard:${guildId}*`).catch(() => {});
