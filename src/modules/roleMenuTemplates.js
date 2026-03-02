@@ -60,7 +60,6 @@ export const BUILTIN_TEMPLATES = [
 // ── Validation ────────────────────────────────────────────────────────────────
 
 const MAX_TEMPLATE_NAME_LEN = 64;
-const _MAX_DESCRIPTION_LEN = 256;
 const MAX_OPTIONS = 25;
 const VALID_NAME_RE = /^[\w\- ]+$/;
 
