@@ -10,6 +10,7 @@
       "autoArchiveMinutes": 60,
       "reuseWindowMinutes": 30
     },
+    "blockedChannelIds": [],
     "feedback": {
       "enabled": false
     }

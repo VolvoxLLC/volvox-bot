@@ -26,6 +26,32 @@ let cleanupTimer = null;
 const pendingHydrations = new Map();
 
 /**
+ * Check whether a channel (or its parent thread channel) is in the AI blocklist.
+ *
+ * When `parentId` is provided (i.e. the message is inside a thread), the parent
+ * channel ID is also checked so that blocking a channel implicitly blocks all
+ * threads that belong to it.
+ *
+ * @param {string} channelId - The channel ID to test.
+ * @param {string|null} [parentId] - Optional parent channel ID (for threads).
+ * @param {string} guildId - The guild ID for per-guild configuration.
+ * @returns {boolean} `true` when the channel is blocked, `false` otherwise.
+ */
+export function isChannelBlocked(channelId, parentId = null, guildId) {
+  try {
+    const config = getConfig(guildId);
+    const blocked = config?.ai?.blockedChannelIds;
+    if (!Array.isArray(blocked) || blocked.length === 0) return false;
+    if (blocked.includes(channelId)) return true;
+    if (parentId && blocked.includes(parentId)) return true;
+    return false;
+  } catch {
+    // Config not loaded yet — fail open (don't block)
+    return false;
+  }
+}
+
+/**
  * Get the configured history length from config
  * @returns {number} History length
  */

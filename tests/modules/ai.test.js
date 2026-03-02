@@ -18,6 +18,7 @@ import {
   getConversationHistory,
   getHistoryAsync,
   initConversationHistory,
+  isChannelBlocked,
   setConversationHistory,
   setPool,
   startConversationCleanup,
@@ -201,6 +202,58 @@ describe('ai module', () => {
 
       const ch2 = await getHistoryAsync('ch2');
       expect(ch2.length).toBe(1);
+    });
+  });
+
+  // ── isChannelBlocked ─────────────────────────────────────────────────
+
+  describe('isChannelBlocked', () => {
+    it('should return false when blockedChannelIds is not set', () => {
+      getConfig.mockReturnValue({ ai: {} });
+      expect(isChannelBlocked('ch1')).toBe(false);
+    });
+
+    it('should return false when blockedChannelIds is empty', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: [] } });
+      expect(isChannelBlocked('ch1')).toBe(false);
+    });
+
+    it('should return true when channelId is in blockedChannelIds', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: ['ch1', 'ch2'] } });
+      expect(isChannelBlocked('ch1')).toBe(true);
+      expect(isChannelBlocked('ch2')).toBe(true);
+    });
+
+    it('should return false when channelId is not in blockedChannelIds', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: ['ch1'] } });
+      expect(isChannelBlocked('ch3')).toBe(false);
+    });
+
+    it('should return true when parentId is in blockedChannelIds (thread in blocked parent)', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: ['parent-ch'] } });
+      expect(isChannelBlocked('thread-ch', 'parent-ch')).toBe(true);
+    });
+
+    it('should return true when channelId matches even if parentId is not blocked', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: ['thread-ch'] } });
+      expect(isChannelBlocked('thread-ch', 'parent-ch')).toBe(true);
+    });
+
+    it('should return false when neither channelId nor parentId is in blockedChannelIds', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: ['other-ch'] } });
+      expect(isChannelBlocked('thread-ch', 'parent-ch')).toBe(false);
+    });
+
+    it('should return false when parentId is null and channelId is not blocked', () => {
+      getConfig.mockReturnValue({ ai: { blockedChannelIds: ['ch1'] } });
+      expect(isChannelBlocked('ch2', null)).toBe(false);
+    });
+
+    it('should fail open (return false) when getConfig throws', () => {
+      getConfig.mockImplementation(() => {
+        throw new Error('Config not loaded');
+      });
+      expect(isChannelBlocked('ch1')).toBe(false);
     });
   });
 

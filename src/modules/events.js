@@ -20,6 +20,7 @@ import { getUserFriendlyMessage } from '../utils/errors.js';
 // safe wrapper applies identically to either target type.
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { handleAfkMentions } from './afkHandler.js';
+import { isChannelBlocked } from './ai.js';
 import { deleteFeedback, FEEDBACK_EMOJI, isAiMessage, recordFeedback } from './aiFeedback.js';
 import { handleHintButton, handleSolveButton } from './challengeScheduler.js';
 import { getConfig } from './config.js';
@@ -219,6 +220,12 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         : message.channel.id;
       const isAllowedChannel =
         allowedChannels.length === 0 || allowedChannels.includes(channelIdToCheck);
+
+      // Check blocklist — blocked channels never get AI responses.
+      // For threads, parentId is also checked so blocking the parent channel
+      // blocks all its child threads.
+      const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
+      if (isChannelBlocked(message.channel.id, parentId, message.guild.id)) return;
 
       if ((isMentioned || isReply) && isAllowedChannel) {
         // Accumulate the message into the triage buffer (for context).
