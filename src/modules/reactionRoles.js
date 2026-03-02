@@ -9,7 +9,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
-import { debug, error as logError, info, warn } from '../logger.js';
+import { debug, info, error as logError, warn } from '../logger.js';
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
@@ -44,10 +44,9 @@ export async function insertReactionRoleMenu(guildId, channelId, messageId, titl
  */
 export async function findMenuByMessageId(messageId) {
   const pool = getPool();
-  const result = await pool.query(
-    'SELECT * FROM reaction_role_menus WHERE message_id = $1',
-    [messageId],
-  );
+  const result = await pool.query('SELECT * FROM reaction_role_menus WHERE message_id = $1', [
+    messageId,
+  ]);
   return result.rows[0] ?? null;
 }
 
@@ -74,10 +73,7 @@ export async function listMenusForGuild(guildId) {
  */
 export async function deleteMenu(menuId) {
   const pool = getPool();
-  const result = await pool.query(
-    'DELETE FROM reaction_role_menus WHERE id = $1',
-    [menuId],
-  );
+  const result = await pool.query('DELETE FROM reaction_role_menus WHERE id = $1', [menuId]);
   return (result.rowCount ?? 0) > 0;
 }
 
@@ -162,16 +158,12 @@ export async function findRoleForReaction(messageId, emoji) {
  * @returns {EmbedBuilder}
  */
 export function buildReactionRoleEmbed(title, description, entries = []) {
-  const embed = new EmbedBuilder()
-    .setTitle(title)
-    .setColor(0x5865f2); // Discord blurple
+  const embed = new EmbedBuilder().setTitle(title).setColor(0x5865f2); // Discord blurple
 
   const lines = entries.map((e) => `${e.emoji} → <@&${e.role_id}>`);
   const bodyText = lines.length > 0 ? lines.join('\n') : '_No roles configured yet._';
 
-  embed.setDescription(
-    [description, description ? '\n' : '', bodyText].filter(Boolean).join(''),
-  );
+  embed.setDescription([description, description ? '\n' : '', bodyText].filter(Boolean).join(''));
 
   embed.setFooter({ text: 'React to this message to get or remove a role.' });
 
@@ -207,7 +199,8 @@ export async function handleReactionRoleAdd(reaction, user) {
       return;
     }
 
-    const role = guild.roles.cache.get(roleId) ?? await guild.roles.fetch(roleId).catch(() => null);
+    const role =
+      guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId).catch(() => null));
     if (!role) {
       warn('Reaction role: role not found', { roleId, guildId: guild.id });
       return;
@@ -252,7 +245,10 @@ export async function handleReactionRoleRemove(reaction, user) {
 
     const member = await guild.members.fetch(user.id).catch(() => null);
     if (!member) {
-      warn('Reaction role: could not fetch member for removal', { userId: user.id, guildId: guild.id });
+      warn('Reaction role: could not fetch member for removal', {
+        userId: user.id,
+        guildId: guild.id,
+      });
       return;
     }
 

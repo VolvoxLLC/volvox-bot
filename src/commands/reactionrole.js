@@ -39,9 +39,7 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('create')
       .setDescription('Post a new reaction-role menu in a channel')
-      .addStringOption((opt) =>
-        opt.setName('title').setDescription('Menu title').setRequired(true),
-      )
+      .addStringOption((opt) => opt.setName('title').setDescription('Menu title').setRequired(true))
       .addChannelOption((opt) =>
         opt
           .setName('channel')
@@ -70,7 +68,10 @@ export const data = new SlashCommandBuilder()
         opt.setName('emoji').setDescription('Emoji to react with').setRequired(true),
       )
       .addRoleOption((opt) =>
-        opt.setName('role').setDescription('Role to grant when the emoji is used').setRequired(true),
+        opt
+          .setName('role')
+          .setDescription('Role to grant when the emoji is used')
+          .setRequired(true),
       ),
   )
   // ── remove ──────────────────────────────────────────────────────────
@@ -136,8 +137,7 @@ export async function execute(interaction) {
 async function handleCreate(interaction) {
   const title = interaction.options.getString('title');
   const description = interaction.options.getString('description');
-  const targetChannel =
-    interaction.options.getChannel('channel') ?? interaction.channel;
+  const targetChannel = interaction.options.getChannel('channel') ?? interaction.channel;
 
   if (!targetChannel?.isTextBased?.()) {
     await safeEditReply(interaction, { content: '❌ Target channel must be a text channel.' });
@@ -327,9 +327,7 @@ async function handleList(interaction) {
     return;
   }
 
-  const lines = menus.map(
-    (m) => `• **${m.title}** — <#${m.channel_id}> — \`${m.message_id}\``,
-  );
+  const lines = menus.map((m) => `• **${m.title}** — <#${m.channel_id}> — \`${m.message_id}\``);
   await safeEditReply(interaction, {
     content: `**Reaction-role menus (${menus.length}):**\n${lines.join('\n')}`,
   });
