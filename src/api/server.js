@@ -7,7 +7,7 @@ import express from 'express';
 import { error, info, warn } from '../logger.js';
 import { PerformanceMonitor } from '../modules/performanceMonitor.js';
 import apiRouter from './index.js';
-import { rateLimit } from './middleware/rateLimit.js';
+import { redisRateLimit } from './middleware/redisRateLimit.js';
 import { stopAuthCleanup } from './routes/auth.js';
 import { swaggerSpec } from './swagger.js';
 import { stopGuildCacheCleanup } from './utils/discordApi.js';
@@ -17,7 +17,7 @@ import { setupLogStream, stopLogStream } from './ws/logStream.js';
 /** @type {import('node:http').Server | null} */
 let server = null;
 
-/** @type {ReturnType<typeof rateLimit> | null} */
+/** @type {ReturnType<typeof redisRateLimit> | null} */
 let rateLimiter = null;
 
 /**
@@ -64,7 +64,7 @@ export function createApp(client, dbPool) {
     rateLimiter.destroy();
     rateLimiter = null;
   }
-  rateLimiter = rateLimit();
+  rateLimiter = redisRateLimit();
   app.use(rateLimiter);
 
   // Raw OpenAPI spec (JSON) — public for Mintlify

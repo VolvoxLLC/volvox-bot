@@ -10,43 +10,10 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
-import { FEEDBACK_EMOJI, registerAiMessage } from './aiFeedback.js';
-import { isProtectedTarget } from './moderation.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
-import { fireEvent } from './webhookNotifier.js';
 
 /** Maximum characters to keep from fetched context messages. */
 const CONTEXT_MESSAGE_CHAR_LIMIT = 500;
-
-// ── Feedback reaction helper ─────────────────────────────────────────────────
-
-/**
- * Add 👍/👎 feedback reactions to a sent AI message (fire-and-forget).
- * Only runs when ai.feedback.enabled is true in the guild config.
- *
- * @param {import('discord.js').Message|import('discord.js').Message[]|null} sentMsg - Return value of safeSend.
- * @param {Object} config - Bot configuration.
- */
-function addFeedbackReactions(sentMsg, config) {
-  if (!config?.ai?.feedback?.enabled) return;
-
-  const messages = Array.isArray(sentMsg) ? sentMsg : [sentMsg];
-  // Only react to the first message chunk to avoid emoji spam on long responses
-  const first = messages[0];
-  if (!first?.id) return;
-
-  registerAiMessage(first.id);
-
-  // Fire-and-forget: never block the response flow
-  Promise.resolve()
-    .then(async () => {
-      await first.react(FEEDBACK_EMOJI.positive);
-      await first.react(FEEDBACK_EMOJI.negative);
-    })
-    .catch(() => {
-      // Reaction permission errors are non-fatal
-    });
-}
 
 // ── History helpers ──────────────────────────────────────────────────────────
 
@@ -139,31 +106,6 @@ export async function sendModerationLog(client, classification, snapshot, channe
     // Find target messages from the snapshot
     const targets = snapshot.filter((m) => classification.targetMessageIds?.includes(m.messageId));
 
-    // Skip moderation log if any flagged user is a protected role (admin/mod/owner)
-    const guild = logChannel.guild;
-    if (guild && targets.length > 0) {
-      // Skip the expensive member-fetch loop when protection is explicitly disabled.
-      if (config.moderation?.protectRoles?.enabled !== false) {
-        const seenUserIds = new Set();
-        for (const t of targets) {
-          if (seenUserIds.has(t.userId)) continue;
-          seenUserIds.add(t.userId);
-          try {
-            const member = await guild.members.fetch(t.userId);
-            if (isProtectedTarget(member, guild)) {
-              warn('Triage skipped moderation log: target is a protected role', {
-                userId: t.userId,
-                channelId,
-              });
-              return;
-            }
-          } catch {
-            // Member not in guild or fetch failed — proceed with logging
-          }
-        }
-      }
-    }
-
     const actionLabels = {
       warn: '\u26A0\uFE0F Warn',
       timeout: '\uD83D\uDD07 Timeout',
@@ -249,15 +191,6 @@ export async function sendResponses(
 
   if (type === 'moderate') {
     warn('Moderation flagged', { channelId, reasoning: classification.reasoning });
-    // Fire member.flagged webhook notification
-    const guildId = channel?.guild?.id;
-    if (guildId) {
-      fireEvent('member.flagged', guildId, {
-        channelId,
-        reasoning: classification.reasoning?.slice(0, 500),
-        flaggedUsers: classification.flaggedUsers?.map((u) => u.userId || u) || [],
-      }).catch(() => {});
-    }
 
     if (triageConfig.moderationResponse !== false && responses.length > 0) {
       for (const r of responses) {
@@ -310,8 +243,6 @@ export async function sendResponses(
         const sentMsg = await safeSend(channel, msgOpts);
         // Log AI response to conversation history
         logAssistantHistory(channelId, channel.guild?.id || null, chunks[i], sentMsg);
-        // Add feedback reactions to first chunk only
-        if (i === 0) addFeedbackReactions(sentMsg, config);
       }
 
       info('Triage response sent', {
@@ -364,7 +295,7 @@ export async function buildStatsAndLog(
   };
 
   // Fetch channel once for guildId resolution + passing to sendResponses
-  const channel = await fetchChannelCached(client, channelId);
+  const channel = await fetchChannelCached(client, channelId).catch(() => null);
   const guildId = channel?.guildId;
 
   // Log AI usage analytics (fire-and-forget)

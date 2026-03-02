@@ -27,6 +27,16 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn((t, opts) => t.editReply(opts)),
 }));
 
+vi.mock('../../src/utils/discordCache.js', () => ({
+  fetchChannelCached: vi
+    .fn()
+    .mockImplementation((client, channelId) => client.channels.fetch(channelId).catch(() => null)),
+  fetchGuildChannelsCached: vi.fn().mockResolvedValue([]),
+  fetchGuildRolesCached: vi.fn().mockResolvedValue([]),
+  fetchMemberCached: vi.fn().mockResolvedValue(null),
+  invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('discord.js', () => {
   function chainable() {
     const proxy = new Proxy(() => proxy, {
