@@ -75,19 +75,17 @@ export async function openSession(guildId, userId, channelId) {
   }
 
   const joinedAt = new Date();
-  activeSessions.set(key, { channelId, joinedAt });
 
-  try {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO voice_sessions (guild_id, user_id, channel_id, joined_at)
-       VALUES ($1, $2, $3, $4)`,
-      [guildId, userId, channelId, joinedAt.toISOString()],
-    );
-  } catch (err) {
-    logError('Failed to insert voice session', { guildId, userId, channelId, error: err.message });
-    throw err;
-  }
+  // Insert to DB first - only update in-memory state after DB succeeds
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO voice_sessions (guild_id, user_id, channel_id, joined_at)
+     VALUES ($1, $2, $3, $4)`,
+    [guildId, userId, channelId, joinedAt.toISOString()],
+  );
+
+  // DB INSERT succeeded - now safe to update in-memory state
+  activeSessions.set(key, { channelId, joinedAt });
 }
 
 /**
@@ -103,31 +101,28 @@ export async function closeSession(guildId, userId) {
   const session = activeSessions.get(key);
   if (!session) return null;
 
-  activeSessions.delete(key);
-
   const leftAt = new Date();
   const durationSeconds = Math.floor((leftAt.getTime() - session.joinedAt.getTime()) / 1000);
 
-  try {
-    const pool = getPool();
-    await pool.query(
-      `UPDATE voice_sessions
-         SET left_at = $1, duration_seconds = $2
-       WHERE id = (
-         SELECT id FROM voice_sessions
-          WHERE guild_id  = $3
-            AND user_id   = $4
-            AND channel_id = $5
-            AND left_at IS NULL
-          ORDER BY joined_at DESC
-          LIMIT 1
-       )`,
-      [leftAt.toISOString(), durationSeconds, guildId, userId, session.channelId],
-    );
-  } catch (err) {
-    logError('Failed to close voice session', { guildId, userId, error: err.message });
-    throw err;
-  }
+  // Update DB first - only delete from in-memory state after DB succeeds
+  const pool = getPool();
+  await pool.query(
+    `UPDATE voice_sessions
+       SET left_at = $1, duration_seconds = $2
+     WHERE id = (
+       SELECT id FROM voice_sessions
+        WHERE guild_id  = $3
+          AND user_id   = $4
+          AND channel_id = $5
+          AND left_at IS NULL
+        ORDER BY joined_at DESC
+        LIMIT 1
+     )`,
+    [leftAt.toISOString(), durationSeconds, guildId, userId, session.channelId],
+  );
+
+  // DB UPDATE succeeded - now safe to delete from in-memory state
+  activeSessions.delete(key);
 
   return durationSeconds;
 }
@@ -154,32 +149,42 @@ export async function handleVoiceStateUpdate(oldState, newState) {
   if (isBot) return;
 
   const cfg = getVoiceConfig(guildId);
-  if (!cfg.enabled) return;
-
   const oldChannel = oldState.channelId;
   const newChannel = newState.channelId;
+
+  // Always allow leave/move paths to close existing sessions, even when disabled
+  // This prevents orphaned in-memory sessions if the feature is toggled off mid-session
+  if (oldChannel && !newChannel) {
+    // User left all voice channels
+    await closeSession(guildId, userId).catch((err) =>
+      logError('closeSession failed', { guildId, userId, error: err.message }),
+    );
+    info('Voice leave', { guildId, userId, channelId: oldChannel });
+    return;
+  } else if (oldChannel && newChannel && oldChannel !== newChannel) {
+    // User moved between channels — close old session
+    await closeSession(guildId, userId).catch((err) =>
+      logError('closeSession(move) failed', { guildId, userId, error: err.message }),
+    );
+    info('Voice move', { guildId, userId, from: oldChannel, to: newChannel });
+    // Fall through to potentially open new session if enabled
+  }
+
+  // Early return for join/open paths when disabled
+  if (!cfg.enabled) return;
 
   if (!oldChannel && newChannel) {
     // User joined a voice channel
     await openSession(guildId, userId, newChannel).catch((err) =>
       logError('openSession failed', { guildId, userId, error: err.message }),
     );
+    // Log success only after openSession resolves
     info('Voice join', { guildId, userId, channelId: newChannel });
-  } else if (oldChannel && !newChannel) {
-    // User left all voice channels
-    await closeSession(guildId, userId).catch((err) =>
-      logError('closeSession failed', { guildId, userId, error: err.message }),
-    );
-    info('Voice leave', { guildId, userId, channelId: oldChannel });
   } else if (oldChannel && newChannel && oldChannel !== newChannel) {
-    // User moved between channels — close old session, open new
-    await closeSession(guildId, userId).catch((err) =>
-      logError('closeSession(move) failed', { guildId, userId, error: err.message }),
-    );
+    // User moved between channels — open new session (close already handled above)
     await openSession(guildId, userId, newChannel).catch((err) =>
       logError('openSession(move) failed', { guildId, userId, error: err.message }),
     );
-    info('Voice move', { guildId, userId, from: oldChannel, to: newChannel });
   }
   // Mute/deafen/stream changes don't affect session tracking
 }

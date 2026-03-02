@@ -33,8 +33,10 @@ exports.up = (pgm) => {
     ON voice_sessions(guild_id, joined_at)
   `);
 
+  // Unique partial index prevents duplicate open sessions for the same (guild_id, user_id)
+  // This ensures crash recovery cannot leave multiple open rows per user per guild
   pgm.sql(`
-    CREATE INDEX IF NOT EXISTS idx_voice_sessions_open
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_sessions_open_unique
     ON voice_sessions(guild_id, user_id)
     WHERE left_at IS NULL
   `);
@@ -42,7 +44,7 @@ exports.up = (pgm) => {
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.down = (pgm) => {
-  pgm.sql(`DROP INDEX IF EXISTS idx_voice_sessions_open`);
+  pgm.sql(`DROP INDEX IF EXISTS idx_voice_sessions_open_unique`);
   pgm.sql(`DROP INDEX IF EXISTS idx_voice_sessions_guild_joined`);
   pgm.sql(`DROP INDEX IF EXISTS idx_voice_sessions_guild_user`);
   pgm.sql(`DROP TABLE IF EXISTS voice_sessions`);
