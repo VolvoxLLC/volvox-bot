@@ -289,7 +289,7 @@ async function executeAction(message, client, result, autoModConfig, guildConfig
     case 'ban':
       if (!member || !guild) break;
       await guild.members
-        .ban(member.user.id, { reason, deleteMessageSeconds: 60 * 60 })
+        .ban(member.user.id, { reason, deleteMessageSeconds: 0 })
         .catch((err) =>
           logError('AI auto-mod: ban failed', { userId: member.user.id, error: err?.message }),
         );
