@@ -44,6 +44,7 @@ import {
   stopConversationCleanup,
 } from './modules/ai.js';
 import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
+import { loadAliasesFromDb, resolveAlias } from './modules/commandAliases.js';
 import { getConfig, loadConfig } from './modules/config.js';
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
@@ -244,10 +245,16 @@ client.on('interactionCreate', async (interaction) => {
   try {
     info('Slash command received', { command: commandName, user: interaction.user.tag });
 
-    // Permission check
+    // Resolve alias → target command (per-guild custom aliases).
+    // Do this early so permission checks and command lookup both use the
+    // resolved (canonical) command name rather than the alias name.
+    const resolvedCommandName = resolveAlias(interaction.guildId, commandName) || commandName;
+
+    // Permission check (using resolved command name so alias permissions mirror target)
     const guildConfig = getConfig(interaction.guildId);
-    if (!hasPermission(member, commandName, guildConfig)) {
-      const permLevel = guildConfig.permissions?.allowedCommands?.[commandName] || 'administrator';
+    if (!hasPermission(member, resolvedCommandName, guildConfig)) {
+      const permLevel =
+        guildConfig.permissions?.allowedCommands?.[resolvedCommandName] || 'administrator';
       await safeReply(interaction, {
         content: getPermissionError(commandName, permLevel),
         ephemeral: true,
@@ -257,7 +264,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     // Execute command from collection
-    const command = client.commands.get(commandName);
+    const command = client.commands.get(resolvedCommandName);
     if (!command) {
       await safeReply(interaction, {
         content: '❌ Command not found.',
@@ -268,7 +275,8 @@ client.on('interactionCreate', async (interaction) => {
 
     await command.execute(interaction);
     info('Command executed', {
-      command: commandName,
+      command: resolvedCommandName,
+      alias: resolvedCommandName !== commandName ? commandName : undefined,
       user: interaction.user.tag,
       guildId: interaction.guildId,
       channelId: interaction.channelId,
@@ -481,6 +489,11 @@ async function startup() {
 
   // Load opt-out preferences from DB before enabling memory features
   await loadOptOuts();
+
+  // Load command aliases from DB into memory cache
+  if (dbPool) {
+    await loadAliasesFromDb(dbPool);
+  }
 
   // Check mem0 availability for user memory features (with timeout to avoid blocking startup).
   // AbortController prevents a late-resolving health check from calling markAvailable()
