@@ -725,6 +725,23 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   const buf = channelBuffers.get(channelId);
   if (!buf || buf.messages.length === 0) return;
 
+  // Check if channel is blocked before processing buffered messages.
+  // This guards against the case where a channel is blocked AFTER messages
+  // were buffered but BEFORE evaluateNow runs.
+  const usedClient = evalClient || client;
+  try {
+    const ch = await fetchChannelCached(usedClient, channelId);
+    const guildId = ch?.guildId ?? null;
+    // Only check parentId for threads - for regular channels, parentId is the category ID
+    const parentId = ch?.isThread?.() ? ch.parentId : null;
+    if (isChannelBlocked(channelId, parentId, guildId)) {
+      debug('evaluateNow skipping blocked channel with buffered messages', { channelId, guildId });
+      return;
+    }
+  } catch (err) {
+    debug('Failed to fetch channel for blocked check, continuing', { channelId, error: err?.message });
+  }
+
   // Cancel any existing in-flight evaluation (abort before checking guard)
   if (buf.abortController) {
     buf.abortController.abort();

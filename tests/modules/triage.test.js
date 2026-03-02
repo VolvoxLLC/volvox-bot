@@ -532,6 +532,36 @@ describe('triage module', () => {
       expect(mockClassifierSend).not.toHaveBeenCalled();
     });
 
+    it('should skip evaluation when channel becomes blocked after buffering', async () => {
+      const { isChannelBlocked } = await import('../../src/modules/ai.js');
+
+      // First, buffer a message while channel is NOT blocked
+      accumulateMessage(
+        makeMessage('ch-becomes-blocked', 'hello world', {
+          id: 'msg-buffered',
+          username: 'alice',
+          userId: 'u99',
+          guild: { id: 'g1' },
+        }),
+        config,
+      );
+
+      // Verify message was added to history (channel wasn't blocked at accumulate time)
+      expect(addToHistory).toHaveBeenCalled();
+
+      // Now block the channel
+      isChannelBlocked.mockReturnValue(true);
+
+      // Call evaluateNow - it should check blocked status and skip
+      await evaluateNow('ch-becomes-blocked', config, client, healthMonitor);
+
+      // Classifier should NOT have been called despite buffered messages
+      expect(mockClassifierSend).not.toHaveBeenCalled();
+
+      // Reset the mock to not affect subsequent tests
+      isChannelBlocked.mockReturnValue(false);
+    });
+
     it('should set pendingReeval when concurrent evaluation requested', async () => {
       const classResult = {
         classification: 'respond',
