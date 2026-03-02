@@ -10,6 +10,7 @@
 
 import { addPostgresTransport, error, info, removePostgresTransport } from './logger.js';
 import { onConfigChange } from './modules/config.js';
+import { fireEvent } from './modules/webhookNotifier.js';
 import { cacheDelPattern } from './utils/cache.js';
 
 /** @type {import('winston').transport | null} */
@@ -108,6 +109,15 @@ export function registerConfigListeners({ dbPool, config }) {
       await cacheDelPattern(`leaderboard:${guildId}*`).catch(() => {});
       await cacheDelPattern(`reputation:${guildId}:*`).catch(() => {});
     }
+  });
+
+  // ── Webhook notifications for config changes ─────────────────────────
+  onConfigChange('*', async (_newValue, _oldValue, path, guildId) => {
+    // Skip internal/logging changes and notification webhook updates (avoid recursion)
+    if (path.startsWith('logging.') || path.startsWith('notifications.')) return;
+    const targetGuildId = guildId && guildId !== 'global' ? guildId : null;
+    if (!targetGuildId) return;
+    await fireEvent('config.changed', targetGuildId, { path }).catch(() => {});
   });
 }
 
