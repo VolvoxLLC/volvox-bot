@@ -1416,12 +1416,12 @@ export function ConfigEditor() {
                     max={100}
                     step={5}
                     value={Math.round(
-                      (((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {})[cat] ??
+                      ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[cat] ??
                         0.7) * 100,
                     )}
                     onChange={(e) => {
                       const raw = Number(e.target.value);
-                      const v = isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
+                      const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
                       updateAiAutoModField('thresholds', {
                         ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {}),
                         [cat]: v,
@@ -1442,8 +1442,7 @@ export function ConfigEditor() {
                   <select
                     id={`ai-action-${cat}`}
                     value={
-                      ((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {})[cat] ??
-                      'flag'
+                      (draftConfig.aiAutoMod?.actions as Record<string, string>)?.[cat] ?? 'flag'
                     }
                     onChange={(e) => {
                       updateAiAutoModField('actions', {

@@ -5,27 +5,18 @@ import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-function Slider({
-  className,
-  ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+function Slider({ className, ...props }: React.ComponentProps<typeof SliderPrimitive.Root>) {
   return (
     <SliderPrimitive.Root
       data-slot="slider"
-      className={cn(
-        'relative flex w-full touch-none items-center select-none',
-        className,
-      )}
+      className={cn('relative flex w-full touch-none items-center select-none', className)}
       {...props}
     >
       <SliderPrimitive.Track
         data-slot="slider-track"
         className="bg-secondary relative h-1.5 w-full grow overflow-hidden rounded-full"
       >
-        <SliderPrimitive.Range
-          data-slot="slider-range"
-          className="bg-primary absolute h-full"
-        />
+        <SliderPrimitive.Range data-slot="slider-range" className="bg-primary absolute h-full" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
         data-slot="slider-thumb"

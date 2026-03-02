@@ -360,7 +360,9 @@ export function PerformanceDashboard() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="time" tick={{ fontSize: 11 }} />
                 <YAxis unit=" MB" tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${v} MB`] : ['']} />
+                <Tooltip
+                  formatter={(v: number | undefined) => (v !== undefined ? [`${v} MB`] : [''])}
+                />
                 <Area
                   type="monotone"
                   dataKey="heap"
@@ -400,7 +402,9 @@ export function PerformanceDashboard() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="time" tick={{ fontSize: 11 }} />
                 <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${v}%`] : ['']} />
+                <Tooltip
+                  formatter={(v: number | undefined) => (v !== undefined ? [`${v}%`] : [''])}
+                />
                 <Area
                   type="monotone"
                   dataKey="cpu"
