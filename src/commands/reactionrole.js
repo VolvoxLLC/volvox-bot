@@ -25,7 +25,6 @@ import {
   insertReactionRoleMenu,
   listMenusForGuild,
   removeReactionRoleEntry,
-  resolveEmojiString,
   upsertReactionRoleEntry,
 } from '../modules/reactionRoles.js';
 import { safeEditReply } from '../utils/safeSend.js';
