@@ -42,6 +42,7 @@ import {
   ROLE_MENU_SELECT_ID,
   RULES_ACCEPT_BUTTON_ID,
 } from './welcomeOnboarding.js';
+import { handleVoiceStateUpdate } from './voice.js';
 
 /** @type {boolean} Guard against duplicate process-level handler registration */
 let processHandlersRegistered = false;
@@ -734,6 +735,7 @@ export function registerEventHandlers(client, config, healthMonitor) {
   registerTicketCloseButtonHandler(client);
   registerReminderButtonHandler(client);
   registerWelcomeOnboardingHandlers(client);
+  registerVoiceStateHandler(client);
   registerErrorHandlers(client);
 }
 
@@ -857,5 +859,18 @@ export function registerTicketCloseButtonHandler(client) {
         content: `❌ ${err.message}`,
       });
     }
+  });
+}
+
+/**
+ * Register the voiceStateUpdate handler for voice channel activity tracking.
+ *
+ * @param {Client} client - Discord client instance
+ */
+export function registerVoiceStateHandler(client) {
+  client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+    await handleVoiceStateUpdate(oldState, newState).catch((err) => {
+      logError('Voice state update handler error', { error: err.message });
+    });
   });
 }
