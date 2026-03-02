@@ -62,7 +62,7 @@ export function registerConfigListeners({ dbPool, config }) {
     'logging.database.flushIntervalMs',
     'logging.database.minLevel',
   ]) {
-    onConfigChange(key, async (_newValue, _oldValue, path, guildId) => {
+    onConfigChange(key, async (_newValue, _oldValue, guildId) => {
       if (guildId && guildId !== 'global') return;
       transportLock = transportLock
         .then(() => updateLoggingTransport(path))
@@ -90,17 +90,17 @@ export function registerConfigListeners({ dbPool, config }) {
   // ── Cache invalidation on config changes ────────────────────────────
   // When channel-related config changes, invalidate Discord API caches
   // so the bot picks up the new channel references immediately.
-  onConfigChange('welcome.*', async (_newValue, _oldValue, path, guildId) => {
+  onConfigChange('welcome.*', async (_newValue, _oldValue, guildId) => {
     if (guildId && guildId !== 'global') {
       await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
     }
   });
-  onConfigChange('starboard.*', async (_newValue, _oldValue, path, guildId) => {
+  onConfigChange('starboard.*', async (_newValue, _oldValue, guildId) => {
     if (guildId && guildId !== 'global') {
       await cacheDelPattern(`discord:guild:${guildId}:*`).catch(() => {});
     }
   });
-  onConfigChange('reputation.*', async (_newValue, _oldValue, path, guildId) => {
+  onConfigChange('reputation.*', async (_newValue, _oldValue, guildId) => {
     if (guildId && guildId !== 'global') {
       await cacheDelPattern(`leaderboard:${guildId}:*`).catch(() => {});
       await cacheDelPattern(`reputation:${guildId}:*`).catch(() => {});

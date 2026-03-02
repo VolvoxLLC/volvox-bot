@@ -9,7 +9,7 @@
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
-import { cacheGetOrSet, TTL } from '../../utils/cache.js';
+import { cacheGetOrSet, cacheDelPattern, TTL } from '../../utils/cache.js';
 import { computeLevel } from '../../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
 import { rateLimit } from '../middleware/rateLimit.js';
