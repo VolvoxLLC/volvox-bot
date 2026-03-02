@@ -21,6 +21,7 @@ import notificationsRouter from './routes/notifications.js';
 import performanceRouter from './routes/performance.js';
 import tempRolesRouter from './routes/tempRoles.js';
 import webhooksRouter from './routes/webhooks.js';
+import welcomeRouter from './routes/welcome.js';
 
 const router = Router();
 
@@ -63,12 +64,14 @@ router.use('/temp-roles', requireAuth(), auditLogMiddleware(), tempRolesRouter);
 // GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
 
+// Welcome routes — require API secret or OAuth2 JWT
+router.use('/guilds/:id/welcome', requireAuth(), auditLogMiddleware(), welcomeRouter);
+
 // Performance metrics — require x-api-secret (authenticated via route handler)
 router.use('/performance', performanceRouter);
 
 // Notification webhook management routes — require API secret or OAuth2 JWT
 router.use('/guilds', requireAuth(), auditLogMiddleware(), notificationsRouter);
-
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
 
