@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
-import { getBotOwnerIds } from '../../utils/permissions.js';
+import { flattenToLeafPaths } from '../../utils/flattenToLeafPaths.js';
 import {
   maskSensitiveFields,
   READABLE_CONFIG_KEYS,
@@ -16,6 +16,11 @@ import {
 import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
 import { DANGEROUS_KEYS } from '../utils/dangerousKeys.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
+
+// Re-export flattenToLeafPaths for backward compatibility
+export { flattenToLeafPaths };
+
+import { requireGlobalAdmin } from '../middleware/requireGlobalAdmin.js';
 
 // Re-export validateSingleValue so existing callers that import it from this
 // module continue to work without changes.
@@ -53,7 +58,6 @@ export function validateConfigSchema(config) {
 
   return errors;
 }
-
 
 /**
  * Flattens a nested object into dot-notated leaf path/value pairs, using the provided prefix as the root path.
@@ -123,7 +127,7 @@ function requireGlobalAdmin(req, res, next) {
  *       "403":
  *         $ref: "#/components/responses/Forbidden"
  */
-router.get('/', requireGlobalAdmin, (_req, res) => {
+router.get('/', requireGlobalAdmin, (req, res) => {
   const config = getConfig();
   const safeConfig = {};
 

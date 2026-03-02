@@ -12,12 +12,16 @@ import { getConfig } from '../../modules/config.js';
 import { computeLevel } from '../../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
 import { cacheGetOrSet, TTL } from '../../utils/cache.js';
-import { rateLimit } from '../middleware/rateLimit.js';
+import { redisRateLimit } from '../middleware/redisRateLimit.js';
 
 const router = Router();
 
 /** Aggressive rate limiter for public endpoints: 30 req/min per IP */
-const communityRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
+const communityRateLimit = redisRateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  keyPrefix: 'rl:community',
+});
 router.use(communityRateLimit);
 
 /**

@@ -6,6 +6,7 @@ import {
   buildRulesAgreementMessage,
   normalizeWelcomeOnboardingConfig,
 } from '../modules/welcomeOnboarding.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { isModerator } from '../utils/permissions.js';
 import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
@@ -36,9 +37,7 @@ export async function execute(interaction) {
   const resultLines = [];
 
   if (onboarding.rulesChannel) {
-    const rulesChannel =
-      interaction.guild.channels.cache.get(onboarding.rulesChannel) ||
-      (await interaction.guild.channels.fetch(onboarding.rulesChannel).catch(() => null));
+    const rulesChannel = await fetchChannelCached(interaction.client, onboarding.rulesChannel);
 
     if (rulesChannel?.isTextBased?.()) {
       const rulesMsg = buildRulesAgreementMessage();
@@ -53,9 +52,10 @@ export async function execute(interaction) {
 
   const roleMenuMsg = buildRoleMenuMessage(guildConfig?.welcome);
   if (roleMenuMsg && guildConfig?.welcome?.channelId) {
-    const welcomeChannel =
-      interaction.guild.channels.cache.get(guildConfig.welcome.channelId) ||
-      (await interaction.guild.channels.fetch(guildConfig.welcome.channelId).catch(() => null));
+    const welcomeChannel = await fetchChannelCached(
+      interaction.client,
+      guildConfig.welcome.channelId,
+    );
 
     if (welcomeChannel?.isTextBased?.()) {
       await safeSend(welcomeChannel, roleMenuMsg);

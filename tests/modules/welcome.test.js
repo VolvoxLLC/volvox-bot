@@ -29,8 +29,10 @@ vi.mock('../../src/logger.js', () => ({
 import {
   __getCommunityActivityState,
   __resetCommunityActivityState,
+  pickWelcomeVariant,
   recordCommunityActivity,
   renderWelcomeMessage,
+  resolveWelcomeTemplate,
   sendWelcomeMessage,
 } from '../../src/modules/welcome.js';
 
@@ -87,6 +89,100 @@ describe('renderWelcomeMessage', () => {
       { name: 'Test', memberCount: 1 },
     );
     expect(result).toBe('Unknown');
+  });
+
+  it('should replace {guild} with guild name (alias)', () => {
+    const result = renderWelcomeMessage(
+      'Welcome to {guild}!',
+      { id: '123' },
+      { name: 'My Server', memberCount: 10 },
+    );
+    expect(result).toBe('Welcome to My Server!');
+  });
+
+  it('should replace {count} with member count (alias)', () => {
+    const result = renderWelcomeMessage(
+      'You are member #{count}!',
+      { id: '123' },
+      { name: 'Test', memberCount: 99 },
+    );
+    expect(result).toBe('You are member #99!');
+  });
+
+  it('should support all variables together', () => {
+    const result = renderWelcomeMessage(
+      '{user} ({username}) joined {guild} aka {server} as member #{count} / #{memberCount}',
+      { id: '42', username: 'alice' },
+      { name: 'Cool Guild', memberCount: 7 },
+    );
+    expect(result).toBe('<@42> (alice) joined Cool Guild aka Cool Guild as member #7 / #7');
+  });
+});
+
+describe('pickWelcomeVariant', () => {
+  it('should return a variant from the array', () => {
+    const variants = ['Hello {user}!', 'Howdy {user}!', 'Hey {user}!'];
+    const picked = pickWelcomeVariant(variants, 'fallback');
+    expect(variants).toContain(picked);
+  });
+
+  it('should return the fallback when variants is empty', () => {
+    expect(pickWelcomeVariant([], 'fallback')).toBe('fallback');
+  });
+
+  it('should return the fallback when variants is null', () => {
+    expect(pickWelcomeVariant(null, 'fallback')).toBe('fallback');
+  });
+
+  it('should return the hard-coded default when both are missing', () => {
+    expect(pickWelcomeVariant(null, undefined)).toBe('Welcome, {user}!');
+  });
+
+  it('should return the single variant when array has one entry', () => {
+    expect(pickWelcomeVariant(['Only one!'], 'fallback')).toBe('Only one!');
+  });
+});
+
+describe('resolveWelcomeTemplate', () => {
+  const baseConfig = {
+    message: 'Global message {user}',
+    variants: ['Variant A {user}', 'Variant B {user}'],
+    channels: [
+      {
+        channelId: 'ch-specific',
+        message: 'Channel-specific {user}',
+        variants: ['Ch variant A {user}'],
+      },
+    ],
+  };
+
+  it('should return per-channel message when channelId matches', () => {
+    const template = resolveWelcomeTemplate('ch-specific', baseConfig);
+    expect(template).toBe('Ch variant A {user}'); // only one variant
+  });
+
+  it('should pick from global variants when no channel match', () => {
+    const template = resolveWelcomeTemplate('ch-other', baseConfig);
+    expect(['Variant A {user}', 'Variant B {user}']).toContain(template);
+  });
+
+  it('should fall back to global message when no variants configured', () => {
+    const cfg = { message: 'Only message {user}', channelId: 'ch1' };
+    const template = resolveWelcomeTemplate('ch1', cfg);
+    expect(template).toBe('Only message {user}');
+  });
+
+  it('should handle missing channels array gracefully', () => {
+    const cfg = { message: 'Fallback {user}' };
+    expect(resolveWelcomeTemplate('ch-any', cfg)).toBe('Fallback {user}');
+  });
+
+  it('should use per-channel message when no per-channel variants', () => {
+    const cfg = {
+      message: 'Global',
+      channels: [{ channelId: 'ch1', message: 'Channel msg {user}' }],
+    };
+    expect(resolveWelcomeTemplate('ch1', cfg)).toBe('Channel msg {user}');
   });
 });
 
@@ -588,5 +684,155 @@ describe('sendWelcomeMessage', () => {
     await sendWelcomeMessage(member, client, config);
     const msg = mockSend.mock.calls[0][0].content;
     expect(msg).toContain('milestone');
+  });
+});
+
+describe('sendWelcomeMessage – variants and per-channel', () => {
+  it('should pick a variant from global variants array', async () => {
+    const mockSend = vi.fn();
+    const member = {
+      id: '999',
+      user: { tag: 'varuser#0001', username: 'varuser' },
+      guild: { name: 'Variant Guild', memberCount: 5 },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        variants: ['Hey {user}!', 'Hello {user}!', 'Hi {user}!'],
+      },
+    };
+
+    await sendWelcomeMessage(member, client, config);
+    expect(mockSend).toHaveBeenCalledOnce();
+    const sent = mockSend.mock.calls[0][0].content;
+    const expected = ['Hey <@999>!', 'Hello <@999>!', 'Hi <@999>!'];
+    expect(expected).toContain(sent);
+  });
+
+  it('should send to additional per-channel configs', async () => {
+    const mockSendPrimary = vi.fn();
+    const mockSendSecondary = vi.fn();
+
+    const channelMap = {
+      'ch-primary': { send: mockSendPrimary, isTextBased: () => true },
+      'ch-extra': { send: mockSendSecondary, isTextBased: () => true },
+    };
+
+    const member = {
+      id: '777',
+      user: { tag: 'extrauser#0002', username: 'extrauser' },
+      guild: { name: 'Multi Guild', memberCount: 20 },
+    };
+
+    const client = {
+      channels: {
+        cache: { get: (id) => channelMap[id] || null },
+        fetch: vi.fn().mockImplementation((id) => Promise.resolve(channelMap[id] || null)),
+      },
+    };
+
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch-primary',
+        message: 'Primary: welcome {user}!',
+        channels: [
+          {
+            channelId: 'ch-extra',
+            message: 'Extra: welcome {user} to {guild}!',
+          },
+        ],
+      },
+    };
+
+    await sendWelcomeMessage(member, client, config);
+
+    expect(mockSendPrimary).toHaveBeenCalledOnce();
+    expect(mockSendPrimary.mock.calls[0][0].content).toBe('Primary: welcome <@777>!');
+
+    expect(mockSendSecondary).toHaveBeenCalledOnce();
+    expect(mockSendSecondary.mock.calls[0][0].content).toBe(
+      'Extra: welcome <@777> to Multi Guild!',
+    );
+  });
+
+  it('should use per-channel variant for extra channel', async () => {
+    const mockSendExtra = vi.fn();
+    const channelMap = {
+      'ch-primary': { send: vi.fn(), isTextBased: () => true },
+      'ch-extra': { send: mockSendExtra, isTextBased: () => true },
+    };
+    const member = {
+      id: '555',
+      user: { tag: 'vuser#0003', username: 'vuser' },
+      guild: { name: 'V Guild', memberCount: 3 },
+    };
+    const client = {
+      channels: {
+        cache: { get: (id) => channelMap[id] || null },
+        fetch: vi.fn().mockImplementation((id) => Promise.resolve(channelMap[id] || null)),
+      },
+    };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch-primary',
+        message: 'Primary',
+        channels: [
+          {
+            channelId: 'ch-extra',
+            variants: ['Variant X {user}', 'Variant Y {user}'],
+          },
+        ],
+      },
+    };
+
+    await sendWelcomeMessage(member, client, config);
+    const sent = mockSendExtra.mock.calls[0][0].content;
+    expect(['Variant X <@555>', 'Variant Y <@555>']).toContain(sent);
+  });
+
+  it('should not send to per-channel when channelId same as primary', async () => {
+    const mockSend = vi.fn();
+    const member = {
+      id: '111',
+      user: { tag: 'sameuser#0004', username: 'sameuser' },
+      guild: { name: 'Same Guild', memberCount: 1 },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        message: 'Welcome {user}',
+        channels: [{ channelId: 'ch1', message: 'Duplicate channel' }],
+      },
+    };
+
+    await sendWelcomeMessage(member, client, config);
+    // Only one call — duplicates are filtered
+    expect(mockSend).toHaveBeenCalledOnce();
+  });
+
+  it('should render {guild} and {count} variables correctly', async () => {
+    const mockSend = vi.fn();
+    const member = {
+      id: '321',
+      user: { tag: 'aliasuser#0005', username: 'aliasuser' },
+      guild: { name: 'Alias Guild', memberCount: 88 },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        message: '{user} joined {guild} as member #{count}',
+      },
+    };
+
+    await sendWelcomeMessage(member, client, config);
+    expect(mockSend.mock.calls[0][0].content).toBe('<@321> joined Alias Guild as member #88');
   });
 });
