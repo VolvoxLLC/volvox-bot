@@ -90,41 +90,6 @@ export function groupMessagesIntoConversations(rows) {
   return conversations;
 }
 
-/**
- * Build a conversation summary from grouped messages.
- *
- * @param {Object} convo - Grouped conversation object
- * @param {import('discord.js').Guild} [guild] - Optional guild for channel name resolution
- * @returns {Object} Conversation summary
- */
-function buildConversationSummary(convo, guild) {
-  const participantMap = new Map();
-  for (const msg of convo.messages) {
-    const key = `${msg.username || 'unknown'}-${msg.role}`;
-    if (!participantMap.has(key)) {
-      participantMap.set(key, { username: msg.username || 'unknown', role: msg.role });
-    }
-  }
-
-  const firstMsg = convo.messages[0];
-  const preview = firstMsg?.content
-    ? firstMsg.content.slice(0, 100) + (firstMsg.content.length > 100 ? '…' : '')
-    : '';
-
-  const channelName = guild?.channels?.cache?.get(convo.channelId)?.name || null;
-
-  return {
-    id: convo.id,
-    channelId: convo.channelId,
-    channelName,
-    participants: Array.from(participantMap.values()),
-    messageCount: convo.messages.length,
-    firstMessageAt: new Date(convo.firstTime).toISOString(),
-    lastMessageAt: new Date(convo.lastTime).toISOString(),
-    preview,
-  };
-}
-
 // ─── GET / — List conversations (grouped) ─────────────────────────────────────
 
 /**
@@ -245,7 +210,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
     return res.status(503).json({ error: 'Database not available' });
   }
 
-  const { page, limit } = parsePagination(req.query);
+  const { page, limit, offset } = parsePagination(req.query);
   const guildId = req.params.id;
 
   try {
@@ -256,6 +221,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
 
     if (req.query.search && typeof req.query.search === 'string') {
       paramIndex++;
+      // Uses idx_conversations_content_trgm (GIN/trgm) added in migration 004
       whereParts.push(`content ILIKE $${paramIndex}`);
       values.push(`%${escapeIlike(req.query.search)}%`);
     }
@@ -301,30 +267,94 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
 
     const whereClause = whereParts.join(' AND ');
 
-    // Fetch matching messages for grouping (capped at 10000 rows to prevent memory exhaustion)
-    // Time-based grouping requires sorted rows; paginate after grouping
+    // Add pagination params after all WHERE params
+    const limitParam = paramIndex + 1;
+    const offsetParam = paramIndex + 2;
+    values.push(limit, offset);
+
+    // SQL-based conversation grouping via window functions.
+    // Eliminates the previous approach of fetching up to 10,000 rows into Node
+    // memory and grouping/paginating in JavaScript.
+    //
+    // CTE breakdown:
+    //   lag_step    — compute gap from previous message in same channel
+    //   numbered    — assign cumulative conversation number per channel
+    //   summaries   — aggregate each (channel, conv_num) into a summary row
+    //
+    // COUNT(*) OVER () gives total conversation count without a second query.
+    // Pagination happens at the DB level via LIMIT/OFFSET on the summary rows.
     const result = await dbPool.query(
-      `SELECT id, channel_id, role, content, username, created_at
+      `WITH lag_step AS (
+         SELECT
+           id, channel_id, username, role, content, created_at,
+           CASE
+             WHEN LAG(created_at) OVER (PARTITION BY channel_id ORDER BY created_at) IS NULL
+               OR EXTRACT(EPOCH FROM (
+                    created_at
+                    - LAG(created_at) OVER (PARTITION BY channel_id ORDER BY created_at)
+                  )) > ${CONVERSATION_GAP_MINUTES * 60}
+             THEN 1 ELSE 0
+           END AS is_conv_start
          FROM conversations
          WHERE ${whereClause}
-         ORDER BY created_at DESC
-         LIMIT 10000 -- capped to prevent runaway memory; 30-day default window keeps this reasonable`,
+       ),
+       numbered AS (
+         SELECT *,
+           SUM(is_conv_start)
+             OVER (PARTITION BY channel_id ORDER BY created_at) AS conv_num
+         FROM lag_step
+       ),
+       summaries AS (
+         SELECT
+           channel_id,
+           conv_num,
+           MIN(id)::int                                         AS id,
+           MIN(created_at)                                      AS first_msg_time,
+           MAX(created_at)                                      AS last_msg_time,
+           COUNT(*)::int                                        AS message_count,
+           (ARRAY_AGG(content ORDER BY created_at))[1]         AS preview_content,
+           ARRAY_AGG(DISTINCT
+             COALESCE(username, 'unknown') || ':::' || role
+           )                                                    AS participant_pairs
+         FROM numbered
+         GROUP BY channel_id, conv_num
+       )
+       SELECT
+         id, channel_id, first_msg_time, last_msg_time,
+         message_count, preview_content, participant_pairs,
+         COUNT(*) OVER ()::int AS total_conversations
+       FROM summaries
+       ORDER BY last_msg_time DESC
+       LIMIT $${limitParam} OFFSET $${offsetParam}`,
       values,
     );
 
-    // Reverse to ASC order so groupMessagesIntoConversations sees chronological messages.
-    // Fetching DESC first ensures we get the most recent 10k rows, not the oldest.
-    result.rows.reverse();
-    const allConversations = groupMessagesIntoConversations(result.rows);
-    const total = allConversations.length;
+    const total = result.rows[0]?.total_conversations ?? 0;
 
-    // Paginate grouped conversations
-    const startIdx = (page - 1) * limit;
-    const paginatedConversations = allConversations.slice(startIdx, startIdx + limit);
+    const conversations = result.rows.map((row) => {
+      const content = row.preview_content || '';
+      const preview = content.slice(0, 100) + (content.length > 100 ? '\u2026' : '');
+      const channelName = req.guild?.channels?.cache?.get(row.channel_id)?.name || null;
 
-    const conversations = paginatedConversations.map((convo) =>
-      buildConversationSummary(convo, req.guild),
-    );
+      // Parse participant_pairs encoded as "username:::role"
+      const participants = (row.participant_pairs || []).map((p) => {
+        const sepIdx = p.lastIndexOf(':::');
+        return sepIdx === -1
+          ? { username: p, role: 'unknown' }
+          : { username: p.slice(0, sepIdx), role: p.slice(sepIdx + 3) };
+      });
+
+      return {
+        id: row.id,
+        channelId: row.channel_id,
+        channelName,
+        participants,
+        messageCount: row.message_count,
+        firstMessageAt: new Date(row.first_msg_time).toISOString(),
+        lastMessageAt: new Date(row.last_msg_time).toISOString(),
+        preview,
+      };
+    });
 
     res.json({ conversations, total, page });
   } catch (err) {
@@ -975,24 +1005,23 @@ router.post(
     }
 
     try {
-      // Verify the message exists and belongs to this guild
-      const msgCheck = await dbPool.query(
-        'SELECT id, channel_id, created_at FROM conversations WHERE id = $1 AND guild_id = $2',
-        [messageId, guildId],
-      );
+      // Run both verification lookups in parallel — they are independent queries.
+      // msgCheck verifies the target message exists in this guild.
+      // anchorCheck verifies the conversation anchor exists in this guild.
+      const [msgCheck, anchorCheck] = await Promise.all([
+        dbPool.query(
+          'SELECT id, channel_id, created_at FROM conversations WHERE id = $1 AND guild_id = $2',
+          [messageId, guildId],
+        ),
+        dbPool.query(
+          'SELECT id, channel_id, created_at FROM conversations WHERE id = $1 AND guild_id = $2',
+          [conversationId, guildId],
+        ),
+      ]);
 
       if (msgCheck.rows.length === 0) {
         return res.status(404).json({ error: 'Message not found' });
       }
-
-      // Verify that the message belongs to the specified conversation.
-      // We check by confirming that the anchor message (conversationId) and
-      // the flagged message share the same channel and that the flagged
-      // message falls within the 2-hour fetch window used by the detail endpoint.
-      const anchorCheck = await dbPool.query(
-        'SELECT id, channel_id, created_at FROM conversations WHERE id = $1 AND guild_id = $2',
-        [conversationId, guildId],
-      );
 
       if (anchorCheck.rows.length === 0) {
         return res.status(404).json({ error: 'Conversation not found' });

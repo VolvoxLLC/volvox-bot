@@ -17,6 +17,7 @@ import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
+import notificationsRouter from './routes/notifications.js';
 import ticketsRouter from './routes/tickets.js';
 import webhooksRouter from './routes/webhooks.js';
 
@@ -58,6 +59,9 @@ router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter)
 // Audit log routes — require API secret or OAuth2 JWT
 // GET-only; no audit middleware needed (reads are not mutating actions)
 router.use('/guilds', requireAuth(), auditLogRouter);
+
+// Notification webhook management routes — require API secret or OAuth2 JWT
+router.use('/guilds', requireAuth(), auditLogMiddleware(), notificationsRouter);
 
 // Webhook routes — require API secret or OAuth2 JWT (endpoint further restricts to api-secret)
 router.use('/webhooks', requireAuth(), webhooksRouter);
