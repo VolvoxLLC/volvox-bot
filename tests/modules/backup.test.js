@@ -191,26 +191,26 @@ describe('importConfig', () => {
 // --- createBackup / listBackups ---
 
 describe('createBackup and listBackups', () => {
-  it('creates a backup file', () => {
-    const meta = createBackup(tmpDir);
+  it('creates a backup file', async () => {
+    const meta = await createBackup(tmpDir);
     expect(meta.id).toMatch(/^backup-/);
     expect(meta.size).toBeGreaterThan(0);
     expect(meta.createdAt).toMatch(/^\d{4}-/);
   });
 
   it('lists created backups sorted newest first', async () => {
-    createBackup(tmpDir);
+    await createBackup(tmpDir);
     await new Promise((r) => setTimeout(r, 10)); // ensure different timestamps (at least ms apart)
-    createBackup(tmpDir);
-    const backups = listBackups(tmpDir);
+    await createBackup(tmpDir);
+    const backups = await listBackups(tmpDir);
     expect(backups.length).toBe(2);
     expect(new Date(backups[0].createdAt) >= new Date(backups[1].createdAt)).toBe(true);
   });
 
-  it('returns empty array when no backups', () => {
+  it('returns empty array when no backups', async () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'empty-backup-'));
     try {
-      expect(listBackups(emptyDir)).toEqual([]);
+      expect(await listBackups(emptyDir)).toEqual([]);
     } finally {
       rmSync(emptyDir, { recursive: true });
     }
@@ -220,28 +220,28 @@ describe('createBackup and listBackups', () => {
 // --- readBackup ---
 
 describe('readBackup', () => {
-  it('reads a valid backup by id', () => {
-    const meta = createBackup(tmpDir);
-    const payload = readBackup(meta.id, tmpDir);
+  it('reads a valid backup by id', async () => {
+    const meta = await createBackup(tmpDir);
+    const payload = await readBackup(meta.id, tmpDir);
     expect(payload).toHaveProperty('config');
     expect(payload).toHaveProperty('exportedAt');
   });
 
-  it('throws for unknown id', () => {
-    expect(() => readBackup('backup-9999-01-01T00-00-00-000-0000', tmpDir)).toThrow(
+  it('throws for unknown id', async () => {
+    await expect(readBackup('backup-9999-01-01T00-00-00-000-0000', tmpDir)).rejects.toThrow(
       'Backup not found',
     );
   });
 
-  it('throws for path-traversal attempts', () => {
-    expect(() => readBackup('../etc/passwd', tmpDir)).toThrow('Invalid backup ID');
-    expect(() => readBackup('..\\windows\\system32', tmpDir)).toThrow('Invalid backup ID');
+  it('throws for path-traversal attempts', async () => {
+    await expect(readBackup('../etc/passwd', tmpDir)).rejects.toThrow('Invalid backup ID');
+    await expect(readBackup('..\\windows\\system32', tmpDir)).rejects.toThrow('Invalid backup ID');
   });
 
-  it('throws for corrupted backup', () => {
+  it('throws for corrupted backup', async () => {
     const badFile = join(tmpDir, 'backup-2020-01-01T00-00-00-000-0000.json');
     writeFileSync(badFile, 'not json', 'utf8');
-    expect(() => readBackup('backup-2020-01-01T00-00-00-000-0000', tmpDir)).toThrow(
+    await expect(readBackup('backup-2020-01-01T00-00-00-000-0000', tmpDir)).rejects.toThrow(
       'Backup file is corrupted',
     );
   });
@@ -251,7 +251,7 @@ describe('readBackup', () => {
 
 describe('restoreBackup', () => {
   it('restores config from a valid backup', async () => {
-    const meta = createBackup(tmpDir);
+    const meta = await createBackup(tmpDir);
     const result = await restoreBackup(meta.id, tmpDir);
     expect(result).toHaveProperty('applied');
     expect(result).toHaveProperty('skipped');
@@ -270,25 +270,25 @@ describe('restoreBackup', () => {
 // --- pruneBackups ---
 
 describe('pruneBackups', () => {
-  it('keeps the N most recent backups', () => {
+  it('keeps the N most recent backups', async () => {
     for (let i = 0; i < 5; i++) {
-      createBackup(tmpDir);
+      await createBackup(tmpDir);
     }
-    const deleted = pruneBackups({ daily: 3, weekly: 0 }, tmpDir);
+    const deleted = await pruneBackups({ daily: 3, weekly: 0 }, tmpDir);
     expect(deleted.length).toBe(2);
-    expect(listBackups(tmpDir).length).toBe(3);
+    expect((await listBackups(tmpDir)).length).toBe(3);
   });
 
-  it('keeps zero backups when daily=0 and weekly=0', () => {
-    createBackup(tmpDir);
-    createBackup(tmpDir);
-    const deleted = pruneBackups({ daily: 0, weekly: 0 }, tmpDir);
+  it('keeps zero backups when daily=0 and weekly=0', async () => {
+    await createBackup(tmpDir);
+    await createBackup(tmpDir);
+    const deleted = await pruneBackups({ daily: 0, weekly: 0 }, tmpDir);
     expect(deleted.length).toBe(2);
-    expect(listBackups(tmpDir).length).toBe(0);
+    expect((await listBackups(tmpDir)).length).toBe(0);
   });
 
-  it('returns empty array when no backups exist', () => {
-    expect(pruneBackups({}, tmpDir)).toEqual([]);
+  it('returns empty array when no backups exist', async () => {
+    expect(await pruneBackups({}, tmpDir)).toEqual([]);
   });
 });
 
