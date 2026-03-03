@@ -7,9 +7,12 @@ import {
   Bot,
   Coins,
   Download,
+  FileText,
+  Heart,
   MessageSquare,
   Minus,
   RefreshCw,
+  Star,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -31,7 +34,9 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
 import {
   endOfDayIso,
   formatDateInput,
@@ -50,7 +55,6 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Custom', value: 'custom' },
 ];
 
-const PIE_COLORS = ['#5865F2', '#22C55E', '#F59E0B', '#A855F7', '#06B6D4'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -102,6 +106,7 @@ function formatDeltaPercent(deltaPercent: number | null): string {
 
 export function AnalyticsDashboard() {
   const [now] = useState(() => new Date());
+  const chart = useChartTheme();
   const guildId = useGuildSelection({
     onGuildChange: () => setChannelFilter(null),
   });
@@ -256,9 +261,9 @@ export function AnalyticsDashboard() {
     () =>
       (analytics?.aiUsage.byModel ?? []).map((entry, index) => ({
         ...entry,
-        fill: PIE_COLORS[index % PIE_COLORS.length],
+        fill: chart.palette[index % chart.palette.length],
       })),
-    [analytics?.aiUsage.byModel],
+    [analytics?.aiUsage.byModel, chart.palette],
   );
 
   const tokenBreakdownData = useMemo(
@@ -485,6 +490,16 @@ export function AnalyticsDashboard() {
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => analytics && exportAnalyticsPdf(analytics)}
+            disabled={!analytics}
+          >
+            <FileText className="h-4 w-4" />
+            Export PDF
+          </Button>
         </div>
       </div>
 
@@ -638,7 +653,7 @@ export function AnalyticsDashboard() {
             <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={analytics?.messageVolume ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis dataKey="label" minTickGap={20} />
                   <YAxis allowDecimals={false} />
                   <Tooltip />
@@ -647,7 +662,7 @@ export function AnalyticsDashboard() {
                     type="monotone"
                     dataKey="messages"
                     name="Messages"
-                    stroke="#5865F2"
+                    stroke={chart.primary}
                     strokeWidth={2}
                     dot={false}
                   />
@@ -655,7 +670,7 @@ export function AnalyticsDashboard() {
                     type="monotone"
                     dataKey="aiRequests"
                     name="AI Requests"
-                    stroke="#22C55E"
+                    stroke={chart.success}
                     strokeWidth={2}
                     dot={false}
                   />
@@ -692,13 +707,13 @@ export function AnalyticsDashboard() {
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={tokenBreakdownData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis dataKey="label" />
                   <YAxis allowDecimals={false} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="prompt" name="Prompt tokens" fill="#5865F2" />
-                  <Bar dataKey="completion" name="Completion tokens" fill="#22C55E" />
+                  <Bar dataKey="prompt" name="Prompt tokens" fill={chart.primary} />
+                  <Bar dataKey="completion" name="Completion tokens" fill={chart.success} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -722,13 +737,13 @@ export function AnalyticsDashboard() {
                   layout="vertical"
                   margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis type="number" allowDecimals={false} />
                   <YAxis type="category" dataKey="name" width={120} />
                   <Tooltip />
                   <Bar
                     dataKey="messages"
-                    fill="#22C55E"
+                    fill={chart.success}
                     radius={[0, 6, 6, 0]}
                     onClick={(_value, index) => {
                       const selected = topChannels[index]?.channelId;
@@ -739,7 +754,7 @@ export function AnalyticsDashboard() {
                     {topChannels.map((channel) => (
                       <Cell
                         key={channel.channelId}
-                        fill={channel.channelId === channelFilter ? '#5865F2' : '#22C55E'}
+                        fill={channel.channelId === channelFilter ? chart.primary : chart.success}
                       />
                     ))}
                   </Bar>
@@ -790,6 +805,130 @@ export function AnalyticsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {(analytics?.userEngagement ?? analytics?.xpEconomy) ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {analytics?.userEngagement ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>User engagement metrics</CardTitle>
+                <CardDescription>
+                  Aggregate engagement from message and reaction activity.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    Tracked users
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Tracked users value"
+                  >
+                    {formatNumber(analytics.userEngagement.trackedUsers)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MessageSquare className="h-4 w-4" />
+                    Avg messages / user
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Average messages per user value"
+                  >
+                    {analytics.userEngagement.avgMessagesPerUser.toFixed(1)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Heart className="h-4 w-4" />
+                    Reactions given
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total reactions given value"
+                  >
+                    {formatNumber(analytics.userEngagement.totalReactionsGiven)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Activity className="h-4 w-4" />
+                    Reactions received
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total reactions received value"
+                  >
+                    {formatNumber(analytics.userEngagement.totalReactionsReceived)}
+                  </output>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {analytics?.xpEconomy ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>XP economy</CardTitle>
+                <CardDescription>Reputation and level distribution across members.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    Users with XP
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Users with XP value"
+                  >
+                    {formatNumber(analytics.xpEconomy.totalUsers)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Star className="h-4 w-4" />
+                    Total XP distributed
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Total XP distributed value"
+                  >
+                    {formatNumber(analytics.xpEconomy.totalXp)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Activity className="h-4 w-4" />
+                    Average level
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Average level value"
+                  >
+                    {analytics.xpEconomy.avgLevel.toFixed(1)}
+                  </output>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Star className="h-4 w-4" />
+                    Highest level
+                  </div>
+                  <output
+                    className="mt-2 block text-2xl font-semibold"
+                    aria-label="Highest level value"
+                  >
+                    {formatNumber(analytics.xpEconomy.maxLevel)}
+                  </output>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>

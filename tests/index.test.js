@@ -133,6 +133,14 @@ vi.mock('discord.js', () => {
       Message: 0,
       Reaction: 2,
     },
+    ActivityType: {
+      Playing: 0,
+      Streaming: 1,
+      Listening: 2,
+      Watching: 3,
+      Custom: 4,
+      Competing: 5,
+    },
   };
 });
 

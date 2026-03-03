@@ -101,7 +101,7 @@ export async function executeModAction(interaction, opts) {
 
     // Protected-role check (skipped when skipProtection is true)
     if (!skipProtection && target) {
-      if (isProtectedTarget(target, interaction.guild, config)) {
+      if (isProtectedTarget(target, interaction.guild)) {
         warn('Moderation blocked: target is a protected role', {
           action,
           targetId: target.id,

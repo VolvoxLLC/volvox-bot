@@ -49,6 +49,21 @@ export interface CommandUsageEntry {
   uses: number;
 }
 
+export interface UserEngagementMetrics {
+  trackedUsers: number;
+  totalMessagesSent: number;
+  totalReactionsGiven: number;
+  totalReactionsReceived: number;
+  avgMessagesPerUser: number;
+}
+
+export interface XpEconomy {
+  totalUsers: number;
+  totalXp: number;
+  avgLevel: number;
+  maxLevel: number;
+}
+
 export interface DashboardAnalytics {
   guildId: string;
   range: AnalyticsRange;
@@ -79,5 +94,20 @@ export interface DashboardAnalytics {
     dayOfWeek: number;
     hour: number;
     messages: number;
+  }>;
+  userEngagement: UserEngagementMetrics | null;
+  xpEconomy: XpEconomy | null;
+}
+
+/** Shape of the /guilds/:id/ai-feedback/stats API response. */
+export interface AiFeedbackStats {
+  positive: number;
+  negative: number;
+  total: number;
+  ratio: number | null;
+  trend: Array<{
+    date: string;
+    positive: number;
+    negative: number;
   }>;
 }

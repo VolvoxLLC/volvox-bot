@@ -1030,6 +1030,8 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       modelUsageResult,
       comparisonCostResult,
       commandUsageResult,
+      userEngagementResult,
+      xpEconomyResult,
     ] = await Promise.all([
       dbPool.query(
         `SELECT
@@ -1185,6 +1187,43 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           });
           return { rows: [], available: false };
         }),
+      dbPool
+        .query(
+          `SELECT
+               COUNT(DISTINCT user_id)::int AS tracked_users,
+               COALESCE(SUM(messages_sent), 0)::bigint AS total_messages_sent,
+               COALESCE(SUM(reactions_given), 0)::bigint AS total_reactions_given,
+               COALESCE(SUM(reactions_received), 0)::bigint AS total_reactions_received,
+               COALESCE(AVG(messages_sent), 0)::float AS avg_messages_per_user
+             FROM user_stats
+             WHERE guild_id = $1`,
+          [req.params.id],
+        )
+        .catch((err) => {
+          warn('User engagement query failed; returning empty engagement dataset', {
+            guild: req.params.id,
+            error: err.message,
+          });
+          return { rows: [] };
+        }),
+      dbPool
+        .query(
+          `SELECT
+               COUNT(*)::int AS total_users,
+               COALESCE(SUM(xp), 0)::bigint AS total_xp,
+               COALESCE(AVG(level), 0)::float AS avg_level,
+               COALESCE(MAX(level), 0)::int AS max_level
+             FROM reputation
+             WHERE guild_id = $1`,
+          [req.params.id],
+        )
+        .catch((err) => {
+          warn('XP economy query failed; returning empty XP dataset', {
+            guild: req.params.id,
+            error: err.message,
+          });
+          return { rows: [] };
+        }),
     ]);
 
     const kpiRow = kpiResult.rows[0] || {
@@ -1334,6 +1373,27 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           }
         : null,
       heatmap,
+      userEngagement: userEngagementResult.rows[0]
+        ? {
+            trackedUsers: Number(userEngagementResult.rows[0].tracked_users || 0),
+            totalMessagesSent: Number(userEngagementResult.rows[0].total_messages_sent || 0),
+            totalReactionsGiven: Number(userEngagementResult.rows[0].total_reactions_given || 0),
+            totalReactionsReceived: Number(
+              userEngagementResult.rows[0].total_reactions_received || 0,
+            ),
+            avgMessagesPerUser: Number(
+              Number(userEngagementResult.rows[0].avg_messages_per_user || 0).toFixed(1),
+            ),
+          }
+        : null,
+      xpEconomy: xpEconomyResult.rows[0]
+        ? {
+            totalUsers: Number(xpEconomyResult.rows[0].total_users || 0),
+            totalXp: Number(xpEconomyResult.rows[0].total_xp || 0),
+            avgLevel: Number(Number(xpEconomyResult.rows[0].avg_level || 0).toFixed(1)),
+            maxLevel: Number(xpEconomyResult.rows[0].max_level || 0),
+          }
+        : null,
     });
   } catch (err) {
     error('Failed to fetch analytics', {

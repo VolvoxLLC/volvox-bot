@@ -16,6 +16,26 @@ export interface AiConfig {
   threadMode: AiThreadMode;
 }
 
+/** AI Auto-Moderation configuration. */
+export interface AiAutoModConfig {
+  enabled: boolean;
+  model: string;
+  thresholds: {
+    toxicity: number;
+    spam: number;
+    harassment: number;
+  };
+  actions: {
+    toxicity: string;
+    spam: string;
+    harassment: string;
+  };
+  timeoutDurationMs: number;
+  flagChannelId: string | null;
+  autoDelete: boolean;
+  exemptRoleIds: string[];
+}
+
 /** Dynamic welcome message generation settings. */
 export interface WelcomeDynamic {
   enabled: boolean;
@@ -272,6 +292,7 @@ export interface ChallengesConfig extends ToggleSectionConfig {
 export interface BotConfig {
   guildId: string;
   ai: AiConfig;
+  aiAutoMod?: AiAutoModConfig;
   welcome: WelcomeConfig;
   spam: SpamConfig;
   moderation: ModerationConfig;

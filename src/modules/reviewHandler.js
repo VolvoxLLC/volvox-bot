@@ -10,6 +10,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, warn } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeReply, safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
 
@@ -123,7 +124,7 @@ export async function updateReviewMessage(review, client) {
   if (!review.message_id || !review.channel_id) return;
 
   try {
-    const channel = await client.channels.fetch(review.channel_id).catch(() => null);
+    const channel = await fetchChannelCached(client, review.channel_id);
     if (!channel) return;
 
     const message = await channel.messages.fetch(review.message_id).catch(() => null);
@@ -303,7 +304,7 @@ export async function expireStaleReviews(client) {
       if (!reviewChannelId) continue;
 
       try {
-        const channel = await client.channels.fetch(reviewChannelId).catch(() => null);
+        const channel = await fetchChannelCached(client, reviewChannelId);
         if (!channel) continue;
 
         const ids = reviews.map((r) => `#${r.id}`).join(', ');

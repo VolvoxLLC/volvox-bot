@@ -8,7 +8,8 @@
       "!node_modules",
       "!coverage",
       "!logs",
-      "!data"
+      "!data",
+      "!feat-issue-164"
     ]
   },
   "linter": {

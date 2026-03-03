@@ -6,6 +6,7 @@ import {
   StringSelectMenuBuilder,
 } from 'discord.js';
 import { info } from '../logger.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
 export const RULES_ACCEPT_BUTTON_ID = 'welcome_rules_accept';
@@ -118,7 +119,7 @@ export function buildRoleMenuMessage(welcomeConfig) {
 }
 
 async function fetchRole(guild, roleId) {
-  return guild.roles.cache.get(roleId) || (await guild.roles.fetch(roleId).catch(() => null));
+  return guild.roles.cache.get(roleId) || (await guild.roles.fetch(roleId).catch(() => null)); // roles.cache is in-memory; fetch only on miss
 }
 
 export async function handleRulesAcceptButton(interaction, config) {
@@ -173,9 +174,7 @@ export async function handleRulesAcceptButton(interaction, config) {
   }
 
   if (welcome.introChannel) {
-    const introChannel =
-      interaction.guild.channels.cache.get(welcome.introChannel) ||
-      (await interaction.guild.channels.fetch(welcome.introChannel).catch(() => null));
+    const introChannel = await fetchChannelCached(interaction.client, welcome.introChannel);
 
     if (introChannel?.isTextBased?.()) {
       await safeSend(

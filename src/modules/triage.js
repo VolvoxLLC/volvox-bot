@@ -17,13 +17,15 @@
 
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt, promptPath } from '../prompts/index.js';
+import { fetchChannelCached } from '../utils/discordCache.js';
+import { checkGuildBudget } from '../utils/guildSpend.js';
 import { safeSend } from '../utils/safeSend.js';
 import { CLIProcess, CLIProcessError } from './cli-process.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
 
-import { addToHistory } from './ai.js';
+import { addToHistory, isChannelBlocked } from './ai.js';
 import { getConfig } from './config.js';
 import {
   channelBuffers,
@@ -65,6 +67,14 @@ let healthMonitor = null;
 let classifierProcess = null;
 /** @type {CLIProcess|null} */
 let responderProcess = null;
+
+// ── Budget alert throttle ────────────────────────────────────────────────────
+// Track the last time a budget-exceeded alert was posted per guild so we don't
+// spam the moderation log channel on every evaluation attempt.
+/** @type {Map<string, number>} guildId → timestamp of last alert (ms) */
+const budgetAlertSentAt = new Map();
+/** Minimum gap between budget-exceeded alerts for the same guild (1 hour). */
+const BUDGET_ALERT_COOLDOWN_MS = 60 * 60 * 1_000;
 
 // ── Two-step CLI evaluation ──────────────────────────────────────────────────
 
@@ -333,6 +343,63 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
 
   try {
+    // ── Guild daily budget gate ─────────────────────────────────────────────
+    // Skip evaluation if the guild has exhausted its daily AI spend cap.
+    // This prevents runaway costs from high-volume guilds.
+    // NOTE: kept inside the try block so the finally { clearEvaluatedMessages }
+    // always runs — even when we return early due to budget exhaustion.
+    const dailyBudgetUsd = evalConfig.triage?.dailyBudgetUsd;
+    if (dailyBudgetUsd != null && dailyBudgetUsd > 0) {
+      try {
+        const ch = await fetchChannelCached(evalClient, channelId);
+        const guildId = ch?.guildId;
+        if (guildId) {
+          const budget = await checkGuildBudget(guildId, dailyBudgetUsd);
+          if (budget.status === 'exceeded') {
+            warn('Guild daily AI budget exceeded — skipping triage evaluation', {
+              guildId,
+              channelId,
+              spend: budget.spend,
+              budget: budget.budget,
+            });
+            // Post a throttled alert to the moderation log channel — at most once per
+            // BUDGET_ALERT_COOLDOWN_MS — to avoid spamming on every evaluation attempt.
+            const logChannelId = evalConfig.triage?.moderationLogChannel;
+            if (logChannelId) {
+              const now = Date.now();
+              const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
+              if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
+                budgetAlertSentAt.set(guildId, now);
+                fetchChannelCached(evalClient, logChannelId)
+                  .then((logCh) => {
+                    if (logCh) {
+                      return safeSend(
+                        logCh,
+                        `⚠️ **AI spend cap reached** for guild \`${guildId}\` — daily budget of $${budget.budget.toFixed(2)} exceeded (spent $${budget.spend.toFixed(4)}). Triage evaluations are paused until the window resets.`,
+                      );
+                    }
+                  })
+                  .catch(() => {});
+              }
+            }
+            return;
+          }
+          if (budget.status === 'warning') {
+            warn('Guild approaching daily AI budget limit', {
+              guildId,
+              channelId,
+              spend: budget.spend,
+              budget: budget.budget,
+              pct: Math.round(budget.pct * 100),
+            });
+          }
+        }
+      } catch (budgetErr) {
+        // Non-fatal: if budget check errors, allow evaluation to continue
+        debug('Guild budget check failed (non-fatal)', { channelId, error: budgetErr?.message });
+      }
+    }
+
     // Step 1: Classify
     const classResult = await runClassification(channelId, snapshot, evalConfig, evalClient);
     if (!classResult) return;
@@ -559,14 +626,19 @@ export function stopTriage() {
  * If configured trigger words are present, forces an immediate evaluation (and falls back to scheduling if forcing fails); otherwise schedules a dynamic evaluation timer for the channel.
  *
  * @param {import('discord.js').Message} message - The Discord message to accumulate.
- * @param {Object} _msgConfig - Ignored; retained for backwards compatibility. Live config is
- *   fetched via {@link getConfig} on each invocation to avoid stale references.
+ * @param {Object} [msgConfig] - Optional config override. When provided, used directly instead
+ *   of calling {@link getConfig}. Live config is fetched via getConfig when not provided.
  */
-export async function accumulateMessage(message, _msgConfig) {
-  const liveConfig = getConfig(message.guild?.id || null);
+export async function accumulateMessage(message, msgConfig) {
+  const liveConfig = msgConfig || getConfig(message.guild?.id || null);
   const triageConfig = liveConfig.triage;
   if (!triageConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
+
+  // Skip blocked channels (no triage processing)
+  // Only check parentId for threads - for regular channels, parentId is the category ID
+  const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
+  if (isChannelBlocked(message.channel.id, parentId, message.guild?.id)) return;
 
   // Skip empty or attachment-only messages
   if (!message.content || message.content.trim() === '') return;
@@ -652,6 +724,26 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   }
   const buf = channelBuffers.get(channelId);
   if (!buf || buf.messages.length === 0) return;
+
+  // Check if channel is blocked before processing buffered messages.
+  // This guards against the case where a channel is blocked AFTER messages
+  // were buffered but BEFORE evaluateNow runs.
+  const usedClient = evalClient || client;
+  try {
+    const ch = await fetchChannelCached(usedClient, channelId);
+    const guildId = ch?.guildId ?? null;
+    // Only check parentId for threads - for regular channels, parentId is the category ID
+    const parentId = ch?.isThread?.() ? ch.parentId : null;
+    if (isChannelBlocked(channelId, parentId, guildId)) {
+      debug('evaluateNow skipping blocked channel with buffered messages', { channelId, guildId });
+      return;
+    }
+  } catch (err) {
+    debug('Failed to fetch channel for blocked check, continuing', {
+      channelId,
+      error: err?.message,
+    });
+  }
 
   // Cancel any existing in-flight evaluation (abort before checking guard)
   if (buf.abortController) {

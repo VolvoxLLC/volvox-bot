@@ -11,6 +11,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { parseDuration } from '../utils/duration.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
+import { fireEvent } from './webhookNotifier.js';
 
 /**
  * Color map for mod log embeds by action type.
@@ -146,6 +147,17 @@ export async function createCase(guildId, data) {
       target: data.targetTag,
       moderator: data.moderatorTag,
     });
+
+    // Fire webhook notification — fire-and-forget, don't block case creation
+    fireEvent('moderation.action', guildId, {
+      action: data.action,
+      caseNumber: createdCase.case_number,
+      targetId: data.targetId,
+      targetTag: data.targetTag,
+      moderatorId: data.moderatorId,
+      moderatorTag: data.moderatorTag,
+      reason: data.reason || null,
+    }).catch(() => {});
 
     return createdCase;
   } catch (err) {
@@ -359,19 +371,80 @@ async function pollTempbans(client) {
     );
 
     for (const row of rows) {
-      // Claim this row to prevent concurrent polls from processing it twice.
-      const claim = await pool.query(
-        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1 AND executed = FALSE RETURNING id',
-        [row.id],
-      );
-      if (claim.rows.length === 0) {
-        continue;
+      // Use a transaction to ensure atomicity:
+      // 1. Lock the row with FOR UPDATE SKIP LOCKED
+      // 2. Execute Discord unban
+      // 3. Only mark executed after successful unban
+      const txClient = await pool.connect();
+      try {
+        await txClient.query('BEGIN');
+
+        // Lock the row - skip if already executed by another poll
+        const { rows: lockRows } = await txClient.query(
+          'SELECT id FROM mod_scheduled_actions WHERE id = $1 AND executed = FALSE FOR UPDATE SKIP LOCKED',
+          [row.id],
+        );
+        if (lockRows.length === 0) {
+          await txClient.query('ROLLBACK');
+          continue; // Already handled by another poll
+        }
+
+        // Execute the Discord unban FIRST (before marking executed)
+        // Track any error for logging, but don't throw - we still mark as executed
+        // to prevent infinite retry on non-recoverable errors
+        let unbanError = null;
+        const guild = await client.guilds.fetch(row.guild_id);
+        try {
+          await guild.members.unban(row.target_id, 'Tempban expired');
+        } catch (err) {
+          unbanError = err;
+          // Unknown Ban (code 10026) means already unbanned - not really an error
+          const isAlreadyUnbanned = err?.code === 10026 || /Unknown Ban/i.test(err?.message || '');
+          if (isAlreadyUnbanned) {
+            info('Tempban target already unbanned; finalizing scheduled action', {
+              id: row.id,
+              guildId: row.guild_id,
+              targetId: row.target_id,
+            });
+            unbanError = null; // Clear error - this is success
+          }
+        }
+
+        // Mark executed regardless of unban outcome to prevent infinite retry
+        await txClient.query('UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1', [
+          row.id,
+        ]);
+        await txClient.query('COMMIT');
+
+        // Log unban failure AFTER successful commit (if there was a real error)
+        if (unbanError) {
+          logError('Failed to unban tempban target (marked as executed to prevent retry)', {
+            error: unbanError.message,
+            id: row.id,
+            guildId: row.guild_id,
+            targetId: row.target_id,
+          });
+        }
+      } catch (err) {
+        // Only reach here on transaction/DB errors (not unban errors)
+        await txClient.query('ROLLBACK').catch(() => {});
+        logError('Failed to process expired tempban', {
+          error: err.message,
+          id: row.id,
+          guildId: row.guild_id,
+          targetId: row.target_id,
+        });
+        // Action remains unexecuted (executed = FALSE) and will be retried on next poll
+        txClient.release();
+        continue; // Skip post-commit work since transaction failed
       }
 
-      try {
-        const guild = await client.guilds.fetch(row.guild_id);
-        await guild.members.unban(row.target_id, 'Tempban expired');
+      // Transaction succeeded - release client before post-commit work
+      txClient.release();
 
+      // Post-commit work (outside transaction): create case, send mod-log
+      // These are non-critical - failures here don't affect the unban itself
+      try {
         const targetUser = await client.users.fetch(row.target_id).catch(() => null);
 
         // Create unban case
@@ -392,7 +465,8 @@ async function pollTempbans(client) {
           targetId: row.target_id,
         });
       } catch (err) {
-        logError('Failed to process expired tempban', {
+        // Log but don't retry - the unban itself succeeded, just the logging failed
+        logError('Post-commit work failed for tempban (unban already executed)', {
           error: err.message,
           id: row.id,
           guildId: row.guild_id,
@@ -447,10 +521,11 @@ export function stopTempbanScheduler() {
  * configured under `moderation.protectRoles`.
  * @param {import('discord.js').GuildMember} target - Target member to check
  * @param {import('discord.js').Guild} guild - Discord guild
- * @param {Object} config - Bot configuration
  * @returns {boolean} True if the target should not be moderated
  */
-export function isProtectedTarget(target, guild, config) {
+export function isProtectedTarget(target, guild) {
+  // Fetch config per-invocation so live config edits take effect immediately.
+  const config = getConfig(guild.id);
   /**
    * When the protectRoles block is missing from persisted configuration,
    * fall back to the intended defaults: protection enabled, include owner,

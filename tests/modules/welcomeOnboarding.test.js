@@ -6,6 +6,18 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
 }));
 
+vi.mock('../../src/utils/discordCache.js', () => ({
+  fetchChannelCached: vi.fn().mockImplementation((client, channelId) => {
+    if (!channelId) return Promise.resolve(null);
+    // Use client.channels.cache if available
+    if (client?.channels?.cache?.get?.(channelId)) {
+      return Promise.resolve(client.channels.cache.get(channelId));
+    }
+    return client?.channels?.fetch?.(channelId).catch(() => null) ?? Promise.resolve(null);
+  }),
+  invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn(async (target, payload) => {
     if (typeof target?.send === 'function') return target.send(payload);
@@ -75,6 +87,12 @@ describe('welcomeOnboarding module', () => {
           cache: new Map([['verified-role', role]]),
           fetch: vi.fn(async () => role),
         },
+        channels: {
+          cache: new Map([['intro-ch', introChannel]]),
+          fetch: vi.fn(async () => introChannel),
+        },
+      },
+      client: {
         channels: {
           cache: new Map([['intro-ch', introChannel]]),
           fetch: vi.fn(async () => introChannel),

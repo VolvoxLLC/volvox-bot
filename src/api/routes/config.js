@@ -6,7 +6,6 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
-import { getBotOwnerIds } from '../../utils/permissions.js';
 import {
   maskSensitiveFields,
   READABLE_CONFIG_KEYS,
@@ -14,7 +13,13 @@ import {
   stripMaskedWrites,
 } from '../utils/configAllowlist.js';
 import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
+import { DANGEROUS_KEYS } from '../utils/dangerousKeys.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
+
+// Re-export flattenToLeafPaths for backward compatibility - use local definition
+// (import removed to avoid redeclare error)
+
+import { requireGlobalAdmin } from '../middleware/requireGlobalAdmin.js';
 
 // Re-export validateSingleValue so existing callers that import it from this
 // module continue to work without changes.
@@ -53,9 +58,6 @@ export function validateConfigSchema(config) {
   return errors;
 }
 
-/** Keys that must be skipped during object traversal to prevent prototype pollution. */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
-
 /**
  * Flattens a nested object into dot-notated leaf path/value pairs, using the provided prefix as the root path.
  * @param {Object} obj - The object to flatten.
@@ -77,27 +79,6 @@ export function flattenToLeafPaths(obj, prefix) {
   }
 
   return results;
-}
-
-/**
- * Middleware: restrict to API-secret callers or bot-owner OAuth users.
- * Global config changes affect all guilds, so only trusted callers are allowed.
- */
-function requireGlobalAdmin(req, res, next) {
-  if (req.authMethod === 'api-secret') return next();
-
-  if (req.authMethod === 'oauth') {
-    const botOwners = getBotOwnerIds(getConfig());
-    if (botOwners.includes(req.user?.userId)) return next();
-
-    return res.status(403).json({ error: 'Global config access requires bot owner permissions' });
-  }
-
-  warn('Unknown authMethod in global config check', {
-    authMethod: req.authMethod,
-    path: req.path,
-  });
-  return res.status(401).json({ error: 'Unauthorized' });
 }
 
 /**

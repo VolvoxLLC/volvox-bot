@@ -48,7 +48,11 @@ describe('redis.js', () => {
         quit: vi.fn().mockResolvedValue('OK'),
       };
       vi.doMock('ioredis', () => ({
-        default: vi.fn().mockImplementation(() => mockClient),
+        default: class MockRedis {
+          constructor() {
+            Object.assign(this, mockClient);
+          }
+        },
       }));
 
       const freshRedis = await import('../src/redis.js');

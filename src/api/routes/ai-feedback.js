@@ -90,8 +90,17 @@ router.get(
   requireGuildAdmin,
   validateGuild,
   async (req, res, next) => {
+    if (!req.app.locals.dbPool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     try {
       const guildId = req.params.id;
+      const pool = req.app.locals.dbPool;
+
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       let days = 30;
       if (req.query.days !== undefined) {
@@ -101,9 +110,10 @@ router.get(
         }
       }
 
+      // Let errors bubble up to the outer catch block
       const [stats, trend] = await Promise.all([
-        getFeedbackStats(guildId),
-        getFeedbackTrend(guildId, days),
+        getFeedbackStats(guildId, pool),
+        getFeedbackTrend(guildId, days, pool),
       ]);
 
       res.json({
@@ -186,8 +196,17 @@ router.get(
   requireGuildAdmin,
   validateGuild,
   async (req, res, next) => {
+    if (!req.app.locals.dbPool) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     try {
       const guildId = req.params.id;
+      const pool = req.app.locals.dbPool;
+
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
 
       let limit = 25;
       if (req.query.limit !== undefined) {
@@ -197,7 +216,19 @@ router.get(
         }
       }
 
-      const feedback = await getRecentFeedback(guildId, limit);
+      // Let errors bubble up to the outer catch block
+      const rawFeedback = await getRecentFeedback(guildId, limit, pool);
+
+      // Normalize DB row keys to camelCase (handles both raw SQL and aliased results)
+      const feedback = rawFeedback.map((row) => ({
+        id: row.id,
+        messageId: row.messageId ?? row.message_id,
+        channelId: row.channelId ?? row.channel_id,
+        userId: row.userId ?? row.user_id,
+        feedbackType: row.feedbackType ?? row.feedback_type,
+        createdAt: row.createdAt ?? row.created_at,
+      }));
+
       res.json({ feedback });
     } catch (err) {
       next(err);

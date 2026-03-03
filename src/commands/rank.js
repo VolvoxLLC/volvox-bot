@@ -11,6 +11,11 @@ import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { buildProgressBar, computeLevel } from '../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../modules/reputationDefaults.js';
+import {
+  getRankCached,
+  getReputationCached,
+  setReputationCache,
+} from '../utils/reputationCache.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
@@ -43,15 +48,23 @@ export async function execute(interaction) {
     const repCfg = { ...REPUTATION_DEFAULTS, ...cfg.reputation };
     const thresholds = repCfg.levelThresholds;
 
-    // Fetch reputation row
-    const { rows } = await pool.query(
-      'SELECT xp, level, messages_count FROM reputation WHERE guild_id = $1 AND user_id = $2',
-      [interaction.guildId, target.id],
-    );
+    // Fetch reputation row (cached)
+    const cachedRep = await getReputationCached(interaction.guildId, target.id);
+    let repRow = cachedRep;
+    if (!repRow) {
+      const { rows } = await pool.query(
+        'SELECT xp, level, messages_count FROM reputation WHERE guild_id = $1 AND user_id = $2',
+        [interaction.guildId, target.id],
+      );
+      repRow = rows[0] ?? null;
+      if (repRow) {
+        await setReputationCache(interaction.guildId, target.id, repRow);
+      }
+    }
 
-    const xp = rows[0]?.xp ?? 0;
+    const xp = repRow?.xp ?? 0;
     const level = computeLevel(xp, thresholds);
-    const messagesCount = rows[0]?.messages_count ?? 0;
+    const messagesCount = repRow?.messages_count ?? 0;
 
     // XP within current level and needed for next
     const currentThreshold = level > 0 ? thresholds[level - 1] : 0;
@@ -62,14 +75,16 @@ export async function execute(interaction) {
     const progressBar =
       nextThreshold !== null ? buildProgressBar(xpInLevel, xpNeeded) : `${'▓'.repeat(10)} MAX`;
 
-    // Rank position in guild
-    const rankRow = await pool.query(
-      `SELECT COUNT(*) + 1 AS rank
-     FROM reputation
-     WHERE guild_id = $1 AND xp > $2`,
-      [interaction.guildId, xp],
-    );
-    const rank = Number(rankRow.rows[0]?.rank ?? 1);
+    // Rank position in guild (cached)
+    const rank = await getRankCached(interaction.guildId, target.id, async () => {
+      const rankRow = await pool.query(
+        `SELECT COUNT(*) + 1 AS rank
+       FROM reputation
+       WHERE guild_id = $1 AND xp > $2`,
+        [interaction.guildId, xp],
+      );
+      return { rank: Number(rankRow.rows[0]?.rank ?? 1) };
+    }).then((r) => r?.rank ?? 1);
 
     const levelLabel = `Level ${level}`;
     const xpLabel = nextThreshold !== null ? `${xp} / ${nextThreshold} XP` : `${xp} XP (Max Level)`;

@@ -7,6 +7,7 @@
 import { info, error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
 import { maskSensitiveFields } from '../utils/configAllowlist.js';
+import { broadcastAuditEntry } from '../ws/auditStream.js';
 
 /** HTTP methods considered mutating */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -104,7 +105,8 @@ function insertAuditEntry(pool, entry) {
   try {
     const result = pool.query(
       `INSERT INTO audit_logs (guild_id, user_id, action, target_type, target_id, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, guild_id, user_id, action, target_type, target_id, details, ip_address, created_at`,
       [
         guildId || 'global',
         userId,
@@ -118,8 +120,26 @@ function insertAuditEntry(pool, entry) {
 
     if (result && typeof result.then === 'function') {
       result
-        .then(() => {
+        .then((insertResult) => {
           info('Audit log entry created', { action, guildId, userId });
+          // Broadcast to real-time audit log WebSocket clients
+          const row = insertResult?.rows?.[0];
+          const broadcastEntry = {
+            guild_id: guildId || 'global',
+            user_id: userId,
+            action,
+            target_type: targetType || null,
+            target_id: targetId || null,
+            details: details || null,
+            ip_address: ipAddress || null,
+            created_at: new Date().toISOString(),
+            ...(row || {}),
+          };
+          try {
+            broadcastAuditEntry(broadcastEntry);
+          } catch {
+            // Non-critical — streaming failure must not affect audit integrity
+          }
         })
         .catch((err) => {
           logError('Failed to insert audit log entry', { error: err.message, action, guildId });

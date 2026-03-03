@@ -9,6 +9,7 @@ import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
+import { getLeaderboardCached } from '../utils/reputationCache.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
@@ -30,14 +31,17 @@ export async function execute(interaction) {
 
   try {
     const pool = getPool();
-    const { rows } = await pool.query(
-      `SELECT user_id, xp, level
-     FROM reputation
-     WHERE guild_id = $1
-     ORDER BY xp DESC
-     LIMIT 10`,
-      [interaction.guildId],
-    );
+    const rows = await getLeaderboardCached(interaction.guildId, async () => {
+      const result = await pool.query(
+        `SELECT user_id, xp, level
+       FROM reputation
+       WHERE guild_id = $1
+       ORDER BY xp DESC
+       LIMIT 10`,
+        [interaction.guildId],
+      );
+      return result.rows;
+    });
 
     if (rows.length === 0) {
       await safeEditReply(interaction, {

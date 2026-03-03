@@ -46,6 +46,7 @@ vi.mock('../../src/utils/duration.js', () => ({
 
 import { getPool } from '../../src/db.js';
 import { error as loggerError, warn as loggerWarn } from '../../src/logger.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   checkEscalation,
   checkHierarchy,
@@ -597,29 +598,29 @@ describe('moderation module', () => {
       roles: { cache: { keys: () => roleIds } },
     });
 
-    const makeGuild = (ownerId) => ({ ownerId });
+    const makeGuild = (ownerId) => ({ id: 'guild1', ownerId });
 
     it('returns false when protectRoles is disabled', () => {
       const target = makeTarget('user1', ['admin-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: { protectRoles: { enabled: false } },
         permissions: { adminRoleId: 'admin-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns false when protectRoles config is absent', () => {
       const target = makeTarget('user1');
       const guild = makeGuild('owner1');
-      const config = { moderation: {} };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      getConfig.mockReturnValueOnce({ moderation: {} });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns true for server owner when includeServerOwner is true', () => {
       const target = makeTarget('owner1');
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -629,14 +630,14 @@ describe('moderation module', () => {
             includeServerOwner: true,
           },
         },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns false for server owner when includeServerOwner is false', () => {
       const target = makeTarget('owner1');
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -646,14 +647,14 @@ describe('moderation module', () => {
             includeServerOwner: false,
           },
         },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns true for user with adminRoleId when includeAdmins is true', () => {
       const target = makeTarget('user1', ['admin-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -664,14 +665,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { adminRoleId: 'admin-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns false for admin role when includeAdmins is false', () => {
       const target = makeTarget('user1', ['admin-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -682,14 +683,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { adminRoleId: 'admin-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns true for user with moderatorRoleId when includeModerators is true', () => {
       const target = makeTarget('user1', ['mod-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -700,14 +701,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { moderatorRoleId: 'mod-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns true for user with a custom roleId in protectRoles.roleIds', () => {
       const target = makeTarget('user1', ['custom-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -717,14 +718,14 @@ describe('moderation module', () => {
             includeServerOwner: false,
           },
         },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(true);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(true);
     });
 
     it('returns false for regular user with no protected roles', () => {
       const target = makeTarget('user1', ['regular-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -735,14 +736,14 @@ describe('moderation module', () => {
           },
         },
         permissions: { adminRoleId: 'admin-role', moderatorRoleId: 'mod-role' },
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
 
     it('returns false when no protectedRoleIds resolve (no adminRoleId set) and user is non-owner', () => {
       const target = makeTarget('user1', ['some-role']);
       const guild = makeGuild('owner1');
-      const config = {
+      getConfig.mockReturnValueOnce({
         moderation: {
           protectRoles: {
             enabled: true,
@@ -753,8 +754,8 @@ describe('moderation module', () => {
           },
         },
         permissions: {},
-      };
-      expect(isProtectedTarget(target, guild, config)).toBe(false);
+      });
+      expect(isProtectedTarget(target, guild)).toBe(false);
     });
   });
 
@@ -807,41 +808,26 @@ describe('moderation module', () => {
         },
       };
 
-      mockPool.query
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 1,
-              guild_id: 'guild1',
-              action: 'unban',
-              target_id: 'user1',
-              case_id: 5,
-              execute_at: new Date(),
-              executed: false,
-            },
-          ],
-        })
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // claim executed row
-        .mockResolvedValueOnce({ rows: [] }); // log_message_id update
+      // Scheduler transaction uses one connection from pool.connect()
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            guild_id: 'guild1',
+            action: 'unban',
+            target_id: 'user1',
+            case_id: 5,
+            execute_at: new Date(),
+            executed: false,
+          },
+        ],
+      });
 
+      // Transaction connection: BEGIN, lock, UPDATE, COMMIT
       mockConnection.query
         .mockResolvedValueOnce({}) // BEGIN
-        .mockResolvedValueOnce({}) // advisory lock
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 7,
-              case_number: 7,
-              action: 'unban',
-              target_id: 'user1',
-              target_tag: 'User#0001',
-              moderator_id: 'bot1',
-              moderator_tag: 'Bot#0001',
-              reason: 'Tempban expired (case #5)',
-              created_at: new Date().toISOString(),
-            },
-          ],
-        })
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // SELECT FOR UPDATE SKIP LOCKED
+        .mockResolvedValueOnce({}) // UPDATE executed = TRUE
         .mockResolvedValueOnce({}); // COMMIT
 
       vi.useFakeTimers();
@@ -849,8 +835,8 @@ describe('moderation module', () => {
       await vi.advanceTimersByTimeAsync(100);
 
       expect(mockGuild.members.unban).toHaveBeenCalledWith('user1', 'Tempban expired');
-      expect(mockPool.query).toHaveBeenCalledWith(
-        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1 AND executed = FALSE RETURNING id',
+      expect(mockConnection.query).toHaveBeenCalledWith(
+        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1',
         [1],
       );
 
@@ -901,32 +887,39 @@ describe('moderation module', () => {
         channels: { fetch: vi.fn() },
       };
 
-      mockPool.query
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 99,
-              guild_id: 'guild1',
-              action: 'unban',
-              target_id: 'user1',
-              case_id: 5,
-              execute_at: new Date(),
-              executed: false,
-            },
-          ],
-        })
-        .mockResolvedValueOnce({ rows: [{ id: 99 }] }); // claim executed row
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 99,
+            guild_id: 'guild1',
+            action: 'unban',
+            target_id: 'user1',
+            case_id: 5,
+            execute_at: new Date(),
+            executed: false,
+          },
+        ],
+      });
+
+      // Transaction connection: BEGIN, lock, UPDATE, COMMIT
+      mockConnection.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] }) // SELECT FOR UPDATE SKIP LOCKED
+        .mockResolvedValueOnce({}) // UPDATE executed = TRUE
+        .mockResolvedValueOnce({}); // COMMIT
 
       vi.useFakeTimers();
       startTempbanScheduler(mockClient);
       await vi.advanceTimersByTimeAsync(100);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1 AND executed = FALSE RETURNING id',
+      // Row should be marked as executed (via connection transaction)
+      expect(mockConnection.query).toHaveBeenCalledWith(
+        'UPDATE mod_scheduled_actions SET executed = TRUE WHERE id = $1',
         [99],
       );
+      // Error should be logged (after commit, not causing rollback)
       expect(loggerError).toHaveBeenCalledWith(
-        'Failed to process expired tempban',
+        'Failed to unban tempban target (marked as executed to prevent retry)',
         expect.objectContaining({ id: 99, targetId: 'user1' }),
       );
 

@@ -155,9 +155,30 @@ function buildArgs(flags, longLived) {
  * @returns {Object}
  */
 function buildEnv(flags) {
-  const env = { ...process.env };
-  const tokens = flags.thinkingTokens ?? 4096;
-  env.MAX_THINKING_TOKENS = String(tokens);
+  // Security: pass only what the Claude CLI subprocess actually needs.
+  // Never spread process.env — that would leak DISCORD_TOKEN, DATABASE_URL,
+  // BOT_API_SECRET, SESSION_SECRET, REDIS_URL, etc. to the child process.
+  // See: https://github.com/VolvoxLLC/volvox-bot/issues/155
+  const env = {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    ...(process.env.NODE_ENV && { NODE_ENV: process.env.NODE_ENV }),
+    ...(process.env.DISABLE_PROMPT_CACHING && {
+      DISABLE_PROMPT_CACHING: process.env.DISABLE_PROMPT_CACHING,
+    }),
+    MAX_THINKING_TOKENS: String(flags.thinkingTokens ?? 4096),
+  };
+
+  // Auth priority: explicit apiKey flag > ANTHROPIC_API_KEY env > CLAUDE_CODE_OAUTH_TOKEN env.
+  // When flags.apiKey is provided we intentionally omit CLAUDE_CODE_OAUTH_TOKEN
+  // to avoid conflicting auth headers in the subprocess.
+  if (flags.apiKey) {
+    env.ANTHROPIC_API_KEY = flags.apiKey;
+  } else if (process.env.ANTHROPIC_API_KEY) {
+    env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+  } else if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+    env.CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+  }
 
   // baseUrl is set from admin config (triage.classifyBaseUrl / respondBaseUrl),
   // never from user input. Validate URL format as defense-in-depth.
@@ -172,10 +193,6 @@ function buildEnv(flags) {
         baseUrl: flags.baseUrl,
       });
     }
-  }
-  if (flags.apiKey) {
-    env.ANTHROPIC_API_KEY = flags.apiKey;
-    delete env.CLAUDE_CODE_OAUTH_TOKEN; // avoid conflicting auth headers
   }
 
   return env;

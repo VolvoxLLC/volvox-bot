@@ -46,18 +46,47 @@ export function __resetCommunityActivityState() {
 }
 
 /**
- * Render welcome message with placeholder replacements
+ * Render welcome message with placeholder replacements.
+ *
+ * Supported variables:
+ *   {user}        – Discord mention (<@id>)
+ *   {username}    – Plain username
+ *   {server}      – Guild name (alias: {guild})
+ *   {guild}       – Guild name (alias: {server})
+ *   {memberCount} – Current member count (alias: {count})
+ *   {count}       – Current member count (alias: {memberCount})
+ *
  * @param {string} messageTemplate - Welcome message template
  * @param {Object} member - Member object with id and optional username
  * @param {Object} guild - Guild object with name and memberCount
  * @returns {string} Rendered welcome message
  */
 export function renderWelcomeMessage(messageTemplate, member, guild) {
+  const count = (guild.memberCount ?? 0).toString();
+  const guildName = guild.name ?? '';
   return messageTemplate
     .replace(/{user}/g, `<@${member.id}>`)
     .replace(/{username}/g, member.username || 'Unknown')
-    .replace(/{server}/g, guild.name)
-    .replace(/{memberCount}/g, guild.memberCount.toString());
+    .replace(/{server}/g, guildName)
+    .replace(/{guild}/g, guildName)
+    .replace(/{memberCount}/g, count)
+    .replace(/{count}/g, count);
+}
+
+/**
+ * Pick a random variant from an array of message templates.
+ * Falls back to the single `message` field when no variants are configured.
+ *
+ * @param {string[]} variants - Array of message template strings
+ * @param {string} fallback - Fallback single message template
+ * @returns {string} Selected template
+ */
+export function pickWelcomeVariant(variants, fallback) {
+  if (Array.isArray(variants) && variants.length > 0) {
+    const idx = Math.floor(Math.random() * variants.length);
+    return variants[idx];
+  }
+  return fallback || 'Welcome, {user}!';
 }
 
 /**
@@ -126,7 +155,38 @@ function pruneStaleActivity(cutoff) {
 }
 
 /**
- * Send welcome message to new member
+ * Resolve which welcome message template to use for a given channel.
+ *
+ * Priority order:
+ *   1. Per-channel config (`welcome.channels[].channelId` match)
+ *   2. Global variants (`welcome.variants` array — random selection)
+ *   3. Global single message (`welcome.message`)
+ *   4. Hard-coded fallback
+ *
+ * @param {string} channelId - The target channel ID
+ * @param {Object} welcomeConfig - `config.welcome` section
+ * @returns {string} Resolved message template
+ */
+export function resolveWelcomeTemplate(channelId, welcomeConfig) {
+  // 1. Per-channel override
+  const perChannel = Array.isArray(welcomeConfig?.channels)
+    ? welcomeConfig.channels.find((c) => c.channelId === channelId)
+    : null;
+
+  if (perChannel) {
+    return pickWelcomeVariant(perChannel.variants, perChannel.message);
+  }
+
+  // 2. Global variants / 3. Global single message / 4. Fallback
+  return pickWelcomeVariant(welcomeConfig?.variants, welcomeConfig?.message);
+}
+
+/**
+ * Send welcome message to new member.
+ *
+ * Sends to the primary welcome channel AND any additional per-channel
+ * welcome configs that have a `channelId` different from the primary.
+ *
  * @param {Object} member - Discord guild member
  * @param {Object} client - Discord client
  * @param {Object} config - Bot configuration
@@ -134,31 +194,68 @@ function pruneStaleActivity(cutoff) {
 export async function sendWelcomeMessage(member, client, config) {
   if (!config.welcome?.enabled || !config.welcome?.channelId) return;
 
+  const memberCtx = { id: member.id, username: member.user.username };
+  const guildCtx = { name: member.guild.name, memberCount: member.guild.memberCount };
+  const useDynamic = config.welcome?.dynamic?.enabled === true;
+  const returningMember = isReturningMember(member);
+
+  /**
+   * Build the final message string for a given channel.
+   * @param {string} channelId
+   * @returns {string}
+   */
+  const buildMessage = (channelId) => {
+    if (returningMember) {
+      return renderWelcomeMessage(
+        'Welcome back, {user}! Glad to see you again. Jump back in whenever you are ready.',
+        memberCtx,
+        guildCtx,
+      );
+    }
+
+    if (useDynamic) {
+      return buildDynamicWelcomeMessage(member, config);
+    }
+
+    const template = resolveWelcomeTemplate(channelId, config.welcome);
+    return renderWelcomeMessage(template, memberCtx, guildCtx);
+  };
+
+  // --- Primary channel ---
   try {
     const channel = await fetchChannelCached(client, config.welcome.channelId);
-    if (!channel) return;
-
-    const useDynamic = config.welcome?.dynamic?.enabled === true;
-    const returningMember = isReturningMember(member);
-
-    const message = returningMember
-      ? renderWelcomeMessage(
-          'Welcome back, {user}! Glad to see you again. Jump back in whenever you are ready.',
-          { id: member.id, username: member.user.username },
-          { name: member.guild.name, memberCount: member.guild.memberCount },
-        )
-      : useDynamic
-        ? buildDynamicWelcomeMessage(member, config)
-        : renderWelcomeMessage(
-            config.welcome.message || 'Welcome, {user}!',
-            { id: member.id, username: member.user.username },
-            { name: member.guild.name, memberCount: member.guild.memberCount },
-          );
-
-    await safeSend(channel, message);
-    info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });
+    if (channel) {
+      await safeSend(channel, buildMessage(config.welcome.channelId));
+      info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });
+    }
   } catch (err) {
-    logError('Welcome error', { error: err.message, stack: err.stack });
+    logError('Welcome error (primary channel)', { error: err.message, stack: err.stack });
+  }
+
+  // --- Additional per-channel configs ---
+  const extraChannels = Array.isArray(config.welcome?.channels)
+    ? config.welcome.channels.filter((c) => c.channelId && c.channelId !== config.welcome.channelId)
+    : [];
+
+  for (const channelCfg of extraChannels) {
+    try {
+      const channel = await fetchChannelCached(client, channelCfg.channelId);
+      if (channel) {
+        const template = pickWelcomeVariant(channelCfg.variants, channelCfg.message);
+        const msg = renderWelcomeMessage(template, memberCtx, guildCtx);
+        await safeSend(channel, msg);
+        info('Welcome message sent (per-channel)', {
+          user: member.user.tag,
+          channelId: channelCfg.channelId,
+        });
+      }
+    } catch (err) {
+      logError('Welcome error (per-channel)', {
+        channelId: channelCfg.channelId,
+        error: err.message,
+        stack: err.stack,
+      });
+    }
   }
 }
 

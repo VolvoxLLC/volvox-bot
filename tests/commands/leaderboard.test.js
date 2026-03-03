@@ -14,6 +14,10 @@ vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({ reputation: { enabled: true } }),
 }));
 
+vi.mock('../../src/utils/reputationCache.js', () => ({
+  getLeaderboardCached: vi.fn().mockImplementation((_guildId, factory) => factory()),
+}));
+
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn(),
 }));
