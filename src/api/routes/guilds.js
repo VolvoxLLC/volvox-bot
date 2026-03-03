@@ -1004,11 +1004,18 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
   const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
 
-  // Command usage query parameters for dedicated command_usage table
+  // Build command usage query dynamically to avoid SQL injection
+  const commandUsageConditions = ['guild_id = $1', 'used_at >= $2', 'used_at <= $3'];
   const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
+  let commandUsageParamIndex = 4;
+
   if (activeChannelFilter) {
+    commandUsageConditions.push(`channel_id = $${commandUsageParamIndex}`);
     commandUsageValues.push(activeChannelFilter);
+    commandUsageParamIndex++;
   }
+
+  const commandUsageWhereClause = commandUsageConditions.join(' AND ');
 
   try {
     const [
@@ -1162,10 +1169,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
                command_name,
                COUNT(*)::int AS uses
              FROM command_usage
-             WHERE guild_id = $1
-               AND used_at >= $2
-               AND used_at <= $3
-               ${activeChannelFilter ? `AND channel_id = $4` : ''}
+             WHERE ${commandUsageWhereClause}
              GROUP BY command_name
              ORDER BY uses DESC, command_name ASC
              LIMIT 15`,
@@ -1346,7 +1350,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       channelActivity,
       topChannels: channelActivity,
       commandUsage: {
-        source: commandUsageResult.available ? 'logs' : 'unavailable',
+        source: commandUsageResult.available ? 'command_usage' : 'unavailable',
         items: commandUsage,
       },
       comparison: compareMode

@@ -60,7 +60,16 @@ export async function getCommandUsageStats(guildId, options = {}) {
   if (!guildId) {
     throw new Error('guildId is required');
   }
-  const { startDate, endDate, limit = 15 } = options;
+
+  // Validate and sanitize limit parameter
+  let { limit = 15 } = options;
+  limit = parseInt(limit, 10);
+  if (!Number.isInteger(limit) || limit < 1) {
+    limit = 15;
+  }
+  limit = Math.min(limit, 100); // Cap at 100 for safety
+
+  const { startDate, endDate } = options;
 
   const conditions = ['guild_id = $1'];
   const values = [guildId];
