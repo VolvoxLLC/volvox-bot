@@ -57,6 +57,9 @@ export async function logCommandUsage({ guildId, userId, commandName, channelId 
  * @returns {Promise<Array<{commandName: string, uses: number}>>}
  */
 export async function getCommandUsageStats(guildId, options = {}) {
+  if (!guildId) {
+    throw new Error('guildId is required');
+  }
   const { startDate, endDate, limit = 15 } = options;
 
   const conditions = ['guild_id = $1'];
