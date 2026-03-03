@@ -3,6 +3,8 @@
  * Simple in-memory per-IP rate limiter with no external dependencies
  */
 
+import { RATE_LIMIT_WINDOW } from '../../constants/index.js';
+
 const DEFAULT_MESSAGE = 'Too many requests, please try again later';
 
 /**
@@ -16,7 +18,7 @@ const DEFAULT_MESSAGE = 'Too many requests, please try again later';
  * @returns {import('express').RequestHandler & { destroy: () => void }} Express middleware with a destroy method to clear the cleanup timer
  */
 export function rateLimit({
-  windowMs = 15 * 60 * 1000,
+  windowMs = RATE_LIMIT_WINDOW.SHORT,
   max = 100,
   message = DEFAULT_MESSAGE,
 } = {}) {
