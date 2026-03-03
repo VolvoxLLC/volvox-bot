@@ -309,7 +309,7 @@ export async function readBackup(id, backupDir) {
  * @throws {Error} If backup not found or invalid
  */
 export async function restoreBackup(id, backupDir) {
-  const payload = readBackup(id, backupDir);
+  const payload = await readBackup(id, backupDir);
 
   const validationErrors = validateImportPayload(payload);
   if (validationErrors.length > 0) {
