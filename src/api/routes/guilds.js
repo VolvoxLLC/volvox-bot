@@ -16,6 +16,7 @@ import {
 import { fetchUserGuilds } from '../utils/discordApi.js';
 import { getSessionToken } from '../utils/sessionStore.js';
 import { validateConfigPatchBody } from '../utils/validateConfigPatch.js';
+import { getAggregatedCommandUsage } from '../../utils/commandUsage.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 const router = Router();
@@ -1070,6 +1071,15 @@ router.get('/:id/analytics', requireRole('viewer'), validateGuild, async (req, r
   const bucketExpr =
     interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
 
+  const commandUsageQuery = getAggregatedCommandUsage({
+    pool: dbPool,
+    guildId: req.params.id,
+    from: from.toISOString(),
+    to: to.toISOString(),
+    channelId: activeChannelFilter ?? undefined,
+    limit: 15,
+  });
+
   const logsWhereParts = [
     "message = 'AI usage'",
     "metadata->>'guildId' = $1",
@@ -1099,21 +1109,6 @@ router.get('/:id/analytics', requireRole('viewer'), validateGuild, async (req, r
   }
 
   const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
-
-  const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
-  const commandUsageWhereParts = [
-    "message = 'Command executed'",
-    "metadata->>'guildId' = $1",
-    'timestamp >= $2',
-    'timestamp <= $3',
-  ];
-
-  if (activeChannelFilter) {
-    commandUsageValues.push(activeChannelFilter);
-    commandUsageWhereParts.push(`metadata->>'channelId' = $${commandUsageValues.length}`);
-  }
-
-  const commandUsageWhere = commandUsageWhereParts.join(' AND ');
 
   try {
     const [
@@ -1261,28 +1256,7 @@ router.get('/:id/analytics', requireRole('viewer'), validateGuild, async (req, r
               return { rows: [] };
             })
         : Promise.resolve({ rows: [] }),
-      dbPool
-        .query(
-          `SELECT
-               COALESCE(NULLIF(metadata->>'command', ''), 'unknown') AS command_name,
-               COUNT(*)::int AS uses
-             FROM logs
-             WHERE ${commandUsageWhere}
-             GROUP BY 1
-             ORDER BY uses DESC, command_name ASC
-             LIMIT 15`,
-          commandUsageValues,
-        )
-        .then((result) => ({ rows: result.rows, available: true }))
-        .catch((err) => {
-          // TODO(issue-122): move slash-command analytics to a dedicated usage table
-          // so dashboard metrics are not coupled to log transport availability.
-          warn('Command usage query failed; returning empty command usage dataset', {
-            guild: req.params.id,
-            error: err.message,
-          });
-          return { rows: [], available: false };
-        }),
+      commandUsageQuery,
       dbPool
         .query(
           `SELECT
@@ -1450,7 +1424,7 @@ router.get('/:id/analytics', requireRole('viewer'), validateGuild, async (req, r
       channelActivity,
       topChannels: channelActivity,
       commandUsage: {
-        source: commandUsageResult.available ? 'logs' : 'unavailable',
+        source: commandUsageResult.available ? 'command_usage' : 'unavailable',
         items: commandUsage,
       },
       comparison: compareMode

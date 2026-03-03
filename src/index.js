@@ -62,6 +62,7 @@ import { getPermissionError, hasPermission } from './utils/permissions.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
 
+import { trackCommandUsage } from './utils/commandUsage.js';
 import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
@@ -241,6 +242,12 @@ client.on('interactionCreate', async (interaction) => {
       user: interaction.user.tag,
       guildId: interaction.guildId,
       channelId: interaction.channelId,
+    });
+    void trackCommandUsage({
+      guildId: interaction.guildId,
+      userId: interaction.user.id,
+      commandName,
+      channelId: interaction.channelId ?? undefined,
     });
   } catch (err) {
     error('Command error', {
