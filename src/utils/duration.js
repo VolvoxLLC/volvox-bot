@@ -5,18 +5,20 @@
  * into milliseconds and format milliseconds back into readable strings.
  */
 
+import { MS_PER_SECOND, MS_PER_MINUTE, MS_PER_HOUR, MS_PER_DAY, MS_PER_WEEK, MS_PER_YEAR } from '../constants/index.js';
+
 const UNITS = {
-  s: 1000,
-  m: 60 * 1000,
-  h: 60 * 60 * 1000,
-  d: 24 * 60 * 60 * 1000,
-  w: 7 * 24 * 60 * 60 * 1000,
+  s: MS_PER_SECOND,
+  m: MS_PER_MINUTE,
+  h: MS_PER_HOUR,
+  d: MS_PER_DAY,
+  w: MS_PER_WEEK,
 };
 
 const DURATION_RE = /^\s*(\d+)\s*([smhdw])\s*$/i;
 
 /** Maximum allowed duration: 1 year in milliseconds. */
-const MAX_DURATION_MS = 365 * 24 * 60 * 60 * 1000;
+const MAX_DURATION_MS = MS_PER_YEAR;
 
 /**
  * Parse a duration string into milliseconds.
