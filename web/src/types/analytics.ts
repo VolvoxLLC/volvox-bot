@@ -80,7 +80,7 @@ export interface DashboardAnalytics {
   channelActivity: ChannelBreakdownEntry[];
   topChannels?: ChannelBreakdownEntry[];
   commandUsage?: {
-    source: 'logs' | 'command_usage' | 'unavailable';
+    source: 'logs' | 'unavailable';
     items: CommandUsageEntry[];
   };
   comparison?: {
