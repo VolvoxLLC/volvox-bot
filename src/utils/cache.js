@@ -11,6 +11,7 @@
 
 import { debug, warn } from '../logger.js';
 import { getRedis, recordError, recordHit, recordMiss } from '../redis.js';
+import { MS_PER_MINUTE } from '../constants/index.js';
 
 /**
  * Default TTLs (in seconds) for different cache categories.
@@ -28,9 +29,11 @@ export const TTL = {
   CHANNEL_DETAIL: Number(process.env.REDIS_TTL_CHANNEL_DETAIL) || 600, // 10 min
 };
 
+/** Maximum number of entries in the in-memory LRU cache */
+const MAX_MEMORY_CACHE_SIZE = 1000;
+
 /** @type {Map<string, {value: unknown, expiresAt: number}>} In-memory LRU fallback */
 const memoryCache = new Map();
-const MAX_MEMORY_CACHE_SIZE = 1000;
 
 /** Interval reference for memory cache cleanup */
 let cleanupInterval = null;
@@ -48,7 +51,7 @@ function ensureCleanup() {
         memoryCache.delete(key);
       }
     }
-  }, 60_000);
+  }, MS_PER_MINUTE);
   cleanupInterval.unref();
 }
 
