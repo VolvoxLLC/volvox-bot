@@ -250,8 +250,6 @@ client.on('interactionCreate', async (interaction) => {
       userId: interaction.user.id,
       commandName,
       channelId: interaction.channelId,
-    }).catch(err => {
-      // Errors are already logged internally, this is just a safety net
     });
   } catch (err) {
     error('Command error', {
