@@ -59,6 +59,7 @@ import { stopCacheCleanup } from './utils/cache.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
+import { logCommandUsage } from './utils/commandUsage.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
 
@@ -240,6 +241,14 @@ client.on('interactionCreate', async (interaction) => {
       command: commandName,
       user: interaction.user.tag,
       guildId: interaction.guildId,
+      channelId: interaction.channelId,
+    });
+
+    // Log command usage to dedicated analytics table
+    await logCommandUsage({
+      guildId: interaction.guildId,
+      userId: interaction.user.id,
+      commandName,
       channelId: interaction.channelId,
     });
   } catch (err) {

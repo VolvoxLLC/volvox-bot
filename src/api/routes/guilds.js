@@ -1004,20 +1004,11 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
   const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
 
+  // Command usage query parameters for dedicated command_usage table
   const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
-  const commandUsageWhereParts = [
-    "message = 'Command executed'",
-    "metadata->>'guildId' = $1",
-    'timestamp >= $2',
-    'timestamp <= $3',
-  ];
-
   if (activeChannelFilter) {
     commandUsageValues.push(activeChannelFilter);
-    commandUsageWhereParts.push(`metadata->>'channelId' = $${commandUsageValues.length}`);
   }
-
-  const commandUsageWhere = commandUsageWhereParts.join(' AND ');
 
   try {
     const [
@@ -1168,19 +1159,20 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       dbPool
         .query(
           `SELECT
-               COALESCE(NULLIF(metadata->>'command', ''), 'unknown') AS command_name,
+               command_name,
                COUNT(*)::int AS uses
-             FROM logs
-             WHERE ${commandUsageWhere}
-             GROUP BY 1
+             FROM command_usage
+             WHERE guild_id = $1
+               AND used_at >= $2
+               AND used_at <= $3
+               ${activeChannelFilter ? `AND channel_id = $4` : ''}
+             GROUP BY command_name
              ORDER BY uses DESC, command_name ASC
              LIMIT 15`,
           commandUsageValues,
         )
         .then((result) => ({ rows: result.rows, available: true }))
         .catch((err) => {
-          // TODO(issue-122): move slash-command analytics to a dedicated usage table
-          // so dashboard metrics are not coupled to log transport availability.
           warn('Command usage query failed; returning empty command usage dataset', {
             guild: req.params.id,
             error: err.message,
