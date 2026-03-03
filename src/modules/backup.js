@@ -38,11 +38,8 @@ let scheduledBackupInterval = null;
  */
 export async function getBackupDir(dir) {
   const backupDir = dir ?? DEFAULT_BACKUP_DIR;
-  try {
-    await access(backupDir, constants.F_OK);
-  } catch {
-    await mkdir(backupDir, { recursive: true });
-  }
+  // Use recursive mkdir to avoid race condition between check and create
+  await mkdir(backupDir, { recursive: true });
   return backupDir;
 }
 
@@ -402,10 +399,10 @@ export function startScheduledBackups(opts = {}) {
 
   info('Starting scheduled config backups', { intervalMs });
 
-  scheduledBackupInterval = setInterval(() => {
+  scheduledBackupInterval = setInterval(async () => {
     try {
-      createBackup(backupDir);
-      pruneBackups(retention, backupDir);
+      await createBackup(backupDir);
+      await pruneBackups(retention, backupDir);
     } catch (err) {
       logError('Scheduled backup failed', { error: err.message });
     }
