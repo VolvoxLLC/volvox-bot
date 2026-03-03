@@ -8,7 +8,7 @@
 import { Router } from 'express';
 import { getFeedbackStats, getFeedbackTrend, getRecentFeedback } from '../../modules/aiFeedback.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { requireRole, validateGuild } from './guilds.js';
+import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
 
@@ -87,7 +87,7 @@ const feedbackRateLimit = rateLimit({ windowMs: 60 * 1000, max: 60 });
 router.get(
   '/stats',
   feedbackRateLimit,
-  requireRole('admin'),
+  requireGuildAdmin,
   validateGuild,
   async (req, res, next) => {
     if (!req.app.locals.dbPool) {
@@ -193,7 +193,7 @@ router.get(
 router.get(
   '/recent',
   feedbackRateLimit,
-  requireRole('admin'),
+  requireGuildAdmin,
   validateGuild,
   async (req, res, next) => {
     if (!req.app.locals.dbPool) {

@@ -14,7 +14,7 @@ import {
 } from '../../modules/tempRoleHandler.js';
 import { formatDuration, parseDuration } from '../../utils/duration.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { parsePagination, requireRole } from './guilds.js';
+import { parsePagination, requireGuildModerator } from './guilds.js';
 
 const router = Router();
 
@@ -22,7 +22,7 @@ const router = Router();
 const tempRoleRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
 /**
- * Adapt ?guildId= query param to :id path param for requireRole('moderator').
+ * Adapt ?guildId= query param to :id path param for requireGuildModerator.
  * Only use on routes that need guild id in params (GET list).
  */
 function adaptGuildIdParam(req, _res, next) {
@@ -33,7 +33,7 @@ function adaptGuildIdParam(req, _res, next) {
 }
 
 /**
- * Adapt req.body.guildId to :id path param for requireRole('moderator').
+ * Adapt req.body.guildId to :id path param for requireGuildModerator.
  * Used for POST route where guildId is in the body, not query string.
  */
 function adaptBodyGuildId(req, _res, next) {
@@ -71,7 +71,7 @@ router.use(tempRoleRateLimit);
  *       "200":
  *         description: Paginated list of active temp roles
  */
-router.get('/', adaptGuildIdParam, requireRole('moderator'), async (req, res) => {
+router.get('/', adaptGuildIdParam, requireGuildModerator, async (req, res) => {
   try {
     const guildId = req.query.guildId;
 
@@ -190,7 +190,7 @@ router.delete('/:id', async (req, res) => {
  *       "201": { description: Assigned }
  *       "400": { description: Invalid input }
  */
-router.post('/', adaptBodyGuildId, requireRole('moderator'), async (req, res) => {
+router.post('/', adaptBodyGuildId, requireGuildModerator, async (req, res) => {
   try {
     const { guildId, userId, roleId, duration: durationStr, reason } = req.body || {};
 

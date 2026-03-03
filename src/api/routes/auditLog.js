@@ -8,7 +8,7 @@
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { requireRole, validateGuild } from './guilds.js';
+import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router();
 
@@ -145,7 +145,7 @@ export function rowsToCsv(rows) {
  *   limit     — Items per page (default 25, max 100)
  *   offset    — Offset for pagination (default 0)
  */
-router.get('/:id/audit-log', auditRateLimit, requireRole('admin'), validateGuild, async (req, res) => {
+router.get('/:id/audit-log', auditRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { id: guildId } = req.params;
   const pool = getDbPool(req);
   if (!pool) return res.status(503).json({ error: 'Database not available' });
@@ -197,7 +197,7 @@ router.get('/:id/audit-log', auditRateLimit, requireRole('admin'), validateGuild
 router.get(
   '/:id/audit-log/export',
   exportRateLimit,
-  requireRole('admin'),
+  requireGuildAdmin,
   validateGuild,
   async (req, res) => {
     const { id: guildId } = req.params;

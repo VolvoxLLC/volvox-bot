@@ -13,13 +13,8 @@ export interface BotGuild {
   icon: string | null;
 }
 
-/** Dashboard role for the current user in this guild (from Discord permissions or backend). */
-export type GuildAccessRole = 'viewer' | 'moderator' | 'admin' | 'owner';
-
 export interface MutualGuild extends DiscordGuild {
   botPresent: boolean;
-  /** Current user's dashboard role in this guild. Set when guild list is built. */
-  access?: GuildAccessRole;
 }
 
 export interface DiscordChannel {

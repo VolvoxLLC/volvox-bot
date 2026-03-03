@@ -2,6 +2,7 @@
 
 import { Bot, ChevronsUpDown, RefreshCw, Server } from 'lucide-react';
 import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,16 +12,101 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useDashboardGuild } from '@/contexts/dashboard-guild-context';
 import { getBotInviteUrl, getGuildIconUrl } from '@/lib/discord';
+import { broadcastSelectedGuild, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import { cn } from '@/lib/utils';
+import type { MutualGuild } from '@/types/discord';
 
 interface ServerSelectorProps {
   className?: string;
 }
 
 export function ServerSelector({ className }: ServerSelectorProps) {
-  const { guilds, selectedGuild, selectGuild, loadGuilds, loading, error } = useDashboardGuild();
+  const [guilds, setGuilds] = useState<MutualGuild[]>([]);
+  const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Persist selected guild to localStorage
+  const selectGuild = useCallback((guild: MutualGuild) => {
+    setSelectedGuild(guild);
+    try {
+      localStorage.setItem(SELECTED_GUILD_KEY, guild.id);
+    } catch {
+      // localStorage may be unavailable (e.g. incognito)
+    }
+    broadcastSelectedGuild(guild.id);
+  }, []);
+
+  const loadGuilds = useCallback(async () => {
+    // Abort any previous in-flight request before starting a new one.
+    // Always uses the ref-based controller so both the initial mount
+    // and retry button share a single cancellation path.
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
+    setError(false);
+    try {
+      const response = await fetch('/api/guilds', { signal: controller.signal });
+      if (response.status === 401) {
+        // Auth failure — redirect to login instead of showing a misleading retry
+        window.location.href = '/login';
+        return;
+      }
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data: unknown = await response.json();
+      if (!Array.isArray(data)) throw new Error('Invalid response: expected array');
+      // Runtime shape check: each entry must have at minimum an id and name string
+      const fetchedGuilds = data.filter(
+        (g): g is MutualGuild =>
+          typeof g === 'object' &&
+          g !== null &&
+          typeof (g as Record<string, unknown>).id === 'string' &&
+          typeof (g as Record<string, unknown>).name === 'string',
+      );
+      setGuilds(fetchedGuilds);
+
+      // Restore previously selected guild from localStorage
+      let restored = false;
+      try {
+        const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
+        if (savedId) {
+          const saved = data.find((g: MutualGuild) => g.id === savedId);
+          if (saved) {
+            setSelectedGuild(saved);
+            restored = true;
+          }
+        }
+      } catch {
+        // localStorage unavailable
+      }
+
+      if (!restored && data.length > 0) {
+        selectGuild(data[0]);
+      }
+    } catch (err) {
+      // Don't treat aborted fetches as errors
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setError(true);
+    } finally {
+      // Only reset loading if this request is still the current one.
+      // When loadGuilds is called again (e.g. retry), the previous request
+      // is aborted and a new controller replaces the ref. Without this
+      // guard the aborted request's finally block would set loading=false,
+      // cancelling out the new request's loading=true.
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
+    }
+  }, [selectGuild]);
+
+  useEffect(() => {
+    loadGuilds();
+    return () => abortControllerRef.current?.abort();
+  }, [loadGuilds]);
 
   if (loading) {
     return (
@@ -98,7 +184,10 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           <DropdownMenuItem
             key={guild.id}
             onClick={() => {
-              if (selectedGuild?.id !== guild.id) selectGuild(guild);
+              if (selectedGuild?.id === guild.id) {
+                return;
+              }
+              selectGuild(guild);
             }}
             className="flex items-center gap-2"
           >

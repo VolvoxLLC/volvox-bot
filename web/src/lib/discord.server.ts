@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { getBotApiBaseUrl } from '@/lib/bot-api';
-import { permissionsToDashboardRole } from '@/lib/dashboard-roles';
 import { logger } from '@/lib/logger';
 import type { BotGuild, DiscordGuild, MutualGuild } from '@/types/discord';
 
@@ -224,9 +223,8 @@ export async function getMutualGuilds(
 
   return userGuilds
     .filter((guild) => botGuildIds.has(guild.id))
-    .map((guild) => {
-      const access = permissionsToDashboardRole(guild.permissions);
-      return { ...guild, botPresent: true as const, access: access ?? undefined };
-    })
-    .filter((guild): guild is MutualGuild => guild.access != null);
+    .map((guild) => ({
+      ...guild,
+      botPresent: true as const,
+    }));
 }

@@ -1,4 +1,3 @@
-import { DashboardGuildProvider } from '@/contexts/dashboard-guild-context';
 import { Header } from './header';
 import { ServerSelector } from './server-selector';
 import { Sidebar } from './sidebar';
@@ -11,27 +10,24 @@ interface DashboardShellProps {
  * Server component shell for the dashboard layout.
  * Mobile sidebar toggle is in its own client component (MobileSidebar)
  * which is rendered inside the Header.
- * DashboardGuildProvider supplies guild list and selected guild for role-based nav.
  */
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <DashboardGuildProvider>
-      <div className="flex min-h-screen flex-col">
-        <Header />
+    <div className="flex min-h-screen flex-col">
+      <Header />
 
-        <div className="flex flex-1">
-          {/* Desktop sidebar */}
-          <aside className="hidden w-64 shrink-0 border-r bg-background md:block">
-            <div className="p-4">
-              <ServerSelector />
-            </div>
-            <Sidebar />
-          </aside>
+      <div className="flex flex-1">
+        {/* Desktop sidebar */}
+        <aside className="hidden w-64 shrink-0 border-r bg-background md:block">
+          <div className="p-4">
+            <ServerSelector />
+          </div>
+          <Sidebar />
+        </aside>
 
-          {/* Main content */}
-          <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
-        </div>
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
-    </DashboardGuildProvider>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { info, error as logError } from '../../logger.js';
 import { escapeIlike } from '../../utils/escapeIlike.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { parsePagination, requireRole, validateGuild } from './guilds.js';
+import { parsePagination, requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
 
@@ -204,7 +204,7 @@ export function groupMessagesIntoConversations(rows) {
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/', conversationsRateLimit, requireRole('admin'), validateGuild, async (req, res) => {
+router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
   if (!dbPool) {
     return res.status(503).json({ error: 'Database not available' });
@@ -429,7 +429,7 @@ router.get('/', conversationsRateLimit, requireRole('admin'), validateGuild, asy
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/stats', conversationsRateLimit, requireRole('admin'), validateGuild, async (req, res) => {
+router.get('/stats', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
   if (!dbPool) {
     return res.status(503).json({ error: 'Database not available' });
@@ -614,7 +614,7 @@ router.get('/stats', conversationsRateLimit, requireRole('admin'), validateGuild
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/flags', conversationsRateLimit, requireRole('admin'), validateGuild, async (req, res) => {
+router.get('/flags', conversationsRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
   if (!dbPool) {
     return res.status(503).json({ error: 'Database not available' });
@@ -778,7 +778,7 @@ router.get('/flags', conversationsRateLimit, requireRole('admin'), validateGuild
 router.get(
   '/:conversationId',
   conversationsRateLimit,
-  requireRole('admin'),
+  requireGuildAdmin,
   validateGuild,
   async (req, res) => {
     const { dbPool } = req.app.locals;
@@ -967,7 +967,7 @@ router.get(
 router.post(
   '/:conversationId/flag',
   conversationsRateLimit,
-  requireRole('admin'),
+  requireGuildAdmin,
   validateGuild,
   async (req, res) => {
     const { dbPool } = req.app.locals;

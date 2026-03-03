@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { requireRole } from './guilds.js';
+import { requireGuildModerator } from './guilds.js';
 
 const router = Router();
 
@@ -31,7 +31,7 @@ router.use(moderationRateLimit);
 
 // Apply guild-scoped authorization to all moderation routes
 // (requireAuth is already applied at the router mount level in api/index.js)
-router.use(adaptGuildIdParam, requireRole('moderator'));
+router.use(adaptGuildIdParam, requireGuildModerator);
 
 // ─── GET /cases ───────────────────────────────────────────────────────────────
 

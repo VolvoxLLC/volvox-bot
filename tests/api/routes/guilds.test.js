@@ -220,10 +220,10 @@ describe('guilds routes', () => {
       expect(res.body[0].access).toBe('admin');
     });
 
-    it('should include guilds where OAuth user has MANAGE_GUILD (maps to admin)', async () => {
+    it('should include guilds where OAuth user has MANAGE_GUILD', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
       const token = createOAuthToken();
-      // 0x20 = MANAGE_GUILD — dashboard role mapping gives admin
+      // 0x20 = MANAGE_GUILD but not ADMINISTRATOR
       mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: '32' }]);
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
@@ -231,7 +231,7 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].id).toBe('guild1');
-      expect(res.body[0].access).toBe('admin');
+      expect(res.body[0].access).toBe('moderator');
     });
 
     it('should include admin and moderator access values when both are present', async () => {
@@ -254,10 +254,9 @@ describe('guilds routes', () => {
         user: { tag: 'Bot#1234' },
       };
       app = createApp(client, mockPool);
-      // 0x8 = ADMINISTRATOR -> admin; 0x2000 = MANAGE_MESSAGES -> moderator
       mockFetchGuilds([
         { id: 'guild1', name: 'Test Server', permissions: String(0x8) },
-        { id: 'guild2', name: 'Second Server', permissions: String(0x2000) },
+        { id: 'guild2', name: 'Second Server', permissions: String(0x20) },
       ]);
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
@@ -285,11 +284,11 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].id).toBe('guild1');
-      expect(res.body[0].access).toBe('owner');
+      expect(res.body[0].access).toBe('bot-owner');
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it('should exclude guilds where OAuth user has no dashboard access', async () => {
+    it('should exclude guilds where OAuth user has no admin permissions', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
       const token = createOAuthToken();
       mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: '0' }]);
@@ -298,19 +297,6 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(0);
-    });
-
-    it('should include guilds where OAuth user has only VIEW_CHANNEL (viewer)', async () => {
-      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = createOAuthToken();
-      // 0x400 = VIEW_CHANNEL -> viewer
-      mockFetchGuilds([{ id: 'guild1', name: 'Test Server', permissions: '1024' }]);
-
-      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(1);
-      expect(res.body[0].access).toBe('viewer');
     });
   });
 
@@ -365,17 +351,18 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should allow OAuth users with MANAGE_GUILD on admin endpoints (MANAGE_GUILD maps to admin)', async () => {
+    it('should deny OAuth users with only MANAGE_GUILD on admin endpoints', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
       const token = createOAuthToken();
-      // 0x20 = MANAGE_GUILD — dashboard role mapping gives admin
+      // 0x20 = MANAGE_GUILD but not ADMINISTRATOR — admin requires ADMINISTRATOR only
       mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '32' }]);
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/config')
         .set('Authorization', `Bearer ${token}`);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
     });
 
     it('should deny OAuth users without admin or manage-guild permission', async () => {
@@ -422,24 +409,6 @@ describe('guilds routes', () => {
 
       expect(res.status).toBe(200);
       expect(fetchSpy).not.toHaveBeenCalled();
-    });
-
-    it('should allow OAuth viewers to access viewer endpoints (e.g. GET /:id) but not config', async () => {
-      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      const token = createOAuthToken();
-      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '1024' }]); // VIEW_CHANNEL
-
-      const getGuildRes = await request(app)
-        .get('/api/v1/guilds/guild1')
-        .set('Authorization', `Bearer ${token}`);
-      expect(getGuildRes.status).toBe(200);
-      expect(getGuildRes.body.role).toBe('viewer');
-
-      const getConfigRes = await request(app)
-        .get('/api/v1/guilds/guild1/config')
-        .set('Authorization', `Bearer ${token}`);
-      expect(getConfigRes.status).toBe(403);
-      expect(getConfigRes.body.error).toContain('admin');
     });
   });
 
