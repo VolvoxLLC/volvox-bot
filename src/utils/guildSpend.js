@@ -8,6 +8,7 @@
 
 import { getPool } from '../db.js';
 import { warn } from '../logger.js';
+import { MS_PER_DAY } from '../constants/index.js';
 
 /**
  * Query cumulative AI spend for a guild within a rolling time window.
@@ -19,7 +20,7 @@ import { warn } from '../logger.js';
  * @param {number} [windowMs=86400000] - Rolling window in milliseconds (default: 24 h).
  * @returns {Promise<number>} Total spend in USD for the window period.
  */
-export async function getGuildSpend(guildId, windowMs = 24 * 60 * 60 * 1000) {
+export async function getGuildSpend(guildId, windowMs = MS_PER_DAY) {
   if (!guildId) return 0;
 
   let pool;
@@ -55,7 +56,7 @@ export async function getGuildSpend(guildId, windowMs = 24 * 60 * 60 * 1000) {
  * @param {number} [windowMs=86400000] - Rolling window in milliseconds (default: 24 h).
  * @returns {Promise<{status: 'ok'|'warning'|'exceeded', spend: number, budget: number, pct: number}>}
  */
-export async function checkGuildBudget(guildId, dailyBudgetUsd, windowMs = 24 * 60 * 60 * 1000) {
+export async function checkGuildBudget(guildId, dailyBudgetUsd, windowMs = MS_PER_DAY) {
   const spend = await getGuildSpend(guildId, windowMs);
   const pct = dailyBudgetUsd > 0 ? spend / dailyBudgetUsd : 0;
 
