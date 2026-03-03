@@ -822,7 +822,7 @@ describe('guilds routes', () => {
       });
       expect(res.body.messageVolume).toHaveLength(1);
       expect(res.body.topChannels).toEqual(res.body.channelActivity);
-      expect(res.body.commandUsage).toEqual({ source: 'logs', items: [] });
+      expect(res.body.commandUsage).toEqual({ source: 'command_usage', items: [] });
       expect(res.body.heatmap).toHaveLength(1);
       // New: user engagement metrics
       expect(res.body.userEngagement).toEqual({
@@ -936,7 +936,7 @@ describe('guilds routes', () => {
       expect(res.body.comparison.kpis.activeUsers).toBe(3);
       expect(res.body.comparison.kpis.aiCostUsd).toBeCloseTo(0.02, 6);
       expect(res.body.commandUsage).toEqual({
-        source: 'logs',
+        source: 'command_usage',
         items: [{ command: 'help', uses: 5 }],
       });
 
