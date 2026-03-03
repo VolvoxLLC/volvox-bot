@@ -184,8 +184,8 @@ router.post(
 router.get(
   '/',
   (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
-  (_req, res) => {
-    const backups = listBackups();
+  async (_req, res) => {
+    const backups = await listBackups();
     res.json(backups);
   },
 );
@@ -229,9 +229,9 @@ router.get(
 router.post(
   '/',
   (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
-  (_req, res) => {
+  async (_req, res) => {
     try {
-      const meta = createBackup();
+      const meta = await createBackup();
       return res.status(201).json({ id: meta.id, size: meta.size, createdAt: meta.createdAt });
     } catch (err) {
       return res.status(500).json({ error: 'Failed to create backup', details: err.message });
@@ -278,11 +278,11 @@ router.post(
 router.get(
   '/:id/download',
   (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
-  (req, res) => {
+  async (req, res) => {
     const { id } = req.params;
 
     try {
-      const payload = readBackup(id);
+      const payload = await readBackup(id);
       const filename = `${id}.json`;
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'application/json');
@@ -420,7 +420,7 @@ router.post(
 router.post(
   '/prune',
   (req, res, next) => requireGlobalAdmin('Backup access', req, res, next),
-  (req, res) => {
+  async (req, res) => {
     const retention = req.body ?? {};
     const errors = [];
 
@@ -439,7 +439,7 @@ router.post(
       return res.status(400).json({ error: 'Invalid prune options', details: errors });
     }
 
-    const deleted = pruneBackups(retention);
+    const deleted = await pruneBackups(retention);
     return res.json({ deleted, count: deleted.length });
   },
 );

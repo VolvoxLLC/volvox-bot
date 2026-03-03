@@ -5,18 +5,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/129
  */
 
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
-} from 'node:fs';
-
-// TODO: Consider switching to fs.promises for async operations to improve performance
-// and avoid blocking the event loop with synchronous file system operations.
+import { access, constants, mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SAFE_CONFIG_KEYS, SENSITIVE_FIELDS } from '../api/utils/configAllowlist.js';
@@ -45,13 +34,12 @@ let scheduledBackupInterval = null;
  * Get or create the backup directory.
  *
  * @param {string} [dir] - Override backup directory path
- * @returns {string} The backup directory path
+ * @returns {Promise<string>} The backup directory path
  */
-export function getBackupDir(dir) {
+export async function getBackupDir(dir) {
   const backupDir = dir ?? DEFAULT_BACKUP_DIR;
-  if (!existsSync(backupDir)) {
-    mkdirSync(backupDir, { recursive: true });
-  }
+  // Use recursive mkdir to avoid race condition between check and create
+  await mkdir(backupDir, { recursive: true });
   return backupDir;
 }
 
@@ -192,10 +180,10 @@ function makeBackupFilename(date = new Date()) {
  * Create a timestamped backup of the current config in the backup directory.
  *
  * @param {string} [backupDir] - Override backup directory
- * @returns {{id: string, path: string, size: number, createdAt: string}} Backup metadata
+ * @returns {Promise<{id: string, path: string, size: number, createdAt: string}>} Backup metadata
  */
-export function createBackup(backupDir) {
-  const dir = getBackupDir(backupDir);
+export async function createBackup(backupDir) {
+  const dir = await getBackupDir(backupDir);
   const now = new Date();
   const filename = makeBackupFilename(now);
   const filePath = path.join(dir, filename);
@@ -203,17 +191,17 @@ export function createBackup(backupDir) {
   const payload = exportConfig();
   const json = JSON.stringify(payload, null, 2);
 
-  writeFileSync(filePath, json, 'utf8');
+  await writeFile(filePath, json, 'utf8');
 
-  const { size } = statSync(filePath);
+  const stats = await stat(filePath);
   const id = filename.replace('.json', '');
 
-  info('Config backup created', { id, path: filePath, size });
+  info('Config backup created', { id, path: filePath, size: stats.size });
 
   return {
     id,
     path: filePath,
-    size,
+    size: stats.size,
     createdAt: now.toISOString(),
   };
 }
@@ -223,16 +211,17 @@ export function createBackup(backupDir) {
  *
  * @param {string} filename - Backup filename
  * @param {string} dir - Directory containing the backup file
- * @returns {{id: string, filename: string, createdAt: string, size: number} | null}
+ * @returns {Promise<{id: string, filename: string, createdAt: string, size: number} | null>}
  */
-function parseBackupMeta(filename, dir) {
+async function parseBackupMeta(filename, dir) {
   const match = BACKUP_FILENAME_PATTERN.exec(filename);
   if (!match) return null;
 
   const filePath = path.join(dir, filename);
   let size = 0;
   try {
-    size = statSync(filePath).size;
+    const stats = await stat(filePath);
+    size = stats.size;
   } catch {
     return null;
   }
@@ -252,20 +241,22 @@ function parseBackupMeta(filename, dir) {
  * List all available backups, sorted newest first.
  *
  * @param {string} [backupDir] - Override backup directory
- * @returns {Array<{id: string, filename: string, createdAt: string, size: number}>}
+ * @returns {Promise<Array<{id: string, filename: string, createdAt: string, size: number}>>}
  */
-export function listBackups(backupDir) {
-  const dir = getBackupDir(backupDir);
+export async function listBackups(backupDir) {
+  const dir = await getBackupDir(backupDir);
 
   let files;
   try {
-    files = readdirSync(dir);
+    files = await readdir(dir);
   } catch {
     return [];
   }
 
-  const backups = files
-    .map((filename) => parseBackupMeta(filename, dir))
+  const backupMetaPromises = files.map((filename) => parseBackupMeta(filename, dir));
+  const results = await Promise.all(backupMetaPromises);
+
+  const backups = results
     .filter(Boolean)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -277,10 +268,10 @@ export function listBackups(backupDir) {
  *
  * @param {string} id - Backup ID (filename without .json)
  * @param {string} [backupDir] - Override backup directory
- * @returns {Object} Parsed backup payload
+ * @returns {Promise<Object>} Parsed backup payload
  * @throws {Error} If backup file not found or invalid
  */
-export function readBackup(id, backupDir) {
+export async function readBackup(id, backupDir) {
   // Validate ID against strict pattern: backup-YYYY-MM-DDTHH-mm-ss-SSS-NNNN
   const BACKUP_ID_PATTERN =
     /^backup-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}-[0-9]{4}$/;
@@ -288,15 +279,17 @@ export function readBackup(id, backupDir) {
     throw new Error('Invalid backup ID');
   }
 
-  const dir = getBackupDir(backupDir);
+  const dir = await getBackupDir(backupDir);
   const filename = `${id}.json`;
   const filePath = path.join(dir, filename);
 
-  if (!existsSync(filePath)) {
+  try {
+    await access(filePath, constants.F_OK);
+  } catch {
     throw new Error(`Backup not found: ${id}`);
   }
 
-  const raw = readFileSync(filePath, 'utf8');
+  const raw = await readFile(filePath, 'utf8');
   try {
     return JSON.parse(raw);
   } catch {
@@ -313,7 +306,7 @@ export function readBackup(id, backupDir) {
  * @throws {Error} If backup not found or invalid
  */
 export async function restoreBackup(id, backupDir) {
-  const payload = readBackup(id, backupDir);
+  const payload = await readBackup(id, backupDir);
 
   const validationErrors = validateImportPayload(payload);
   if (validationErrors.length > 0) {
@@ -338,12 +331,12 @@ export async function restoreBackup(id, backupDir) {
  *
  * @param {{daily?: number, weekly?: number}} [retention] - Retention counts
  * @param {string} [backupDir] - Override backup directory
- * @returns {string[]} IDs of deleted backups
+ * @returns {Promise<string[]>} IDs of deleted backups
  */
-export function pruneBackups(retention, backupDir) {
+export async function pruneBackups(retention, backupDir) {
   const { daily = DEFAULT_RETENTION.daily, weekly = DEFAULT_RETENTION.weekly } = retention ?? {};
-  const dir = getBackupDir(backupDir);
-  const all = listBackups(dir);
+  const dir = await getBackupDir(backupDir);
+  const all = await listBackups(dir);
 
   if (all.length === 0) return [];
 
@@ -372,7 +365,7 @@ export function pruneBackups(retention, backupDir) {
   for (const backup of all) {
     if (!toKeep.has(backup.id)) {
       try {
-        unlinkSync(path.join(dir, backup.filename));
+        await unlink(path.join(dir, backup.filename));
         deleted.push(backup.id);
         info('Pruned old backup', { id: backup.id });
       } catch (err) {
@@ -406,10 +399,10 @@ export function startScheduledBackups(opts = {}) {
 
   info('Starting scheduled config backups', { intervalMs });
 
-  scheduledBackupInterval = setInterval(() => {
+  scheduledBackupInterval = setInterval(async () => {
     try {
-      createBackup(backupDir);
-      pruneBackups(retention, backupDir);
+      await createBackup(backupDir);
+      await pruneBackups(retention, backupDir);
     } catch (err) {
       logError('Scheduled backup failed', { error: err.message });
     }
