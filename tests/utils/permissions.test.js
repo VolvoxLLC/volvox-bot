@@ -345,6 +345,101 @@ describe('isGuildAdmin', () => {
     };
     expect(isGuildAdmin(member, null)).toBe(false);
   });
+
+  it('should return true for members with guild-scoped admin role (adminRoles array)', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: {
+        cache: {
+          has: vi.fn().mockImplementation((roleId) => roleId === 'guild-admin-role-1'),
+        },
+      },
+    };
+    const config = {
+      permissions: {
+        adminRoles: ['guild-admin-role-1', 'guild-admin-role-2'],
+      },
+    };
+    expect(isGuildAdmin(member, config)).toBe(true);
+  });
+
+  it('should return true for members with any role in adminRoles array', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: {
+        cache: {
+          has: vi.fn().mockImplementation((roleId) => roleId === 'guild-admin-role-2'),
+        },
+      },
+    };
+    const config = {
+      permissions: {
+        adminRoles: ['guild-admin-role-1', 'guild-admin-role-2'],
+      },
+    };
+    expect(isGuildAdmin(member, config)).toBe(true);
+  });
+
+  it('should return false for members without guild-scoped admin roles', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    const config = {
+      permissions: {
+        adminRoles: ['guild-admin-role-1', 'guild-admin-role-2'],
+      },
+    };
+    expect(isGuildAdmin(member, config)).toBe(false);
+  });
+
+  it('should fall back to adminRoleId when adminRoles is empty', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(true) } },
+    };
+    const config = {
+      permissions: {
+        adminRoles: [],
+        adminRoleId: 'global-admin-role',
+      },
+    };
+    expect(isGuildAdmin(member, config)).toBe(true);
+    expect(member.roles.cache.has).toHaveBeenCalledWith('global-admin-role');
+  });
+
+  it('should handle empty adminRoles array gracefully', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(false) } },
+    };
+    const config = {
+      permissions: {
+        adminRoles: [],
+      },
+    };
+    expect(isGuildAdmin(member, config)).toBe(false);
+  });
+
+  it('should prioritize adminRoles over adminRoleId when both are set', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: {
+        cache: {
+          has: vi.fn().mockImplementation((roleId) => roleId === 'guild-admin-role-1'),
+        },
+      },
+    };
+    const config = {
+      permissions: {
+        adminRoles: ['guild-admin-role-1'],
+        adminRoleId: 'global-admin-role',
+      },
+    };
+    expect(isGuildAdmin(member, config)).toBe(true);
+    // Should match on adminRoles without checking adminRoleId
+    expect(member.roles.cache.has).toHaveBeenCalledWith('guild-admin-role-1');
+  });
 });
 
 describe('isModerator', () => {

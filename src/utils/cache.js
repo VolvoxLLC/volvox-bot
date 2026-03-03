@@ -9,9 +9,9 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/177
  */
 
+import { MS_PER_MINUTE } from '../constants/index.js';
 import { debug, warn } from '../logger.js';
 import { getRedis, recordError, recordHit, recordMiss } from '../redis.js';
-import { MS_PER_MINUTE } from '../constants/index.js';
 
 /**
  * Default TTLs (in seconds) for different cache categories.

@@ -6,9 +6,9 @@
  * gate evaluations when a guild exceeds its daily AI budget.
  */
 
+import { MS_PER_DAY } from '../constants/index.js';
 import { getPool } from '../db.js';
 import { warn } from '../logger.js';
-import { MS_PER_DAY } from '../constants/index.js';
 
 /**
  * Query cumulative AI spend for a guild within a rolling time window.

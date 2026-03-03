@@ -117,19 +117,35 @@ export function hasPermission(member, commandName, config) {
 }
 
 /**
- * Check if a member is a guild admin (has ADMINISTRATOR permission or bot admin role).
+ * Check if a member is a guild admin (has ADMINISTRATOR permission, bot admin role, or guild-scoped admin roles).
  *
- * Currently delegates to {@link isAdmin}. This is an intentional alias to establish
- * a separate semantic entry-point for per-guild admin checks. When per-guild config
- * lands (Issue #71), this function will diverge to check guild-scoped admin roles
- * instead of the global bot admin role.
+ * Checks guild-scoped admin roles from per-guild config (permissions.adminRoles array),
+ * then falls back to global admin checks via {@link isAdmin}.
  *
  * @param {GuildMember} member - Discord guild member
- * @param {Object} config - Bot configuration
+ * @param {Object} config - Bot configuration (should be guild-specific via getConfig(guildId))
  * @returns {boolean} True if member is a guild admin
  */
 export function isGuildAdmin(member, config) {
-  // TODO(#71): check guild-scoped admin roles once per-guild config is implemented
+  if (!member) return false;
+
+  // Bot owner always bypasses permission checks
+  if (isBotOwner(member, config)) return true;
+
+  // Check if member has Discord Administrator permission
+  if (member.permissions?.has(PermissionFlagsBits.Administrator)) {
+    return true;
+  }
+
+  // Check guild-scoped admin roles (per-guild config)
+  const adminRoles = config?.permissions?.adminRoles;
+  if (Array.isArray(adminRoles) && adminRoles.length > 0) {
+    if (adminRoles.some((roleId) => member.roles?.cache?.has(roleId))) {
+      return true;
+    }
+  }
+
+  // Fall back to global admin checks (single adminRoleId, etc.)
   return isAdmin(member, config);
 }
 
