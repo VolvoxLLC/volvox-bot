@@ -20,10 +20,37 @@ import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 const router = Router();
 
-/** Discord ADMINISTRATOR permission flag */
+/** Discord permission flags for dashboard role mapping (see PermissionFlagsBits) */
 const ADMINISTRATOR_FLAG = 0x8;
-/** Discord MANAGE_GUILD permission flag */
 const MANAGE_GUILD_FLAG = 0x20;
+const VIEW_CHANNEL_FLAG = 0x400;
+const MANAGE_MESSAGES_FLAG = 0x2000;
+const KICK_MEMBERS_FLAG = 0x2;
+const BAN_MEMBERS_FLAG = 0x4;
+
+/** Dashboard role tiers: viewer < moderator < admin < owner */
+const DASHBOARD_ROLE_ORDER = { viewer: 0, moderator: 1, admin: 2, owner: 3 };
+
+/**
+ * Map Discord guild permission bitfield to dashboard role (no bot-owner check).
+ * Admin = ADMINISTRATOR or MANAGE_GUILD; Moderator = MANAGE_MESSAGES or KICK_MEMBERS or BAN_MEMBERS; Viewer = VIEW_CHANNEL.
+ * @param {number} permissions - Guild permission bitfield from Discord API
+ * @returns {'admin'|'moderator'|'viewer'|null} Highest role granted, or null if no dashboard access
+ */
+function permissionsToDashboardRole(permissions) {
+  if (Number.isNaN(Number(permissions))) return null;
+  const p = Number(permissions);
+  if ((p & ADMINISTRATOR_FLAG) !== 0 || (p & MANAGE_GUILD_FLAG) !== 0) return 'admin';
+  if (
+    (p & MANAGE_MESSAGES_FLAG) !== 0 ||
+    (p & KICK_MEMBERS_FLAG) !== 0 ||
+    (p & BAN_MEMBERS_FLAG) !== 0
+  ) {
+    return 'moderator';
+  }
+  if ((p & VIEW_CHANNEL_FLAG) !== 0) return 'viewer';
+  return null;
+}
 
 /**
  * Upper bound on content length for abuse prevention.
@@ -213,27 +240,41 @@ function isOAuthBotOwner(user) {
 }
 
 /**
- * Check if an OAuth2 user has admin permissions on a guild.
- * Admin = ADMINISTRATOR only, aligning with the slash-command isAdmin check.
+ * Get the dashboard role for an OAuth user in a guild (owner = bot owner, else from Discord permissions).
  *
  * @param {Object} user - Decoded JWT user payload
  * @param {string} guildId - Guild ID to check
- * @returns {Promise<boolean>} True if user has admin-level permission
+ * @returns {Promise<'owner'|'admin'|'moderator'|'viewer'|null>} Dashboard role or null if no access
  */
-function isOAuthGuildAdmin(user, guildId) {
-  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG);
+async function getOAuthDashboardRole(user, guildId) {
+  if (isOAuthBotOwner(user)) return 'owner';
+  try {
+    const accessToken = await getSessionToken(user?.userId);
+    if (!accessToken) return null;
+    const guilds = await fetchUserGuilds(user.userId, accessToken);
+    const guild = guilds.find((g) => g.id === guildId);
+    if (!guild) return null;
+    return permissionsToDashboardRole(guild.permissions);
+  } catch (err) {
+    error('Error in getOAuthDashboardRole', {
+      error: err.message,
+      userId: user?.userId,
+      guildId,
+    });
+    throw err;
+  }
 }
 
-/**
- * Check if an OAuth2 user has moderator permissions on a guild.
- * Moderator = ADMINISTRATOR or MANAGE_GUILD, aligning with the slash-command isModerator check.
- *
- * @param {Object} user - Decoded JWT user payload
- * @param {string} guildId - Guild ID to check
- * @returns {Promise<boolean>} True if user has moderator-level permission
- */
+/** @deprecated Use requireRole('admin') instead. Kept for backward compatibility. */
+function isOAuthGuildAdmin(user, guildId) {
+  return getOAuthDashboardRole(user, guildId).then((r) => r === 'owner' || r === 'admin');
+}
+
+/** @deprecated Use requireRole('moderator') instead. Kept for backward compatibility. */
 function isOAuthGuildModerator(user, guildId) {
-  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG);
+  return getOAuthDashboardRole(user, guildId).then(
+    (r) => r === 'owner' || r === 'admin' || r === 'moderator',
+  );
 }
 
 /**
@@ -291,6 +332,63 @@ export const requireGuildModerator = requireGuildPermission(
   isOAuthGuildModerator,
   'You do not have moderator access to this guild',
 );
+
+/**
+ * Minimum dashboard roles: viewer (analytics, read-only), moderator (+ mod panel), admin (+ config, audit), owner (+ danger zone).
+ * Sets req.dashboardRole for OAuth users; API-secret and bot-owner get req.dashboardRole = 'owner'.
+ *
+ * @param {'viewer'|'moderator'|'admin'|'owner'} minRole - Minimum role required
+ * @returns {import('express').RequestHandler}
+ */
+export function requireRole(minRole) {
+  const minLevel = DASHBOARD_ROLE_ORDER[minRole];
+  if (minLevel === undefined) {
+    throw new Error(`requireRole: invalid minRole "${minRole}"`);
+  }
+  const messages = {
+    viewer: 'You need at least viewer access to this server to view this page.',
+    moderator: 'You need at least moderator access to this server for this action.',
+    admin: 'You need at least admin access to this server for this action.',
+    owner: 'This action requires server owner (bot owner) access.',
+  };
+  return async (req, res, next) => {
+    if (req.authMethod === 'api-secret') {
+      req.dashboardRole = 'owner';
+      return next();
+    }
+    if (req.authMethod === 'oauth') {
+      if (isOAuthBotOwner(req.user)) {
+        req.dashboardRole = 'owner';
+        return next();
+      }
+      try {
+        const guildId = req.params?.id;
+        if (!guildId) {
+          return res.status(403).json({ error: messages[minRole] });
+        }
+        const role = await getOAuthDashboardRole(req.user, guildId);
+        if (role === null) {
+          return res.status(403).json({ error: 'You do not have access to this server.' });
+        }
+        req.dashboardRole = role;
+        const roleLevel = DASHBOARD_ROLE_ORDER[role];
+        if (roleLevel < minLevel) {
+          return res.status(403).json({ error: messages[minRole] });
+        }
+        return next();
+      } catch (err) {
+        error('Failed to verify dashboard role', {
+          error: err.message,
+          guild: req.params?.id,
+          userId: req.user?.userId,
+        });
+        return res.status(502).json({ error: 'Failed to verify permissions with Discord' });
+      }
+    }
+    warn('Unknown authMethod in requireRole', { authMethod: req.authMethod, path: req.path });
+    return res.status(401).json({ error: 'Unauthorized' });
+  };
+}
 
 /**
  * Validate that the requested guild exists and attach it to req.guild.
@@ -370,7 +468,7 @@ router.get('/', async (req, res) => {
         name: g.name,
         icon: g.iconURL(),
         memberCount: g.memberCount,
-        access: 'bot-owner',
+        access: 'owner',
       }));
       return res.json(ownerGuilds);
     }
@@ -392,13 +490,9 @@ router.get('/', async (req, res) => {
     try {
       const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
       const filtered = userGuilds.reduce((acc, ug) => {
-        const permissions = Number(ug.permissions);
-        const hasAdmin = (permissions & ADMINISTRATOR_FLAG) !== 0;
-        const hasManageGuild = (permissions & MANAGE_GUILD_FLAG) !== 0;
-        const access = hasAdmin ? 'admin' : hasManageGuild ? 'moderator' : null;
-        if (!access) return acc;
+        const role = permissionsToDashboardRole(ug.permissions);
+        if (role === null) return acc;
 
-        // Single lookup avoids has/get TOCTOU.
         const botGuild = botGuilds.get(ug.id);
         if (!botGuild) return acc;
         acc.push({
@@ -406,7 +500,7 @@ router.get('/', async (req, res) => {
           name: botGuild.name,
           icon: botGuild.iconURL(),
           memberCount: botGuild.memberCount,
-          access,
+          access: role,
         });
         return acc;
       }, []);
@@ -516,16 +610,18 @@ function getGuildChannels(guild) {
  *       "404":
  *         $ref: "#/components/responses/NotFound"
  */
-router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
+router.get('/:id', requireRole('viewer'), validateGuild, (req, res) => {
   const guild = req.guild;
-  res.json({
+  const payload = {
     id: guild.id,
     name: guild.name,
     icon: guild.iconURL(),
     memberCount: guild.memberCount,
     channelCount: guild.channels.cache.size,
     channels: getGuildChannels(guild),
-  });
+  };
+  if (req.dashboardRole) payload.role = req.dashboardRole;
+  res.json(payload);
 });
 
 /**
@@ -568,7 +664,7 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
  *       "404":
  *         $ref: "#/components/responses/NotFound"
  */
-router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
+router.get('/:id/channels', requireRole('viewer'), validateGuild, (req, res) => {
   res.json(getGuildChannels(req.guild));
 });
 
@@ -613,7 +709,7 @@ router.get('/:id/channels', requireGuildAdmin, validateGuild, (req, res) => {
  *       "404":
  *         $ref: "#/components/responses/NotFound"
  */
-router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
+router.get('/:id/roles', requireRole('viewer'), validateGuild, (req, res) => {
   const guild = req.guild;
   const roles = Array.from(guild.roles.cache.values())
     .filter((r) => r.id !== guild.id) // exclude @everyone
@@ -654,7 +750,7 @@ router.get('/:id/roles', requireGuildAdmin, validateGuild, (req, res) => {
  *       "404":
  *         $ref: "#/components/responses/NotFound"
  */
-router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
+router.get('/:id/config', requireRole('admin'), validateGuild, (req, res) => {
   const config = getConfig(req.params.id);
   const safeConfig = {};
   for (const key of READABLE_CONFIG_KEYS) {
@@ -713,7 +809,7 @@ router.get('/:id/config', requireGuildAdmin, validateGuild, (req, res) => {
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
-router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => {
+router.patch('/:id/config', requireRole('admin'), validateGuild, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Request body is required' });
   }
@@ -797,7 +893,7 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/stats', requireRole('viewer'), validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -909,7 +1005,7 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/analytics', requireRole('viewer'), validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -1465,7 +1561,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, res) => {
+router.get('/:id/moderation', requireRole('moderator'), validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -1562,7 +1658,7 @@ router.get('/:id/moderation', requireGuildModerator, validateGuild, async (req, 
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
-router.post('/:id/actions', requireGuildAdmin, validateGuild, async (req, res) => {
+router.post('/:id/actions', requireRole('admin'), validateGuild, async (req, res) => {
   if (req.authMethod !== 'api-secret') {
     return res.status(403).json({ error: 'Actions endpoint requires API secret authentication' });
   }

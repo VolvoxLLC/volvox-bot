@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
-  authorizeGuildAdmin,
+  authorizeGuildRole,
   buildUpstreamUrl,
   getBotApiConfig,
   proxyToBotApi,
@@ -18,7 +18,7 @@ export async function GET(
     return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, '[api/guilds/:guildId/analytics]');
+  const authError = await authorizeGuildRole(request, guildId, 'viewer', '[api/guilds/:guildId/analytics]');
   if (authError) return authError;
 
   const config = getBotApiConfig('[api/guilds/:guildId/analytics]');

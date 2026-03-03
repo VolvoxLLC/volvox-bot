@@ -12,7 +12,7 @@ import { getConfig } from '../../modules/config.js';
 import { computeLevel } from '../../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { requireGuildAdmin, validateGuild } from './guilds.js';
+import { requireRole, validateGuild } from './guilds.js';
 
 const router = Router();
 
@@ -84,7 +84,7 @@ function safeGetPool() {
 router.get(
   '/:id/members/export',
   membersRateLimit,
-  requireGuildAdmin,
+  requireRole('admin'),
   validateGuild,
   async (req, res) => {
     try {
@@ -294,7 +294,7 @@ router.get(
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/members', membersRateLimit, requireRole('admin'), validateGuild, async (req, res) => {
   let limit = Number.parseInt(req.query.limit, 10) || 25;
   if (limit < 1) limit = 1;
   if (limit > 100) limit = 100;
@@ -561,7 +561,7 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 router.get(
   '/:id/members/:userId',
   membersRateLimit,
-  requireGuildAdmin,
+  requireRole('admin'),
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;
@@ -759,7 +759,7 @@ router.get(
 router.get(
   '/:id/members/:userId/cases',
   membersRateLimit,
-  requireGuildAdmin,
+  requireRole('admin'),
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;
@@ -890,7 +890,7 @@ router.get(
 router.post(
   '/:id/members/:userId/xp',
   membersRateLimit,
-  requireGuildAdmin,
+  requireRole('admin'),
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;

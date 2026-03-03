@@ -16,71 +16,30 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useContext } from 'react';
 import { Separator } from '@/components/ui/separator';
+import { DashboardGuildContext } from '@/contexts/dashboard-guild-context';
+import { canAccessRoute, type DashboardRole } from '@/lib/dashboard-roles';
 import { cn } from '@/lib/utils';
 
 const navigation = [
-  {
-    name: 'Overview',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Moderation',
-    href: '/dashboard/moderation',
-    icon: Shield,
-  },
-  {
-    name: 'Temp Roles',
-    href: '/dashboard/temp-roles',
-    icon: Clock,
-  },
-  {
-    name: 'AI Chat',
-    href: '/dashboard/ai',
-    icon: MessageSquare,
-  },
-  {
-    name: 'Members',
-    href: '/dashboard/members',
-    icon: Users,
-  },
-  {
-    name: 'Conversations',
-    href: '/dashboard/conversations',
-    icon: MessagesSquare,
-  },
-  {
-    name: 'Tickets',
-    href: '/dashboard/tickets',
-    icon: Ticket,
-  },
-  {
-    name: 'Bot Config',
-    href: '/dashboard/config',
-    icon: Bot,
-  },
-  {
-    name: 'Audit Log',
-    href: '/dashboard/audit-log',
-    icon: ClipboardList,
-  },
-  {
-    name: 'Performance',
-    href: '/dashboard/performance',
-    icon: Activity,
-  },
-  {
-    name: 'Logs',
-    href: '/dashboard/logs',
-    icon: ScrollText,
-  },
-  {
-    name: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
-  },
+  { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Moderation', href: '/dashboard/moderation', icon: Shield },
+  { name: 'Temp Roles', href: '/dashboard/temp-roles', icon: Clock },
+  { name: 'AI Chat', href: '/dashboard/ai', icon: MessageSquare },
+  { name: 'Members', href: '/dashboard/members', icon: Users },
+  { name: 'Conversations', href: '/dashboard/conversations', icon: MessagesSquare },
+  { name: 'Tickets', href: '/dashboard/tickets', icon: Ticket },
+  { name: 'Bot Config', href: '/dashboard/config', icon: Bot },
+  { name: 'Audit Log', href: '/dashboard/audit-log', icon: ClipboardList },
+  { name: 'Performance', href: '/dashboard/performance', icon: Activity },
+  { name: 'Logs', href: '/dashboard/logs', icon: ScrollText },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
+
+function roleLabel(role: DashboardRole): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
 
 interface SidebarProps {
   className?: string;
@@ -89,14 +48,18 @@ interface SidebarProps {
 
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
+  const guildContext = useContext(DashboardGuildContext);
+  const role: DashboardRole | null = guildContext?.selectedGuild?.access ?? null;
+
+  const visibleNav = role === null ? navigation : navigation.filter((item) => canAccessRoute(role, item.href));
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
-      <div className="px-3 py-4">
+      <div className="flex-1 px-3 py-4">
         <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Navigation</h2>
         <Separator className="mb-4" />
         <nav className="space-y-1">
-          {navigation.map((item) => {
+          {visibleNav.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
@@ -118,6 +81,11 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
           })}
         </nav>
       </div>
+      {role && (
+        <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+          <span>Role: {roleLabel(role)}</span>
+        </div>
+      )}
     </div>
   );
 }

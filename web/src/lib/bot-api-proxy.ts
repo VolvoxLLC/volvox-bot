@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { getBotApiBaseUrl } from '@/lib/bot-api';
+import { permissionsToDashboardRole } from '@/lib/dashboard-roles';
 import { getMutualGuilds } from '@/lib/discord.server';
 import { logger } from '@/lib/logger';
 
@@ -22,21 +23,39 @@ export function hasAdministratorPermission(permissions: string): boolean {
   }
 }
 
+export type GuildMinRole = 'viewer' | 'moderator' | 'admin';
+
+const ROLE_ORDER: Record<GuildMinRole, number> = {
+  viewer: 0,
+  moderator: 1,
+  admin: 2,
+};
+
+function roleFromGuild(guild: {
+  access?: string;
+  owner?: boolean;
+  permissions: string;
+}): GuildMinRole | null {
+  if (guild.owner) return 'admin';
+  const access = guild.access;
+  if (access === 'owner' || access === 'admin') return 'admin';
+  if (access === 'moderator') return 'moderator';
+  if (access === 'viewer') return 'viewer';
+  // When access not set (e.g. bot unavailable), derive from Discord permissions
+  const derived = permissionsToDashboardRole(guild.permissions);
+  if (derived === 'admin' || derived === 'owner') return 'admin';
+  if (derived === 'moderator') return 'moderator';
+  if (derived === 'viewer') return 'viewer';
+  return null;
+}
+
 /**
- * Verify that the incoming request is from the owner or an administrator of the specified guild.
- *
- * @param request - The incoming NextRequest containing the user's session/token.
- * @param guildId - The Discord guild ID to authorize against.
- * @param logPrefix - Prefix used when logging contextual error messages.
- * @returns `null` if the requester is authorized; a `NextResponse` containing an error JSON otherwise.
- *          Possible responses:
- *          - 401 Unauthorized when the access token is missing or expired.
- *          - 502 Bad Gateway when mutual guilds cannot be verified.
- *          - 403 Forbidden when the user is neither the guild owner nor has administrator permission.
+ * Verify that the incoming request has at least the required dashboard role for the guild.
  */
-export async function authorizeGuildAdmin(
+export async function authorizeGuildRole(
   request: NextRequest,
   guildId: string,
+  minRole: GuildMinRole,
   logPrefix: string,
 ): Promise<NextResponse | null> {
   const token = await getToken({ req: request });
@@ -60,12 +79,28 @@ export async function authorizeGuildAdmin(
     return NextResponse.json({ error: 'Failed to verify guild permissions' }, { status: 502 });
   }
 
-  const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
-  if (!targetGuild || !(targetGuild.owner || hasAdministratorPermission(targetGuild.permissions))) {
+  const targetGuild = mutualGuilds.find((g) => g.id === guildId);
+  const role = targetGuild ? roleFromGuild(targetGuild) : null;
+  if (role === null) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (ROLE_ORDER[role] < ROLE_ORDER[minRole]) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  return null; // authorized
+  return null;
+}
+
+/**
+ * Verify that the incoming request is from the owner or an administrator of the specified guild.
+ * Equivalent to authorizeGuildRole(..., 'admin', ...).
+ */
+export async function authorizeGuildAdmin(
+  request: NextRequest,
+  guildId: string,
+  logPrefix: string,
+): Promise<NextResponse | null> {
+  return authorizeGuildRole(request, guildId, 'admin', logPrefix);
 }
 
 export interface BotApiConfig {
