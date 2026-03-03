@@ -8,6 +8,7 @@
 
 import { getRedis } from '../../redis.js';
 import { rateLimit as inMemoryRateLimit } from './rateLimit.js';
+import { RATE_LIMIT_WINDOW } from '../../constants/index.js';
 
 /**
  * Creates Redis-backed rate limiting middleware using a sliding window counter.
@@ -19,7 +20,7 @@ import { rateLimit as inMemoryRateLimit } from './rateLimit.js';
  * @param {string} [options.keyPrefix='rl'] - Redis key prefix
  * @returns {import('express').RequestHandler & { destroy: () => void }}
  */
-export function redisRateLimit({ windowMs = 15 * 60 * 1000, max = 100, keyPrefix = 'rl' } = {}) {
+export function redisRateLimit({ windowMs = RATE_LIMIT_WINDOW.SHORT, max = 100, keyPrefix = 'rl' } = {}) {
   // Create in-memory fallback (always available)
   const fallback = inMemoryRateLimit({ windowMs, max });
 
