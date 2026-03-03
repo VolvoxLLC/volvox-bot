@@ -244,12 +244,14 @@ client.on('interactionCreate', async (interaction) => {
       channelId: interaction.channelId,
     });
 
-    // Log command usage to dedicated analytics table
-    await logCommandUsage({
+    // Log command usage to dedicated analytics table (fire-and-forget)
+    logCommandUsage({
       guildId: interaction.guildId,
       userId: interaction.user.id,
       commandName,
       channelId: interaction.channelId,
+    }).catch(err => {
+      // Errors are already logged internally, this is just a safety net
     });
   } catch (err) {
     error('Command error', {
