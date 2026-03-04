@@ -4,6 +4,7 @@ import { motion, useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getBotInviteUrl } from '@/lib/discord';
 
 const tiers = [
   {
@@ -81,6 +82,9 @@ export function Pricing() {
             </span>
             <button
               onClick={() => setIsAnnual(!isAnnual)}
+              role="switch"
+              aria-checked={isAnnual}
+              aria-label="Toggle annual billing"
               className="relative w-14 h-7 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-default)] transition-colors"
             >
               <motion.div
@@ -149,8 +153,11 @@ export function Pricing() {
                     ? 'bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/90'
                     : ''
                 }`}
+                asChild
               >
-                {tier.cta}
+                <a href={getBotInviteUrl() || '#'} target="_blank" rel="noopener noreferrer">
+                  {tier.cta}
+                </a>
               </Button>
 
               {/* Features */}

@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Github, BookOpen, MessageCircle, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getBotInviteUrl } from '@/lib/discord';
 
 export function Footer() {
   return (
@@ -26,8 +27,11 @@ export function Footer() {
           <Button
             size="lg"
             className="font-mono text-lg px-8 py-6 bg-[var(--accent-success)] hover:bg-[var(--accent-success)]/90 text-white"
+            asChild
           >
-            Add to Discord — Free
+            <a href={getBotInviteUrl() || '#'} target="_blank" rel="noopener noreferrer">
+              Add to Discord — Free
+            </a>
           </Button>
         </motion.div>
 
