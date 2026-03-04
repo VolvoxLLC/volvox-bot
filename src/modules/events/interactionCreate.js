@@ -135,15 +135,14 @@ export function registerShowcaseButtonHandler(client) {
         error: err.message,
       });
 
-      if (!interaction.replied && !interaction.deferred) {
-        try {
-          await safeReply(interaction, {
-            content: '❌ Something went wrong processing your upvote.',
-            ephemeral: true,
-          });
-        } catch {
-          // Ignore — we tried
-        }
+      try {
+        const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
+        await reply(interaction, {
+          content: '❌ Something went wrong processing your upvote.',
+          ephemeral: true,
+        });
+      } catch {
+        // Ignore — we tried
       }
     }
   });
@@ -400,7 +399,16 @@ export function registerTicketModalHandler(client) {
     if (!interaction.isModalSubmit()) return;
     if (interaction.customId !== 'ticket_open_modal') return;
 
-    await interaction.deferReply({ ephemeral: true });
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (err) {
+      logError('Failed to defer ticket modal reply', {
+        userId: interaction.user?.id,
+        guildId: interaction.guildId,
+        error: err?.message,
+      });
+      return;
+    }
 
     const topic = interaction.fields.getTextInputValue('ticket_topic') || null;
 
@@ -447,7 +455,16 @@ export function registerTicketCloseButtonHandler(client) {
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('ticket_close_')) return;
 
-    await interaction.deferReply({ ephemeral: true });
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (err) {
+      logError('Failed to defer ticket close reply', {
+        userId: interaction.user?.id,
+        guildId: interaction.guildId,
+        error: err?.message,
+      });
+      return;
+    }
 
     const ticketChannel = interaction.channel;
     const isThread = typeof ticketChannel?.isThread === 'function' && ticketChannel.isThread();

@@ -105,22 +105,30 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     recordCommunityActivity(message, guildConfig);
 
     // Engagement tracking (fire-and-forget, non-blocking)
-    trackMessage(message).catch((err) => {
-      logError('Engagement tracking failed', {
-        channelId: message.channel.id,
-        userId: message.author.id,
-        error: err?.message,
-      });
-    });
+    void (async () => {
+      try {
+        await trackMessage(message);
+      } catch (err) {
+        logError('Engagement tracking failed', {
+          channelId: message.channel.id,
+          userId: message.author.id,
+          error: err?.message,
+        });
+      }
+    })();
 
     // XP gain (fire-and-forget, non-blocking)
-    handleXpGain(message).catch((err) => {
-      logError('XP gain handler failed', {
-        userId: message.author.id,
-        guildId: message.guild.id,
-        error: err?.message,
-      });
-    });
+    void (async () => {
+      try {
+        await handleXpGain(message);
+      } catch (err) {
+        logError('XP gain handler failed', {
+          userId: message.author.id,
+          guildId: message.guild.id,
+          error: err?.message,
+        });
+      }
+    })();
 
     // AI chat — @mention or reply to bot → instant triage evaluation
     if (guildConfig.ai?.enabled) {
@@ -201,10 +209,17 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
             channelId: message.channel.id,
             error: accErr?.message,
           });
+          return;
         }
 
         // Show typing indicator immediately so the user sees feedback
-        message.channel.sendTyping().catch(() => {});
+        void (async () => {
+          try {
+            await message.channel.sendTyping();
+          } catch {
+            // Silently ignore typing indicator failures
+          }
+        })();
 
         // Force immediate triage evaluation — triage owns the full response lifecycle
         try {
@@ -244,14 +259,13 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
           });
         }
       }
-      try {
-        const p = accumulateMessage(message, guildConfig);
-        p?.catch((err) => {
+      void (async () => {
+        try {
+          await accumulateMessage(message, guildConfig);
+        } catch (err) {
           logError('Triage accumulate error', { error: err?.message });
-        });
-      } catch (err) {
-        logError('Triage accumulate error', { error: err?.message });
-      }
+        }
+      })();
     }
   });
 }
