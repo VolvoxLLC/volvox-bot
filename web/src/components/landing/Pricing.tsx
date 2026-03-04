@@ -6,12 +6,15 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getBotInviteUrl } from '@/lib/discord';
 
+const GITHUB_REPO_URL = 'https://github.com/VolvoxLLC/volvox-bot';
+
 const tiers = [
   {
     name: '~/dev/null',
     price: { monthly: 0, annual: 0 },
     description: 'For side projects that might actually ship.',
     cta: 'git clone',
+    href: GITHUB_REPO_URL,
     features: ['Core bot features', '1 Discord server', 'Community support', 'Self-hosted option'],
     popular: false,
   },
@@ -20,6 +23,7 @@ const tiers = [
     price: { monthly: 12, annual: 115 },
     description: 'For growing communities that ship.',
     cta: 'npm install',
+    href: null, // Will use bot invite URL
     features: [
       'Everything in ~/dev/null',
       'Up to 3 servers',
@@ -35,6 +39,7 @@ const tiers = [
     price: { monthly: 49, annual: 470 },
     description: 'For communities that mean business.',
     cta: 'curl | bash',
+    href: null, // Will use bot invite URL
     features: [
       'Everything in ./configure',
       'Unlimited servers',
@@ -152,12 +157,21 @@ export function Pricing() {
                   tier.popular
                     ? 'bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/90'
                     : ''
-                }`}
-                asChild
+                } ${!tier.href && !getBotInviteUrl() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                asChild={!!(tier.href || getBotInviteUrl())}
+                disabled={!tier.href && !getBotInviteUrl()}
               >
-                <a href={getBotInviteUrl() || '#'} target="_blank" rel="noopener noreferrer">
-                  {tier.cta}
-                </a>
+                {tier.href ? (
+                  <a href={tier.href} target="_blank" rel="noopener noreferrer">
+                    {tier.cta}
+                  </a>
+                ) : getBotInviteUrl() ? (
+                  <a href={getBotInviteUrl()!} target="_blank" rel="noopener noreferrer">
+                    {tier.cta}
+                  </a>
+                ) : (
+                  <span>{tier.cta}</span>
+                )}
               </Button>
 
               {/* Features */}
