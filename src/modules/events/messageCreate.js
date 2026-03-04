@@ -105,7 +105,13 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     recordCommunityActivity(message, guildConfig);
 
     // Engagement tracking (fire-and-forget, non-blocking)
-    trackMessage(message).catch(() => {});
+    trackMessage(message).catch((err) => {
+      logError('Engagement tracking failed', {
+        channelId: message.channel.id,
+        userId: message.author.id,
+        error: err?.message,
+      });
+    });
 
     // XP gain (fire-and-forget, non-blocking)
     handleXpGain(message).catch((err) => {

@@ -4,6 +4,7 @@
  */
 
 import { Events } from 'discord.js';
+import { error as logError } from '../../logger.js';
 import { getConfig } from '../config.js';
 import { sendWelcomeMessage } from '../welcome.js';
 
@@ -15,6 +16,18 @@ import { sendWelcomeMessage } from '../welcome.js';
 export function registerGuildMemberAddHandler(client, _config) {
   client.on(Events.GuildMemberAdd, async (member) => {
     const guildConfig = getConfig(member.guild.id);
-    await sendWelcomeMessage(member, client, guildConfig);
+
+    // Gate on welcome feature being enabled
+    if (!guildConfig.welcome?.enabled) return;
+
+    try {
+      await sendWelcomeMessage(member, client, guildConfig);
+    } catch (err) {
+      logError('Welcome message handler failed', {
+        guildId: member.guild.id,
+        userId: member.user?.id,
+        error: err?.message,
+      });
+    }
   });
 }
