@@ -430,16 +430,10 @@ export function registerTicketModalHandler(client) {
         error: err?.message,
       });
 
-      if (interaction.deferred || interaction.replied) {
-        await safeEditReply(interaction, {
-          content: '❌ An error occurred processing your ticket.',
-        });
-      } else {
-        await safeReply(interaction, {
-          content: '❌ An error occurred processing your ticket.',
-          ephemeral: true,
-        });
-      }
+      // We already successfully deferred, so use safeEditReply
+      await safeEditReply(interaction, {
+        content: '❌ An error occurred processing your ticket.',
+      });
     }
   });
 }
@@ -490,16 +484,10 @@ export function registerTicketCloseButtonHandler(client) {
         error: err?.message,
       });
 
-      if (interaction.deferred || interaction.replied) {
-        await safeEditReply(interaction, {
-          content: '❌ An error occurred while closing the ticket.',
-        });
-      } else {
-        await safeReply(interaction, {
-          content: '❌ An error occurred while closing the ticket.',
-          ephemeral: true,
-        });
-      }
+      // We already successfully deferred, so use safeEditReply
+      await safeEditReply(interaction, {
+        content: '❌ An error occurred while closing the ticket.',
+      });
     }
   });
 }
