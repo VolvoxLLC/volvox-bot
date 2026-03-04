@@ -372,7 +372,12 @@ describe('registerChallengeButtonHandler', () => {
   it('should call handleSolveButton for challenge_solve_ buttons', async () => {
     setup();
     getConfig.mockReturnValue({ challenges: { enabled: true } });
-    const interaction = { isButton: () => true, customId: 'challenge_solve_5', user: { id: 'u1' }, guildId: 'g1' };
+    const interaction = {
+      isButton: () => true,
+      customId: 'challenge_solve_5',
+      user: { id: 'u1' },
+      guildId: 'g1',
+    };
     await handlers.get('interactionCreate')(interaction);
     expect(handleSolveButton).toHaveBeenCalledWith(interaction, 5);
   });
@@ -380,7 +385,12 @@ describe('registerChallengeButtonHandler', () => {
   it('should call handleHintButton for challenge_hint_ buttons', async () => {
     setup();
     getConfig.mockReturnValue({ challenges: { enabled: true } });
-    const interaction = { isButton: () => true, customId: 'challenge_hint_3', user: { id: 'u1' }, guildId: 'g1' };
+    const interaction = {
+      isButton: () => true,
+      customId: 'challenge_hint_3',
+      user: { id: 'u1' },
+      guildId: 'g1',
+    };
     await handlers.get('interactionCreate')(interaction);
     expect(handleHintButton).toHaveBeenCalledWith(interaction, 3);
   });

@@ -206,7 +206,9 @@ describe('events ticket handlers', () => {
 
       expect(safeEditReplyMock).toHaveBeenCalledWith(
         interaction,
-        expect.objectContaining({ content: expect.stringContaining('An error occurred processing your ticket') }),
+        expect.objectContaining({
+          content: expect.stringContaining('An error occurred processing your ticket'),
+        }),
       );
     });
   });
