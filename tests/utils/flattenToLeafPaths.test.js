@@ -57,7 +57,9 @@ describe('flattenToLeafPaths', () => {
 
   describe('dangerous keys', () => {
     it('should skip __proto__', () => {
-      const obj = { safe: 'value', __proto__: 'malicious' };
+      // Use JSON.parse to reliably create enumerable __proto__ property
+      const obj = JSON.parse('{"safe": "value", "__proto__": "malicious"}');
+      expect(Object.prototype.hasOwnProperty.call(obj, '__proto__')).toBe(true);
       const result = flattenToLeafPaths(obj, 'test');
 
       expect(result).toHaveLength(1);

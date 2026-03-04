@@ -261,11 +261,10 @@ export function registerWelcomeOnboardingHandlers(client) {
         });
 
         try {
-          if (!interaction.replied) {
-            await safeEditReply(interaction, {
-              content: '❌ Failed to verify. Please ping an admin.',
-            });
-          }
+          // Handler already deferred, so we can safely edit
+          await safeEditReply(interaction, {
+            content: '❌ Failed to verify. Please ping an admin.',
+          });
         } catch {
           // ignore
         }
@@ -284,11 +283,10 @@ export function registerWelcomeOnboardingHandlers(client) {
         });
 
         try {
-          if (!interaction.replied) {
-            await safeEditReply(interaction, {
-              content: '❌ Failed to update roles. Please try again.',
-            });
-          }
+          // Handler already deferred, so we can safely edit
+          await safeEditReply(interaction, {
+            content: '❌ Failed to update roles. Please try again.',
+          });
         } catch {
           // ignore
         }
