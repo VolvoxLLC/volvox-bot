@@ -1,8 +1,8 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
-import { useRef, useEffect, useState } from 'react';
-import { Star, Users, MessageSquare } from 'lucide-react';
+import { MessageSquare, Star, Users } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
   const [count, setCount] = useState(0);
@@ -38,24 +38,24 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
 const testimonials = [
   {
     quote: "Finally, a Discord bot that doesn't suck. The AI actually understands context.",
-    author: "Sarah Chen",
-    role: "DevOps Engineer @ Vercel",
+    author: 'Sarah Chen',
+    role: 'DevOps Engineer @ Vercel',
   },
   {
     quote: "We migrated from MEE6 and never looked back. The dashboard is chef's kiss.",
-    author: "Marcus Johnson",
-    role: "Community Manager @ Linear",
+    author: 'Marcus Johnson',
+    role: 'Community Manager @ Linear',
   },
   {
-    quote: "Self-hosted in 10 minutes. The docs are actually readable. Revolutionary.",
-    author: "Alex Rivera",
-    role: "Founder @ OpenSaaS",
+    quote: 'Self-hosted in 10 minutes. The docs are actually readable. Revolutionary.',
+    author: 'Alex Rivera',
+    role: 'Founder @ OpenSaaS',
   },
 ];
 
 export function Stats() {
   const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: "-100px" });
+  const isInView = useInView(containerRef, { once: true, margin: '-100px' });
 
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)]">
@@ -106,7 +106,7 @@ export function Stats() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (
               <motion.div
-                key={i}
+                key={t.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
@@ -115,9 +115,7 @@ export function Stats() {
                 <div className="text-4xl text-[var(--accent-primary)] opacity-30 absolute top-4 left-4 font-serif">
                   "
                 </div>
-                <p className="text-[var(--text-primary)] mb-4 pt-6 relative z-10">
-                  {t.quote}
-                </p>
+                <p className="text-[var(--text-primary)] mb-4 pt-6 relative z-10">{t.quote}</p>
                 <div className="border-t border-[var(--border-muted)] pt-4">
                   <div className="font-medium text-[var(--text-primary)]">{t.author}</div>
                   <div className="text-sm text-[var(--text-muted)]">{t.role}</div>

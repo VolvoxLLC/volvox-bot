@@ -1,20 +1,22 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
+import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import { useRef } from 'react';
-import { MessageSquare, Shield, Star, BarChart3 } from 'lucide-react';
 
 const features = [
   {
     icon: MessageSquare,
     title: 'AI Chat',
-    description: 'Mention @volvox to chat with Claude. Context-aware, helpful, and actually understands your community.',
+    description:
+      'Mention @volvox to chat with Claude. Context-aware, helpful, and actually understands your community.',
     command: '$ ai --model claude',
   },
   {
     icon: Shield,
     title: 'Moderation',
-    description: 'Auto-mod with Claude intelligence. No more spam, raids, or toxicity slipping through.',
+    description:
+      'Auto-mod with Claude intelligence. No more spam, raids, or toxicity slipping through.',
     command: '$ mod --auto-enable',
   },
   {
@@ -31,9 +33,9 @@ const features = [
   },
 ];
 
-function TerminalCard({ feature, index }: { feature: typeof features[0]; index: number }) {
+function TerminalCard({ feature, index }: { feature: (typeof features)[0]; index: number }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
+  const isInView = useInView(ref, { once: true, margin: '-50px' });
 
   return (
     <motion.div
@@ -66,9 +68,7 @@ function TerminalCard({ feature, index }: { feature: typeof features[0]; index: 
             {feature.title}
           </h3>
         </div>
-        <p className="text-[var(--text-secondary)] leading-relaxed">
-          {feature.description}
-        </p>
+        <p className="text-[var(--text-secondary)] leading-relaxed">{feature.description}</p>
       </div>
 
       {/* Hover Glow */}
@@ -81,7 +81,7 @@ function TerminalCard({ feature, index }: { feature: typeof features[0]; index: 
 
 export function FeatureGrid() {
   const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: "-100px" });
+  const isInView = useInView(containerRef, { once: true, margin: '-100px' });
 
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)]">

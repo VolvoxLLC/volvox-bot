@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Github, BookOpen, MessageCircle, Heart } from 'lucide-react';
+import { BookOpen, Github, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getBotInviteUrl } from '@/lib/discord';
 
@@ -21,8 +21,8 @@ export function Footer() {
             Ready to upgrade your server?
           </h2>
           <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
-            Join thousands of developers who've switched from MEE6, Dyno, and Carl-bot.
-            Your community deserves better.
+            Join thousands of developers who've switched from MEE6, Dyno, and Carl-bot. Your
+            community deserves better.
           </p>
           <Button
             size="lg"
@@ -86,7 +86,8 @@ export function Footer() {
           className="pt-8 border-t border-[var(--border-muted)]"
         >
           <p className="text-sm text-[var(--text-muted)] flex items-center justify-center gap-1">
-            Made with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> by developers, for developers
+            Made with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> by developers, for
+            developers
           </p>
           <p className="text-xs text-[var(--text-muted)] mt-2">
             © {new Date().getFullYear()} Volvox. Not affiliated with Discord.

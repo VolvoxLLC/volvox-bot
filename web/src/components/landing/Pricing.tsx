@@ -1,8 +1,8 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
-import { useRef, useState } from 'react';
 import { Check } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getBotInviteUrl } from '@/lib/discord';
 
@@ -12,12 +12,7 @@ const tiers = [
     price: { monthly: 0, annual: 0 },
     description: 'For side projects that might actually ship.',
     cta: 'git clone',
-    features: [
-      'Core bot features',
-      '1 Discord server',
-      'Community support',
-      'Self-hosted option',
-    ],
+    features: ['Core bot features', '1 Discord server', 'Community support', 'Self-hosted option'],
     popular: false,
   },
   {
@@ -56,7 +51,7 @@ const tiers = [
 export function Pricing() {
   const [isAnnual, setIsAnnual] = useState(false);
   const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: "-100px" });
+  const isInView = useInView(containerRef, { once: true, margin: '-100px' });
 
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)]">
@@ -77,10 +72,13 @@ export function Pricing() {
 
           {/* Toggle */}
           <div className="flex items-center justify-center gap-4">
-            <span className={`text-sm ${!isAnnual ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
+            <span
+              className={`text-sm ${!isAnnual ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}
+            >
               Monthly
             </span>
             <button
+              type="button"
               onClick={() => setIsAnnual(!isAnnual)}
               role="switch"
               aria-checked={isAnnual}
@@ -93,7 +91,9 @@ export function Pricing() {
                 className="absolute top-1 w-5 h-5 rounded-full bg-[var(--accent-primary)]"
               />
             </button>
-            <span className={`text-sm ${isAnnual ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
+            <span
+              className={`text-sm ${isAnnual ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}
+            >
               Annual <span className="text-[var(--accent-success)]">--save-dev</span>
             </span>
           </div>
