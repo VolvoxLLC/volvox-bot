@@ -24,15 +24,25 @@ export function Footer() {
             Join thousands of developers who've switched from MEE6, Dyno, and Carl-bot. Your
             community deserves better.
           </p>
-          <Button
-            size="lg"
-            className="font-mono text-lg px-8 py-6 bg-[var(--accent-success)] hover:bg-[var(--accent-success)]/90 text-white"
-            asChild
-          >
-            <a href={getBotInviteUrl() || '#'} target="_blank" rel="noopener noreferrer">
-              Add to Discord — Free
-            </a>
-          </Button>
+          {getBotInviteUrl() ? (
+            <Button
+              size="lg"
+              className="font-mono text-lg px-8 py-6 bg-[var(--accent-success)] hover:bg-[var(--accent-success)]/90 text-white"
+              asChild
+            >
+              <a href={getBotInviteUrl()!} target="_blank" rel="noopener noreferrer">
+                Add to Discord — Free
+              </a>
+            </Button>
+          ) : (
+            <Button
+              size="lg"
+              disabled
+              className="font-mono text-lg px-8 py-6 bg-[var(--accent-success)]/50 text-white/70 cursor-not-allowed"
+            >
+              Add to Discord — Coming Soon
+            </Button>
+          )}
         </motion.div>
 
         {/* Tagline */}
