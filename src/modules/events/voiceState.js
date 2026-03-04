@@ -1,6 +1,6 @@
 /**
- * Voice State Update Event Handler
- * Handles voice channel join/leave/move events
+ * Voice State Event Handler
+ * Handles Discord voice state updates
  */
 
 import { Events } from 'discord.js';
@@ -8,7 +8,8 @@ import { error as logError } from '../../logger.js';
 import { handleVoiceStateUpdate } from '../voice.js';
 
 /**
- * Register the VoiceStateUpdate event handler.
+ * Register the voiceStateUpdate handler for voice channel activity tracking.
+ *
  * @param {Client} client - Discord client instance
  */
 export function registerVoiceStateHandler(client) {
