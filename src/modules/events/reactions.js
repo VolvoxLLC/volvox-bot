@@ -5,8 +5,7 @@
 
 import { Events } from 'discord.js';
 import { error as logError } from '../../logger.js';
-import { safeReply } from '../../utils/safeSend.js';
-import { isAiMessage, recordFeedback, FEEDBACK_EMOJI, deleteFeedback } from '../aiFeedback.js';
+import { deleteFeedback, FEEDBACK_EMOJI, isAiMessage, recordFeedback } from '../aiFeedback.js';
 import { getConfig } from '../config.js';
 import { trackReaction } from '../engagement.js';
 import { handleReactionRoleAdd, handleReactionRoleRemove } from '../reactionRoles.js';

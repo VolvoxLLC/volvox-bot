@@ -10,15 +10,14 @@ import { safeReply } from '../../utils/safeSend.js';
 import { handleAfkMentions } from '../afkHandler.js';
 import { isChannelBlocked } from '../ai.js';
 import { checkAiAutoMod } from '../aiAutoMod.js';
-import { isAiMessage, recordFeedback, FEEDBACK_EMOJI, deleteFeedback } from '../aiFeedback.js';
 import { getConfig } from '../config.js';
 import { trackMessage } from '../engagement.js';
 import { checkLinks } from '../linkFilter.js';
 import { handleQuietCommand, isQuietMode } from '../quietMode.js';
 import { checkRateLimit } from '../rateLimit.js';
+import { handleXpGain } from '../reputation.js';
 import { isSpam, sendSpamAlert } from '../spam.js';
 import { accumulateMessage, evaluateNow } from '../triage.js';
-import { handleXpGain } from '../reputation.js';
 import { recordCommunityActivity, sendWelcomeMessage } from '../welcome.js';
 
 /**
