@@ -19,10 +19,8 @@ import {
   registerTicketOpenButtonHandler,
   registerWelcomeOnboardingHandlers,
 } from './events/interactionCreate.js';
-import {
-  registerGuildMemberAddHandler,
-  registerMessageCreateHandler,
-} from './events/messageCreate.js';
+import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
+import { registerMessageCreateHandler } from './events/messageCreate.js';
 import { registerReactionHandlers } from './events/reactions.js';
 // Import all handlers from subdirectory modules
 import { registerReadyHandler } from './events/ready.js';
