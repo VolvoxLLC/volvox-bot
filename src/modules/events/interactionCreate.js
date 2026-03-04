@@ -14,8 +14,8 @@ import {
 import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../../commands/showcase.js';
 import { error as logError, warn } from '../../logger.js';
 import { safeEditReply, safeReply } from '../../utils/safeSend.js';
-import { getConfig } from '../config.js';
 import { handleHintButton, handleSolveButton } from '../challengeScheduler.js';
+import { getConfig } from '../config.js';
 import { handlePollVote } from '../pollHandler.js';
 import { handleReminderDismiss, handleReminderSnooze } from '../reminderHandler.js';
 import { handleReviewClaim } from '../reviewHandler.js';
