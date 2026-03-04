@@ -48,7 +48,7 @@ function useTypewriter(text: string, speed = 100, delay = 500) {
 /** Blinking cursor component */
 function BlinkingCursor() {
   return (
-    <span className="inline-block w-3 h-8 bg-terminal-green dark:bg-terminal-green ml-1 terminal-cursor" />
+    <span aria-hidden="true" className="inline-block w-3 h-8 bg-terminal-green dark:bg-terminal-green ml-1 terminal-cursor" />
   );
 }
 
@@ -157,17 +157,15 @@ export function Hero() {
       <div className="container relative">
         <div className="flex flex-col items-center justify-center gap-8 py-20 md:py-32 text-center">
           {/* Terminal-style headline with typewriter effect */}
-          <motion.div
+          <motion.h1
             initial={{ opacity: 0 }}
             animate={isInView ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="flex items-center"
+            className="flex items-center font-mono text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground"
           >
-            <span className="font-mono text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground">
-              <span className="text-terminal-green">&gt;</span> {displayText}
-            </span>
+            <span className="text-terminal-green">&gt;</span> {displayText}
             {!isComplete && <BlinkingCursor />}
-          </motion.div>
+          </motion.h1>
 
           {/* Subheadline - fades in after typing completes */}
           <motion.p
