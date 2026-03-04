@@ -48,7 +48,10 @@ function useTypewriter(text: string, speed = 100, delay = 500) {
 /** Blinking cursor component */
 function BlinkingCursor() {
   return (
-    <span aria-hidden="true" className="inline-block w-3 h-8 bg-terminal-green dark:bg-terminal-green ml-1 terminal-cursor" />
+    <span
+      aria-hidden="true"
+      className="inline-block w-3 h-8 bg-terminal-green dark:bg-terminal-green ml-1 terminal-cursor"
+    />
   );
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Hero, FeatureGrid, Pricing, Stats, Footer, InviteButton } from '@/components/landing';
+import { FeatureGrid, Footer, Hero, InviteButton, Pricing, Stats } from '@/components/landing';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 
@@ -15,7 +15,9 @@ export default function LandingPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-primary)] text-white font-bold text-sm font-mono">
               V
             </div>
-            <span className="font-bold text-lg font-mono text-[var(--text-primary)]">volvox-bot</span>
+            <span className="font-bold text-lg font-mono text-[var(--text-primary)]">
+              volvox-bot
+            </span>
           </div>
           <nav className="flex items-center gap-4">
             <a

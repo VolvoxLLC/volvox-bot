@@ -7,7 +7,7 @@ import { getBotInviteUrl } from '@/lib/discord';
 
 export function Footer() {
   const botInviteUrl = getBotInviteUrl();
-  
+
   return (
     <footer className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)] border-t border-[var(--border-default)]">
       <div className="max-w-4xl mx-auto text-center">
