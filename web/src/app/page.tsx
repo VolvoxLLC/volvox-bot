@@ -93,7 +93,10 @@ export default function LandingPage() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div id="mobile-nav" className="md:hidden border-t border-[var(--border-default)] bg-[var(--bg-primary)]">
+          <div
+            id="mobile-nav"
+            className="md:hidden border-t border-[var(--border-default)] bg-[var(--bg-primary)]"
+          >
             <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
               <button
                 type="button"

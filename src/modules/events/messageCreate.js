@@ -193,7 +193,15 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         // Accumulate the message into the triage buffer (for context).
         // Even bare @mentions with no text go through triage so the classifier
         // can use recent channel history to produce a meaningful response.
-        accumulateMessage(message, guildConfig);
+        // Await to ensure message is in buffer before forced triage.
+        try {
+          await accumulateMessage(message, guildConfig);
+        } catch (accErr) {
+          logError('Failed to accumulate message for triage', {
+            channelId: message.channel.id,
+            error: accErr?.message,
+          });
+        }
 
         // Show typing indicator immediately so the user sees feedback
         message.channel.sendTyping().catch(() => {});
