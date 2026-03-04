@@ -179,7 +179,7 @@ export function registerShowcaseModalHandler(client) {
       await handleShowcaseModalSubmit(interaction, pool);
     } catch (err) {
       logError('Showcase modal error', { error: err.message });
-      const reply = interaction.deferred ? safeEditReply : safeReply;
+      const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
       await reply(interaction, { content: '❌ Something went wrong.' });
     }
   });
