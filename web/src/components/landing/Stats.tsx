@@ -35,18 +35,21 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
   return <span ref={ref}>{count.toLocaleString()}</span>;
 }
 
-const testimonials = [
+const testimonials: { id: string; quote: string; author: string; role: string }[] = [
   {
+    id: 'testimonial-1',
     quote: "Finally, a Discord bot that doesn't suck. The AI actually understands context.",
     author: 'Sarah Chen',
     role: 'DevOps Engineer @ Vercel',
   },
   {
+    id: 'testimonial-2',
     quote: "We migrated from MEE6 and never looked back. The dashboard is chef's kiss.",
     author: 'Marcus Johnson',
     role: 'Community Manager @ Linear',
   },
   {
+    id: 'testimonial-3',
     quote: 'Self-hosted in 10 minutes. The docs are actually readable. Revolutionary.',
     author: 'Alex Rivera',
     role: 'Founder @ OpenSaaS',
