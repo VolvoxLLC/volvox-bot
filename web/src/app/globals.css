@@ -99,6 +99,19 @@
     --input: 240 6% 90%;
     --ring: 142 76% 36%;
     --radius: 0.5rem;
+
+    /* Semantic tokens for landing components */
+    --bg-primary: hsl(var(--background));
+    --bg-secondary: hsl(var(--muted));
+    --bg-tertiary: hsl(var(--secondary));
+    --text-primary: hsl(var(--foreground));
+    --text-secondary: hsl(var(--muted-foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --accent-primary: hsl(var(--primary));
+    --accent-success: #22c55e;
+    --accent-warning: #f59e0b;
+    --border-default: hsl(var(--border));
+    --border-muted: hsl(var(--border));
   }
 
   .dark {
@@ -122,6 +135,19 @@
     --border: 0 0% 12%;
     --input: 0 0% 12%;
     --ring: 142 76% 46%;
+
+    /* Semantic tokens for landing components (dark mode) */
+    --bg-primary: hsl(var(--background));
+    --bg-secondary: hsl(var(--muted));
+    --bg-tertiary: hsl(var(--secondary));
+    --text-primary: hsl(var(--foreground));
+    --text-secondary: hsl(var(--muted-foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --accent-primary: hsl(var(--primary));
+    --accent-success: #22c55e;
+    --accent-warning: #f59e0b;
+    --border-default: hsl(var(--border));
+    --border-muted: hsl(var(--border));
   }
 }
 
