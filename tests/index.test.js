@@ -234,6 +234,9 @@ async function importIndex({
   loadConfigResult = null,
   throwOnExit = true,
   checkMem0HealthImpl = null,
+  railwayEnvironmentName = null,
+  railwayEnvironmentId = null,
+  botApiOnlyMode = null,
 } = {}) {
   vi.resetModules();
 
@@ -319,6 +322,24 @@ async function importIndex({
     process.env.DATABASE_URL = databaseUrl;
   }
 
+  if (railwayEnvironmentName == null) {
+    delete process.env.RAILWAY_ENVIRONMENT_NAME;
+  } else {
+    process.env.RAILWAY_ENVIRONMENT_NAME = railwayEnvironmentName;
+  }
+
+  if (railwayEnvironmentId == null) {
+    delete process.env.RAILWAY_ENVIRONMENT;
+  } else {
+    process.env.RAILWAY_ENVIRONMENT = railwayEnvironmentId;
+  }
+
+  if (botApiOnlyMode == null) {
+    delete process.env.BOT_API_ONLY_MODE;
+  } else {
+    process.env.BOT_API_ONLY_MODE = botApiOnlyMode;
+  }
+
   vi.spyOn(process, 'on').mockImplementation((event, cb) => {
     mocks.processHandlers[event] = cb;
     return process;
@@ -357,6 +378,41 @@ describe('index.js', () => {
   it('should exit when DISCORD_TOKEN is missing', async () => {
     await expect(importIndex({ token: null, databaseUrl: null })).rejects.toThrow('process.exit:1');
     expect(mocks.logger.error).toHaveBeenCalledWith('DISCORD_TOKEN not set');
+  });
+
+  it('should run in API-only mode when BOT_API_ONLY_MODE is true without DISCORD_TOKEN', async () => {
+    await importIndex({ token: null, databaseUrl: null, botApiOnlyMode: 'true' });
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Running in API-only mode — Discord gateway login skipped',
+      expect.objectContaining({ reason: 'BOT_API_ONLY_MODE' }),
+    );
+    expect(mocks.client.login).not.toHaveBeenCalled();
+  });
+
+  it('should run in API-only mode when Railway preview environment detected', async () => {
+    await importIndex({
+      token: null,
+      databaseUrl: null,
+      railwayEnvironmentName: 'pr-242',
+    });
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Running in API-only mode — Discord gateway login skipped',
+      expect.objectContaining({ reason: 'railway_preview' }),
+    );
+    expect(mocks.client.login).not.toHaveBeenCalled();
+  });
+
+  it('should detect Railway preview from environment ID pattern', async () => {
+    await importIndex({
+      token: null,
+      databaseUrl: null,
+      railwayEnvironmentId: 'pr-123',
+    });
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Running in API-only mode — Discord gateway login skipped',
+      expect.objectContaining({ reason: 'railway_preview' }),
+    );
+    expect(mocks.client.login).not.toHaveBeenCalled();
   });
 
   it('should initialize startup with database when DATABASE_URL is set', async () => {
