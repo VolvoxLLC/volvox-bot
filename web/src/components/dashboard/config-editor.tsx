@@ -1117,9 +1117,7 @@ export function ConfigEditor() {
                     ? [draftConfig.moderation.alertChannelId]
                     : []
                 }
-                onChange={(selected) =>
-                  updateModerationField('alertChannelId', selected[0] ?? null)
-                }
+                onChange={(selected) => updateModerationField('alertChannelId', selected[0] ?? '')}
                 placeholder="Select channel for moderation alerts"
                 disabled={saving}
                 maxSelections={1}
@@ -1647,7 +1645,7 @@ export function ConfigEditor() {
                     : []
                 }
                 onChange={(selected) =>
-                  updateTriageField('moderationLogChannel', selected[0] ?? null)
+                  updateTriageField('moderationLogChannel', selected[0] ?? '')
                 }
                 placeholder="Select channel for moderation logs"
                 disabled={saving}
@@ -1682,7 +1680,7 @@ export function ConfigEditor() {
               id="channel-id"
               guildId={guildId}
               selected={draftConfig.starboard?.channelId ? [draftConfig.starboard.channelId] : []}
-              onChange={(selected) => updateStarboardField('channelId', selected[0] ?? null)}
+              onChange={(selected) => updateStarboardField('channelId', selected[0] ?? '')}
               placeholder="Select starboard channel"
               disabled={saving}
               maxSelections={1}
