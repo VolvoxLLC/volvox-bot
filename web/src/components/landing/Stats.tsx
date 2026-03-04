@@ -40,13 +40,13 @@ const testimonials: { id: string; quote: string; author: string; role: string }[
     id: 'testimonial-1',
     quote: "Finally, a Discord bot that doesn't suck. The AI actually understands context.",
     author: 'Sarah Chen',
-    role: 'DevOps Engineer @ Vercel',
+    role: 'DevOps Engineer @ TechFlow',
   },
   {
     id: 'testimonial-2',
     quote: "We migrated from MEE6 and never looked back. The dashboard is chef's kiss.",
     author: 'Marcus Johnson',
-    role: 'Community Manager @ Linear',
+    role: 'Community Manager @ Streamline',
   },
   {
     id: 'testimonial-3',
@@ -136,7 +136,7 @@ export function Stats() {
           className="text-center"
         >
           <p className="text-[var(--text-muted)] text-sm">
-            Trusted by teams at Vercel, Linear, GitHub, and thousands of open-source communities
+            Trusted by teams at leading tech companies and thousands of open-source communities
           </p>
         </motion.div>
       </div>
