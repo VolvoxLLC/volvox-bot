@@ -10,7 +10,7 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col">
       {/* Navbar */}
       <header className="sticky top-0 z-50 border-b border-[var(--border-default)] bg-[var(--bg-primary)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--bg-primary)]/60">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container mx-auto px-4 flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-primary)] text-white font-bold text-sm font-mono">
               V
