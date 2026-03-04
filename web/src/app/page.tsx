@@ -64,6 +64,8 @@ export default function LandingPage() {
             className="md:hidden p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav"
           >
             {mobileMenuOpen ? (
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -91,7 +93,7 @@ export default function LandingPage() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-[var(--border-default)] bg-[var(--bg-primary)]">
+          <div id="mobile-nav" className="md:hidden border-t border-[var(--border-default)] bg-[var(--bg-primary)]">
             <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
               <button
                 type="button"
