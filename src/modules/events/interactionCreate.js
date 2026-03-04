@@ -418,9 +418,22 @@ export function registerTicketModalHandler(client) {
         content: `✅ Ticket #${ticket.id} created! Head to <#${thread.id}>.`,
       });
     } catch (err) {
-      await safeEditReply(interaction, {
-        content: `❌ ${err.message}`,
+      logError('Ticket modal handler failed', {
+        userId: interaction.user?.id,
+        guildId: interaction.guildId,
+        error: err?.message,
       });
+
+      if (interaction.deferred || interaction.replied) {
+        await safeEditReply(interaction, {
+          content: '❌ An error occurred processing your ticket.',
+        });
+      } else {
+        await safeReply(interaction, {
+          content: '❌ An error occurred processing your ticket.',
+          ephemeral: true,
+        });
+      }
     }
   });
 }
@@ -455,9 +468,23 @@ export function registerTicketCloseButtonHandler(client) {
         content: `✅ Ticket #${ticket.id} has been closed.`,
       });
     } catch (err) {
-      await safeEditReply(interaction, {
-        content: `❌ ${err.message}`,
+      logError('Ticket close handler failed', {
+        userId: interaction.user?.id,
+        guildId: interaction.guildId,
+        channelId: ticketChannel?.id,
+        error: err?.message,
       });
+
+      if (interaction.deferred || interaction.replied) {
+        await safeEditReply(interaction, {
+          content: '❌ An error occurred while closing the ticket.',
+        });
+      } else {
+        await safeReply(interaction, {
+          content: '❌ An error occurred while closing the ticket.',
+          ephemeral: true,
+        });
+      }
     }
   });
 }
