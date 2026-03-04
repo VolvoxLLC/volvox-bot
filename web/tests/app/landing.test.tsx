@@ -45,10 +45,8 @@ describe('LandingPage', () => {
     render(<LandingPage />);
     expect(screen.getByText('AI Chat')).toBeInTheDocument();
     expect(screen.getByText('Moderation')).toBeInTheDocument();
-    expect(screen.getByText('Welcome Messages')).toBeInTheDocument();
-    expect(screen.getByText('Spam Detection')).toBeInTheDocument();
-    expect(screen.getByText('Runtime Config')).toBeInTheDocument();
-    expect(screen.getByText('Web Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Starboard')).toBeInTheDocument();
+    expect(screen.getByText('Analytics')).toBeInTheDocument();
   });
 
   it('renders sign in button', () => {
@@ -70,13 +68,14 @@ describe('LandingPage', () => {
 
   it('renders footer with links', () => {
     render(<LandingPage />);
-    expect(screen.getByText('GitHub')).toBeInTheDocument();
-    expect(screen.getByText('Discord')).toBeInTheDocument();
+    // GitHub appears in both header nav and footer
+    expect(screen.getAllByText('GitHub').length).toBeGreaterThan(0);
+    expect(screen.getByText('Support Server')).toBeInTheDocument();
   });
 
   it('has CTA section', () => {
     render(<LandingPage />);
-    expect(screen.getByText(/Ready to get started/)).toBeInTheDocument();
+    expect(screen.getByText(/Ready to upgrade your server/)).toBeInTheDocument();
   });
 
   it('renders theme toggle', () => {
