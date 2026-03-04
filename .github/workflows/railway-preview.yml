@@ -2,7 +2,7 @@ name: Railway Preview Deploy
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
     branches: [main]
 
 concurrency:
@@ -39,6 +39,7 @@ jobs:
         run: cd web && pnpm build
         env:
           NEXT_PUBLIC_BOT_API_URL: ${{ secrets.NEXT_PUBLIC_BOT_API_URL }}
+          NEXT_PUBLIC_DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL_PREVIEW || 'https://preview.volvox.dev' }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
