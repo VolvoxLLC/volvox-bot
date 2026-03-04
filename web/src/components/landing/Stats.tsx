@@ -8,6 +8,7 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
   const [count, setCount] = useState(0);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isInView) return;
@@ -18,10 +19,17 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
       const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
       setCount(Math.floor(progress * target));
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        rafRef.current = requestAnimationFrame(animate);
       }
     };
-    requestAnimationFrame(animate);
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
   }, [isInView, target, duration]);
 
   return <span ref={ref}>{count.toLocaleString()}</span>;

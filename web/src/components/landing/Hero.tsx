@@ -11,6 +11,7 @@ import { getBotInviteUrl } from '@/lib/discord';
 function useTypewriter(text: string, speed = 100, delay = 500) {
   const [displayText, setDisplayText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setDisplayText('');
@@ -18,20 +19,27 @@ function useTypewriter(text: string, speed = 100, delay = 500) {
 
     const timeout = setTimeout(() => {
       let index = 0;
-      const interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         if (index < text.length) {
           setDisplayText(text.slice(0, index + 1));
           index++;
         } else {
           setIsComplete(true);
-          clearInterval(interval);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
         }
       }, speed);
-
-      return () => clearInterval(interval);
     }, delay);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(timeout);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [text, speed, delay]);
 
   return { displayText, isComplete };
