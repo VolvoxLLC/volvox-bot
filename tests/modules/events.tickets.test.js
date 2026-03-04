@@ -195,6 +195,7 @@ describe('events ticket handlers', () => {
         isModalSubmit: () => true,
         customId: 'ticket_open_modal',
         deferReply: vi.fn().mockResolvedValue(undefined),
+        deferred: true,
         fields: { getTextInputValue: vi.fn().mockReturnValue('') },
         guild: { id: 'guild1' },
         user: { id: 'user1' },
@@ -205,7 +206,7 @@ describe('events ticket handlers', () => {
 
       expect(safeEditReplyMock).toHaveBeenCalledWith(
         interaction,
-        expect.objectContaining({ content: expect.stringContaining('No suitable channel found') }),
+        expect.objectContaining({ content: expect.stringContaining('An error occurred processing your ticket') }),
       );
     });
   });
@@ -272,6 +273,7 @@ describe('events ticket handlers', () => {
         isButton: () => true,
         customId: 'ticket_close_9',
         deferReply: vi.fn().mockResolvedValue(undefined),
+        deferred: true,
         channel: {
           id: 'thread9',
           isThread: () => true,
@@ -284,7 +286,7 @@ describe('events ticket handlers', () => {
       expect(safeEditReplyMock).toHaveBeenCalledWith(
         interaction,
         expect.objectContaining({
-          content: expect.stringContaining('No open ticket found for this thread.'),
+          content: expect.stringContaining('An error occurred while closing the ticket'),
         }),
       );
     });
