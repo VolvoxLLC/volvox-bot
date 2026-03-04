@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import { useRef } from 'react';
 
@@ -36,18 +36,19 @@ const features = [
 function TerminalCard({ feature, index }: { feature: (typeof features)[0]; index: number }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 30, scale: 0.95 }}
       animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={{
         duration: 0.5,
-        delay: index * 0.15,
+        delay: shouldReduceMotion ? 0 : index * 0.15,
         ease: [0.16, 1, 0.3, 1],
       }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileHover={shouldReduceMotion ? undefined : { y: -4, transition: { duration: 0.2 } }}
       className="group relative rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] overflow-hidden hover:border-[var(--accent-primary)] transition-colors"
     >
       {/* Terminal Chrome */}
@@ -82,12 +83,13 @@ function TerminalCard({ feature, index }: { feature: (typeof features)[0]; index
 export function FeatureGrid() {
   const containerRef = useRef(null);
   const isInView = useInView(containerRef, { once: true, margin: '-100px' });
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)]">
       <div className="max-w-7xl mx-auto" ref={containerRef}>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
