@@ -370,14 +370,16 @@ describe('registerChallengeButtonHandler', () => {
 
   it('should call handleSolveButton for challenge_solve_ buttons', async () => {
     setup();
-    const interaction = { isButton: () => true, customId: 'challenge_solve_5', user: { id: 'u1' } };
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
+    const interaction = { isButton: () => true, customId: 'challenge_solve_5', user: { id: 'u1' }, guildId: 'g1' };
     await handlers.get('interactionCreate')(interaction);
     expect(handleSolveButton).toHaveBeenCalledWith(interaction, 5);
   });
 
   it('should call handleHintButton for challenge_hint_ buttons', async () => {
     setup();
-    const interaction = { isButton: () => true, customId: 'challenge_hint_3', user: { id: 'u1' } };
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
+    const interaction = { isButton: () => true, customId: 'challenge_hint_3', user: { id: 'u1' }, guildId: 'g1' };
     await handlers.get('interactionCreate')(interaction);
     expect(handleHintButton).toHaveBeenCalledWith(interaction, 3);
   });
@@ -394,12 +396,14 @@ describe('registerChallengeButtonHandler', () => {
 
   it('should handle solve error and reply ephemerally', async () => {
     setup();
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
     handleSolveButton.mockRejectedValueOnce(new Error('solve boom'));
     const reply = vi.fn().mockResolvedValue(undefined);
     await handlers.get('interactionCreate')({
       isButton: () => true,
       customId: 'challenge_solve_0',
       user: { id: 'u1' },
+      guildId: 'g1',
       replied: false,
       deferred: false,
       reply,
@@ -409,12 +413,14 @@ describe('registerChallengeButtonHandler', () => {
 
   it('should handle hint error and reply ephemerally', async () => {
     setup();
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
     handleHintButton.mockRejectedValueOnce(new Error('hint boom'));
     const reply = vi.fn().mockResolvedValue(undefined);
     await handlers.get('interactionCreate')({
       isButton: () => true,
       customId: 'challenge_hint_2',
       user: { id: 'u1' },
+      guildId: 'g1',
       replied: false,
       deferred: false,
       reply,

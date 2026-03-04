@@ -126,6 +126,7 @@ describe('events coverage follow-up', () => {
       ai: { enabled: true, channels: [] },
       review: { enabled: true },
       starboard: { enabled: true },
+      challenges: { enabled: true },
     });
     getPool.mockReturnValue({ query: vi.fn() });
   });

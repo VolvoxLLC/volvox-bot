@@ -655,7 +655,9 @@ describe('events module', () => {
         isButton: () => true,
         customId: 'poll_vote_opt1',
         user: { id: 'u1' },
+        guildId: 'g1',
       };
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       await handler(interaction);
 
       expect(handlePollVote).toHaveBeenCalledWith(interaction);
@@ -676,10 +678,12 @@ describe('events module', () => {
         isButton: () => true,
         customId: 'poll_vote_opt1',
         user: { id: 'u1' },
+        guildId: 'g1',
         replied: false,
         deferred: false,
         reply,
       };
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       await handler(interaction);
 
       expect(reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true }));
