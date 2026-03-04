@@ -135,10 +135,24 @@ jobs:
     if: github.event.action == 'closed'
 
     steps:
+      - name: Check Railway token availability
+        id: railway-token
+        run: |
+          if [ -n "${RAILWAY_TOKEN}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "RAILWAY_TOKEN not set — skipping Railway preview cleanup"
+          fi
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
       - name: Install Railway CLI
+        if: steps.railway-token.outputs.available == 'true'
         run: npm install -g @railway/cli
 
       - name: Remove Preview Environment
+        if: steps.railway-token.outputs.available == 'true'
         run: |
           PREVIEW_ENV="pr-${{ github.event.number }}"
           echo "Removing preview environment: $PREVIEW_ENV"
@@ -147,6 +161,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Comment PR about cleanup
+        if: steps.railway-token.outputs.available == 'true'
         uses: actions/github-script@v7.0.1
         with:
           script: |

@@ -402,17 +402,17 @@ describe('index.js', () => {
     expect(mocks.client.login).not.toHaveBeenCalled();
   });
 
-  it('should detect Railway preview from environment ID pattern', async () => {
+  it('should still login when DISCORD_TOKEN is set even in Railway preview environment', async () => {
     await importIndex({
-      token: null,
+      token: 'abc',
       databaseUrl: null,
-      railwayEnvironmentId: 'pr-123',
+      railwayEnvironmentName: 'pr-242',
     });
-    expect(mocks.logger.warn).toHaveBeenCalledWith(
+    expect(mocks.client.login).toHaveBeenCalledWith('abc');
+    expect(mocks.logger.warn).not.toHaveBeenCalledWith(
       'Running in API-only mode — Discord gateway login skipped',
       expect.objectContaining({ reason: 'railway_preview' }),
     );
-    expect(mocks.client.login).not.toHaveBeenCalled();
   });
 
   it('should initialize startup with database when DATABASE_URL is set', async () => {

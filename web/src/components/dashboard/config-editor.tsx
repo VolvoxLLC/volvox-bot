@@ -1117,7 +1117,9 @@ export function ConfigEditor() {
                     ? [draftConfig.moderation.alertChannelId]
                     : []
                 }
-                onChange={(selected) => updateModerationField('alertChannelId', selected[0] ?? '')}
+                onChange={(selected) =>
+                  updateModerationField('alertChannelId', selected[0] ?? null)
+                }
                 placeholder="Select channel for moderation alerts"
                 disabled={saving}
                 maxSelections={1}

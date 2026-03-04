@@ -366,10 +366,13 @@ client.on('shardDisconnect', (event, shardId) => {
 
 // Start bot
 const token = process.env.DISCORD_TOKEN;
+// Railway sets RAILWAY_ENVIRONMENT_NAME to the environment name (e.g., "pr-242")
+// and RAILWAY_SERVICE_NAME to the service name. We detect preview environments
+// by checking if the environment name follows the pr-N pattern.
 const railwayEnvironmentName = process.env.RAILWAY_ENVIRONMENT_NAME || '';
 const railwayEnvironmentId = process.env.RAILWAY_ENVIRONMENT || '';
 const isRailwayPreviewEnvironment =
-  /(^|-)pr-\d+$/i.test(railwayEnvironmentName) || /^pr-\d+$/i.test(railwayEnvironmentId);
+  !token && (/^pr-\d+$/i.test(railwayEnvironmentName) || /^pr-\d+$/i.test(railwayEnvironmentId));
 const runApiOnlyMode = process.env.BOT_API_ONLY_MODE === 'true' || isRailwayPreviewEnvironment;
 
 if (!token && !runApiOnlyMode) {
