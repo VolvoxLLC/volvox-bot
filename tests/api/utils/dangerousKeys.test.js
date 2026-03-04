@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DANGEROUS_KEYS } from '../../src/api/utils/dangerousKeys.js';
+import { DANGEROUS_KEYS } from '../../../src/api/utils/dangerousKeys.js';
 
 describe('dangerousKeys', () => {
   it('should contain __proto__', () => {
