@@ -38,6 +38,10 @@ export function registerPollButtonHandler(client) {
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('poll_vote_')) return;
 
+    // Gate on poll feature being enabled for this guild
+    const guildConfig = getConfig(interaction.guildId);
+    if (!guildConfig.poll?.enabled) return;
+
     try {
       await handlePollVote(interaction);
     } catch (err) {
@@ -111,6 +115,10 @@ export function registerShowcaseButtonHandler(client) {
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('showcase_upvote_')) return;
 
+    // Gate on showcase feature being enabled for this guild
+    const guildConfig = getConfig(interaction.guildId);
+    if (guildConfig.showcase?.enabled === false) return;
+
     let pool;
     try {
       pool = (await import('../../db.js')).getPool();
@@ -159,6 +167,10 @@ export function registerShowcaseModalHandler(client) {
     if (!interaction.isModalSubmit()) return;
     if (interaction.customId !== 'showcase_submit_modal') return;
 
+    // Gate on showcase feature being enabled for this guild
+    const guildConfig = getConfig(interaction.guildId);
+    if (guildConfig.showcase?.enabled === false) return;
+
     let pool;
     try {
       pool = (await import('../../db.js')).getPool();
@@ -178,8 +190,12 @@ export function registerShowcaseModalHandler(client) {
       await handleShowcaseModalSubmit(interaction, pool);
     } catch (err) {
       logError('Showcase modal error', { error: err.message });
-      const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
-      await reply(interaction, { content: '❌ Something went wrong.' });
+      try {
+        const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
+        await reply(interaction, { content: '❌ Something went wrong.' });
+      } catch (replyErr) {
+        logError('Failed to send fallback reply', { error: replyErr?.message });
+      }
     }
   });
 }
@@ -197,6 +213,10 @@ export function registerChallengeButtonHandler(client) {
     const isSolve = interaction.customId.startsWith('challenge_solve_');
     const isHint = interaction.customId.startsWith('challenge_hint_');
     if (!isSolve && !isHint) return;
+
+    // Gate on challenges feature being enabled for this guild
+    const guildConfig = getConfig(interaction.guildId);
+    if (!guildConfig.challenges?.enabled) return;
 
     const prefix = isSolve ? 'challenge_solve_' : 'challenge_hint_';
     const indexStr = interaction.customId.slice(prefix.length);
@@ -308,6 +328,10 @@ export function registerReminderButtonHandler(client) {
     const isSnooze = interaction.customId.startsWith('reminder_snooze_');
     const isDismiss = interaction.customId.startsWith('reminder_dismiss_');
     if (!isSnooze && !isDismiss) return;
+
+    // Gate on reminders feature being enabled for this guild
+    const guildConfig = getConfig(interaction.guildId);
+    if (!guildConfig.reminders?.enabled) return;
 
     try {
       if (isSnooze) {
@@ -431,9 +455,13 @@ export function registerTicketModalHandler(client) {
       });
 
       // We already successfully deferred, so use safeEditReply
-      await safeEditReply(interaction, {
-        content: '❌ An error occurred processing your ticket.',
-      });
+      try {
+        await safeEditReply(interaction, {
+          content: '❌ An error occurred processing your ticket.',
+        });
+      } catch (replyErr) {
+        logError('Failed to send fallback reply', { error: replyErr?.message });
+      }
     }
   });
 }
@@ -485,9 +513,13 @@ export function registerTicketCloseButtonHandler(client) {
       });
 
       // We already successfully deferred, so use safeEditReply
-      await safeEditReply(interaction, {
-        content: '❌ An error occurred while closing the ticket.',
-      });
+      try {
+        await safeEditReply(interaction, {
+          content: '❌ An error occurred while closing the ticket.',
+        });
+      } catch (replyErr) {
+        logError('Failed to send fallback reply', { error: replyErr?.message });
+      }
     }
   });
 }
