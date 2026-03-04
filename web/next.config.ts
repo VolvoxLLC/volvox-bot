@@ -36,9 +36,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  turbopack: {
-    root: "..",
-  },
   images: {
     remotePatterns: [
       {
