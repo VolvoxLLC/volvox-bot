@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react';
 import LandingPage from '@/app/page';
 
 // Mock Framer Motion to avoid animation issues in tests
-// Use vi.hoisted to get React reference before mock is evaluated (ESM compatibility)
-const createMotionMock = vi.hoisted(() => {
-  const React = require('react');
+// Use async import inside mock factory for ESM compatibility (no require)
+vi.mock('framer-motion', async () => {
+  const React = await import('react');
   const createComponent = (tag: string) =>
     React.forwardRef((props: any, ref: any) =>
       React.createElement(tag, { ...props, ref }, props.children)
@@ -22,8 +22,6 @@ const createMotionMock = vi.hoisted(() => {
     useReducedMotion: () => false,
   };
 });
-
-vi.mock('framer-motion', () => createMotionMock);
 
 describe('LandingPage', () => {
   const originalClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
