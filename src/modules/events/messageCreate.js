@@ -84,7 +84,15 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
     // Spam detection
     if (guildConfig.moderation?.enabled && isSpam(message.content)) {
       warn('Spam detected', { userId: message.author.id, contentPreview: '[redacted]' });
-      await sendSpamAlert(message, client, guildConfig);
+      try {
+        await sendSpamAlert(message, client, guildConfig);
+      } catch (alertErr) {
+        logError('Failed to send spam alert', {
+          channelId: message.channel.id,
+          userId: message.author.id,
+          error: alertErr?.message,
+        });
+      }
       return;
     }
 
