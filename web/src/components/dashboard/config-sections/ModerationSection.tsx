@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RoleSelector } from '@/components/ui/role-selector';
 import { Switch } from '@/components/ui/switch';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import type { GuildConfig } from '@/lib/config-utils';
@@ -42,13 +40,6 @@ export function ModerationSection({
   onProtectRolesChange,
 }: ModerationSectionProps) {
   const guildId = useGuildSelection();
-  const [roleIdsRaw, setRoleIdsRaw] = useState(
-    (draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', '),
-  );
-
-  useEffect(() => {
-    setRoleIdsRaw((draftConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
-  }, [draftConfig.moderation?.protectRoles?.roleIds]);
   if (!draftConfig.moderation) return null;
 
   const alertChannelId = draftConfig.moderation?.alertChannelId ?? '';
@@ -188,36 +179,24 @@ export function ModerationSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="protect-role-ids" className="text-sm text-muted-foreground">
-              Additional protected role IDs (comma-separated)
+            <Label
+              htmlFor={guildId ? 'protect-role-ids' : undefined}
+              className="text-sm text-muted-foreground"
+            >
+              Additional protected roles
             </Label>
-            <Input
-              id="protect-role-ids"
-              type="text"
-              value={roleIdsRaw}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setRoleIdsRaw(raw);
-                onProtectRolesChange(
-                  'roleIds',
-                  raw
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                );
-              }}
-              onBlur={(e) =>
-                setRoleIdsRaw(
-                  e.target.value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                    .join(', '),
-                )
-              }
-              disabled={saving}
-              placeholder="Role ID 1, Role ID 2"
-            />
+            {guildId ? (
+              <RoleSelector
+                id="protect-role-ids"
+                guildId={guildId}
+                selected={draftConfig.moderation?.protectRoles?.roleIds ?? []}
+                onChange={(selected) => onProtectRolesChange('roleIds', selected)}
+                disabled={saving}
+                placeholder="Select additional protected roles..."
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">Select a server first</p>
+            )}
           </div>
         </fieldset>
       </CardContent>
