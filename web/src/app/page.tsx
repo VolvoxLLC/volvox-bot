@@ -1,25 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Bot } from 'lucide-react';
-import { Hero, FeatureGrid, Pricing, Stats, Footer } from '@/components/landing';
+import { Hero, FeatureGrid, Pricing, Stats, Footer, InviteButton } from '@/components/landing';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
-import { getBotInviteUrl } from '@/lib/discord';
-
-/** Render an "Add to Server" button — disabled/hidden when CLIENT_ID is unset. */
-function InviteButton({ size = 'sm', className }: { size?: 'sm' | 'lg'; className?: string }) {
-  const url = getBotInviteUrl();
-  if (!url) return null;
-  return (
-    <Button variant="discord" size={size} className={className} asChild>
-      <a href={url} target="_blank" rel="noopener noreferrer">
-        {size === 'lg' && <Bot className="mr-2 h-5 w-5" />}
-        Add to Server
-      </a>
-    </Button>
-  );
-}
 
 export default function LandingPage() {
   return (

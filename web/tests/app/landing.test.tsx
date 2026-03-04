@@ -3,23 +3,26 @@ import { render, screen } from '@testing-library/react';
 import LandingPage from '@/app/page';
 
 // Mock Framer Motion to avoid animation issues in tests
-vi.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
-      <div {...props}>{children}</div>
-    ),
-    h2: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
-      <h2 {...props}>{children}</h2>
-    ),
-    p: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
-      <p {...props}>{children}</p>
-    ),
-    span: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
-      <span {...props}>{children}</span>
-    ),
-  },
-  useInView: () => true,
-}));
+vi.mock('framer-motion', () => {
+  const React = require('react');
+  return {
+    motion: {
+      div: React.forwardRef((props: any, ref: any) => (
+        <div {...props} ref={ref}>{props.children}</div>
+      )),
+      h2: React.forwardRef((props: any, ref: any) => (
+        <h2 {...props} ref={ref}>{props.children}</h2>
+      )),
+      p: React.forwardRef((props: any, ref: any) => (
+        <p {...props} ref={ref}>{props.children}</p>
+      )),
+      span: React.forwardRef((props: any, ref: any) => (
+        <span {...props} ref={ref}>{props.children}</span>
+      )),
+    },
+    useInView: () => true,
+  };
+});
 
 describe('LandingPage', () => {
   const originalClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;

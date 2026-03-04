@@ -5,7 +5,7 @@ import { ArrowRight, Bot, MessageSquare, Sparkles, Terminal } from 'lucide-react
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { getBotInviteUrl } from '@/lib/discord';
+import { InviteButton } from './InviteButton';
 
 /** Typewriter effect hook */
 function useTypewriter(text: string, speed = 100, delay = 500) {
@@ -141,20 +141,6 @@ function ChatPreview() {
         </div>
       </div>
     </motion.div>
-  );
-}
-
-/** Render an "Add to Server" button */
-function InviteButton({ size = 'sm', className }: { size?: 'sm' | 'lg'; className?: string }) {
-  const url = getBotInviteUrl();
-  if (!url) return null;
-  return (
-    <Button variant="discord" size={size} className={className} asChild>
-      <a href={url} target="_blank" rel="noopener noreferrer">
-        {size === 'lg' && <Bot className="mr-2 h-5 w-5" />}
-        Add to Server
-      </a>
-    </Button>
   );
 }
 
