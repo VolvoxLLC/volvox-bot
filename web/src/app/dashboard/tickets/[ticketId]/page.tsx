@@ -186,8 +186,8 @@ export default function TicketDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {data.transcript.map((msg, i) => (
-                    <div key={`${msg.timestamp}-${i}`} className="flex gap-3 rounded-lg border p-3">
+                  {data.transcript.map((msg) => (
+                    <div key={msg.timestamp} className="flex gap-3 rounded-lg border p-3">
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
                         {msg.author.slice(0, 2).toUpperCase()}
                       </div>

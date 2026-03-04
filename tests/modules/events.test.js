@@ -648,14 +648,17 @@ describe('events module', () => {
       const handlers = new Map();
       const client = { on: (event, fn) => handlers.set(event, fn) };
 
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       registerPollButtonHandler(client);
       const handler = handlers.get('interactionCreate');
 
       const interaction = {
         isButton: () => true,
         customId: 'poll_vote_opt1',
+        guildId: 'g1',
         user: { id: 'u1' },
       };
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       await handler(interaction);
 
       expect(handlePollVote).toHaveBeenCalledWith(interaction);
@@ -668,6 +671,7 @@ describe('events module', () => {
       const handlers = new Map();
       const client = { on: (event, fn) => handlers.set(event, fn) };
 
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       registerPollButtonHandler(client);
       const handler = handlers.get('interactionCreate');
 
@@ -675,11 +679,13 @@ describe('events module', () => {
       const interaction = {
         isButton: () => true,
         customId: 'poll_vote_opt1',
+        guildId: 'g1',
         user: { id: 'u1' },
         replied: false,
         deferred: false,
         reply,
       };
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       await handler(interaction);
 
       expect(reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true }));

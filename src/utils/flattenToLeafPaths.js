@@ -1,5 +1,4 @@
-/** Keys that must be skipped during object traversal to prevent prototype pollution. */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+import { DANGEROUS_KEYS } from '../api/utils/dangerousKeys.js';
 
 /**
  * Flattens a nested object into dot-notated leaf path/value pairs, using the provided prefix as the root path.

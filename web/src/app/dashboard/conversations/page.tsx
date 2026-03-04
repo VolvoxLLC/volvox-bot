@@ -352,9 +352,9 @@ export default function ConversationsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex -space-x-1">
-                          {convo.participants.slice(0, 3).map((p, i) => (
+                          {convo.participants.slice(0, 3).map((p) => (
                             <div
-                              key={`${p.username}-${p.role}-${i}`}
+                              key={p.username}
                               className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white ring-2 ring-background ${
                                 p.role === 'user' ? 'bg-blue-500' : 'bg-gray-500'
                               }`}
