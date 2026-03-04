@@ -3,6 +3,7 @@
 import {
   Check,
   ChevronsUpDown,
+  FolderTree,
   Hash,
   Headphones,
   Loader2,
@@ -50,7 +51,14 @@ const CHANNEL_TYPES = {
   GUILD_MEDIA: 16,
 } as const;
 
-type ChannelTypeFilter = 'all' | 'text' | 'voice' | 'announcement' | 'thread' | 'forum';
+type ChannelTypeFilter =
+  | 'all'
+  | 'text'
+  | 'voice'
+  | 'announcement'
+  | 'thread'
+  | 'forum'
+  | 'category';
 
 interface ChannelSelectorProps {
   guildId: string;
@@ -82,7 +90,7 @@ function getChannelIcon(type: number) {
     case CHANNEL_TYPES.GUILD_MEDIA:
       return <StickyNote className="h-4 w-4" />;
     case CHANNEL_TYPES.GUILD_CATEGORY:
-      return null;
+      return <FolderTree className="h-4 w-4" />;
     default:
       return <Hash className="h-4 w-4" />;
   }
@@ -142,6 +150,8 @@ function filterChannelsByType(
         return (
           channel.type === CHANNEL_TYPES.GUILD_FORUM || channel.type === CHANNEL_TYPES.GUILD_MEDIA
         );
+      case 'category':
+        return channel.type === CHANNEL_TYPES.GUILD_CATEGORY;
       default:
         return true;
     }
@@ -333,6 +343,7 @@ export function ChannelSelector({
                   const isSelected = selected.includes(channel.id);
                   const isDisabled = !isSelected && atMaxSelection;
                   const isCategory = channel.type === CHANNEL_TYPES.GUILD_CATEGORY;
+                  const categorySelectable = filter === 'category';
                   const icon = getChannelIcon(channel.type);
 
                   return (
@@ -340,16 +351,17 @@ export function ChannelSelector({
                       key={channel.id}
                       value={`${channel.name} ${getChannelTypeLabel(channel.type)}`}
                       onSelect={() => toggleChannel(channel.id)}
-                      disabled={isDisabled || isCategory}
+                      disabled={isDisabled || (isCategory && !categorySelectable)}
                       className={cn(
                         'flex items-center gap-2',
-                        (isDisabled || isCategory) && 'cursor-not-allowed opacity-50',
+                        (isDisabled || (isCategory && !categorySelectable)) &&
+                          'cursor-not-allowed opacity-50',
                         isCategory && 'font-semibold bg-muted/50 mt-1',
                       )}
                     >
                       {icon && <span className="text-muted-foreground">{icon}</span>}
                       <span className="flex-1 truncate">{channel.name}</span>
-                      {!isCategory && (
+                      {(!isCategory || categorySelectable) && (
                         <Check
                           className={cn('h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
                         />

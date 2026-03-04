@@ -1,11 +1,11 @@
 'use client';
 
-import { RefreshCw, Search, Ticket, X } from 'lucide-react';
+import { RefreshCw, Ticket, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { MemberSelector } from '@/components/ui/member-selector';
 import {
   Select,
   SelectContent,
@@ -83,23 +83,12 @@ export default function TicketsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState('');
-  const [search, setSearch] = useState('');
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const [stats, setStats] = useState<TicketStats | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
-
-  useEffect(() => {
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(searchTimerRef.current);
-  }, [search]);
 
   useEffect(() => {
     return () => {
@@ -113,6 +102,7 @@ export default function TicketsPage() {
     setPage(1);
     setError(null);
     setStats(null);
+    setSelectedUserId(null);
   }, []);
 
   const guildId = useGuildSelection({ onGuildChange });
@@ -193,20 +183,20 @@ export default function TicketsPage() {
     void fetchTickets({
       guildId,
       status: statusFilter,
-      user: debouncedSearch,
+      user: selectedUserId ?? '',
       page,
     });
-  }, [guildId, statusFilter, debouncedSearch, page, fetchTickets]);
+  }, [guildId, statusFilter, selectedUserId, page, fetchTickets]);
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
     void fetchTickets({
       guildId,
       status: statusFilter,
-      user: debouncedSearch,
+      user: selectedUserId ?? '',
       page,
     });
-  }, [guildId, fetchTickets, statusFilter, debouncedSearch, page]);
+  }, [guildId, fetchTickets, statusFilter, selectedUserId, page]);
 
   const handleRowClick = useCallback(
     (ticketId: number) => {
@@ -217,8 +207,7 @@ export default function TicketsPage() {
   );
 
   const handleClearSearch = useCallback(() => {
-    setSearch('');
-    setDebouncedSearch('');
+    setSelectedUserId(null);
     setPage(1);
   }, []);
 
@@ -282,26 +271,29 @@ export default function TicketsPage() {
         <>
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9 pr-8"
-                placeholder="Search by user ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search tickets by user"
+            <div className="max-w-sm flex-1">
+              <MemberSelector
+                guildId={guildId}
+                selected={selectedUserId ? [selectedUserId] : []}
+                onChange={(selected) => {
+                  setSelectedUserId(selected[0] ?? null);
+                  setPage(1);
+                }}
+                placeholder="Filter tickets by member"
+                maxSelections={1}
               />
-              {search && (
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={handleClearSearch}
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
             </div>
+            {selectedUserId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearSearch}
+                aria-label="Clear member filter"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
 
             <Select
               value={statusFilter}
@@ -374,7 +366,7 @@ export default function TicketsPage() {
                       <TableCell className="font-mono text-sm">{ticket.user_id}</TableCell>
                       <TableCell>
                         <Badge variant={ticket.status === 'open' ? 'default' : 'secondary'}>
-                          {ticket.status === 'open' ? '🟢 Open' : '🔒 Closed'}
+                          {ticket.status === 'open' ? 'Open' : 'Closed'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -392,7 +384,7 @@ export default function TicketsPage() {
             !loading && (
               <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
                 <p className="text-sm text-muted-foreground">
-                  {statusFilter || debouncedSearch
+                  {statusFilter || selectedUserId
                     ? 'No tickets match your filters.'
                     : 'No tickets found.'}
                 </p>

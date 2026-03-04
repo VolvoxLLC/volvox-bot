@@ -62,7 +62,7 @@ function ChatPreview() {
     {
       id: 'bot-1',
       role: 'bot',
-      content: "Hey! I'm Volvox Bot. I can help with moderation, AI chat, and more!",
+      content: "Hey! I'm Volvox.Bot. I can help with moderation, AI chat, and more!",
     },
   ];
 
@@ -83,7 +83,7 @@ function ChatPreview() {
           </div>
           <div className="flex items-center gap-2 ml-4 text-xs text-muted-foreground">
             <Terminal className="w-3.5 h-3.5" />
-            <span>volvox-bot</span>
+            <span>Volvox.Bot</span>
           </div>
         </div>
 
@@ -150,7 +150,7 @@ function ChatPreview() {
 export function Hero() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
-  const { displayText, isComplete } = useTypewriter('volvox-bot', 80, 300);
+  const { displayText, isComplete } = useTypewriter('Volvox.Bot', 80, 300);
 
   return (
     <section ref={ref} className="relative overflow-hidden">
@@ -164,7 +164,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={isInView ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="flex items-center font-mono text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground"
+            className="flex items-center font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground"
           >
             <span className="text-terminal-green">&gt;</span> {displayText}
             {!isComplete && <BlinkingCursor />}

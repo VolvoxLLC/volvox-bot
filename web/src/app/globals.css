@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
-/* JetBrains Mono for headlines, Inter for body (loaded in layout.tsx) */
+/* Typography and design tokens (loaded in layout.tsx) */
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-heading: var(--font-display), var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   
   /* Terminal Chic Colors */
   --color-terminal-green: #22c55e;
@@ -85,7 +86,7 @@
     --card-foreground: 240 10% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 10%;
-    --primary: 142 76% 36%;
+    --primary: 220 74% 44%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 5% 96%;
     --secondary-foreground: 240 10% 10%;
@@ -97,7 +98,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 6% 90%;
     --input: 240 6% 90%;
-    --ring: 142 76% 36%;
+    --ring: 220 74% 44%;
     --radius: 0.5rem;
 
     /* Semantic tokens for landing components */
@@ -108,7 +109,7 @@
     --text-secondary: hsl(var(--muted-foreground));
     --text-muted: hsl(var(--muted-foreground));
     --accent-primary: hsl(var(--primary));
-    --accent-success: #22c55e;
+    --accent-success: #15803d;
     --accent-warning: #f59e0b;
     --border-default: hsl(var(--border));
     --border-muted: hsl(var(--border));
@@ -122,7 +123,7 @@
     --card-foreground: 0 0% 89%;
     --popover: 0 0% 6%;
     --popover-foreground: 0 0% 89%;
-    --primary: 142 76% 46%;
+    --primary: 215 85% 62%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 89%;
@@ -134,7 +135,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 12%;
     --input: 0 0% 12%;
-    --ring: 142 76% 46%;
+    --ring: 215 85% 62%;
 
     /* Semantic tokens for landing components (dark mode) */
     --bg-primary: hsl(var(--background));
@@ -144,7 +145,7 @@
     --text-secondary: hsl(var(--muted-foreground));
     --text-muted: hsl(var(--muted-foreground));
     --accent-primary: hsl(var(--primary));
-    --accent-success: #22c55e;
+    --accent-success: #4ade80;
     --accent-warning: #f59e0b;
     --border-default: hsl(var(--border));
     --border-muted: hsl(var(--border));
@@ -158,6 +159,17 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: radial-gradient(circle at 10% 0%, hsl(var(--primary) / 0.06), transparent 40%);
+  }
+}
+
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring;
+}
+
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-display), var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   }
 }
 

@@ -93,7 +93,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   return (
     <div className={cn('flex h-full flex-col', className)}>
       <div className="px-3 py-4">
-        <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Navigation</h2>
+        <h2 className="mb-2 px-4 font-heading text-lg font-semibold tracking-tight">Navigation</h2>
         <Separator className="mb-4" />
         <nav className="space-y-1">
           {navigation.map((item) => {
@@ -107,8 +107,10 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
                 href={item.href}
                 onClick={onNavClick}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground',
-                  isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground',
+                  'flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm font-medium transition-all hover:border-primary/20 hover:bg-primary/10 hover:text-foreground',
+                  isActive
+                    ? 'border-primary/30 bg-primary/10 text-foreground'
+                    : 'text-muted-foreground',
                 )}
               >
                 <item.icon className="h-4 w-4" />

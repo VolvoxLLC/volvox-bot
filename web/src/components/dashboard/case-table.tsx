@@ -1,17 +1,9 @@
 'use client';
 
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Loader2,
-  Search,
-  X,
-} from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, X } from 'lucide-react';
 import { Fragment, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { MemberSelector } from '@/components/ui/member-selector';
 import {
   Select,
   SelectContent,
@@ -36,6 +28,7 @@ import { ACTION_META } from './moderation-types';
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
 interface FilterBarProps {
+  guildId: string;
   actionFilter: string;
   userSearch: string;
   onActionChange: (val: string) => void;
@@ -52,6 +45,7 @@ const ACTION_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 function FilterBar({
+  guildId,
   actionFilter,
   userSearch,
   onActionChange,
@@ -76,14 +70,14 @@ function FilterBar({
         </SelectContent>
       </Select>
 
-      {/* User search */}
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="h-8 w-[180px] pl-7 text-xs"
-          placeholder="User ID..."
-          value={userSearch}
-          onChange={(e) => onUserSearchChange(e.target.value)}
+      {/* User filter */}
+      <div className="w-[220px]">
+        <MemberSelector
+          guildId={guildId}
+          selected={userSearch ? [userSearch] : []}
+          onChange={(selected) => onUserSearchChange(selected[0] ?? '')}
+          placeholder="Filter by member"
+          maxSelections={1}
         />
       </div>
 
@@ -192,6 +186,7 @@ export function CaseTable({
     <div className="space-y-3">
       {/* Filters */}
       <FilterBar
+        guildId={guildId}
         actionFilter={actionFilter}
         userSearch={userSearch}
         onActionChange={(val) => {

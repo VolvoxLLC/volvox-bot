@@ -35,11 +35,11 @@ describe('LandingPage', () => {
     }
   });
 
-  it('renders the hero heading with volvox-bot', () => {
+  it('renders the hero heading with Volvox.Bot branding', () => {
     render(<LandingPage />);
-    // The typewriter effect renders "volvox-bot" after the ">" prompt
+    // The typewriter effect renders "Volvox.Bot" after the ">" prompt
     // Check that the brand name appears somewhere in the document
-    const volvoxElements = screen.getAllByText(/volvox-bot/);
+    const volvoxElements = screen.getAllByText(/Volvox\.Bot/i);
     expect(volvoxElements.length).toBeGreaterThan(0);
   });
 

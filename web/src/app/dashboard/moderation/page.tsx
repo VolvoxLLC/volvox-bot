@@ -1,12 +1,12 @@
 'use client';
 
-import { RefreshCw, Search, Shield, X } from 'lucide-react';
+import { RefreshCw, Shield, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { CaseTable } from '@/components/dashboard/case-table';
 import { ModerationStats } from '@/components/dashboard/moderation-stats';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { MemberSelector } from '@/components/ui/member-selector';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useModerationCases } from '@/hooks/use-moderation-cases';
 import { useModerationStats } from '@/hooks/use-moderation-stats';
@@ -22,14 +22,12 @@ export default function ModerationPage() {
   const [userSearch, setUserSearch] = useState('');
 
   // User history lookup
-  const [userHistoryInput, setUserHistoryInput] = useState('');
   const [lookupUserId, setLookupUserId] = useState<string | null>(null);
   const [userHistoryPage, setUserHistoryPage] = useState(1);
 
   const onGuildChange = useCallback(() => {
     setPage(1);
     setLookupUserId(null);
-    setUserHistoryInput('');
   }, []);
 
   const guildId = useGuildSelection({ onGuildChange });
@@ -71,24 +69,20 @@ export default function ModerationPage() {
     setPage(1);
   }, []);
 
-  const handleUserHistorySearch = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const trimmed = userHistoryInput.trim();
-      if (!trimmed || !guildId) return;
-      setLookupUserId(trimmed);
+  const handleHistoryUserChange = useCallback(
+    (selected: string[]) => {
+      setLookupUserId(selected[0] ?? null);
       setUserHistoryPage(1);
       setUserHistoryData(null);
-      void fetchUserHistory(guildId, trimmed, 1);
+      setUserHistoryError(null);
     },
-    [guildId, userHistoryInput, fetchUserHistory, setUserHistoryData],
+    [setUserHistoryData, setUserHistoryError],
   );
 
   const handleClearUserHistory = useCallback(() => {
     setLookupUserId(null);
     setUserHistoryData(null);
     setUserHistoryError(null);
-    setUserHistoryInput('');
   }, [setUserHistoryData, setUserHistoryError]);
 
   return (
@@ -156,32 +150,19 @@ export default function ModerationPage() {
           <div className="space-y-3">
             <h3 className="text-lg font-semibold">User History Lookup</h3>
             <p className="text-sm text-muted-foreground">
-              Search for a user&apos;s complete moderation history by their Discord user ID.
+              Select a member to view their complete moderation history.
             </p>
 
-            <form onSubmit={handleUserHistorySearch} className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Discord user ID (e.g. 123456789012345678)"
-                  value={userHistoryInput}
-                  onChange={(e) => setUserHistoryInput(e.target.value)}
-                  aria-label="User ID for history lookup"
+            <div className="flex items-center gap-2">
+              <div className="max-w-sm flex-1">
+                <MemberSelector
+                  guildId={guildId}
+                  selected={lookupUserId ? [lookupUserId] : []}
+                  onChange={handleHistoryUserChange}
+                  placeholder="Select member for history lookup"
+                  maxSelections={1}
                 />
               </div>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!userHistoryInput.trim() || userHistoryLoading}
-              >
-                {userHistoryLoading ? (
-                  <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="mr-1.5 h-4 w-4" />
-                )}
-                Look up
-              </Button>
               {lookupUserId && (
                 <Button
                   type="button"
@@ -193,7 +174,7 @@ export default function ModerationPage() {
                   <X className="h-4 w-4" />
                 </Button>
               )}
-            </form>
+            </div>
 
             {lookupUserId && (
               <div className="space-y-3">

@@ -18,8 +18,8 @@ export default function LandingPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-primary)] text-white font-bold text-sm font-mono">
               V
             </div>
-            <span className="font-bold text-lg font-mono text-[var(--text-primary)]">
-              volvox-bot
+            <span className="font-heading font-bold text-lg text-[var(--text-primary)]">
+              Volvox.Bot
             </span>
           </div>
 
@@ -144,24 +144,26 @@ export default function LandingPage() {
         )}
       </header>
 
-      {/* Hero Section */}
-      <Hero />
+      <main id="main-content">
+        {/* Hero Section */}
+        <Hero />
 
-      {/* Features Section */}
-      <div id="features">
-        <FeatureGrid />
-      </div>
+        {/* Features Section */}
+        <div id="features">
+          <FeatureGrid />
+        </div>
 
-      {/* Pricing Section */}
-      <div id="pricing">
-        <Pricing />
-      </div>
+        {/* Pricing Section */}
+        <div id="pricing">
+          <Pricing />
+        </div>
 
-      {/* Stats / Testimonials Section */}
-      <Stats />
+        {/* Stats / Testimonials Section */}
+        <Stats />
 
-      {/* Footer CTA */}
-      <Footer />
+        {/* Footer CTA */}
+        <Footer />
+      </main>
     </div>
   );
 }

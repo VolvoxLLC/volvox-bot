@@ -19,7 +19,7 @@ export function Footer() {
           transition={{ duration: 0.6 }}
           className="mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold font-mono text-[var(--text-primary)] mb-6">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
             Ready to upgrade your server?
           </h2>
           <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
@@ -29,7 +29,7 @@ export function Footer() {
           {botInviteUrl ? (
             <Button
               size="lg"
-              className="font-mono text-lg px-8 py-6 bg-[var(--accent-success)] hover:bg-[var(--accent-success)]/90 text-white"
+              className="text-lg px-8 py-6 bg-[var(--accent-success)] hover:bg-[var(--accent-success)]/90 text-white"
               asChild
             >
               <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
@@ -40,7 +40,7 @@ export function Footer() {
             <Button
               size="lg"
               disabled
-              className="font-mono text-lg px-8 py-6 bg-[var(--accent-success)]/50 text-white/70 cursor-not-allowed"
+              className="text-lg px-8 py-6 bg-[var(--accent-success)]/50 text-white/70 cursor-not-allowed"
             >
               Add to Discord — Coming Soon
             </Button>
@@ -53,7 +53,7 @@ export function Footer() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-[var(--text-muted)] mb-12 font-mono"
+          className="text-[var(--text-muted)] mb-12"
         >
           Open source. Self-hostable. Free forever.
         </motion.p>

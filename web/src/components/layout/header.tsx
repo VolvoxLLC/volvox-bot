@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MobileSidebar } from './mobile-sidebar';
 
 /**
- * Renders the top navigation header for the Bill Bot Dashboard, including branding, a theme toggle, and a session-aware user menu.
+ * Renders the top navigation header for the Volvox.Bot Dashboard, including branding, a theme toggle, and a session-aware user menu.
  *
  * If the session reports a `RefreshTokenError`, initiates sign-out and redirects to `/login`; a guard prevents duplicate sign-out attempts.
  *
@@ -43,14 +43,14 @@ export function Header() {
   }, [session?.error]);
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:px-6">
       <MobileSidebar />
 
       <div className="flex items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-discord text-white font-bold text-sm">
-          B
+          V
         </div>
-        <span className="font-semibold hidden sm:inline-block">Bill Bot Dashboard</span>
+        <span className="font-semibold hidden sm:inline-block">Volvox.Bot Dashboard</span>
       </div>
 
       <div className="ml-auto flex items-center gap-4">
@@ -93,7 +93,7 @@ export function Header() {
                   className="flex items-center"
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />
-                  Documentation
+                  GitHub Repository
                 </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

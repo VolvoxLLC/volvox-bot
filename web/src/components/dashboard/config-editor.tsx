@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { Input } from '@/components/ui/input';
+import { MemberSelector } from '@/components/ui/member-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import type { BotConfig, DeepPartial } from '@/types/config';
@@ -138,7 +139,6 @@ export function ConfigEditor() {
 
   /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
   const [dmStepsRaw, setDmStepsRaw] = useState('');
-  const [protectRoleIdsRaw, setProtectRoleIdsRaw] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -216,7 +216,6 @@ export function ConfigEditor() {
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
-      setProtectRoleIdsRaw((data.moderation?.protectRoles?.roleIds ?? []).join(', '));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
       const msg = (err as Error).message || 'Failed to load config';
@@ -303,9 +302,6 @@ export function ConfigEditor() {
       // Keep raw string mirrors consistent
       if (section === 'welcome') {
         setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
-      }
-      if (section === 'moderation') {
-        setProtectRoleIdsRaw((savedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
       }
       toast.success(`Reverted ${section} changes.`);
     },
@@ -441,9 +437,6 @@ export function ConfigEditor() {
     }
     setDraftConfig(structuredClone(prevSavedConfig.config));
     setDmStepsRaw((prevSavedConfig.config.welcome?.dmSequence?.steps ?? []).join('\n'));
-    setProtectRoleIdsRaw(
-      (prevSavedConfig.config.moderation?.protectRoles?.roleIds ?? []).join(', '),
-    );
     setPrevSavedConfig(null);
     toast.info('Reverted to previous saved state. Save again to apply.');
   }, [prevSavedConfig, guildId]);
@@ -467,7 +460,6 @@ export function ConfigEditor() {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
     setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
-    setProtectRoleIdsRaw((savedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
     toast.success('Changes discarded.');
   }, [savedConfig]);
 
@@ -739,7 +731,7 @@ export function ConfigEditor() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Bot Configuration</CardTitle>
+          <CardTitle>Volvox.Bot Configuration</CardTitle>
           <CardDescription>
             Select a server from the sidebar to manage its configuration.
           </CardDescription>
@@ -783,7 +775,9 @@ export function ConfigEditor() {
       {/* Header bar */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Bot Configuration</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight">
+            Volvox.Bot Configuration
+          </h1>
           <p className="text-sm text-muted-foreground">
             Manage AI, welcome messages, and other settings.
           </p>
@@ -933,39 +927,47 @@ export function ConfigEditor() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <label htmlFor="rules-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Rules Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Rules Channel</span>
+              <ChannelSelector
                 id="rules-channel-id"
-                type="text"
-                value={draftConfig.welcome?.rulesChannel ?? ''}
-                onChange={(e) => updateWelcomeField('rulesChannel', e.target.value.trim() || null)}
+                guildId={guildId}
+                selected={
+                  draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []
+                }
+                onChange={(selected) => updateWelcomeField('rulesChannel', selected[0] ?? null)}
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel where Accept Rules button lives"
+                placeholder="Select rules channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
             <label htmlFor="verified-role-id" className="space-y-2">
-              <span className="text-sm font-medium">Verified Role ID</span>
-              <input
+              <span className="text-sm font-medium">Verified Role</span>
+              <RoleSelector
                 id="verified-role-id"
-                type="text"
-                value={draftConfig.welcome?.verifiedRole ?? ''}
-                onChange={(e) => updateWelcomeField('verifiedRole', e.target.value.trim() || null)}
+                guildId={guildId}
+                selected={
+                  draftConfig.welcome?.verifiedRole ? [draftConfig.welcome.verifiedRole] : []
+                }
+                onChange={(selected) => updateWelcomeField('verifiedRole', selected[0] ?? null)}
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Role granted after rules acceptance"
+                placeholder="Select verified role"
+                maxSelections={1}
               />
             </label>
             <label htmlFor="intro-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Intro Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Intro Channel</span>
+              <ChannelSelector
                 id="intro-channel-id"
-                type="text"
-                value={draftConfig.welcome?.introChannel ?? ''}
-                onChange={(e) => updateWelcomeField('introChannel', e.target.value.trim() || null)}
+                guildId={guildId}
+                selected={
+                  draftConfig.welcome?.introChannel ? [draftConfig.welcome.introChannel] : []
+                }
+                onChange={(selected) => updateWelcomeField('introChannel', selected[0] ?? null)}
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel to prompt member intros"
+                placeholder="Select intro channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
           </div>
@@ -1109,15 +1111,20 @@ export function ConfigEditor() {
           </CardHeader>
           <CardContent className="space-y-4">
             <label htmlFor="alert-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Alert Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Alert Channel</span>
+              <ChannelSelector
                 id="alert-channel-id"
-                type="text"
-                value={draftConfig.moderation?.alertChannelId ?? ''}
-                onChange={(e) => updateModerationField('alertChannelId', e.target.value)}
+                guildId={guildId}
+                selected={
+                  draftConfig.moderation?.alertChannelId
+                    ? [draftConfig.moderation.alertChannelId]
+                    : []
+                }
+                onChange={(selected) => updateModerationField('alertChannelId', selected[0] ?? '')}
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel ID for moderation alerts"
+                placeholder="Select moderation alert channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
             <div className="flex items-center justify-between">
@@ -1319,38 +1326,16 @@ export function ConfigEditor() {
                   label="Include server owner"
                 />
               </div>
-              <label className="space-y-2">
-                <span className="text-sm text-muted-foreground">
-                  Additional protected role IDs (comma-separated)
-                </span>
-                <input
-                  type="text"
-                  value={protectRoleIdsRaw}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    setProtectRoleIdsRaw(raw);
-                    updateProtectRolesField(
-                      'roleIds',
-                      raw
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                    );
-                  }}
-                  onBlur={(e) =>
-                    setProtectRoleIdsRaw(
-                      e.target.value
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .join(', '),
-                    )
-                  }
+              <div className="space-y-2">
+                <span className="text-sm text-muted-foreground">Additional Protected Roles</span>
+                <RoleSelector
+                  guildId={guildId}
+                  selected={(draftConfig.moderation?.protectRoles?.roleIds ?? []) as string[]}
+                  onChange={(selected) => updateProtectRolesField('roleIds', selected)}
                   disabled={saving}
-                  className={inputClasses}
-                  placeholder="Role ID 1, Role ID 2"
+                  placeholder="Select additional protected roles"
                 />
-              </label>
+              </div>
             </fieldset>
           </CardContent>
         </Card>
@@ -1377,15 +1362,18 @@ export function ConfigEditor() {
           </CardHeader>
           <CardContent className="space-y-4">
             <label htmlFor="ai-automod-flag-channel" className="space-y-2">
-              <span className="text-sm font-medium">Flag Review Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Flag Review Channel</span>
+              <ChannelSelector
                 id="ai-automod-flag-channel"
-                type="text"
-                value={(draftConfig.aiAutoMod?.flagChannelId as string) ?? ''}
-                onChange={(e) => updateAiAutoModField('flagChannelId', e.target.value || null)}
+                guildId={guildId}
+                selected={
+                  draftConfig.aiAutoMod?.flagChannelId ? [draftConfig.aiAutoMod.flagChannelId] : []
+                }
+                onChange={(selected) => updateAiAutoModField('flagChannelId', selected[0] ?? null)}
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel ID where flagged messages are posted"
+                placeholder="Select flag review channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
             <div className="flex items-center justify-between">
@@ -1648,14 +1636,21 @@ export function ConfigEditor() {
             </div>
             <label htmlFor="moderation-log-channel" className="space-y-2">
               <span className="text-sm font-medium">Moderation Log Channel</span>
-              <input
+              <ChannelSelector
                 id="moderation-log-channel"
-                type="text"
-                value={draftConfig.triage?.moderationLogChannel ?? ''}
-                onChange={(e) => updateTriageField('moderationLogChannel', e.target.value)}
+                guildId={guildId}
+                selected={
+                  draftConfig.triage?.moderationLogChannel
+                    ? [draftConfig.triage.moderationLogChannel]
+                    : []
+                }
+                onChange={(selected) =>
+                  updateTriageField('moderationLogChannel', selected[0] ?? '')
+                }
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel ID for moderation logs"
+                placeholder="Select moderation log channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
           </CardContent>
@@ -1680,15 +1675,16 @@ export function ConfigEditor() {
         </CardHeader>
         <CardContent className="space-y-4">
           <label htmlFor="channel-id" className="space-y-2">
-            <span className="text-sm font-medium">Channel ID</span>
-            <input
+            <span className="text-sm font-medium">Starboard Channel</span>
+            <ChannelSelector
               id="channel-id"
-              type="text"
-              value={draftConfig.starboard?.channelId ?? ''}
-              onChange={(e) => updateStarboardField('channelId', e.target.value)}
+              guildId={guildId}
+              selected={draftConfig.starboard?.channelId ? [draftConfig.starboard.channelId] : []}
+              onChange={(selected) => updateStarboardField('channelId', selected[0] ?? '')}
               disabled={saving}
-              className={inputClasses}
-              placeholder="Starboard channel ID"
+              placeholder="Select starboard channel"
+              maxSelections={1}
+              filter="text"
             />
           </label>
           <div className="grid grid-cols-2 gap-4">
@@ -1749,22 +1745,14 @@ export function ConfigEditor() {
           </div>
           <label htmlFor="ignored-channels" className="space-y-2">
             <span className="text-sm font-medium">Ignored Channels</span>
-            <input
+            <ChannelSelector
               id="ignored-channels"
-              type="text"
-              value={(draftConfig.starboard?.ignoredChannels ?? []).join(', ')}
-              onChange={(e) =>
-                updateStarboardField(
-                  'ignoredChannels',
-                  e.target.value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                )
-              }
+              guildId={guildId}
+              selected={(draftConfig.starboard?.ignoredChannels ?? []) as string[]}
+              onChange={(selected) => updateStarboardField('ignoredChannels', selected)}
               disabled={saving}
-              className={inputClasses}
-              placeholder="Comma-separated channel IDs"
+              placeholder="Select ignored channels"
+              filter="text"
             />
           </label>
         </CardContent>
@@ -1790,7 +1778,7 @@ export function ConfigEditor() {
         </CardHeader>
         <CardContent className="space-y-4">
           <label htmlFor="admin-role-id" className="space-y-2">
-            <span className="text-sm font-medium">Admin Role ID</span>
+            <span className="text-sm font-medium">Admin Role</span>
             <RoleSelector
               id="admin-role-id"
               guildId={guildId}
@@ -1804,7 +1792,7 @@ export function ConfigEditor() {
             />
           </label>
           <label htmlFor="moderator-role-id" className="space-y-2">
-            <span className="text-sm font-medium">Moderator Role ID</span>
+            <span className="text-sm font-medium">Moderator Role</span>
             <RoleSelector
               id="moderator-role-id"
               guildId={guildId}
@@ -1823,22 +1811,13 @@ export function ConfigEditor() {
           </label>
           <label htmlFor="bot-owners" className="space-y-2">
             <span className="text-sm font-medium">Bot Owners</span>
-            <input
+            <MemberSelector
               id="bot-owners"
-              type="text"
-              value={(draftConfig.permissions?.botOwners ?? []).join(', ')}
-              onChange={(e) =>
-                updatePermissionsField(
-                  'botOwners',
-                  e.target.value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                )
-              }
+              guildId={guildId}
+              selected={(draftConfig.permissions?.botOwners ?? []) as string[]}
+              onChange={(selected) => updatePermissionsField('botOwners', selected)}
               disabled={saving}
-              className={inputClasses}
-              placeholder="Comma-separated user IDs"
+              placeholder="Select bot owners"
             />
           </label>
         </CardContent>
@@ -2123,23 +2102,28 @@ export function ConfigEditor() {
               />
             </label>
             <label htmlFor="announce-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Announce Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Announce Channel</span>
+              <ChannelSelector
                 id="announce-channel-id"
-                type="text"
-                value={draftConfig.reputation?.announceChannelId ?? ''}
-                onChange={(e) =>
+                guildId={guildId}
+                selected={
+                  draftConfig.reputation?.announceChannelId
+                    ? [draftConfig.reputation.announceChannelId]
+                    : []
+                }
+                onChange={(selected) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
                     reputation: {
                       ...prev.reputation,
-                      announceChannelId: e.target.value.trim() || null,
+                      announceChannelId: selected[0] ?? null,
                     },
                   }))
                 }
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel ID for level-up announcements"
+                placeholder="Select level-up announcement channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
           </div>
@@ -2201,26 +2185,29 @@ export function ConfigEditor() {
           </p>
           <div className="grid grid-cols-2 gap-4">
             <label htmlFor="challenge-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Challenge Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Challenge Channel</span>
+              <ChannelSelector
                 id="challenge-channel-id"
-                type="text"
-                value={draftConfig.challenges?.channelId ?? ''}
-                onChange={(e) =>
+                guildId={guildId}
+                selected={
+                  draftConfig.challenges?.channelId ? [draftConfig.challenges.channelId] : []
+                }
+                onChange={(selected) =>
                   updateDraftConfig(
                     (prev) =>
                       ({
                         ...prev,
                         challenges: {
                           ...prev.challenges,
-                          channelId: e.target.value.trim() || null,
+                          channelId: selected[0] ?? null,
                         },
                       }) as GuildConfig,
                   )
                 }
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel ID for daily challenges"
+                placeholder="Select daily challenge channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
             <label htmlFor="post-time-hh-mm" className="space-y-2">
@@ -2288,23 +2275,26 @@ export function ConfigEditor() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <label htmlFor="feed-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Feed Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Feed Channel</span>
+              <ChannelSelector
                 id="feed-channel-id"
-                type="text"
-                value={draftConfig.github?.feed?.channelId ?? ''}
-                onChange={(e) =>
+                guildId={guildId}
+                selected={
+                  draftConfig.github?.feed?.channelId ? [draftConfig.github.feed.channelId] : []
+                }
+                onChange={(selected) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
                     github: {
                       ...prev.github,
-                      feed: { ...prev.github?.feed, channelId: e.target.value.trim() || null },
+                      feed: { ...prev.github?.feed, channelId: selected[0] ?? null },
                     },
                   }))
                 }
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel ID for GitHub updates"
+                placeholder="Select GitHub feed channel"
+                maxSelections={1}
+                filter="text"
               />
             </label>
             <label htmlFor="poll-interval-minutes" className="space-y-2">
@@ -2376,37 +2366,38 @@ export function ConfigEditor() {
           </label>
           <div className="grid grid-cols-2 gap-4">
             <label htmlFor="support-role-id" className="space-y-2">
-              <span className="text-sm font-medium">Support Role ID</span>
-              <input
+              <span className="text-sm font-medium">Support Role</span>
+              <RoleSelector
                 id="support-role-id"
-                type="text"
-                value={draftConfig.tickets?.supportRole ?? ''}
-                onChange={(e) =>
+                guildId={guildId}
+                selected={draftConfig.tickets?.supportRole ? [draftConfig.tickets.supportRole] : []}
+                onChange={(selected) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
-                    tickets: { ...prev.tickets, supportRole: e.target.value.trim() || null },
+                    tickets: { ...prev.tickets, supportRole: selected[0] ?? null },
                   }))
                 }
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Role ID for support staff"
+                placeholder="Select support role"
+                maxSelections={1}
               />
             </label>
             <label htmlFor="category-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Category Channel ID</span>
-              <input
+              <span className="text-sm font-medium">Category Channel</span>
+              <ChannelSelector
                 id="category-channel-id"
-                type="text"
-                value={draftConfig.tickets?.category ?? ''}
-                onChange={(e) =>
+                guildId={guildId}
+                selected={draftConfig.tickets?.category ? [draftConfig.tickets.category] : []}
+                onChange={(selected) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
-                    tickets: { ...prev.tickets, category: e.target.value.trim() || null },
+                    tickets: { ...prev.tickets, category: selected[0] ?? null },
                   }))
                 }
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Category for tickets"
+                placeholder="Select ticket category"
+                maxSelections={1}
+                filter="category"
               />
             </label>
             <label htmlFor="auto-close-hours" className="space-y-2">
@@ -2452,22 +2443,27 @@ export function ConfigEditor() {
                 className={inputClasses}
               />
             </label>
-            <label className="space-y-2 col-span-2">
-              <span className="text-sm font-medium">Transcript Channel ID</span>
-              <input
-                type="text"
-                value={draftConfig.tickets?.transcriptChannel ?? ''}
-                onChange={(e) =>
+            <div className="space-y-2 col-span-2">
+              <span className="text-sm font-medium">Transcript Channel</span>
+              <ChannelSelector
+                guildId={guildId}
+                selected={
+                  draftConfig.tickets?.transcriptChannel
+                    ? [draftConfig.tickets.transcriptChannel]
+                    : []
+                }
+                onChange={(selected) =>
                   updateDraftConfig((prev) => ({
                     ...prev,
-                    tickets: { ...prev.tickets, transcriptChannel: e.target.value.trim() || null },
+                    tickets: { ...prev.tickets, transcriptChannel: selected[0] ?? null },
                   }))
                 }
                 disabled={saving}
-                className={inputClasses}
-                placeholder="Channel to post ticket transcripts"
+                placeholder="Select transcript channel"
+                maxSelections={1}
+                filter="text"
               />
-            </label>
+            </div>
           </div>
         </CardContent>
       </Card>

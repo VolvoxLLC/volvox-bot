@@ -69,7 +69,7 @@ export function Pricing() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl md:text-4xl font-bold font-mono text-[var(--text-primary)] mb-4">
+          <h2 className="font-heading text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">
             <span className="text-[var(--accent-success)]">&gt;</span> Choose your deployment
           </h2>
           <p className="text-lg text-[var(--text-secondary)] mb-8">
@@ -132,7 +132,7 @@ export function Pricing() {
 
               {/* Header */}
               <div className="mb-6">
-                <h3 className="text-xl font-bold font-mono text-[var(--text-primary)] mb-2">
+                <h3 className="font-heading text-xl font-bold text-[var(--text-primary)] mb-2">
                   {tier.name}
                 </h3>
                 <p className="text-sm text-[var(--text-muted)]">{tier.description}</p>
@@ -140,7 +140,7 @@ export function Pricing() {
 
               {/* Price */}
               <div className="mb-6">
-                <span className="text-4xl font-bold font-mono text-[var(--text-primary)]">
+                <span className="font-heading text-4xl font-bold text-[var(--text-primary)]">
                   ${isAnnual ? tier.price.annual : tier.price.monthly}
                 </span>
                 <span className="text-[var(--text-muted)]">/{isAnnual ? 'year' : 'mo'}</span>
@@ -193,7 +193,7 @@ export function Pricing() {
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="text-center text-sm text-[var(--text-muted)] font-mono"
+          className="text-center text-sm text-[var(--text-muted)]"
         >
           All plans include open-source self-hosting option. No credit card required for ~/dev/null.
         </motion.p>

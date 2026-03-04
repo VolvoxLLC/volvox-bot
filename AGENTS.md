@@ -98,6 +98,9 @@ web/                      # Next.js dashboard
 - Dark/light theme support
 - Mobile-responsive design
 - Real-time updates via WebSocket
+- User-facing brand copy should use `Volvox.Bot`
+- Keep technical slugs/identifiers as `volvox-bot` where compatibility matters
+- Prefer selector components over raw ID text inputs (channel/role/user)
 
 ## Common Tasks
 

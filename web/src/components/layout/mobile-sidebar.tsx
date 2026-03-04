@@ -27,7 +27,7 @@ export function MobileSidebar() {
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="p-4 pb-0">
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>

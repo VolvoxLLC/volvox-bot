@@ -1,11 +1,12 @@
 'use client';
 
-import { ChevronDown, ChevronRight, ClipboardList, RefreshCw, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, ClipboardList, RefreshCw, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MemberSelector } from '@/components/ui/member-selector';
 import {
   Select,
   SelectContent,
@@ -80,25 +81,13 @@ export default function AuditLogPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [actionFilter, setActionFilter] = useState('');
-  const [userSearch, setUserSearch] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [debouncedUserSearch, setDebouncedUserSearch] = useState('');
-
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
-
-  useEffect(() => {
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedUserSearch(userSearch);
-      setOffset(0);
-    }, 300);
-    return () => clearTimeout(searchTimerRef.current);
-  }, [userSearch]);
 
   useEffect(() => {
     return () => {
@@ -112,6 +101,7 @@ export default function AuditLogPage() {
     setOffset(0);
     setError(null);
     setExpandedRows(new Set());
+    setSelectedUserId(null);
   }, []);
 
   const guildId = useGuildSelection({ onGuildChange });
@@ -180,24 +170,24 @@ export default function AuditLogPage() {
     void fetchAuditLog({
       guildId,
       action: actionFilter,
-      userId: debouncedUserSearch,
+      userId: selectedUserId ?? '',
       startDate,
       endDate,
       offset,
     });
-  }, [guildId, actionFilter, debouncedUserSearch, startDate, endDate, offset, fetchAuditLog]);
+  }, [guildId, actionFilter, selectedUserId, startDate, endDate, offset, fetchAuditLog]);
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
     void fetchAuditLog({
       guildId,
       action: actionFilter,
-      userId: debouncedUserSearch,
+      userId: selectedUserId ?? '',
       startDate,
       endDate,
       offset,
     });
-  }, [guildId, fetchAuditLog, actionFilter, debouncedUserSearch, startDate, endDate, offset]);
+  }, [guildId, fetchAuditLog, actionFilter, selectedUserId, startDate, endDate, offset]);
 
   const toggleRow = useCallback((id: number) => {
     setExpandedRows((prev) => {
@@ -212,8 +202,7 @@ export default function AuditLogPage() {
   }, []);
 
   const handleClearSearch = useCallback(() => {
-    setUserSearch('');
-    setDebouncedUserSearch('');
+    setSelectedUserId(null);
     setOffset(0);
   }, []);
 
@@ -260,26 +249,29 @@ export default function AuditLogPage() {
         <>
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9 pr-8"
-                placeholder="Filter by user ID..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                aria-label="Filter audit log by user ID"
+            <div className="max-w-sm flex-1">
+              <MemberSelector
+                guildId={guildId}
+                selected={selectedUserId ? [selectedUserId] : []}
+                onChange={(selected) => {
+                  setSelectedUserId(selected[0] ?? null);
+                  setOffset(0);
+                }}
+                placeholder="Filter by member"
+                maxSelections={1}
               />
-              {userSearch && (
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={handleClearSearch}
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
             </div>
+            {selectedUserId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearSearch}
+                aria-label="Clear member filter"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
 
             <Select
               value={actionFilter}
@@ -412,7 +404,7 @@ export default function AuditLogPage() {
             !loading && (
               <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
                 <p className="text-sm text-muted-foreground">
-                  {actionFilter || debouncedUserSearch || startDate || endDate
+                  {actionFilter || selectedUserId || startDate || endDate
                     ? 'No audit entries match your filters.'
                     : 'No audit log entries found.'}
                 </p>

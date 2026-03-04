@@ -65,7 +65,7 @@ function TerminalCard({ feature, index }: { feature: (typeof features)[0]; index
           <div className="p-2 rounded-md bg-[var(--accent-primary)]/10">
             <feature.icon className="w-6 h-6 text-[var(--accent-primary)]" />
           </div>
-          <h3 className="text-xl font-bold font-mono text-[var(--text-primary)]">
+          <h3 className="font-heading text-xl font-bold text-[var(--text-primary)]">
             {feature.title}
           </h3>
         </div>
@@ -94,7 +94,7 @@ export function FeatureGrid() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-bold font-mono text-[var(--text-primary)] mb-4">
+          <h2 className="font-heading text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">
             <span className="text-[var(--accent-success)]">&gt;</span> Features
           </h2>
           <p className="text-lg text-[var(--text-secondary)] max-w-2xl mx-auto">

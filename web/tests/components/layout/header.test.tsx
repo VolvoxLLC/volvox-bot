@@ -43,7 +43,7 @@ describe("Header", () => {
 
   it("renders the brand name", () => {
     render(<Header />);
-    expect(screen.getByText("Bill Bot Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Volvox.Bot Dashboard")).toBeInTheDocument();
   });
 
   it("renders the mobile sidebar toggle", () => {
@@ -114,7 +114,7 @@ describe("Header", () => {
       await waitFor(() => {
         expect(screen.getByText("TestUser")).toBeInTheDocument();
       });
-      expect(screen.getByText("Documentation")).toBeInTheDocument();
+      expect(screen.getByText("GitHub Repository")).toBeInTheDocument();
       expect(screen.getByText("Sign out")).toBeInTheDocument();
     });
 

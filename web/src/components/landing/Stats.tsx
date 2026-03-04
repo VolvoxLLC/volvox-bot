@@ -72,7 +72,7 @@ export function Stats() {
         >
           <div className="text-center p-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)]">
             <Users className="w-8 h-8 mx-auto mb-4 text-[var(--accent-primary)]" />
-            <div className="text-4xl font-bold font-mono text-[var(--text-primary)] mb-2">
+            <div className="font-heading text-4xl font-bold text-[var(--text-primary)] mb-2">
               <AnimatedCounter target={2500} />+
             </div>
             <div className="text-[var(--text-secondary)]">Servers</div>
@@ -80,7 +80,7 @@ export function Stats() {
 
           <div className="text-center p-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)]">
             <MessageSquare className="w-8 h-8 mx-auto mb-4 text-[var(--accent-success)]" />
-            <div className="text-4xl font-bold font-mono text-[var(--text-primary)] mb-2">
+            <div className="font-heading text-4xl font-bold text-[var(--text-primary)] mb-2">
               <AnimatedCounter target={500000} />+
             </div>
             <div className="text-[var(--text-secondary)]">Messages/day</div>
@@ -88,7 +88,7 @@ export function Stats() {
 
           <div className="text-center p-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)]">
             <Star className="w-8 h-8 mx-auto mb-4 text-[var(--accent-warning)]" />
-            <div className="text-4xl font-bold font-mono text-[var(--text-primary)] mb-2">
+            <div className="font-heading text-4xl font-bold text-[var(--text-primary)] mb-2">
               <AnimatedCounter target={1200} />
             </div>
             <div className="text-[var(--text-secondary)]">GitHub Stars</div>
@@ -102,7 +102,7 @@ export function Stats() {
           transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="mb-12"
         >
-          <h2 className="text-3xl font-bold font-mono text-center text-[var(--text-primary)] mb-12">
+          <h2 className="font-heading text-3xl font-bold text-center text-[var(--text-primary)] mb-12">
             Loved by developers
           </h2>
 

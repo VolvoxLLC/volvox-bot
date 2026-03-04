@@ -13,12 +13,12 @@ interface DashboardShellProps {
  */
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
       <div className="flex flex-1">
         {/* Desktop sidebar */}
-        <aside className="hidden w-64 shrink-0 border-r bg-background md:block">
+        <aside className="hidden w-72 shrink-0 border-r bg-card/30 backdrop-blur md:block">
           <div className="p-4">
             <ServerSelector />
           </div>
@@ -26,7 +26,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

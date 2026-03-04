@@ -34,20 +34,20 @@ function LoginForm() {
   // Don't show spinner if the session has a token refresh error — show the login form instead.
   if (status === 'loading' || (session && !session.error)) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <main id="main-content" className="flex min-h-screen items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+    <main id="main-content" className="flex min-h-screen flex-col items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-discord text-white font-bold text-2xl shadow-lg mb-4">
-            B
+            V
           </div>
-          <CardTitle className="text-2xl">Welcome to Bill Bot</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Volvox.Bot</CardTitle>
           <CardDescription>
             Sign in with your Discord account to manage your server.
           </CardDescription>
@@ -69,7 +69,7 @@ function LoginForm() {
           </p>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }
 
@@ -77,9 +77,9 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center">
+        <main id="main-content" className="flex min-h-screen items-center justify-center">
           <div className="animate-pulse text-muted-foreground">Loading...</div>
-        </div>
+        </main>
       }
     >
       <LoginForm />
