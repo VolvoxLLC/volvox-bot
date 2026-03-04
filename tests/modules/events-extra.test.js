@@ -352,6 +352,7 @@ describe('registerChallengeButtonHandler', () => {
   function setup() {
     handlers = new Map();
     client = { on: (event, fn) => handlers.set(event, fn) };
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
     registerChallengeButtonHandler(client);
   }
 

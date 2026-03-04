@@ -456,6 +456,7 @@ describe('events coverage follow-up', () => {
   it('covers challenge button handler branches', async () => {
     const handlers = new Map();
     const client = { on: (event, fn) => handlers.set(event, fn) };
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
     registerChallengeButtonHandler(client);
 
     const handler = handlers.get('interactionCreate');

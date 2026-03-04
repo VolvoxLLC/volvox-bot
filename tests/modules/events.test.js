@@ -648,12 +648,14 @@ describe('events module', () => {
       const handlers = new Map();
       const client = { on: (event, fn) => handlers.set(event, fn) };
 
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       registerPollButtonHandler(client);
       const handler = handlers.get('interactionCreate');
 
       const interaction = {
         isButton: () => true,
         customId: 'poll_vote_opt1',
+        guildId: 'g1',
         user: { id: 'u1' },
         guildId: 'g1',
       };
@@ -670,6 +672,7 @@ describe('events module', () => {
       const handlers = new Map();
       const client = { on: (event, fn) => handlers.set(event, fn) };
 
+      getConfig.mockReturnValue({ poll: { enabled: true } });
       registerPollButtonHandler(client);
       const handler = handlers.get('interactionCreate');
 
@@ -677,6 +680,7 @@ describe('events module', () => {
       const interaction = {
         isButton: () => true,
         customId: 'poll_vote_opt1',
+        guildId: 'g1',
         user: { id: 'u1' },
         guildId: 'g1',
         replied: false,
