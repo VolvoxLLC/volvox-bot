@@ -60,12 +60,14 @@ export default function LandingPage() {
 
           {/* Mobile menu button */}
           <button
+            type="button"
             className="md:hidden p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <title>Close menu</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -75,6 +77,7 @@ export default function LandingPage() {
               </svg>
             ) : (
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <title>Open menu</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -90,20 +93,26 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-[var(--border-default)] bg-[var(--bg-primary)]">
             <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
-              <a
-                href="#features"
-                className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2"
-                onClick={() => setMobileMenuOpen(false)}
+              <button
+                type="button"
+                className="text-left text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                }}
               >
                 Features
-              </a>
-              <a
-                href="#pricing"
-                className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2"
-                onClick={() => setMobileMenuOpen(false)}
+              </button>
+              <button
+                type="button"
+                className="text-left text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                }}
               >
                 Pricing
-              </a>
+              </button>
               <a
                 href="https://docs.volvox.dev"
                 className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2"
