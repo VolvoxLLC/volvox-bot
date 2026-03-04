@@ -59,7 +59,7 @@ describe('flattenToLeafPaths', () => {
     it('should skip __proto__', () => {
       // Use JSON.parse to reliably create enumerable __proto__ property
       const obj = JSON.parse('{"safe": "value", "__proto__": "malicious"}');
-      expect(Object.prototype.hasOwnProperty.call(obj, '__proto__')).toBe(true);
+      expect(Object.hasOwn(obj, '__proto__')).toBe(true);
       const result = flattenToLeafPaths(obj, 'test');
 
       expect(result).toHaveLength(1);

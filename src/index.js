@@ -56,10 +56,10 @@ import { startTriage, stopTriage } from './modules/triage.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
+import { logCommandUsage } from './utils/commandUsage.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
 import { getPermissionError, hasPermission } from './utils/permissions.js';
-import { logCommandUsage } from './utils/commandUsage.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
 

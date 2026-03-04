@@ -5,7 +5,16 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/129
  */
 
-import { access, constants, mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import {
+  access,
+  constants,
+  mkdir,
+  readdir,
+  readFile,
+  stat,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SAFE_CONFIG_KEYS, SENSITIVE_FIELDS } from '../api/utils/configAllowlist.js';

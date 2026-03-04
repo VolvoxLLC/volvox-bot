@@ -7,6 +7,7 @@
  */
 
 import { registerErrorHandlers } from './events/errors.js';
+import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
 import {
   registerChallengeButtonHandler,
   registerPollButtonHandler,
@@ -19,7 +20,6 @@ import {
   registerTicketOpenButtonHandler,
   registerWelcomeOnboardingHandlers,
 } from './events/interactionCreate.js';
-import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
 import { registerMessageCreateHandler } from './events/messageCreate.js';
 import { registerReactionHandlers } from './events/reactions.js';
 // Import all handlers from subdirectory modules

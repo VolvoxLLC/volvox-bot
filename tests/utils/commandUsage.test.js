@@ -18,10 +18,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 import { error as logError } from '../../src/logger.js';
-import {
-  getCommandUsageStats,
-  logCommandUsage,
-} from '../../src/utils/commandUsage.js';
+import { getCommandUsageStats, logCommandUsage } from '../../src/utils/commandUsage.js';
 
 function setupPool() {
   mockGetPool.mockReturnValue(mockPool);
@@ -152,15 +149,9 @@ describe('getCommandUsageStats', () => {
   });
 
   it('throws if guildId is missing', async () => {
-    await expect(getCommandUsageStats(null)).rejects.toThrow(
-      'guildId is required',
-    );
-    await expect(getCommandUsageStats(undefined)).rejects.toThrow(
-      'guildId is required',
-    );
-    await expect(getCommandUsageStats('')).rejects.toThrow(
-      'guildId is required',
-    );
+    await expect(getCommandUsageStats(null)).rejects.toThrow('guildId is required');
+    await expect(getCommandUsageStats(undefined)).rejects.toThrow('guildId is required');
+    await expect(getCommandUsageStats('')).rejects.toThrow('guildId is required');
   });
 
   describe('startDate filter', () => {
