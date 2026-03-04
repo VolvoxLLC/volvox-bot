@@ -1,6 +1,24 @@
 @import "tailwindcss";
 
+/* JetBrains Mono for headlines, Inter for body (loaded in layout.tsx) */
 @theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  
+  /* Terminal Chic Colors */
+  --color-terminal-green: #22c55e;
+  --color-terminal-cursor: #22c55e;
+  --color-terminal-bg: #0a0a0a;
+  --color-terminal-border: #1f1f1f;
+  --color-terminal-text: #e4e4e7;
+  --color-terminal-muted: #71717a;
+  
+  /* Light mode Terminal Chic */
+  --color-terminal-light-bg: #fafafa;
+  --color-terminal-light-border: #e4e4e7;
+  --color-terminal-light-text: #18181b;
+  --color-terminal-light-muted: #71717a;
+  
+  /* Existing shadcn colors */
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -25,8 +43,13 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  
+  /* Animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-blink: blink 1s step-end infinite;
+  --animate-typewriter: typewriter 0.1s steps(1) forwards;
+  
   @keyframes accordion-down {
     from {
       height: 0;
@@ -43,52 +66,88 @@
       height: 0;
     }
   }
+  @keyframes blink {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Terminal Chic Light Mode */
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 240 10% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 10% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 10% 10%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 142 76% 36%;
     --radius: 0.5rem;
+
+    /* Semantic tokens for landing components */
+    --bg-primary: hsl(var(--background));
+    --bg-secondary: hsl(var(--muted));
+    --bg-tertiary: hsl(var(--secondary));
+    --text-primary: hsl(var(--foreground));
+    --text-secondary: hsl(var(--muted-foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --accent-primary: hsl(var(--primary));
+    --accent-success: #22c55e;
+    --accent-warning: #f59e0b;
+    --border-default: hsl(var(--border));
+    --border-muted: hsl(var(--border));
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* Terminal Chic Dark Mode */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 89%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 89%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 89%;
+    --primary: 142 76% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 89%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 46%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 89%;
+    --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 142 76% 46%;
+
+    /* Semantic tokens for landing components (dark mode) */
+    --bg-primary: hsl(var(--background));
+    --bg-secondary: hsl(var(--muted));
+    --bg-tertiary: hsl(var(--secondary));
+    --text-primary: hsl(var(--foreground));
+    --text-secondary: hsl(var(--muted-foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --accent-primary: hsl(var(--primary));
+    --accent-success: #22c55e;
+    --accent-warning: #f59e0b;
+    --border-default: hsl(var(--border));
+    --border-muted: hsl(var(--border));
   }
 }
 
@@ -97,6 +156,21 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Terminal cursor blink animation */
+.terminal-cursor {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
   }
 }
