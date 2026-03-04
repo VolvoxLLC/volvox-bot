@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { getBotInviteUrl } from '@/lib/discord';
 
 export function Footer() {
+  const botInviteUrl = getBotInviteUrl();
+  
   return (
     <footer className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)] border-t border-[var(--border-default)]">
       <div className="max-w-4xl mx-auto text-center">
@@ -24,13 +26,13 @@ export function Footer() {
             Join thousands of developers who've switched from MEE6, Dyno, and Carl-bot. Your
             community deserves better.
           </p>
-          {getBotInviteUrl() ? (
+          {botInviteUrl ? (
             <Button
               size="lg"
               className="font-mono text-lg px-8 py-6 bg-[var(--accent-success)] hover:bg-[var(--accent-success)]/90 text-white"
               asChild
             >
-              <a href={getBotInviteUrl()!} target="_blank" rel="noopener noreferrer">
+              <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
                 Add to Discord — Free
               </a>
             </Button>

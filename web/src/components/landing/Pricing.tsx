@@ -57,6 +57,7 @@ export function Pricing() {
   const [isAnnual, setIsAnnual] = useState(false);
   const containerRef = useRef(null);
   const isInView = useInView(containerRef, { once: true, margin: '-100px' });
+  const botInviteUrl = getBotInviteUrl();
 
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)]">
@@ -157,16 +158,16 @@ export function Pricing() {
                   tier.popular
                     ? 'bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/90'
                     : ''
-                } ${!tier.href && !getBotInviteUrl() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                asChild={!!(tier.href || getBotInviteUrl())}
-                disabled={!tier.href && !getBotInviteUrl()}
+                } ${!tier.href && !botInviteUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
+                asChild={!!(tier.href || botInviteUrl)}
+                disabled={!tier.href && !botInviteUrl}
               >
                 {tier.href ? (
                   <a href={tier.href} target="_blank" rel="noopener noreferrer">
                     {tier.cta}
                   </a>
-                ) : getBotInviteUrl() ? (
-                  <a href={getBotInviteUrl()!} target="_blank" rel="noopener noreferrer">
+                ) : botInviteUrl ? (
+                  <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
                     {tier.cta}
                   </a>
                 ) : (
