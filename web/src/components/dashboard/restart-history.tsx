@@ -138,9 +138,9 @@ export function RestartHistory({ health, loading }: RestartHistoryProps) {
                 </tr>
               </thead>
               <tbody>
-                {restarts.map((restart, i) => (
+                {restarts.map((restart) => (
                   <tr
-                    key={`${restart.timestamp}-${i}`}
+                    key={restart.timestamp}
                     className="border-b last:border-0 hover:bg-muted/40 transition-colors"
                   >
                     <td className="py-2.5 pr-4 text-muted-foreground whitespace-nowrap">
