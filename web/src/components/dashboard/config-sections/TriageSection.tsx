@@ -1,13 +1,9 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChannelSelector } from '@/components/ui/channel-selector';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
-import { NumberField } from './NumberField';
+import { ToggleSwitch } from '../toggle-switch';
 
 interface TriageSectionProps {
   draftConfig: GuildConfig;
@@ -16,16 +12,15 @@ interface TriageSectionProps {
   onFieldChange: (field: string, value: unknown) => void;
 }
 
+/** Shared input styling for text inputs. */
+const inputClasses =
+  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+
 /**
- * Renders the Triage configuration UI for editing classifier, responder, budget, timing, toggles, and moderation log channel.
+ * Triage configuration section.
  *
- * Renders nothing if `draftConfig.triage` is not present.
- *
- * @param draftConfig - Guild configuration draft containing the `triage` settings to display and edit.
- * @param saving - When true, input controls are disabled to prevent changes during a save operation.
- * @param onEnabledChange - Invoked with the new enabled state when the Triage master switch is toggled.
- * @param onFieldChange - Invoked with `(field, value)` for individual field updates; used for all editable triage fields including `moderationLogChannel`.
- * @returns The Triage configuration card element, or `null` when triage configuration is absent.
+ * Provides controls for message triage classifier, responder models,
+ * budgets, intervals, and various feature toggles.
  */
 export function TriageSection({
   draftConfig,
@@ -33,16 +28,7 @@ export function TriageSection({
   onEnabledChange,
   onFieldChange,
 }: TriageSectionProps) {
-  const guildId = useGuildSelection();
-
   if (!draftConfig.triage) return null;
-
-  const moderationLogChannel = draftConfig.triage?.moderationLogChannel ?? '';
-  const selectedChannels = moderationLogChannel ? [moderationLogChannel] : [];
-
-  const handleChannelChange = (channels: string[]) => {
-    onFieldChange('moderationLogChannel', channels[0] ?? '');
-  };
 
   return (
     <Card>
@@ -54,140 +40,185 @@ export function TriageSection({
               Configure message triage classifier, responder models, and channels.
             </CardDescription>
           </div>
-          <Switch
+          <ToggleSwitch
             checked={draftConfig.triage?.enabled ?? false}
-            onCheckedChange={onEnabledChange}
+            onChange={onEnabledChange}
             disabled={saving}
-            aria-label="Toggle Triage"
+            label="Triage"
           />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="classify-model">Classify Model</Label>
-          <Input
+        <label htmlFor="classify-model" className="space-y-2">
+          <span className="text-sm font-medium">Classify Model</span>
+          <input
             id="classify-model"
             type="text"
             value={draftConfig.triage?.classifyModel ?? ''}
             onChange={(e) => onFieldChange('classifyModel', e.target.value)}
             disabled={saving}
+            className={inputClasses}
             placeholder="e.g. claude-haiku-4-5"
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="respond-model">Respond Model</Label>
-          <Input
+        </label>
+        <label htmlFor="respond-model" className="space-y-2">
+          <span className="text-sm font-medium">Respond Model</span>
+          <input
             id="respond-model"
             type="text"
             value={draftConfig.triage?.respondModel ?? ''}
             onChange={(e) => onFieldChange('respondModel', e.target.value)}
             disabled={saving}
+            className={inputClasses}
             placeholder="e.g. claude-sonnet-4-6"
           />
-        </div>
+        </label>
         <div className="grid grid-cols-2 gap-4">
-          <NumberField
-            label="Classify Budget"
-            value={draftConfig.triage?.classifyBudget ?? 0}
-            onChange={(v) => onFieldChange('classifyBudget', v)}
-            disabled={saving}
-            step={0.01}
-            min={0}
-          />
-          <NumberField
-            label="Respond Budget"
-            value={draftConfig.triage?.respondBudget ?? 0}
-            onChange={(v) => onFieldChange('respondBudget', v)}
-            disabled={saving}
-            step={0.01}
-            min={0}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <NumberField
-            label="Default Interval (ms)"
-            value={draftConfig.triage?.defaultInterval ?? 3000}
-            onChange={(v) => onFieldChange('defaultInterval', v)}
-            disabled={saving}
-            min={1}
-          />
-          <NumberField
-            label="Timeout (ms)"
-            value={draftConfig.triage?.timeout ?? 30000}
-            onChange={(v) => onFieldChange('timeout', v)}
-            disabled={saving}
-            min={1}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <NumberField
-            label="Context Messages"
-            value={draftConfig.triage?.contextMessages ?? 10}
-            onChange={(v) => onFieldChange('contextMessages', v)}
-            disabled={saving}
-            min={1}
-          />
-          <NumberField
-            label="Max Buffer Size"
-            value={draftConfig.triage?.maxBufferSize ?? 30}
-            onChange={(v) => onFieldChange('maxBufferSize', v)}
-            disabled={saving}
-            min={1}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="streaming" className="text-sm font-medium">
-            Streaming
-          </Label>
-          <Switch
-            id="streaming"
-            checked={draftConfig.triage?.streaming ?? false}
-            onCheckedChange={(v) => onFieldChange('streaming', v)}
-            disabled={saving}
-            aria-label="Toggle streaming"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="moderation-response" className="text-sm font-medium">
-            Moderation Response
-          </Label>
-          <Switch
-            id="moderation-response"
-            checked={draftConfig.triage?.moderationResponse ?? false}
-            onCheckedChange={(v) => onFieldChange('moderationResponse', v)}
-            disabled={saving}
-            aria-label="Toggle moderation response"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="debug-footer" className="text-sm font-medium">
-            Debug Footer
-          </Label>
-          <Switch
-            id="debug-footer"
-            checked={draftConfig.triage?.debugFooter ?? false}
-            onCheckedChange={(v) => onFieldChange('debugFooter', v)}
-            disabled={saving}
-            aria-label="Toggle debug footer"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="moderation-log-channel">Moderation Log Channel</Label>
-          {guildId ? (
-            <ChannelSelector
-              id="moderation-log-channel"
-              guildId={guildId}
-              selected={selectedChannels}
-              onChange={handleChannelChange}
-              placeholder="Select moderation log channel..."
+          <label htmlFor="classify-budget" className="space-y-2">
+            <span className="text-sm font-medium">Classify Budget</span>
+            <input
+              id="classify-budget"
+              type="number"
+              step="0.01"
+              min={0}
+              value={draftConfig.triage?.classifyBudget ?? 0}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 0);
+                if (num !== undefined) onFieldChange('classifyBudget', num);
+              }}
               disabled={saving}
-              maxSelections={1}
-              filter="text"
+              className={inputClasses}
             />
-          ) : (
-            <p className="text-muted-foreground text-sm">Select a server first</p>
-          )}
+          </label>
+          <label htmlFor="respond-budget" className="space-y-2">
+            <span className="text-sm font-medium">Respond Budget</span>
+            <input
+              id="respond-budget"
+              type="number"
+              step="0.01"
+              min={0}
+              value={draftConfig.triage?.respondBudget ?? 0}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 0);
+                if (num !== undefined) onFieldChange('respondBudget', num);
+              }}
+              disabled={saving}
+              className={inputClasses}
+            />
+          </label>
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <label htmlFor="default-interval-ms" className="space-y-2">
+            <span className="text-sm font-medium">Default Interval (ms)</span>
+            <input
+              id="default-interval-ms"
+              type="number"
+              min={1}
+              value={draftConfig.triage?.defaultInterval ?? 3000}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 1);
+                if (num !== undefined) onFieldChange('defaultInterval', num);
+              }}
+              disabled={saving}
+              className={inputClasses}
+            />
+          </label>
+          <label htmlFor="timeout-ms" className="space-y-2">
+            <span className="text-sm font-medium">Timeout (ms)</span>
+            <input
+              id="timeout-ms"
+              type="number"
+              min={1}
+              value={draftConfig.triage?.timeout ?? 30000}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 1);
+                if (num !== undefined) onFieldChange('timeout', num);
+              }}
+              disabled={saving}
+              className={inputClasses}
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <label htmlFor="context-messages" className="space-y-2">
+            <span className="text-sm font-medium">Context Messages</span>
+            <input
+              id="context-messages"
+              type="number"
+              min={1}
+              value={draftConfig.triage?.contextMessages ?? 10}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 1);
+                if (num !== undefined) onFieldChange('contextMessages', num);
+              }}
+              disabled={saving}
+              className={inputClasses}
+            />
+          </label>
+          <label htmlFor="max-buffer-size" className="space-y-2">
+            <span className="text-sm font-medium">Max Buffer Size</span>
+            <input
+              id="max-buffer-size"
+              type="number"
+              min={1}
+              value={draftConfig.triage?.maxBufferSize ?? 30}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 1);
+                if (num !== undefined) onFieldChange('maxBufferSize', num);
+              }}
+              disabled={saving}
+              className={inputClasses}
+            />
+          </label>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Streaming</span>
+          <ToggleSwitch
+            checked={draftConfig.triage?.streaming ?? false}
+            onChange={(v) => onFieldChange('streaming', v)}
+            disabled={saving}
+            label="Streaming"
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Moderation Response</span>
+          <ToggleSwitch
+            checked={draftConfig.triage?.moderationResponse ?? false}
+            onChange={(v) => onFieldChange('moderationResponse', v)}
+            disabled={saving}
+            label="Moderation Response"
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Debug Footer</span>
+          <ToggleSwitch
+            checked={draftConfig.triage?.debugFooter ?? false}
+            onChange={(v) => onFieldChange('debugFooter', v)}
+            disabled={saving}
+            label="Debug Footer"
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Status Reactions</span>
+          <ToggleSwitch
+            checked={draftConfig.triage?.statusReactions ?? false}
+            onChange={(v) => onFieldChange('statusReactions', v)}
+            disabled={saving}
+            label="Status Reactions"
+          />
+        </div>
+        <label htmlFor="moderation-log-channel" className="space-y-2">
+          <span className="text-sm font-medium">Moderation Log Channel</span>
+          <input
+            id="moderation-log-channel"
+            type="text"
+            value={draftConfig.triage?.moderationLogChannel ?? ''}
+            onChange={(e) => onFieldChange('moderationLogChannel', e.target.value.trim() || null)}
+            disabled={saving}
+            className={inputClasses}
+            placeholder="Channel ID for moderation logs"
+          />
+        </label>
       </CardContent>
     </Card>
   );
