@@ -671,6 +671,8 @@ export async function accumulateMessage(message, msgConfig) {
     messageId: message.id,
     timestamp: message.createdTimestamp,
     replyTo: null,
+    channelName: message.channel.name ?? null,
+    channelTopic: message.channel.topic ?? null,
   };
 
   // Fetch referenced message content when this is a reply

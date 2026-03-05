@@ -75,6 +75,8 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
         messageId: m.id,
         timestamp: m.createdTimestamp,
         isContext: true, // marker to distinguish from triage targets
+        channelName: channel.name ?? null,
+        channelTopic: channel.topic ?? null,
       }));
   } catch (err) {
     warn('fetchChannelContext failed', { channelId, error: err.message });

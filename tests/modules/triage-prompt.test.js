@@ -9,7 +9,6 @@ import {
 vi.mock('../../src/prompts/index.js', () => ({
   loadPrompt: vi.fn((name, vars) => {
     if (name === 'community-rules') return 'Community rules content';
-    if (name === 'anti-abuse') return 'Anti-abuse guidelines';
     if (name === 'search-guardrails') return 'Search guardrails content';
 
     if (name === 'triage-classify') {
@@ -17,7 +16,7 @@ vi.mock('../../src/prompts/index.js', () => ({
     }
 
     if (name === 'triage-respond') {
-      return `Respond prompt with:\nSystem: ${vars.systemPrompt}\nRules: ${vars.communityRules}\nConversation: ${vars.conversationText}\nClassification: ${vars.classification}\nReasoning: ${vars.reasoning}\nTargets: ${vars.targetMessageIds}\nMemory: ${vars.memoryContext}\nAntiAbuse: ${vars.antiAbuse}\nSearch: ${vars.searchGuardrails}`;
+      return `Respond prompt with:\nSystem: ${vars.systemPrompt}\nRules: ${vars.communityRules}\nConversation: ${vars.conversationText}\nClassification: ${vars.classification}\nReasoning: ${vars.reasoning}\nTargets: ${vars.targetMessageIds}\nMemory: ${vars.memoryContext}\nSearch: ${vars.searchGuardrails}`;
     }
 
     return `Prompt ${name}`;
@@ -165,6 +164,118 @@ describe('triage-prompt', () => {
       expect(result).toContain('[msg1] Alice (<@user1>): Message without timestamp');
       expect(result).not.toContain('[00:00:00]');
     });
+
+    it('should include channel-context block when channelName is present', () => {
+      const buffer = [
+        {
+          messageId: 'msg1',
+          author: 'Alice',
+          userId: 'user1',
+          content: 'Hello',
+          channelName: 'general',
+          channelTopic: 'General discussion',
+        },
+      ];
+
+      const result = buildConversationText([], buffer);
+
+      expect(result).toContain('<channel-context>');
+      expect(result).toContain('Channel: #general');
+      expect(result).toContain('Topic: General discussion');
+      expect(result).toContain('</channel-context>');
+    });
+
+    it('should omit Topic line when channelTopic is null', () => {
+      const buffer = [
+        {
+          messageId: 'msg1',
+          author: 'Alice',
+          userId: 'user1',
+          content: 'Hello',
+          channelName: 'random',
+          channelTopic: null,
+        },
+      ];
+
+      const result = buildConversationText([], buffer);
+
+      expect(result).toContain('<channel-context>');
+      expect(result).toContain('Channel: #random');
+      expect(result).not.toContain('Topic:');
+      expect(result).toContain('</channel-context>');
+    });
+
+    it('should not include channel-context when no entries have channelName', () => {
+      const buffer = [
+        {
+          messageId: 'msg1',
+          author: 'Alice',
+          userId: 'user1',
+          content: 'Hello',
+        },
+      ];
+
+      const result = buildConversationText([], buffer);
+
+      expect(result).not.toContain('<channel-context>');
+    });
+
+    it('should render channel-context before recent-history and messages-to-evaluate', () => {
+      const context = [
+        {
+          messageId: 'ctx1',
+          author: 'Bob',
+          userId: 'user2',
+          content: 'Context',
+          channelName: 'dev',
+          channelTopic: 'Dev talk',
+        },
+      ];
+      const buffer = [
+        {
+          messageId: 'msg1',
+          author: 'Alice',
+          userId: 'user1',
+          content: 'New',
+          channelName: 'dev',
+          channelTopic: 'Dev talk',
+        },
+      ];
+
+      const result = buildConversationText(context, buffer);
+
+      const channelCtxIdx = result.indexOf('<channel-context>');
+      const historyIdx = result.indexOf('<recent-history>');
+      const evalIdx = result.indexOf('<messages-to-evaluate>');
+      expect(channelCtxIdx).toBeLessThan(historyIdx);
+      expect(channelCtxIdx).toBeLessThan(evalIdx);
+    });
+
+    it('should use channelName from context entries if buffer entries lack it', () => {
+      const context = [
+        {
+          messageId: 'ctx1',
+          author: 'Bob',
+          userId: 'user2',
+          content: 'Context',
+          channelName: 'support',
+          channelTopic: 'Help channel',
+        },
+      ];
+      const buffer = [
+        {
+          messageId: 'msg1',
+          author: 'Alice',
+          userId: 'user1',
+          content: 'New',
+        },
+      ];
+
+      const result = buildConversationText(context, buffer);
+
+      expect(result).toContain('Channel: #support');
+      expect(result).toContain('Topic: Help channel');
+    });
   });
 
   describe('buildClassifyPrompt', () => {
@@ -261,7 +372,6 @@ describe('triage-prompt', () => {
       expect(result).toContain('Reasoning: User asked a question');
       expect(result).toContain('Targets: ["msg1"]');
       expect(result).toContain('Memory: User likes cats');
-      expect(result).toContain('AntiAbuse: Anti-abuse guidelines');
       expect(result).toContain('Search: Search guardrails content');
     });
 
