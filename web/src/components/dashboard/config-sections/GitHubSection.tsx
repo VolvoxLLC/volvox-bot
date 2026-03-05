@@ -16,9 +16,14 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * GitHub Activity Feed configuration section.
+ * Render the GitHub Activity Feed configuration panel inside a Card.
  *
- * Provides controls for GitHub feed channel and polling interval.
+ * Renders controls to enable/disable the feed, set the feed channel ID, and configure the poll interval.
+ *
+ * @param draftConfig - Current guild configuration draft containing optional `github.feed` values.
+ * @param saving - When true, disables all inputs to prevent interaction while saving.
+ * @param onFieldChange - Callback invoked with (`field`, `value`) when a control changes.
+ * @returns The JSX element for the GitHub Activity Feed configuration section.
  */
 export function GitHubSection({ draftConfig, saving, onFieldChange }: GitHubSectionProps) {
   const feed = draftConfig.github?.feed ?? {};

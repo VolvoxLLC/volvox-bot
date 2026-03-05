@@ -16,10 +16,12 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Starboard configuration section.
+ * Render the Starboard configuration card with controls to edit starboard settings.
  *
- * Provides controls for pinning popular messages to a starboard channel,
- * including threshold, emoji settings, and ignored channels.
+ * @param draftConfig - Draft guild configuration whose `starboard` properties populate the form fields.
+ * @param saving - When true, form controls are disabled to prevent edits while persisting changes.
+ * @param onFieldChange - Callback invoked when a field changes; receives the field key (`'enabled' | 'channelId' | 'threshold' | 'emoji' | 'selfStarAllowed' | 'ignoredChannels'`) and the new value.
+ * @returns A JSX element containing inputs and toggles for configuring the starboard feature.
  */
 export function StarboardSection({ draftConfig, saving, onFieldChange }: StarboardSectionProps) {
   return (

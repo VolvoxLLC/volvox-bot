@@ -60,10 +60,10 @@ export function parseNumberInput(raw: string, min?: number, max?: number): numbe
 }
 
 /**
- * Normalize a threshold percentage (0-100) to a decimal (0-1).
+ * Convert a percentage (0–100) to a decimal in the range 0 to 1.
  *
- * @param percent - The percentage value (0-100)
- * @returns Clamped decimal value between 0 and 1
+ * @param percent - Percentage value to convert
+ * @returns `0` if `percent` is `NaN`, otherwise the input divided by 100 clamped to the range `0` to `1`
  */
 export function percentToDecimal(percent: number): number {
   if (Number.isNaN(percent)) return 0;

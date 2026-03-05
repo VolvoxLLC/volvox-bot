@@ -16,9 +16,15 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Daily Coding Challenges configuration section.
+ * Render the Daily Coding Challenges configuration card.
  *
- * Provides controls for auto-posting daily coding challenges with hint and solve tracking.
+ * Renders controls to enable/disable daily challenges and to edit channel ID, post time, and timezone.
+ *
+ * @param draftConfig - Current guild configuration draft containing `challenges` settings
+ * @param saving - Whether configuration changes are being saved; when true inputs are disabled
+ * @param onEnabledChange - Called with the new enabled state when the toggle is changed
+ * @param onFieldChange - Called with a field name and value when an input changes (channelId is sent as `null` when empty)
+ * @returns A React element containing the challenges configuration UI
  */
 export function ChallengesSection({
   draftConfig,

@@ -17,9 +17,13 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Memory configuration section.
+ * Render the Memory configuration card for adjusting AI context memory and auto-extraction.
  *
- * Provides controls for AI context memory and auto-extraction settings.
+ * @param draftConfig - Current draft guild configuration containing memory settings
+ * @param saving - Whether a save operation is in progress; used to disable controls
+ * @param onEnabledChange - Called with the new enabled state when the Memory toggle is changed
+ * @param onFieldChange - Called with a field name and value when a configuration field is updated
+ * @returns The Card element containing controls for Max Context Memories and Auto-Extract
  */
 export function MemorySection({
   draftConfig,

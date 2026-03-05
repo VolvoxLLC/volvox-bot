@@ -40,7 +40,11 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Generate a UUID with fallback for environments without crypto.randomUUID.
+ * Generate a UUID string.
+ *
+ * Produces a v4-style UUID; in environments with native support this will use the platform API.
+ *
+ * @returns A v4 UUID string.
  */
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -54,7 +58,12 @@ function generateId(): string {
 }
 
 /**
- * Type guard that checks whether a value is a guild configuration object returned by the API.
+ * Determines whether a value matches the expected GuildConfig shape returned by the API.
+ *
+ * Checks that `data` is a plain object that contains at least one known top-level config section
+ * and that any present known sections are objects (not `null`, not primitives, and not arrays).
+ *
+ * @returns `true` if `data` appears to be a GuildConfig, `false` otherwise.
  */
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
@@ -423,6 +432,13 @@ export function ConfigEditor() {
 
     const failedSections: string[] = [];
 
+    /**
+     * Applies a sequence of JSON Patch-like updates to the current guild's configuration via PATCH requests.
+     *
+     * @param sectionPatches - An ordered array of patch objects, each with a `path` (JSON pointer-like string) and `value` to send as the request body for a single PATCH operation.
+     *
+     * @throws Error - If the server responds with 401 (causes an abort and redirects to /login) or if any PATCH request returns a non-OK response; the error message contains the server-provided `error` field when available or the HTTP status.
+     */
     async function sendSection(sectionPatches: Array<{ path: string; value: unknown }>) {
       for (const patch of sectionPatches) {
         const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {

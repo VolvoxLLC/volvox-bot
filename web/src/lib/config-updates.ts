@@ -30,13 +30,13 @@ export function updateSectionEnabled<K extends keyof GuildConfig>(
 }
 
 /**
- * Update a field within a specific section.
+ * Set a specific field on a top-level section and return an updated config.
  *
- * @param config - The current guild config
- * @param section - The section name to update
- * @param field - The field name within the section
- * @param value - The new value
- * @returns Updated config with the field set
+ * @param config - The original guild configuration
+ * @param section - The top-level section key to update
+ * @param field - The field name within the section to set
+ * @param value - The value to assign to the field
+ * @returns A new GuildConfig with `field` set to `value` inside `section`
  */
 export function updateSectionField<K extends keyof GuildConfig>(
   config: GuildConfig,
@@ -54,14 +54,16 @@ export function updateSectionField<K extends keyof GuildConfig>(
 }
 
 /**
- * Update a nested object field within a section.
+ * Set a field inside a nested object of a top-level section.
  *
- * @param config - The current guild config
- * @param section - The section name to update
- * @param nestedKey - The nested object key (e.g., 'rateLimit', 'protectRoles')
- * @param field - The field name within the nested object
- * @param value - The new value
- * @returns Updated config with the nested field set
+ * Produces a new GuildConfig with the specified nested field updated; the input config is not mutated.
+ *
+ * @param config - The current guild configuration object
+ * @param section - Top-level section key to update
+ * @param nestedKey - Key of the nested object within the section (e.g., "rateLimit", "protectRoles")
+ * @param field - Field name within the nested object to set
+ * @param value - New value for the specified field
+ * @returns The updated GuildConfig with the nested field set
  */
 export function updateNestedField<K extends keyof GuildConfig>(
   config: GuildConfig,
@@ -86,14 +88,14 @@ export function updateNestedField<K extends keyof GuildConfig>(
 }
 
 /**
- * Update an array item at a specific index within a nested path.
+ * Replace the item at a specific index inside a nested array path of a guild section.
  *
- * @param config - The current guild config
- * @param section - The section name
- * @param path - Array of keys to traverse (e.g., ['roleMenu', 'options'])
- * @param index - The index to update
- * @param item - The new item value
- * @returns Updated config with the array item replaced
+ * If the provided path is empty or the index is not an integer or out of bounds, the original config is returned unchanged.
+ *
+ * @param path - Sequence of keys that locates the target array within the section (e.g., ['roleMenu', 'options'])
+ * @param index - Zero-based index of the array element to replace
+ * @param item - The new value to place at `index`
+ * @returns A new GuildConfig with the array item replaced, or the original `config` if no update was performed
  */
 export function updateArrayItem<T>(
   config: GuildConfig,
@@ -139,13 +141,13 @@ export function updateArrayItem<T>(
 }
 
 /**
- * Remove an array item at a specific index within a nested path.
+ * Remove an item from an array located at a nested path under a top-level section.
  *
- * @param config - The current guild config
- * @param section - The section name
- * @param path - Array of keys to traverse (e.g., ['roleMenu', 'options'])
- * @param index - The index to remove
- * @returns Updated config with the array item removed
+ * @param config - The current guild configuration
+ * @param section - Top-level section key containing the nested path
+ * @param path - Sequence of keys to traverse to the target array (e.g., ['roleMenu', 'options'])
+ * @param index - The index of the item to remove
+ * @returns A new GuildConfig with the item removed. If `path` is empty or `index` is not an integer or out of bounds, returns the original config unchanged.
  */
 export function removeArrayItem(
   config: GuildConfig,
@@ -190,13 +192,16 @@ export function removeArrayItem(
 }
 
 /**
- * Append an item to an array within a nested path.
+ * Appends an item to an array located at a nested path within a section of the guild configuration.
  *
- * @param config - The current guild config
- * @param section - The section name
- * @param path - Array of keys to traverse (e.g., ['roleMenu', 'options'])
- * @param item - The item to append
- * @returns Updated config with the item appended
+ * If the path is empty the original config is returned. Missing intermediate objects are created as plain objects
+ * and a missing target array is treated as empty before appending.
+ *
+ * @param config - The current guild configuration
+ * @param section - Top-level section key in the config to update
+ * @param path - Sequence of keys that locate the target array inside the section (last key identifies the array)
+ * @param item - The item to append to the target array
+ * @returns The updated GuildConfig with the item appended to the target array (or the original config if the path is empty)
  */
 export function appendArrayItem<T>(
   config: GuildConfig,

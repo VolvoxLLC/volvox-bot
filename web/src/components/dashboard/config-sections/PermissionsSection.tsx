@@ -18,9 +18,11 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Permissions configuration section.
+ * Render a permissions configuration card with an enable toggle, admin/moderator role selectors, and a bot owners input.
  *
- * Provides controls for role-based access and bot owner overrides.
+ * The bot owners input shows a comma-separated list derived from the draft config and parses the input into an array of trimmed IDs on blur.
+ *
+ * @returns The rendered permissions configuration card element
  */
 export function PermissionsSection({
   draftConfig,
