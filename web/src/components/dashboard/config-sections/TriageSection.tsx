@@ -213,7 +213,12 @@ export function TriageSection({
             id="moderation-log-channel"
             type="text"
             value={draftConfig.triage?.moderationLogChannel ?? ''}
-            onChange={(e)=>onFieldChange('moderationLogChannel',(e.target.value.trim().length?e.target.value.trim():null))}
+            onChange={(e) =>
+              onFieldChange(
+                'moderationLogChannel',
+                e.target.value.trim().length ? e.target.value.trim() : null,
+              )
+            }
             onBlur={(e) => {
               const v = e.currentTarget.value.trim();
               onFieldChange('moderationLogChannel', v.length ? v : null);
