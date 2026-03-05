@@ -30,6 +30,12 @@ export function EngagementSection({
 }: EngagementSectionProps) {
   const badges = draftConfig.engagement?.activityBadges ?? [...DEFAULT_ACTIVITY_BADGES];
 
+  const updateBadge = (index: number, updates: Partial<{ days: number; label: string }>) => {
+    const newBadges = [...badges];
+    newBadges[index] = { ...newBadges[index], ...updates };
+    onActivityBadgesChange(newBadges);
+  };
+
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
@@ -39,32 +45,27 @@ export function EngagementSection({
           active days.
         </p>
         {badges.map((badge, i) => (
-          <div key={`badge-${i}`} className="flex items-center gap-2">
+          <div key={`${badge.days}-${badge.label}`} className="flex items-center gap-2">
             <Input
               className="w-20"
               type="number"
               min={0}
               value={badge.days ?? 0}
               onChange={(e) => {
-                const newBadges = [...badges];
-                newBadges[i] = {
-                  ...newBadges[i],
-                  days: Math.max(0, parseInt(e.target.value, 10) || 0),
-                };
-                onActivityBadgesChange(newBadges);
+                updateBadge(i, { days: Math.max(0, parseInt(e.target.value, 10) || 0) });
               }}
               disabled={saving}
+              aria-label={`Badge ${i + 1} minimum days`}
             />
             <span className="text-xs text-muted-foreground">days →</span>
             <Input
               className="flex-1"
               value={badge.label ?? ''}
               onChange={(e) => {
-                const newBadges = [...badges];
-                newBadges[i] = { ...newBadges[i], label: e.target.value };
-                onActivityBadgesChange(newBadges);
+                updateBadge(i, { label: e.target.value });
               }}
               disabled={saving}
+              aria-label={`Badge ${i + 1} label`}
             />
             <Button
               variant="ghost"
@@ -74,6 +75,7 @@ export function EngagementSection({
                 onActivityBadgesChange(newBadges);
               }}
               disabled={saving || badges.length <= 1}
+              aria-label={`Remove badge ${i + 1}`}
             >
               ✕
             </Button>

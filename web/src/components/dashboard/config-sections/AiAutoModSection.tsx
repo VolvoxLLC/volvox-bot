@@ -31,8 +31,19 @@ export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoM
       flagChannelId: null,
       autoDelete: true,
     } as const);
-  const thresholds = (draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {};
-  const actions = (draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {};
+  // Ensure all categories are present even with partial config
+  const thresholds: Record<string, number> = {
+    toxicity: 0.7,
+    spam: 0.7,
+    harassment: 0.7,
+    ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {}),
+  };
+  const actions: Record<string, string> = {
+    toxicity: 'flag',
+    spam: 'flag',
+    harassment: 'flag',
+    ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {}),
+  };
 
   return (
     <Card>

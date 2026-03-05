@@ -52,7 +52,7 @@ export function ReputationSection({
             label="Reputation"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label htmlFor="xp-per-message-min" className="space-y-2">
             <span className="text-sm font-medium">XP per Message (min)</span>
             <input

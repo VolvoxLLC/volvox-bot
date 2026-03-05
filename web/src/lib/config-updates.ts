@@ -117,8 +117,9 @@ export function updateArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const existing = (cursor[lastKey] as T[]) || [];
-  const arr = [...existing];
+  const existing = cursor[lastKey];
+  // Guard against non-array values
+  const arr = Array.isArray(existing) ? [...existing] : [];
   if (index < 0 || index >= arr.length) {
     return config;
   }
@@ -166,8 +167,9 @@ export function removeArrayItem(
   }
 
   const lastKey = path[path.length - 1];
-  const existing = (cursor[lastKey] as unknown[]) || [];
-  const arr = [...existing];
+  const existing = cursor[lastKey];
+  // Guard against non-array values
+  const arr = Array.isArray(existing) ? [...existing] : [];
   if (index < 0 || index >= arr.length) {
     return config;
   }
@@ -215,7 +217,9 @@ export function appendArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as T[]) || []), item];
+  const existing = cursor[lastKey];
+  // Guard against non-array values
+  const arr = [...(Array.isArray(existing) ? existing : []), item];
 
   // Rebuild from bottom up using tracked levels
   let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };

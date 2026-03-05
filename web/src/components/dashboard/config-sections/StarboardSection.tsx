@@ -24,7 +24,19 @@ const inputClasses =
  * Provides controls for pinning popular messages to a starboard channel,
  * including threshold, emoji settings, and ignored channels.
  */
-export function StarboardSection({ draftConfig, guildId, saving, onFieldChange }: StarboardSectionProps) {
+export function StarboardSection({
+  draftConfig,
+  guildId,
+  saving,
+  onFieldChange,
+}: StarboardSectionProps) {
+  // Local state for ignored channels raw input (parsed on blur)
+  const ignoredChannelsDisplay = (draftConfig.starboard?.ignoredChannels ?? []).join(', ');
+  const [ignoredChannelsRaw, setIgnoredChannelsRaw] = useState(ignoredChannelsDisplay);
+  useEffect(() => {
+    setIgnoredChannelsRaw(ignoredChannelsDisplay);
+  }, [ignoredChannelsDisplay]);
+
   return (
     <Card>
       <CardHeader>
@@ -42,18 +54,21 @@ export function StarboardSection({ draftConfig, guildId, saving, onFieldChange }
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <label htmlFor="channel-id" className="space-y-2">
-          <span className="text-sm font-medium">Channel ID</span>
-          <input
-            id="channel-id"
-            type="text"
-            value={draftConfig.starboard?.channelId ?? ''}
-            onChange={(e) => onFieldChange('channelId', e.target.value)}
-            disabled={saving}
-            className={inputClasses}
-            placeholder="Starboard channel ID"
-          />
-        </label>
+        <div className="space-y-2">
+          <span className="text-sm font-medium">Starboard Channel</span>
+          {guildId ? (
+            <ChannelSelector
+              guildId={guildId}
+              selected={draftConfig.starboard?.channelId ? [draftConfig.starboard.channelId] : []}
+              onChange={(selected) => onFieldChange('channelId', selected[0] ?? null)}
+              placeholder="Select starboard channel..."
+              disabled={saving}
+              maxSelections={1}
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">Select a server first</p>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label htmlFor="threshold" className="space-y-2">
             <span className="text-sm font-medium">Threshold</span>
@@ -115,16 +130,28 @@ export function StarboardSection({ draftConfig, guildId, saving, onFieldChange }
           <input
             id="ignored-channels"
             type="text"
-            value={(draftConfig.starboard?.ignoredChannels ?? []).join(', ')}
-            onChange={(e) =>
+            value={ignoredChannelsRaw}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setIgnoredChannelsRaw(raw);
+              // Call onFieldChange on every change to prevent Ctrl+S data loss
               onFieldChange(
                 'ignoredChannels',
-                e.target.value
+                raw
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean),
-              )
-            }
+              );
+            }}
+            onBlur={() => {
+              // Normalize on blur
+              const normalized = ignoredChannelsRaw
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .join(', ');
+              setIgnoredChannelsRaw(normalized);
+            }}
             disabled={saving}
             className={inputClasses}
             placeholder="Comma-separated channel IDs"

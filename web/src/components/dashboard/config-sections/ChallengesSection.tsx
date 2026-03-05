@@ -66,7 +66,7 @@ export function ChallengesSection({
               placeholder="09:00"
             />
           </label>
-          <label className="space-y-2 col-span-2">
+          <label className="space-y-2 col-span-1 md:col-span-2">
             <span className="text-sm font-medium">Timezone</span>
             <input
               type="text"

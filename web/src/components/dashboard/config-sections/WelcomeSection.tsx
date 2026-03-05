@@ -97,7 +97,9 @@ export function WelcomeSection({
             {guildId ? (
               <ChannelSelector
                 guildId={guildId}
-                selected={draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []}
+                selected={
+                  draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []
+                }
                 onChange={(selected) => onFieldChange('rulesChannel', selected[0] ?? null)}
                 placeholder="Select rules channel..."
                 disabled={saving}
@@ -112,7 +114,9 @@ export function WelcomeSection({
             {guildId ? (
               <RoleSelector
                 guildId={guildId}
-                selected={draftConfig.welcome?.verifiedRole ? [draftConfig.welcome.verifiedRole] : []}
+                selected={
+                  draftConfig.welcome?.verifiedRole ? [draftConfig.welcome.verifiedRole] : []
+                }
                 onChange={(selected) => onFieldChange('verifiedRole', selected[0] ?? null)}
                 placeholder="Select verified role..."
                 disabled={saving}
@@ -127,7 +131,9 @@ export function WelcomeSection({
             {guildId ? (
               <ChannelSelector
                 guildId={guildId}
-                selected={draftConfig.welcome?.introChannel ? [draftConfig.welcome.introChannel] : []}
+                selected={
+                  draftConfig.welcome?.introChannel ? [draftConfig.welcome.introChannel] : []
+                }
                 onChange={(selected) => onFieldChange('introChannel', selected[0] ?? null)}
                 placeholder="Select intro channel..."
                 disabled={saving}
