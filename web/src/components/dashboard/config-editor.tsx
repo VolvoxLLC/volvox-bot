@@ -392,9 +392,10 @@ export function ConfigEditor() {
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
   // Clear undo snapshot when guild changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: guildId IS necessary - effect must re-run when guild changes
   useEffect(() => {
     setPrevSavedConfig(null);
-  }, []);
+  }, [guildId]);
 
   // ── Undo last save ─────────────────────────────────────────────
   const undoLastSave = useCallback(() => {

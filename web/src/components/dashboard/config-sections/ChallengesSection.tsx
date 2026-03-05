@@ -41,7 +41,7 @@ export function ChallengesSection({
         <p className="text-xs text-muted-foreground">
           Auto-post a daily coding challenge with hint and solve tracking.
         </p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label htmlFor="challenge-channel-id" className="space-y-2">
             <span className="text-sm font-medium">Challenge Channel ID</span>
             <input

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { Input } from '@/components/ui/input';
@@ -47,6 +48,16 @@ export function ModerationSection({
   onProtectRolesChange,
   onProtectRoleIdsRawChange,
 }: ModerationSectionProps) {
+  // Local state for blocked domains raw input (parsed on blur)
+  // Must be before early return to satisfy React hooks rules
+  const blockedDomainsDisplay = (draftConfig.moderation?.linkFilter?.blockedDomains ?? []).join(
+    ', ',
+  );
+  const [blockedDomainsRaw, setBlockedDomainsRaw] = useState(blockedDomainsDisplay);
+  useEffect(() => {
+    setBlockedDomainsRaw(blockedDomainsDisplay);
+  }, [blockedDomainsDisplay]);
+
   if (!draftConfig.moderation) return null;
 
   const alertChannelId = draftConfig.moderation?.alertChannelId ?? '';
@@ -235,11 +246,12 @@ export function ModerationSection({
             <input
               id="blocked-domains"
               type="text"
-              value={(draftConfig.moderation?.linkFilter?.blockedDomains ?? []).join(', ')}
-              onChange={(e) =>
+              value={blockedDomainsRaw}
+              onChange={(e) => setBlockedDomainsRaw(e.target.value)}
+              onBlur={() =>
                 onLinkFilterChange(
                   'blockedDomains',
-                  e.target.value
+                  blockedDomainsRaw
                     .split(',')
                     .map((s) => s.trim())
                     .filter(Boolean),
