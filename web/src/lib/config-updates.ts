@@ -117,7 +117,11 @@ export function updateArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as T[]) || [])];
+  const existing = (cursor[lastKey] as T[]) || [];
+  const arr = [...existing];
+  if (index < 0 || index >= arr.length) {
+    return config;
+  }
   arr[index] = item;
 
   // Rebuild from bottom up using tracked levels
@@ -162,7 +166,11 @@ export function removeArrayItem(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as unknown[]) || [])];
+  const existing = (cursor[lastKey] as unknown[]) || [];
+  const arr = [...existing];
+  if (index < 0 || index >= arr.length) {
+    return config;
+  }
   arr.splice(index, 1);
 
   // Rebuild from bottom up using tracked levels

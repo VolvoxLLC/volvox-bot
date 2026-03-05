@@ -84,7 +84,7 @@ export function StarboardSection({ draftConfig, saving, onFieldChange }: Starboa
                 onClick={() => onFieldChange('emoji', '*')}
                 disabled={saving}
                 className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                  draftConfig.starboard?.emoji === '*'
+                  (draftConfig.starboard?.emoji ?? '*') === '*'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
                 }`}

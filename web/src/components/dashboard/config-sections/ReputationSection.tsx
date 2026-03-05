@@ -126,8 +126,8 @@ export function ReputationSection({
             type="text"
             value={thresholdsRaw}
             onChange={(e) => setThresholdsRaw(e.target.value)}
-            onBlur={() => {
-              const nums = thresholdsRaw
+            onBlur={(e) => {
+              const nums = e.currentTarget.value
                 .split(',')
                 .map((s) => Number(s.trim()))
                 .filter((n) => Number.isFinite(n) && n > 0);

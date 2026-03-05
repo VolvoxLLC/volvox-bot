@@ -177,43 +177,7 @@ describe('ConfigEditor integration', () => {
 
 // ── Unit tests for normalization utilities ────────────────────────
 
-describe('config-normalization', () => {
-  it('parseNumberInput handles valid numbers', async () => {
-    const { parseNumberInput } = await import('@/lib/config-normalization');
-    expect(parseNumberInput('42')).toBe(42);
-    expect(parseNumberInput('3.14')).toBe(3.14);
-    expect(parseNumberInput('0')).toBe(0);
-  });
-
-  it('parseNumberInput returns undefined for empty string', async () => {
-    const { parseNumberInput } = await import('@/lib/config-normalization');
-    expect(parseNumberInput('')).toBeUndefined();
-  });
-
-  it('parseNumberInput clamps to min/max bounds', async () => {
-    const { parseNumberInput } = await import('@/lib/config-normalization');
-    expect(parseNumberInput('5', 10)).toBe(10);
-    expect(parseNumberInput('100', 0, 50)).toBe(50);
-    expect(parseNumberInput('25', 10, 50)).toBe(25);
-  });
-
-  it('percentToDecimal converts correctly', async () => {
-    const { percentToDecimal } = await import('@/lib/config-normalization');
-    expect(percentToDecimal(100)).toBe(1);
-    expect(percentToDecimal(50)).toBe(0.5);
-    expect(percentToDecimal(0)).toBe(0);
-    expect(percentToDecimal(150)).toBe(1); // clamped
-    expect(percentToDecimal(-50)).toBe(0); // clamped
-  });
-
-  it('decimalToPercent converts correctly', async () => {
-    const { decimalToPercent } = await import('@/lib/config-normalization');
-    expect(decimalToPercent(1)).toBe(100);
-    expect(decimalToPercent(0.5)).toBe(50);
-    expect(decimalToPercent(0)).toBe(0);
-    expect(decimalToPercent(0.333)).toBe(33);
-  });
-});
+// Removed duplicate unit tests for normalization utilities.
 
 // ── Unit tests for config update utilities ────────────────────────
 

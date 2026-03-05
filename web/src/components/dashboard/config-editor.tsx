@@ -461,6 +461,40 @@ export function ConfigEditor() {
   const memoryUpdater = createSectionUpdater('memory');
   const reputationUpdater = createSectionUpdater('reputation');
   const challengesUpdater = createSectionUpdater('challenges');
+  const aiAutoModUpdater = createSectionUpdater('aiAutoMod');
+  const engagementUpdater = createSectionUpdater('engagement');
+  const githubUpdater = createSectionUpdater('github');
+  const ticketsUpdater = createSectionUpdater('tickets');
+
+  // Convenience updaters for sections with frequent nested/complex updates
+  const aiAutoMod = {
+    setField: aiAutoModUpdater.setField,
+    setEnabled: aiAutoModUpdater.setEnabled,
+  } as const;
+
+  const engagement = {
+    setActivityBadges: (badges: Array<{ days?: number; label?: string }>) =>
+      engagementUpdater.setField('activityBadges', badges),
+  } as const;
+
+  const githubFeed = {
+    setField: (field: string, value: unknown) => githubUpdater.setNestedField('feed', field, value),
+  } as const;
+
+  const tickets = {
+    setEnabled: ticketsUpdater.setEnabled,
+    setField: ticketsUpdater.setField,
+  } as const;
+
+  // Community features span multiple top-level sections (help, announce, etc.).
+  const communityFeaturesUpdater = {
+    setEnabled: (section: keyof GuildConfig, enabled: boolean) =>
+      updateDraftConfig((prev) => updateSectionEnabled(prev, section, enabled)),
+    setField: (section: keyof GuildConfig, field: string, value: unknown) =>
+      updateDraftConfig((prev) => updateSectionField(prev, section, field, value)),
+    setToggle: (section: keyof GuildConfig, enabled: boolean) =>
+      updateDraftConfig((prev) => updateSectionEnabled(prev, section, enabled)),
+  } as const;
 
   // ── No guild selected ──────────────────────────────────────────
   if (!guildId) {
@@ -628,12 +662,7 @@ export function ConfigEditor() {
       <AiAutoModSection
         draftConfig={draftConfig}
         saving={saving}
-        onFieldChange={(field, value) => {
-          updateDraftConfig((prev) => ({
-            ...prev,
-            aiAutoMod: { ...((prev.aiAutoMod as Record<string, unknown>) || {}), [field]: value },
-          }));
-        }}
+        onFieldChange={aiAutoMod.setField}
       />
 
       {/* Triage Section */}
@@ -671,27 +700,14 @@ export function ConfigEditor() {
       <CommunityFeaturesSection
         draftConfig={draftConfig}
         saving={saving}
-        onToggleChange={(key, enabled) => {
-          updateDraftConfig((prev) => ({
-            ...prev,
-            [key]: {
-              ...((prev[key as keyof GuildConfig] as Record<string, unknown>) || {}),
-              enabled,
-            },
-          }));
-        }}
+        onToggleChange={communityFeaturesUpdater.setToggle}
       />
 
       {/* Engagement / Activity Badges Section */}
       <EngagementSection
         draftConfig={draftConfig}
         saving={saving}
-        onActivityBadgesChange={(badges) => {
-          updateDraftConfig((prev) => ({
-            ...prev,
-            engagement: { ...(prev.engagement || {}), activityBadges: badges },
-          }));
-        }}
+        onActivityBadgesChange={engagement.setActivityBadges}
       />
 
       {/* Reputation / XP Section */}
@@ -714,33 +730,15 @@ export function ConfigEditor() {
       <GitHubSection
         draftConfig={draftConfig}
         saving={saving}
-        onFieldChange={(field, value) => {
-          updateDraftConfig((prev) => ({
-            ...prev,
-            github: {
-              ...(prev.github || {}),
-              feed: { ...(prev.github?.feed || {}), [field]: value },
-            },
-          }));
-        }}
+        onFieldChange={githubFeed.setField}
       />
 
       {/* Tickets Section */}
       <TicketsSection
         draftConfig={draftConfig}
         saving={saving}
-        onEnabledChange={(enabled) => {
-          updateDraftConfig((prev) => ({
-            ...prev,
-            tickets: { ...(prev.tickets || {}), enabled },
-          }));
-        }}
-        onFieldChange={(field, value) => {
-          updateDraftConfig((prev) => ({
-            ...prev,
-            tickets: { ...(prev.tickets || {}), [field]: value },
-          }));
-        }}
+        onEnabledChange={tickets.setEnabled}
+        onFieldChange={tickets.setField}
       />
 
       {/* Inline diff view */}

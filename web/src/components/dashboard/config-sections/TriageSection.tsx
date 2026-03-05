@@ -214,6 +214,10 @@ export function TriageSection({
             type="text"
             value={draftConfig.triage?.moderationLogChannel ?? ''}
             onChange={(e) => onFieldChange('moderationLogChannel', e.target.value)}
+            onBlur={(e) => {
+              const v = e.currentTarget.value.trim();
+              onFieldChange('moderationLogChannel', v.length ? v : null);
+            }}
             disabled={saving}
             className={inputClasses}
             placeholder="Channel ID for moderation logs"

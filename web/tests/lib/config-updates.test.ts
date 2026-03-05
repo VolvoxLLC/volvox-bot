@@ -50,9 +50,9 @@ describe('config-updates', () => {
     });
 
     it('does not mutate original config', () => {
-      const original = { ...baseConfig };
+      const original = structuredClone(baseConfig);
       updateSectionEnabled(baseConfig, 'ai', true);
-      expect(baseConfig.ai?.enabled).toBe(original.ai?.enabled);
+      expect(baseConfig).toEqual(original);
     });
   });
 
