@@ -131,7 +131,7 @@ describe('config-updates', () => {
     it('returns unchanged config for out-of-bounds index', () => {
       const newOption = { id: '9', label: 'Nope', roleId: 'role-9' };
       const result = updateArrayItem(baseConfig, 'welcome', ['roleMenu', 'options'], 99, newOption);
-      expect(result).toEqual(baseConfig);
+      expect(result).toBe(baseConfig);
     });
 
     it('handles non-array terminal values safely', () => {

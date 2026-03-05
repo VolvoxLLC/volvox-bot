@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,12 +32,17 @@ export function EngagementSection({
   const badges = draftConfig.engagement?.activityBadges ?? [...DEFAULT_ACTIVITY_BADGES];
   const badgeIdsRef = useRef<string[]>([]);
 
-  if (badgeIdsRef.current.length < badges.length) {
-    const missing = badges.length - badgeIdsRef.current.length;
-    badgeIdsRef.current.push(...Array.from({ length: missing }, () => crypto.randomUUID()));
-  } else if (badgeIdsRef.current.length > badges.length) {
-    badgeIdsRef.current = badgeIdsRef.current.slice(0, badges.length);
-  }
+  useEffect(() => {
+    const stableIds = badgeIdsRef.current.slice(0, badges.length);
+
+    if (stableIds.length < badges.length) {
+      stableIds.push(
+        ...Array.from({ length: badges.length - stableIds.length }, () => crypto.randomUUID()),
+      );
+    }
+
+    badgeIdsRef.current = stableIds;
+  }, [badges.length]);
 
   return (
     <Card>
@@ -48,7 +53,7 @@ export function EngagementSection({
           active days.
         </p>
         {badges.map((badge, i) => {
-          const badgeId = badgeIdsRef.current[i] ?? `badge-row-fallback-${crypto.randomUUID()}`;
+          const badgeId = badgeIdsRef.current[i] ?? `badge-row-${i}`;
 
           return (
             <div key={badgeId} className="flex items-center gap-2">
@@ -82,7 +87,6 @@ export function EngagementSection({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  badgeIdsRef.current = badgeIdsRef.current.filter((_, idx) => idx !== i);
                   const newBadges = badges.filter((_, idx) => idx !== i);
                   onActivityBadgesChange(newBadges);
                 }}
@@ -97,7 +101,6 @@ export function EngagementSection({
           variant="outline"
           size="sm"
           onClick={() => {
-            badgeIdsRef.current.push(crypto.randomUUID());
             const newBadges = [...badges, { days: 0, label: '🌟 New Badge' }];
             onActivityBadgesChange(newBadges);
           }}
