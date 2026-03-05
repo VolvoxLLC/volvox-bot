@@ -23,7 +23,6 @@ import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { computePatches, deepEqual } from '@/lib/config-utils';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
-import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { ConfigDiff } from './config-diff';
 import { ConfigDiffModal } from './config-diff-modal';
@@ -42,15 +41,11 @@ const inputClasses =
 
 /**
  * Generate a UUID with fallback for environments without crypto.randomUUID.
- *
- * @returns A UUID v4 string.
  */
 function generateId(): string {
-  // Use crypto.randomUUID if available
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  // Fallback: generate a UUID-like string
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -58,36 +53,8 @@ function generateId(): string {
   });
 }
 
-const DEFAULT_ACTIVITY_BADGES = [
-  { days: 90, label: '👑 Legend' },
-  { days: 30, label: '🌳 Veteran' },
-  { days: 7, label: '🌿 Regular' },
-  { days: 0, label: '🌱 Newcomer' },
-] as const;
-
-/**
- * Parse a numeric text input into a number, applying optional minimum/maximum bounds.
- *
- * @param raw - The input string to parse; an empty string yields `undefined`.
- * @param min - Optional lower bound; if the parsed value is less than `min`, `min` is returned.
- * @param max - Optional upper bound; if the parsed value is greater than `max`, `max` is returned.
- * @returns `undefined` if `raw` is empty or cannot be parsed as a finite number, otherwise the parsed number (clamped to `min`/`max` when provided).
- */
-function parseNumberInput(raw: string, min?: number, max?: number): number | undefined {
-  if (raw === '') return undefined;
-  const num = Number(raw);
-  if (!Number.isFinite(num)) return undefined;
-  if (min !== undefined && num < min) return min;
-  if (max !== undefined && num > max) return max;
-  return num;
-}
-
 /**
  * Type guard that checks whether a value is a guild configuration object returned by the API.
- *
- * @returns `true` if the value is an object containing at least one known top-level section
- *   (`ai`, `welcome`, `spam`, `moderation`, `triage`, `starboard`, `permissions`, `memory`) and each present section is a plain object
- *   (not an array or null). Returns `false` otherwise.
  */
 function isGuildConfig(data: unknown): data is GuildConfig {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
@@ -115,6 +82,7 @@ function isGuildConfig(data: unknown): data is GuildConfig {
     'challenges',
     'tickets',
     'auditLog',
+    'aiAutoMod',
   ] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
@@ -134,9 +102,7 @@ function isGuildConfig(data: unknown): data is GuildConfig {
  *
  * Loads the authoritative config for the selected guild, maintains a mutable draft for user edits,
  * computes and applies per-section patches to persist changes, and provides controls to save,
- * discard, and validate edits (including an unsaved-changes warning and keyboard shortcut).
- *
- * @returns The editor UI as JSX when a guild is selected and a draft config exists; `null` otherwise.
+ * discard, and validate edits.
  */
 export function ConfigEditor() {
   const [guildId, setGuildId] = useState<string>('');
@@ -238,6 +204,7 @@ export function ConfigEditor() {
       setSavedConfig(data);
       setDraftConfig(structuredClone(data));
       setDmStepsRaw((data.welcome?.dmSequence?.steps ?? []).join('\n'));
+      setProtectRoleIdsRaw((data.moderation?.protectRoles?.roleIds ?? []).join(', '));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
       const msg = (err as Error).message || 'Failed to load config';
@@ -260,8 +227,6 @@ export function ConfigEditor() {
     return !deepEqual(savedConfig, draftConfig);
   }, [savedConfig, draftConfig]);
 
-  // Check for validation errors before allowing save.
-  // Currently only validates system prompt length; extend with additional checks as needed.
   const hasValidationErrors = useMemo(() => {
     if (!draftConfig) return false;
     // Role menu validation: all options must have non-empty label and roleId
@@ -382,7 +347,6 @@ export function ConfigEditor() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasChanges]);
 
-  // ── Save changes (batched: parallel PATCH per section) ─────────
   // ── Open diff modal before saving ─────────────────────────────
   const openDiffModal = useCallback(() => {
     if (!guildId || !savedConfig || !draftConfig) return;
@@ -413,6 +377,9 @@ export function ConfigEditor() {
       // Keep raw string mirrors consistent
       if (section === 'welcome') {
         setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
+      }
+      if (section === 'moderation') {
+        setProtectRoleIdsRaw((savedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
       }
       toast.success(`Reverted ${section} changes.`);
     },
@@ -451,7 +418,6 @@ export function ConfigEditor() {
 
     setSaving(true);
 
-    // Shared AbortController for all section saves - aborts all in-flight requests on 401
     const saveAbortController = new AbortController();
     const { signal } = saveAbortController;
 
@@ -468,7 +434,6 @@ export function ConfigEditor() {
         });
 
         if (res.status === 401) {
-          // Abort all other in-flight requests before redirecting
           saveAbortController.abort();
           window.location.href = '/login';
           throw new Error('Unauthorized');
@@ -496,8 +461,6 @@ export function ConfigEditor() {
       const hasFailures = results.some((r) => r.status === 'rejected');
 
       if (hasFailures) {
-        // Partial failure: merge only succeeded sections into savedConfig so
-        // the user can retry failed sections without losing their unsaved edits.
         const succeededSections = Array.from(bySection.keys()).filter(
           (s) => !failedSections.includes(s),
         );
@@ -520,9 +483,7 @@ export function ConfigEditor() {
       } else {
         toast.success('Config saved successfully!');
         setShowDiffModal(false);
-        // Store previous config for undo (1 level deep; scoped to current guild)
         setPrevSavedConfig({ guildId, config: structuredClone(savedConfig) as GuildConfig });
-        // Full success: reload to get the authoritative version from the server
         await fetchConfig(guildId);
       }
     } catch (err) {
@@ -533,16 +494,24 @@ export function ConfigEditor() {
     }
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
+  // Clear undo snapshot when guild changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: guildId IS necessary - effect must re-run when guild changes
+  useEffect(() => {
+    setPrevSavedConfig(null);
+  }, [guildId]);
+
   // ── Undo last save ─────────────────────────────────────────────
   const undoLastSave = useCallback(() => {
     if (!prevSavedConfig) return;
-    // Guard: discard snapshot if guild changed since save
     if (prevSavedConfig.guildId !== guildId) {
       setPrevSavedConfig(null);
       return;
     }
     setDraftConfig(structuredClone(prevSavedConfig.config));
     setDmStepsRaw((prevSavedConfig.config.welcome?.dmSequence?.steps ?? []).join('\n'));
+    setProtectRoleIdsRaw(
+      (prevSavedConfig.config.moderation?.protectRoles?.roleIds ?? []).join(', '),
+    );
     setPrevSavedConfig(null);
     toast.info('Reverted to previous saved state. Save again to apply.');
   }, [prevSavedConfig, guildId]);
@@ -611,17 +580,23 @@ export function ConfigEditor() {
     if (!savedConfig) return;
     setDraftConfig(structuredClone(savedConfig));
     setDmStepsRaw((savedConfig.welcome?.dmSequence?.steps ?? []).join('\n'));
+    setProtectRoleIdsRaw((savedConfig.moderation?.protectRoles?.roleIds ?? []).join(', '));
     toast.success('Changes discarded.');
   }, [savedConfig]);
 
-  // ── Draft updaters ─────────────────────────────────────────────
-  const updateSystemPrompt = useCallback(
-    (value: string) => {
-      updateDraftConfig((prev) => {
-        if (!prev) return prev;
-        return { ...prev, ai: { ...prev.ai, systemPrompt: value } } as GuildConfig;
-      });
-    },
+  // ── Section update handlers ────────────────────────────────────
+  const createSectionUpdater = useCallback(
+    <K extends keyof GuildConfig>(section: K) => ({
+      setEnabled: (enabled: boolean) => {
+        updateDraftConfig((prev) => updateSectionEnabled(prev, section, enabled));
+      },
+      setField: (field: string, value: unknown) => {
+        updateDraftConfig((prev) => updateSectionField(prev, section, field, value));
+      },
+      setNestedField: (nestedKey: string, field: string, value: unknown) => {
+        updateDraftConfig((prev) => updateNestedField(prev, section, nestedKey, field, value));
+      },
+    }),
     [updateDraftConfig],
   );
 
@@ -941,7 +916,6 @@ export function ConfigEditor() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Undo last save — visible only after a successful save with no new changes */}
           {prevSavedConfig && !hasChanges && (
             <Button
               variant="outline"
@@ -959,7 +933,6 @@ export function ConfigEditor() {
             disabled={saving || !hasChanges}
             sectionLabel="all unsaved changes"
           />
-          {/* Save button with unsaved-changes indicator dot */}
           <div className="relative">
             <Button
               onClick={openDiffModal}

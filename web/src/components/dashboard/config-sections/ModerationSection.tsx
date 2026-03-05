@@ -1,23 +1,31 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
-import { Label } from '@/components/ui/label';
-import { RoleSelector } from '@/components/ui/role-selector';
-import { Switch } from '@/components/ui/switch';
-import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { Input } from '@/components/ui/input';
+import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
+import { ToggleSwitch } from '../toggle-switch';
 
 interface ModerationSectionProps {
   draftConfig: GuildConfig;
+  guildId: string;
   saving: boolean;
+  protectRoleIdsRaw: string;
   onEnabledChange: (enabled: boolean) => void;
   onFieldChange: (field: string, value: unknown) => void;
   onDmNotificationChange: (action: string, value: boolean) => void;
   onEscalationChange: (enabled: boolean) => void;
+  onRateLimitChange: (field: string, value: unknown) => void;
+  onLinkFilterChange: (field: string, value: unknown) => void;
   onProtectRolesChange: (field: string, value: unknown) => void;
   onWarningsChange?: (field: string, value: unknown) => void;
 }
+
+/** Shared input styling for text inputs. */
+const inputClasses =
+  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
  * Render the Moderation settings card with controls for alert channel, auto-delete, DM notifications, escalation, protected roles, and the warning system.
@@ -34,15 +42,28 @@ interface ModerationSectionProps {
  */
 export function ModerationSection({
   draftConfig,
+  guildId,
   saving,
+  protectRoleIdsRaw,
   onEnabledChange,
   onFieldChange,
   onDmNotificationChange,
   onEscalationChange,
+  onRateLimitChange,
+  onLinkFilterChange,
   onProtectRolesChange,
   onWarningsChange,
 }: ModerationSectionProps) {
-  const guildId = useGuildSelection();
+  // Local state for blocked domains raw input (parsed on blur)
+  // Must be before early return to satisfy React hooks rules
+  const blockedDomainsDisplay = (draftConfig.moderation?.linkFilter?.blockedDomains ?? []).join(
+    ', ',
+  );
+  const [blockedDomainsRaw, setBlockedDomainsRaw] = useState(blockedDomainsDisplay);
+  useEffect(() => {
+    setBlockedDomainsRaw(blockedDomainsDisplay);
+  }, [blockedDomainsDisplay]);
+
   if (!draftConfig.moderation) return null;
 
   const alertChannelId = draftConfig.moderation?.alertChannelId ?? '';
@@ -62,17 +83,17 @@ export function ModerationSection({
               Configure moderation, escalation, and logging settings.
             </CardDescription>
           </div>
-          <Switch
+          <ToggleSwitch
             checked={draftConfig.moderation?.enabled ?? false}
-            onCheckedChange={onEnabledChange}
+            onChange={onEnabledChange}
             disabled={saving}
-            aria-label="Toggle Moderation"
+            label="Moderation"
           />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor={guildId ? 'alert-channel' : undefined}>Alert Channel</Label>
+          <span className="text-sm font-medium">Alert Channel</span>
           {guildId ? (
             <ChannelSelector
               id="alert-channel"
@@ -89,117 +110,235 @@ export function ModerationSection({
           )}
         </div>
         <div className="flex items-center justify-between">
-          <Label htmlFor="auto-delete" className="text-sm font-medium">
-            Auto-delete flagged messages
-          </Label>
-          <Switch
-            id="auto-delete"
+          <span className="text-sm font-medium">Auto-delete flagged messages</span>
+          <ToggleSwitch
             checked={draftConfig.moderation?.autoDelete ?? false}
-            onCheckedChange={(v) => onFieldChange('autoDelete', v)}
+            onChange={(v) => onFieldChange('autoDelete', v)}
             disabled={saving}
-            aria-label="Toggle auto-delete"
+            label="Auto Delete"
           />
         </div>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">DM Notifications</legend>
           {(['warn', 'timeout', 'kick', 'ban'] as const).map((action) => (
             <div key={action} className="flex items-center justify-between">
-              <Label htmlFor={`dm-${action}`} className="text-sm capitalize text-muted-foreground">
-                {action}
-              </Label>
-              <Switch
-                id={`dm-${action}`}
+              <span className="text-sm capitalize text-muted-foreground">{action}</span>
+              <ToggleSwitch
                 checked={draftConfig.moderation?.dmNotifications?.[action] ?? false}
-                onCheckedChange={(v) => onDmNotificationChange(action, v)}
+                onChange={(v) => onDmNotificationChange(action, v)}
                 disabled={saving}
-                aria-label={`DM on ${action}`}
+                label={`DM on ${action}`}
               />
             </div>
           ))}
         </fieldset>
         <div className="flex items-center justify-between">
-          <Label htmlFor="escalation" className="text-sm font-medium">
-            Escalation Enabled
-          </Label>
-          <Switch
-            id="escalation"
+          <span className="text-sm font-medium">Escalation Enabled</span>
+          <ToggleSwitch
             checked={draftConfig.moderation?.escalation?.enabled ?? false}
-            onCheckedChange={(v) => onEscalationChange(v)}
+            onChange={(v) => onEscalationChange(v)}
             disabled={saving}
-            aria-label="Toggle escalation"
+            label="Escalation"
           />
         </div>
+
+        {/* Rate Limiting sub-section */}
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Rate Limiting</legend>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Enabled</span>
+            <ToggleSwitch
+              checked={draftConfig.moderation?.rateLimit?.enabled ?? false}
+              onChange={(v) => onRateLimitChange('enabled', v)}
+              disabled={saving}
+              label="Rate Limiting"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <label htmlFor="max-messages" className="space-y-2">
+              <span className="text-sm text-muted-foreground">Max Messages</span>
+              <input
+                id="max-messages"
+                type="number"
+                min={1}
+                value={draftConfig.moderation?.rateLimit?.maxMessages ?? 10}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) onRateLimitChange('maxMessages', num);
+                }}
+                disabled={saving}
+                className={inputClasses}
+              />
+            </label>
+            <label htmlFor="window-seconds" className="space-y-2">
+              <span className="text-sm text-muted-foreground">Window (seconds)</span>
+              <input
+                id="window-seconds"
+                type="number"
+                min={1}
+                value={draftConfig.moderation?.rateLimit?.windowSeconds ?? 10}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) onRateLimitChange('windowSeconds', num);
+                }}
+                disabled={saving}
+                className={inputClasses}
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <label htmlFor="mute-after-triggers" className="space-y-2">
+              <span className="text-sm text-muted-foreground">Mute After Triggers</span>
+              <input
+                id="mute-after-triggers"
+                type="number"
+                min={1}
+                value={draftConfig.moderation?.rateLimit?.muteAfterTriggers ?? 3}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) onRateLimitChange('muteAfterTriggers', num);
+                }}
+                disabled={saving}
+                className={inputClasses}
+              />
+            </label>
+            <label htmlFor="mute-window-s" className="space-y-2">
+              <span className="text-sm text-muted-foreground">Mute Window (s)</span>
+              <input
+                id="mute-window-s"
+                type="number"
+                min={1}
+                value={draftConfig.moderation?.rateLimit?.muteWindowSeconds ?? 300}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) onRateLimitChange('muteWindowSeconds', num);
+                }}
+                disabled={saving}
+                className={inputClasses}
+              />
+            </label>
+            <label htmlFor="mute-duration-s" className="space-y-2">
+              <span className="text-sm text-muted-foreground">Mute Duration (s)</span>
+              <input
+                id="mute-duration-s"
+                type="number"
+                min={1}
+                value={draftConfig.moderation?.rateLimit?.muteDurationSeconds ?? 300}
+                onChange={(e) => {
+                  const num = parseNumberInput(e.target.value, 1);
+                  if (num !== undefined) onRateLimitChange('muteDurationSeconds', num);
+                }}
+                disabled={saving}
+                className={inputClasses}
+              />
+            </label>
+          </div>
+        </fieldset>
+
+        {/* Link Filtering sub-section */}
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Link Filtering</legend>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Enabled</span>
+            <ToggleSwitch
+              checked={draftConfig.moderation?.linkFilter?.enabled ?? false}
+              onChange={(v) => onLinkFilterChange('enabled', v)}
+              disabled={saving}
+              label="Link Filtering"
+            />
+          </div>
+          <label htmlFor="blocked-domains" className="space-y-2">
+            <span className="text-sm text-muted-foreground">Blocked Domains</span>
+            <input
+              id="blocked-domains"
+              type="text"
+              value={blockedDomainsRaw}
+              onChange={(e) => setBlockedDomainsRaw(e.target.value)}
+              onBlur={() =>
+                onLinkFilterChange(
+                  'blockedDomains',
+                  blockedDomainsRaw
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                )
+              }
+              disabled={saving}
+              className={inputClasses}
+              placeholder="example.com, spam.net"
+            />
+          </label>
+        </fieldset>
 
         {/* Protect Roles sub-section */}
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">Protect Roles from Moderation</legend>
           <div className="flex items-center justify-between">
-            <Label htmlFor="protect-roles-enabled" className="text-sm text-muted-foreground">
-              Enabled
-            </Label>
-            <Switch
-              id="protect-roles-enabled"
+            <span className="text-sm text-muted-foreground">Enabled</span>
+            <ToggleSwitch
               checked={draftConfig.moderation?.protectRoles?.enabled ?? true}
-              onCheckedChange={(v) => onProtectRolesChange('enabled', v)}
+              onChange={(v) => onProtectRolesChange('enabled', v)}
               disabled={saving}
-              aria-label="Toggle protect roles"
+              label="Protect Roles"
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="protect-admins" className="text-sm text-muted-foreground">
-              Include admins
-            </Label>
-            <Switch
-              id="protect-admins"
+            <span className="text-sm text-muted-foreground">Include admins</span>
+            <ToggleSwitch
               checked={draftConfig.moderation?.protectRoles?.includeAdmins ?? true}
-              onCheckedChange={(v) => onProtectRolesChange('includeAdmins', v)}
+              onChange={(v) => onProtectRolesChange('includeAdmins', v)}
               disabled={saving}
-              aria-label="Include admins"
+              label="Include admins"
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="protect-mods" className="text-sm text-muted-foreground">
-              Include moderators
-            </Label>
-            <Switch
-              id="protect-mods"
+            <span className="text-sm text-muted-foreground">Include moderators</span>
+            <ToggleSwitch
               checked={draftConfig.moderation?.protectRoles?.includeModerators ?? true}
-              onCheckedChange={(v) => onProtectRolesChange('includeModerators', v)}
+              onChange={(v) => onProtectRolesChange('includeModerators', v)}
               disabled={saving}
-              aria-label="Include moderators"
+              label="Include moderators"
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="protect-owner" className="text-sm text-muted-foreground">
-              Include server owner
-            </Label>
-            <Switch
-              id="protect-owner"
+            <span className="text-sm text-muted-foreground">Include server owner</span>
+            <ToggleSwitch
               checked={draftConfig.moderation?.protectRoles?.includeServerOwner ?? true}
-              onCheckedChange={(v) => onProtectRolesChange('includeServerOwner', v)}
+              onChange={(v) => onProtectRolesChange('includeServerOwner', v)}
               disabled={saving}
-              aria-label="Include server owner"
+              label="Include server owner"
             />
           </div>
           <div className="space-y-2">
-            <Label
-              htmlFor={guildId ? 'protect-role-ids' : undefined}
-              className="text-sm text-muted-foreground"
-            >
-              Additional protected roles
-            </Label>
-            {guildId ? (
-              <RoleSelector
-                id="protect-role-ids"
-                guildId={guildId}
-                selected={draftConfig.moderation?.protectRoles?.roleIds ?? []}
-                onChange={(selected) => onProtectRolesChange('roleIds', selected)}
-                disabled={saving}
-                placeholder="Select additional protected roles..."
-              />
-            ) : (
-              <p className="text-muted-foreground text-sm">Select a server first</p>
-            )}
+            <span className="text-sm text-muted-foreground">
+              Additional protected role IDs (comma-separated)
+            </span>
+            <Input
+              type="text"
+              value={protectRoleIdsRaw}
+              onChange={(e) => {
+                const raw = e.target.value;
+                onProtectRoleIdsRawChange(raw);
+                onProtectRolesChange(
+                  'roleIds',
+                  raw
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                );
+              }}
+              onBlur={(e) =>
+                onProtectRoleIdsRawChange(
+                  e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .join(', '),
+                )
+              }
+              disabled={saving}
+              placeholder="Role ID 1, Role ID 2"
+            />
           </div>
         </fieldset>
         {/* Warning System Settings */}
