@@ -51,7 +51,7 @@ export function StarboardSection({ draftConfig, saving, onFieldChange }: Starboa
             placeholder="Starboard channel ID"
           />
         </label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label htmlFor="threshold" className="space-y-2">
             <span className="text-sm font-medium">Threshold</span>
             <input
