@@ -24,7 +24,7 @@ After completing infrastructure work:
 - **Winston logger** — Use `src/logger.js`, NEVER `console.*`
 - **Safe Discord messages** — Use `safeReply()`/`safeSend()`/`safeEditReply()`
 - **Parameterized SQL** — Never string interpolation in queries
-- **Tests required** — 80% coverage threshold, never lower it
+- **Tests required** — Coverage thresholds are enforced (branches: 84; others: 80). Never lower them.
 
 ## Architecture Overview
 
@@ -128,9 +128,10 @@ web/                      # Next.js dashboard
 pnpm test              # Run all tests
 pnpm test:coverage     # Run with coverage report
 pnpm test:watch        # Watch mode
+pnpm validate          # Full validation pipeline (bot + web + build)
 ```
 
-**Coverage threshold: 80% branches** — Never lower this.
+**Coverage thresholds:** branches 84%, statements/functions/lines 80% — Never lower these.
 
 ## Linting & Formatting
 
@@ -144,10 +145,13 @@ pnpm format            # Format code
 
 1. Create feature branch from `main`
 2. Make changes with conventional commits
-3. Push and create PR
-4. Wait for CI + review bots (Claude, CodeRabbit, Greptile, Copilot)
-5. Address review comments
-6. Squash merge with `--admin` flag (branch protection)
+3. Run `pnpm validate` before pushing
+4. Push and create PR
+5. Wait for CI + review bots (Claude, CodeRabbit, Greptile, Copilot)
+6. Address review comments
+7. Squash merge with `--admin` flag (branch protection)
+
+Git hooks are managed by Husky (`.husky/pre-commit`, `.husky/pre-push`).
 
 ## Review Bots
 

@@ -700,11 +700,7 @@ describe('index.js', () => {
     });
   });
 
-  // TODO: Un-skip when Vitest supports mocking dynamic import() failures.
-  // Skipped because dynamic import() in Vitest doesn't throw for missing
-  // files the same way Node does at runtime, making this scenario untestable
-  // in the current test harness.
-  it.skip('should continue startup when command import fails', () => {});
+  it.todo('should continue startup when command import fails');
 
   it('should log discord client error events', async () => {
     await importIndex({ token: 'abc', databaseUrl: null });

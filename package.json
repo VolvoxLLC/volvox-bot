@@ -9,6 +9,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "deploy": "node src/deploy-commands.js",
+    "validate": "node scripts/validate.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -18,7 +19,7 @@
     "migrate": "node-pg-migrate up --migrations-dir migrations",
     "migrate:down": "node-pg-migrate down --migrations-dir migrations",
     "migrate:create": "node-pg-migrate create --migrations-dir migrations",
-    "prepare": "[ -d .git ] && git config core.hooksPath .hooks || true",
+    "prepare": "husky",
     "docs:generate": "node scripts/generate-openapi.js"
   },
   "dependencies": {
@@ -54,6 +55,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
     "@vitest/coverage-v8": "^4.0.18",
+    "husky": "^9.1.7",
     "supertest": "^7.2.2",
     "vitest": "^4.0.18"
   }

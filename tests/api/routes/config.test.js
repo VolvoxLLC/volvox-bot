@@ -42,12 +42,33 @@ import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 import { getConfig, setConfigValue } from '../../../src/modules/config.js';
 
+function createDefaultConfig() {
+  return {
+    ai: { enabled: true, model: 'claude-3', historyLength: 20 },
+    welcome: { enabled: true, channelId: 'ch1' },
+    spam: { enabled: true },
+    moderation: { enabled: true },
+    triage: {
+      enabled: true,
+      classifyApiKey: 'sk-secret-classify',
+      respondApiKey: 'sk-secret-respond',
+    },
+    permissions: { botOwners: [] },
+    database: { host: 'secret-host' },
+    token: 'secret-token',
+  };
+}
+
 describe('config routes', () => {
   let app;
   const SECRET = 'test-secret';
 
   beforeEach(() => {
     vi.stubEnv('BOT_API_SECRET', SECRET);
+    getConfig.mockReset();
+    setConfigValue.mockReset();
+    getConfig.mockReturnValue(createDefaultConfig());
+    setConfigValue.mockResolvedValue({});
 
     const client = {
       guilds: { cache: new Map() },
@@ -93,11 +114,10 @@ describe('config routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it.skip('should deny non-bot-owner OAuth users', async () => {
-      // FIXME: Mock isolation issue - backup.test.js sets botOwners: ['owner-user-id']
-      // which persists across tests due to Vitest mock hoisting
+    it('should deny non-bot-owner OAuth users', async () => {
       _resetSecretCache();
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      getConfig.mockReturnValueOnce(createDefaultConfig());
       const token = createOAuthToken();
 
       const res = await request(app).get('/api/v1/config').set('Authorization', `Bearer ${token}`);
@@ -109,10 +129,7 @@ describe('config routes', () => {
     it('should allow bot-owner OAuth users', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
       getConfig.mockReturnValueOnce({
-        ai: { enabled: true },
-        welcome: { enabled: true },
-        spam: { enabled: true },
-        moderation: { enabled: true },
+        ...createDefaultConfig(),
         permissions: { botOwners: ['owner-1'] },
       });
       const token = createOAuthToken('jwt-test-secret', 'owner-1');

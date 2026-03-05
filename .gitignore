@@ -41,3 +41,4 @@ web/tsconfig.tsbuildinfo
 # Tools
 openclaw-studio/
 .codex/
+.playwright-mcp/

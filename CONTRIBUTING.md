@@ -37,10 +37,19 @@ ci: update Node.js version in CI
 
 ### Before Submitting
 
-1. **Lint:** `pnpm lint` — must pass with no errors
-2. **Format:** `pnpm format` — auto-format your code
-3. **Test:** `pnpm test` — all tests must pass
-4. **Commit:** use conventional commit messages
+1. **Validate (required):** `pnpm validate`
+2. **Format (if needed):** `pnpm format`
+3. **Commit:** use conventional commit messages
+
+`pnpm validate` runs:
+
+- bot lint
+- bot tests
+- bot coverage thresholds
+- web lint
+- web typecheck
+- web tests
+- web build
 
 ### Pull Requests
 
@@ -49,6 +58,9 @@ ci: update Node.js version in CI
 3. PRs are automatically reviewed by Claude Code
 4. CI must pass (lint + tests)
 5. Wait for a maintainer review
+
+For review standards and module boundary checks, use [docs/review-checklist.md](docs/review-checklist.md).
+For analytics schema/query changes, follow [docs/analytics-change-playbook.md](docs/analytics-change-playbook.md).
 
 ## Code Style
 

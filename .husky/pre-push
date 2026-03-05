@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+echo "Running full validation before push..."
+pnpm validate

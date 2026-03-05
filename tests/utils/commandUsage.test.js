@@ -18,12 +18,90 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 import { error as logError } from '../../src/logger.js';
-import { getCommandUsageStats, logCommandUsage } from '../../src/utils/commandUsage.js';
+import {
+  buildCommandUsageStatsQuery,
+  getCommandUsageStats,
+  logCommandUsage,
+  normalizeCommandUsageLimit,
+} from '../../src/utils/commandUsage.js';
+import {
+  COMMAND_USAGE_COLUMNS,
+  COMMAND_USAGE_DEFAULT_LIMIT,
+  COMMAND_USAGE_INDEXES,
+  COMMAND_USAGE_MAX_LIMIT,
+  COMMAND_USAGE_TABLE,
+} from '../../src/utils/commandUsageContract.js';
 
 function setupPool() {
   mockGetPool.mockReturnValue(mockPool);
   mockQuery.mockReset();
 }
+
+describe('command usage contract', () => {
+  it('defines stable command_usage indexes expected by migration and queries', () => {
+    expect(COMMAND_USAGE_TABLE).toBe('command_usage');
+    expect(COMMAND_USAGE_COLUMNS.commandName).toBe('command_name');
+    expect(COMMAND_USAGE_COLUMNS.usedAt).toBe('used_at');
+    expect(COMMAND_USAGE_INDEXES).toEqual([
+      'idx_command_usage_guild_time',
+      'idx_command_usage_command',
+      'idx_command_usage_user',
+      'idx_command_usage_guild_channel_used_at',
+    ]);
+  });
+});
+
+describe('normalizeCommandUsageLimit', () => {
+  it('uses default limit for invalid values', () => {
+    expect(normalizeCommandUsageLimit(undefined)).toBe(COMMAND_USAGE_DEFAULT_LIMIT);
+    expect(normalizeCommandUsageLimit(0)).toBe(COMMAND_USAGE_DEFAULT_LIMIT);
+    expect(normalizeCommandUsageLimit(-5)).toBe(COMMAND_USAGE_DEFAULT_LIMIT);
+    expect(normalizeCommandUsageLimit('wat')).toBe(COMMAND_USAGE_DEFAULT_LIMIT);
+  });
+
+  it('caps values at max limit', () => {
+    expect(normalizeCommandUsageLimit(500)).toBe(COMMAND_USAGE_MAX_LIMIT);
+    expect(normalizeCommandUsageLimit(COMMAND_USAGE_MAX_LIMIT)).toBe(COMMAND_USAGE_MAX_LIMIT);
+  });
+});
+
+describe('buildCommandUsageStatsQuery', () => {
+  it('builds guild + date scoped query contract', () => {
+    const query = buildCommandUsageStatsQuery({
+      guildId: 'guild-123',
+      startDate: '2026-03-01T00:00:00.000Z',
+      endDate: '2026-03-05T23:59:59.999Z',
+      limit: 15,
+    });
+
+    expect(query.text).toContain('FROM command_usage');
+    expect(query.text).toContain('command_name AS "commandName"');
+    expect(query.text).toContain('used_at >= $2');
+    expect(query.text).toContain('used_at <= $3');
+    expect(query.text).toContain('LIMIT $4');
+    expect(query.values).toEqual([
+      'guild-123',
+      '2026-03-01T00:00:00.000Z',
+      '2026-03-05T23:59:59.999Z',
+      15,
+    ]);
+  });
+
+  it('adds channel filter when provided', () => {
+    const query = buildCommandUsageStatsQuery({
+      guildId: 'guild-123',
+      startDate: new Date('2026-03-01T00:00:00.000Z'),
+      endDate: new Date('2026-03-05T23:59:59.999Z'),
+      channelId: 'channel-1',
+      limit: 7,
+    });
+
+    expect(query.text).toContain('channel_id = $4');
+    expect(query.text).toContain('LIMIT $5');
+    expect(query.values[3]).toBe('channel-1');
+    expect(query.values[4]).toBe(7);
+  });
+});
 
 // ── logCommandUsage ──────────────────────────────────────────────────────────
 

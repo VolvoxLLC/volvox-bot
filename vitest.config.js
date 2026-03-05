@@ -5,6 +5,7 @@ export default defineConfig({
     globals: false,
     environment: 'node',
     include: ['tests/**/*.test.js'],
+    setupFiles: ['tests/setup/vitest.global.js'],
     testTimeout: 10000,
     coverage: {
       provider: 'v8',
@@ -13,7 +14,7 @@ export default defineConfig({
       exclude: ['src/deploy-commands.js'],
       thresholds: {
         statements: 80,
-        branches: 82,
+        branches: 84,
         functions: 80,
         lines: 80,
       },

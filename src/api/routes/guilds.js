@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { buildCommandUsageStatsQuery } from '../../utils/commandUsage.js';
 import { getBotOwnerIds } from '../../utils/permissions.js';
 import { safeSend } from '../../utils/safeSend.js';
 import {
@@ -1004,18 +1005,13 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
   const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
 
-  // Build command usage query dynamically to avoid SQL injection
-  const commandUsageConditions = ['guild_id = $1', 'used_at >= $2', 'used_at <= $3'];
-  const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
-  let commandUsageParamIndex = 4;
-
-  if (activeChannelFilter) {
-    commandUsageConditions.push(`channel_id = $${commandUsageParamIndex}`);
-    commandUsageValues.push(activeChannelFilter);
-    commandUsageParamIndex++;
-  }
-
-  const commandUsageWhereClause = commandUsageConditions.join(' AND ');
+  const commandUsageQuery = buildCommandUsageStatsQuery({
+    guildId: req.params.id,
+    startDate: from.toISOString(),
+    endDate: to.toISOString(),
+    channelId: activeChannelFilter,
+    limit: 15,
+  });
 
   try {
     const [
@@ -1164,17 +1160,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
             })
         : Promise.resolve({ rows: [] }),
       dbPool
-        .query(
-          `SELECT
-               command_name,
-               COUNT(*)::int AS uses
-             FROM command_usage
-             WHERE ${commandUsageWhereClause}
-             GROUP BY command_name
-             ORDER BY uses DESC, command_name ASC
-             LIMIT 15`,
-          commandUsageValues,
-        )
+        .query(commandUsageQuery.text, commandUsageQuery.values)
         .then((result) => ({ rows: result.rows, available: true }))
         .catch((err) => {
           warn('Command usage query failed; returning empty command usage dataset', {
@@ -1276,7 +1262,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
     const comparisonAiCostUsd = Number(comparisonCostResult.rows[0]?.cost_usd || 0);
 
     const commandUsage = commandUsageResult.rows.map((row) => ({
-      command: row.command_name,
+      command: row.commandName ?? row.command_name,
       uses: Number(row.uses || 0),
     }));
 
