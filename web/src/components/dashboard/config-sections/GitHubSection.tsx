@@ -1,8 +1,8 @@
 'use client';
 
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import type { GuildConfig } from '@/lib/config-utils';
 import { parseNumberInput } from '@/lib/config-normalization';
+import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface GitHubSectionProps {
@@ -20,11 +20,7 @@ const inputClasses =
  *
  * Provides controls for GitHub feed channel and polling interval.
  */
-export function GitHubSection({
-  draftConfig,
-  saving,
-  onFieldChange,
-}: GitHubSectionProps) {
+export function GitHubSection({ draftConfig, saving, onFieldChange }: GitHubSectionProps) {
   const feed = draftConfig.github?.feed ?? {};
 
   return (
@@ -46,9 +42,7 @@ export function GitHubSection({
               id="feed-channel-id"
               type="text"
               value={feed.channelId ?? ''}
-              onChange={(e) =>
-                onFieldChange('channelId', e.target.value.trim() || null)
-              }
+              onChange={(e) => onFieldChange('channelId', e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Channel ID for GitHub updates"

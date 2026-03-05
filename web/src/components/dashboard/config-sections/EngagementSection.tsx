@@ -8,7 +8,7 @@ import type { GuildConfig } from '@/lib/config-utils';
 interface EngagementSectionProps {
   draftConfig: GuildConfig;
   saving: boolean;
-  onActivityBadgesChange: (badges: Array<{ days: number; label: string }>) => void;
+  onActivityBadgesChange: (badges: Array<{ days?: number; label?: string }>) => void;
 }
 
 const DEFAULT_ACTIVITY_BADGES = [

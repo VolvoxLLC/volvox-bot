@@ -50,11 +50,7 @@ export function parseNewlineSeparatedList(raw: string): string[] {
  * @param max - Optional upper bound; if the parsed value is greater than `max`, `max` is returned
  * @returns `undefined` if `raw` is empty or cannot be parsed as a finite number, otherwise the parsed number (clamped to `min`/`max` when provided)
  */
-export function parseNumberInput(
-  raw: string,
-  min?: number,
-  max?: number,
-): number | undefined {
+export function parseNumberInput(raw: string, min?: number, max?: number): number | undefined {
   if (raw === '') return undefined;
   const num = Number(raw);
   if (!Number.isFinite(num)) return undefined;

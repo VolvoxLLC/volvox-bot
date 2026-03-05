@@ -1,5 +1,5 @@
-export { AiSection } from './AiSection';
 export { AiAutoModSection } from './AiAutoModSection';
+export { AiSection } from './AiSection';
 export { ChallengesSection } from './ChallengesSection';
 export { CommunityFeaturesSection } from './CommunityFeaturesSection';
 export { EngagementSection } from './EngagementSection';

@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { Input } from '@/components/ui/input';
-import type { GuildConfig } from '@/lib/config-utils';
 import { parseNumberInput } from '@/lib/config-normalization';
+import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface ModerationSectionProps {

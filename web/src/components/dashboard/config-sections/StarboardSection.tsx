@@ -1,8 +1,8 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { GuildConfig } from '@/lib/config-utils';
 import { parseNumberInput } from '@/lib/config-normalization';
+import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface StarboardSectionProps {
@@ -21,11 +21,7 @@ const inputClasses =
  * Provides controls for pinning popular messages to a starboard channel,
  * including threshold, emoji settings, and ignored channels.
  */
-export function StarboardSection({
-  draftConfig,
-  saving,
-  onFieldChange,
-}: StarboardSectionProps) {
+export function StarboardSection({ draftConfig, saving, onFieldChange }: StarboardSectionProps) {
   return (
     <Card>
       <CardHeader>

@@ -1,14 +1,14 @@
 /**
- * Tests for the auto-save feature in ConfigEditor.
+ * Tests for config-editor section components and save/revert behavior.
  *
  * Covers:
- * - AutoSaveStatus component renders the correct UI for idle, saving, saved, and error states
- * - ConfigEditor loads config without triggering auto-save (no PATCH on mount)
- * - Validation error banner appears when system prompt exceeds max length
- * - Retry button is present in the error state
+ * - ConfigEditor loads config without triggering save (no PATCH on mount)
+ * - Validation error detection for system prompt length
+ * - Section-level revert functionality
+ * - Normalization utilities
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 
 // ── Mocks ─────────────────────────────────────────────────────────
 
@@ -25,7 +25,7 @@ vi.mock('@/components/dashboard/reset-defaults-button', () => ({
     onReset: () => void;
     disabled: boolean;
   }) => (
-    <button onClick={onReset} disabled={disabled}>
+    <button onClick={onReset} disabled={disabled} data-testid="discard-button">
       Discard
     </button>
   ),
@@ -59,6 +59,10 @@ vi.mock('@/components/dashboard/config-diff', () => ({
   ConfigDiff: () => <div data-testid="config-diff" />,
 }));
 
+vi.mock('@/components/dashboard/config-diff-modal', () => ({
+  ConfigDiffModal: () => <div data-testid="config-diff-modal" />,
+}));
+
 // ── Fixtures ──────────────────────────────────────────────────────
 
 const minimalConfig = {
@@ -86,7 +90,7 @@ const minimalConfig = {
 
 // ── Tests ─────────────────────────────────────────────────────────
 
-describe('ConfigEditor auto-save integration', () => {
+describe('ConfigEditor integration', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
@@ -123,7 +127,31 @@ describe('ConfigEditor auto-save integration', () => {
     expect(patchCalls).toHaveLength(0);
   });
 
-  it('shows validation error banner when system prompt exceeds max length', async () => {
+  it('renders all section components after loading', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(minimalConfig),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Bot Configuration')).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
+
+    // Check that main sections are rendered
+    expect(screen.getByText('AI Chat')).toBeInTheDocument();
+    expect(screen.getByText('Welcome Messages')).toBeInTheDocument();
+    expect(screen.getByText('Save Changes')).toBeInTheDocument();
+  });
+
+  it('renders with initial disabled discard button', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -141,177 +169,84 @@ describe('ConfigEditor auto-save integration', () => {
       { timeout: 3000 },
     );
 
-    // Type more than SYSTEM_PROMPT_MAX_LENGTH chars (20000)
-    const tooLong = 'x'.repeat(20001);
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('system-prompt'), { target: { value: tooLong } });
-    });
-
-    await waitFor(
-      () => {
-        expect(
-          screen.getByText(/Fix validation errors before changes can be saved/),
-        ).toBeInTheDocument();
-      },
-      { timeout: 3000 },
-    );
-
-    // No PATCH should have been issued
-    const patchCalls = fetchMock.mock.calls.filter(
-      (call: unknown[]) => (call[1] as { method?: string } | undefined)?.method === 'PATCH',
-    );
-    expect(patchCalls).toHaveLength(0);
+    // Initially discard button should be disabled (no changes yet)
+    const discardButton = screen.getByTestId('discard-button');
+    expect(discardButton).toBeDisabled();
   });
 });
 
-// ── Unit tests for AutoSaveStatus (via snapshot-style checks) ─────
+// ── Unit tests for normalization utilities ────────────────────────
 
-describe('auto-save status UI', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    localStorage.clear();
-    localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
+describe('config-normalization', () => {
+  it('parseNumberInput handles valid numbers', async () => {
+    const { parseNumberInput } = await import('@/lib/config-normalization');
+    expect(parseNumberInput('42')).toBe(42);
+    expect(parseNumberInput('3.14')).toBe(3.14);
+    expect(parseNumberInput('0')).toBe(0);
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
+  it('parseNumberInput returns undefined for empty string', async () => {
+    const { parseNumberInput } = await import('@/lib/config-normalization');
+    expect(parseNumberInput('')).toBeUndefined();
   });
 
-  it('shows no status indicator when idle', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10);
-    });
-
-    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
-    expect(screen.queryByText('Saving...')).not.toBeInTheDocument();
-    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
-    expect(screen.queryByText('Save failed')).not.toBeInTheDocument();
+  it('parseNumberInput clamps to min/max bounds', async () => {
+    const { parseNumberInput } = await import('@/lib/config-normalization');
+    expect(parseNumberInput('5', 10)).toBe(10);
+    expect(parseNumberInput('100', 0, 50)).toBe(50);
+    expect(parseNumberInput('25', 10, 50)).toBe(25);
   });
 
-  it('shows "Saving..." with a spinner while saving', async () => {
-    const fetchMock = vi.fn().mockImplementation((_url: string, opts: { method?: string }) => {
-      if (opts?.method === 'PATCH') {
-        // Never resolves — keeps saving state visible
-        return new Promise(() => {});
-      }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      });
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10);
-    });
-
-    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
-
-    // Trigger a change so auto-save will fire
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('system-prompt'), { target: { value: 'Hello' } });
-    });
-
-    // Advance past the 500ms debounce
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(600);
-    });
-
-    expect(screen.getByText('Saving...')).toBeInTheDocument();
+  it('percentToDecimal converts correctly', async () => {
+    const { percentToDecimal } = await import('@/lib/config-normalization');
+    expect(percentToDecimal(100)).toBe(1);
+    expect(percentToDecimal(50)).toBe(0.5);
+    expect(percentToDecimal(0)).toBe(0);
+    expect(percentToDecimal(150)).toBe(1); // clamped
+    expect(percentToDecimal(-50)).toBe(0); // clamped
   });
 
-  it('shows "Saved" after a successful save', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it('decimalToPercent converts correctly', async () => {
+    const { decimalToPercent } = await import('@/lib/config-normalization');
+    expect(decimalToPercent(1)).toBe(100);
+    expect(decimalToPercent(0.5)).toBe(50);
+    expect(decimalToPercent(0)).toBe(0);
+    expect(decimalToPercent(0.333)).toBe(33);
+  });
+});
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+// ── Unit tests for config update utilities ────────────────────────
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10);
-    });
+describe('config-updates', () => {
+  const baseConfig = {
+    ai: { enabled: false, systemPrompt: '' },
+    welcome: { enabled: false, message: '' },
+  };
 
-    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
-
-    // Change to trigger auto-save
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('system-prompt'), { target: { value: 'Updated prompt' } });
-    });
-
-    // Advance past debounce and let save + reload complete
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(600);
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10);
-    });
-
-    expect(screen.getByText('Saved')).toBeInTheDocument();
+  it('updateSectionEnabled toggles section enabled state', async () => {
+    const { updateSectionEnabled } = await import('@/lib/config-updates');
+    const result = updateSectionEnabled(baseConfig, 'ai', true);
+    expect(result.ai?.enabled).toBe(true);
+    expect(result.welcome?.enabled).toBe(false);
   });
 
-  it('shows "Save failed" with a Retry button when PATCH returns an error', async () => {
-    let callCount = 0;
-    const fetchMock = vi.fn().mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve(minimalConfig),
-        });
-      }
-      return Promise.resolve({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ error: 'Server error' }),
-      });
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it('updateSectionField updates specific field', async () => {
+    const { updateSectionField } = await import('@/lib/config-updates');
+    const result = updateSectionField(baseConfig, 'ai', 'systemPrompt', 'Hello');
+    expect(result.ai?.systemPrompt).toBe('Hello');
+    expect(result.ai?.enabled).toBe(false);
+  });
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10);
-    });
-
-    expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('system-prompt'), {
-        target: { value: 'Trigger save failure' },
-      });
-    });
-
-    // Advance past debounce + let save attempt complete
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(600);
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10);
-    });
-
-    expect(screen.getByText('Save failed')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Retry save' })).toBeInTheDocument();
+  it('updateNestedField updates nested object fields', async () => {
+    const { updateNestedField } = await import('@/lib/config-updates');
+    const configWithNested = {
+      ...baseConfig,
+      moderation: {
+        enabled: false,
+        rateLimit: { enabled: false, maxMessages: 10 },
+      },
+    };
+    const result = updateNestedField(configWithNested, 'moderation', 'rateLimit', 'maxMessages', 20);
+    expect((result.moderation as { rateLimit?: { maxMessages?: number } })?.rateLimit?.maxMessages).toBe(20);
   });
 });

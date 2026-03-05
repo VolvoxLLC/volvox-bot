@@ -15,9 +15,7 @@ import type { GuildConfig } from '@/lib/config-utils';
  * @param enabled - The new enabled value
  * @returns Updated config with the section's enabled flag set
  */
-export function updateSectionEnabled<
-  K extends keyof GuildConfig,
->(
+export function updateSectionEnabled<K extends keyof GuildConfig>(
   config: GuildConfig,
   section: K,
   enabled: boolean,
@@ -25,7 +23,7 @@ export function updateSectionEnabled<
   return {
     ...config,
     [section]: {
-      ...(config[section] as Record<string, unknown> || {}),
+      ...((config[section] as Record<string, unknown>) || {}),
       enabled,
     },
   } as GuildConfig;
@@ -40,9 +38,7 @@ export function updateSectionEnabled<
  * @param value - The new value
  * @returns Updated config with the field set
  */
-export function updateSectionField<
-  K extends keyof GuildConfig,
->(
+export function updateSectionField<K extends keyof GuildConfig>(
   config: GuildConfig,
   section: K,
   field: string,
@@ -51,7 +47,7 @@ export function updateSectionField<
   return {
     ...config,
     [section]: {
-      ...(config[section] as Record<string, unknown> || {}),
+      ...((config[section] as Record<string, unknown>) || {}),
       [field]: value,
     },
   } as GuildConfig;
@@ -67,9 +63,7 @@ export function updateSectionField<
  * @param value - The new value
  * @returns Updated config with the nested field set
  */
-export function updateNestedField<
-  K extends keyof GuildConfig,
->(
+export function updateNestedField<K extends keyof GuildConfig>(
   config: GuildConfig,
   section: K,
   nestedKey: string,
@@ -101,9 +95,7 @@ export function updateNestedField<
  * @param item - The new item value
  * @returns Updated config with the array item replaced
  */
-export function updateArrayItem<
-  T,
->(
+export function updateArrayItem<T>(
   config: GuildConfig,
   section: keyof GuildConfig,
   path: string[],
@@ -119,7 +111,7 @@ export function updateArrayItem<
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...(target[lastKey] as T[] || [])];
+  const arr = [...((target[lastKey] as T[]) || [])];
   arr[index] = item;
 
   // Rebuild the nested structure
@@ -164,7 +156,7 @@ export function removeArrayItem(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...(target[lastKey] as unknown[] || [])];
+  const arr = [...((target[lastKey] as unknown[]) || [])];
   arr.splice(index, 1);
 
   // Rebuild the nested structure
@@ -209,7 +201,7 @@ export function appendArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...(target[lastKey] as T[] || []), item];
+  const arr = [...((target[lastKey] as T[]) || []), item];
 
   // Rebuild the nested structure
   const buildPath = (depth: number): Record<string, unknown> => {

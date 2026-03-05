@@ -60,7 +60,10 @@ export function CommunityFeaturesSection({
               <p className="text-xs text-muted-foreground">{desc}</p>
             </div>
             <ToggleSwitch
-              checked={(draftConfig[key as keyof GuildConfig] as { enabled?: boolean } | undefined)?.enabled ?? false}
+              checked={
+                (draftConfig[key as keyof GuildConfig] as { enabled?: boolean } | undefined)
+                  ?.enabled ?? false
+              }
               onChange={(v) => onToggleChange(key, v)}
               disabled={saving}
               label={label}

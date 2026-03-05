@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RoleSelector } from '@/components/ui/role-selector';
 import type { GuildConfig } from '@/lib/config-utils';
-import { useState, useEffect } from 'react';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface WelcomeSectionProps {
@@ -133,9 +132,7 @@ export function WelcomeSection({
         <fieldset className="space-y-2 rounded-md border p-3">
           <legend className="text-sm font-medium">Role Menu</legend>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              Enable self-assignable role menu
-            </span>
+            <span className="text-sm text-muted-foreground">Enable self-assignable role menu</span>
             <ToggleSwitch
               checked={draftConfig.welcome?.roleMenu?.enabled ?? false}
               onChange={(v) => onRoleMenuChange('enabled', v)}
@@ -202,10 +199,7 @@ export function WelcomeSection({
               variant="outline"
               size="sm"
               onClick={() => {
-                const opts = [
-                  ...roleMenuOptions,
-                  { id: generateId(), label: '', roleId: '' },
-                ];
+                const opts = [...roleMenuOptions, { id: generateId(), label: '', roleId: '' }];
                 onRoleMenuChange('options', opts);
               }}
               disabled={saving || roleMenuOptions.length >= 25}

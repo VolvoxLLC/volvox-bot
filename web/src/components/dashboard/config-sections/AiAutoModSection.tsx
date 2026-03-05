@@ -1,8 +1,8 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { decimalToPercent, percentToDecimal } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
-import { percentToDecimal, decimalToPercent } from '@/lib/config-normalization';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface AiAutoModSectionProps {
@@ -21,11 +21,7 @@ const inputClasses =
  * Provides controls for AI-powered moderation including thresholds,
  * actions per category (toxicity, spam, harassment), and auto-delete settings.
  */
-export function AiAutoModSection({
-  draftConfig,
-  saving,
-  onFieldChange,
-}: AiAutoModSectionProps) {
+export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoModSectionProps) {
   if (!draftConfig.aiAutoMod) return null;
 
   const thresholds = (draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {};
@@ -77,11 +73,7 @@ export function AiAutoModSection({
             Confidence threshold (%) above which the action triggers.
           </p>
           {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
-            <label
-              key={cat}
-              htmlFor={`ai-threshold-${cat}`}
-              className="flex items-center gap-3"
-            >
+            <label key={cat} htmlFor={`ai-threshold-${cat}`} className="flex items-center gap-3">
               <span className="w-24 text-sm capitalize">{cat}</span>
               <input
                 id={`ai-threshold-${cat}`}

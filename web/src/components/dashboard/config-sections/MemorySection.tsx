@@ -1,8 +1,8 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { GuildConfig } from '@/lib/config-utils';
 import { parseNumberInput } from '@/lib/config-normalization';
+import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface MemorySectionProps {

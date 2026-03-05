@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { GuildConfig } from '@/lib/config-utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { parseNumberInput } from '@/lib/config-normalization';
+import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface TicketsSectionProps {
@@ -66,9 +66,7 @@ export function TicketsSection({
               id="support-role-id"
               type="text"
               value={draftConfig.tickets?.supportRole ?? ''}
-              onChange={(e) =>
-                onFieldChange('supportRole', e.target.value.trim() || null)
-              }
+              onChange={(e) => onFieldChange('supportRole', e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Role ID for support staff"
@@ -80,9 +78,7 @@ export function TicketsSection({
               id="category-channel-id"
               type="text"
               value={draftConfig.tickets?.category ?? ''}
-              onChange={(e) =>
-                onFieldChange('category', e.target.value.trim() || null)
-              }
+              onChange={(e) => onFieldChange('category', e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Category for tickets"
@@ -128,9 +124,7 @@ export function TicketsSection({
             <input
               type="text"
               value={draftConfig.tickets?.transcriptChannel ?? ''}
-              onChange={(e) =>
-                onFieldChange('transcriptChannel', e.target.value.trim() || null)
-              }
+              onChange={(e) => onFieldChange('transcriptChannel', e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Channel to post ticket transcripts"

@@ -48,9 +48,7 @@ export function ChallengesSection({
               id="challenge-channel-id"
               type="text"
               value={draftConfig.challenges?.channelId ?? ''}
-              onChange={(e) =>
-                onFieldChange('channelId', e.target.value.trim() || null)
-              }
+              onChange={(e) => onFieldChange('channelId', e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Channel ID for daily challenges"

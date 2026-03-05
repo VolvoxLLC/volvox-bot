@@ -1,8 +1,8 @@
 'use client';
 
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import type { GuildConfig } from '@/lib/config-utils';
 import { parseNumberInput } from '@/lib/config-normalization';
+import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface ReputationSectionProps {
@@ -104,9 +104,7 @@ export function ReputationSection({
               id="announce-channel-id"
               type="text"
               value={draftConfig.reputation?.announceChannelId ?? ''}
-              onChange={(e) =>
-                onFieldChange('announceChannelId', e.target.value.trim() || null)
-              }
+              onChange={(e) => onFieldChange('announceChannelId', e.target.value.trim() || null)}
               disabled={saving}
               className={inputClasses}
               placeholder="Channel ID for level-up announcements"
@@ -114,9 +112,7 @@ export function ReputationSection({
           </label>
         </div>
         <label htmlFor="level-thresholds-comma-separated" className="space-y-2">
-          <span className="text-sm font-medium">
-            Level Thresholds (comma-separated XP values)
-          </span>
+          <span className="text-sm font-medium">Level Thresholds (comma-separated XP values)</span>
           <input
             id="level-thresholds-comma-separated"
             type="text"
