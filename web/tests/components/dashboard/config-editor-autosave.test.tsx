@@ -22,7 +22,7 @@ vi.mock('@/components/dashboard/reset-defaults-button', () => ({
     onReset: () => void;
     disabled: boolean;
   }) => (
-    <button onClick={onReset} disabled={disabled}>
+    <button onClick={onReset} disabled={disabled} data-testid="discard-button">
       Discard
     </button>
   ),
@@ -64,7 +64,13 @@ vi.mock('@/components/dashboard/config-diff', () => ({
   ConfigDiff: () => <div data-testid="config-diff" />,
 }));
 
+vi.mock('@/components/dashboard/config-diff-modal', () => ({
+  ConfigDiffModal: () => <div data-testid="config-diff-modal" />,
+}));
+
 let mockPathname = '/dashboard/settings/ai-automation';
+
+// ── Fixtures ──────────────────────────────────────────────────────
 
 const minimalConfig = {
   ai: { enabled: false, systemPrompt: '', blockedChannelIds: [] },
@@ -319,5 +325,91 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
 
     expect(screen.getByText(/Fix validation errors before changes can be saved/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Save Changes/i })).toBeDisabled();
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
+
+    // Initially discard button should be disabled (no changes yet)
+    const discardButton = screen.getByTestId('discard-button');
+    expect(discardButton).toBeDisabled();
+  });
+});
+
+// ── Unit tests for normalization utilities ────────────────────────
+
+describe('config-normalization', () => {
+  it('parseNumberInput handles valid numbers', async () => {
+    const { parseNumberInput } = await import('@/lib/config-normalization');
+    expect(parseNumberInput('42')).toBe(42);
+    expect(parseNumberInput('3.14')).toBe(3.14);
+    expect(parseNumberInput('0')).toBe(0);
+  });
+
+  it('parseNumberInput returns undefined for empty string', async () => {
+    const { parseNumberInput } = await import('@/lib/config-normalization');
+    expect(parseNumberInput('')).toBeUndefined();
+  });
+
+  it('parseNumberInput clamps to min/max bounds', async () => {
+    const { parseNumberInput } = await import('@/lib/config-normalization');
+    expect(parseNumberInput('5', 10)).toBe(10);
+    expect(parseNumberInput('100', 0, 50)).toBe(50);
+    expect(parseNumberInput('25', 10, 50)).toBe(25);
+  });
+
+  it('percentToDecimal converts correctly', async () => {
+    const { percentToDecimal } = await import('@/lib/config-normalization');
+    expect(percentToDecimal(100)).toBe(1);
+    expect(percentToDecimal(50)).toBe(0.5);
+    expect(percentToDecimal(0)).toBe(0);
+    expect(percentToDecimal(150)).toBe(1); // clamped
+    expect(percentToDecimal(-50)).toBe(0); // clamped
+  });
+
+  it('decimalToPercent converts correctly', async () => {
+    const { decimalToPercent } = await import('@/lib/config-normalization');
+    expect(decimalToPercent(1)).toBe(100);
+    expect(decimalToPercent(0.5)).toBe(50);
+    expect(decimalToPercent(0)).toBe(0);
+    expect(decimalToPercent(0.333)).toBe(33);
+  });
+});
+
+// ── Unit tests for config update utilities ────────────────────────
+
+describe('config-updates', () => {
+  const baseConfig = {
+    ai: { enabled: false, systemPrompt: '' },
+    welcome: { enabled: false, message: '' },
+  };
+
+  it('updateSectionEnabled toggles section enabled state', async () => {
+    const { updateSectionEnabled } = await import('@/lib/config-updates');
+    const result = updateSectionEnabled(baseConfig, 'ai', true);
+    expect(result.ai?.enabled).toBe(true);
+    expect(result.welcome?.enabled).toBe(false);
+  });
+
+  it('updateSectionField updates specific field', async () => {
+    const { updateSectionField } = await import('@/lib/config-updates');
+    const result = updateSectionField(baseConfig, 'ai', 'systemPrompt', 'Hello');
+    expect(result.ai?.systemPrompt).toBe('Hello');
+    expect(result.ai?.enabled).toBe(false);
+  });
+
+  it('updateNestedField updates nested object fields', async () => {
+    const { updateNestedField } = await import('@/lib/config-updates');
+    const configWithNested = {
+      ...baseConfig,
+      moderation: {
+        enabled: false,
+        rateLimit: { enabled: false, maxMessages: 10 },
+      },
+    };
+    const result = updateNestedField(configWithNested, 'moderation', 'rateLimit', 'maxMessages', 20);
+    expect((result.moderation as { rateLimit?: { maxMessages?: number } })?.rateLimit?.maxMessages).toBe(20);
   });
 });
