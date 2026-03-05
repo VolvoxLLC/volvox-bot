@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { Switch } from '@/components/ui/switch';
@@ -183,17 +182,20 @@ export function ModerationSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="protect-role-ids" className="text-sm text-muted-foreground">
+            <Label
+              htmlFor={guildId ? 'protect-role-ids' : undefined}
+              className="text-sm text-muted-foreground"
+            >
               Additional protected roles
             </Label>
             {guildId ? (
               <RoleSelector
                 id="protect-role-ids"
                 guildId={guildId}
-                selected={(draftConfig.moderation?.protectRoles?.roleIds ?? []) as string[]}
+                selected={draftConfig.moderation?.protectRoles?.roleIds ?? []}
                 onChange={(selected) => onProtectRolesChange('roleIds', selected)}
                 disabled={saving}
-                placeholder="Select protected roles"
+                placeholder="Select additional protected roles..."
               />
             ) : (
               <p className="text-muted-foreground text-sm">Select a server first</p>

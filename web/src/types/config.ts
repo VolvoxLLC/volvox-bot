@@ -169,7 +169,7 @@ export interface WarningsConfig {
 /** Moderation configuration. */
 export interface ModerationConfig {
   enabled: boolean;
-  alertChannelId: string;
+  alertChannelId?: string;
   autoDelete: boolean;
   dmNotifications: ModerationDmNotifications;
   escalation: ModerationEscalation;
