@@ -120,11 +120,17 @@ export function updateArrayItem<T>(
   const arr = [...((cursor[lastKey] as T[]) || [])];
 
   // Validate index bounds
-  if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
+  if (!Number.isInteger(index) || index < 0) {
     return config;
   }
 
-  arr[index] = item;
+  if (arr.length === 0 && index === 0) {
+    arr.push(item);
+  } else if (index >= arr.length) {
+    return config;
+  } else {
+    arr[index] = item;
+  }
 
   // Rebuild from bottom up using tracked levels
   let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };
