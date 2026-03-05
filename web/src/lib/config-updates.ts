@@ -118,6 +118,12 @@ export function updateArrayItem<T>(
 
   const lastKey = path[path.length - 1];
   const arr = [...((cursor[lastKey] as T[]) || [])];
+
+  // Validate index bounds
+  if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
+    return config;
+  }
+
   arr[index] = item;
 
   // Rebuild from bottom up using tracked levels
@@ -163,6 +169,12 @@ export function removeArrayItem(
 
   const lastKey = path[path.length - 1];
   const arr = [...((cursor[lastKey] as unknown[]) || [])];
+
+  // Validate index bounds
+  if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
+    return config;
+  }
+
   arr.splice(index, 1);
 
   // Rebuild from bottom up using tracked levels

@@ -22,10 +22,17 @@ const inputClasses =
  * actions per category (toxicity, spam, harassment), and auto-delete settings.
  */
 export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoModSectionProps) {
-  if (!draftConfig.aiAutoMod) return null;
+  // Provide defaults so section renders even when aiAutoMod is missing
+  const cfg = draftConfig.aiAutoMod ?? {
+    enabled: false,
+    thresholds: { toxicity: 0.7, spam: 0.7, harassment: 0.7 },
+    actions: { toxicity: 'flag', spam: 'flag', harassment: 'flag' },
+    flagChannelId: null,
+    autoDelete: true,
+  };
 
-  const thresholds = (draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {};
-  const actions = (draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {};
+  const thresholds = (cfg.thresholds as Record<string, number>) ?? {};
+  const actions = (cfg.actions as Record<string, string>) ?? {};
 
   return (
     <Card>
@@ -38,7 +45,7 @@ export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoM
             </CardDescription>
           </div>
           <ToggleSwitch
-            checked={Boolean(draftConfig.aiAutoMod?.enabled)}
+            checked={cfg.enabled ?? false}
             onChange={(v) => onFieldChange('enabled', v)}
             disabled={saving}
             label="AI Auto-Moderation"
@@ -51,7 +58,7 @@ export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoM
           <input
             id="ai-automod-flag-channel"
             type="text"
-            value={(draftConfig.aiAutoMod?.flagChannelId as string) ?? ''}
+            value={(cfg.flagChannelId as string) ?? ''}
             onChange={(e) => onFieldChange('flagChannelId', e.target.value || null)}
             disabled={saving}
             className={inputClasses}
@@ -61,7 +68,7 @@ export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoM
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Auto-delete flagged messages</span>
           <ToggleSwitch
-            checked={Boolean(draftConfig.aiAutoMod?.autoDelete ?? true)}
+            checked={cfg.autoDelete ?? true}
             onChange={(v) => onFieldChange('autoDelete', v)}
             disabled={saving}
             label="Auto-delete"

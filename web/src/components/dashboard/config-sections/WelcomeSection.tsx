@@ -223,8 +223,8 @@ export function WelcomeSection({
           <textarea
             value={dmStepsRaw}
             onChange={(e) => onDmStepsRawChange(e.target.value)}
-            onBlur={() => {
-              const parsed = dmStepsRaw
+            onBlur={(e) => {
+              const parsed = e.currentTarget.value
                 .split('\n')
                 .map((line) => line.trim())
                 .filter(Boolean);
