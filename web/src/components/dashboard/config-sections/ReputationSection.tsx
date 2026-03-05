@@ -129,12 +129,25 @@ export function ReputationSection({
               const raw = e.target.value;
               setThresholdsRaw(raw);
               // Call onFieldChange on every change to prevent Ctrl+S data loss
+              // Parse without sorting - normalization happens on blur
               const nums = raw
                 .split(',')
                 .map((s) => Number(s.trim()))
                 .filter((n) => Number.isFinite(n) && n > 0);
               if (nums.length > 0) {
-                const sorted = [...nums].sort((a, b) => a - b);
+                onFieldChange('levelThresholds', nums);
+              }
+            }}
+            onBlur={() => {
+              // Normalize on blur: sort and dedupe
+              const nums = thresholdsRaw
+                .split(',')
+                .map((s) => Number(s.trim()))
+                .filter((n) => Number.isFinite(n) && n > 0);
+              const sorted = [...new Set(nums)].sort((a, b) => a - b);
+              const normalized = sorted.join(', ');
+              setThresholdsRaw(normalized);
+              if (sorted.length > 0) {
                 onFieldChange('levelThresholds', sorted);
               }
             }}

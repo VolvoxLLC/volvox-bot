@@ -45,7 +45,7 @@ export function EngagementSection({
           active days.
         </p>
         {badges.map((badge, i) => (
-          <div key={`${badge.days}-${badge.label}`} className="flex items-center gap-2">
+          <div key={`badge-${i}`} className="flex items-center gap-2">
             <Input
               className="w-20"
               type="number"

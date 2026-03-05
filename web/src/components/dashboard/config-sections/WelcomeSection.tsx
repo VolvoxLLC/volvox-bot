@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import type { GuildConfig } from '@/lib/config-utils';
+import { generateId } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface WelcomeSectionProps {
@@ -23,20 +24,6 @@ interface WelcomeSectionProps {
 /** Shared input styling for text inputs and textareas. */
 const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
-
-/**
- * Generate a UUID with fallback for environments without crypto.randomUUID.
- */
-function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 /**
  * Welcome Messages configuration section.
