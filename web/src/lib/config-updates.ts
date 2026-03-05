@@ -104,31 +104,31 @@ export function updateArrayItem<T>(
 ): GuildConfig {
   const sectionData = (config[section] as Record<string, unknown>) || {};
 
-  // Navigate to the parent of the target array
-  let target: Record<string, unknown> = sectionData;
+  // Handle edge case: empty path
+  if (path.length === 0) return config;
+
+  // Track each level's data during traversal for correct rebuilding
+  const levels: Record<string, unknown>[] = [sectionData];
+  let cursor: Record<string, unknown> = sectionData;
   for (let i = 0; i < path.length - 1; i++) {
-    target = (target[path[i]] as Record<string, unknown>) || {};
+    const next = (cursor[path[i]] as Record<string, unknown>) || {};
+    levels.push(next);
+    cursor = next;
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((target[lastKey] as T[]) || [])];
+  const arr = [...((cursor[lastKey] as T[]) || [])];
   arr[index] = item;
 
-  // Rebuild the nested structure
-  const buildPath = (depth: number): Record<string, unknown> => {
-    if (depth === path.length - 1) {
-      return { ...target, [lastKey]: arr };
-    }
-    const key = path[depth];
-    return {
-      ...(depth === 0 ? sectionData : target),
-      [key]: buildPath(depth + 1),
-    };
-  };
+  // Rebuild from bottom up using tracked levels
+  let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };
+  for (let i = path.length - 2; i >= 0; i--) {
+    rebuilt = { ...levels[i], [path[i]]: rebuilt };
+  }
 
   return {
     ...config,
-    [section]: buildPath(0),
+    [section]: rebuilt,
   } as GuildConfig;
 }
 
@@ -149,31 +149,31 @@ export function removeArrayItem(
 ): GuildConfig {
   const sectionData = (config[section] as Record<string, unknown>) || {};
 
-  // Navigate to the parent of the target array
-  let target: Record<string, unknown> = sectionData;
+  // Handle edge case: empty path
+  if (path.length === 0) return config;
+
+  // Track each level's data during traversal for correct rebuilding
+  const levels: Record<string, unknown>[] = [sectionData];
+  let cursor: Record<string, unknown> = sectionData;
   for (let i = 0; i < path.length - 1; i++) {
-    target = (target[path[i]] as Record<string, unknown>) || {};
+    const next = (cursor[path[i]] as Record<string, unknown>) || {};
+    levels.push(next);
+    cursor = next;
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((target[lastKey] as unknown[]) || [])];
+  const arr = [...((cursor[lastKey] as unknown[]) || [])];
   arr.splice(index, 1);
 
-  // Rebuild the nested structure
-  const buildPath = (depth: number): Record<string, unknown> => {
-    if (depth === path.length - 1) {
-      return { ...target, [lastKey]: arr };
-    }
-    const key = path[depth];
-    return {
-      ...(depth === 0 ? sectionData : target),
-      [key]: buildPath(depth + 1),
-    };
-  };
+  // Rebuild from bottom up using tracked levels
+  let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };
+  for (let i = path.length - 2; i >= 0; i--) {
+    rebuilt = { ...levels[i], [path[i]]: rebuilt };
+  }
 
   return {
     ...config,
-    [section]: buildPath(0),
+    [section]: rebuilt,
   } as GuildConfig;
 }
 
@@ -194,29 +194,29 @@ export function appendArrayItem<T>(
 ): GuildConfig {
   const sectionData = (config[section] as Record<string, unknown>) || {};
 
-  // Navigate to the parent of the target array
-  let target: Record<string, unknown> = sectionData;
+  // Handle edge case: empty path
+  if (path.length === 0) return config;
+
+  // Track each level's data during traversal for correct rebuilding
+  const levels: Record<string, unknown>[] = [sectionData];
+  let cursor: Record<string, unknown> = sectionData;
   for (let i = 0; i < path.length - 1; i++) {
-    target = (target[path[i]] as Record<string, unknown>) || {};
+    const next = (cursor[path[i]] as Record<string, unknown>) || {};
+    levels.push(next);
+    cursor = next;
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((target[lastKey] as T[]) || []), item];
+  const arr = [...((cursor[lastKey] as T[]) || []), item];
 
-  // Rebuild the nested structure
-  const buildPath = (depth: number): Record<string, unknown> => {
-    if (depth === path.length - 1) {
-      return { ...target, [lastKey]: arr };
-    }
-    const key = path[depth];
-    return {
-      ...(depth === 0 ? sectionData : target),
-      [key]: buildPath(depth + 1),
-    };
-  };
+  // Rebuild from bottom up using tracked levels
+  let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };
+  for (let i = path.length - 2; i >= 0; i--) {
+    rebuilt = { ...levels[i], [path[i]]: rebuilt };
+  }
 
   return {
     ...config,
-    [section]: buildPath(0),
+    [section]: rebuilt,
   } as GuildConfig;
 }
