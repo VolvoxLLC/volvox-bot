@@ -17,10 +17,18 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Triage configuration section.
+ * Render the Triage configuration UI for editing triage settings.
  *
- * Provides controls for message triage classifier, responder models,
- * budgets, intervals, and various feature toggles.
+ * Displays inputs and toggles for classifier and responder models, budgets,
+ * timing values, context/buffer sizes, streaming/moderation/debug options,
+ * status reactions, and moderation log channel. Renders nothing if
+ * `draftConfig.triage` is not present.
+ *
+ * @param draftConfig - Draft guild configuration containing `triage` settings
+ * @param saving - When true, disables interactions while changes are being saved
+ * @param onEnabledChange - Invoked when the top-level Triage enabled toggle changes
+ * @param onFieldChange - Invoked when a specific triage field changes; receives the field name and its new value
+ * @returns The rendered Triage section element, or `null` when triage is not configured
  */
 export function TriageSection({
   draftConfig,

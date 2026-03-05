@@ -35,9 +35,14 @@ const COMMUNITY_FEATURES = [
 ] as const;
 
 /**
- * Community Features configuration section.
+ * Render the Community Features configuration card with a toggle for each feature.
  *
- * Provides toggles for enabling/disabling various community commands per guild.
+ * Renders a titled card that lists community feature entries and a switch for enabling or disabling each feature for a guild.
+ *
+ * @param draftConfig - Guild draft configuration used to read each feature's `enabled` state (defaults to `false` when missing)
+ * @param saving - When `true`, all toggles are disabled to prevent user interaction during save
+ * @param onToggleChange - Callback invoked with the feature key and the new enabled state when a toggle changes
+ * @returns The JSX element for the Community Features configuration section
  */
 export function CommunityFeaturesSection({
   draftConfig,

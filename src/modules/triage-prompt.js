@@ -27,16 +27,13 @@ export function escapePromptDelimiters(text) {
 // ── Conversation text formatting ─────────────────────────────────────────────
 
 /**
- * Build conversation text with message IDs for prompts.
- * Splits output into <recent-history> (context) and <messages-to-evaluate> (buffer).
- * Includes timestamps and reply context when available.
+ * Build a structured conversation text for prompts including optional channel metadata.
  *
- * User-supplied content (message body and reply excerpts) is passed through
- * {@link escapePromptDelimiters} to neutralise prompt-injection attempts.
+ * Produces sections: an optional <channel-context> (Channel and optional Topic) taken from the first entry that contains channel metadata, a <recent-history> block for `context` messages (when present), and a <messages-to-evaluate> block for `buffer` messages. Each message line contains an optional timestamp, messageId, author, user mention, optional reply excerpt, and the message content. User-supplied content is escaped to neutralize XML-style delimiters and reduce prompt-injection risk.
  *
- * @param {Array} context - Historical messages fetched from Discord API
- * @param {Array} buffer - Buffered messages to evaluate
- * @returns {string} Formatted conversation text with section markers
+ * @param {Array} context - Historical messages to include in <recent-history>.
+ * @param {Array} buffer - Messages to include in <messages-to-evaluate>.
+ * @returns {string} The formatted conversation text containing the assembled sections.
  */
 export function buildConversationText(context, buffer) {
   const formatMsg = (m) => {
@@ -93,14 +90,16 @@ export function buildClassifyPrompt(context, snapshot, botUserId) {
 }
 
 /**
- * Build the responder prompt from the template.
- * @param {Array} context - Historical context messages
- * @param {Array} snapshot - Buffer snapshot (messages to evaluate)
- * @param {Object} classification - Parsed classifier output
- * @param {Object} config - Bot configuration
- * @param {string} [memoryContext] - Memory context for target users
- * @returns {string} Interpolated respond prompt
- */
+ * Construct the responder prompt by combining conversation text, community rules, the system prompt, classification results, optional memory context, and search guardrails.
+ * @param {Array} context - Historical context messages used to build conversation text.
+ * @param {Array} snapshot - Buffer snapshot containing messages to evaluate.
+ * @param {Object} classification - Classifier output containing decision details.
+ * @param {string} classification.classification - The classification label.
+ * @param {string} classification.reasoning - Explanatory reasoning for the classification.
+ * @param {Array<string>} classification.targetMessageIds - IDs of messages targeted by the classification.
+ * @param {Object} config - Bot configuration; `config.ai.systemPrompt` (if present) overrides the default system prompt.
+ * @param {string} [memoryContext] - Optional serialized memory context to include for target users.
+ * @returns {string} The fully interpolated responder prompt ready for the model. */
 export function buildRespondPrompt(context, snapshot, classification, config, memoryContext) {
   const conversationText = buildConversationText(context, snapshot);
   const communityRules = loadPrompt('community-rules');

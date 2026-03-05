@@ -24,7 +24,9 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Generate a UUID with fallback for environments without crypto.randomUUID.
+ * Create a UUID string with a fallback for environments that lack native UUID generation.
+ *
+ * @returns A UUID-formatted string (RFC 4122 version 4 style)
  */
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -38,9 +40,22 @@ function generateId(): string {
 }
 
 /**
- * Welcome Messages configuration section.
+ * Render the "Welcome Messages" configuration UI for a guild.
  *
- * Provides controls for welcome messages, role menu, and DM sequence settings.
+ * Presents controls for the welcome message template, rules/intro channel and verified role IDs,
+ * a configurable role-menu (add/remove/edit options), and an optional DM onboarding sequence.
+ *
+ * @param draftConfig - Current draft GuildConfig containing welcome settings
+ * @param guildId - Guild identifier used by role lookups in the RoleSelector
+ * @param saving - When true, disables inputs to prevent edits during save operations
+ * @param dmStepsRaw - Raw multiline string representing DM steps (one step per line)
+ * @param onEnabledChange - Callback invoked when the welcome-enabled toggle changes
+ * @param onMessageChange - Callback invoked when the welcome message text changes
+ * @param onFieldChange - General callback for updating top-level welcome fields (e.g., rulesChannel, verifiedRole, introChannel)
+ * @param onRoleMenuChange - Callback for role menu updates; used for toggling enabled and replacing the options array
+ * @param onDmSequenceChange - Callback for DM sequence updates (e.g., enabling or replacing the steps array)
+ * @param onDmStepsRawChange - Callback invoked when the raw DM steps text changes
+ * @returns The rendered React element for the Welcome Messages configuration section
  */
 export function WelcomeSection({
   draftConfig,

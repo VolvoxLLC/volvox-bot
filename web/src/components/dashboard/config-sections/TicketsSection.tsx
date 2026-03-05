@@ -17,10 +17,17 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Tickets configuration section.
+ * Renders the Tickets configuration card for a guild configuration.
  *
- * Provides controls for ticket system mode, support roles, auto-close settings,
- * and transcript channel configuration.
+ * Displays an enable toggle and controls for ticket mode, support role ID,
+ * category channel ID, auto-close hours, max open tickets per user, and
+ * transcript channel ID. Inputs are disabled while `saving` is true and
+ * changes are propagated via the provided callbacks.
+ *
+ * @param draftConfig - Current draft of the guild configuration
+ * @param saving - Whether a save operation is in progress (disables inputs)
+ * @param onEnabledChange - Called with the new enabled state when the toggle changes
+ * @param onFieldChange - Called with field name and value when an input changes
  */
 export function TicketsSection({
   draftConfig,
