@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,17 +32,17 @@ export function EngagementSection({
   const badges = draftConfig.engagement?.activityBadges ?? [...DEFAULT_ACTIVITY_BADGES];
   const badgeIdsRef = useRef<string[]>([]);
 
-  useEffect(() => {
-    const stableIds = badgeIdsRef.current.slice(0, badges.length);
-
-    if (stableIds.length < badges.length) {
-      stableIds.push(
-        ...Array.from({ length: badges.length - stableIds.length }, () => crypto.randomUUID()),
-      );
-    }
-
-    badgeIdsRef.current = stableIds;
-  }, [badges.length]);
+  // Synchronously ensure badgeIdsRef matches badges length before render
+  if (badgeIdsRef.current.length < badges.length) {
+    badgeIdsRef.current = [
+      ...badgeIdsRef.current,
+      ...Array.from({ length: badges.length - badgeIdsRef.current.length }, () =>
+        crypto.randomUUID(),
+      ),
+    ];
+  } else if (badgeIdsRef.current.length > badges.length) {
+    badgeIdsRef.current = badgeIdsRef.current.slice(0, badges.length);
+  }
 
   return (
     <Card>
@@ -87,6 +87,7 @@ export function EngagementSection({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  badgeIdsRef.current = badgeIdsRef.current.filter((_, idx) => idx !== i);
                   const newBadges = badges.filter((_, idx) => idx !== i);
                   onActivityBadgesChange(newBadges);
                 }}
@@ -101,6 +102,7 @@ export function EngagementSection({
           variant="outline"
           size="sm"
           onClick={() => {
+            badgeIdsRef.current = [...badgeIdsRef.current, crypto.randomUUID()];
             const newBadges = [...badges, { days: 0, label: '🌟 New Badge' }];
             onActivityBadgesChange(newBadges);
           }}
