@@ -394,7 +394,7 @@ export function ConfigEditor() {
   // Clear undo snapshot when guild changes
   useEffect(() => {
     setPrevSavedConfig(null);
-  }, []);
+  }, [guildId]);
 
   // ── Undo last save ─────────────────────────────────────────────
   const undoLastSave = useCallback(() => {
