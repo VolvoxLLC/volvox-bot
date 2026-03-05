@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RoleSelector } from '@/components/ui/role-selector';
 import type { GuildConfig } from '@/lib/config-utils';
@@ -27,6 +28,13 @@ export function PermissionsSection({
   saving,
   onFieldChange,
 }: PermissionsSectionProps) {
+  // Local state for bot owners raw input (parsed on blur)
+  const botOwnersDisplay = (draftConfig.permissions?.botOwners ?? []).join(', ');
+  const [botOwnersRaw, setBotOwnersRaw] = useState(botOwnersDisplay);
+  useEffect(() => {
+    setBotOwnersRaw(botOwnersDisplay);
+  }, [botOwnersDisplay]);
+
   return (
     <Card>
       <CardHeader>
@@ -79,11 +87,12 @@ export function PermissionsSection({
           <input
             id="bot-owners"
             type="text"
-            value={(draftConfig.permissions?.botOwners ?? []).join(', ')}
-            onChange={(e) =>
+            value={botOwnersRaw}
+            onChange={(e) => setBotOwnersRaw(e.target.value)}
+            onBlur={() =>
               onFieldChange(
                 'botOwners',
-                e.target.value
+                botOwnersRaw
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean),

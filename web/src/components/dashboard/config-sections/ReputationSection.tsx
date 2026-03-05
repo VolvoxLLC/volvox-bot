@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
@@ -31,6 +32,13 @@ export function ReputationSection({
 }: ReputationSectionProps) {
   const xpRange = draftConfig.reputation?.xpPerMessage ?? [5, 15];
   const levelThresholds = draftConfig.reputation?.levelThresholds ?? DEFAULT_LEVEL_THRESHOLDS;
+
+  // Local state for level thresholds raw input (parsed on blur)
+  const thresholdsDisplay = levelThresholds.join(', ');
+  const [thresholdsRaw, setThresholdsRaw] = useState(thresholdsDisplay);
+  useEffect(() => {
+    setThresholdsRaw(thresholdsDisplay);
+  }, [thresholdsDisplay]);
 
   return (
     <Card>
@@ -116,9 +124,10 @@ export function ReputationSection({
           <input
             id="level-thresholds-comma-separated"
             type="text"
-            value={levelThresholds.join(', ')}
-            onChange={(e) => {
-              const nums = e.target.value
+            value={thresholdsRaw}
+            onChange={(e) => setThresholdsRaw(e.target.value)}
+            onBlur={() => {
+              const nums = thresholdsRaw
                 .split(',')
                 .map((s) => Number(s.trim()))
                 .filter((n) => Number.isFinite(n) && n > 0);
