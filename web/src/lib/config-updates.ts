@@ -117,14 +117,27 @@ export function updateArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as T[]) || [])];
+  const existing = cursor[lastKey];
+  const arr = Array.isArray(existing) ? [...(existing as T[])] : [];
 
   // Validate index bounds
-  if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
+  if (!Number.isInteger(index) || index < 0) {
     return config;
   }
 
-  arr[index] = item;
+  // Support creating a new array by setting index 0 on an empty path.
+  if (arr.length === 0) {
+    if (index !== 0) {
+      return config;
+    }
+    arr.push(item);
+  } else {
+    if (index >= arr.length) {
+      return config;
+    }
+
+    arr[index] = item;
+  }
 
   // Rebuild from bottom up using tracked levels
   let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };
@@ -168,7 +181,8 @@ export function removeArrayItem(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as unknown[]) || [])];
+  const existing = cursor[lastKey];
+  const arr = Array.isArray(existing) ? [...existing] : [];
 
   // Validate index bounds
   if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
@@ -219,7 +233,8 @@ export function appendArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as T[]) || []), item];
+  const existing = cursor[lastKey];
+  const arr = [...(Array.isArray(existing) ? (existing as T[]) : []), item];
 
   // Rebuild from bottom up using tracked levels
   let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };

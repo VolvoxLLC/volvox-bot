@@ -133,6 +133,9 @@ jobs:
       - name: Lint (Biome)
         run: pnpm --prefix web lint
 
+      - name: Test (Vitest)
+        run: pnpm --prefix web test
+
       - name: Build
         run: pnpm --prefix web build
 

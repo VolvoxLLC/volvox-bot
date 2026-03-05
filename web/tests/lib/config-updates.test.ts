@@ -50,9 +50,12 @@ describe('config-updates', () => {
     });
 
     it('does not mutate original config', () => {
-      const original = { ...baseConfig };
-      updateSectionEnabled(baseConfig, 'ai', true);
-      expect(baseConfig.ai?.enabled).toBe(original.ai?.enabled);
+      const original = structuredClone(baseConfig);
+      const result = updateSectionEnabled(baseConfig, 'ai', true);
+
+      expect(baseConfig).toEqual(original);
+      expect(result).not.toBe(baseConfig);
+      expect(result.ai).not.toBe(baseConfig.ai);
     });
   });
 
@@ -124,6 +127,29 @@ describe('config-updates', () => {
       expect(result.welcome?.roleMenu?.options).toHaveLength(1);
       expect(result.welcome?.roleMenu?.options?.[0]).toEqual(newOption);
     });
+
+    it('returns unchanged config for out-of-bounds index', () => {
+      const newOption = { id: '9', label: 'Nope', roleId: 'role-9' };
+      const result = updateArrayItem(baseConfig, 'welcome', ['roleMenu', 'options'], 99, newOption);
+      expect(result).toEqual(baseConfig);
+    });
+
+    it('handles non-array terminal values safely', () => {
+      const config: GuildConfig = {
+        welcome: {
+          roleMenu: {
+            // malformed shape from legacy/manual edits
+            options: 'not-an-array' as unknown as Array<{ id: string; label: string; roleId: string }>,
+          },
+        },
+      };
+
+      const newOption = { id: '1', label: 'Recovered', roleId: 'role-1' };
+      const result = updateArrayItem(config, 'welcome', ['roleMenu', 'options'], 0, newOption);
+
+      expect(result.welcome?.roleMenu?.options).toHaveLength(1);
+      expect(result.welcome?.roleMenu?.options?.[0]).toEqual(newOption);
+    });
   });
 
   describe('removeArrayItem', () => {
@@ -150,6 +176,18 @@ describe('config-updates', () => {
       const result = removeArrayItem(config, 'welcome', ['roleMenu', 'options'], 0);
       expect(result.welcome?.roleMenu?.options).toHaveLength(0);
     });
+
+    it('handles non-array terminal values safely', () => {
+      const config: GuildConfig = {
+        welcome: {
+          roleMenu: {
+            options: 'broken' as unknown as Array<{ id: string; label: string; roleId: string }>,
+          },
+        },
+      };
+      const result = removeArrayItem(config, 'welcome', ['roleMenu', 'options'], 0);
+      expect(result).toEqual(config);
+    });
   });
 
   describe('appendArrayItem', () => {
@@ -173,6 +211,19 @@ describe('config-updates', () => {
       const result = appendArrayItem(baseConfig, 'welcome', ['roleMenu', 'options'], newOption);
       expect(result.welcome?.roleMenu?.options?.[0]).toEqual(baseConfig.welcome?.roleMenu?.options?.[0]);
       expect(result.welcome?.roleMenu?.options?.[1]).toEqual(baseConfig.welcome?.roleMenu?.options?.[1]);
+    });
+
+    it('handles non-array terminal values safely', () => {
+      const config: GuildConfig = {
+        welcome: {
+          roleMenu: {
+            options: null as unknown as Array<{ id: string; label: string; roleId: string }>,
+          },
+        },
+      };
+      const newOption = { id: '1', label: 'First', roleId: 'role-1' };
+      const result = appendArrayItem(config, 'welcome', ['roleMenu', 'options'], newOption);
+      expect(result.welcome?.roleMenu?.options).toEqual([newOption]);
     });
   });
 });

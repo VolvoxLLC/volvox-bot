@@ -1,4 +1,9 @@
-import type { NextConfig } from "next";
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { NextConfig } from 'next';
+
+const configDir = dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = dirname(configDir);
 
 const securityHeaders = [
   {
@@ -35,7 +40,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: 'standalone',
+  turbopack: {
+    root: workspaceRoot,
+  },
   images: {
     remotePatterns: [
       {
