@@ -125,9 +125,11 @@ export function ReputationSection({
             id="level-thresholds-comma-separated"
             type="text"
             value={thresholdsRaw}
-            onChange={(e) => setThresholdsRaw(e.target.value)}
-            onBlur={(e) => {
-              const nums = e.currentTarget.value
+            onChange={(e) => {
+              const raw = e.target.value;
+              setThresholdsRaw(raw);
+              // Call onFieldChange on every change to prevent Ctrl+S data loss
+              const nums = raw
                 .split(',')
                 .map((s) => Number(s.trim()))
                 .filter((n) => Number.isFinite(n) && n > 0);

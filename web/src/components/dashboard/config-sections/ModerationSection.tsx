@@ -250,6 +250,7 @@ export function ModerationSection({
               onChange={(e) => {
                 const raw = e.target.value;
                 setBlockedDomainsRaw(raw);
+                // Call onLinkFilterChange on every change to prevent Ctrl+S data loss
                 onLinkFilterChange(
                   'blockedDomains',
                   raw
@@ -258,15 +259,6 @@ export function ModerationSection({
                     .filter(Boolean),
                 );
               }}
-              onBlur={() =>
-                onLinkFilterChange(
-                  'blockedDomains',
-                  blockedDomainsRaw
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                )
-              }
               disabled={saving}
               className={inputClasses}
               placeholder="example.com, spam.net"

@@ -1,12 +1,15 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface StarboardSectionProps {
   draftConfig: GuildConfig;
+  guildId: string;
   saving: boolean;
   onFieldChange: (field: string, value: unknown) => void;
 }
@@ -21,7 +24,7 @@ const inputClasses =
  * Provides controls for pinning popular messages to a starboard channel,
  * including threshold, emoji settings, and ignored channels.
  */
-export function StarboardSection({ draftConfig, saving, onFieldChange }: StarboardSectionProps) {
+export function StarboardSection({ draftConfig, guildId, saving, onFieldChange }: StarboardSectionProps) {
   return (
     <Card>
       <CardHeader>

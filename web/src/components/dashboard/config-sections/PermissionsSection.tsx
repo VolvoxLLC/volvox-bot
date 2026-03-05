@@ -88,16 +88,18 @@ export function PermissionsSection({
             id="bot-owners"
             type="text"
             value={botOwnersRaw}
-            onChange={(e) => setBotOwnersRaw(e.target.value)}
-            onBlur={() =>
+            onChange={(e) => {
+              const raw = e.target.value;
+              setBotOwnersRaw(raw);
+              // Call onFieldChange on every change to prevent Ctrl+S data loss
               onFieldChange(
                 'botOwners',
-                botOwnersRaw
+                raw
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean),
-              )
-            }
+              );
+            }}
             disabled={saving}
             className={inputClasses}
             placeholder="Comma-separated user IDs"

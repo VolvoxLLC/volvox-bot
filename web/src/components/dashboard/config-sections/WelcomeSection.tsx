@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
@@ -91,42 +92,51 @@ export function WelcomeSection({
         </p>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <label htmlFor="rules-channel-id" className="space-y-2">
-            <span className="text-sm font-medium">Rules Channel ID</span>
-            <input
-              id="rules-channel-id"
-              type="text"
-              value={draftConfig.welcome?.rulesChannel ?? ''}
-              onChange={(e) => onFieldChange('rulesChannel', e.target.value.trim() || null)}
-              disabled={saving}
-              className={inputClasses}
-              placeholder="Channel where Accept Rules button lives"
-            />
-          </label>
-          <label htmlFor="verified-role-id" className="space-y-2">
-            <span className="text-sm font-medium">Verified Role ID</span>
-            <input
-              id="verified-role-id"
-              type="text"
-              value={draftConfig.welcome?.verifiedRole ?? ''}
-              onChange={(e) => onFieldChange('verifiedRole', e.target.value.trim() || null)}
-              disabled={saving}
-              className={inputClasses}
-              placeholder="Role granted after rules acceptance"
-            />
-          </label>
-          <label htmlFor="intro-channel-id" className="space-y-2">
-            <span className="text-sm font-medium">Intro Channel ID</span>
-            <input
-              id="intro-channel-id"
-              type="text"
-              value={draftConfig.welcome?.introChannel ?? ''}
-              onChange={(e) => onFieldChange('introChannel', e.target.value.trim() || null)}
-              disabled={saving}
-              className={inputClasses}
-              placeholder="Channel to prompt member intros"
-            />
-          </label>
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Rules Channel</span>
+            {guildId ? (
+              <ChannelSelector
+                guildId={guildId}
+                selected={draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []}
+                onChange={(selected) => onFieldChange('rulesChannel', selected[0] ?? null)}
+                placeholder="Select rules channel..."
+                disabled={saving}
+                maxSelections={1}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">Select a server first</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Verified Role</span>
+            {guildId ? (
+              <RoleSelector
+                guildId={guildId}
+                selected={draftConfig.welcome?.verifiedRole ? [draftConfig.welcome.verifiedRole] : []}
+                onChange={(selected) => onFieldChange('verifiedRole', selected[0] ?? null)}
+                placeholder="Select verified role..."
+                disabled={saving}
+                maxSelections={1}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">Select a server first</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Intro Channel</span>
+            {guildId ? (
+              <ChannelSelector
+                guildId={guildId}
+                selected={draftConfig.welcome?.introChannel ? [draftConfig.welcome.introChannel] : []}
+                onChange={(selected) => onFieldChange('introChannel', selected[0] ?? null)}
+                placeholder="Select intro channel..."
+                disabled={saving}
+                maxSelections={1}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">Select a server first</p>
+            )}
+          </div>
         </div>
 
         <fieldset className="space-y-2 rounded-md border p-3">
@@ -223,14 +233,17 @@ export function WelcomeSection({
           <textarea
             value={dmStepsRaw}
             onChange={(e) => {
-              onDmStepsRawChange(e.target.value);
-              const parsed = e.target.value
+              const raw = e.target.value;
+              onDmStepsRawChange(raw);
+              // Call onDmSequenceChange on every change to prevent Ctrl+S data loss
+              const parsed = raw
                 .split('\n')
                 .map((line) => line.trim())
                 .filter(Boolean);
               onDmSequenceChange('steps', parsed);
             }}
             onBlur={(e) => {
+              // Use e.currentTarget.value for consistency
               const parsed = e.currentTarget.value
                 .split('\n')
                 .map((line) => line.trim())
