@@ -366,16 +366,7 @@ client.on('shardDisconnect', (event, shardId) => {
 
 // Start bot
 const token = process.env.DISCORD_TOKEN;
-// Railway sets RAILWAY_ENVIRONMENT_NAME to the environment name (e.g., "pr-242")
-// and RAILWAY_SERVICE_NAME to the service name. We detect preview environments
-// by checking if the environment name follows the pr-N pattern.
-const railwayEnvironmentName = process.env.RAILWAY_ENVIRONMENT_NAME || '';
-const railwayEnvironmentId = process.env.RAILWAY_ENVIRONMENT || '';
-const isRailwayPreviewEnvironment =
-  !token && (/^pr-\d+$/i.test(railwayEnvironmentName) || /^pr-\d+$/i.test(railwayEnvironmentId));
-const runApiOnlyMode = process.env.BOT_API_ONLY_MODE === 'true' || isRailwayPreviewEnvironment;
-
-if (!token && !runApiOnlyMode) {
+if (!token) {
   error('DISCORD_TOKEN not set');
   process.exit(1);
 }
@@ -495,17 +486,9 @@ async function startup() {
     startGithubFeed(client);
   }
 
-  // Load commands and login (or run API-only mode in preview environments)
+  // Load commands and login
   await loadCommands();
-  if (runApiOnlyMode) {
-    warn('Running in API-only mode — Discord gateway login skipped', {
-      railwayEnvironmentName: railwayEnvironmentName || null,
-      railwayEnvironmentId: railwayEnvironmentId || null,
-      reason: process.env.BOT_API_ONLY_MODE === 'true' ? 'BOT_API_ONLY_MODE' : 'railway_preview',
-    });
-  } else {
-    await client.login(token);
-  }
+  await client.login(token);
 
   // Set Sentry context now that we know the bot identity (no-op if disabled)
   import('./sentry.js')
