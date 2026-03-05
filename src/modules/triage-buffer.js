@@ -22,6 +22,8 @@ export const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
  * @property {string} messageId - Discord message ID
  * @property {number} timestamp - Message creation timestamp (ms)
  * @property {{author: string, userId: string, content: string, messageId: string}|null} replyTo - Referenced message context
+ * @property {string|null} channelName - Discord channel name
+ * @property {string|null} channelTopic - Discord channel topic/description
  */
 
 /**

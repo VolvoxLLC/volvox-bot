@@ -49,6 +49,19 @@ export function buildConversationText(context, buffer) {
   };
 
   let text = '';
+
+  // Extract channel metadata from the first available entry
+  const allEntries = [...buffer, ...context];
+  const channelEntry = allEntries.find((m) => m.channelName);
+  if (channelEntry) {
+    text += '<channel-context>\n';
+    text += `Channel: #${channelEntry.channelName}\n`;
+    if (channelEntry.channelTopic) {
+      text += `Topic: ${channelEntry.channelTopic}\n`;
+    }
+    text += '</channel-context>\n\n';
+  }
+
   if (context.length > 0) {
     text += '<recent-history>\n';
     text += context.map(formatMsg).join('\n');
@@ -92,7 +105,6 @@ export function buildRespondPrompt(context, snapshot, classification, config, me
   const conversationText = buildConversationText(context, snapshot);
   const communityRules = loadPrompt('community-rules');
   const systemPrompt = config.ai?.systemPrompt || 'You are a helpful Discord bot.';
-  const antiAbuse = loadPrompt('anti-abuse');
   const searchGuardrails = loadPrompt('search-guardrails');
 
   return loadPrompt('triage-respond', {
@@ -103,7 +115,6 @@ export function buildRespondPrompt(context, snapshot, classification, config, me
     reasoning: classification.reasoning,
     targetMessageIds: JSON.stringify(classification.targetMessageIds),
     memoryContext: memoryContext || '',
-    antiAbuse,
     searchGuardrails,
   });
 }

@@ -102,6 +102,7 @@ import {
   startTriage,
   stopTriage,
 } from '../../src/modules/triage.js';
+import { channelBuffers } from '../../src/modules/triage-buffer.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -168,7 +169,11 @@ function makeMessage(channelId, content, extras = {}) {
   return {
     id: extras.id || 'msg-default',
     content,
-    channel: { id: channelId },
+    channel: {
+      id: channelId,
+      name: extras.channelName || 'test-channel',
+      topic: extras.channelTopic || null,
+    },
     author: { username: extras.username || 'testuser', id: extras.userId || 'u1' },
     ...extras,
   };
@@ -399,6 +404,19 @@ describe('triage module', () => {
       await evaluateNow('ch1', config, client, healthMonitor);
 
       expect(mockClassifierSend).not.toHaveBeenCalled();
+    });
+
+    it('should include channelName and channelTopic in buffer entry', () => {
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-meta',
+        channelName: 'dev-chat',
+        channelTopic: 'Development discussion',
+      });
+      accumulateMessage(msg, config);
+
+      const buf = channelBuffers.get('ch1');
+      expect(buf.messages[0]).toHaveProperty('channelName', 'dev-chat');
+      expect(buf.messages[0]).toHaveProperty('channelTopic', 'Development discussion');
     });
 
     it('should respect maxBufferSize cap', async () => {
