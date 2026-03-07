@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react';
 import { CaseTable } from '@/components/dashboard/case-table';
 import { ModerationStats } from '@/components/dashboard/moderation-stats';
 import { Button } from '@/components/ui/button';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useModerationCases } from '@/hooks/use-moderation-cases';
@@ -130,7 +131,9 @@ export default function ModerationPage() {
       {guildId && (
         <>
           {/* Stats */}
-          <ModerationStats stats={stats} loading={statsLoading} error={statsError} />
+          <ErrorBoundary title="Stats failed to load">
+            <ModerationStats stats={stats} loading={statsLoading} error={statsError} />
+          </ErrorBoundary>
 
           {/* Cases */}
           <div className="space-y-3">
