@@ -510,8 +510,10 @@ export function ConfigEditor() {
     }
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
-  // Clear undo snapshot when guild changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: guildId IS necessary - effect must re-run when guild changes
+  // Clear undo snapshot when guild changes.
+  // guildId is intentionally included so the effect re-runs on guild switch even though
+  // setPrevSavedConfig is a stable ref and biome would normally flag guildId as "extra".
+  // biome-ignore lint/correctness/useExhaustiveDependencies: guildId triggers the reset
   useEffect(() => {
     setPrevSavedConfig(null);
   }, [guildId]);
@@ -602,7 +604,7 @@ export function ConfigEditor() {
 
   // ── Section update handlers ────────────────────────────────────
   const createSectionUpdater = useCallback(
-    <K extends keyof GuildConfig>(section: K) => ({
+    <K extends GuildConfigSectionKey>(section: K) => ({
       setEnabled: (enabled: boolean) => {
         updateDraftConfig((prev) => updateSectionEnabled(prev, section, enabled));
       },
