@@ -77,102 +77,20 @@ export function TriageSection({
             className={inputClasses}
             placeholder="e.g. claude-sonnet-4-6"
           />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <NumberField
-            label="Classify Budget"
-            value={draftConfig.triage?.classifyBudget ?? 0}
-            onChange={(v) => onFieldChange('classifyBudget', v)}
-            disabled={saving}
-            step={0.01}
-            min={0}
-          />
-          <NumberField
-            label="Respond Budget"
-            value={draftConfig.triage?.respondBudget ?? 0}
-            onChange={(v) => onFieldChange('respondBudget', v)}
-            disabled={saving}
-            step={0.01}
-            min={0}
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <NumberField
-            label="Default Interval (ms)"
-            value={draftConfig.triage?.defaultInterval ?? 3000}
-            onChange={(v) => onFieldChange('defaultInterval', v)}
-            disabled={saving}
-            min={1}
-          />
-          <NumberField
-            label="Timeout (ms)"
-            value={draftConfig.triage?.timeout ?? 30000}
-            onChange={(v) => onFieldChange('timeout', v)}
-            disabled={saving}
-            min={1}
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <NumberField
-            label="Context Messages"
-            value={draftConfig.triage?.contextMessages ?? 10}
-            onChange={(v) => onFieldChange('contextMessages', v)}
-            disabled={saving}
-            min={1}
-          />
-          <NumberField
-            label="Max Buffer Size"
-            value={draftConfig.triage?.maxBufferSize ?? 30}
-            onChange={(v) => onFieldChange('maxBufferSize', v)}
-            disabled={saving}
-            min={1}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="streaming" className="text-sm font-medium">
-            Streaming
-          </Label>
-          <Switch
-            id="streaming"
-            checked={draftConfig.triage?.streaming ?? false}
-            onCheckedChange={(v) => onFieldChange('streaming', v)}
-            disabled={saving}
-            aria-label="Toggle streaming"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="moderation-response" className="text-sm font-medium">
-            Moderation Response
-          </Label>
-          <Switch
-            id="moderation-response"
-            checked={draftConfig.triage?.moderationResponse ?? false}
-            onCheckedChange={(v) => onFieldChange('moderationResponse', v)}
-            disabled={saving}
-            aria-label="Toggle moderation response"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="debug-footer" className="text-sm font-medium">
-            Debug Footer
-          </Label>
-          <Switch
-            id="debug-footer"
-            checked={draftConfig.triage?.debugFooter ?? false}
-            onCheckedChange={(v) => onFieldChange('debugFooter', v)}
-            disabled={saving}
-            aria-label="Toggle debug footer"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="moderation-log-channel">Moderation Log Channel</Label>
-          {guildId ? (
-            <ChannelSelector
-              id="moderation-log-channel"
-              guildId={guildId}
-              selected={selectedChannels}
-              onChange={handleChannelChange}
-              placeholder="Select moderation log channel..."
+        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <label htmlFor="classify-budget" className="space-y-2">
+            <span className="text-sm font-medium">Classify Budget</span>
+            <input
+              id="classify-budget"
+              type="number"
+              step="0.01"
+              min={0}
+              value={draftConfig.triage?.classifyBudget ?? 0}
+              onChange={(e) => {
+                const num = parseNumberInput(e.target.value, 0);
+                if (num !== undefined) onFieldChange('classifyBudget', num);
+              }}
               disabled={saving}
               className={inputClasses}
             />
