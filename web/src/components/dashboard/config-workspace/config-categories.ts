@@ -385,12 +385,12 @@ export function getCategoryByFeature(featureId: ConfigFeatureId): ConfigCategory
 }
 
 /**
- * Finds configuration search items that match a text query.
+ * Find configuration search items that match a text query.
  *
  * The query is trimmed and matched case-insensitively against each item's label, description, and keywords.
  *
  * @param query - The search text to match (leading/trailing whitespace is ignored)
- * @returns An array of ConfigSearchItem objects whose label, description, or keywords include the query
+ * @returns The matching search items
  */
 export function getMatchingSearchItems(query: string): ConfigSearchItem[] {
   const normalized = query.trim().toLowerCase();
@@ -403,10 +403,10 @@ export function getMatchingSearchItems(query: string): ConfigSearchItem[] {
 }
 
 /**
- * Finds feature IDs for configuration items that match a search query.
+ * Collects feature IDs from configuration search items that match a query.
  *
  * @param query - The search string used to match item labels, descriptions, and keywords
- * @returns A `Set` of feature IDs for configuration search items that match `query`
+ * @returns A Set of feature IDs corresponding to configuration search items that match `query`
  */
 export function getMatchedFeatureIds(query: string): Set<ConfigFeatureId> {
   const matches = getMatchingSearchItems(query);
