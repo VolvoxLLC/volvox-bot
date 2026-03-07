@@ -17,7 +17,9 @@ const router = Router();
 const warningsRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
 /**
- * Middleware: adapt query param guildId to path param for requireGuildModerator.
+ * Copy the `guildId` query value into `req.params.id` so downstream handlers can read it.
+ *
+ * If `req.query.guildId` is present, sets `req.params.id` to that value, then calls `next()`.
  */
 function adaptGuildIdParam(req, _res, next) {
   if (req.query.guildId) {

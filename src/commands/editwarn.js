@@ -33,8 +33,8 @@ export const data = new SlashCommandBuilder()
 export const moderatorOnly = true;
 
 /**
- * Execute the editwarn command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Handle the /editwarn slash command to update an existing warning's reason and/or severity.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction invoking the edit.
  */
 export async function execute(interaction) {
   try {

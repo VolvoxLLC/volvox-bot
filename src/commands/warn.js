@@ -33,8 +33,11 @@ export const data = new SlashCommandBuilder()
 export const moderatorOnly = true;
 
 /**
- * Execute the warn command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Issue a warning to a guild member, record a moderation case and warning, and trigger escalation checks.
+ *
+ * Creates a moderation case via the standardized moderation flow, persists a linked warning record (including severity),
+ * and invokes escalation logic based on active warnings.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction that invoked the warn command.
  */
 export async function execute(interaction) {
   await executeModAction(interaction, {

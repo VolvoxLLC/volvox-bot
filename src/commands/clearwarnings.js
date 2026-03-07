@@ -21,8 +21,14 @@ export const data = new SlashCommandBuilder()
 export const moderatorOnly = true;
 
 /**
- * Execute the clearwarnings command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Clears all active warnings for the specified guild member and replies to the interaction with the result.
+ *
+ * Reads the `user` and optional `reason` options from the command, records the moderator as the invoking user,
+ * deactivates the user's active warnings in the guild, logs the event on success, and edits the deferred reply
+ * to indicate whether warnings were cleared or if no active warnings were found. On error, logs the error and
+ * replies with a failure message.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The interaction that invoked the command.
  */
 export async function execute(interaction) {
   try {
