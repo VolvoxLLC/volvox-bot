@@ -77,7 +77,7 @@ export function percentToDecimal(percent: number): number {
  * @returns Percentage value rounded to nearest integer
  */
 export function decimalToPercent(decimal: number): number {
-  return Math.round(decimal * 100);
+  return Math.min(100, Math.max(0, Math.round(decimal * 100)));
 }
 
 /**
