@@ -381,16 +381,22 @@ describe('config-updates', () => {
 
   it('updateSectionEnabled toggles section enabled state', async () => {
     const { updateSectionEnabled } = await import('@/lib/config-updates');
-    const result = updateSectionEnabled(baseConfig, 'ai', true);
+    const source = { ...baseConfig, ai: { ...baseConfig.ai } };
+    const result = updateSectionEnabled(source, 'ai', true);
     expect(result.ai?.enabled).toBe(true);
     expect(result.welcome?.enabled).toBe(false);
+    // Source must not be mutated
+    expect(source.ai?.enabled).toBe(false);
   });
 
   it('updateSectionField updates specific field', async () => {
     const { updateSectionField } = await import('@/lib/config-updates');
-    const result = updateSectionField(baseConfig, 'ai', 'systemPrompt', 'Hello');
+    const source = { ...baseConfig, ai: { ...baseConfig.ai } };
+    const result = updateSectionField(source, 'ai', 'systemPrompt', 'Hello');
     expect(result.ai?.systemPrompt).toBe('Hello');
     expect(result.ai?.enabled).toBe(false);
+    // Source must not be mutated
+    expect(source.ai?.systemPrompt).toBe('');
   });
 
   it('updateNestedField updates nested object fields', async () => {
@@ -404,5 +410,7 @@ describe('config-updates', () => {
     };
     const result = updateNestedField(configWithNested, 'moderation', 'rateLimit', 'maxMessages', 20);
     expect((result.moderation as { rateLimit?: { maxMessages?: number } })?.rateLimit?.maxMessages).toBe(20);
+    // Source must not be mutated
+    expect((configWithNested.moderation as { rateLimit?: { maxMessages?: number } }).rateLimit?.maxMessages).toBe(10);
   });
 });
