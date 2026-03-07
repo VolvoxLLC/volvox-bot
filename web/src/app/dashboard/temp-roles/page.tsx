@@ -202,7 +202,7 @@ export default function TempRolesPage() {
           {loading && rows.length === 0 ? (
             <div className="divide-y">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <div key={`skeleton-${i}`} className="flex items-center gap-4 px-4 py-3">
                   <Skeleton className="h-4 w-28" />
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-4 w-20" />

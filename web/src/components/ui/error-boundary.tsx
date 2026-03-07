@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 
 interface ErrorBoundaryProps {
   /** Content to render when there is no error. */
@@ -45,8 +46,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Log to console in dev; in prod this surfaces in your error monitoring
-    console.error('[ErrorBoundary] Caught error:', error, info.componentStack);
+    logger.error('[ErrorBoundary] Caught error:', error, info.componentStack);
   }
 
   reset = () => {
@@ -71,8 +71,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </div>
               <CardTitle className="text-xl">{title ?? 'Something went wrong'}</CardTitle>
               <CardDescription>
-                {description ??
-                  'An unexpected error occurred. Try again or refresh the page.'}
+                {description ?? 'An unexpected error occurred. Try again or refresh the page.'}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-3">

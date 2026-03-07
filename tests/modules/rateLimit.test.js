@@ -681,7 +681,10 @@ describe('stale entry cleanup (interval sweep)', () => {
         bot: false,
       },
       channel: { id: 'chan-stale', type: 0 },
-      guild: { id: 'guild-stale', members: { me: { permissions: { has: vi.fn().mockReturnValue(false) } } } },
+      guild: {
+        id: 'guild-stale',
+        members: { me: { permissions: { has: vi.fn().mockReturnValue(false) } } },
+      },
       member: {
         permissions: { has: vi.fn().mockReturnValue(false) },
         roles: { cache: { some: vi.fn().mockReturnValue(false) } },

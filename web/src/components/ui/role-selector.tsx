@@ -192,7 +192,7 @@ export function RoleSelector({
                 {loading ? (
                   <div className="flex flex-col gap-2 p-2">
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-2 px-1">
+                      <div key={`skeleton-${i}`} className="flex items-center gap-2 px-1">
                         <Skeleton className="h-3 w-3 rounded-full" />
                         <Skeleton className="h-4 flex-1" />
                       </div>

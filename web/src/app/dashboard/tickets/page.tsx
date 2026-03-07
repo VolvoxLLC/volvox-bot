@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -21,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
 function TicketsSkeleton() {
@@ -40,7 +40,7 @@ function TicketsSkeleton() {
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
-            <TableRow key={i}>
+            <TableRow key={`skeleton-${i}`}>
               <TableCell>
                 <Skeleton className="h-4 w-8" />
               </TableCell>

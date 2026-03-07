@@ -79,7 +79,7 @@ function AuditLogSkeleton() {
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
-            <TableRow key={i}>
+            <TableRow key={`skeleton-${i}`}>
               <TableCell className="w-10 px-2">
                 <Skeleton className="h-4 w-4" />
               </TableCell>
