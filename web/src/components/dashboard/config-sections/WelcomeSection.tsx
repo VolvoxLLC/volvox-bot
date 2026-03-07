@@ -157,7 +157,10 @@ export function WelcomeSection({
           </div>
           <div className="space-y-3">
             {roleMenuOptions.map((opt, i) => (
-              <div key={opt.id} className="flex flex-col gap-2 rounded-md border p-2">
+              <div
+                key={opt.id ?? `role-option-${i}`}
+                className="flex flex-col gap-2 rounded-md border p-2"
+              >
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -175,7 +178,9 @@ export function WelcomeSection({
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      const opts = roleMenuOptions.filter((o) => o.id !== opt.id);
+                      const opts = opt.id
+                        ? roleMenuOptions.filter((o) => o.id !== opt.id)
+                        : roleMenuOptions.filter((_, idx) => idx !== i);
                       onRoleMenuChange('options', opts);
                     }}
                     disabled={saving}

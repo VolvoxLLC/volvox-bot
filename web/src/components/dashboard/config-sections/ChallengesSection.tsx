@@ -72,9 +72,10 @@ export function ChallengesSection({
               placeholder="09:00"
             />
           </label>
-          <label className="space-y-2 col-span-2">
+          <label htmlFor="challenge-timezone" className="space-y-2 col-span-2">
             <span className="text-sm font-medium">Timezone</span>
             <input
+              id="challenge-timezone"
               type="text"
               value={draftConfig.challenges?.timezone ?? 'America/New_York'}
               onChange={(e) => onFieldChange('timezone', e.target.value)}

@@ -40,7 +40,7 @@ export function GitHubSection({ draftConfig, saving, onFieldChange }: GitHubSect
             label="GitHub Feed"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label htmlFor="feed-channel-id" className="space-y-2">
             <span className="text-sm font-medium">Feed Channel ID</span>
             <input

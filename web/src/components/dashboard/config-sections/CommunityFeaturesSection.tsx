@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import type { GuildConfig } from '@/lib/config-utils';
+import type { ToggleSectionConfig } from '@/types/config';
 import { ToggleSwitch } from '../toggle-switch';
 
 interface CommunityFeaturesSectionProps {
@@ -66,7 +67,7 @@ export function CommunityFeaturesSection({
             </div>
             <ToggleSwitch
               checked={
-                (draftConfig[key as keyof GuildConfig] as { enabled?: boolean } | undefined)
+                (draftConfig[key as keyof GuildConfig] as ToggleSectionConfig | undefined)
                   ?.enabled ?? false
               }
               onChange={(v) => onToggleChange(key, v)}

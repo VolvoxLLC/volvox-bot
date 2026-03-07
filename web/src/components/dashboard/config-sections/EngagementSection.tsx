@@ -74,6 +74,7 @@ export function EngagementSection({
                 onActivityBadgesChange(newBadges);
               }}
               disabled={saving || badges.length <= 1}
+              aria-label={`Remove badge ${badge.label || i + 1}`}
             >
               ✕
             </Button>

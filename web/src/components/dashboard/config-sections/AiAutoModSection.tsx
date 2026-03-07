@@ -90,12 +90,15 @@ export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoM
                 step={5}
                 value={decimalToPercent(thresholds[cat] ?? 0.7)}
                 onChange={(e) => {
-                  const raw = Number(e.target.value);
-                  const v = percentToDecimal(raw);
-                  onFieldChange('thresholds', {
-                    ...thresholds,
-                    [cat]: v,
-                  });
+                  const val = e.target.value;
+                  if (val === '') return; // don't write 0 while user is clearing
+                  const parsed = Number(val);
+                  if (!Number.isNaN(parsed)) {
+                    onFieldChange('thresholds', {
+                      ...thresholds,
+                      [cat]: percentToDecimal(parsed),
+                    });
+                  }
                 }}
                 disabled={saving}
                 className={`${inputClasses} w-24`}

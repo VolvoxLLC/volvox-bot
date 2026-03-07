@@ -66,7 +66,7 @@ export function TicketsSection({
             permission overrides.
           </p>
         </label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label htmlFor="support-role-id" className="space-y-2">
             <span className="text-sm font-medium">Support Role ID</span>
             <input

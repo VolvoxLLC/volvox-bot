@@ -52,7 +52,7 @@ export function ReputationSection({
             label="Reputation"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label htmlFor="xp-per-message-min" className="space-y-2">
             <span className="text-sm font-medium">XP per Message (min)</span>
             <input
@@ -133,7 +133,8 @@ export function ReputationSection({
                 .filter((n) => Number.isFinite(n) && n > 0);
               if (nums.length > 0) {
                 const sorted = [...nums].sort((a, b) => a - b);
-                onFieldChange('levelThresholds', sorted);
+                const deduped = sorted.filter((t, i, arr) => i === 0 || t !== arr[i - 1]);
+                onFieldChange('levelThresholds', deduped);
               }
             }}
             disabled={saving}
