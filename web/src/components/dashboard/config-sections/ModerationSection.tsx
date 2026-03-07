@@ -20,7 +20,7 @@ interface ModerationSectionProps {
   onRateLimitChange: (field: string, value: unknown) => void;
   onLinkFilterChange: (field: string, value: unknown) => void;
   onProtectRolesChange: (field: string, value: unknown) => void;
-  onWarningsChange?: (field: string, value: unknown) => void;
+  onProtectRoleIdsRawChange: (value: string) => void;
 }
 
 /** Shared input styling for text inputs. */
@@ -28,17 +28,11 @@ const inputClasses =
   'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * Render the Moderation settings card with controls for alert channel, auto-delete, DM notifications, escalation, protected roles, and the warning system.
+ * Moderation configuration section.
  *
- * @param draftConfig - Current draft guild configuration containing moderation settings.
- * @param saving - When true, interactive controls are disabled while a save is in progress.
- * @param onEnabledChange - Called with the new moderation enabled state.
- * @param onFieldChange - Generic field updater called with a field name (e.g., 'alertChannelId', 'autoDelete') and its new value.
- * @param onDmNotificationChange - Called with an action ('warn' | 'timeout' | 'kick' | 'ban') and a boolean to toggle DM notifications for that action.
- * @param onEscalationChange - Called with the new escalation enabled state.
- * @param onProtectRolesChange - Field updater for protect-roles settings (fields include 'enabled', 'includeAdmins', 'includeModerators', 'includeServerOwner', 'roleIds').
- * @param onWarningsChange - Optional field updater for warning-system settings (fields include 'dmNotification', 'expiryDays', 'maxPerPage', 'severityPoints').
- * @returns The rendered moderation Card element, or `null` if `draftConfig.moderation` is not present.
+ * Provides controls for moderation settings including alert channels,
+ * auto-delete, DM notifications, escalation, rate limiting, link filtering,
+ * and protected roles.
  */
 export function ModerationSection({
   draftConfig,
@@ -52,7 +46,7 @@ export function ModerationSection({
   onRateLimitChange,
   onLinkFilterChange,
   onProtectRolesChange,
-  onWarningsChange,
+  onProtectRoleIdsRawChange,
 }: ModerationSectionProps) {
   // Local state for blocked domains raw input (parsed on blur)
   // Must be before early return to satisfy React hooks rules
@@ -339,81 +333,6 @@ export function ModerationSection({
               disabled={saving}
               placeholder="Role ID 1, Role ID 2"
             />
-          </div>
-        </fieldset>
-        {/* Warning System Settings */}
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-medium">Warning System</legend>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="warn-expiry" className="text-sm text-muted-foreground">
-                Warning expiry (days, 0 = never)
-              </Label>
-              <Input
-                id="warn-expiry"
-                type="number"
-                min={0}
-                placeholder="90 (0 = never)"
-                value={
-                  draftConfig.moderation?.warnings?.expiryDays === null
-                    ? 0
-                    : (draftConfig.moderation?.warnings?.expiryDays ?? 90)
-                }
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  onWarningsChange?.('expiryDays', Number.isNaN(val) || val <= 0 ? null : val);
-                }}
-                disabled={saving}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="warn-max-page" className="text-sm text-muted-foreground">
-                Warnings per page
-              </Label>
-              <Input
-                id="warn-max-page"
-                type="number"
-                min={1}
-                max={25}
-                value={draftConfig.moderation?.warnings?.maxPerPage ?? 10}
-                onChange={(e) => {
-                  const val = Math.max(1, Math.min(25, parseInt(e.target.value, 10) || 10));
-                  onWarningsChange?.('maxPerPage', val);
-                }}
-                disabled={saving}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Severity Points</Label>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-              {(['low', 'medium', 'high'] as const).map((level) => (
-                <div key={level} className="space-y-1">
-                  <Label htmlFor={`severity-${level}`} className="text-xs capitalize">
-                    {level}
-                  </Label>
-                  <Input
-                    id={`severity-${level}`}
-                    type="number"
-                    min={1}
-                    value={
-                      draftConfig.moderation?.warnings?.severityPoints?.[level] ??
-                      { low: 1, medium: 2, high: 3 }[level]
-                    }
-                    onChange={(e) => {
-                      const val = Math.max(1, parseInt(e.target.value, 10) || 1);
-                      const current = draftConfig.moderation?.warnings?.severityPoints ?? {
-                        low: 1,
-                        medium: 2,
-                        high: 3,
-                      };
-                      onWarningsChange?.('severityPoints', { ...current, [level]: val });
-                    }}
-                    disabled={saving}
-                  />
-                </div>
-              ))}
-            </div>
           </div>
         </fieldset>
       </CardContent>
