@@ -37,8 +37,35 @@ export async function POST(
 
   let body: string;
   try {
-    const json = await request.json();
-    body = JSON.stringify(json);
+    const json: unknown = await request.json();
+
+    // Validate payload shape before forwarding (defense-in-depth)
+    if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+      return NextResponse.json({ error: 'Body must be a JSON object' }, { status: 400 });
+    }
+    const payload = json as Record<string, unknown>;
+
+    if (!('amount' in payload)) {
+      return NextResponse.json({ error: 'Missing required field: amount' }, { status: 400 });
+    }
+    if (typeof payload.amount !== 'number' || !Number.isFinite(payload.amount)) {
+      return NextResponse.json(
+        { error: 'Field "amount" must be a finite number' },
+        { status: 400 },
+      );
+    }
+    if ('reason' in payload && payload.reason !== undefined && typeof payload.reason !== 'string') {
+      return NextResponse.json(
+        { error: 'Field "reason" must be a string when provided' },
+        { status: 400 },
+      );
+    }
+
+    // Only forward the known fields — strip unknown keys
+    const sanitized: { amount: number; reason?: string } = { amount: payload.amount as number };
+    if (typeof payload.reason === 'string') sanitized.reason = payload.reason;
+
+    body = JSON.stringify(sanitized);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
