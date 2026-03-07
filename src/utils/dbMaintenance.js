@@ -9,6 +9,8 @@
  */
 
 import { info, error as logError, warn } from '../logger.js';
+import { getConfig } from '../modules/config.js';
+import { purgeOldAuditLogs } from '../modules/auditLogger.js';
 
 /** Track optional tables we've already warned about to avoid hourly log spam */
 const warnedMissingOptionalTables = new Set();
@@ -138,11 +140,15 @@ async function purgeStaleRateLimits(pool) {
 export async function runMaintenance(pool) {
   info('DB maintenance: starting routine cleanup', { source: 'db_maintenance' });
 
+  // Resolve audit log retention from config (default: 90 days)
+  const auditRetentionDays = getConfig()?.auditLog?.retentionDays ?? 90;
+
   try {
     await Promise.all([
       purgeOldTickets(pool),
       purgeExpiredSessions(pool),
       purgeStaleRateLimits(pool),
+      purgeOldAuditLogs(pool, auditRetentionDays),
     ]);
     info('DB maintenance: cleanup complete', { source: 'db_maintenance' });
   } catch (err) {

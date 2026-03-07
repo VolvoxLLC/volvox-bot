@@ -7,6 +7,17 @@ vi.mock('../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+// Mock config to return a stable auditLog retention value
+vi.mock('../../src/modules/config.js', () => ({
+  getConfig: vi.fn().mockReturnValue({ auditLog: { enabled: true, retentionDays: 90 } }),
+}));
+
+// Mock purgeOldAuditLogs so dbMaintenance tests stay focused on ticket/session/rate-limit logic.
+// The auditLogger module has its own dedicated test suite.
+vi.mock('../../src/modules/auditLogger.js', () => ({
+  purgeOldAuditLogs: vi.fn().mockResolvedValue(0),
+}));
+
 describe('runMaintenance', () => {
   let runMaintenance;
   let mockPool;
@@ -31,7 +42,7 @@ describe('runMaintenance', () => {
 
   it('runs all three maintenance tasks without throwing', async () => {
     await expect(runMaintenance(mockPool)).resolves.toBeUndefined();
-    // tickets, sessions, rate_limits — 3 queries total
+    // tickets, sessions, rate_limits — 3 queries total (auditLogger is mocked separately)
     expect(mockPool.query).toHaveBeenCalledTimes(3);
   });
 
@@ -190,6 +201,8 @@ describe('runMaintenance', () => {
       mockPool.query.mockRejectedValue(tableError);
 
       await expect(runMaintenance(mockPool)).resolves.toBeUndefined();
+      // tickets warn + sessions warn-once + rate_limits warn-once = 3
+      // (auditLogger.purgeOldAuditLogs is mocked at module level)
       expect(logger.warn).toHaveBeenCalledTimes(3);
     });
   });
