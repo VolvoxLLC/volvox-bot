@@ -545,6 +545,15 @@ export function ConfigEditor() {
     toast.info('Reverted to previous saved state. Save again to apply.');
   }, [prevSavedConfig, guildId]);
 
+  // ── Auto-dismiss "Undo last save" button after 30 s ───────────
+  useEffect(() => {
+    if (!prevSavedConfig) return;
+    const timer = window.setTimeout(() => {
+      setPrevSavedConfig(null);
+    }, 30_000);
+    return () => window.clearTimeout(timer);
+  }, [prevSavedConfig]);
+
   // ── Keyboard shortcut: Ctrl/Cmd+S → open diff preview ─────────
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
