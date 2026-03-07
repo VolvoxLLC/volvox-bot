@@ -214,11 +214,17 @@ export async function sendDmNotification(member, action, reason, guildName) {
 }
 
 /**
- * Send a mod log embed to the configured channel.
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} config - Bot configuration
- * @param {Object} caseData - Case data from createCase()
- * @returns {Promise<import('discord.js').Message|null>} Sent message or null
+ * Post a moderation log embed for a case to the configured logging channel.
+ *
+ * Attempts to send an embed describing the case to the channel determined by
+ * the moderation logging configuration. On successful send it records the
+ * sent message's ID on the case row (logging any storage failures) and returns
+ * the sent message; if sending or channel resolution fails, returns `null`.
+ *
+ * @param {import('discord.js').Client} client - Discord client instance used to resolve channels.
+ * @param {Object} config - Bot configuration object containing moderation.logging.channels.
+ * @param {Object} caseData - Case object returned by createCase(), including at least `id`, `case_number`, `action`, `target_id`, `target_tag`, `moderator_id`, `moderator_tag`, and optional `reason`, `duration`, `created_at`.
+ * @returns {import('discord.js').Message|null} The sent log message if delivered, `null` if no message was sent.
  */
 export async function sendModLogEmbed(client, config, caseData) {
   const channels = config.moderation?.logging?.channels;

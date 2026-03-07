@@ -279,8 +279,8 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 /**
- * Perform an orderly shutdown: stop background services, persist in-memory state, remove logging transport, close the database pool, disconnect the Discord client, and exit the process.
- * @param {string} signal - The signal name that initiated shutdown (e.g., "SIGINT", "SIGTERM").
+ * Perform an orderly shutdown of the bot: stop background services, persist runtime state, close external resources, and exit the process.
+ * @param {string} signal - The OS signal that triggered shutdown (e.g., "SIGINT" or "SIGTERM").
  */
 async function gracefulShutdown(signal) {
   info('Shutdown initiated', { signal });

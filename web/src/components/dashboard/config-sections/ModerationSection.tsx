@@ -21,15 +21,16 @@ interface ModerationSectionProps {
 }
 
 /**
- * Render the Moderation settings section, including alert channel selection, auto-delete,
- * DM notification toggles, and escalation controls.
+ * Render the Moderation settings card with controls for alert channel, auto-delete, DM notifications, escalation, protected roles, and the warning system.
  *
- * @param draftConfig - The current draft guild configuration containing moderation settings.
- * @param saving - Whether a save operation is in progress; when true, interactive controls are disabled.
- * @param onEnabledChange - Callback invoked with the new enabled state when moderation is toggled.
- * @param onFieldChange - Generic field update callback, called with field name and new value (e.g., 'alertChannelId', 'autoDelete').
- * @param onDmNotificationChange - Callback invoked with an action ('warn' | 'timeout' | 'kick' | 'ban') and boolean to toggle DM notifications for that action.
- * @param onEscalationChange - Callback invoked with the new escalation enabled state.
+ * @param draftConfig - Current draft guild configuration containing moderation settings.
+ * @param saving - When true, interactive controls are disabled while a save is in progress.
+ * @param onEnabledChange - Called with the new moderation enabled state.
+ * @param onFieldChange - Generic field updater called with a field name (e.g., 'alertChannelId', 'autoDelete') and its new value.
+ * @param onDmNotificationChange - Called with an action ('warn' | 'timeout' | 'kick' | 'ban') and a boolean to toggle DM notifications for that action.
+ * @param onEscalationChange - Called with the new escalation enabled state.
+ * @param onProtectRolesChange - Field updater for protect-roles settings (fields include 'enabled', 'includeAdmins', 'includeModerators', 'includeServerOwner', 'roleIds').
+ * @param onWarningsChange - Optional field updater for warning-system settings (fields include 'dmNotification', 'expiryDays', 'maxPerPage', 'severityPoints').
  * @returns The rendered moderation Card element, or `null` if `draftConfig.moderation` is not present.
  */
 export function ModerationSection({

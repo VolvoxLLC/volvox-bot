@@ -21,14 +21,10 @@ export const data = new SlashCommandBuilder()
 export const moderatorOnly = true;
 
 /**
- * Clears all active warnings for the specified guild member and replies to the interaction with the result.
+ * Deactivates all active warnings for the specified guild member and responds to the invoking interaction.
  *
- * Reads the `user` and optional `reason` options from the command, records the moderator as the invoking user,
- * deactivates the user's active warnings in the guild, logs the event on success, and edits the deferred reply
- * to indicate whether warnings were cleared or if no active warnings were found. On error, logs the error and
- * replies with a failure message.
- *
- * @param {import('discord.js').ChatInputCommandInteraction} interaction - The interaction that invoked the command.
+ * Edits the deferred reply to report whether no active warnings were found or how many were cleared, logs the successful action, and on error logs the failure and replies with a failure message.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The invoking command interaction.
  */
 export async function execute(interaction) {
   try {
