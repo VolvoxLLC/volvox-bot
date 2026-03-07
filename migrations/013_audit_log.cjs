@@ -53,17 +53,21 @@ exports.up = (pgm) => {
       notNull: true,
       default: pgm.func('NOW()'),
     },
+  }, {
+    ifNotExists: true,
   });
 
   // Primary access pattern: guild's audit log ordered by recency
   pgm.createIndex('audit_logs', ['guild_id', 'created_at'], {
     name: 'idx_audit_logs_guild_created',
     order: { created_at: 'DESC' },
+    ifNotExists: true,
   });
 
   // Filter by admin user within a guild
   pgm.createIndex('audit_logs', ['guild_id', 'user_id'], {
     name: 'idx_audit_logs_guild_user',
+    ifNotExists: true,
   });
 };
 
