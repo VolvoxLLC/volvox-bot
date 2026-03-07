@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { FeatureGrid, Footer, Hero, InviteButton, Pricing, Stats } from '@/components/landing';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Button } from '@/components/ui/button';
 
 export default function LandingPage() {
