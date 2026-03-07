@@ -139,8 +139,8 @@ router.get('/', statsRateLimit, async (req, res) => {
     res.json(stats);
   } catch (err) {
     logError('Failed to fetch bot stats', { error: err.message });
-    // Graceful fallback — return at minimum the uptime
-    res.json({
+    // Return 503 so clients can detect failure rather than silently showing stale zeros
+    res.status(503).json({
       servers: 0,
       members: 0,
       commandsServed: 0,

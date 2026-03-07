@@ -226,6 +226,27 @@ describe('GET /api/v1/stats', () => {
     });
   });
 
+  describe('error fallback', () => {
+    it('returns 503 with zero-filled payload when cacheGetOrSet throws', async () => {
+      cacheGetOrSetImpl = vi.fn().mockRejectedValue(new Error('Redis connection lost'));
+
+      const client = buildClient([buildGuild('g1', 50)]);
+      app = createApp(client, buildPool());
+
+      const res = await request(app).get('/api/v1/stats').expect(503);
+
+      expect(res.body).toMatchObject({
+        servers: 0,
+        members: 0,
+        commandsServed: 0,
+        activeConversations: 0,
+        messagesProcessed: 0,
+        cachedAt: expect.any(String),
+      });
+      expect(res.body.uptime).toBeGreaterThan(0);
+    });
+  });
+
   describe('rate limiting', () => {
     it('applies rate limiter middleware with correct options (verified by behavior)', async () => {
       // The middleware is applied at module load time before any test runs;
