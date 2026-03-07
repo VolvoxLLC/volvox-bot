@@ -548,11 +548,23 @@ export function ConfigEditor() {
   // ── Keyboard shortcut: Ctrl/Cmd+S → open diff preview ─────────
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        if (hasChanges && !saving && !hasValidationErrors) {
-          openDiffModal();
-        }
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 's') return;
+
+      // Don't intercept the browser's native save when the user is typing in a
+      // form field — e.g. if they genuinely want to save a <textarea> selection
+      // via the OS, or simply don't expect a config-save to fire mid-edit.
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable;
+
+      if (isTyping) return;
+
+      e.preventDefault();
+      if (hasChanges && !saving && !hasValidationErrors) {
+        openDiffModal();
       }
     }
     window.addEventListener('keydown', onKeyDown);
