@@ -2,7 +2,7 @@
 
 import { RefreshCw, Search, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   type MemberRow,
   MemberTable,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { useMembersStore } from '@/stores/members-store';
 
 interface MembersApiResponse {
   members: MemberRow[];
@@ -32,20 +33,34 @@ interface MembersApiResponse {
 export default function MembersPage() {
   const router = useRouter();
 
-  const [members, setMembers] = useState<MemberRow[]>([]);
-  const [nextAfter, setNextAfter] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
-  const [filteredTotal, setFilteredTotal] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [search, setSearch] = useState('');
-  const [sortColumn, setSortColumn] = useState<SortColumn>('xp');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const {
+    members,
+    nextAfter,
+    total,
+    filteredTotal,
+    loading,
+    error,
+    search,
+    debouncedSearch,
+    sortColumn,
+    sortOrder,
+    setMembers,
+    appendMembers,
+    setNextAfter,
+    setTotal,
+    setFilteredTotal,
+    setLoading,
+    setError,
+    setSearch,
+    setDebouncedSearch,
+    setSortColumn,
+    setSortOrder,
+    resetPagination,
+    resetAll,
+  } = useMembersStore();
 
   // Debounce search
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // AbortController and request sequencing to prevent stale responses
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -57,7 +72,7 @@ export default function MembersPage() {
       setDebouncedSearch(search);
     }, 300);
     return () => clearTimeout(searchTimerRef.current);
-  }, [search]);
+  }, [search, setDebouncedSearch]);
 
   // Abort in-flight request on unmount
   useEffect(() => {
@@ -67,12 +82,8 @@ export default function MembersPage() {
   }, []);
 
   const onGuildChange = useCallback(() => {
-    setMembers([]);
-    setNextAfter(null);
-    setTotal(0);
-    setFilteredTotal(null);
-    setError(null);
-  }, []);
+    resetAll();
+  }, [resetAll]);
 
   const guildId = useGuildSelection({ onGuildChange });
 
@@ -122,7 +133,7 @@ export default function MembersPage() {
         }
         const data = (await res.json()) as MembersApiResponse;
         if (opts.append) {
-          setMembers((prev) => [...prev, ...data.members]);
+          appendMembers(data.members);
         } else {
           setMembers(data.members);
         }
@@ -142,7 +153,16 @@ export default function MembersPage() {
         }
       }
     },
-    [onUnauthorized],
+    [
+      onUnauthorized,
+      appendMembers,
+      setMembers,
+      setNextAfter,
+      setTotal,
+      setFilteredTotal,
+      setLoading,
+      setError,
+    ],
   );
 
   // Fetch on guild/search/sort change
@@ -161,15 +181,14 @@ export default function MembersPage() {
   const handleSort = useCallback(
     (col: SortColumn) => {
       if (col === sortColumn) {
-        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
       } else {
         setSortColumn(col);
         setSortOrder('desc');
       }
-      setMembers([]);
-      setNextAfter(null);
+      resetPagination();
     },
-    [sortColumn],
+    [sortColumn, sortOrder, setSortColumn, setSortOrder, resetPagination],
   );
 
   const handleLoadMore = useCallback(() => {
@@ -186,8 +205,7 @@ export default function MembersPage() {
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
-    setMembers([]);
-    setNextAfter(null);
+    resetPagination();
     void fetchMembers({
       guildId,
       search: debouncedSearch,
@@ -196,7 +214,7 @@ export default function MembersPage() {
       after: null,
       append: false,
     });
-  }, [guildId, fetchMembers, debouncedSearch, sortColumn, sortOrder]);
+  }, [guildId, fetchMembers, debouncedSearch, sortColumn, sortOrder, resetPagination]);
 
   const handleRowClick = useCallback(
     (userId: string) => {
@@ -209,7 +227,7 @@ export default function MembersPage() {
   const handleClearSearch = useCallback(() => {
     setSearch('');
     setDebouncedSearch('');
-  }, []);
+  }, [setSearch, setDebouncedSearch]);
 
   return (
     <div className="space-y-6">
