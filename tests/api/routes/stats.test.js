@@ -250,13 +250,12 @@ describe('GET /api/v1/stats', () => {
       // Re-import the router to pick up the new mock
       vi.resetModules();
 
-      // Build fresh router after reset
+      // Build fresh router after reset — inline middleware matches production code
       const { Router } = await import('express');
       const r = Router();
       const { redisRateLimit: rl } = await import('../../../src/api/middleware/redisRateLimit.js');
       const limiter = rl({ windowMs: 60_000, max: 30, keyPrefix: 'rl:stats' });
-      r.use(limiter);
-      r.get('/', (_req, res) => res.json({ ok: true }));
+      r.get('/', limiter, (_req, res) => res.json({ ok: true }));
 
       const express = (await import('express')).default;
       const testApp = express();

@@ -20,8 +20,6 @@ const statsRateLimit = redisRateLimit({
   max: 30,
   keyPrefix: 'rl:stats',
 });
-router.use(statsRateLimit);
-
 /**
  * Query a count from a DB table, returning 0 if the table doesn't exist or query fails.
  *
@@ -85,7 +83,7 @@ async function safeCount(pool, table) {
  *       "500":
  *         $ref: "#/components/responses/ServerError"
  */
-router.get('/', async (req, res) => {
+router.get('/', statsRateLimit, async (req, res) => {
   const { client, dbPool: pool } = req.app.locals;
 
   try {
