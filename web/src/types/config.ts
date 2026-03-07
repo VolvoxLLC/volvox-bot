@@ -304,6 +304,14 @@ export interface ChallengesConfig extends ToggleSectionConfig {
 }
 
 /** Full bot config response from GET /api/guilds/:id/config. */
+/** Audit log configuration. */
+export interface AuditLogConfig {
+  /** Whether automatic audit logging is enabled for this guild. */
+  enabled: boolean;
+  /** How many days to retain audit log entries (0 = keep forever). */
+  retentionDays: number;
+}
+
 export interface BotConfig {
   guildId: string;
   ai: AiConfig;
@@ -330,6 +338,7 @@ export interface BotConfig {
   review?: ReviewConfig;
   challenges?: ChallengesConfig;
   tickets?: TicketsConfig;
+  auditLog?: AuditLogConfig;
 }
 
 /** All config sections shown in the editor. */
@@ -354,7 +363,8 @@ export type ConfigSection =
   | 'github'
   | 'review'
   | 'challenges'
-  | 'tickets';
+  | 'tickets'
+  | 'auditLog';
 
 /**
  * @deprecated Use {@link ConfigSection} directly.

@@ -26,9 +26,9 @@ export const CONFIG_CATEGORIES: ConfigCategoryMeta[] = [
     id: 'moderation-safety',
     icon: 'message-square-warning',
     label: 'Moderation & Safety',
-    description: 'Moderation actions, starboard policy, and role permissions.',
-    sectionKeys: ['moderation', 'starboard', 'permissions'],
-    featureIds: ['moderation', 'starboard', 'permissions'],
+    description: 'Moderation actions, starboard policy, role permissions, and audit logging.',
+    sectionKeys: ['moderation', 'starboard', 'permissions', 'auditLog'],
+    featureIds: ['moderation', 'starboard', 'permissions', 'audit-log'],
   },
   {
     id: 'community-tools',
@@ -66,6 +66,7 @@ export const FEATURE_LABELS: Record<ConfigFeatureId, string> = {
   'community-tools': 'Community Command Toggles',
   tickets: 'Tickets',
   'github-feed': 'GitHub Activity Feed',
+  'audit-log': 'Audit Log',
 };
 
 export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
@@ -329,6 +330,24 @@ export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
     description: 'Configure repository feed channel and polling.',
     keywords: ['github', 'feed', 'poll interval', 'channel'],
     isAdvanced: false,
+  },
+  {
+    id: 'audit-log-enabled',
+    featureId: 'audit-log',
+    categoryId: 'moderation-safety',
+    label: 'Enable Audit Log',
+    description: 'Record all admin actions taken in the dashboard.',
+    keywords: ['audit', 'log', 'history', 'admin actions', 'trail'],
+    isAdvanced: false,
+  },
+  {
+    id: 'audit-log-retention',
+    featureId: 'audit-log',
+    categoryId: 'moderation-safety',
+    label: 'Audit Log Retention',
+    description: 'Configure how long audit entries are kept before auto-purge.',
+    keywords: ['audit', 'retention', 'purge', 'days', 'cleanup'],
+    isAdvanced: true,
   },
 ];
 

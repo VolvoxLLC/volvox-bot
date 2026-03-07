@@ -27,6 +27,7 @@ import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { ConfigDiff } from './config-diff';
 import { ConfigDiffModal } from './config-diff-modal';
+import { AuditLogSection } from './config-sections/AuditLogSection';
 import { CommunitySettingsSection } from './config-sections/CommunitySettingsSection';
 import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
@@ -113,6 +114,7 @@ function isGuildConfig(data: unknown): data is GuildConfig {
     'review',
     'challenges',
     'tickets',
+    'auditLog',
   ] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
@@ -689,6 +691,16 @@ export function ConfigEditor() {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
         return { ...prev, moderation: { ...prev.moderation, enabled } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateAuditLogField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, auditLog: { ...prev.auditLog, [field]: value } } as GuildConfig;
       });
     },
     [updateDraftConfig],
@@ -2022,6 +2034,15 @@ export function ConfigEditor() {
                 </label>
               }
               forceOpenAdvanced={forceOpenAdvancedFeatureId === 'permissions'}
+            />
+          )}
+
+          {activeCategoryId === 'moderation-safety' && visibleFeatureIds.has('audit-log') && (
+            <AuditLogSection
+              draftConfig={draftConfig ?? {}}
+              saving={saving}
+              onEnabledChange={(v) => updateAuditLogField('enabled', v)}
+              onRetentionDaysChange={(days) => updateAuditLogField('retentionDays', days)}
             />
           )}
 
