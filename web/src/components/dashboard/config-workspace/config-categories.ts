@@ -341,6 +341,7 @@ export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
 export function getCategoryById(categoryId: ConfigCategoryId): ConfigCategoryMeta {
   const found = CONFIG_CATEGORIES.find((category) => category.id === categoryId);
   if (!found) {
+    // biome-ignore lint/suspicious/noConsole: intentional warning for unexpected/missing categoryId
     console.warn(`getCategoryById: unknown categoryId "${categoryId}", falling back to default.`);
     return CONFIG_CATEGORIES[0];
   }
