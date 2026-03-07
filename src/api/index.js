@@ -19,6 +19,7 @@ import membersRouter from './routes/members.js';
 import moderationRouter from './routes/moderation.js';
 import notificationsRouter from './routes/notifications.js';
 import performanceRouter from './routes/performance.js';
+import statsRouter from './routes/stats.js';
 import tempRolesRouter from './routes/tempRoles.js';
 import ticketsRouter from './routes/tickets.js';
 import warningsRouter from './routes/warnings.js';
@@ -32,6 +33,9 @@ router.use('/health', healthRouter);
 
 // Community routes — public (no auth required, rate-limited)
 router.use('/community', communityRouter);
+
+// Public bot stats — no auth required, rate-limited (30 req/min)
+router.use('/stats', statsRouter);
 
 // Auth routes — public (no auth required)
 router.use('/auth', authRouter);
