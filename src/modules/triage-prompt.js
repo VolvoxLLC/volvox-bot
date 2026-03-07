@@ -52,9 +52,9 @@ export function buildConversationText(context, buffer) {
   const channelEntry = allEntries.find((m) => m.channelName);
   if (channelEntry) {
     text += '<channel-context>\n';
-    text += `Channel: #${channelEntry.channelName}\n`;
+    text += `Channel: #${escapePromptDelimiters(channelEntry.channelName)}\n`;
     if (channelEntry.channelTopic) {
-      text += `Topic: ${channelEntry.channelTopic}\n`;
+      text += `Topic: ${escapePromptDelimiters(channelEntry.channelTopic ?? '')}\n`;
     }
     text += '</channel-context>\n\n';
   }

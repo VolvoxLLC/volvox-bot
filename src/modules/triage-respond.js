@@ -52,9 +52,10 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
  * - `channelName`, `channelTopic`.
  *
  * @param {string} channelId - ID of the channel to fetch history from.
+ * @param {import('discord.js').Client} client - Discord client used to access the channel messages API.
  * @param {Array} bufferSnapshot - Current buffer snapshot; messages are fetched before the oldest entry if present.
  * @param {number} [limit=15] - Maximum number of messages to fetch.
- * @returns {Array<Object>} Context message objects in chronological order.
+ * @returns {Promise<Array<Object>>} Context message objects in chronological order.
  */
 export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15) {
   try {
