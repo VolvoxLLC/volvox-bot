@@ -361,7 +361,7 @@ export function PerformanceDashboard() {
                 <XAxis dataKey="time" tick={{ fontSize: 11 }} />
                 <YAxis unit=" MB" tick={{ fontSize: 11 }} />
                 <Tooltip
-                  formatter={(v: number | undefined) => (v !== undefined ? [`${v} MB`] : [''])}
+                  formatter={(v) => (v != null ? [`${v} MB`] : [''])}
                 />
                 <Area
                   type="monotone"
