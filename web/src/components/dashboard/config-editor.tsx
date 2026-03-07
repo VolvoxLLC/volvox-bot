@@ -362,8 +362,8 @@ export function ConfigEditor() {
         'input, textarea, select, button, [role="switch"]',
       );
       focusable?.focus();
+      setFocusFeatureId(null);
     });
-    setFocusFeatureId(null);
     return () => window.cancelAnimationFrame(frameId);
   }, [focusFeatureId]);
 
