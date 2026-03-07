@@ -13,6 +13,7 @@ import {
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { ActionBadge } from '@/components/dashboard/action-badge';
 import type { ModAction } from '@/components/dashboard/moderation-types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -276,9 +277,9 @@ export default function MemberDetailPage() {
           throw new Error(body.error || `Failed to adjust XP (${res.status})`);
         }
         const result = await res.json();
-        setXpSuccess(
-          `XP adjusted by ${amount > 0 ? '+' : ''}${amount}. New total: ${result.xp?.toLocaleString() ?? 'updated'}`,
-        );
+        const successMsg = `XP adjusted by ${amount > 0 ? '+' : ''}${amount}. New total: ${result.xp?.toLocaleString() ?? 'updated'}`;
+        setXpSuccess(successMsg);
+        toast.success('XP adjusted', { description: successMsg });
         setXpAmount('');
         setXpReason('');
 
@@ -298,7 +299,9 @@ export default function MemberDetailPage() {
           );
         }
       } catch (err) {
-        setXpError(err instanceof Error ? err.message : 'Failed to adjust XP');
+        const errMsg = err instanceof Error ? err.message : 'Failed to adjust XP';
+        setXpError(errMsg);
+        toast.error('XP adjustment failed', { description: errMsg });
       } finally {
         setXpSubmitting(false);
       }
@@ -325,8 +328,11 @@ export default function MemberDetailPage() {
       a.download = `members-${guildId}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success('Export downloaded', { description: `members-${guildId}.csv` });
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Failed to export CSV');
+      const errMsg = err instanceof Error ? err.message : 'Failed to export CSV';
+      setExportError(errMsg);
+      toast.error('Export failed', { description: errMsg });
     } finally {
       setExporting(false);
     }
