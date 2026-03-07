@@ -1,3 +1,5 @@
+# Maintain Docs
+
 ---
 on:
   schedule:
@@ -53,7 +55,10 @@ Keep the AGENTS.md file accurate and current by:
    - Resources section: Add new links if applicable
 
 5. **Create Pull Request**: If changes are needed:
-   - Create a branch named `docs/maintain-docs-2026-03-04`
+   - Create a branch named `docs/maintain-docs-YYYY-MM-DD`
+     <!-- NOTE: Replace YYYY-MM-DD with the actual run date on each execution,
+          e.g. docs/maintain-docs-2026-03-07. A static date causes branch collisions
+          on repeated daily runs. Use a date expression or ${{ github.run_id }}. -->
    - Update AGENTS.md with discovered changes
    - Create a PR with:
      - Title: "docs: update AGENTS.md from merged PRs and source changes"
@@ -62,7 +67,7 @@ Keep the AGENTS.md file accurate and current by:
      - Auto-merge enabled if all checks pass
 
 6. **Quality Checks**:
-   - Ensure markdown formatting is correct
+   - Ensure Markdown formatting is correct
    - Verify all links and references are accurate
    - Check that code examples match current patterns
    - Ensure sections remain organized and readable
