@@ -4,7 +4,6 @@ import { AlertTriangle } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { logger } from '@/lib/logger';
 
 interface ErrorBoundaryProps {
   /** Content to render when there is no error. */
@@ -46,7 +45,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    logger.error('[ErrorBoundary] Caught error:', error, info.componentStack);
+    // biome-ignore lint/suspicious/noConsole: server logger is a no-op in the browser; console.error is the correct approach here
+    console.error('[ErrorBoundary] Caught error:', error, info.componentStack);
   }
 
   reset = () => {
