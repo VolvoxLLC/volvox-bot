@@ -1202,156 +1202,157 @@ export function ConfigEditor() {
                   label="Escalation"
                 />
               </div>
-              {(draftConfig.moderation?.escalation?.enabled ?? false) && (
-                <div className="space-y-3">
-                  <span className="text-sm text-muted-foreground">
-                    Auto-escalation thresholds — when a user hits a warn count within a time window,
-                    the bot takes action automatically.
-                  </span>
-                  {(
-                    (draftConfig.moderation?.escalation?.thresholds as Array<{
+              {(draftConfig.moderation?.escalation?.enabled ?? false) &&
+                (() => {
+                  const thresholds = [
+                    ...((draftConfig.moderation?.escalation?.thresholds as Array<{
                       warns: number;
                       withinDays: number;
                       action: string;
                       duration?: string;
-                    }>) ?? []
-                  ).map((threshold, idx) => {
-                    const thresholds = [
-                      ...((draftConfig.moderation?.escalation?.thresholds as Array<{
-                        warns: number;
-                        withinDays: number;
-                        action: string;
-                        duration?: string;
-                      }>) ?? []),
-                    ];
-                    return (
-                      <div
-                        key={`threshold-${idx}`}
-                        className="rounded-md border border-border p-3 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Rule {idx + 1}
-                          </span>
-                          <button
-                            type="button"
-                            className="text-xs text-destructive hover:underline"
-                            disabled={saving}
-                            onClick={() => {
-                              const updated = thresholds.filter((_, i) => i !== idx);
-                              updateEscalationThresholds(updated);
-                            }}
+                    }>) ?? []),
+                  ];
+                  return (
+                    <div className="space-y-3">
+                      <span className="text-sm text-muted-foreground">
+                        Auto-escalation thresholds — when a user hits a warn count within a time
+                        window, the bot takes action automatically.
+                      </span>
+                      {thresholds.map((threshold, idx) => {
+                        return (
+                          <div
+                            key={`threshold-${idx}`}
+                            className="rounded-md border border-border p-3 space-y-2"
                           >
-                            Remove
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                          <label htmlFor={`thresh-warns-${idx}`} className="space-y-1">
-                            <span className="text-xs">Warns</span>
-                            <input
-                              id={`thresh-warns-${idx}`}
-                              type="number"
-                              min={1}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                              value={threshold.warns}
-                              onChange={(e) => {
-                                const val = Math.max(1, parseInt(e.target.value, 10) || 1);
-                                thresholds[idx] = { ...threshold, warns: val };
-                                updateEscalationThresholds(thresholds);
-                              }}
-                              disabled={saving}
-                            />
-                          </label>
-                          <label htmlFor={`thresh-days-${idx}`} className="space-y-1">
-                            <span className="text-xs">Within days</span>
-                            <input
-                              id={`thresh-days-${idx}`}
-                              type="number"
-                              min={1}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                              value={threshold.withinDays}
-                              onChange={(e) => {
-                                const val = Math.max(1, parseInt(e.target.value, 10) || 1);
-                                thresholds[idx] = { ...threshold, withinDays: val };
-                                updateEscalationThresholds(thresholds);
-                              }}
-                              disabled={saving}
-                            />
-                          </label>
-                          <label htmlFor={`thresh-action-${idx}`} className="space-y-1">
-                            <span className="text-xs">Action</span>
-                            <select
-                              id={`thresh-action-${idx}`}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                              value={threshold.action}
-                              onChange={(e) => {
-                                const newAction = e.target.value;
-                                const updated = { ...threshold, action: newAction };
-                                if (newAction === 'ban') {
-                                  delete updated.duration;
-                                }
-                                thresholds[idx] = updated;
-                                updateEscalationThresholds(thresholds);
-                              }}
-                              disabled={saving}
-                            >
-                              <option value="timeout">Timeout</option>
-                              <option value="kick">Kick</option>
-                              <option value="ban">Ban</option>
-                            </select>
-                          </label>
-                          {threshold.action === 'timeout' && (
-                            <label htmlFor={`thresh-duration-${idx}`} className="space-y-1">
-                              <span className="text-xs">Duration</span>
-                              <select
-                                id={`thresh-duration-${idx}`}
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                value={threshold.duration ?? '1h'}
-                                onChange={(e) => {
-                                  thresholds[idx] = { ...threshold, duration: e.target.value };
-                                  updateEscalationThresholds(thresholds);
-                                }}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Rule {idx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                className="text-xs text-destructive hover:underline"
                                 disabled={saving}
+                                onClick={() => {
+                                  const updated = thresholds.filter((_, i) => i !== idx);
+                                  updateEscalationThresholds(updated);
+                                }}
                               >
-                                <option value="5m">5 minutes</option>
-                                <option value="15m">15 minutes</option>
-                                <option value="30m">30 minutes</option>
-                                <option value="1h">1 hour</option>
-                                <option value="6h">6 hours</option>
-                                <option value="12h">12 hours</option>
-                                <option value="1d">1 day</option>
-                                <option value="3d">3 days</option>
-                                <option value="7d">7 days</option>
-                                <option value="14d">14 days</option>
-                                <option value="28d">28 days</option>
-                              </select>
-                            </label>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    className="flex h-9 items-center gap-1 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={saving}
-                    onClick={() => {
-                      const current = [
-                        ...((draftConfig.moderation?.escalation?.thresholds as Array<{
-                          warns: number;
-                          withinDays: number;
-                          action: string;
-                          duration?: string;
-                        }>) ?? []),
-                      ];
-                      current.push({ warns: 3, withinDays: 7, action: 'timeout', duration: '1h' });
-                      updateEscalationThresholds(current);
-                    }}
-                  >
-                    + Add threshold
-                  </button>
-                </div>
-              )}
+                                Remove
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                              <label htmlFor={`thresh-warns-${idx}`} className="space-y-1">
+                                <span className="text-xs">Warns</span>
+                                <input
+                                  id={`thresh-warns-${idx}`}
+                                  type="number"
+                                  min={1}
+                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={threshold.warns}
+                                  onChange={(e) => {
+                                    const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                    thresholds[idx] = { ...threshold, warns: val };
+                                    updateEscalationThresholds(thresholds);
+                                  }}
+                                  disabled={saving}
+                                />
+                              </label>
+                              <label htmlFor={`thresh-days-${idx}`} className="space-y-1">
+                                <span className="text-xs">Within days</span>
+                                <input
+                                  id={`thresh-days-${idx}`}
+                                  type="number"
+                                  min={1}
+                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={threshold.withinDays}
+                                  onChange={(e) => {
+                                    const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                    thresholds[idx] = { ...threshold, withinDays: val };
+                                    updateEscalationThresholds(thresholds);
+                                  }}
+                                  disabled={saving}
+                                />
+                              </label>
+                              <label htmlFor={`thresh-action-${idx}`} className="space-y-1">
+                                <span className="text-xs">Action</span>
+                                <select
+                                  id={`thresh-action-${idx}`}
+                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={threshold.action}
+                                  onChange={(e) => {
+                                    const newAction = e.target.value;
+                                    const updated = { ...threshold, action: newAction };
+                                    if (newAction === 'ban') {
+                                      delete updated.duration;
+                                    }
+                                    thresholds[idx] = updated;
+                                    updateEscalationThresholds(thresholds);
+                                  }}
+                                  disabled={saving}
+                                >
+                                  <option value="timeout">Timeout</option>
+                                  <option value="kick">Kick</option>
+                                  <option value="ban">Ban</option>
+                                </select>
+                              </label>
+                              {threshold.action === 'timeout' && (
+                                <label htmlFor={`thresh-duration-${idx}`} className="space-y-1">
+                                  <span className="text-xs">Duration</span>
+                                  <select
+                                    id={`thresh-duration-${idx}`}
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={threshold.duration ?? '1h'}
+                                    onChange={(e) => {
+                                      thresholds[idx] = { ...threshold, duration: e.target.value };
+                                      updateEscalationThresholds(thresholds);
+                                    }}
+                                    disabled={saving}
+                                  >
+                                    <option value="5m">5 minutes</option>
+                                    <option value="15m">15 minutes</option>
+                                    <option value="30m">30 minutes</option>
+                                    <option value="1h">1 hour</option>
+                                    <option value="6h">6 hours</option>
+                                    <option value="12h">12 hours</option>
+                                    <option value="1d">1 day</option>
+                                    <option value="3d">3 days</option>
+                                    <option value="7d">7 days</option>
+                                    <option value="14d">14 days</option>
+                                    <option value="28d">28 days</option>
+                                  </select>
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        className="flex h-9 items-center gap-1 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={saving}
+                        onClick={() => {
+                          const current = [
+                            ...((draftConfig.moderation?.escalation?.thresholds as Array<{
+                              warns: number;
+                              withinDays: number;
+                              action: string;
+                              duration?: string;
+                            }>) ?? []),
+                          ];
+                          current.push({
+                            warns: 3,
+                            withinDays: 7,
+                            action: 'timeout',
+                            duration: '1h',
+                          });
+                          updateEscalationThresholds(current);
+                        }}
+                      >
+                        + Add threshold
+                      </button>
+                    </div>
+                  );
+                })()}
             </fieldset>
 
             {/* Rate Limiting sub-section */}
@@ -1536,25 +1537,22 @@ export function ConfigEditor() {
             {/* Warning System sub-section */}
             <fieldset className="space-y-3">
               <legend className="text-sm font-medium">Warning System</legend>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">DM user on warn</span>
-                <ToggleSwitch
-                  checked={draftConfig.moderation?.warnings?.dmNotification ?? true}
-                  onChange={(v) => updateWarningsField('dmNotification', v)}
-                  disabled={saving}
-                  label="DM user on warn"
-                />
-              </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <label htmlFor="warn-expiry" className="space-y-1">
-                  <span className="text-sm text-muted-foreground">Warning expiry (days)</span>
+                  <span className="text-sm text-muted-foreground">
+                    Warning expiry (days, 0 = never)
+                  </span>
                   <input
                     id="warn-expiry"
                     type="number"
                     min={0}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="90 (0 = never)"
-                    value={draftConfig.moderation?.warnings?.expiryDays ?? 90}
+                    value={
+                      draftConfig.moderation?.warnings?.expiryDays === null
+                        ? 0
+                        : (draftConfig.moderation?.warnings?.expiryDays ?? 90)
+                    }
                     onChange={(e) => {
                       const val = parseInt(e.target.value, 10);
                       updateWarningsField('expiryDays', Number.isNaN(val) || val <= 0 ? null : val);

@@ -28,6 +28,7 @@ describe('warnings command', () => {
         displayAvatarURL: () => 'https://cdn.example.com/avatar.png',
       }),
       getBoolean: vi.fn().mockReturnValue(false),
+      getInteger: vi.fn().mockReturnValue(null),
     },
     guild: { id: 'guild1' },
     guildId: 'guild1',
@@ -71,6 +72,7 @@ describe('warnings command', () => {
         reason: 'toxic',
         created_at: new Date(),
         case_id: null,
+        removal_reason: 'Expired',
       },
     ]);
     getActiveWarningStats.mockResolvedValueOnce({ count: 1, points: 1 });

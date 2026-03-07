@@ -158,7 +158,6 @@ export interface WarningSeverityPoints {
 export interface WarningsConfig {
   expiryDays: number | null;
   severityPoints: WarningSeverityPoints;
-  dmNotification: boolean;
   maxPerPage: number;
 }
 

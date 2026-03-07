@@ -71,36 +71,41 @@ export async function createWarning(guildId, data, config) {
   const points = getSeverityPoints(config, severity);
   const expiresAt = calculateExpiry(config);
 
-  const { rows } = await pool.query(
-    `INSERT INTO warnings
-      (guild_id, user_id, moderator_id, moderator_tag, reason, severity, points, expires_at, case_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING *`,
-    [
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO warnings
+        (guild_id, user_id, moderator_id, moderator_tag, reason, severity, points, expires_at, case_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *`,
+      [
+        guildId,
+        data.userId,
+        data.moderatorId,
+        data.moderatorTag,
+        data.reason || null,
+        severity,
+        points,
+        expiresAt,
+        data.caseId || null,
+      ],
+    );
+
+    const warning = rows[0];
+
+    info('Warning created', {
       guildId,
-      data.userId,
-      data.moderatorId,
-      data.moderatorTag,
-      data.reason || null,
+      warningId: warning.id,
+      userId: data.userId,
       severity,
       points,
-      expiresAt,
-      data.caseId || null,
-    ],
-  );
+      expiresAt: expiresAt?.toISOString() || null,
+    });
 
-  const warning = rows[0];
-
-  info('Warning created', {
-    guildId,
-    warningId: warning.id,
-    userId: data.userId,
-    severity,
-    points,
-    expiresAt: expiresAt?.toISOString() || null,
-  });
-
-  return warning;
+    return warning;
+  } catch (err) {
+    logError('Failed to create warning', { error: err.message, guildId, userId: data.userId });
+    throw err;
+  }
 }
 
 /**
@@ -114,24 +119,31 @@ export async function createWarning(guildId, data, config) {
  */
 export async function getWarnings(guildId, userId, options = {}) {
   const pool = getPool();
-  const { activeOnly = false, limit = 50 } = options;
+  const { activeOnly = false, limit = 50, offset = 0 } = options;
 
   const conditions = ['guild_id = $1', 'user_id = $2'];
   const values = [guildId, userId];
 
   if (activeOnly) {
+    // Also filter out rows that have expired but haven't been processed by the scheduler yet
     conditions.push('active = TRUE');
+    conditions.push('(expires_at IS NULL OR expires_at > NOW())');
   }
 
-  const { rows } = await pool.query(
-    `SELECT * FROM warnings
-     WHERE ${conditions.join(' AND ')}
-     ORDER BY created_at DESC
-     LIMIT $${values.length + 1}`,
-    [...values, limit],
-  );
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM warnings
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY created_at DESC
+       LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, offset],
+    );
 
-  return rows;
+    return rows;
+  } catch (err) {
+    logError('Failed to get warnings', { error: err.message, guildId, userId });
+    throw err;
+  }
 }
 
 /**
@@ -143,19 +155,25 @@ export async function getWarnings(guildId, userId, options = {}) {
 export async function getActiveWarningStats(guildId, userId) {
   const pool = getPool();
 
-  const { rows } = await pool.query(
-    `SELECT
-       COUNT(*)::integer AS count,
-       COALESCE(SUM(points), 0)::integer AS points
-     FROM warnings
-     WHERE guild_id = $1 AND user_id = $2 AND active = TRUE`,
-    [guildId, userId],
-  );
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         COUNT(*)::integer AS count,
+         COALESCE(SUM(points), 0)::integer AS points
+       FROM warnings
+       WHERE guild_id = $1 AND user_id = $2 AND active = TRUE
+         AND (expires_at IS NULL OR expires_at > NOW())`,
+      [guildId, userId],
+    );
 
-  return {
-    count: rows[0]?.count ?? 0,
-    points: rows[0]?.points ?? 0,
-  };
+    return {
+      count: rows[0]?.count ?? 0,
+      points: rows[0]?.points ?? 0,
+    };
+  } catch (err) {
+    logError('Failed to get active warning stats', { error: err.message, guildId, userId });
+    throw err;
+  }
 }
 
 /**
@@ -172,44 +190,63 @@ export async function getActiveWarningStats(guildId, userId) {
 export async function editWarning(guildId, warningId, updates, config) {
   const pool = getPool();
 
-  // Build dynamic SET clause
-  const setClauses = ['updated_at = NOW()'];
-  const values = [];
-  let paramIdx = 1;
+  try {
+    // Fetch original for audit trail
+    const { rows: origRows } = await pool.query(
+      'SELECT reason, severity, points FROM warnings WHERE guild_id = $1 AND id = $2',
+      [guildId, warningId],
+    );
+    const original = origRows[0] || null;
 
-  if (updates.reason !== undefined) {
-    setClauses.push(`reason = $${paramIdx++}`);
-    values.push(updates.reason);
+    // Build dynamic SET clause
+    const setClauses = ['updated_at = NOW()'];
+    const values = [];
+    let paramIdx = 1;
+
+    if (updates.reason !== undefined) {
+      setClauses.push(`reason = $${paramIdx++}`);
+      values.push(updates.reason);
+    }
+
+    if (updates.severity !== undefined) {
+      setClauses.push(`severity = $${paramIdx++}`);
+      values.push(updates.severity);
+      // Recalculate points when severity changes
+      const newPoints = getSeverityPoints(config, updates.severity);
+      setClauses.push(`points = $${paramIdx++}`);
+      values.push(newPoints);
+    }
+
+    values.push(guildId, warningId);
+
+    const { rows } = await pool.query(
+      `UPDATE warnings
+       SET ${setClauses.join(', ')}
+       WHERE guild_id = $${paramIdx++} AND id = $${paramIdx}
+       RETURNING *`,
+      values,
+    );
+
+    if (rows.length === 0) return null;
+
+    info('Warning edited', {
+      guildId,
+      warningId,
+      updates: Object.keys(updates),
+      previous: original
+        ? {
+            reason: original.reason,
+            severity: original.severity,
+            points: original.points,
+          }
+        : null,
+    });
+
+    return rows[0];
+  } catch (err) {
+    logError('Failed to edit warning', { error: err.message, guildId, warningId });
+    throw err;
   }
-
-  if (updates.severity !== undefined) {
-    setClauses.push(`severity = $${paramIdx++}`);
-    values.push(updates.severity);
-    // Recalculate points when severity changes
-    const newPoints = getSeverityPoints(config, updates.severity);
-    setClauses.push(`points = $${paramIdx++}`);
-    values.push(newPoints);
-  }
-
-  values.push(guildId, warningId);
-
-  const { rows } = await pool.query(
-    `UPDATE warnings
-     SET ${setClauses.join(', ')}
-     WHERE guild_id = $${paramIdx++} AND id = $${paramIdx}
-     RETURNING *`,
-    values,
-  );
-
-  if (rows.length === 0) return null;
-
-  info('Warning edited', {
-    guildId,
-    warningId,
-    updates: Object.keys(updates),
-  });
-
-  return rows[0];
 }
 
 /**
@@ -223,23 +260,28 @@ export async function editWarning(guildId, warningId, updates, config) {
 export async function removeWarning(guildId, warningId, removedBy, removalReason) {
   const pool = getPool();
 
-  const { rows } = await pool.query(
-    `UPDATE warnings
-     SET active = FALSE, removed_at = NOW(), removed_by = $1, removal_reason = $2, updated_at = NOW()
-     WHERE guild_id = $3 AND id = $4 AND active = TRUE
-     RETURNING *`,
-    [removedBy, removalReason || null, guildId, warningId],
-  );
+  try {
+    const { rows } = await pool.query(
+      `UPDATE warnings
+       SET active = FALSE, removed_at = NOW(), removed_by = $1, removal_reason = $2, updated_at = NOW()
+       WHERE guild_id = $3 AND id = $4 AND active = TRUE
+       RETURNING *`,
+      [removedBy, removalReason || null, guildId, warningId],
+    );
 
-  if (rows.length === 0) return null;
+    if (rows.length === 0) return null;
 
-  info('Warning removed', {
-    guildId,
-    warningId,
-    removedBy,
-  });
+    info('Warning removed', {
+      guildId,
+      warningId,
+      removedBy,
+    });
 
-  return rows[0];
+    return rows[0];
+  } catch (err) {
+    logError('Failed to remove warning', { error: err.message, guildId, warningId });
+    throw err;
+  }
 }
 
 /**
@@ -253,23 +295,28 @@ export async function removeWarning(guildId, warningId, removedBy, removalReason
 export async function clearWarnings(guildId, userId, clearedBy, reason) {
   const pool = getPool();
 
-  const { rowCount } = await pool.query(
-    `UPDATE warnings
-     SET active = FALSE, removed_at = NOW(), removed_by = $1, removal_reason = $2, updated_at = NOW()
-     WHERE guild_id = $3 AND user_id = $4 AND active = TRUE`,
-    [clearedBy, reason || 'Bulk clear', guildId, userId],
-  );
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE warnings
+       SET active = FALSE, removed_at = NOW(), removed_by = $1, removal_reason = $2, updated_at = NOW()
+       WHERE guild_id = $3 AND user_id = $4 AND active = TRUE`,
+      [clearedBy, reason || 'Bulk clear', guildId, userId],
+    );
 
-  if (rowCount > 0) {
-    info('Warnings cleared', {
-      guildId,
-      userId,
-      clearedBy,
-      count: rowCount,
-    });
+    if (rowCount > 0) {
+      info('Warnings cleared', {
+        guildId,
+        userId,
+        clearedBy,
+        count: rowCount,
+      });
+    }
+
+    return rowCount;
+  } catch (err) {
+    logError('Failed to clear warnings', { error: err.message, guildId, userId });
+    throw err;
   }
-
-  return rowCount;
 }
 
 /**
@@ -283,7 +330,7 @@ export async function processExpiredWarnings() {
   try {
     const { rowCount } = await pool.query(
       `UPDATE warnings
-       SET active = FALSE, removal_reason = 'Expired', updated_at = NOW()
+       SET active = FALSE, removed_at = NOW(), removal_reason = 'Expired', updated_at = NOW()
        WHERE active = TRUE AND expires_at IS NOT NULL AND expires_at <= NOW()`,
     );
 

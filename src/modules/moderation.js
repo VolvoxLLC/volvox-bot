@@ -318,19 +318,30 @@ export async function checkEscalation(
       const { rows } = await pool.query(
         `SELECT COUNT(*)::integer AS count FROM warnings
          WHERE guild_id = $1 AND user_id = $2 AND active = TRUE
+         AND (expires_at IS NULL OR expires_at > NOW())
          AND created_at > NOW() - INTERVAL '1 day' * $3`,
         [guildId, targetId, threshold.withinDays],
       );
       warnCount = rows[0]?.count || 0;
-    } catch {
-      // Fallback: warnings table may not exist yet during migration rollout
-      const { rows } = await pool.query(
-        `SELECT COUNT(*)::integer AS count FROM mod_cases
-         WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
-         AND created_at > NOW() - INTERVAL '1 day' * $3`,
-        [guildId, targetId, threshold.withinDays],
-      );
-      warnCount = rows[0]?.count || 0;
+    } catch (err) {
+      // Only fall back to mod_cases if warnings table doesn't exist (migration pending)
+      if (err.code === '42P01') {
+        // 42P01 = undefined_table
+        const { rows } = await pool.query(
+          `SELECT COUNT(*)::integer AS count FROM mod_cases
+           WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
+           AND created_at > NOW() - INTERVAL '1 day' * $3`,
+          [guildId, targetId, threshold.withinDays],
+        );
+        warnCount = rows[0]?.count || 0;
+      } else {
+        logError('Failed to count active warnings for escalation', {
+          error: err.message,
+          guildId,
+          targetId,
+        });
+        throw err;
+      }
     }
 
     if (warnCount < threshold.warns) continue;

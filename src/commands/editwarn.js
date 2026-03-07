@@ -24,9 +24,9 @@ export const data = new SlashCommandBuilder()
       .setDescription('New severity')
       .setRequired(false)
       .addChoices(
-        { name: 'Low (1 point)', value: 'low' },
-        { name: 'Medium (2 points)', value: 'medium' },
-        { name: 'High (3 points)', value: 'high' },
+        { name: 'Low', value: 'low' },
+        { name: 'Medium', value: 'medium' },
+        { name: 'High', value: 'high' },
       ),
   );
 

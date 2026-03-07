@@ -204,7 +204,19 @@ describe('warningEngine module', () => {
       await getWarnings('guild1', 'user1', { limit: 10 });
 
       const queryArgs = mockPool.query.mock.calls[0][1];
-      expect(queryArgs[queryArgs.length - 1]).toBe(10);
+      // limit is second-to-last, offset is last
+      expect(queryArgs[queryArgs.length - 2]).toBe(10);
+      expect(queryArgs[queryArgs.length - 1]).toBe(0); // default offset
+    });
+
+    it('should respect offset option', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      await getWarnings('guild1', 'user1', { limit: 10, offset: 20 });
+
+      const queryArgs = mockPool.query.mock.calls[0][1];
+      expect(queryArgs[queryArgs.length - 2]).toBe(10);
+      expect(queryArgs[queryArgs.length - 1]).toBe(20);
     });
   });
 
@@ -242,6 +254,11 @@ describe('warningEngine module', () => {
   // ── editWarning ─────────────────────────────────────────────────────
   describe('editWarning', () => {
     it('should update reason', async () => {
+      // First query: SELECT for audit trail
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ reason: 'old reason', severity: 'low', points: 1 }],
+      });
+      // Second query: UPDATE
       mockPool.query.mockResolvedValueOnce({
         rows: [{ id: 1, reason: 'updated reason' }],
       });
@@ -249,8 +266,8 @@ describe('warningEngine module', () => {
       const result = await editWarning('guild1', 1, { reason: 'updated reason' });
 
       expect(result).toEqual({ id: 1, reason: 'updated reason' });
-      const query = mockPool.query.mock.calls[0][0];
-      expect(query).toContain('reason =');
+      const updateQuery = mockPool.query.mock.calls[1][0];
+      expect(updateQuery).toContain('reason =');
     });
 
     it('should update severity and recalculate points', async () => {
@@ -258,6 +275,11 @@ describe('warningEngine module', () => {
         moderation: { warnings: { severityPoints: { high: 5 } } },
       };
 
+      // First query: SELECT for audit trail
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ reason: 'original', severity: 'low', points: 1 }],
+      });
+      // Second query: UPDATE
       mockPool.query.mockResolvedValueOnce({
         rows: [{ id: 1, severity: 'high', points: 5 }],
       });
@@ -265,18 +287,38 @@ describe('warningEngine module', () => {
       const result = await editWarning('guild1', 1, { severity: 'high' }, config);
 
       expect(result).toEqual({ id: 1, severity: 'high', points: 5 });
-      const queryArgs = mockPool.query.mock.calls[0][1];
+      const updateArgs = mockPool.query.mock.calls[1][1];
       // severity and points should both be in the params
-      expect(queryArgs).toContain('high');
-      expect(queryArgs).toContain(5);
+      expect(updateArgs).toContain('high');
+      expect(updateArgs).toContain(5);
     });
 
     it('should return null when warning not found', async () => {
+      // SELECT returns original for audit
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+      // UPDATE returns nothing
       mockPool.query.mockResolvedValueOnce({ rows: [] });
 
       const result = await editWarning('guild1', 999, { reason: 'test' });
 
       expect(result).toBeNull();
+    });
+
+    it('should update severity only', async () => {
+      const config = {
+        moderation: { warnings: { severityPoints: { medium: 2 } } },
+      };
+
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ reason: 'test', severity: 'low', points: 1 }],
+      });
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 1, severity: 'medium', points: 2 }],
+      });
+
+      const result = await editWarning('guild1', 1, { severity: 'medium' }, config);
+
+      expect(result).toEqual({ id: 1, severity: 'medium', points: 2 });
     });
   });
 

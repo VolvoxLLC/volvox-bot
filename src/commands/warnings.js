@@ -19,6 +19,13 @@ export const data = new SlashCommandBuilder()
       .setName('active_only')
       .setDescription('Show only active warnings (default: all)')
       .setRequired(false),
+  )
+  .addIntegerOption((opt) =>
+    opt
+      .setName('page')
+      .setDescription('Page number (default: 1)')
+      .setRequired(false)
+      .setMinValue(1),
   );
 
 export const moderatorOnly = true;
@@ -47,9 +54,12 @@ export async function execute(interaction) {
 
     const user = interaction.options.getUser('user');
     const activeOnly = interaction.options.getBoolean('active_only') ?? false;
+    const page = interaction.options.getInteger('page') ?? 1;
+    const perPage = 10;
+    const offset = (page - 1) * perPage;
 
     const [warnings, stats] = await Promise.all([
-      getWarnings(interaction.guild.id, user.id, { activeOnly, limit: 25 }),
+      getWarnings(interaction.guild.id, user.id, { activeOnly, limit: perPage, offset }),
       getActiveWarningStats(interaction.guild.id, user.id),
     ]);
 
@@ -62,7 +72,14 @@ export async function execute(interaction) {
 
     const lines = warnings.map((w) => {
       const timestamp = Math.floor(new Date(w.created_at).getTime() / 1000);
-      const status = w.active ? '✅ Active' : '❌ Inactive';
+      let status;
+      if (w.active) {
+        status = '✅ Active';
+      } else if (w.removal_reason === 'Expired') {
+        status = '⏰ Expired';
+      } else {
+        status = '🗑️ Removed';
+      }
       const reason = w.reason
         ? w.reason.length > 40
           ? `${w.reason.slice(0, 37)}...`
@@ -82,7 +99,7 @@ export async function execute(interaction) {
       )
       .setThumbnail(user.displayAvatarURL())
       .setFooter({
-        text: `Showing ${warnings.length} warning(s)${activeOnly ? ' (active only)' : ''}`,
+        text: `Page ${page} · Showing ${warnings.length} warning(s)${activeOnly ? ' (active only)' : ''} · Use /warnings page:${page + 1} for more`,
       })
       .setTimestamp();
 

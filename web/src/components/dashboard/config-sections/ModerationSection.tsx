@@ -203,29 +203,21 @@ export function ModerationSection({
         {/* Warning System Settings */}
         <fieldset className="space-y-3">
           <legend className="text-sm font-medium">Warning System</legend>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="warn-dm" className="text-sm text-muted-foreground">
-              DM user on warn
-            </Label>
-            <Switch
-              id="warn-dm"
-              checked={draftConfig.moderation?.warnings?.dmNotification ?? true}
-              onCheckedChange={(v) => onWarningsChange?.('dmNotification', v)}
-              disabled={saving}
-              aria-label="DM user on warn"
-            />
-          </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="warn-expiry" className="text-sm text-muted-foreground">
-                Warning expiry (days)
+                Warning expiry (days, 0 = never)
               </Label>
               <Input
                 id="warn-expiry"
                 type="number"
                 min={0}
                 placeholder="90 (0 = never)"
-                value={draftConfig.moderation?.warnings?.expiryDays ?? 90}
+                value={
+                  draftConfig.moderation?.warnings?.expiryDays === null
+                    ? 0
+                    : (draftConfig.moderation?.warnings?.expiryDays ?? 90)
+                }
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
                   onWarningsChange?.('expiryDays', Number.isNaN(val) || val <= 0 ? null : val);
