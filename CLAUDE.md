@@ -24,3 +24,11 @@ See [AGENTS.md](./AGENTS.md) for full project context, architecture, and coding 
   - Refactored config feature presentation to reusable `SettingsFeatureCard` pattern (header + master toggle + Basic/Advanced blocks).
   - Kept save contract unchanged: global save/discard, diff-modal confirmation, per-section PATCH batching, and partial-failure behavior.
   - Updated config editor tests from stale autosave assumptions to explicit manual-save workspace behavior and added coverage for category switching/search/dirty badges.
+
+## Session Notes (2026-03-07)
+
+- Dashboard browser titles now sync with dashboard route changes:
+  - Added shared title helpers in `web/src/lib/page-titles.ts` with the canonical app title string `Volvox.Bot - AI Powered Discord Bot`.
+  - Mounted `DashboardTitleSync` in `web/src/components/layout/dashboard-shell.tsx` so client-rendered dashboard pages update `document.title` on pathname changes without needing a server-wrapper refactor for every route.
+  - Added static metadata for server-rendered dashboard entry pages (`/dashboard`, `/dashboard/config`, `/dashboard/performance`) and switched the root app metadata to a title template so direct loads and client transitions use the same suffix format.
+  - Coverage lives in `web/tests/lib/page-titles.test.ts` and `web/tests/components/layout/dashboard-title-sync.test.tsx`.

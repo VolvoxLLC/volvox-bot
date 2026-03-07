@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { ConfigEditor } from '@/components/dashboard/config-editor';
+import { createPageMetadata } from '@/lib/page-titles';
 
-export const metadata: Metadata = {
-  title: 'Config Editor',
-  description: 'Manage your bot configuration settings.',
-};
+export const metadata: Metadata = createPageMetadata(
+  'Bot Config',
+  'Manage your bot configuration settings.',
+);
 
 /**
  * Page component that renders the dashboard configuration editor.

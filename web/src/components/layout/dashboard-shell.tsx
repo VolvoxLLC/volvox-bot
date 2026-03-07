@@ -1,3 +1,4 @@
+import { DashboardTitleSync } from './dashboard-title-sync';
 import { Header } from './header';
 import { ServerSelector } from './server-selector';
 import { Sidebar } from './sidebar';
@@ -14,6 +15,7 @@ interface DashboardShellProps {
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
     <div className="flex min-h-screen flex-col">
+      <DashboardTitleSync />
       <Header />
 
       <div className="flex flex-1">

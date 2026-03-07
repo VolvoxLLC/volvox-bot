@@ -6,6 +6,10 @@ vi.mock("@/components/layout/header", () => ({
   Header: () => <header data-testid="header">Header</header>,
 }));
 
+vi.mock("@/components/layout/dashboard-title-sync", () => ({
+  DashboardTitleSync: () => <div data-testid="dashboard-title-sync" />,
+}));
+
 vi.mock("@/components/layout/sidebar", () => ({
   Sidebar: () => <nav data-testid="sidebar">Sidebar</nav>,
 }));
@@ -24,6 +28,7 @@ describe("DashboardShell", () => {
       </DashboardShell>,
     );
     expect(screen.getByTestId("header")).toBeInTheDocument();
+    expect(screen.getByTestId("dashboard-title-sync")).toBeInTheDocument();
     expect(screen.getByTestId("sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("content")).toBeInTheDocument();
   });
