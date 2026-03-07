@@ -944,7 +944,7 @@ export function ConfigEditor() {
               <span
                 className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-yellow-400 ring-2 ring-background"
                 aria-hidden="true"
-                title="Unsaved changes"
+                title={`Unsaved changes in ${changedSections.length} section${changedSections.length === 1 ? '' : 's'}: ${changedSections.join(', ')}`}
               />
             )}
           </div>
