@@ -236,9 +236,11 @@ let cleanupInterval = null;
 /**
  * Start periodic cleanup of stale windowMap entries.
  * Removes entries when the latest activity is older than the tracked retention window.
- * Runs every 5 minutes.
+ * Runs every 5 minutes. Safe to call multiple times — no-ops if already running.
+ *
+ * Exported for testing purposes (allows restarting with fake timers).
  */
-function startRateLimitCleanup() {
+export function startRateLimitCleanup() {
   if (cleanupInterval) return;
   const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
   const DEFAULT_WINDOW_MS = 10 * 1000; // fallback window

@@ -358,7 +358,7 @@ describe('checkRateLimit — warns user', () => {
   });
 });
 
-import { stopRateLimitCleanup } from '../../src/modules/rateLimit.js';
+import { startRateLimitCleanup, stopRateLimitCleanup } from '../../src/modules/rateLimit.js';
 
 describe('checkRateLimit — handleRepeatOffender edge cases', () => {
   it('should return early if message.member is null', async () => {
@@ -637,5 +637,68 @@ describe('checkRateLimit — muteWindowMinutes singular/plural', () => {
     await checkRateLimit(msg, config);
 
     expect(alertSend).toHaveBeenCalled();
+  });
+});
+
+describe('stale entry cleanup (interval sweep)', () => {
+  beforeEach(() => {
+    // Stop the auto-started real-timer interval, then switch to fake timers
+    // and restart so the interval is captured by vi's fake clock.
+    stopRateLimitCleanup();
+    vi.useFakeTimers();
+    startRateLimitCleanup();
+    clearRateLimitState();
+  });
+
+  afterEach(() => {
+    stopRateLimitCleanup();
+    vi.useRealTimers();
+    // Restart the real cleanup interval for subsequent test suites
+    startRateLimitCleanup();
+    clearRateLimitState();
+  });
+
+  it('removes entries whose last activity is older than their retention window', async () => {
+    const config = {
+      moderation: {
+        rateLimit: {
+          enabled: true,
+          maxMessages: 100, // high threshold — we just want to seed an entry
+          windowSeconds: 1,
+          muteAfterTriggers: 10,
+          muteWindowSeconds: 1,
+          muteDurationSeconds: 60,
+        },
+        exemptRoles: [],
+        exemptUsers: [],
+      },
+    };
+
+    const msg = {
+      author: {
+        id: 'user-stale-cleanup',
+        tag: 'Stale#0001',
+        bot: false,
+      },
+      channel: { id: 'chan-stale', type: 0 },
+      guild: { id: 'guild-stale', members: { me: { permissions: { has: vi.fn().mockReturnValue(false) } } } },
+      member: {
+        permissions: { has: vi.fn().mockReturnValue(false) },
+        roles: { cache: { some: vi.fn().mockReturnValue(false) } },
+      },
+      delete: vi.fn().mockResolvedValue(undefined),
+      reply: vi.fn().mockResolvedValue({ delete: vi.fn() }),
+      client: { channels: { fetch: vi.fn() } },
+    };
+
+    // Seed one entry
+    await checkRateLimit(msg, config);
+    expect(getTrackedCount()).toBe(1);
+
+    // Advance time past the cleanup interval (5 min) + retention window (1 s)
+    vi.advanceTimersByTime(5 * 60 * 1000 + 2000);
+
+    // Stale entry should be swept
+    expect(getTrackedCount()).toBe(0);
   });
 });
