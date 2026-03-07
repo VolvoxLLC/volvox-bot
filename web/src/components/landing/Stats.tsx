@@ -1,14 +1,7 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
-import {
-  Activity,
-  Clock,
-  Globe,
-  MessageSquare,
-  Terminal,
-  Users,
-} from 'lucide-react';
+import { Activity, Clock, Globe, MessageSquare, Terminal, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -61,7 +54,7 @@ function AnimatedCounter({
       if (startTime === null) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
       // Ease-out cubic for a snappy feel
-      const eased = 1 - Math.pow(1 - progress, 3);
+      const eased = 1 - (1 - progress) ** 3;
       setCount(Math.floor(eased * target));
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(animate);
@@ -308,44 +301,44 @@ export function Stats() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
-          {loading ? (
-            // Skeleton placeholders
-            Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-          ) : error && !stats ? (
-            // Error fallback: show dashes
-            statCards.map((card, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 24 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.5, delay: i * 0.07 }}
-                className="p-6 rounded-xl border border-[var(--border-default)] bg-[var(--bg-primary)] text-center"
-              >
-                <div
-                  className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-                  style={{ backgroundColor: `${card.iconBg}22`, color: card.iconColor }}
-                >
-                  {card.icon}
-                </div>
-                <div className="text-3xl font-bold font-mono text-[var(--text-muted)] mb-2">—</div>
-                <div className="text-sm text-[var(--text-secondary)]">{card.label}</div>
-              </motion.div>
-            ))
-          ) : (
-            statCards.map((card, i) => (
-              <StatCard
-                key={i}
-                icon={card.icon}
-                iconColor={card.iconColor}
-                iconBg={card.iconBg}
-                value={card.value}
-                label={card.label}
-                formatter={card.formatter}
-                delay={i * 0.07}
-                isInView={isInView}
-              />
-            ))
-          )}
+          {loading
+            ? // Skeleton placeholders
+              Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+            : error && !stats
+              ? // Error fallback: show dashes
+                statCards.map((card, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.5, delay: i * 0.07 }}
+                    className="p-6 rounded-xl border border-[var(--border-default)] bg-[var(--bg-primary)] text-center"
+                  >
+                    <div
+                      className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
+                      style={{ backgroundColor: `${card.iconBg}22`, color: card.iconColor }}
+                    >
+                      {card.icon}
+                    </div>
+                    <div className="text-3xl font-bold font-mono text-[var(--text-muted)] mb-2">
+                      —
+                    </div>
+                    <div className="text-sm text-[var(--text-secondary)]">{card.label}</div>
+                  </motion.div>
+                ))
+              : statCards.map((card, i) => (
+                  <StatCard
+                    key={i}
+                    icon={card.icon}
+                    iconColor={card.iconColor}
+                    iconBg={card.iconBg}
+                    value={card.value}
+                    label={card.label}
+                    formatter={card.formatter}
+                    delay={i * 0.07}
+                    isInView={isInView}
+                  />
+                ))}
         </div>
 
         {/* Testimonials */}

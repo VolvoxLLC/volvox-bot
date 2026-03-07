@@ -13,7 +13,10 @@ vi.mock('../../../src/logger.js', () => ({
 }));
 
 // Mock AI module — expose a settable Map size
-const mockConversationHistory = new Map([['ch1', []], ['ch2', []]]);
+const mockConversationHistory = new Map([
+  ['ch1', []],
+  ['ch2', []],
+]);
 vi.mock('../../../src/modules/ai.js', () => ({
   getConversationHistory: vi.fn(() => mockConversationHistory),
 }));
@@ -43,9 +46,9 @@ vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
   stopJwtCleanup: vi.fn(),
 }));
 
+import { redisRateLimit } from '../../../src/api/middleware/redisRateLimit.js';
 import { createApp } from '../../../src/api/server.js';
 import { cacheGetOrSet } from '../../../src/utils/cache.js';
-import { redisRateLimit } from '../../../src/api/middleware/redisRateLimit.js';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -86,10 +89,7 @@ describe('GET /api/v1/stats', () => {
 
   describe('successful response', () => {
     beforeEach(() => {
-      const client = buildClient([
-        buildGuild('g1', 100),
-        buildGuild('g2', 200),
-      ]);
+      const client = buildClient([buildGuild('g1', 100), buildGuild('g2', 200)]);
       app = createApp(client, buildPool());
     });
 
@@ -139,11 +139,7 @@ describe('GET /api/v1/stats', () => {
 
       await request(app).get('/api/v1/stats').expect(200);
 
-      expect(cacheGetOrSet).toHaveBeenCalledWith(
-        'bot:stats:public',
-        expect.any(Function),
-        300,
-      );
+      expect(cacheGetOrSet).toHaveBeenCalledWith('bot:stats:public', expect.any(Function), 300);
     });
 
     it('returns cached data on second request without re-computing', async () => {
@@ -245,7 +241,8 @@ describe('GET /api/v1/stats', () => {
         '../../../src/api/middleware/redisRateLimit.js'
       );
       mockRL.mockImplementationOnce(() => {
-        const m = (_req, res) => res.status(429).json({ error: 'Too many requests, please try again later' });
+        const m = (_req, res) =>
+          res.status(429).json({ error: 'Too many requests, please try again later' });
         m.destroy = vi.fn();
         return m;
       });
@@ -256,9 +253,7 @@ describe('GET /api/v1/stats', () => {
       // Build fresh router after reset
       const { Router } = await import('express');
       const r = Router();
-      const { redisRateLimit: rl } = await import(
-        '../../../src/api/middleware/redisRateLimit.js'
-      );
+      const { redisRateLimit: rl } = await import('../../../src/api/middleware/redisRateLimit.js');
       const limiter = rl({ windowMs: 60_000, max: 30, keyPrefix: 'rl:stats' });
       r.use(limiter);
       r.get('/', (_req, res) => res.json({ ok: true }));
