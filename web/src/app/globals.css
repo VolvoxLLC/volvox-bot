@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode for Tailwind v4 (used by next-themes via .dark on <html>) */
+@variant dark (&:where(.dark, .dark *));
+
 /* JetBrains Mono for headlines, Inter for body (loaded in layout.tsx) */
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
