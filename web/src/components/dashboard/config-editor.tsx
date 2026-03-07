@@ -23,7 +23,7 @@ import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { computePatches, deepEqual } from '@/lib/config-utils';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
-import type { BotConfig, DeepPartial } from '@/types/config';
+import type { BotConfig, ConfigSection, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { ConfigDiff } from './config-diff';
 import { ConfigDiffModal } from './config-diff-modal';
@@ -277,7 +277,7 @@ export function ConfigEditor() {
   const changedSections = useMemo(() => {
     if (!savedConfig || !draftConfig) return [];
     const patches = computePatches(savedConfig, draftConfig);
-    return [...new Set(patches.map((p) => p.path.split('.')[0]))];
+    return [...new Set(patches.map((p) => p.path.split('.')[0]))] as ConfigSection[];
   }, [savedConfig, draftConfig]);
 
   const searchResults = useMemo(() => getMatchingSearchItems(searchQuery), [searchQuery]);

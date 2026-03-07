@@ -5,6 +5,7 @@ import { RotateCcw } from 'lucide-react';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { ConfigSection } from '@/types/config';
 
 interface ConfigDiffProps {
   /** Original config JSON (before changes). */
@@ -19,9 +20,9 @@ interface ConfigDiffProps {
    * are rendered in the card header so users can cherry-pick reverts without
    * opening the full diff modal.
    */
-  changedSections?: string[];
+  changedSections?: ConfigSection[];
   /** Called with the section key when the user clicks a per-section revert button. */
-  onRevertSection?: (section: string) => void;
+  onRevertSection?: (section: ConfigSection) => void;
 }
 
 interface DiffLine {
