@@ -3,6 +3,7 @@
 import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { getCategoryById } from './config-categories';
 import type { ConfigSearchItem } from './types';
 
 interface ConfigSearchProps {
@@ -71,7 +72,7 @@ export function ConfigSearch({ value, onChange, results, onSelect }: ConfigSearc
                     <span className="flex flex-col">
                       <span className="text-sm font-medium">{item.label}</span>
                       <span className="text-xs text-muted-foreground">
-                        {item.description} • {item.categoryId.replace(/-/g, ' ')}
+                        {item.description} • {getCategoryById(item.categoryId).label}
                       </span>
                     </span>
                   </Button>
