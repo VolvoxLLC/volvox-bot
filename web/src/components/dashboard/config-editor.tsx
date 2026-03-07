@@ -1030,8 +1030,13 @@ export function ConfigEditor() {
               }
               advancedContent={
                 guildId ? (
-                  <label htmlFor="ai-blocked-channels" className="space-y-2 block">
-                    <span className="text-sm font-medium">Blocked Channels</span>
+                  <div className="space-y-2">
+                    <label htmlFor="ai-blocked-channels" className="block">
+                      <span className="text-sm font-medium">Blocked Channels</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      The bot will not read messages, respond, or run triage in these channels.
+                    </p>
                     <ChannelSelector
                       id="ai-blocked-channels"
                       guildId={guildId}
@@ -1041,7 +1046,7 @@ export function ConfigEditor() {
                       disabled={saving}
                       filter="text"
                     />
-                  </label>
+                  </div>
                 ) : (
                   <p className="text-muted-foreground text-sm">Select a server first</p>
                 )
