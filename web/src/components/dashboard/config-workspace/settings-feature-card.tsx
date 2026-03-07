@@ -21,6 +21,20 @@ interface SettingsFeatureCardProps {
   forceOpenAdvanced?: boolean;
 }
 
+/**
+ * Renders a configurable feature card with required basic content and optional enabled toggle and expandable advanced settings.
+ *
+ * @param featureId - Unique identifier for the feature; used to build element ids for anchoring and accessibility.
+ * @param title - Visible title shown in the card header.
+ * @param description - Short description shown under the title.
+ * @param basicContent - Content shown in the Basic section of the card.
+ * @param advancedContent - Optional content shown in the Advanced section when expanded.
+ * @param enabled - Optional boolean representing the current enabled state of the feature; when provided and paired with `onEnabledChange`, a switch is rendered.
+ * @param onEnabledChange - Optional handler invoked with the new enabled state when the switch is toggled; when omitted, no switch is shown.
+ * @param disabled - When true, the enabled switch (if rendered) is disabled.
+ * @param forceOpenAdvanced - When true, ensures the Advanced section is opened.
+ * @returns The rendered feature card element.
+ */
 export function SettingsFeatureCard({
   featureId,
   title,

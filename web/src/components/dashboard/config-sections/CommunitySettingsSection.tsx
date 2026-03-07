@@ -29,6 +29,25 @@ interface CommunitySettingsSectionProps {
   forceOpenAdvancedFeatureId: ConfigFeatureId | null;
 }
 
+/**
+ * Renders the Community settings UI as a set of feature-specific settings cards.
+ *
+ * Renders SettingsFeatureCard sections (Community Tools, Activity Badges, Reputation/XP, TL;DR & AFK,
+ * Daily Coding Challenges, GitHub Activity Feed, Tickets) when a feature is visible and its category is active.
+ * Controls are bound to `draftConfig` and updates are applied via `updateDraftConfig`; inputs are disabled while `saving` is true.
+ *
+ * @param draftConfig - Partial guild configuration used to populate control values
+ * @param saving - When true, disable interactive inputs to prevent changes during persistence
+ * @param guildId - Guild identifier passed to channel/role selectors
+ * @param inputClasses - CSS classes applied to native input elements
+ * @param defaultActivityBadges - Default badge list used when engagement activity badges are not set
+ * @param parseNumberInput - Helper to parse and validate numeric input values (may accept min/max)
+ * @param updateDraftConfig - Functional updater used to immutably modify `draftConfig`
+ * @param activeCategoryId - Currently active configuration category; only cards matching this category are rendered
+ * @param visibleFeatureIds - Set of feature ids that are allowed to be shown
+ * @param forceOpenAdvancedFeatureId - Feature id whose advanced panel should be forced open, or null
+ * @returns A React fragment containing the community-related settings cards and their controls
+ */
 export function CommunitySettingsSection({
   draftConfig,
   saving,

@@ -361,10 +361,22 @@ export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
   },
 ];
 
+/**
+ * Retrieve a configuration category by its id.
+ *
+ * @param categoryId - The id of the configuration category to look up
+ * @returns The matching ConfigCategoryMeta, or the first category as a fallback if no match is found
+ */
 export function getCategoryById(categoryId: ConfigCategoryId): ConfigCategoryMeta {
   return CONFIG_CATEGORIES.find((category) => category.id === categoryId) ?? CONFIG_CATEGORIES[0];
 }
 
+/**
+ * Retrieve the configuration category that contains the given feature id.
+ *
+ * @param featureId - The feature identifier to look up
+ * @returns The matching ConfigCategoryMeta, or the first category as a fallback if none contains `featureId`
+ */
 export function getCategoryByFeature(featureId: ConfigFeatureId): ConfigCategoryMeta {
   return (
     CONFIG_CATEGORIES.find((category) => category.featureIds.includes(featureId)) ??
@@ -372,6 +384,14 @@ export function getCategoryByFeature(featureId: ConfigFeatureId): ConfigCategory
   );
 }
 
+/**
+ * Finds configuration search items that match a text query.
+ *
+ * The query is trimmed and matched case-insensitively against each item's label, description, and keywords.
+ *
+ * @param query - The search text to match (leading/trailing whitespace is ignored)
+ * @returns An array of ConfigSearchItem objects whose label, description, or keywords include the query
+ */
 export function getMatchingSearchItems(query: string): ConfigSearchItem[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return [];
@@ -382,6 +402,12 @@ export function getMatchingSearchItems(query: string): ConfigSearchItem[] {
   });
 }
 
+/**
+ * Finds feature IDs for configuration items that match a search query.
+ *
+ * @param query - The search string used to match item labels, descriptions, and keywords
+ * @returns A `Set` of feature IDs for configuration search items that match `query`
+ */
 export function getMatchedFeatureIds(query: string): Set<ConfigFeatureId> {
   const matches = getMatchingSearchItems(query);
   return new Set(matches.map((item) => item.featureId));

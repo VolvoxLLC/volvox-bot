@@ -12,6 +12,15 @@ interface ConfigSearchProps {
   onSelect: (item: ConfigSearchItem) => void;
 }
 
+/**
+ * Render a searchable UI for configuration items with inline clear and selectable results.
+ *
+ * @param value - Current search text shown in the input.
+ * @param onChange - Callback invoked with the new search text when the input changes or is cleared.
+ * @param results - Array of configuration items to display; at most the first eight are shown.
+ * @param onSelect - Callback invoked with the selected configuration item when a result row is clicked.
+ * @returns The search input and, when there is input, a results panel that shows matching items or a no-match message.
+ */
 export function ConfigSearch({ value, onChange, results, onSelect }: ConfigSearchProps) {
   const normalizedValue = value.trim();
   const limitedResults = results.slice(0, 8);

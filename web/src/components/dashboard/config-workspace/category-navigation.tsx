@@ -21,6 +21,14 @@ interface CategoryNavigationProps {
   onCategoryChange: (categoryId: ConfigCategoryId) => void;
 }
 
+/**
+ * Render responsive category navigation with selectable categories and per-category dirty counts.
+ *
+ * @param activeCategoryId - The id of the currently active category.
+ * @param dirtyCounts - A record mapping category ids to their dirty/unsaved item counts.
+ * @param onCategoryChange - Callback invoked with a `ConfigCategoryId` when the user selects or clicks a category.
+ * @returns A React element that renders a labeled select for mobile and a vertical list of category buttons for desktop; each item shows an icon, label, and an optional badge with the dirty count.
+ */
 export function CategoryNavigation({
   activeCategoryId,
   dirtyCounts,

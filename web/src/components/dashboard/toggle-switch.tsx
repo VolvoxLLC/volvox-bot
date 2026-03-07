@@ -10,13 +10,13 @@ interface ToggleSwitchProps {
 }
 
 /**
- * Renders an accessible toggle switch control.
+ * Render an accessible toggle switch control.
  *
- * @param checked - Current on/off state of the switch.
- * @param onChange - Callback invoked with the new checked state when the switch is toggled.
- * @param disabled - When true, disables user interaction.
- * @param label - Human-readable name used for the switch's ARIA label.
- * @returns The button element acting as a toggle switch.
+ * @param checked - Current on/off state of the switch
+ * @param onChange - Callback invoked with the new checked state when the switch is toggled
+ * @param disabled - When true, disables user interaction
+ * @param label - Human-readable name used for the switch's ARIA label
+ * @returns The rendered Switch element
  */
 export function ToggleSwitch({ checked, onChange, disabled, label }: ToggleSwitchProps) {
   return (
