@@ -287,7 +287,7 @@ export function CommunitySettingsSection({
           disabled={saving}
           basicContent={
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label htmlFor="xp-per-message-min" className="space-y-2">
                   <span className="text-sm font-medium">XP per Message (min)</span>
                   <input

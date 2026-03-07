@@ -90,7 +90,7 @@ export function AiFeedbackStats() {
         {!loading && !error && stats && (
           <div className="space-y-6">
             {/* Summary row */}
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 gap-4 text-center sm:grid-cols-3">
               <div className="rounded-lg border p-3">
                 <div className="flex items-center justify-center gap-1 text-2xl font-bold text-green-500">
                   <ThumbsUp className="h-5 w-5" />

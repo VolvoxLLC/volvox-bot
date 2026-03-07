@@ -1349,7 +1349,7 @@ export function ConfigEditor() {
                           label="Rate Limiting"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <label htmlFor="max-messages" className="space-y-2">
                           <span className="text-sm text-muted-foreground">Max Messages</span>
                           <input
@@ -1381,7 +1381,7 @@ export function ConfigEditor() {
                           />
                         </label>
                       </div>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <label htmlFor="mute-after-triggers" className="space-y-2">
                           <span className="text-sm text-muted-foreground">Mute After Triggers</span>
                           <input
@@ -1689,7 +1689,7 @@ export function ConfigEditor() {
                         placeholder="e.g. claude-sonnet-4-6"
                       />
                     </label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <label htmlFor="classify-budget" className="space-y-2">
                         <span className="text-sm font-medium">Classify Budget</span>
                         <input
@@ -1746,7 +1746,7 @@ export function ConfigEditor() {
                 }
                 advancedContent={
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <label htmlFor="default-interval-ms" className="space-y-2">
                         <span className="text-sm font-medium">Default Interval (ms)</span>
                         <input
@@ -1778,7 +1778,7 @@ export function ConfigEditor() {
                         />
                       </label>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <label htmlFor="context-messages" className="space-y-2">
                         <span className="text-sm font-medium">Context Messages</span>
                         <input

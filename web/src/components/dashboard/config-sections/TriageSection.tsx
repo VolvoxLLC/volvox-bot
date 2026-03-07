@@ -85,7 +85,7 @@ export function TriageSection({
             placeholder="e.g. claude-sonnet-4-6"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <NumberField
             label="Classify Budget"
             value={draftConfig.triage?.classifyBudget ?? 0}
@@ -103,7 +103,7 @@ export function TriageSection({
             min={0}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <NumberField
             label="Default Interval (ms)"
             value={draftConfig.triage?.defaultInterval ?? 3000}
@@ -119,7 +119,7 @@ export function TriageSection({
             min={1}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <NumberField
             label="Context Messages"
             value={draftConfig.triage?.contextMessages ?? 10}
