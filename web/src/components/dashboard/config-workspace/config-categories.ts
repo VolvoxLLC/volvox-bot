@@ -339,7 +339,12 @@ export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
  * @returns The matching ConfigCategoryMeta, or the first category as a fallback if no match is found
  */
 export function getCategoryById(categoryId: ConfigCategoryId): ConfigCategoryMeta {
-  return CONFIG_CATEGORIES.find((category) => category.id === categoryId) ?? CONFIG_CATEGORIES[0];
+  const found = CONFIG_CATEGORIES.find((category) => category.id === categoryId);
+  if (!found) {
+    console.warn(`getCategoryById: unknown categoryId "${categoryId}", falling back to default.`);
+    return CONFIG_CATEGORIES[0];
+  }
+  return found;
 }
 
 /**
