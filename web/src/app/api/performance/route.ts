@@ -5,6 +5,10 @@ import { buildUpstreamUrl, getBotApiConfig, proxyToBotApi } from '@/lib/bot-api-
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * GET /api/performance — bot-wide performance data (not guild-scoped).
+ * Any authenticated user (dashboard "viewer" for Performance = any logged-in user) can access.
+ */
 export async function GET(request: NextRequest) {
   const token = await getToken({ req: request });
 

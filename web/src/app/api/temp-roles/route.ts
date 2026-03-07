@@ -8,7 +8,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
-  authorizeGuildAdmin,
+  authorizeGuildRole,
   buildUpstreamUrl,
   getBotApiConfig,
   proxyToBotApi,
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'guildId is required' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
+  const authError = await authorizeGuildRole(request, guildId, 'moderator', LOG_PREFIX);
   if (authError) return authError;
 
   const config = getBotApiConfig(LOG_PREFIX);
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'guildId is required' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
+  const authError = await authorizeGuildRole(request, guildId, 'admin', LOG_PREFIX);
   if (authError) return authError;
 
   const config = getBotApiConfig(LOG_PREFIX);

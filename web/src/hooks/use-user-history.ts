@@ -58,13 +58,16 @@ export function useUserHistory({
 
         const payload: unknown = await res.json();
         if (!res.ok) {
-          const msg =
+          const fromPayload =
             typeof payload === 'object' &&
             payload !== null &&
             'error' in payload &&
             typeof (payload as Record<string, unknown>).error === 'string'
               ? (payload as Record<string, string>).error
-              : 'Failed to fetch user history';
+              : null;
+          const msg =
+            fromPayload ??
+            (res.status === 403 ? "You don't have permission to view this in this server." : 'Failed to fetch user history');
           throw new Error(msg);
         }
 

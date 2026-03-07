@@ -44,13 +44,16 @@ export function useModerationStats({
 
         const payload: unknown = await res.json();
         if (!res.ok) {
-          const msg =
+          const fromPayload =
             typeof payload === 'object' &&
             payload !== null &&
             'error' in payload &&
             typeof (payload as Record<string, unknown>).error === 'string'
               ? (payload as Record<string, string>).error
-              : 'Failed to fetch stats';
+              : null;
+          const msg =
+            fromPayload ??
+            (res.status === 403 ? "You don't have permission to view this in this server." : 'Failed to fetch stats');
           throw new Error(msg);
         }
 

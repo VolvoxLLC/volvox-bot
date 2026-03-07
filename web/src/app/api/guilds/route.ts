@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getDashboardRole } from '@/lib/dashboard-roles';
 import { getMutualGuilds } from '@/lib/discord.server';
 import { logger } from '@/lib/logger';
 
@@ -24,7 +25,11 @@ export async function GET(request: NextRequest) {
   try {
     const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
     const guilds = await getMutualGuilds(token.accessToken as string, signal);
-    return NextResponse.json(guilds);
+    const withAccess = guilds.map((g) => ({
+      ...g,
+      access: getDashboardRole(g.permissions, g.owner),
+    }));
+    return NextResponse.json(withAccess);
   } catch (error) {
     logger.error('[api/guilds] Failed to fetch guilds:', error);
     return NextResponse.json({ error: 'Failed to fetch guilds' }, { status: 500 });

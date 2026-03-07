@@ -12,7 +12,7 @@ import { getConfig } from '../../modules/config.js';
 import { computeLevel } from '../../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { requireGuildAdmin, validateGuild } from './guilds.js';
+import { requireGuildAdmin, requireRole, validateGuild } from './guilds.js';
 
 const router = Router();
 
@@ -759,7 +759,7 @@ router.get(
 router.get(
   '/:id/members/:userId/cases',
   membersRateLimit,
-  requireGuildAdmin,
+  requireRole('moderator'),
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;

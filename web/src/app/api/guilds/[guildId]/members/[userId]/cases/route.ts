@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
-  authorizeGuildAdmin,
+  authorizeGuildRole,
   buildUpstreamUrl,
   getBotApiConfig,
   proxyToBotApi,
@@ -14,7 +14,7 @@ const LOG_PREFIX = '[api/guilds/:guildId/members/:userId/cases]';
 /**
  * Proxy a guild member's moderation case history request to the bot API.
  *
- * Validates route parameters, enforces guild-admin authorization, forwards the original query parameters, and returns the upstream bot API response.
+ * Validates route parameters, enforces at least moderator role (for case management), forwards the original query parameters, and returns the upstream bot API response.
  *
  * @returns The NextResponse from the bot API proxy, or an error NextResponse (for example, 400 when `guildId` or `userId` is missing, or an authorization error response).
  */
@@ -27,7 +27,7 @@ export async function GET(
     return NextResponse.json({ error: 'Missing guildId or userId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
+  const authError = await authorizeGuildRole(request, guildId, 'moderator', LOG_PREFIX);
   if (authError) return authError;
 
   const apiConfig = getBotApiConfig(LOG_PREFIX);

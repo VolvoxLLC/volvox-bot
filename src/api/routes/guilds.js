@@ -13,17 +13,13 @@ import {
   READABLE_CONFIG_KEYS,
   SAFE_CONFIG_KEYS,
 } from '../utils/configAllowlist.js';
+import { getDashboardRole, hasMinimumRole } from '../utils/dashboardRoles.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
 import { getSessionToken } from '../utils/sessionStore.js';
 import { validateConfigPatchBody } from '../utils/validateConfigPatch.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
 const router = Router();
-
-/** Discord ADMINISTRATOR permission flag */
-const ADMINISTRATOR_FLAG = 0x8;
-/** Discord MANAGE_GUILD permission flag */
-const MANAGE_GUILD_FLAG = 0x20;
 
 /**
  * Upper bound on content length for abuse prevention.
@@ -174,25 +170,24 @@ function formatBucketLabel(bucket, interval) {
 }
 
 /**
- * Determine whether an OAuth2 user has any of the specified permission flags for a guild.
+ * Resolve the OAuth user's dashboard role for a guild (viewer, moderator, admin, owner).
  *
  * @param {Object} user - Decoded JWT user payload containing at minimum `userId`.
- * @param {string} guildId - Discord guild ID to check.
- * @param {number} anyOfFlags - Bitmask of Discord permission flags; returns `true` if any bit in this mask is present on the user's guild permissions.
- * @returns {boolean} `true` if the user has any of the specified permission flags on the guild, `false` otherwise.
+ * @param {string} guildId - Discord guild ID.
+ * @returns {Promise<'viewer'|'moderator'|'admin'|'owner'|null>} Dashboard role or null if user is not in the guild / no session.
  */
-async function hasOAuthGuildPermission(user, guildId, anyOfFlags) {
+async function getOAuthGuildDashboardRole(user, guildId) {
   try {
     const accessToken = await getSessionToken(user?.userId);
-    if (!accessToken) return false;
+    if (!accessToken) return null;
     const guilds = await fetchUserGuilds(user.userId, accessToken);
     const guild = guilds.find((g) => g.id === guildId);
-    if (!guild) return false;
+    if (!guild) return null;
     const permissions = Number(guild.permissions);
-    if (Number.isNaN(permissions)) return false;
-    return (permissions & anyOfFlags) !== 0;
+    const owner = Boolean(guild.owner);
+    return getDashboardRole(permissions, owner);
   } catch (err) {
-    error('Error in hasOAuthGuildPermission (session lookup or guild fetch)', {
+    error('Error in getOAuthGuildDashboardRole (session lookup or guild fetch)', {
       error: err.message,
       userId: user?.userId,
       guildId,
@@ -212,53 +207,30 @@ function isOAuthBotOwner(user) {
   return botOwners.includes(user?.userId);
 }
 
-/**
- * Check if an OAuth2 user has admin permissions on a guild.
- * Admin = ADMINISTRATOR only, aligning with the slash-command isAdmin check.
- *
- * @param {Object} user - Decoded JWT user payload
- * @param {string} guildId - Guild ID to check
- * @returns {Promise<boolean>} True if user has admin-level permission
- */
-function isOAuthGuildAdmin(user, guildId) {
-  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG);
-}
+const VALID_ROLES = ['viewer', 'moderator', 'admin', 'owner'];
 
 /**
- * Check if an OAuth2 user has moderator permissions on a guild.
- * Moderator = ADMINISTRATOR or MANAGE_GUILD, aligning with the slash-command isModerator check.
+ * Return Express middleware that requires the OAuth user to have at least the given dashboard role.
+ * API-secret requests and bot owners bypass the check. 403 when role is insufficient, 502 on Discord errors.
  *
- * @param {Object} user - Decoded JWT user payload
- * @param {string} guildId - Guild ID to check
- * @returns {Promise<boolean>} True if user has moderator-level permission
+ * @param {'viewer'|'moderator'|'admin'|'owner'} minRole - Minimum required dashboard role.
+ * @returns {import('express').RequestHandler}
  */
-function isOAuthGuildModerator(user, guildId) {
-  return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG);
-}
-
-/**
- * Return Express middleware that enforces a guild-level permission for OAuth users.
- *
- * The middleware bypasses checks for API-secret requests and for configured bot owners.
- * For OAuth-authenticated requests it calls `permissionCheck(user, guildId)` and:
- * - responds 403 with `errorMessage` when the check resolves to `false`,
- * - responds 502 when the permission verification throws,
- * - otherwise allows the request to continue.
- * Unknown or missing auth methods receive a 401 response.
- *
- * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Function that returns `true` if the provided user has the required permission in the specified guild, `false` otherwise.
- * @param {string} errorMessage - Message to include in the 403 response when permission is denied.
- * @returns {import('express').RequestHandler} Express middleware enforcing the permission.
- */
-function requireGuildPermission(permissionCheck, errorMessage) {
+export function requireRole(minRole) {
+  if (!VALID_ROLES.includes(minRole)) {
+    throw new Error(`requireRole: invalid minRole "${minRole}"`);
+  }
+  const errorMessage = `You do not have ${minRole} access to this guild`;
   return async (req, res, next) => {
     if (req.authMethod === 'api-secret') return next();
-
     if (req.authMethod === 'oauth') {
       if (isOAuthBotOwner(req.user)) return next();
-
       try {
-        if (!(await permissionCheck(req.user, req.params.id))) {
+        const userRole = await getOAuthGuildDashboardRole(req.user, req.params.id);
+        if (userRole === null) {
+          return res.status(403).json({ error: errorMessage });
+        }
+        if (!hasMinimumRole(userRole, minRole)) {
           return res.status(403).json({ error: errorMessage });
         }
         return next();
@@ -271,7 +243,6 @@ function requireGuildPermission(permissionCheck, errorMessage) {
         return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
       }
     }
-
     warn('Unknown authMethod in guild permission check', {
       authMethod: req.authMethod,
       path: req.path,
@@ -280,17 +251,11 @@ function requireGuildPermission(permissionCheck, errorMessage) {
   };
 }
 
-/** Middleware: verify OAuth2 users are guild admins. API-secret users pass through. */
-export const requireGuildAdmin = requireGuildPermission(
-  isOAuthGuildAdmin,
-  'You do not have admin access to this guild',
-);
+/** Middleware: verify OAuth2 users have at least admin dashboard role. API-secret users pass through. */
+export const requireGuildAdmin = requireRole('admin');
 
-/** Middleware: verify OAuth2 users are guild moderators. API-secret users pass through. */
-export const requireGuildModerator = requireGuildPermission(
-  isOAuthGuildModerator,
-  'You do not have moderator access to this guild',
-);
+/** Middleware: verify OAuth2 users have at least moderator dashboard role. API-secret users pass through. */
+export const requireGuildModerator = requireRole('moderator');
 
 /**
  * Validate that the requested guild exists and attach it to req.guild.
@@ -319,8 +284,7 @@ export function validateGuild(req, res, next) {
  *       - Guilds
  *     summary: List guilds
  *     description: >
- *       For OAuth users: returns guilds where the user has MANAGE_GUILD or ADMINISTRATOR.
- *       Bot owners see all guilds. For API-secret users: returns all bot guilds.
+ *       For OAuth users: returns guilds where the user and bot share membership, with access one of viewer, moderator, admin, owner (from Discord permissions). Bot owners see all guilds with access bot-owner. For API-secret users: returns all bot guilds.
  *     security:
  *       - ApiKeyAuth: []
  *       - BearerAuth: []
@@ -345,7 +309,7 @@ export function validateGuild(req, res, next) {
  *                     type: integer
  *                   access:
  *                     type: string
- *                     enum: [admin, moderator, bot-owner]
+ *                     enum: [viewer, moderator, admin, owner, bot-owner]
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  *       "502":
@@ -392,13 +356,7 @@ router.get('/', async (req, res) => {
     try {
       const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
       const filtered = userGuilds.reduce((acc, ug) => {
-        const permissions = Number(ug.permissions);
-        const hasAdmin = (permissions & ADMINISTRATOR_FLAG) !== 0;
-        const hasManageGuild = (permissions & MANAGE_GUILD_FLAG) !== 0;
-        const access = hasAdmin ? 'admin' : hasManageGuild ? 'moderator' : null;
-        if (!access) return acc;
-
-        // Single lookup avoids has/get TOCTOU.
+        const access = getDashboardRole(Number(ug.permissions), Boolean(ug.owner));
         const botGuild = botGuilds.get(ug.id);
         if (!botGuild) return acc;
         acc.push({
@@ -516,7 +474,7 @@ function getGuildChannels(guild) {
  *       "404":
  *         $ref: "#/components/responses/NotFound"
  */
-router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
+router.get('/:id', requireRole('viewer'), validateGuild, (req, res) => {
   const guild = req.guild;
   res.json({
     id: guild.id,
@@ -797,7 +755,7 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/stats', requireRole('viewer'), validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
@@ -909,7 +867,7 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/analytics', requireRole('viewer'), validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
   if (!dbPool) {
