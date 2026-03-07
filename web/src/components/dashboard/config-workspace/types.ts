@@ -42,7 +42,6 @@ export interface ConfigSearchItem {
   id: string;
   featureId: ConfigFeatureId;
   categoryId: ConfigCategoryId;
-  section: ConfigSectionKey;
   label: string;
   description: string;
   keywords: string[];
