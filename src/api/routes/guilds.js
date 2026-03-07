@@ -1185,6 +1185,11 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
         }),
       dbPool
         .query(
+          // NOTE: totalMessagesSent (and related stats) reflect cumulative all-time counts
+          // from user_stats, which has no time-series granularity. The user_stats table
+          // stores running totals per user with no timestamp column for filtering.
+          // TODO: For time-bounded accuracy (e.g. "last 30 days"), add a
+          // message_events log table and aggregate from that instead.
           `SELECT
                COUNT(DISTINCT user_id)::int AS tracked_users,
                COALESCE(SUM(messages_sent), 0)::bigint AS total_messages_sent,
