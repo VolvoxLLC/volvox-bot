@@ -48,28 +48,52 @@ describe('isExempt', () => {
     expect(isExempt(msg, {})).toBe(false);
   });
 
-  it('should return true when member has adminRoleId', () => {
+  it('should return true when member has a role in adminRoleIds array', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['admin-role-id'] });
+    const config = { permissions: { adminRoleIds: ['admin-role-id'] } };
+    expect(isExempt(msg, config)).toBe(true);
+  });
+
+  it('should return true when member has any of multiple adminRoleIds', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['admin-role-2'] });
+    const config = { permissions: { adminRoleIds: ['admin-role-1', 'admin-role-2'] } };
+    expect(isExempt(msg, config)).toBe(true);
+  });
+
+  it('should return false when adminRoleIds is set but member does not have any', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['other-role'] });
+    const config = { permissions: { adminRoleIds: ['admin-role-id'] } };
+    expect(isExempt(msg, config)).toBe(false);
+  });
+
+  it('should return true when member has a role in moderatorRoleIds array', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['mod-role-id'] });
+    const config = { permissions: { moderatorRoleIds: ['mod-role-id'] } };
+    expect(isExempt(msg, config)).toBe(true);
+  });
+
+  it('should return true when member has any of multiple moderatorRoleIds', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: ['mod-role-2'] });
+    const config = { permissions: { moderatorRoleIds: ['mod-role-1', 'mod-role-2'] } };
+    expect(isExempt(msg, config)).toBe(true);
+  });
+
+  it('should return false when moderatorRoleIds is set but member does not have any', () => {
+    const msg = makeMessage({ isAdmin: false, roleIds: [] });
+    const config = { permissions: { moderatorRoleIds: ['mod-role-id'] } };
+    expect(isExempt(msg, config)).toBe(false);
+  });
+
+  it('should support backward compat: singular adminRoleId still grants exemption', () => {
     const msg = makeMessage({ isAdmin: false, roleIds: ['admin-role-id'] });
     const config = { permissions: { adminRoleId: 'admin-role-id' } };
     expect(isExempt(msg, config)).toBe(true);
   });
 
-  it('should return false when adminRoleId is set but member does not have it', () => {
-    const msg = makeMessage({ isAdmin: false, roleIds: ['other-role'] });
-    const config = { permissions: { adminRoleId: 'admin-role-id' } };
-    expect(isExempt(msg, config)).toBe(false);
-  });
-
-  it('should return true when member has moderatorRoleId', () => {
+  it('should support backward compat: singular moderatorRoleId still grants exemption', () => {
     const msg = makeMessage({ isAdmin: false, roleIds: ['mod-role-id'] });
     const config = { permissions: { moderatorRoleId: 'mod-role-id' } };
     expect(isExempt(msg, config)).toBe(true);
-  });
-
-  it('should return false when moderatorRoleId is set but member does not have it', () => {
-    const msg = makeMessage({ isAdmin: false, roleIds: [] });
-    const config = { permissions: { moderatorRoleId: 'mod-role-id' } };
-    expect(isExempt(msg, config)).toBe(false);
   });
 
   it('should return true when member has a role ID in modRoles array', () => {

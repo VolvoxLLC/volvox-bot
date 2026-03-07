@@ -585,13 +585,17 @@ export function isProtectedTarget(target, guild) {
     return true;
   }
 
+  // Resolve admin/moderator role ID arrays with backward compat for old singular fields
+  const adminRoleIds =
+    config.permissions?.adminRoleIds ??
+    (config.permissions?.adminRoleId ? [config.permissions.adminRoleId] : []);
+  const moderatorRoleIds =
+    config.permissions?.moderatorRoleIds ??
+    (config.permissions?.moderatorRoleId ? [config.permissions.moderatorRoleId] : []);
+
   const protectedRoleIds = [
-    ...(protectRoles.includeAdmins && config.permissions?.adminRoleId
-      ? [config.permissions.adminRoleId]
-      : []),
-    ...(protectRoles.includeModerators && config.permissions?.moderatorRoleId
-      ? [config.permissions.moderatorRoleId]
-      : []),
+    ...(protectRoles.includeAdmins ? adminRoleIds : []),
+    ...(protectRoles.includeModerators ? moderatorRoleIds : []),
     ...(Array.isArray(protectRoles.roleIds) ? protectRoles.roleIds : []),
   ].filter(Boolean);
 

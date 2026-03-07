@@ -188,8 +188,8 @@ export interface StarboardConfig {
 /** Permissions configuration. */
 export interface PermissionsConfig {
   enabled: boolean;
-  adminRoleId: string | null;
-  moderatorRoleId: string | null;
+  adminRoleIds: string[];
+  moderatorRoleIds: string[];
   modRoles: string[];
   botOwners: string[];
   usePermissions: boolean;

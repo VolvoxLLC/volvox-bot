@@ -86,14 +86,27 @@ describe('isAdmin', () => {
     expect(isAdmin(member, {})).toBe(true);
   });
 
-  it('should return true for members with admin role', () => {
+  it('should return true for members with admin role (adminRoleIds array)', () => {
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(true) } },
     };
-    const config = { permissions: { adminRoleId: '123456' } };
+    const config = { permissions: { adminRoleIds: ['123456'] } };
     expect(isAdmin(member, config)).toBe(true);
     expect(member.roles.cache.has).toHaveBeenCalledWith('123456');
+  });
+
+  it('should return true for members with any of multiple admin roles', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: {
+        cache: {
+          has: vi.fn().mockImplementation((id) => id === '999999'),
+        },
+      },
+    };
+    const config = { permissions: { adminRoleIds: ['123456', '999999'] } };
+    expect(isAdmin(member, config)).toBe(true);
   });
 
   it('should return false for regular members', () => {
@@ -101,16 +114,26 @@ describe('isAdmin', () => {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
-    const config = { permissions: { adminRoleId: '123456' } };
+    const config = { permissions: { adminRoleIds: ['123456'] } };
     expect(isAdmin(member, config)).toBe(false);
   });
 
-  it('should return false when no adminRoleId configured and not Admin', () => {
+  it('should return false when no adminRoleIds configured and not Admin', () => {
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn() } },
     };
     expect(isAdmin(member, {})).toBe(false);
+  });
+
+  it('should support backward compat: singular adminRoleId still works', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(true) } },
+    };
+    const config = { permissions: { adminRoleId: '123456' } };
+    expect(isAdmin(member, config)).toBe(true);
+    expect(member.roles.cache.has).toHaveBeenCalledWith('123456');
   });
 });
 
@@ -320,12 +343,12 @@ describe('isGuildAdmin', () => {
     expect(isGuildAdmin(member, {})).toBe(true);
   });
 
-  it('should return true for members with admin role', () => {
+  it('should return true for members with admin role (adminRoleIds array)', () => {
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(true) } },
     };
-    const config = { permissions: { adminRoleId: '123456' } };
+    const config = { permissions: { adminRoleIds: ['123456'] } };
     expect(isGuildAdmin(member, config)).toBe(true);
     expect(member.roles.cache.has).toHaveBeenCalledWith('123456');
   });
@@ -382,24 +405,50 @@ describe('isModerator', () => {
     expect(isModerator(member, {})).toBe(true);
   });
 
-  it('should return true for members with admin role', () => {
+  it('should return true for members with admin role (adminRoleIds array)', () => {
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(true) } },
     };
-    const config = { permissions: { adminRoleId: '123456' } };
+    const config = { permissions: { adminRoleIds: ['123456'] } };
     expect(isModerator(member, config)).toBe(true);
     expect(member.roles.cache.has).toHaveBeenCalledWith('123456');
   });
 
-  it('should return true for members with moderator role', () => {
+  it('should return true for members with any of multiple admin roles', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: {
+        cache: {
+          has: vi.fn().mockImplementation((id) => id === '999999'),
+        },
+      },
+    };
+    const config = { permissions: { adminRoleIds: ['123456', '999999'] } };
+    expect(isModerator(member, config)).toBe(true);
+  });
+
+  it('should return true for members with moderator role (moderatorRoleIds array)', () => {
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(true) } },
     };
-    const config = { permissions: { moderatorRoleId: '654321' } };
+    const config = { permissions: { moderatorRoleIds: ['654321'] } };
     expect(isModerator(member, config)).toBe(true);
     expect(member.roles.cache.has).toHaveBeenCalledWith('654321');
+  });
+
+  it('should return true for members with any of multiple moderator roles', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: {
+        cache: {
+          has: vi.fn().mockImplementation((id) => id === '888888'),
+        },
+      },
+    };
+    const config = { permissions: { moderatorRoleIds: ['654321', '888888'] } };
+    expect(isModerator(member, config)).toBe(true);
   });
 
   it('should return true for moderator role when admin and moderator roles are both configured', () => {
@@ -412,10 +461,30 @@ describe('isModerator', () => {
       },
     };
     const config = {
-      permissions: { adminRoleId: '123456', moderatorRoleId: '654321' },
+      permissions: { adminRoleIds: ['123456'], moderatorRoleIds: ['654321'] },
     };
     expect(isModerator(member, config)).toBe(true);
     expect(member.roles.cache.has).toHaveBeenCalledWith('123456');
+    expect(member.roles.cache.has).toHaveBeenCalledWith('654321');
+  });
+
+  it('should support backward compat: singular adminRoleId still works', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(true) } },
+    };
+    const config = { permissions: { adminRoleId: '123456' } };
+    expect(isModerator(member, config)).toBe(true);
+    expect(member.roles.cache.has).toHaveBeenCalledWith('123456');
+  });
+
+  it('should support backward compat: singular moderatorRoleId still works', () => {
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: vi.fn().mockReturnValue(true) } },
+    };
+    const config = { permissions: { moderatorRoleId: '654321' } };
+    expect(isModerator(member, config)).toBe(true);
     expect(member.roles.cache.has).toHaveBeenCalledWith('654321');
   });
 

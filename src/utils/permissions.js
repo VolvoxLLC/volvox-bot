@@ -62,9 +62,13 @@ export function isAdmin(member, config) {
     return true;
   }
 
-  // Check if member has the configured admin role
-  if (config.permissions?.adminRoleId) {
-    return member.roles.cache.has(config.permissions.adminRoleId);
+  // Check if member has any of the configured admin roles
+  // Backward compat: support old singular adminRoleId field
+  const adminRoleIds =
+    config.permissions?.adminRoleIds ??
+    (config.permissions?.adminRoleId ? [config.permissions.adminRoleId] : []);
+  if (adminRoleIds.length > 0) {
+    return adminRoleIds.some((id) => member.roles.cache.has(id));
   }
 
   return false;
@@ -158,15 +162,22 @@ export function isModerator(member, config) {
     return true;
   }
 
-  // Check bot admin role from config
-  if (config.permissions?.adminRoleId) {
-    if (member.roles.cache.has(config.permissions.adminRoleId)) {
-      return true;
-    }
+  // Check bot admin roles from config
+  // Backward compat: support old singular adminRoleId field
+  const adminRoleIds =
+    config.permissions?.adminRoleIds ??
+    (config.permissions?.adminRoleId ? [config.permissions.adminRoleId] : []);
+  if (adminRoleIds.some((id) => member.roles.cache.has(id))) {
+    return true;
   }
 
-  if (config.permissions?.moderatorRoleId) {
-    return member.roles.cache.has(config.permissions.moderatorRoleId);
+  // Check bot moderator roles from config
+  // Backward compat: support old singular moderatorRoleId field
+  const moderatorRoleIds =
+    config.permissions?.moderatorRoleIds ??
+    (config.permissions?.moderatorRoleId ? [config.permissions.moderatorRoleId] : []);
+  if (moderatorRoleIds.some((id) => member.roles.cache.has(id))) {
+    return true;
   }
 
   return false;

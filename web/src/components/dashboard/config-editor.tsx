@@ -1994,40 +1994,26 @@ export function ConfigEditor() {
               disabled={saving}
               basicContent={
                 <div className="space-y-4">
-                  <label htmlFor="admin-role-id" className="space-y-2 block">
-                    <span className="text-sm font-medium">Admin Role ID</span>
+                  <label htmlFor="admin-role-ids" className="space-y-2 block">
+                    <span className="text-sm font-medium">Admin Roles</span>
                     <RoleSelector
-                      id="admin-role-id"
+                      id="admin-role-ids"
                       guildId={guildId}
-                      selected={
-                        draftConfig.permissions?.adminRoleId
-                          ? [draftConfig.permissions.adminRoleId]
-                          : []
-                      }
-                      onChange={(selected) =>
-                        updatePermissionsField('adminRoleId', selected[0] ?? null)
-                      }
-                      placeholder="Select admin role"
+                      selected={draftConfig.permissions?.adminRoleIds ?? []}
+                      onChange={(selected) => updatePermissionsField('adminRoleIds', selected)}
+                      placeholder="Select admin roles"
                       disabled={saving}
-                      maxSelections={1}
                     />
                   </label>
-                  <label htmlFor="moderator-role-id" className="space-y-2 block">
-                    <span className="text-sm font-medium">Moderator Role ID</span>
+                  <label htmlFor="moderator-role-ids" className="space-y-2 block">
+                    <span className="text-sm font-medium">Moderator Roles</span>
                     <RoleSelector
-                      id="moderator-role-id"
+                      id="moderator-role-ids"
                       guildId={guildId}
-                      selected={
-                        draftConfig.permissions?.moderatorRoleId
-                          ? [draftConfig.permissions.moderatorRoleId]
-                          : []
-                      }
-                      onChange={(selected) =>
-                        updatePermissionsField('moderatorRoleId', selected[0] ?? null)
-                      }
-                      placeholder="Select moderator role"
+                      selected={draftConfig.permissions?.moderatorRoleIds ?? []}
+                      onChange={(selected) => updatePermissionsField('moderatorRoleIds', selected)}
+                      placeholder="Select moderator roles"
                       disabled={saving}
-                      maxSelections={1}
                     />
                   </label>
                 </div>

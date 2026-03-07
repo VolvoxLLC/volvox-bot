@@ -152,8 +152,8 @@
   },
   "permissions": {
     "enabled": true,
-    "adminRoleId": null,
-    "moderatorRoleId": null,
+    "adminRoleIds": [],
+    "moderatorRoleIds": [],
     "botOwners": [],
     "usePermissions": true,
     "allowedCommands": {

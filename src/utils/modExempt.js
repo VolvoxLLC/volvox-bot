@@ -12,9 +12,12 @@ import { PermissionFlagsBits } from 'discord.js';
  *
  * Exempt if the member:
  *  - has the ADMINISTRATOR Discord permission, OR
- *  - holds the role at `config.permissions.adminRoleId` (singular ID), OR
- *  - holds the role at `config.permissions.moderatorRoleId` (singular ID), OR
+ *  - holds any role in `config.permissions.adminRoleIds` (array), OR
+ *  - holds any role in `config.permissions.moderatorRoleIds` (array), OR
  *  - holds any role ID or name listed in `config.permissions.modRoles` (array)
+ *
+ * Backward compat: also checks singular `adminRoleId` / `moderatorRoleId` fields
+ * so old configs continue to work without migration.
  *
  * @param {import('discord.js').Message} message
  * @param {Object} config - Merged guild config
@@ -27,11 +30,17 @@ export function isExempt(message, config) {
   // ADMINISTRATOR permission bypasses everything
   if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
 
-  // Singular role IDs — the actual config schema (permissions.adminRoleId / moderatorRoleId)
-  const adminRoleId = config.permissions?.adminRoleId;
-  const moderatorRoleId = config.permissions?.moderatorRoleId;
-  if (adminRoleId && member.roles.cache.has(adminRoleId)) return true;
-  if (moderatorRoleId && member.roles.cache.has(moderatorRoleId)) return true;
+  // Array role IDs — new schema (permissions.adminRoleIds / moderatorRoleIds)
+  // Backward compat: fall back to singular field if array field is absent
+  const adminRoleIds =
+    config.permissions?.adminRoleIds ??
+    (config.permissions?.adminRoleId ? [config.permissions.adminRoleId] : []);
+  if (adminRoleIds.some((id) => member.roles.cache.has(id))) return true;
+
+  const moderatorRoleIds =
+    config.permissions?.moderatorRoleIds ??
+    (config.permissions?.moderatorRoleId ? [config.permissions.moderatorRoleId] : []);
+  if (moderatorRoleIds.some((id) => member.roles.cache.has(id))) return true;
 
   // Legacy / test-facing array of role IDs or names (permissions.modRoles)
   const modRoles = config.permissions?.modRoles ?? [];
