@@ -7,15 +7,23 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: (t, opts) => t.editReply(opts),
 }));
 vi.mock('../../src/modules/moderation.js', () => ({
-  createCase: vi
-    .fn()
-    .mockResolvedValue({ case_number: 1, action: 'warn', id: 1, target_id: 'user1' }),
+  createCase: vi.fn().mockResolvedValue({
+    case_number: 1,
+    action: 'warn',
+    id: 1,
+    target_id: 'user1',
+    reason: 'test reason',
+  }),
   sendDmNotification: vi.fn().mockResolvedValue(undefined),
   sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
   checkEscalation: vi.fn().mockResolvedValue(null),
   checkHierarchy: vi.fn().mockReturnValue(null),
   isProtectedTarget: vi.fn().mockReturnValue(false),
   shouldSendDm: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('../../src/modules/warningEngine.js', () => ({
+  createWarning: vi.fn().mockResolvedValue({ id: 1, severity: 'low', points: 1 }),
 }));
 
 vi.mock('../../src/modules/config.js', () => ({
@@ -29,7 +37,7 @@ vi.mock('../../src/modules/config.js', () => ({
 
 vi.mock('../../src/logger.js', () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 
-import { adminOnly, data, execute } from '../../src/commands/warn.js';
+import { data, execute, moderatorOnly } from '../../src/commands/warn.js';
 import {
   checkEscalation,
   checkHierarchy,
@@ -37,6 +45,7 @@ import {
   sendDmNotification,
   sendModLogEmbed,
 } from '../../src/modules/moderation.js';
+import { createWarning } from '../../src/modules/warningEngine.js';
 
 describe('warn command', () => {
   afterEach(() => {
@@ -54,6 +63,7 @@ describe('warn command', () => {
       getMember: vi.fn().mockReturnValue(mockMember),
       getString: vi.fn().mockImplementation((name) => {
         if (name === 'reason') return 'test reason';
+        if (name === 'severity') return 'low';
         return null;
       }),
     },
@@ -62,6 +72,7 @@ describe('warn command', () => {
       name: 'Test Server',
       members: { me: { roles: { highest: { position: 10 } } } },
     },
+    guildId: 'guild1',
     member: { roles: { highest: { position: 10 } } },
     user: { id: 'mod1', tag: 'Mod#0001' },
     client: { user: { id: 'bot1', tag: 'Bot#0001' } },
@@ -75,11 +86,17 @@ describe('warn command', () => {
     expect(data.name).toBe('warn');
   });
 
-  it('should export adminOnly as true', () => {
-    expect(adminOnly).toBe(true);
+  it('should export moderatorOnly as true (not adminOnly)', () => {
+    expect(moderatorOnly).toBe(true);
   });
 
-  it('should warn a user successfully', async () => {
+  it('should have severity option', () => {
+    const severityOption = data.options.find((o) => o.name === 'severity');
+    expect(severityOption).toBeDefined();
+    expect(severityOption.choices).toHaveLength(3);
+  });
+
+  it('should warn a user and create warning record', async () => {
     const interaction = createInteraction();
 
     await execute(interaction);
@@ -94,17 +111,18 @@ describe('warn command', () => {
         targetTag: 'User#0001',
       }),
     );
-    expect(sendModLogEmbed).toHaveBeenCalled();
-    expect(checkEscalation).toHaveBeenCalledWith(
-      interaction.client,
+    expect(createWarning).toHaveBeenCalledWith(
       'guild1',
-      'user1',
-      'bot1',
-      'Bot#0001',
       expect.objectContaining({
-        moderation: expect.any(Object),
+        userId: 'user1',
+        moderatorId: 'mod1',
+        severity: 'low',
+        caseId: 1,
       }),
+      expect.any(Object),
     );
+    expect(sendModLogEmbed).toHaveBeenCalled();
+    expect(checkEscalation).toHaveBeenCalled();
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('has been warned'));
   });
 

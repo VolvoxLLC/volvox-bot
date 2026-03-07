@@ -116,6 +116,14 @@
       "includeAdmins": true,
       "includeModerators": true,
       "includeServerOwner": true
+    },
+    "warnings": {
+      "expiryDays": 90,
+      "severityPoints": {
+        "low": 1,
+        "medium": 2,
+        "high": 3
+      }
     }
   },
   "memory": {
@@ -152,7 +160,11 @@
       "ping": "everyone",
       "memory": "everyone",
       "config": "admin",
-      "warn": "admin",
+      "warn": "moderator",
+      "warnings": "moderator",
+      "editwarn": "moderator",
+      "removewarn": "moderator",
+      "clearwarnings": "moderator",
       "kick": "admin",
       "timeout": "admin",
       "untimeout": "admin",

@@ -42,3 +42,4 @@ web/tsconfig.tsbuildinfo
 openclaw-studio/
 .codex/
 .turbo/
+worktrees/

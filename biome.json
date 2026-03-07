@@ -9,7 +9,8 @@
       "!coverage",
       "!logs",
       "!data",
-      "!feat-issue-164"
+      "!feat-issue-164",
+      "!worktrees"
     ]
   },
   "linter": {

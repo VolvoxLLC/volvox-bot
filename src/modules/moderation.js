@@ -214,11 +214,17 @@ export async function sendDmNotification(member, action, reason, guildName) {
 }
 
 /**
- * Send a mod log embed to the configured channel.
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} config - Bot configuration
- * @param {Object} caseData - Case data from createCase()
- * @returns {Promise<import('discord.js').Message|null>} Sent message or null
+ * Post a moderation log embed for a case to the configured logging channel.
+ *
+ * Attempts to send an embed describing the case to the channel determined by
+ * the moderation logging configuration. On successful send it records the
+ * sent message's ID on the case row (logging any storage failures) and returns
+ * the sent message; if sending or channel resolution fails, returns `null`.
+ *
+ * @param {import('discord.js').Client} client - Discord client instance used to resolve channels.
+ * @param {Object} config - Bot configuration object containing moderation.logging.channels.
+ * @param {Object} caseData - Case object returned by createCase(), including at least `id`, `case_number`, `action`, `target_id`, `target_tag`, `moderator_id`, `moderator_tag`, and optional `reason`, `duration`, `created_at`.
+ * @returns {import('discord.js').Message|null} The sent log message if delivered, `null` if no message was sent.
  */
 export async function sendModLogEmbed(client, config, caseData) {
   const channels = config.moderation?.logging?.channels;
@@ -276,15 +282,17 @@ export async function sendModLogEmbed(client, config, caseData) {
 }
 
 /**
- * Check auto-escalation thresholds after a warn.
- * Evaluates thresholds in order; first match triggers.
- * @param {import('discord.js').Client} client - Discord client
- * @param {string} guildId - Discord guild ID
- * @param {string} targetId - Target user ID
- * @param {string} moderatorId - Moderator user ID (bot for auto-escalation)
- * @param {string} moderatorTag - Moderator tag
- * @param {Object} config - Bot configuration
- * @returns {Promise<Object|null>} Escalation result or null
+ * Evaluate configured escalation thresholds for a guild target and apply the first matching escalation.
+ *
+ * If a threshold is met, performs the configured action (e.g., timeout or ban), creates a moderation case, and posts the mod-log for the escalation.
+ *
+ * @param {import('discord.js').Client} client - Discord client instance.
+ * @param {string} guildId - ID of the guild where escalation is evaluated.
+ * @param {string} targetId - ID of the target user being evaluated.
+ * @param {string} moderatorId - ID used as the moderator for the escalation case (typically the bot).
+ * @param {string} moderatorTag - Tag to record for the moderator in the created case.
+ * @param {Object} config - Bot configuration containing moderation.escalation settings and thresholds.
+ * @returns {Object|null} The created escalation case object when an escalation is applied, `null` if no thresholds triggered or on failure.
  */
 export async function checkEscalation(
   client,
@@ -302,17 +310,43 @@ export async function checkEscalation(
   const pool = getPool();
 
   for (const threshold of thresholds) {
-    const { rows } = await pool.query(
-      `SELECT COUNT(*)::integer AS count FROM mod_cases
-       WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
-       AND created_at > NOW() - INTERVAL '1 day' * $3`,
-      [guildId, targetId, threshold.withinDays],
-    );
+    // Count only active warnings from the warnings table.
+    // Falls back to mod_cases if the warnings table has no rows yet (migration pending).
+    let warnCount = 0;
 
-    const warnCount = rows[0]?.count || 0;
+    try {
+      const { rows } = await pool.query(
+        `SELECT COUNT(*)::integer AS count FROM warnings
+         WHERE guild_id = $1 AND user_id = $2 AND active = TRUE
+         AND (expires_at IS NULL OR expires_at > NOW())
+         AND created_at > NOW() - INTERVAL '1 day' * $3`,
+        [guildId, targetId, threshold.withinDays],
+      );
+      warnCount = rows[0]?.count || 0;
+    } catch (err) {
+      // Only fall back to mod_cases if warnings table doesn't exist (migration pending)
+      if (err.code === '42P01') {
+        // 42P01 = undefined_table
+        const { rows } = await pool.query(
+          `SELECT COUNT(*)::integer AS count FROM mod_cases
+           WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
+           AND created_at > NOW() - INTERVAL '1 day' * $3`,
+          [guildId, targetId, threshold.withinDays],
+        );
+        warnCount = rows[0]?.count || 0;
+      } else {
+        logError('Failed to count active warnings for escalation', {
+          error: err.message,
+          guildId,
+          targetId,
+        });
+        throw err;
+      }
+    }
+
     if (warnCount < threshold.warns) continue;
 
-    const reason = `Auto-escalation: ${warnCount} warns in ${threshold.withinDays} days`;
+    const reason = `Auto-escalation: ${warnCount} active warns in ${threshold.withinDays} days`;
     info('Escalation triggered', { guildId, targetId, warnCount, threshold });
 
     try {
