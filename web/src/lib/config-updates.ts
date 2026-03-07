@@ -8,14 +8,21 @@ import type { GuildConfig } from '@/lib/config-utils';
  */
 
 /**
+ * Keys of GuildConfig that represent object-valued config sections (excludes scalar
+ * fields like `guildId`). Prevents scalar-key misuse in section helpers.
+ * The `& string` ensures the type is usable as a computed property key.
+ */
+export type GuildConfigSectionKey = Exclude<keyof GuildConfig, 'guildId'> & string;
+
+/**
  * Update a top-level section's enabled flag.
  *
  * @param config - The current guild config
- * @param section - The section name to update
+ * @param section - The section name to update (must be an object-valued key)
  * @param enabled - The new enabled value
  * @returns Updated config with the section's enabled flag set
  */
-export function updateSectionEnabled<K extends keyof GuildConfig>(
+export function updateSectionEnabled<K extends GuildConfigSectionKey>(
   config: GuildConfig,
   section: K,
   enabled: boolean,
@@ -33,12 +40,12 @@ export function updateSectionEnabled<K extends keyof GuildConfig>(
  * Set a specific field on a top-level section and return an updated config.
  *
  * @param config - The original guild configuration
- * @param section - The top-level section key to update
+ * @param section - The top-level section key to update (must be an object-valued key)
  * @param field - The field name within the section to set
  * @param value - The value to assign to the field
  * @returns A new GuildConfig with `field` set to `value` inside `section`
  */
-export function updateSectionField<K extends keyof GuildConfig>(
+export function updateSectionField<K extends GuildConfigSectionKey>(
   config: GuildConfig,
   section: K,
   field: string,
@@ -65,7 +72,7 @@ export function updateSectionField<K extends keyof GuildConfig>(
  * @param value - New value for the specified field
  * @returns The updated GuildConfig with the nested field set
  */
-export function updateNestedField<K extends keyof GuildConfig>(
+export function updateNestedField<K extends GuildConfigSectionKey>(
   config: GuildConfig,
   section: K,
   nestedKey: string,
@@ -119,7 +126,11 @@ export function updateArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as T[]) || [])];
+
+  // Guard: if the target is not an array, bail out rather than spreading a non-iterable
+  if (!Array.isArray(cursor[lastKey])) return config;
+
+  const arr = [...(cursor[lastKey] as T[])];
 
   // Validate index bounds
   if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
@@ -170,7 +181,11 @@ export function removeArrayItem(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as unknown[]) || [])];
+
+  // Guard: if the target is not an array, bail out rather than spreading a non-iterable
+  if (!Array.isArray(cursor[lastKey])) return config;
+
+  const arr = [...(cursor[lastKey] as unknown[])];
 
   // Validate index bounds
   if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
@@ -224,7 +239,7 @@ export function appendArrayItem<T>(
   }
 
   const lastKey = path[path.length - 1];
-  const arr = [...((cursor[lastKey] as T[]) || []), item];
+  const arr = [...(Array.isArray(cursor[lastKey]) ? (cursor[lastKey] as T[]) : []), item];
 
   // Rebuild from bottom up using tracked levels
   let rebuilt: Record<string, unknown> = { ...cursor, [lastKey]: arr };
