@@ -1,8 +1,9 @@
 'use client';
 
-import { Bot, ChevronsUpDown, RefreshCw, Server } from 'lucide-react';
+import { Bot, ChevronsUpDown, ExternalLink, RefreshCw, Server } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { isGuildManageable } from '@/hooks/use-guild-role';
 import { getBotInviteUrl, getGuildIconUrl } from '@/lib/discord';
 import { broadcastSelectedGuild, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import { cn } from '@/lib/utils';
@@ -21,12 +23,41 @@ interface ServerSelectorProps {
   className?: string;
 }
 
+/** Compact guild icon + name row used in both sections of the dropdown. */
+function GuildRow({ guild }: { guild: MutualGuild }) {
+  return (
+    <>
+      {guild.icon ? (
+        <Image
+          src={getGuildIconUrl(guild.id, guild.icon, 64) ?? ''}
+          alt={guild.name}
+          width={20}
+          height={20}
+          className="rounded-full shrink-0"
+        />
+      ) : (
+        <Server className="h-4 w-4 shrink-0" />
+      )}
+      <span className="truncate">{guild.name}</span>
+    </>
+  );
+}
+
 export function ServerSelector({ className }: ServerSelectorProps) {
   const [guilds, setGuilds] = useState<MutualGuild[]>([]);
   const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Split guilds into manageable (mod/admin/owner) and member-only (viewer)
+  const { manageable, memberOnly } = useMemo(
+    () => ({
+      manageable: guilds.filter(isGuildManageable),
+      memberOnly: guilds.filter((g) => !isGuildManageable(g)),
+    }),
+    [guilds],
+  );
 
   // Persist selected guild to localStorage
   const selectGuild = useCallback((guild: MutualGuild) => {
@@ -41,8 +72,6 @@ export function ServerSelector({ className }: ServerSelectorProps) {
 
   const loadGuilds = useCallback(async () => {
     // Abort any previous in-flight request before starting a new one.
-    // Always uses the ref-based controller so both the initial mount
-    // and retry button share a single cancellation path.
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -52,14 +81,14 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     try {
       const response = await fetch('/api/guilds', { signal: controller.signal });
       if (response.status === 401) {
-        // Auth failure — redirect to login instead of showing a misleading retry
         window.location.href = '/login';
         return;
       }
       if (!response.ok) throw new Error('Failed to fetch');
       const data: unknown = await response.json();
       if (!Array.isArray(data)) throw new Error('Invalid response: expected array');
-      // Runtime shape check: each entry must have at minimum an id and name string
+
+      // Runtime shape check
       const fetchedGuilds = data.filter(
         (g): g is MutualGuild =>
           typeof g === 'object' &&
@@ -69,12 +98,15 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       );
       setGuilds(fetchedGuilds);
 
-      // Restore previously selected guild from localStorage
+      // Only manageable guilds can be selected as the active dashboard guild
+      const manageableGuilds = fetchedGuilds.filter(isGuildManageable);
+
+      // Restore previously selected guild from localStorage (must be manageable)
       let restored = false;
       try {
         const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
         if (savedId) {
-          const saved = data.find((g: MutualGuild) => g.id === savedId);
+          const saved = manageableGuilds.find((g) => g.id === savedId);
           if (saved) {
             setSelectedGuild(saved);
             restored = true;
@@ -84,19 +116,13 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         // localStorage unavailable
       }
 
-      if (!restored && data.length > 0) {
-        selectGuild(data[0]);
+      if (!restored && manageableGuilds.length > 0) {
+        selectGuild(manageableGuilds[0]);
       }
     } catch (err) {
-      // Don't treat aborted fetches as errors
       if (err instanceof DOMException && err.name === 'AbortError') return;
       setError(true);
     } finally {
-      // Only reset loading if this request is still the current one.
-      // When loadGuilds is called again (e.g. retry), the previous request
-      // is aborted and a new controller replaces the ref. Without this
-      // guard the aborted request's finally block would set loading=false,
-      // cancelling out the new request's loading=true.
       if (abortControllerRef.current === controller) {
         setLoading(false);
       }
@@ -117,7 +143,6 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     );
   }
 
-  // Error state — allow retry
   if (error) {
     return (
       <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
@@ -130,7 +155,6 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     );
   }
 
-  // Empty state — distinguish between "no mutual servers" and "no guilds at all"
   if (guilds.length === 0) {
     const inviteUrl = getBotInviteUrl();
     return (
@@ -152,6 +176,19 @@ export function ServerSelector({ className }: ServerSelectorProps) {
             invite link.
           </span>
         )}
+      </div>
+    );
+  }
+
+  // No manageable servers — all guilds are member-only
+  if (manageable.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground text-center">
+        <Server className="h-5 w-5" />
+        <span className="font-medium">No manageable servers</span>
+        <span className="text-xs">
+          You need mod, admin, or owner permissions to manage a server&apos;s dashboard.
+        </span>
       </div>
     );
   }
@@ -178,33 +215,42 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="start">
-        <DropdownMenuLabel>Your Servers</DropdownMenuLabel>
+        {/* ── Manageable servers (mod / admin / owner) ── */}
+        <DropdownMenuLabel>Manage</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {guilds.map((guild) => (
+        {manageable.map((guild) => (
           <DropdownMenuItem
             key={guild.id}
             onClick={() => {
-              if (selectedGuild?.id === guild.id) {
-                return;
-              }
+              if (selectedGuild?.id === guild.id) return;
               selectGuild(guild);
             }}
             className="flex items-center gap-2"
           >
-            {guild.icon ? (
-              <Image
-                src={getGuildIconUrl(guild.id, guild.icon, 64) ?? ''}
-                alt={guild.name}
-                width={20}
-                height={20}
-                className="rounded-full"
-              />
-            ) : (
-              <Server className="h-4 w-4 shrink-0" />
-            )}
-            <span className="truncate">{guild.name}</span>
+            <GuildRow guild={guild} />
           </DropdownMenuItem>
         ))}
+
+        {/* ── Member-only servers ── */}
+        {memberOnly.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="flex items-center gap-1 text-muted-foreground">
+              Member Only
+            </DropdownMenuLabel>
+            {memberOnly.map((guild) => (
+              <DropdownMenuItem key={guild.id} asChild>
+                <Link
+                  href={`/community/${guild.id}`}
+                  className="flex items-center gap-2 text-muted-foreground"
+                >
+                  <GuildRow guild={guild} />
+                  <ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-50" />
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
