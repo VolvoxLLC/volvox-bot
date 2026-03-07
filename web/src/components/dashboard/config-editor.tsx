@@ -3,10 +3,25 @@
 import { Loader2, RotateCcw, Save } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { CategoryNavigation } from '@/components/dashboard/config-workspace/category-navigation';
+import {
+  CONFIG_CATEGORIES,
+  DEFAULT_CONFIG_CATEGORY,
+  getMatchedFeatureIds,
+  getMatchingSearchItems,
+} from '@/components/dashboard/config-workspace/config-categories';
+import { ConfigSearch } from '@/components/dashboard/config-workspace/config-search';
+import { SettingsFeatureCard } from '@/components/dashboard/config-workspace/settings-feature-card';
+import type {
+  ConfigCategoryId,
+  ConfigFeatureId,
+  ConfigSearchItem,
+} from '@/components/dashboard/config-workspace/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
+import { computePatches, deepEqual } from '@/lib/config-utils';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import type { BotConfig, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -139,6 +154,11 @@ export function ConfigEditor() {
 
   /** Raw textarea strings — kept separate so partial input isn't stripped on every keystroke. */
   const [dmStepsRaw, setDmStepsRaw] = useState('');
+  const [activeCategoryId, setActiveCategoryId] =
+    useState<ConfigCategoryId>(DEFAULT_CONFIG_CATEGORY);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [focusFeatureId, setFocusFeatureId] = useState<ConfigFeatureId | null>(null);
+  const [selectedSearchItemId, setSelectedSearchItemId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -227,6 +247,7 @@ export function ConfigEditor() {
   }, []);
 
   useEffect(() => {
+    setPrevSavedConfig(null);
     fetchConfig(guildId);
     return () => abortRef.current?.abort();
   }, [guildId, fetchConfig]);
@@ -258,6 +279,94 @@ export function ConfigEditor() {
     const patches = computePatches(savedConfig, draftConfig);
     return [...new Set(patches.map((p) => p.path.split('.')[0]))];
   }, [savedConfig, draftConfig]);
+
+  const searchResults = useMemo(() => getMatchingSearchItems(searchQuery), [searchQuery]);
+
+  const matchedFeatureIds = useMemo(() => getMatchedFeatureIds(searchQuery), [searchQuery]);
+
+  const activeCategory = useMemo(
+    () =>
+      CONFIG_CATEGORIES.find((category) => category.id === activeCategoryId) ??
+      CONFIG_CATEGORIES[0],
+    [activeCategoryId],
+  );
+
+  const visibleFeatureIds = useMemo(() => {
+    if (!searchQuery.trim()) return new Set(activeCategory.featureIds);
+    return new Set(
+      activeCategory.featureIds.filter((featureId) => matchedFeatureIds.has(featureId)),
+    );
+  }, [activeCategory, searchQuery, matchedFeatureIds]);
+
+  const selectedSearchItem = useMemo(
+    () => searchResults.find((item) => item.id === selectedSearchItemId) ?? null,
+    [searchResults, selectedSearchItemId],
+  );
+
+  const forceOpenAdvancedFeatureId = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+
+    if (selectedSearchItem?.isAdvanced && selectedSearchItem.categoryId === activeCategoryId) {
+      return selectedSearchItem.featureId;
+    }
+
+    const activeAdvancedMatch = searchResults.find(
+      (item) => item.categoryId === activeCategoryId && item.isAdvanced,
+    );
+
+    return activeAdvancedMatch?.featureId ?? null;
+  }, [searchQuery, selectedSearchItem, searchResults, activeCategoryId]);
+
+  const dirtyCategoryCounts = useMemo(() => {
+    return CONFIG_CATEGORIES.reduce(
+      (acc, category) => {
+        const changedCount = changedSections.filter((section) =>
+          category.sectionKeys.includes(section as never),
+        ).length;
+        acc[category.id] = changedCount;
+        return acc;
+      },
+      {
+        'ai-automation': 0,
+        'onboarding-growth': 0,
+        'moderation-safety': 0,
+        'community-tools': 0,
+        'support-integrations': 0,
+      } as Record<ConfigCategoryId, number>,
+    );
+  }, [changedSections]);
+
+  const changedCategoryCount = useMemo(
+    () => Object.values(dirtyCategoryCounts).filter((count) => count > 0).length,
+    [dirtyCategoryCounts],
+  );
+
+  const handleSearchSelect = useCallback((item: ConfigSearchItem) => {
+    setActiveCategoryId(item.categoryId);
+    setFocusFeatureId(item.featureId);
+    setSelectedSearchItemId(item.id);
+  }, []);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    setSelectedSearchItemId(null);
+  }, []);
+
+  useEffect(() => {
+    if (!focusFeatureId) return;
+    const frameId = window.requestAnimationFrame(() => {
+      const target = document.getElementById(`feature-${focusFeatureId}`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const focusable = target.querySelector<HTMLElement>(
+        'input, textarea, select, button, [role="switch"]',
+      );
+      focusable?.focus();
+    });
+    setFocusFeatureId(null);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [focusFeatureId]);
+
   // ── Warn on unsaved changes before navigation ──────────────────
   useEffect(() => {
     if (!hasChanges) return;
@@ -422,11 +531,6 @@ export function ConfigEditor() {
     }
   }, [guildId, savedConfig, draftConfig, hasValidationErrors, fetchConfig]);
 
-  // Clear undo snapshot when guild changes to prevent cross-guild config corruption
-  useEffect(() => {
-    setPrevSavedConfig(null);
-  }, []);
-
   // ── Undo last save ─────────────────────────────────────────────
   const undoLastSave = useCallback(() => {
     if (!prevSavedConfig) return;
@@ -454,6 +558,30 @@ export function ConfigEditor() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [hasChanges, saving, hasValidationErrors, openDiffModal]);
+
+  useEffect(() => {
+    function onSearchKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const isInputTarget =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable;
+
+      if (!isInputTarget && event.key === '/') {
+        event.preventDefault();
+        const searchInput = document.getElementById('config-search');
+        searchInput?.focus();
+      }
+
+      if (event.key === 'Escape' && searchQuery.trim()) {
+        setSearchQuery('');
+      }
+    }
+
+    window.addEventListener('keydown', onSearchKeyDown);
+    return () => window.removeEventListener('keydown', onSearchKeyDown);
+  }, [searchQuery]);
 
   // ── Discard edits ──────────────────────────────────────────────
   const discardChanges = useCallback(() => {
@@ -772,12 +900,11 @@ export function ConfigEditor() {
   // ── Editor UI ──────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* Header bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Bot Configuration</h1>
           <p className="text-sm text-muted-foreground">
-            Manage AI, welcome messages, and other settings.
+            Manage settings by category for faster edits and fewer misses.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -830,7 +957,8 @@ export function ConfigEditor() {
           aria-live="polite"
           className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
         >
-          You have unsaved changes.{' '}
+          You have unsaved changes in {changedCategoryCount}{' '}
+          {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
           <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
             Ctrl+S
           </kbd>{' '}
@@ -838,1058 +966,1117 @@ export function ConfigEditor() {
         </output>
       )}
 
-      {/* AI section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">AI Chat</CardTitle>
-              <CardDescription>Configure the AI assistant behavior.</CardDescription>
-            </div>
-            <ToggleSwitch
-              checked={draftConfig.ai?.enabled ?? false}
-              onChange={updateAiEnabled}
-              disabled={saving}
-              label="AI Chat"
+      {hasValidationErrors && (
+        <output
+          aria-live="polite"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          Fix validation errors before changes can be saved.
+        </output>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
+        <CategoryNavigation
+          activeCategoryId={activeCategoryId}
+          dirtyCounts={dirtyCategoryCounts}
+          onCategoryChange={setActiveCategoryId}
+        />
+
+        <div className="space-y-4">
+          <div className="space-y-3 rounded-lg border bg-card p-4">
+            <p className="text-sm font-medium">{activeCategory.label}</p>
+            <p className="text-xs text-muted-foreground">{activeCategory.description}</p>
+            <ConfigSearch
+              value={searchQuery}
+              onChange={handleSearchChange}
+              results={searchResults}
+              onSelect={handleSearchSelect}
             />
           </div>
-        </CardHeader>
-      </Card>
 
-      {/* System Prompt */}
-      <SystemPromptEditor
-        value={draftConfig.ai?.systemPrompt ?? ''}
-        onChange={updateSystemPrompt}
-        disabled={saving}
-        maxLength={SYSTEM_PROMPT_MAX_LENGTH}
-      />
+          {searchQuery.trim() && visibleFeatureIds.size === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">No Matching Settings</CardTitle>
+                <CardDescription>
+                  No results in {activeCategory.label}. Try another keyword or jump from search
+                  results.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" size="sm" onClick={() => setSearchQuery('')}>
+                  Clear Search
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
 
-      {/* AI Blocked Channels */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Blocked Channels</CardTitle>
-          <CardDescription>
-            The AI will not respond in these channels (or their threads).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {guildId ? (
-            <ChannelSelector
-              id="ai-blocked-channels"
-              guildId={guildId}
-              selected={(draftConfig.ai?.blockedChannelIds ?? []) as string[]}
-              onChange={updateAiBlockedChannels}
-              placeholder="Select channels to block AI in..."
+          {/* AI section */}
+          {activeCategoryId === 'ai-automation' && visibleFeatureIds.has('ai-chat') && (
+            <SettingsFeatureCard
+              featureId="ai-chat"
+              title="AI Chat"
+              description="Configure assistant behavior and response scope."
+              enabled={draftConfig.ai?.enabled ?? false}
+              onEnabledChange={updateAiEnabled}
               disabled={saving}
-              filter="text"
-            />
-          ) : (
-            <p className="text-muted-foreground text-sm">Select a server first</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Welcome section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Welcome Messages</CardTitle>
-              <CardDescription>Greet new members when they join the server.</CardDescription>
-            </div>
-            <ToggleSwitch
-              checked={draftConfig.welcome?.enabled ?? false}
-              onChange={updateWelcomeEnabled}
-              disabled={saving}
-              label="Welcome Messages"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <label htmlFor="welcome-message" className="space-y-2">
-            <span className="text-sm font-medium">Welcome Message</span>
-            <textarea
-              id="welcome-message"
-              value={draftConfig.welcome?.message ?? ''}
-              onChange={(e) => updateWelcomeMessage(e.target.value)}
-              rows={4}
-              disabled={saving}
-              className={inputClasses}
-              placeholder="Welcome message template..."
-              aria-describedby="welcome-message-hint"
-            />
-          </label>
-          <p id="welcome-message-hint" className="mt-1 text-xs text-muted-foreground">
-            Use {'{user}'} for the member mention and {'{memberCount}'} for the server member count.
-          </p>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <label htmlFor="rules-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Rules Channel ID</span>
-              <ChannelSelector
-                id="rules-channel-id"
-                guildId={guildId}
-                selected={
-                  draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []
-                }
-                onChange={(selected) => updateWelcomeField('rulesChannel', selected[0] ?? null)}
-                disabled={saving}
-                placeholder="Select rules channel"
-                maxSelections={1}
-                filter="text"
-              />
-            </label>
-            <label htmlFor="verified-role-id" className="space-y-2">
-              <span className="text-sm font-medium">Verified Role ID</span>
-              <RoleSelector
-                id="verified-role-id"
-                guildId={guildId}
-                selected={
-                  draftConfig.welcome?.verifiedRole ? [draftConfig.welcome.verifiedRole] : []
-                }
-                onChange={(selected) => updateWelcomeField('verifiedRole', selected[0] ?? null)}
-                disabled={saving}
-                placeholder="Select verified role"
-                maxSelections={1}
-              />
-            </label>
-            <label htmlFor="intro-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Intro Channel ID</span>
-              <ChannelSelector
-                id="intro-channel-id"
-                guildId={guildId}
-                selected={
-                  draftConfig.welcome?.introChannel ? [draftConfig.welcome.introChannel] : []
-                }
-                onChange={(selected) => updateWelcomeField('introChannel', selected[0] ?? null)}
-                disabled={saving}
-                placeholder="Select intro channel"
-                maxSelections={1}
-                filter="text"
-              />
-            </label>
-          </div>
-
-          <fieldset className="space-y-2 rounded-md border p-3">
-            <legend className="text-sm font-medium">Role Menu</legend>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                Enable self-assignable role menu
-              </span>
-              <ToggleSwitch
-                checked={draftConfig.welcome?.roleMenu?.enabled ?? false}
-                onChange={(v) => updateWelcomeRoleMenu('enabled', v)}
-                disabled={saving}
-                label="Role Menu"
-              />
-            </div>
-            <div className="space-y-3">
-              {(draftConfig.welcome?.roleMenu?.options ?? []).map((opt, i) => (
-                <div key={opt.id} className="flex flex-col gap-2 rounded-md border p-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={opt.label ?? ''}
-                      onChange={(e) => {
-                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
-                        opts[i] = { ...opts[i], label: e.target.value };
-                        updateWelcomeRoleMenu('options', opts);
-                      }}
+              basicContent={
+                <SystemPromptEditor
+                  value={draftConfig.ai?.systemPrompt ?? ''}
+                  onChange={updateSystemPrompt}
+                  disabled={saving}
+                  maxLength={SYSTEM_PROMPT_MAX_LENGTH}
+                />
+              }
+              advancedContent={
+                guildId ? (
+                  <label htmlFor="ai-blocked-channels" className="space-y-2 block">
+                    <span className="text-sm font-medium">Blocked Channels</span>
+                    <ChannelSelector
+                      id="ai-blocked-channels"
+                      guildId={guildId}
+                      selected={(draftConfig.ai?.blockedChannelIds ?? []) as string[]}
+                      onChange={updateAiBlockedChannels}
+                      placeholder="Select channels to block AI in..."
                       disabled={saving}
-                      className={`${inputClasses} flex-1`}
-                      placeholder="Label (shown in menu)"
+                      filter="text"
                     />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])].filter(
-                          (o) => o.id !== opt.id,
-                        );
-                        updateWelcomeRoleMenu('options', opts);
-                      }}
-                      disabled={saving}
-                      aria-label={`Remove role option ${opt.label || i + 1}`}
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                  <RoleSelector
-                    guildId={guildId}
-                    selected={opt.roleId ? [opt.roleId] : []}
-                    onChange={(selected) => {
-                      const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
-                      opts[i] = { ...opts[i], roleId: selected[0] ?? '' };
-                      updateWelcomeRoleMenu('options', opts);
-                    }}
-                    placeholder="Select role"
-                    disabled={saving}
-                    maxSelections={1}
-                  />
-                  <input
-                    type="text"
-                    value={opt.description ?? ''}
-                    onChange={(e) => {
-                      const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
-                      opts[i] = { ...opts[i], description: e.target.value || undefined };
-                      updateWelcomeRoleMenu('options', opts);
-                    }}
-                    disabled={saving}
-                    className={inputClasses}
-                    placeholder="Description (optional)"
-                  />
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const opts = [
-                    ...(draftConfig.welcome?.roleMenu?.options ?? []),
-                    { id: generateId(), label: '', roleId: '' },
-                  ];
-                  updateWelcomeRoleMenu('options', opts);
-                }}
-                disabled={saving || (draftConfig.welcome?.roleMenu?.options ?? []).length >= 25}
-              >
-                + Add Role Option
-              </Button>
-            </div>
-          </fieldset>
-
-          <fieldset className="space-y-2 rounded-md border p-3">
-            <legend className="text-sm font-medium">DM Sequence</legend>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Enable onboarding DMs</span>
-              <ToggleSwitch
-                checked={draftConfig.welcome?.dmSequence?.enabled ?? false}
-                onChange={(v) => updateWelcomeDmSequence('enabled', v)}
-                disabled={saving}
-                label="DM Sequence"
-              />
-            </div>
-            <textarea
-              value={dmStepsRaw}
-              onChange={(e) => setDmStepsRaw(e.target.value)}
-              onBlur={() => {
-                const parsed = dmStepsRaw
-                  .split('\n')
-                  .map((line) => line.trim())
-                  .filter(Boolean);
-                updateWelcomeDmSequence('steps', parsed);
-                setDmStepsRaw(parsed.join('\n'));
-              }}
-              rows={4}
-              disabled={saving}
-              className={inputClasses}
-              placeholder="One DM step per line"
-            />
-          </fieldset>
-        </CardContent>
-      </Card>
-
-      {/* Moderation section */}
-      {draftConfig.moderation && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Moderation</CardTitle>
-                <CardDescription>
-                  Configure moderation, escalation, and logging settings.
-                </CardDescription>
-              </div>
-              <ToggleSwitch
-                checked={draftConfig.moderation?.enabled ?? false}
-                onChange={updateModerationEnabled}
-                disabled={saving}
-                label="Moderation"
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label htmlFor="alert-channel-id" className="space-y-2">
-              <span className="text-sm font-medium">Alert Channel ID</span>
-              <ChannelSelector
-                id="alert-channel-id"
-                guildId={guildId}
-                selected={
-                  draftConfig.moderation?.alertChannelId
-                    ? [draftConfig.moderation.alertChannelId]
-                    : []
-                }
-                onChange={(selected) =>
-                  updateModerationField('alertChannelId', selected[0] ?? null)
-                }
-                disabled={saving}
-                placeholder="Select moderation alert channel"
-                maxSelections={1}
-                filter="text"
-              />
-            </label>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Auto-delete flagged messages</span>
-              <ToggleSwitch
-                checked={draftConfig.moderation?.autoDelete ?? false}
-                onChange={(v) => updateModerationField('autoDelete', v)}
-                disabled={saving}
-                label="Auto Delete"
-              />
-            </div>
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">DM Notifications</legend>
-              {(['warn', 'timeout', 'kick', 'ban'] as const).map((action) => (
-                <div key={action} className="flex items-center justify-between">
-                  <span className="text-sm capitalize text-muted-foreground">{action}</span>
-                  <ToggleSwitch
-                    checked={draftConfig.moderation?.dmNotifications?.[action] ?? false}
-                    onChange={(v) => updateModerationDmNotification(action, v)}
-                    disabled={saving}
-                    label={`DM on ${action}`}
-                  />
-                </div>
-              ))}
-            </fieldset>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Escalation Enabled</span>
-              <ToggleSwitch
-                checked={draftConfig.moderation?.escalation?.enabled ?? false}
-                onChange={(v) => updateModerationEscalation(v)}
-                disabled={saving}
-                label="Escalation"
-              />
-            </div>
-
-            {/* Rate Limiting sub-section */}
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Rate Limiting</legend>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Enabled</span>
-                <ToggleSwitch
-                  checked={draftConfig.moderation?.rateLimit?.enabled ?? false}
-                  onChange={(v) => updateRateLimitField('enabled', v)}
-                  disabled={saving}
-                  label="Rate Limiting"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <label htmlFor="max-messages" className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Max Messages</span>
-                  <input
-                    id="max-messages"
-                    type="number"
-                    min={1}
-                    value={draftConfig.moderation?.rateLimit?.maxMessages ?? 10}
-                    onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 1);
-                      if (num !== undefined) updateRateLimitField('maxMessages', num);
-                    }}
-                    disabled={saving}
-                    className={inputClasses}
-                  />
-                </label>
-                <label htmlFor="window-seconds" className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Window (seconds)</span>
-                  <input
-                    id="window-seconds"
-                    type="number"
-                    min={1}
-                    value={draftConfig.moderation?.rateLimit?.windowSeconds ?? 10}
-                    onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 1);
-                      if (num !== undefined) updateRateLimitField('windowSeconds', num);
-                    }}
-                    disabled={saving}
-                    className={inputClasses}
-                  />
-                </label>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <label htmlFor="mute-after-triggers" className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Mute After Triggers</span>
-                  <input
-                    id="mute-after-triggers"
-                    type="number"
-                    min={1}
-                    value={draftConfig.moderation?.rateLimit?.muteAfterTriggers ?? 3}
-                    onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 1);
-                      if (num !== undefined) updateRateLimitField('muteAfterTriggers', num);
-                    }}
-                    disabled={saving}
-                    className={inputClasses}
-                  />
-                </label>
-                <label htmlFor="mute-window-s" className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Mute Window (s)</span>
-                  <input
-                    id="mute-window-s"
-                    type="number"
-                    min={1}
-                    value={draftConfig.moderation?.rateLimit?.muteWindowSeconds ?? 300}
-                    onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 1);
-                      if (num !== undefined) updateRateLimitField('muteWindowSeconds', num);
-                    }}
-                    disabled={saving}
-                    className={inputClasses}
-                  />
-                </label>
-                <label htmlFor="mute-duration-s" className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Mute Duration (s)</span>
-                  <input
-                    id="mute-duration-s"
-                    type="number"
-                    min={1}
-                    value={draftConfig.moderation?.rateLimit?.muteDurationSeconds ?? 300}
-                    onChange={(e) => {
-                      const num = parseNumberInput(e.target.value, 1);
-                      if (num !== undefined) updateRateLimitField('muteDurationSeconds', num);
-                    }}
-                    disabled={saving}
-                    className={inputClasses}
-                  />
-                </label>
-              </div>
-            </fieldset>
-
-            {/* Link Filtering sub-section */}
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Link Filtering</legend>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Enabled</span>
-                <ToggleSwitch
-                  checked={draftConfig.moderation?.linkFilter?.enabled ?? false}
-                  onChange={(v) => updateLinkFilterField('enabled', v)}
-                  disabled={saving}
-                  label="Link Filtering"
-                />
-              </div>
-              <label htmlFor="blocked-domains" className="space-y-2">
-                <span className="text-sm text-muted-foreground">Blocked Domains</span>
-                <input
-                  id="blocked-domains"
-                  type="text"
-                  value={(draftConfig.moderation?.linkFilter?.blockedDomains ?? []).join(', ')}
-                  onChange={(e) =>
-                    updateLinkFilterField(
-                      'blockedDomains',
-                      e.target.value
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                    )
-                  }
-                  disabled={saving}
-                  className={inputClasses}
-                  placeholder="example.com, spam.net"
-                />
-              </label>
-            </fieldset>
-
-            {/* Protect Roles sub-section */}
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Protect Roles from Moderation</legend>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Enabled</span>
-                <ToggleSwitch
-                  checked={draftConfig.moderation?.protectRoles?.enabled ?? true}
-                  onChange={(v) => updateProtectRolesField('enabled', v)}
-                  disabled={saving}
-                  label="Protect Roles"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Include admins</span>
-                <ToggleSwitch
-                  checked={draftConfig.moderation?.protectRoles?.includeAdmins ?? true}
-                  onChange={(v) => updateProtectRolesField('includeAdmins', v)}
-                  disabled={saving}
-                  label="Include admins"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Include moderators</span>
-                <ToggleSwitch
-                  checked={draftConfig.moderation?.protectRoles?.includeModerators ?? true}
-                  onChange={(v) => updateProtectRolesField('includeModerators', v)}
-                  disabled={saving}
-                  label="Include moderators"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Include server owner</span>
-                <ToggleSwitch
-                  checked={draftConfig.moderation?.protectRoles?.includeServerOwner ?? true}
-                  onChange={(v) => updateProtectRolesField('includeServerOwner', v)}
-                  disabled={saving}
-                  label="Include server owner"
-                />
-              </div>
-              <label htmlFor="protected-role-ids" className="space-y-2">
-                <span className="text-sm text-muted-foreground">Additional protected roles</span>
-                <RoleSelector
-                  id="protected-role-ids"
-                  guildId={guildId}
-                  selected={(draftConfig.moderation?.protectRoles?.roleIds ?? []) as string[]}
-                  onChange={(selected) => updateProtectRolesField('roleIds', selected)}
-                  disabled={saving}
-                  placeholder="Select protected roles"
-                />
-              </label>
-            </fieldset>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* AI Auto-Moderation section */}
-      {draftConfig.aiAutoMod && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">AI Auto-Moderation</CardTitle>
-                <CardDescription>
-                  Use Claude AI to analyze messages and take automatic moderation actions.
-                </CardDescription>
-              </div>
-              <ToggleSwitch
-                checked={Boolean(draftConfig.aiAutoMod?.enabled)}
-                onChange={(v) => updateAiAutoModField('enabled', v)}
-                disabled={saving}
-                label="AI Auto-Moderation"
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label htmlFor="ai-automod-flag-channel" className="space-y-2">
-              <span className="text-sm font-medium">Flag Review Channel ID</span>
-              <ChannelSelector
-                id="ai-automod-flag-channel"
-                guildId={guildId}
-                selected={
-                  draftConfig.aiAutoMod?.flagChannelId ? [draftConfig.aiAutoMod.flagChannelId] : []
-                }
-                onChange={(selected) => updateAiAutoModField('flagChannelId', selected[0] ?? null)}
-                disabled={saving}
-                placeholder="Select flag review channel"
-                maxSelections={1}
-                filter="text"
-              />
-            </label>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Auto-delete flagged messages</span>
-              <ToggleSwitch
-                checked={Boolean(draftConfig.aiAutoMod?.autoDelete ?? true)}
-                onChange={(v) => updateAiAutoModField('autoDelete', v)}
-                disabled={saving}
-                label="Auto-delete"
-              />
-            </div>
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Thresholds (0–100)</legend>
-              <p className="text-muted-foreground text-xs">
-                Confidence threshold (%) above which the action triggers.
-              </p>
-              {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
-                <label
-                  key={cat}
-                  htmlFor={`ai-threshold-${cat}`}
-                  className="flex items-center gap-3"
-                >
-                  <span className="w-24 text-sm capitalize">{cat}</span>
-                  <input
-                    id={`ai-threshold-${cat}`}
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={Math.round(
-                      ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[cat] ??
-                        0.7) * 100,
-                    )}
-                    onChange={(e) => {
-                      const raw = Number(e.target.value);
-                      const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
-                      updateAiAutoModField('thresholds', {
-                        ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ?? {}),
-                        [cat]: v,
-                      });
-                    }}
-                    disabled={saving}
-                    className={`${inputClasses} w-24`}
-                  />
-                  <span className="text-muted-foreground text-xs">%</span>
-                </label>
-              ))}
-            </fieldset>
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Actions</legend>
-              {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
-                <label key={cat} htmlFor={`ai-action-${cat}`} className="flex items-center gap-3">
-                  <span className="w-24 text-sm capitalize">{cat}</span>
-                  <select
-                    id={`ai-action-${cat}`}
-                    value={
-                      (draftConfig.aiAutoMod?.actions as Record<string, string>)?.[cat] ?? 'flag'
-                    }
-                    onChange={(e) => {
-                      updateAiAutoModField('actions', {
-                        ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {}),
-                        [cat]: e.target.value,
-                      });
-                    }}
-                    disabled={saving}
-                    className={inputClasses}
-                  >
-                    <option value="none">No action</option>
-                    <option value="delete">Delete message</option>
-                    <option value="flag">Flag for review</option>
-                    <option value="warn">Warn user</option>
-                    <option value="timeout">Timeout user</option>
-                    <option value="kick">Kick user</option>
-                    <option value="ban">Ban user</option>
-                  </select>
-                </label>
-              ))}
-            </fieldset>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Triage section */}
-      {draftConfig.triage && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Triage</CardTitle>
-                <CardDescription>
-                  Configure message triage classifier, responder models, and channels.
-                </CardDescription>
-              </div>
-              <ToggleSwitch
-                checked={draftConfig.triage?.enabled ?? false}
-                onChange={updateTriageEnabled}
-                disabled={saving}
-                label="Triage"
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label htmlFor="classify-model" className="space-y-2">
-              <span className="text-sm font-medium">Classify Model</span>
-              <input
-                id="classify-model"
-                type="text"
-                value={draftConfig.triage?.classifyModel ?? ''}
-                onChange={(e) => updateTriageField('classifyModel', e.target.value)}
-                disabled={saving}
-                className={inputClasses}
-                placeholder="e.g. claude-haiku-4-5"
-              />
-            </label>
-            <label htmlFor="respond-model" className="space-y-2">
-              <span className="text-sm font-medium">Respond Model</span>
-              <input
-                id="respond-model"
-                type="text"
-                value={draftConfig.triage?.respondModel ?? ''}
-                onChange={(e) => updateTriageField('respondModel', e.target.value)}
-                disabled={saving}
-                className={inputClasses}
-                placeholder="e.g. claude-sonnet-4-6"
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <label htmlFor="classify-budget" className="space-y-2">
-                <span className="text-sm font-medium">Classify Budget</span>
-                <input
-                  id="classify-budget"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  value={draftConfig.triage?.classifyBudget ?? 0}
-                  onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 0);
-                    if (num !== undefined) updateTriageField('classifyBudget', num);
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-              <label htmlFor="respond-budget" className="space-y-2">
-                <span className="text-sm font-medium">Respond Budget</span>
-                <input
-                  id="respond-budget"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  value={draftConfig.triage?.respondBudget ?? 0}
-                  onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 0);
-                    if (num !== undefined) updateTriageField('respondBudget', num);
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <label htmlFor="default-interval-ms" className="space-y-2">
-                <span className="text-sm font-medium">Default Interval (ms)</span>
-                <input
-                  id="default-interval-ms"
-                  type="number"
-                  min={1}
-                  value={draftConfig.triage?.defaultInterval ?? 3000}
-                  onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 1);
-                    if (num !== undefined) updateTriageField('defaultInterval', num);
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-              <label htmlFor="timeout-ms" className="space-y-2">
-                <span className="text-sm font-medium">Timeout (ms)</span>
-                <input
-                  id="timeout-ms"
-                  type="number"
-                  min={1}
-                  value={draftConfig.triage?.timeout ?? 30000}
-                  onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 1);
-                    if (num !== undefined) updateTriageField('timeout', num);
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <label htmlFor="context-messages" className="space-y-2">
-                <span className="text-sm font-medium">Context Messages</span>
-                <input
-                  id="context-messages"
-                  type="number"
-                  min={1}
-                  value={draftConfig.triage?.contextMessages ?? 10}
-                  onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 1);
-                    if (num !== undefined) updateTriageField('contextMessages', num);
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-              <label htmlFor="max-buffer-size" className="space-y-2">
-                <span className="text-sm font-medium">Max Buffer Size</span>
-                <input
-                  id="max-buffer-size"
-                  type="number"
-                  min={1}
-                  value={draftConfig.triage?.maxBufferSize ?? 30}
-                  onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 1);
-                    if (num !== undefined) updateTriageField('maxBufferSize', num);
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Streaming</span>
-              <ToggleSwitch
-                checked={draftConfig.triage?.streaming ?? false}
-                onChange={(v) => updateTriageField('streaming', v)}
-                disabled={saving}
-                label="Streaming"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Moderation Response</span>
-              <ToggleSwitch
-                checked={draftConfig.triage?.moderationResponse ?? false}
-                onChange={(v) => updateTriageField('moderationResponse', v)}
-                disabled={saving}
-                label="Moderation Response"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Debug Footer</span>
-              <ToggleSwitch
-                checked={draftConfig.triage?.debugFooter ?? false}
-                onChange={(v) => updateTriageField('debugFooter', v)}
-                disabled={saving}
-                label="Debug Footer"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Status Reactions</span>
-              <ToggleSwitch
-                checked={draftConfig.triage?.statusReactions ?? false}
-                onChange={(v) => updateTriageField('statusReactions', v)}
-                disabled={saving}
-                label="Status Reactions"
-              />
-            </div>
-            <label htmlFor="moderation-log-channel" className="space-y-2">
-              <span className="text-sm font-medium">Moderation Log Channel</span>
-              <ChannelSelector
-                id="moderation-log-channel"
-                guildId={guildId}
-                selected={
-                  draftConfig.triage?.moderationLogChannel
-                    ? [draftConfig.triage.moderationLogChannel]
-                    : []
-                }
-                onChange={(selected) =>
-                  updateTriageField('moderationLogChannel', selected[0] ?? null)
-                }
-                disabled={saving}
-                placeholder="Select moderation log channel"
-                maxSelections={1}
-                filter="text"
-              />
-            </label>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Starboard section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Starboard</CardTitle>
-              <CardDescription>Pin popular messages to a starboard channel.</CardDescription>
-            </div>
-            <ToggleSwitch
-              checked={draftConfig.starboard?.enabled ?? false}
-              onChange={(v) => updateStarboardField('enabled', v)}
-              disabled={saving}
-              label="Starboard"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <label htmlFor="channel-id" className="space-y-2">
-            <span className="text-sm font-medium">Channel ID</span>
-            <ChannelSelector
-              id="channel-id"
-              guildId={guildId}
-              selected={draftConfig.starboard?.channelId ? [draftConfig.starboard.channelId] : []}
-              onChange={(selected) => updateStarboardField('channelId', selected[0] ?? '')}
-              disabled={saving}
-              placeholder="Select starboard channel"
-              maxSelections={1}
-              filter="text"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            <label htmlFor="threshold" className="space-y-2">
-              <span className="text-sm font-medium">Threshold</span>
-              <input
-                id="threshold"
-                type="number"
-                min={1}
-                value={draftConfig.starboard?.threshold ?? 3}
-                onChange={(e) => {
-                  const num = parseNumberInput(e.target.value, 1);
-                  if (num !== undefined) updateStarboardField('threshold', num);
-                }}
-                disabled={saving}
-                className={inputClasses}
-              />
-            </label>
-            <label htmlFor="emoji" className="space-y-2">
-              <span className="text-sm font-medium">Emoji</span>
-              <div className="flex items-center gap-2">
-                <input
-                  id="emoji"
-                  type="text"
-                  value={draftConfig.starboard?.emoji ?? '*'}
-                  onChange={(e) => updateStarboardField('emoji', e.target.value.trim() || '*')}
-                  disabled={saving}
-                  className={inputClasses}
-                  placeholder="*"
-                />
-                <button
-                  type="button"
-                  onClick={() => updateStarboardField('emoji', '*')}
-                  disabled={saving}
-                  className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                    draftConfig.starboard?.emoji === '*'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-accent'
-                  }`}
-                >
-                  Any ✱
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Set a specific emoji (e.g. ⭐ 🔥 👍) or click <strong>Any</strong> to let any emoji
-                trigger the starboard.
-              </p>
-            </label>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Allow Self-Star</span>
-            <ToggleSwitch
-              checked={draftConfig.starboard?.selfStarAllowed ?? false}
-              onChange={(v) => updateStarboardField('selfStarAllowed', v)}
-              disabled={saving}
-              label="Self-Star Allowed"
-            />
-          </div>
-          <label htmlFor="ignored-channels" className="space-y-2">
-            <span className="text-sm font-medium">Ignored Channels</span>
-            <ChannelSelector
-              id="ignored-channels"
-              guildId={guildId}
-              selected={(draftConfig.starboard?.ignoredChannels ?? []) as string[]}
-              onChange={(selected) => updateStarboardField('ignoredChannels', selected)}
-              disabled={saving}
-              placeholder="Select ignored channels"
-              filter="text"
-            />
-          </label>
-        </CardContent>
-      </Card>
-
-      {/* Permissions section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Permissions</CardTitle>
-              <CardDescription>
-                Configure role-based access and bot owner overrides.
-              </CardDescription>
-            </div>
-            <ToggleSwitch
-              checked={draftConfig.permissions?.enabled ?? false}
-              onChange={(v) => updatePermissionsField('enabled', v)}
-              disabled={saving}
-              label="Permissions"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <label htmlFor="admin-role-id" className="space-y-2">
-            <span className="text-sm font-medium">Admin Role ID</span>
-            <RoleSelector
-              id="admin-role-id"
-              guildId={guildId}
-              selected={
-                draftConfig.permissions?.adminRoleId ? [draftConfig.permissions.adminRoleId] : []
-              }
-              onChange={(selected) => updatePermissionsField('adminRoleId', selected[0] ?? null)}
-              placeholder="Select admin role"
-              disabled={saving}
-              maxSelections={1}
-            />
-          </label>
-          <label htmlFor="moderator-role-id" className="space-y-2">
-            <span className="text-sm font-medium">Moderator Role ID</span>
-            <RoleSelector
-              id="moderator-role-id"
-              guildId={guildId}
-              selected={
-                draftConfig.permissions?.moderatorRoleId
-                  ? [draftConfig.permissions.moderatorRoleId]
-                  : []
-              }
-              onChange={(selected) =>
-                updatePermissionsField('moderatorRoleId', selected[0] ?? null)
-              }
-              placeholder="Select moderator role"
-              disabled={saving}
-              maxSelections={1}
-            />
-          </label>
-          <label htmlFor="bot-owners" className="space-y-2">
-            <span className="text-sm font-medium">Bot Owners</span>
-            <input
-              id="bot-owners"
-              type="text"
-              value={(draftConfig.permissions?.botOwners ?? []).join(', ')}
-              onChange={(e) =>
-                updatePermissionsField(
-                  'botOwners',
-                  e.target.value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean),
+                  </label>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Select a server first</p>
                 )
               }
-              disabled={saving}
-              className={inputClasses}
-              placeholder="Comma-separated user IDs"
+              forceOpenAdvanced={forceOpenAdvancedFeatureId === 'ai-chat'}
             />
-          </label>
-        </CardContent>
-      </Card>
+          )}
 
-      {/* Memory section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Memory</CardTitle>
-              <CardDescription>Configure AI context memory and auto-extraction.</CardDescription>
-            </div>
-            <ToggleSwitch
-              checked={draftConfig.memory?.enabled ?? false}
-              onChange={(v) => updateMemoryField('enabled', v)}
+          {/* Welcome section */}
+          {activeCategoryId === 'onboarding-growth' && visibleFeatureIds.has('welcome') && (
+            <SettingsFeatureCard
+              featureId="welcome"
+              title="Welcome Messages"
+              description="Greet and onboard new members when they join."
+              enabled={draftConfig.welcome?.enabled ?? false}
+              onEnabledChange={updateWelcomeEnabled}
               disabled={saving}
-              label="Memory"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <label htmlFor="max-context-memories" className="space-y-2">
-            <span className="text-sm font-medium">Max Context Memories</span>
-            <input
-              id="max-context-memories"
-              type="number"
-              min={1}
-              value={draftConfig.memory?.maxContextMemories ?? 10}
-              onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 1);
-                if (num !== undefined) updateMemoryField('maxContextMemories', num);
-              }}
-              disabled={saving}
-              className={inputClasses}
-            />
-          </label>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Auto-Extract</span>
-            <ToggleSwitch
-              checked={draftConfig.memory?.autoExtract ?? false}
-              onChange={(v) => updateMemoryField('autoExtract', v)}
-              disabled={saving}
-              label="Auto-Extract"
-            />
-          </div>
-        </CardContent>
-      </Card>
+              basicContent={
+                <div className="space-y-4">
+                  <label htmlFor="welcome-message" className="space-y-2 block">
+                    <span className="text-sm font-medium">Welcome Message</span>
+                    <textarea
+                      id="welcome-message"
+                      value={draftConfig.welcome?.message ?? ''}
+                      onChange={(e) => updateWelcomeMessage(e.target.value)}
+                      rows={4}
+                      disabled={saving}
+                      className={inputClasses}
+                      placeholder="Welcome message template..."
+                      aria-describedby="welcome-message-hint"
+                    />
+                  </label>
+                  <p id="welcome-message-hint" className="text-xs text-muted-foreground">
+                    Use {'{user}'} for the member mention and {'{memberCount}'} for the server
+                    member count.
+                  </p>
 
-      <CommunitySettingsSection
-        draftConfig={draftConfig}
-        saving={saving}
-        guildId={guildId}
-        inputClasses={inputClasses}
-        defaultActivityBadges={DEFAULT_ACTIVITY_BADGES}
-        parseNumberInput={parseNumberInput}
-        updateDraftConfig={updateDraftConfig}
-      />
-      {/* Inline diff view — shows pending changes below the form */}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <label htmlFor="rules-channel-id" className="space-y-2">
+                      <span className="text-sm font-medium">Rules Channel ID</span>
+                      <ChannelSelector
+                        id="rules-channel-id"
+                        guildId={guildId}
+                        selected={
+                          draftConfig.welcome?.rulesChannel
+                            ? [draftConfig.welcome.rulesChannel]
+                            : []
+                        }
+                        onChange={(selected) =>
+                          updateWelcomeField('rulesChannel', selected[0] ?? null)
+                        }
+                        disabled={saving}
+                        placeholder="Select rules channel"
+                        maxSelections={1}
+                        filter="text"
+                      />
+                    </label>
+                    <label htmlFor="verified-role-id" className="space-y-2">
+                      <span className="text-sm font-medium">Verified Role ID</span>
+                      <RoleSelector
+                        id="verified-role-id"
+                        guildId={guildId}
+                        selected={
+                          draftConfig.welcome?.verifiedRole
+                            ? [draftConfig.welcome.verifiedRole]
+                            : []
+                        }
+                        onChange={(selected) =>
+                          updateWelcomeField('verifiedRole', selected[0] ?? null)
+                        }
+                        disabled={saving}
+                        placeholder="Select verified role"
+                        maxSelections={1}
+                      />
+                    </label>
+                    <label htmlFor="intro-channel-id" className="space-y-2">
+                      <span className="text-sm font-medium">Intro Channel ID</span>
+                      <ChannelSelector
+                        id="intro-channel-id"
+                        guildId={guildId}
+                        selected={
+                          draftConfig.welcome?.introChannel
+                            ? [draftConfig.welcome.introChannel]
+                            : []
+                        }
+                        onChange={(selected) =>
+                          updateWelcomeField('introChannel', selected[0] ?? null)
+                        }
+                        disabled={saving}
+                        placeholder="Select intro channel"
+                        maxSelections={1}
+                        filter="text"
+                      />
+                    </label>
+                  </div>
+                </div>
+              }
+              advancedContent={
+                <div className="space-y-4">
+                  <fieldset className="space-y-2 rounded-md border p-3">
+                    <legend className="text-sm font-medium">Role Menu</legend>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Enable self-assignable role menu
+                      </span>
+                      <ToggleSwitch
+                        checked={draftConfig.welcome?.roleMenu?.enabled ?? false}
+                        onChange={(v) => updateWelcomeRoleMenu('enabled', v)}
+                        disabled={saving}
+                        label="Role Menu"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      {(draftConfig.welcome?.roleMenu?.options ?? []).map((opt, i) => (
+                        <div key={opt.id} className="flex flex-col gap-2 rounded-md border p-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={opt.label ?? ''}
+                              onChange={(e) => {
+                                const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                                opts[i] = { ...opts[i], label: e.target.value };
+                                updateWelcomeRoleMenu('options', opts);
+                              }}
+                              disabled={saving}
+                              className={`${inputClasses} flex-1`}
+                              placeholder="Label (shown in menu)"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const opts = [
+                                  ...(draftConfig.welcome?.roleMenu?.options ?? []),
+                                ].filter((o) => o.id !== opt.id);
+                                updateWelcomeRoleMenu('options', opts);
+                              }}
+                              disabled={saving}
+                              aria-label={`Remove role option ${opt.label || i + 1}`}
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                          <RoleSelector
+                            guildId={guildId}
+                            selected={opt.roleId ? [opt.roleId] : []}
+                            onChange={(selected) => {
+                              const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                              opts[i] = { ...opts[i], roleId: selected[0] ?? '' };
+                              updateWelcomeRoleMenu('options', opts);
+                            }}
+                            placeholder="Select role"
+                            disabled={saving}
+                            maxSelections={1}
+                          />
+                          <input
+                            type="text"
+                            value={opt.description ?? ''}
+                            onChange={(e) => {
+                              const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                              opts[i] = { ...opts[i], description: e.target.value || undefined };
+                              updateWelcomeRoleMenu('options', opts);
+                            }}
+                            disabled={saving}
+                            className={inputClasses}
+                            placeholder="Description (optional)"
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const opts = [
+                            ...(draftConfig.welcome?.roleMenu?.options ?? []),
+                            { id: generateId(), label: '', roleId: '' },
+                          ];
+                          updateWelcomeRoleMenu('options', opts);
+                        }}
+                        disabled={
+                          saving || (draftConfig.welcome?.roleMenu?.options ?? []).length >= 25
+                        }
+                      >
+                        + Add Role Option
+                      </Button>
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="space-y-2 rounded-md border p-3">
+                    <legend className="text-sm font-medium">DM Sequence</legend>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Enable onboarding DMs</span>
+                      <ToggleSwitch
+                        checked={draftConfig.welcome?.dmSequence?.enabled ?? false}
+                        onChange={(v) => updateWelcomeDmSequence('enabled', v)}
+                        disabled={saving}
+                        label="DM Sequence"
+                      />
+                    </div>
+                    <textarea
+                      value={dmStepsRaw}
+                      onChange={(e) => setDmStepsRaw(e.target.value)}
+                      onBlur={() => {
+                        const parsed = dmStepsRaw
+                          .split('\n')
+                          .map((line) => line.trim())
+                          .filter(Boolean);
+                        updateWelcomeDmSequence('steps', parsed);
+                        setDmStepsRaw(parsed.join('\n'));
+                      }}
+                      rows={4}
+                      disabled={saving}
+                      className={inputClasses}
+                      placeholder="One DM step per line"
+                    />
+                  </fieldset>
+                </div>
+              }
+              forceOpenAdvanced={forceOpenAdvancedFeatureId === 'welcome'}
+            />
+          )}
+
+          {/* Moderation section */}
+          {draftConfig.moderation &&
+            activeCategoryId === 'moderation-safety' &&
+            visibleFeatureIds.has('moderation') && (
+              <SettingsFeatureCard
+                featureId="moderation"
+                title="Moderation"
+                description="Configure moderation alerts, notification behavior, and enforcement rules."
+                enabled={draftConfig.moderation?.enabled ?? false}
+                onEnabledChange={updateModerationEnabled}
+                disabled={saving}
+                basicContent={
+                  <div className="space-y-4">
+                    <label htmlFor="alert-channel-id" className="space-y-2 block">
+                      <span className="text-sm font-medium">Alert Channel ID</span>
+                      <ChannelSelector
+                        id="alert-channel-id"
+                        guildId={guildId}
+                        selected={
+                          draftConfig.moderation?.alertChannelId
+                            ? [draftConfig.moderation.alertChannelId]
+                            : []
+                        }
+                        onChange={(selected) =>
+                          updateModerationField('alertChannelId', selected[0] ?? null)
+                        }
+                        disabled={saving}
+                        placeholder="Select moderation alert channel"
+                        maxSelections={1}
+                        filter="text"
+                      />
+                    </label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Auto-delete flagged messages</span>
+                      <ToggleSwitch
+                        checked={draftConfig.moderation?.autoDelete ?? false}
+                        onChange={(v) => updateModerationField('autoDelete', v)}
+                        disabled={saving}
+                        label="Auto Delete"
+                      />
+                    </div>
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">DM Notifications</legend>
+                      {(['warn', 'timeout', 'kick', 'ban'] as const).map((action) => (
+                        <div key={action} className="flex items-center justify-between">
+                          <span className="text-sm capitalize text-muted-foreground">{action}</span>
+                          <ToggleSwitch
+                            checked={draftConfig.moderation?.dmNotifications?.[action] ?? false}
+                            onChange={(v) => updateModerationDmNotification(action, v)}
+                            disabled={saving}
+                            label={`DM on ${action}`}
+                          />
+                        </div>
+                      ))}
+                    </fieldset>
+                  </div>
+                }
+                advancedContent={
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Escalation Enabled</span>
+                      <ToggleSwitch
+                        checked={draftConfig.moderation?.escalation?.enabled ?? false}
+                        onChange={(v) => updateModerationEscalation(v)}
+                        disabled={saving}
+                        label="Escalation"
+                      />
+                    </div>
+
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Rate Limiting</legend>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Enabled</span>
+                        <ToggleSwitch
+                          checked={draftConfig.moderation?.rateLimit?.enabled ?? false}
+                          onChange={(v) => updateRateLimitField('enabled', v)}
+                          disabled={saving}
+                          label="Rate Limiting"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <label htmlFor="max-messages" className="space-y-2">
+                          <span className="text-sm text-muted-foreground">Max Messages</span>
+                          <input
+                            id="max-messages"
+                            type="number"
+                            min={1}
+                            value={draftConfig.moderation?.rateLimit?.maxMessages ?? 10}
+                            onChange={(e) => {
+                              const num = parseNumberInput(e.target.value, 1);
+                              if (num !== undefined) updateRateLimitField('maxMessages', num);
+                            }}
+                            disabled={saving}
+                            className={inputClasses}
+                          />
+                        </label>
+                        <label htmlFor="window-seconds" className="space-y-2">
+                          <span className="text-sm text-muted-foreground">Window (seconds)</span>
+                          <input
+                            id="window-seconds"
+                            type="number"
+                            min={1}
+                            value={draftConfig.moderation?.rateLimit?.windowSeconds ?? 10}
+                            onChange={(e) => {
+                              const num = parseNumberInput(e.target.value, 1);
+                              if (num !== undefined) updateRateLimitField('windowSeconds', num);
+                            }}
+                            disabled={saving}
+                            className={inputClasses}
+                          />
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <label htmlFor="mute-after-triggers" className="space-y-2">
+                          <span className="text-sm text-muted-foreground">Mute After Triggers</span>
+                          <input
+                            id="mute-after-triggers"
+                            type="number"
+                            min={1}
+                            value={draftConfig.moderation?.rateLimit?.muteAfterTriggers ?? 3}
+                            onChange={(e) => {
+                              const num = parseNumberInput(e.target.value, 1);
+                              if (num !== undefined) updateRateLimitField('muteAfterTriggers', num);
+                            }}
+                            disabled={saving}
+                            className={inputClasses}
+                          />
+                        </label>
+                        <label htmlFor="mute-window-s" className="space-y-2">
+                          <span className="text-sm text-muted-foreground">Mute Window (s)</span>
+                          <input
+                            id="mute-window-s"
+                            type="number"
+                            min={1}
+                            value={draftConfig.moderation?.rateLimit?.muteWindowSeconds ?? 300}
+                            onChange={(e) => {
+                              const num = parseNumberInput(e.target.value, 1);
+                              if (num !== undefined) updateRateLimitField('muteWindowSeconds', num);
+                            }}
+                            disabled={saving}
+                            className={inputClasses}
+                          />
+                        </label>
+                        <label htmlFor="mute-duration-s" className="space-y-2">
+                          <span className="text-sm text-muted-foreground">Mute Duration (s)</span>
+                          <input
+                            id="mute-duration-s"
+                            type="number"
+                            min={1}
+                            value={draftConfig.moderation?.rateLimit?.muteDurationSeconds ?? 300}
+                            onChange={(e) => {
+                              const num = parseNumberInput(e.target.value, 1);
+                              if (num !== undefined)
+                                updateRateLimitField('muteDurationSeconds', num);
+                            }}
+                            disabled={saving}
+                            className={inputClasses}
+                          />
+                        </label>
+                      </div>
+                    </fieldset>
+
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Link Filtering</legend>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Enabled</span>
+                        <ToggleSwitch
+                          checked={draftConfig.moderation?.linkFilter?.enabled ?? false}
+                          onChange={(v) => updateLinkFilterField('enabled', v)}
+                          disabled={saving}
+                          label="Link Filtering"
+                        />
+                      </div>
+                      <label htmlFor="blocked-domains" className="space-y-2">
+                        <span className="text-sm text-muted-foreground">Blocked Domains</span>
+                        <input
+                          id="blocked-domains"
+                          type="text"
+                          value={(draftConfig.moderation?.linkFilter?.blockedDomains ?? []).join(
+                            ', ',
+                          )}
+                          onChange={(e) =>
+                            updateLinkFilterField(
+                              'blockedDomains',
+                              e.target.value
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            )
+                          }
+                          disabled={saving}
+                          className={inputClasses}
+                          placeholder="example.com, spam.net"
+                        />
+                      </label>
+                    </fieldset>
+
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Protect Roles from Moderation</legend>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Enabled</span>
+                        <ToggleSwitch
+                          checked={draftConfig.moderation?.protectRoles?.enabled ?? true}
+                          onChange={(v) => updateProtectRolesField('enabled', v)}
+                          disabled={saving}
+                          label="Protect Roles"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Include admins</span>
+                        <ToggleSwitch
+                          checked={draftConfig.moderation?.protectRoles?.includeAdmins ?? true}
+                          onChange={(v) => updateProtectRolesField('includeAdmins', v)}
+                          disabled={saving}
+                          label="Include admins"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Include moderators</span>
+                        <ToggleSwitch
+                          checked={draftConfig.moderation?.protectRoles?.includeModerators ?? true}
+                          onChange={(v) => updateProtectRolesField('includeModerators', v)}
+                          disabled={saving}
+                          label="Include moderators"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Include server owner</span>
+                        <ToggleSwitch
+                          checked={draftConfig.moderation?.protectRoles?.includeServerOwner ?? true}
+                          onChange={(v) => updateProtectRolesField('includeServerOwner', v)}
+                          disabled={saving}
+                          label="Include server owner"
+                        />
+                      </div>
+                      <label htmlFor="protected-role-ids" className="space-y-2">
+                        <span className="text-sm text-muted-foreground">
+                          Additional protected roles
+                        </span>
+                        <RoleSelector
+                          id="protected-role-ids"
+                          guildId={guildId}
+                          selected={
+                            (draftConfig.moderation?.protectRoles?.roleIds ?? []) as string[]
+                          }
+                          onChange={(selected) => updateProtectRolesField('roleIds', selected)}
+                          disabled={saving}
+                          placeholder="Select protected roles"
+                        />
+                      </label>
+                    </fieldset>
+                  </div>
+                }
+                forceOpenAdvanced={forceOpenAdvancedFeatureId === 'moderation'}
+              />
+            )}
+
+          {/* AI Auto-Moderation section */}
+          {draftConfig.aiAutoMod &&
+            activeCategoryId === 'ai-automation' &&
+            visibleFeatureIds.has('ai-automod') && (
+              <SettingsFeatureCard
+                featureId="ai-automod"
+                title="AI Auto-Moderation"
+                description="Analyze messages with AI and apply moderation actions."
+                enabled={Boolean(draftConfig.aiAutoMod?.enabled)}
+                onEnabledChange={(v) => updateAiAutoModField('enabled', v)}
+                disabled={saving}
+                basicContent={
+                  <div className="space-y-4">
+                    <label htmlFor="ai-automod-flag-channel" className="space-y-2 block">
+                      <span className="text-sm font-medium">Flag Review Channel ID</span>
+                      <ChannelSelector
+                        id="ai-automod-flag-channel"
+                        guildId={guildId}
+                        selected={
+                          draftConfig.aiAutoMod?.flagChannelId
+                            ? [draftConfig.aiAutoMod.flagChannelId]
+                            : []
+                        }
+                        onChange={(selected) =>
+                          updateAiAutoModField('flagChannelId', selected[0] ?? null)
+                        }
+                        disabled={saving}
+                        placeholder="Select flag review channel"
+                        maxSelections={1}
+                        filter="text"
+                      />
+                    </label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Auto-delete flagged messages</span>
+                      <ToggleSwitch
+                        checked={Boolean(draftConfig.aiAutoMod?.autoDelete ?? true)}
+                        onChange={(v) => updateAiAutoModField('autoDelete', v)}
+                        disabled={saving}
+                        label="Auto-delete"
+                      />
+                    </div>
+                  </div>
+                }
+                advancedContent={
+                  <div className="space-y-4">
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Thresholds (0–100)</legend>
+                      <p className="text-muted-foreground text-xs">
+                        Confidence threshold (%) above which the action triggers.
+                      </p>
+                      {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
+                        <label
+                          key={cat}
+                          htmlFor={`ai-threshold-${cat}`}
+                          className="flex items-center gap-3"
+                        >
+                          <span className="w-24 text-sm capitalize">{cat}</span>
+                          <input
+                            id={`ai-threshold-${cat}`}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={Math.round(
+                              ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[
+                                cat
+                              ] ?? 0.7) * 100,
+                            )}
+                            onChange={(e) => {
+                              const raw = Number(e.target.value);
+                              const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
+                              updateAiAutoModField('thresholds', {
+                                ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ??
+                                  {}),
+                                [cat]: v,
+                              });
+                            }}
+                            disabled={saving}
+                            className={`${inputClasses} w-24`}
+                          />
+                          <span className="text-muted-foreground text-xs">%</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Actions</legend>
+                      {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
+                        <label
+                          key={cat}
+                          htmlFor={`ai-action-${cat}`}
+                          className="flex items-center gap-3"
+                        >
+                          <span className="w-24 text-sm capitalize">{cat}</span>
+                          <select
+                            id={`ai-action-${cat}`}
+                            value={
+                              (draftConfig.aiAutoMod?.actions as Record<string, string>)?.[cat] ??
+                              'flag'
+                            }
+                            onChange={(e) => {
+                              updateAiAutoModField('actions', {
+                                ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ??
+                                  {}),
+                                [cat]: e.target.value,
+                              });
+                            }}
+                            disabled={saving}
+                            className={inputClasses}
+                          >
+                            <option value="none">No action</option>
+                            <option value="delete">Delete message</option>
+                            <option value="flag">Flag for review</option>
+                            <option value="warn">Warn user</option>
+                            <option value="timeout">Timeout user</option>
+                            <option value="kick">Kick user</option>
+                            <option value="ban">Ban user</option>
+                          </select>
+                        </label>
+                      ))}
+                    </fieldset>
+                  </div>
+                }
+                forceOpenAdvanced={forceOpenAdvancedFeatureId === 'ai-automod'}
+              />
+            )}
+
+          {/* Triage section */}
+          {draftConfig.triage &&
+            activeCategoryId === 'ai-automation' &&
+            visibleFeatureIds.has('triage') && (
+              <SettingsFeatureCard
+                featureId="triage"
+                title="Triage"
+                description="Classifier, responder, and triage orchestration settings."
+                enabled={draftConfig.triage?.enabled ?? false}
+                onEnabledChange={updateTriageEnabled}
+                disabled={saving}
+                basicContent={
+                  <div className="space-y-4">
+                    <label htmlFor="classify-model" className="space-y-2 block">
+                      <span className="text-sm font-medium">Classify Model</span>
+                      <input
+                        id="classify-model"
+                        type="text"
+                        value={draftConfig.triage?.classifyModel ?? ''}
+                        onChange={(e) => updateTriageField('classifyModel', e.target.value)}
+                        disabled={saving}
+                        className={inputClasses}
+                        placeholder="e.g. claude-haiku-4-5"
+                      />
+                    </label>
+                    <label htmlFor="respond-model" className="space-y-2 block">
+                      <span className="text-sm font-medium">Respond Model</span>
+                      <input
+                        id="respond-model"
+                        type="text"
+                        value={draftConfig.triage?.respondModel ?? ''}
+                        onChange={(e) => updateTriageField('respondModel', e.target.value)}
+                        disabled={saving}
+                        className={inputClasses}
+                        placeholder="e.g. claude-sonnet-4-6"
+                      />
+                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <label htmlFor="classify-budget" className="space-y-2">
+                        <span className="text-sm font-medium">Classify Budget</span>
+                        <input
+                          id="classify-budget"
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={draftConfig.triage?.classifyBudget ?? 0}
+                          onChange={(e) => {
+                            const num = parseNumberInput(e.target.value, 0);
+                            if (num !== undefined) updateTriageField('classifyBudget', num);
+                          }}
+                          disabled={saving}
+                          className={inputClasses}
+                        />
+                      </label>
+                      <label htmlFor="respond-budget" className="space-y-2">
+                        <span className="text-sm font-medium">Respond Budget</span>
+                        <input
+                          id="respond-budget"
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={draftConfig.triage?.respondBudget ?? 0}
+                          onChange={(e) => {
+                            const num = parseNumberInput(e.target.value, 0);
+                            if (num !== undefined) updateTriageField('respondBudget', num);
+                          }}
+                          disabled={saving}
+                          className={inputClasses}
+                        />
+                      </label>
+                    </div>
+                    <label htmlFor="moderation-log-channel" className="space-y-2 block">
+                      <span className="text-sm font-medium">Moderation Log Channel</span>
+                      <ChannelSelector
+                        id="moderation-log-channel"
+                        guildId={guildId}
+                        selected={
+                          draftConfig.triage?.moderationLogChannel
+                            ? [draftConfig.triage.moderationLogChannel]
+                            : []
+                        }
+                        onChange={(selected) =>
+                          updateTriageField('moderationLogChannel', selected[0] ?? null)
+                        }
+                        disabled={saving}
+                        placeholder="Select moderation log channel"
+                        maxSelections={1}
+                        filter="text"
+                      />
+                    </label>
+                  </div>
+                }
+                advancedContent={
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <label htmlFor="default-interval-ms" className="space-y-2">
+                        <span className="text-sm font-medium">Default Interval (ms)</span>
+                        <input
+                          id="default-interval-ms"
+                          type="number"
+                          min={1}
+                          value={draftConfig.triage?.defaultInterval ?? 3000}
+                          onChange={(e) => {
+                            const num = parseNumberInput(e.target.value, 1);
+                            if (num !== undefined) updateTriageField('defaultInterval', num);
+                          }}
+                          disabled={saving}
+                          className={inputClasses}
+                        />
+                      </label>
+                      <label htmlFor="timeout-ms" className="space-y-2">
+                        <span className="text-sm font-medium">Timeout (ms)</span>
+                        <input
+                          id="timeout-ms"
+                          type="number"
+                          min={1}
+                          value={draftConfig.triage?.timeout ?? 30000}
+                          onChange={(e) => {
+                            const num = parseNumberInput(e.target.value, 1);
+                            if (num !== undefined) updateTriageField('timeout', num);
+                          }}
+                          disabled={saving}
+                          className={inputClasses}
+                        />
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <label htmlFor="context-messages" className="space-y-2">
+                        <span className="text-sm font-medium">Context Messages</span>
+                        <input
+                          id="context-messages"
+                          type="number"
+                          min={1}
+                          value={draftConfig.triage?.contextMessages ?? 10}
+                          onChange={(e) => {
+                            const num = parseNumberInput(e.target.value, 1);
+                            if (num !== undefined) updateTriageField('contextMessages', num);
+                          }}
+                          disabled={saving}
+                          className={inputClasses}
+                        />
+                      </label>
+                      <label htmlFor="max-buffer-size" className="space-y-2">
+                        <span className="text-sm font-medium">Max Buffer Size</span>
+                        <input
+                          id="max-buffer-size"
+                          type="number"
+                          min={1}
+                          value={draftConfig.triage?.maxBufferSize ?? 30}
+                          onChange={(e) => {
+                            const num = parseNumberInput(e.target.value, 1);
+                            if (num !== undefined) updateTriageField('maxBufferSize', num);
+                          }}
+                          disabled={saving}
+                          className={inputClasses}
+                        />
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Streaming</span>
+                      <ToggleSwitch
+                        checked={draftConfig.triage?.streaming ?? false}
+                        onChange={(v) => updateTriageField('streaming', v)}
+                        disabled={saving}
+                        label="Streaming"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Moderation Response</span>
+                      <ToggleSwitch
+                        checked={draftConfig.triage?.moderationResponse ?? false}
+                        onChange={(v) => updateTriageField('moderationResponse', v)}
+                        disabled={saving}
+                        label="Moderation Response"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Debug Footer</span>
+                      <ToggleSwitch
+                        checked={draftConfig.triage?.debugFooter ?? false}
+                        onChange={(v) => updateTriageField('debugFooter', v)}
+                        disabled={saving}
+                        label="Debug Footer"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Status Reactions</span>
+                      <ToggleSwitch
+                        checked={draftConfig.triage?.statusReactions ?? false}
+                        onChange={(v) => updateTriageField('statusReactions', v)}
+                        disabled={saving}
+                        label="Status Reactions"
+                      />
+                    </div>
+                  </div>
+                }
+                forceOpenAdvanced={forceOpenAdvancedFeatureId === 'triage'}
+              />
+            )}
+
+          {activeCategoryId === 'moderation-safety' && visibleFeatureIds.has('starboard') && (
+            <SettingsFeatureCard
+              featureId="starboard"
+              title="Starboard"
+              description="Pin popular messages to a starboard channel."
+              enabled={draftConfig.starboard?.enabled ?? false}
+              onEnabledChange={(v) => updateStarboardField('enabled', v)}
+              disabled={saving}
+              basicContent={
+                <div className="space-y-4">
+                  <label htmlFor="channel-id" className="space-y-2 block">
+                    <span className="text-sm font-medium">Channel ID</span>
+                    <ChannelSelector
+                      id="channel-id"
+                      guildId={guildId}
+                      selected={
+                        draftConfig.starboard?.channelId ? [draftConfig.starboard.channelId] : []
+                      }
+                      onChange={(selected) => updateStarboardField('channelId', selected[0] ?? '')}
+                      disabled={saving}
+                      placeholder="Select starboard channel"
+                      maxSelections={1}
+                      filter="text"
+                    />
+                  </label>
+                  <label htmlFor="threshold" className="space-y-2 block">
+                    <span className="text-sm font-medium">Threshold</span>
+                    <input
+                      id="threshold"
+                      type="number"
+                      min={1}
+                      value={draftConfig.starboard?.threshold ?? 3}
+                      onChange={(e) => {
+                        const num = parseNumberInput(e.target.value, 1);
+                        if (num !== undefined) updateStarboardField('threshold', num);
+                      }}
+                      disabled={saving}
+                      className={inputClasses}
+                    />
+                  </label>
+                </div>
+              }
+              advancedContent={
+                <div className="space-y-4">
+                  <label htmlFor="emoji" className="space-y-2 block">
+                    <span className="text-sm font-medium">Emoji</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="emoji"
+                        type="text"
+                        value={draftConfig.starboard?.emoji ?? '*'}
+                        onChange={(e) =>
+                          updateStarboardField('emoji', e.target.value.trim() || '*')
+                        }
+                        disabled={saving}
+                        className={inputClasses}
+                        placeholder="*"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateStarboardField('emoji', '*')}
+                        disabled={saving}
+                        className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                          draftConfig.starboard?.emoji === '*'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-accent'
+                        }`}
+                      >
+                        Any ✱
+                      </button>
+                    </div>
+                  </label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Allow Self-Star</span>
+                    <ToggleSwitch
+                      checked={draftConfig.starboard?.selfStarAllowed ?? false}
+                      onChange={(v) => updateStarboardField('selfStarAllowed', v)}
+                      disabled={saving}
+                      label="Self-Star Allowed"
+                    />
+                  </div>
+                  <label htmlFor="ignored-channels" className="space-y-2 block">
+                    <span className="text-sm font-medium">Ignored Channels</span>
+                    <ChannelSelector
+                      id="ignored-channels"
+                      guildId={guildId}
+                      selected={(draftConfig.starboard?.ignoredChannels ?? []) as string[]}
+                      onChange={(selected) => updateStarboardField('ignoredChannels', selected)}
+                      disabled={saving}
+                      placeholder="Select ignored channels"
+                      filter="text"
+                    />
+                  </label>
+                </div>
+              }
+              forceOpenAdvanced={forceOpenAdvancedFeatureId === 'starboard'}
+            />
+          )}
+
+          {activeCategoryId === 'moderation-safety' && visibleFeatureIds.has('permissions') && (
+            <SettingsFeatureCard
+              featureId="permissions"
+              title="Permissions"
+              description="Configure role-based access and owner overrides."
+              enabled={draftConfig.permissions?.enabled ?? false}
+              onEnabledChange={(v) => updatePermissionsField('enabled', v)}
+              disabled={saving}
+              basicContent={
+                <div className="space-y-4">
+                  <label htmlFor="admin-role-id" className="space-y-2 block">
+                    <span className="text-sm font-medium">Admin Role ID</span>
+                    <RoleSelector
+                      id="admin-role-id"
+                      guildId={guildId}
+                      selected={
+                        draftConfig.permissions?.adminRoleId
+                          ? [draftConfig.permissions.adminRoleId]
+                          : []
+                      }
+                      onChange={(selected) =>
+                        updatePermissionsField('adminRoleId', selected[0] ?? null)
+                      }
+                      placeholder="Select admin role"
+                      disabled={saving}
+                      maxSelections={1}
+                    />
+                  </label>
+                  <label htmlFor="moderator-role-id" className="space-y-2 block">
+                    <span className="text-sm font-medium">Moderator Role ID</span>
+                    <RoleSelector
+                      id="moderator-role-id"
+                      guildId={guildId}
+                      selected={
+                        draftConfig.permissions?.moderatorRoleId
+                          ? [draftConfig.permissions.moderatorRoleId]
+                          : []
+                      }
+                      onChange={(selected) =>
+                        updatePermissionsField('moderatorRoleId', selected[0] ?? null)
+                      }
+                      placeholder="Select moderator role"
+                      disabled={saving}
+                      maxSelections={1}
+                    />
+                  </label>
+                </div>
+              }
+              advancedContent={
+                <label htmlFor="bot-owners" className="space-y-2 block">
+                  <span className="text-sm font-medium">Bot Owners</span>
+                  <input
+                    id="bot-owners"
+                    type="text"
+                    value={(draftConfig.permissions?.botOwners ?? []).join(', ')}
+                    onChange={(e) =>
+                      updatePermissionsField(
+                        'botOwners',
+                        e.target.value
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                    disabled={saving}
+                    className={inputClasses}
+                    placeholder="Comma-separated user IDs"
+                  />
+                </label>
+              }
+              forceOpenAdvanced={forceOpenAdvancedFeatureId === 'permissions'}
+            />
+          )}
+
+          {activeCategoryId === 'ai-automation' && visibleFeatureIds.has('memory') && (
+            <SettingsFeatureCard
+              featureId="memory"
+              title="Memory"
+              description="Configure AI context memory and extraction."
+              enabled={draftConfig.memory?.enabled ?? false}
+              onEnabledChange={(v) => updateMemoryField('enabled', v)}
+              disabled={saving}
+              basicContent={
+                <label htmlFor="max-context-memories" className="space-y-2 block">
+                  <span className="text-sm font-medium">Max Context Memories</span>
+                  <input
+                    id="max-context-memories"
+                    type="number"
+                    min={1}
+                    value={draftConfig.memory?.maxContextMemories ?? 10}
+                    onChange={(e) => {
+                      const num = parseNumberInput(e.target.value, 1);
+                      if (num !== undefined) updateMemoryField('maxContextMemories', num);
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  />
+                </label>
+              }
+              advancedContent={
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Auto-Extract</span>
+                  <ToggleSwitch
+                    checked={draftConfig.memory?.autoExtract ?? false}
+                    onChange={(v) => updateMemoryField('autoExtract', v)}
+                    disabled={saving}
+                    label="Auto-Extract"
+                  />
+                </div>
+              }
+              forceOpenAdvanced={forceOpenAdvancedFeatureId === 'memory'}
+            />
+          )}
+
+          <CommunitySettingsSection
+            draftConfig={draftConfig}
+            saving={saving}
+            guildId={guildId}
+            inputClasses={inputClasses}
+            defaultActivityBadges={DEFAULT_ACTIVITY_BADGES}
+            parseNumberInput={parseNumberInput}
+            updateDraftConfig={updateDraftConfig}
+            activeCategoryId={activeCategoryId}
+            visibleFeatureIds={visibleFeatureIds}
+            forceOpenAdvancedFeatureId={forceOpenAdvancedFeatureId}
+          />
+        </div>
+      </div>
+
       {hasChanges && savedConfig && <ConfigDiff original={savedConfig} modified={draftConfig} />}
 
-      {/* Diff modal — shown before saving to require explicit confirmation */}
       {savedConfig && (
         <ConfigDiffModal
           open={showDiffModal}
@@ -1904,101 +2091,4 @@ export function ConfigEditor() {
       )}
     </div>
   );
-}
-
-// ── Helpers ────────────────────────────────────────────────────────
-
-/**
- * Determine whether two JSON-serializable values are deeply equal by recursively comparing primitives, arrays, and plain objects.
- *
- * @param a - First value to compare
- * @param b - Second value to compare
- * @returns `true` if `a` and `b` are structurally equal, `false` otherwise
- */
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (a === null || b === null) return false;
-  if (typeof a !== typeof b) return false;
-
-  if (Array.isArray(a)) {
-    if (!Array.isArray(b) || a.length !== b.length) return false;
-    return a.every((item, i) => deepEqual(item, b[i]));
-  }
-
-  if (typeof a === 'object') {
-    const aObj = a as Record<string, unknown>;
-    const bObj = b as Record<string, unknown>;
-    const aKeys = Object.keys(aObj);
-    const bKeys = Object.keys(bObj);
-    if (aKeys.length !== bKeys.length) return false;
-    return aKeys.every((key) => Object.hasOwn(bObj, key) && deepEqual(aObj[key], bObj[key]));
-  }
-
-  return false;
-}
-
-/**
- * Compute a flat list of dot-path patches that describe differences between two guild configs.
- *
- * Skips the root-level `guildId`, recurses into plain objects to emit leaf-level changes,
- * and produces a patch for any differing non-object value or array.
- *
- * @param original - The original (server-authoritative) guild configuration to compare against
- * @param modified - The modified guild configuration containing desired updates
- * @returns An array of patches where each item has a dot-separated `path` to the changed field and `value` set to the new value
- */
-function computePatches(
-  original: GuildConfig,
-  modified: GuildConfig,
-): Array<{ path: string; value: unknown }> {
-  const patches: Array<{ path: string; value: unknown }> = [];
-
-  /**
-   * Traverse two plain-object trees and record leaf-level differences as path/value patches.
-   *
-   * Walks the structures rooted at `origObj` and `modObj`, compares values recursively, and appends
-   * a patch { path, value } to the outer-scope `patches` array for each leaf or differing non-object
-   * value in `modObj`. The root-level field named "guildId" is ignored.
-   *
-   * @param origObj - The original (source) object to compare against
-   * @param modObj - The modified (target) object to derive patches from
-   * @param prefix - Current dot-separated path prefix for nested keys (use empty string for root)
-   */
-  function walk(origObj: Record<string, unknown>, modObj: Record<string, unknown>, prefix: string) {
-    const allKeys = new Set([...Object.keys(origObj), ...Object.keys(modObj)]);
-
-    for (const key of allKeys) {
-      // Skip the guildId metadata field
-      if (prefix === '' && key === 'guildId') continue;
-
-      const fullPath = prefix ? `${prefix}.${key}` : key;
-      const origVal = origObj[key];
-      const modVal = modObj[key];
-
-      if (deepEqual(origVal, modVal)) continue;
-
-      // If both are plain objects, recurse to find the leaf changes
-      if (
-        typeof origVal === 'object' &&
-        origVal !== null &&
-        !Array.isArray(origVal) &&
-        typeof modVal === 'object' &&
-        modVal !== null &&
-        !Array.isArray(modVal)
-      ) {
-        walk(origVal as Record<string, unknown>, modVal as Record<string, unknown>, fullPath);
-      } else {
-        const patchValue = !Object.hasOwn(modObj, key) || modVal === undefined ? null : modVal;
-        patches.push({ path: fullPath, value: patchValue });
-      }
-    }
-  }
-
-  walk(
-    original as unknown as Record<string, unknown>,
-    modified as unknown as Record<string, unknown>,
-    '',
-  );
-
-  return patches;
 }

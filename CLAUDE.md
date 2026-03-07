@@ -18,3 +18,9 @@ See [AGENTS.md](./AGENTS.md) for full project context, architecture, and coding 
   - Removed `process.env.GUILD_ID` runtime reads from startup/reload command registration.
   - Updated `.env.example` and `README.md` to remove `GUILD_ID` as a persisted env var.
   - Preserved dev-only guild-scoped deploy support via CLI flag: `pnpm deploy -- --guild-id <guild_id>`.
+- Web dashboard config editor redesign shipped:
+  - Replaced monolithic settings stack with category workspace navigation (`AI & Automation`, `Onboarding & Growth`, `Moderation & Safety`, `Community Tools`, `Support & Integrations`) in `web/src/components/dashboard/config-workspace/`.
+  - Added metadata-driven config search with cross-category quick jump, focus/scroll targeting, and advanced-section auto-open when search hits advanced controls.
+  - Refactored config feature presentation to reusable `SettingsFeatureCard` pattern (header + master toggle + Basic/Advanced blocks).
+  - Kept save contract unchanged: global save/discard, diff-modal confirmation, per-section PATCH batching, and partial-failure behavior.
+  - Updated config editor tests from stale autosave assumptions to explicit manual-save workspace behavior and added coverage for category switching/search/dirty badges.
