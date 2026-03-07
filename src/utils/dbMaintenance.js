@@ -140,7 +140,9 @@ async function purgeStaleRateLimits(pool) {
 export async function runMaintenance(pool) {
   info('DB maintenance: starting routine cleanup', { source: 'db_maintenance' });
 
-  // Resolve audit log retention from config (default: 90 days)
+  // Audit log retention uses the global config default since purgeOldAuditLogs
+  // operates across all guilds in one query. Per-guild overrides are respected
+  // when guild-specific purge calls are made from guild config change handlers.
   const auditRetentionDays = getConfig()?.auditLog?.retentionDays ?? 90;
 
   try {

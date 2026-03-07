@@ -61,8 +61,8 @@ export function AuditLogSection({
         <div className="space-y-2">
           <Label htmlFor="audit-retention">Retention Period (days)</Label>
           <p className="text-sm text-muted-foreground">
-            Audit entries older than this are automatically purged during nightly maintenance. Set to{' '}
-            <strong>0</strong> to keep entries indefinitely.
+            Audit entries older than this are automatically purged during nightly maintenance. Set
+            to <strong>0</strong> to keep entries indefinitely.
           </p>
           <Input
             id="audit-retention"
@@ -82,7 +82,9 @@ export function AuditLogSection({
             aria-label="Audit log retention period in days"
           />
           <p className="text-xs text-muted-foreground">
-            {retentionDays === 0 ? 'Keeping audit entries indefinitely' : `Entries older than ${retentionDays} day${retentionDays === 1 ? '' : 's'} will be purged`}
+            {retentionDays === 0
+              ? 'Keeping audit entries indefinitely'
+              : `Entries older than ${retentionDays} day${retentionDays === 1 ? '' : 's'} will be purged`}
           </p>
         </div>
       </CardContent>

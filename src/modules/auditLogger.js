@@ -25,7 +25,7 @@
  * });
  */
 
-import { warn, error as logError, info } from '../logger.js';
+import { info, error as logError, warn } from '../logger.js';
 
 /**
  * @typedef {Object} AuditEventOptions

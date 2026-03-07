@@ -18,6 +18,8 @@ vi.mock('../../src/modules/auditLogger.js', () => ({
   purgeOldAuditLogs: vi.fn().mockResolvedValue(0),
 }));
 
+import * as auditLogger from '../../src/modules/auditLogger.js';
+
 describe('runMaintenance', () => {
   let runMaintenance;
   let mockPool;
@@ -44,6 +46,11 @@ describe('runMaintenance', () => {
     await expect(runMaintenance(mockPool)).resolves.toBeUndefined();
     // tickets, sessions, rate_limits — 3 queries total (auditLogger is mocked separately)
     expect(mockPool.query).toHaveBeenCalledTimes(3);
+  });
+
+  it('calls purgeOldAuditLogs with configured retentionDays', async () => {
+    await runMaintenance(mockPool);
+    expect(auditLogger.purgeOldAuditLogs).toHaveBeenCalledWith(mockPool, 90);
   });
 
   it('logs start and completion messages', async () => {

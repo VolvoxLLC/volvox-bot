@@ -5,7 +5,7 @@
  *   - logAuditEvent: successful insert, graceful degradation, missing fields
  *   - purgeOldAuditLogs: normal purge, disabled (retentionDays=0), missing table, DB error
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/logger.js', () => ({
   info: vi.fn(),
@@ -13,8 +13,8 @@ vi.mock('../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-import { logAuditEvent, purgeOldAuditLogs } from '../../src/modules/auditLogger.js';
 import * as logger from '../../src/logger.js';
+import { logAuditEvent, purgeOldAuditLogs } from '../../src/modules/auditLogger.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

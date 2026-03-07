@@ -2038,11 +2038,22 @@ export function ConfigEditor() {
           )}
 
           {activeCategoryId === 'moderation-safety' && visibleFeatureIds.has('audit-log') && (
-            <AuditLogSection
-              draftConfig={draftConfig ?? {}}
-              saving={saving}
+            <SettingsFeatureCard
+              featureId="audit-log"
+              title="Audit Log"
+              description="Record admin actions taken via the dashboard (config changes, XP adjustments, warnings)."
+              enabled={draftConfig.auditLog?.enabled ?? true}
               onEnabledChange={(v) => updateAuditLogField('enabled', v)}
-              onRetentionDaysChange={(days) => updateAuditLogField('retentionDays', days)}
+              disabled={saving}
+              forceOpenAdvanced={forceOpenAdvancedFeatureId === 'audit-log'}
+              basicContent={
+                <AuditLogSection
+                  draftConfig={draftConfig ?? {}}
+                  saving={saving}
+                  onEnabledChange={(v) => updateAuditLogField('enabled', v)}
+                  onRetentionDaysChange={(days) => updateAuditLogField('retentionDays', days)}
+                />
+              }
             />
           )}
 
