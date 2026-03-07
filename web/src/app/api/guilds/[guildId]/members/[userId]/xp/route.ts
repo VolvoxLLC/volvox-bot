@@ -48,9 +48,13 @@ export async function POST(
     if (!('amount' in payload)) {
       return NextResponse.json({ error: 'Missing required field: amount' }, { status: 400 });
     }
-    if (typeof payload.amount !== 'number' || !Number.isFinite(payload.amount)) {
+    if (
+      typeof payload.amount !== 'number' ||
+      !Number.isFinite(payload.amount) ||
+      !Number.isInteger(payload.amount)
+    ) {
       return NextResponse.json(
-        { error: 'Field "amount" must be a finite number' },
+        { error: 'Field "amount" must be a finite integer' },
         { status: 400 },
       );
     }

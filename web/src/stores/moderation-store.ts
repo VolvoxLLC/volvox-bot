@@ -66,5 +66,8 @@ export const useModerationStore = create<ModerationState>((set) => ({
       lookupUserId: null,
       userHistoryInput: '',
       userHistoryPage: 1,
+      actionFilter: 'all',
+      userSearch: '',
+      sortDesc: true,
     }),
 }));
