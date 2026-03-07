@@ -191,27 +191,43 @@ export function Stats() {
   const [stats, setStats] = useState<BotStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-
-  const fetchStats = async () => {
-    try {
-      const res = await fetch('/api/stats');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: BotStats = await res.json();
-      setStats(data);
-      setError(false);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const failCountRef = useRef(0);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: BotStats = await res.json();
+        if (!cancelled) {
+          setStats(data);
+          setError(false);
+          setLoading(false);
+          failCountRef.current = 0;
+          // Refresh every 60s on success
+          timeoutId = setTimeout(fetchStats, 60_000);
+        }
+      } catch {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+          failCountRef.current += 1;
+          // Back off: 60s, 120s, 240s, max 5 min
+          const backoff = Math.min(60_000 * 2 ** (failCountRef.current - 1), 300_000);
+          timeoutId = setTimeout(fetchStats, backoff);
+        }
+      }
+    };
+
     fetchStats();
 
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(fetchStats, 60_000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   // Derived stat values — fall back to 0 on error so counters still render
