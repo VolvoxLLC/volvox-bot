@@ -221,7 +221,10 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
 
     if (req.query.search && typeof req.query.search === 'string') {
       paramIndex++;
-      // Uses idx_conversations_content_trgm (GIN/trgm) added in migration 004
+      // Uses idx_conversations_content_trgm (GIN/trgm) added in migration 004.
+      // TODO: ILIKE + OFFSET pagination is O(n) on large datasets. For better
+      // performance at scale, switch to a full-text search index (e.g. tsvector
+      // with GIN) and use keyset/cursor pagination instead of OFFSET.
       whereParts.push(`content ILIKE $${paramIndex}`);
       values.push(`%${escapeIlike(req.query.search)}%`);
     }

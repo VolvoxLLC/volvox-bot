@@ -314,6 +314,13 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
     // (searches all guild members by username/nickname prefix), otherwise use
     // cursor-based listing.  Sort is applied after enrichment and is scoped to
     // the returned page; it does NOT globally sort all guild members.
+    //
+    // TODO: Server-side member search accuracy — Discord's guild.members.search()
+    // only searches the bot's in-memory member cache (populated by the GUILD_MEMBERS
+    // privileged intent). For large guilds (100k+ members) the cache is incomplete.
+    // For full coverage, consider: (a) adding a members DB table populated from
+    // guildMemberAdd events + bulk sync on startup, or (b) using the Discord HTTP
+    // API directly with the Search Guild Members endpoint which searches all members.
     let memberList;
     let paginationCursor = null;
     if (search) {

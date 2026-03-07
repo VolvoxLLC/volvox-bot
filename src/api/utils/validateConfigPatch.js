@@ -80,5 +80,10 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
     return { error: 'Value validation failed', status: 400, details: valErrors };
   }
 
+  // TODO: Deep per-key schema validation — currently validateSingleValue only checks
+  // type/range for known paths. Unknown paths pass through without structural validation.
+  // For full coverage, add a per-key JSON schema registry (one schema per top-level config
+  // section) and run deep validation against it here before accepting the patch.
+
   return { path, value, topLevelKey };
 }
