@@ -17,9 +17,11 @@ const router = Router();
 const warningsRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
 /**
- * Copy the `guildId` query value into `req.params.id` so downstream handlers can read it.
+ * Make a guild-scoped route parameter available to downstream middleware by copying `req.query.guildId` to `req.params.id` when present.
  *
- * If `req.query.guildId` is present, sets `req.params.id` to that value, then calls `next()`.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} _res - Express response object (unused).
+ * @param {import('express').NextFunction} next - Callback to pass control to the next middleware.
  */
 function adaptGuildIdParam(req, _res, next) {
   if (req.query.guildId) {

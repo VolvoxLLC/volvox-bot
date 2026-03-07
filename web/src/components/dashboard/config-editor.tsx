@@ -113,11 +113,11 @@ function isGuildConfig(data: unknown): data is GuildConfig {
 }
 
 /**
- * Edit a guild's bot configuration through a multi-section UI.
+ * Render the configuration editor UI for the currently selected guild.
  *
- * Loads the authoritative config for the selected guild, maintains a mutable draft for user edits,
- * computes and applies per-section patches to persist changes, and provides controls to save,
- * discard, and validate edits (including an unsaved-changes warning and keyboard shortcut).
+ * Manages loading the authoritative guild config, keeping a mutable draft for user edits,
+ * tracking and validating unsaved changes, and exposing controls to preview, save, discard,
+ * and undo edits across top-level configuration sections.
  *
  * @returns The editor UI as JSX when a guild is selected and a draft config exists; `null` otherwise.
  */

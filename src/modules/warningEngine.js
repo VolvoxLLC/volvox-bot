@@ -26,10 +26,10 @@ let expiryInterval = null;
 let expiryPollInFlight = false;
 
 /**
- * Get severity points from config or fallback to defaults.
- * @param {Object} [config] - Bot configuration
- * @param {string} severity - Severity level
- * @returns {number} Points for the severity
+ * Determine the points assigned to a given severity, honoring config overrides.
+ * @param {Object} [config] - Optional bot configuration object that may contain moderation.warnings.severityPoints.
+ * @param {string} severity - Severity level key (e.g., 'low', 'medium', 'high').
+ * @returns {number} The point value for the severity; uses the configured override when present, otherwise falls back to the default mapping or `1` if unknown.
  */
 export function getSeverityPoints(config, severity) {
   const configPoints = config?.moderation?.warnings?.severityPoints;
@@ -160,12 +160,12 @@ export async function getActiveWarningStats(guildId, userId) {
 
 /**
  * Edit a warning's reason and/or severity.
- * Updates the stored warning and recalculates its points if the severity is changed.
+ * Recalculates and updates the warning's points when the severity is changed.
  * @param {string} guildId - Discord guild ID.
  * @param {number} warningId - Warning ID.
  * @param {Object} updates - Fields to update.
- * @param {string} [updates.reason] - New reason.
- * @param {string} [updates.severity] - New severity.
+ * @param {string} [updates.reason] - New reason text.
+ * @param {string} [updates.severity] - New severity level (e.g., 'low', 'medium', 'high').
  * @param {Object} [config] - Bot configuration used to recalculate severity points when severity changes.
  * @returns {Object|null} The updated warning row, or `null` if no matching warning was found.
  */
