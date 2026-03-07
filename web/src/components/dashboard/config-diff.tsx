@@ -1,7 +1,9 @@
 'use client';
 
 import { diffLines } from 'diff';
+import { RotateCcw } from 'lucide-react';
 import { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ConfigDiffProps {
@@ -11,6 +13,15 @@ interface ConfigDiffProps {
   modified: object;
   /** Optional title override. */
   title?: string;
+  /**
+   * Top-level config section keys that have pending changes.
+   * When provided alongside `onRevertSection`, per-section revert buttons
+   * are rendered in the card header so users can cherry-pick reverts without
+   * opening the full diff modal.
+   */
+  changedSections?: string[];
+  /** Called with the section key when the user clicks a per-section revert button. */
+  onRevertSection?: (section: string) => void;
 }
 
 interface DiffLine {
@@ -26,12 +37,25 @@ interface DiffLine {
  * is rendered. Otherwise a card is rendered showing counts of added and removed lines
  * and a scrollable, color-coded diff where each line is prefixed with `+`, `-`, or a space.
  *
+ * When `changedSections` and `onRevertSection` are both provided, a strip of
+ * per-section badge + revert-button pairs is rendered in the card header,
+ * letting users cherry-pick which sections to roll back without opening the
+ * full diff modal.
+ *
  * @param original - The original configuration object to compare.
  * @param modified - The modified configuration object to compare.
  * @param title - Optional title for the card; defaults to "Pending Changes".
+ * @param changedSections - Top-level section keys with pending changes.
+ * @param onRevertSection - Called with a section key when the user reverts it.
  * @returns A React element containing either a "no changes" card or a color-coded, line-by-line diff view with added/removed counts.
  */
-export function ConfigDiff({ original, modified, title = 'Pending Changes' }: ConfigDiffProps) {
+export function ConfigDiff({
+  original,
+  modified,
+  title = 'Pending Changes',
+  changedSections,
+  onRevertSection,
+}: ConfigDiffProps) {
   const { lines, addedCount, removedCount } = useMemo(() => {
     const originalText = JSON.stringify(original, null, 2);
     const modifiedText = JSON.stringify(modified, null, 2);
@@ -85,6 +109,35 @@ export function ConfigDiff({ original, modified, title = 'Pending Changes' }: Co
             <span className="text-red-400">-{removedCount}</span>
           </div>
         </div>
+
+        {/* Per-section revert buttons — shown when caller provides both props */}
+        {changedSections && changedSections.length > 0 && onRevertSection && (
+          <fieldset
+            aria-label="Revert individual sections"
+            className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-3"
+          >
+            <legend className="sr-only">Revert individual sections</legend>
+            <span className="text-xs text-muted-foreground" aria-hidden="true">
+              Revert section:
+            </span>
+            {changedSections.map((section) => (
+              <div key={section} className="flex items-center gap-1">
+                <span className="rounded border border-yellow-500/30 bg-yellow-500/20 px-2 py-0.5 text-xs capitalize text-yellow-300">
+                  {section}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-xs text-muted-foreground hover:text-destructive"
+                  onClick={() => onRevertSection(section)}
+                  aria-label={`Revert ${section} changes`}
+                >
+                  <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                </Button>
+              </div>
+            ))}
+          </fieldset>
+        )}
       </CardHeader>
       <CardContent>
         <section
