@@ -21,7 +21,51 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+
+function TicketsSkeleton() {
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-16">ID</TableHead>
+            <TableHead>Topic</TableHead>
+            <TableHead>User</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="hidden md:table-cell">Closed</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <TableRow key={i}>
+              <TableCell>
+                <Skeleton className="h-4 w-8" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-40" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-28 font-mono" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-16" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
 
 interface TicketSummary {
   id: number;
@@ -338,7 +382,9 @@ export default function TicketsPage() {
           )}
 
           {/* Table */}
-          {tickets.length > 0 ? (
+          {loading && tickets.length === 0 ? (
+            <TicketsSkeleton />
+          ) : tickets.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -389,15 +435,13 @@ export default function TicketsPage() {
               </Table>
             </div>
           ) : (
-            !loading && (
-              <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">
-                  {statusFilter || debouncedSearch
-                    ? 'No tickets match your filters.'
-                    : 'No tickets found.'}
-                </p>
-              </div>
-            )
+            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
+              <p className="text-sm text-muted-foreground">
+                {statusFilter || debouncedSearch
+                  ? 'No tickets match your filters.'
+                  : 'No tickets found.'}
+              </p>
+            </div>
           )}
 
           {/* Pagination */}

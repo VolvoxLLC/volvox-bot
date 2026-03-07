@@ -14,6 +14,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 export interface DiscordRole {
@@ -189,9 +190,13 @@ export function RoleSelector({
             <CommandList>
               <CommandEmpty>
                 {loading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="ml-2">Loading...</span>
+                  <div className="flex flex-col gap-2 p-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-2 px-1">
+                        <Skeleton className="h-3 w-3 rounded-full" />
+                        <Skeleton className="h-4 flex-1" />
+                      </div>
+                    ))}
                   </div>
                 ) : error ? (
                   <div className="text-destructive text-sm">{error}</div>

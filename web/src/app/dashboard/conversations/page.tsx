@@ -21,7 +21,51 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+
+function ConversationsSkeleton() {
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Channel</TableHead>
+            <TableHead>Participants</TableHead>
+            <TableHead className="text-center">Messages</TableHead>
+            <TableHead>Duration</TableHead>
+            <TableHead className="hidden md:table-cell">Preview</TableHead>
+            <TableHead>Date</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <TableRow key={i}>
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-32" />
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-4 w-8 mx-auto" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-16" />
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                <Skeleton className="h-4 w-48" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
 
 interface Participant {
   username: string;
@@ -324,7 +368,9 @@ export default function ConversationsPage() {
           )}
 
           {/* Table */}
-          {conversations.length > 0 ? (
+          {loading && conversations.length === 0 ? (
+            <ConversationsSkeleton />
+          ) : conversations.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -388,15 +434,13 @@ export default function ConversationsPage() {
               </Table>
             </div>
           ) : (
-            !loading && (
-              <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">
-                  {debouncedSearch || channelFilter
-                    ? 'No conversations match your filters.'
-                    : 'No conversations found.'}
-                </p>
-              </div>
-            )
+            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
+              <p className="text-sm text-muted-foreground">
+                {debouncedSearch || channelFilter
+                  ? 'No conversations match your filters.'
+                  : 'No conversations found.'}
+              </p>
+            </div>
           )}
 
           {/* Pagination */}

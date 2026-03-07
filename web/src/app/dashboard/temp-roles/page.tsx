@@ -11,6 +11,7 @@ import { Clock, RefreshCw, Shield, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
 interface TempRole {
@@ -199,7 +200,17 @@ export default function TempRolesPage() {
       {guildId && !error && (
         <div className="rounded-lg border">
           {loading && rows.length === 0 ? (
-            <div className="text-muted-foreground p-8 text-center text-sm">Loading…</div>
+            <div className="divide-y">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-3">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
           ) : rows.length === 0 ? (
             <div className="text-muted-foreground p-8 text-center text-sm">
               No active temporary roles.
