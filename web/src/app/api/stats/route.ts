@@ -16,7 +16,6 @@ export async function GET() {
 
   try {
     const response = await fetch(`${baseUrl}/stats`, {
-      next: { revalidate: 60 },
       signal: AbortSignal.timeout(5_000),
     });
 

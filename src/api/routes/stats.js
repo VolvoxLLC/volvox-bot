@@ -27,8 +27,14 @@ const statsRateLimit = redisRateLimit({
  * @param {string} table - Table name to count rows from
  * @returns {Promise<number>} Row count or 0 on failure
  */
+const ALLOWED_TABLES = new Set(['command_usage', 'messages']);
+
 async function safeCount(pool, table) {
+  if (!ALLOWED_TABLES.has(table)) {
+    return 0;
+  }
   try {
+    // Table name is validated against allowlist above — safe to interpolate
     const result = await pool.query(`SELECT COUNT(*)::int AS count FROM ${table}`);
     return result.rows[0]?.count ?? 0;
   } catch {

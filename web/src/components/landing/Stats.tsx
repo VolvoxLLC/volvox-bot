@@ -27,7 +27,10 @@ function formatNumber(n: number): string {
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
-  return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 // ─── AnimatedCounter ─────────────────────────────────────────────────────────
@@ -402,14 +405,6 @@ export function Stats() {
           </p>
         </motion.div>
       </div>
-
-      {/* Shimmer keyframe */}
-      <style>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-      `}</style>
     </section>
   );
 }
