@@ -1,19 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
+import { inputClasses } from './shared';
 
 interface StarboardSectionProps {
   draftConfig: GuildConfig;
   saving: boolean;
   onFieldChange: (field: string, value: unknown) => void;
 }
-
-/** Shared input styling for text inputs. */
-const inputClasses =
-  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
  * Render the Starboard configuration card with controls to edit starboard settings.
@@ -24,6 +22,11 @@ const inputClasses =
  * @returns A JSX element containing inputs and toggles for configuring the starboard feature.
  */
 export function StarboardSection({ draftConfig, saving, onFieldChange }: StarboardSectionProps) {
+  // Local state buffers the raw comma-separated string to avoid mid-type parses
+  const [ignoredChannelsRaw, setIgnoredChannelsRaw] = useState(
+    (draftConfig.starboard?.ignoredChannels ?? []).join(', '),
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -114,16 +117,16 @@ export function StarboardSection({ draftConfig, saving, onFieldChange }: Starboa
           <input
             id="ignored-channels"
             type="text"
-            value={(draftConfig.starboard?.ignoredChannels ?? []).join(', ')}
-            onChange={(e) =>
-              onFieldChange(
-                'ignoredChannels',
-                e.target.value
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              )
-            }
+            value={ignoredChannelsRaw}
+            onChange={(e) => setIgnoredChannelsRaw(e.target.value)}
+            onBlur={() => {
+              const parsed = ignoredChannelsRaw
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+              onFieldChange('ignoredChannels', parsed);
+              setIgnoredChannelsRaw(parsed.join(', '));
+            }}
             disabled={saving}
             className={inputClasses}
             placeholder="Comma-separated channel IDs"
