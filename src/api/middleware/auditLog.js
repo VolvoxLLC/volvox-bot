@@ -100,16 +100,17 @@ export function computeConfigDiff(before, after) {
  * @param {Object} entry - Audit log entry
  */
 function insertAuditEntry(pool, entry) {
-  const { guildId, userId, action, targetType, targetId, details, ipAddress } = entry;
+  const { guildId, userId, userTag, action, targetType, targetId, details, ipAddress } = entry;
 
   try {
     const result = pool.query(
-      `INSERT INTO audit_logs (guild_id, user_id, action, target_type, target_id, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, guild_id, user_id, action, target_type, target_id, details, ip_address, created_at`,
+      `INSERT INTO audit_logs (guild_id, user_id, user_tag, action, target_type, target_id, details, ip_address)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, guild_id, user_id, user_tag, action, target_type, target_id, details, ip_address, created_at`,
       [
         guildId || 'global',
         userId,
+        userTag || null,
         action,
         targetType || null,
         targetId || null,
@@ -188,6 +189,7 @@ export function auditLogMiddleware() {
     req._auditLogAttached = true;
 
     const userId = req.user?.userId || req.authMethod || 'unknown';
+    const userTag = req.user?.tag || req.user?.username || null;
     const action = deriveAction(req.method, cleanPath);
     const ipAddress = req.ip || req.socket?.remoteAddress;
 
@@ -250,6 +252,7 @@ export function auditLogMiddleware() {
       insertAuditEntry(pool, {
         guildId,
         userId,
+        userTag,
         action,
         targetType,
         targetId,

@@ -79,6 +79,7 @@ function AuditLogSkeleton() {
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
             <TableRow key={`skeleton-${i}`}>
               <TableCell className="w-10 px-2">
                 <Skeleton className="h-4 w-4" />
