@@ -2101,7 +2101,14 @@ export function ConfigEditor() {
         </div>
       </div>
 
-      {hasChanges && savedConfig && <ConfigDiff original={savedConfig} modified={draftConfig} />}
+      {hasChanges && savedConfig && (
+        <ConfigDiff
+          original={savedConfig}
+          modified={draftConfig}
+          changedSections={changedSections}
+          onRevertSection={revertSection}
+        />
+      )}
 
       {savedConfig && (
         <ConfigDiffModal
