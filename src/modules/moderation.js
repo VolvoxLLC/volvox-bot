@@ -302,17 +302,32 @@ export async function checkEscalation(
   const pool = getPool();
 
   for (const threshold of thresholds) {
-    const { rows } = await pool.query(
-      `SELECT COUNT(*)::integer AS count FROM mod_cases
-       WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
-       AND created_at > NOW() - INTERVAL '1 day' * $3`,
-      [guildId, targetId, threshold.withinDays],
-    );
+    // Count only active warnings from the warnings table.
+    // Falls back to mod_cases if the warnings table has no rows yet (migration pending).
+    let warnCount = 0;
 
-    const warnCount = rows[0]?.count || 0;
+    try {
+      const { rows } = await pool.query(
+        `SELECT COUNT(*)::integer AS count FROM warnings
+         WHERE guild_id = $1 AND user_id = $2 AND active = TRUE
+         AND created_at > NOW() - INTERVAL '1 day' * $3`,
+        [guildId, targetId, threshold.withinDays],
+      );
+      warnCount = rows[0]?.count || 0;
+    } catch {
+      // Fallback: warnings table may not exist yet during migration rollout
+      const { rows } = await pool.query(
+        `SELECT COUNT(*)::integer AS count FROM mod_cases
+         WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
+         AND created_at > NOW() - INTERVAL '1 day' * $3`,
+        [guildId, targetId, threshold.withinDays],
+      );
+      warnCount = rows[0]?.count || 0;
+    }
+
     if (warnCount < threshold.warns) continue;
 
-    const reason = `Auto-escalation: ${warnCount} warns in ${threshold.withinDays} days`;
+    const reason = `Auto-escalation: ${warnCount} active warns in ${threshold.withinDays} days`;
     info('Escalation triggered', { guildId, targetId, warnCount, threshold });
 
     try {

@@ -53,6 +53,10 @@ import { loadOptOuts } from './modules/optout.js';
 import { seedBuiltinTemplates } from './modules/roleMenuTemplates.js';
 import { startScheduler, stopScheduler } from './modules/scheduler.js';
 import { startTriage, stopTriage } from './modules/triage.js';
+import {
+  startWarningExpiryScheduler,
+  stopWarningExpiryScheduler,
+} from './modules/warningEngine.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
@@ -285,6 +289,7 @@ async function gracefulShutdown(signal) {
   stopTriage();
   stopConversationCleanup();
   stopTempbanScheduler();
+  stopWarningExpiryScheduler();
   stopScheduler();
   stopGithubFeed();
 
@@ -480,6 +485,7 @@ async function startup() {
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {
     startTempbanScheduler(client);
+    startWarningExpiryScheduler();
     startScheduler(client);
     startGithubFeed(client);
   }

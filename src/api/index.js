@@ -21,6 +21,7 @@ import notificationsRouter from './routes/notifications.js';
 import performanceRouter from './routes/performance.js';
 import tempRolesRouter from './routes/tempRoles.js';
 import ticketsRouter from './routes/tickets.js';
+import warningsRouter from './routes/warnings.js';
 import webhooksRouter from './routes/webhooks.js';
 import welcomeRouter from './routes/welcome.js';
 
@@ -58,6 +59,9 @@ router.use('/guilds', requireAuth(), auditLogMiddleware(), guildsRouter);
 
 // Moderation routes — require API secret or OAuth2 JWT
 router.use('/moderation', requireAuth(), auditLogMiddleware(), moderationRouter);
+
+// Warning routes — require API secret or OAuth2 JWT
+router.use('/warnings', requireAuth(), auditLogMiddleware(), warningsRouter);
 // Temp role routes — require API secret or OAuth2 JWT
 router.use('/temp-roles', requireAuth(), auditLogMiddleware(), tempRolesRouter);
 
