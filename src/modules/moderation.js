@@ -276,15 +276,17 @@ export async function sendModLogEmbed(client, config, caseData) {
 }
 
 /**
- * Check auto-escalation thresholds after a warn.
- * Evaluates thresholds in order; first match triggers.
- * @param {import('discord.js').Client} client - Discord client
- * @param {string} guildId - Discord guild ID
- * @param {string} targetId - Target user ID
- * @param {string} moderatorId - Moderator user ID (bot for auto-escalation)
- * @param {string} moderatorTag - Moderator tag
- * @param {Object} config - Bot configuration
- * @returns {Promise<Object|null>} Escalation result or null
+ * Evaluate configured escalation thresholds for a guild target and apply the first matching escalation.
+ *
+ * If a threshold is met, performs the configured action (e.g., timeout or ban), creates a moderation case, and posts the mod-log for the escalation.
+ *
+ * @param {import('discord.js').Client} client - Discord client instance.
+ * @param {string} guildId - ID of the guild where escalation is evaluated.
+ * @param {string} targetId - ID of the target user being evaluated.
+ * @param {string} moderatorId - ID used as the moderator for the escalation case (typically the bot).
+ * @param {string} moderatorTag - Tag to record for the moderator in the created case.
+ * @param {Object} config - Bot configuration containing moderation.escalation settings and thresholds.
+ * @returns {Object|null} The created escalation case object when an escalation is applied, `null` if no thresholds triggered or on failure.
  */
 export async function checkEscalation(
   client,

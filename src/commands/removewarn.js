@@ -23,8 +23,12 @@ export const data = new SlashCommandBuilder()
 export const moderatorOnly = true;
 
 /**
- * Execute the removewarn command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Handle the /removewarn command by deactivating the specified warning and responding to the user.
+ *
+ * Attempts to deactivate the warning with the provided ID (option "id") and optionally records a removal reason
+ * (option "reason"). Edits the interaction reply with a confirmation if the warning was removed or an error message
+ * if the warning was not found or removal failed.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction for the removewarn command.
  */
 export async function execute(interaction) {
   try {

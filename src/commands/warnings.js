@@ -24,9 +24,9 @@ export const data = new SlashCommandBuilder()
 export const moderatorOnly = true;
 
 /**
- * Severity label with emoji
- * @param {string} severity
- * @returns {string}
+ * Map a severity level to a labeled string that includes an emoji.
+ * @param {string} severity - Severity level; commonly 'low', 'medium', or 'high'.
+ * @returns {string} The labeled severity (e.g., '🟢 Low', '🟡 Medium', '🔴 High'), or the original `severity` string if unrecognized.
  */
 function severityLabel(severity) {
   const labels = {
@@ -38,8 +38,8 @@ function severityLabel(severity) {
 }
 
 /**
- * Execute the warnings command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Handle the /warnings slash command by fetching and presenting a user's warnings, including active/inactive status and aggregate stats, to the invoking moderator.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction for which to display warnings.
  */
 export async function execute(interaction) {
   try {

@@ -40,9 +40,9 @@ export function getSeverityPoints(config, severity) {
 }
 
 /**
- * Calculate the expiry timestamp for a new warning.
- * @param {Object} [config] - Bot configuration
- * @returns {Date|null} Expiry timestamp, or null if warnings don't expire
+ * Compute the expiration Date for a warning based on configured expiry days.
+ * @param {Object} [config] - Bot configuration object; uses `config.moderation.warnings.expiryDays`.
+ * @returns {Date|null} The calculated expiry Date, or `null` if `expiryDays` is not a positive number (warnings do not expire).
  */
 export function calculateExpiry(config) {
   const expiryDays = config?.moderation?.warnings?.expiryDays;
@@ -54,16 +54,16 @@ export function calculateExpiry(config) {
 
 /**
  * Create a warning record in the database.
- * @param {string} guildId - Discord guild ID
- * @param {Object} data - Warning data
- * @param {string} data.userId - Target user ID
- * @param {string} data.moderatorId - Moderator user ID
- * @param {string} data.moderatorTag - Moderator display tag
- * @param {string} [data.reason] - Reason for warning
- * @param {string} [data.severity='low'] - Severity level (low/medium/high)
- * @param {number} [data.caseId] - Linked mod_cases.id
- * @param {Object} [config] - Bot configuration (for points/expiry)
- * @returns {Promise<Object>} Created warning row
+ * @param {string} guildId - Discord guild ID.
+ * @param {Object} data - Warning data.
+ * @param {string} data.userId - Target user ID.
+ * @param {string} data.moderatorId - Moderator user ID.
+ * @param {string} data.moderatorTag - Moderator display tag.
+ * @param {string} [data.reason] - Reason for the warning.
+ * @param {string} [data.severity='low'] - Severity level (`low`, `medium`, or `high`).
+ * @param {number} [data.caseId] - Linked mod_cases.id.
+ * @param {Object} [config] - Bot configuration used to determine points and expiry.
+ * @returns {Object} The created warning row.
  */
 export async function createWarning(guildId, data, config) {
   const pool = getPool();
@@ -104,13 +104,13 @@ export async function createWarning(guildId, data, config) {
 }
 
 /**
- * Get all warnings for a user in a guild.
- * @param {string} guildId - Discord guild ID
- * @param {string} userId - Target user ID
- * @param {Object} [options] - Query options
- * @param {boolean} [options.activeOnly=false] - Only return active warnings
- * @param {number} [options.limit=50] - Max results
- * @returns {Promise<Object[]>} Warning rows
+ * Retrieve warnings for a user in a guild.
+ * @param {string} guildId - Discord guild ID.
+ * @param {string} userId - Target user ID.
+ * @param {Object} [options] - Query options.
+ * @param {boolean} [options.activeOnly=false] - If true, only include active warnings.
+ * @param {number} [options.limit=50] - Maximum number of warnings to return.
+ * @returns {Object[]} Array of warning rows ordered by newest first.
  */
 export async function getWarnings(guildId, userId, options = {}) {
   const pool = getPool();
@@ -135,10 +135,10 @@ export async function getWarnings(guildId, userId, options = {}) {
 }
 
 /**
- * Count active warnings and total active points for a user.
- * @param {string} guildId - Discord guild ID
- * @param {string} userId - Target user ID
- * @returns {Promise<{count: number, points: number}>}
+ * Get the number of active warnings and the total active warning points for a user in a guild.
+ * @param {string} guildId - Guild identifier.
+ * @param {string} userId - User identifier to query.
+ * @returns {{count: number, points: number}} Object with `count` equal to the number of active warnings and `points` equal to the sum of their points.
  */
 export async function getActiveWarningStats(guildId, userId) {
   const pool = getPool();
@@ -160,13 +160,14 @@ export async function getActiveWarningStats(guildId, userId) {
 
 /**
  * Edit a warning's reason and/or severity.
- * @param {string} guildId - Discord guild ID
- * @param {number} warningId - Warning ID
- * @param {Object} updates - Fields to update
- * @param {string} [updates.reason] - New reason
- * @param {string} [updates.severity] - New severity
- * @param {Object} [config] - Bot configuration (for recalculating points)
- * @returns {Promise<Object|null>} Updated warning or null if not found
+ * Updates the stored warning and recalculates its points if the severity is changed.
+ * @param {string} guildId - Discord guild ID.
+ * @param {number} warningId - Warning ID.
+ * @param {Object} updates - Fields to update.
+ * @param {string} [updates.reason] - New reason.
+ * @param {string} [updates.severity] - New severity.
+ * @param {Object} [config] - Bot configuration used to recalculate severity points when severity changes.
+ * @returns {Object|null} The updated warning row, or `null` if no matching warning was found.
  */
 export async function editWarning(guildId, warningId, updates, config) {
   const pool = getPool();
@@ -212,12 +213,12 @@ export async function editWarning(guildId, warningId, updates, config) {
 }
 
 /**
- * Remove (deactivate) a specific warning.
- * @param {string} guildId - Discord guild ID
- * @param {number} warningId - Warning ID
- * @param {string} removedBy - Moderator user ID who removed it
- * @param {string} [removalReason] - Reason for removal
- * @returns {Promise<Object|null>} Removed warning or null if not found
+ * Deactivate a specific active warning and record who removed it and why.
+ * @param {string} guildId - Guild identifier the warning belongs to.
+ * @param {number} warningId - ID of the warning to remove.
+ * @param {string} removedBy - Moderator user ID who performed the removal.
+ * @param {string} [removalReason] - Optional reason for the removal.
+ * @returns {Object|null} The updated warning row if a warning was deactivated, `null` if no active warning matched.
  */
 export async function removeWarning(guildId, warningId, removedBy, removalReason) {
   const pool = getPool();
@@ -243,11 +244,11 @@ export async function removeWarning(guildId, warningId, removedBy, removalReason
 
 /**
  * Clear all active warnings for a user in a guild.
- * @param {string} guildId - Discord guild ID
- * @param {string} userId - Target user ID
- * @param {string} clearedBy - Moderator user ID who cleared them
- * @param {string} [reason] - Reason for clearing
- * @returns {Promise<number>} Number of warnings cleared
+ * @param {string} guildId - Discord guild ID.
+ * @param {string} userId - Target user ID.
+ * @param {string} clearedBy - Moderator user ID who cleared the warnings.
+ * @param {string} [reason] - Reason for clearing; defaults to 'Bulk clear' when omitted.
+ * @returns {number} Number of warnings cleared.
  */
 export async function clearWarnings(guildId, userId, clearedBy, reason) {
   const pool = getPool();
@@ -272,9 +273,9 @@ export async function clearWarnings(guildId, userId, clearedBy, reason) {
 }
 
 /**
- * Process expired warnings — deactivate any active warnings past their expires_at.
- * Called periodically by the expiry scheduler.
- * @returns {Promise<number>} Number of warnings expired
+ * Deactivate active warnings whose expiry timestamp has passed.
+ *
+ * @returns {number} Number of warnings deactivated; returns 0 if none were expired or if processing failed.
  */
 export async function processExpiredWarnings() {
   const pool = getPool();
@@ -299,7 +300,9 @@ export async function processExpiredWarnings() {
 
 /**
  * Start the warning expiry scheduler.
- * Polls every 60 seconds for warnings that have passed their expiry date.
+ *
+ * Performs an immediate expiry check and then schedules a poll every 60 seconds to deactivate warnings past their expiry.
+ * If the scheduler is already running, the function returns without side effects. Each poll is guarded to prevent concurrent runs.
  */
 export function startWarningExpiryScheduler() {
   if (expiryInterval) return;
