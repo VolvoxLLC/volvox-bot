@@ -706,6 +706,28 @@ export function ConfigEditor() {
     [updateDraftConfig],
   );
 
+  const updateWarningsField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        const existingWarnings = prev.moderation?.warnings ?? {
+          expiryDays: 90,
+          severityPoints: { low: 1, medium: 2, high: 3 },
+          dmNotification: true,
+          maxPerPage: 10,
+        };
+        return {
+          ...prev,
+          moderation: {
+            ...prev.moderation,
+            warnings: { ...existingWarnings, [field]: value },
+          },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
   const updatePermissionsField = useCallback(
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => {
@@ -1337,6 +1359,84 @@ export function ConfigEditor() {
                   placeholder="Select protected roles"
                 />
               </label>
+            </fieldset>
+
+            {/* Warning System sub-section */}
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-medium">Warning System</legend>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">DM user on warn</span>
+                <ToggleSwitch
+                  checked={draftConfig.moderation?.warnings?.dmNotification ?? true}
+                  onChange={(v) => updateWarningsField('dmNotification', v)}
+                  disabled={saving}
+                  label="DM user on warn"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label htmlFor="warn-expiry" className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Warning expiry (days)</span>
+                  <input
+                    id="warn-expiry"
+                    type="number"
+                    min={0}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="90 (0 = never)"
+                    value={draftConfig.moderation?.warnings?.expiryDays ?? 90}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      updateWarningsField('expiryDays', Number.isNaN(val) || val <= 0 ? null : val);
+                    }}
+                    disabled={saving}
+                  />
+                </label>
+                <label htmlFor="warn-max-page" className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Warnings per page</span>
+                  <input
+                    id="warn-max-page"
+                    type="number"
+                    min={1}
+                    max={25}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    value={draftConfig.moderation?.warnings?.maxPerPage ?? 10}
+                    onChange={(e) => {
+                      const val = Math.max(1, Math.min(25, parseInt(e.target.value, 10) || 10));
+                      updateWarningsField('maxPerPage', val);
+                    }}
+                    disabled={saving}
+                  />
+                </label>
+              </div>
+              <div className="space-y-2">
+                <span className="text-sm text-muted-foreground">Severity Points</span>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                  {(['low', 'medium', 'high'] as const).map((level) => (
+                    <label key={level} htmlFor={`severity-${level}`} className="space-y-1">
+                      <span className="text-xs capitalize">{level}</span>
+                      <input
+                        id={`severity-${level}`}
+                        type="number"
+                        min={1}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                        value={
+                          draftConfig.moderation?.warnings?.severityPoints?.[level] ??
+                          { low: 1, medium: 2, high: 3 }[level]
+                        }
+                        onChange={(e) => {
+                          const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                          const current = draftConfig.moderation?.warnings?.severityPoints ?? {
+                            low: 1,
+                            medium: 2,
+                            high: 3,
+                          };
+                          updateWarningsField('severityPoints', { ...current, [level]: val });
+                        }}
+                        disabled={saving}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
             </fieldset>
           </CardContent>
         </Card>

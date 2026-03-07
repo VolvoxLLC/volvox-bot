@@ -147,6 +147,21 @@ export interface ModerationProtectRoles {
   includeServerOwner: boolean;
 }
 
+/** Warning system severity point overrides. */
+export interface WarningSeverityPoints {
+  low: number;
+  medium: number;
+  high: number;
+}
+
+/** Warning system configuration. */
+export interface WarningsConfig {
+  expiryDays: number | null;
+  severityPoints: WarningSeverityPoints;
+  dmNotification: boolean;
+  maxPerPage: number;
+}
+
 /** Moderation configuration. */
 export interface ModerationConfig {
   enabled: boolean;
@@ -158,6 +173,7 @@ export interface ModerationConfig {
   protectRoles?: ModerationProtectRoles;
   rateLimit?: RateLimitConfig;
   linkFilter?: LinkFilterConfig;
+  warnings?: WarningsConfig;
 }
 
 /** Starboard configuration. */
