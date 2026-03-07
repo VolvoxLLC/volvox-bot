@@ -9,7 +9,7 @@ vi.mock('next-themes', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-import { ThemeToggle } from '@/components/theme-toggle';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 describe('ThemeToggle', () => {
   it('renders a toggle button', () => {

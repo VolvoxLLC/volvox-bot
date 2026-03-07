@@ -4,7 +4,6 @@ import { ExternalLink, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { MobileSidebar } from './mobile-sidebar';
 
 /**
