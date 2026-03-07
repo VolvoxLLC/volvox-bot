@@ -152,7 +152,7 @@ export function CommunitySettingsSection({
               {(draftConfig.engagement?.activityBadges ?? defaultActivityBadges).map(
                 (badge: Badge, index: number) => (
                   <div
-                    key={`badge-${badge.days ?? 0}-${badge.label ?? index}`}
+                    key={`badge-${index}`}
                     className="flex items-center gap-2"
                   >
                     <Input
@@ -195,9 +195,9 @@ export function CommunitySettingsSection({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const badges = [...(draftConfig.engagement?.activityBadges ?? [])].filter(
-                          (_, idx) => idx !== index,
-                        );
+                        const badges = [
+                          ...(draftConfig.engagement?.activityBadges ?? defaultActivityBadges),
+                        ].filter((_, idx) => idx !== index);
                         updateDraftConfig((prev) => ({
                           ...prev,
                           engagement: { ...prev.engagement, activityBadges: badges },
