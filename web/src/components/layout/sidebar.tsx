@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 
 const navigation = [
@@ -92,7 +93,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
-      <div className="px-3 py-4">
+      <div className="flex-1 px-3 py-4">
         <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Navigation</h2>
         <Separator className="mb-4" />
         <nav className="space-y-1">
@@ -117,6 +118,14 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
             );
           })}
         </nav>
+      </div>
+
+      {/* Theme toggle pinned to sidebar bottom */}
+      <div className="px-3 py-4 border-t">
+        <div className="flex items-center gap-2 px-1">
+          <ThemeToggle />
+          <span className="text-sm text-muted-foreground">Toggle theme</span>
+        </div>
       </div>
     </div>
   );
