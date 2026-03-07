@@ -88,13 +88,15 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       const data: unknown = await response.json();
       if (!Array.isArray(data)) throw new Error('Invalid response: expected array');
 
-      // Runtime shape check
+      // Runtime shape check — permissions and owner required for isGuildManageable
       const fetchedGuilds = data.filter(
         (g): g is MutualGuild =>
           typeof g === 'object' &&
           g !== null &&
           typeof (g as Record<string, unknown>).id === 'string' &&
-          typeof (g as Record<string, unknown>).name === 'string',
+          typeof (g as Record<string, unknown>).name === 'string' &&
+          typeof (g as Record<string, unknown>).permissions === 'string' &&
+          typeof (g as Record<string, unknown>).owner === 'boolean',
       );
       setGuilds(fetchedGuilds);
 
@@ -180,19 +182,6 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     );
   }
 
-  // No manageable servers — all guilds are member-only
-  if (manageable.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground text-center">
-        <Server className="h-5 w-5" />
-        <span className="font-medium">No manageable servers</span>
-        <span className="text-xs">
-          You need mod, admin, or owner permissions to manage a server&apos;s dashboard.
-        </span>
-      </div>
-    );
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -209,27 +198,40 @@ export function ServerSelector({ className }: ServerSelectorProps) {
             ) : (
               <Server className="h-4 w-4 shrink-0" />
             )}
-            <span className="truncate">{selectedGuild?.name ?? 'Select server'}</span>
+            <span className="truncate">
+              {manageable.length === 0
+                ? 'No manageable servers'
+                : (selectedGuild?.name ?? 'Select server')}
+            </span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="start">
         {/* ── Manageable servers (mod / admin / owner) ── */}
-        <DropdownMenuLabel>Manage</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {manageable.map((guild) => (
-          <DropdownMenuItem
-            key={guild.id}
-            onClick={() => {
-              if (selectedGuild?.id === guild.id) return;
-              selectGuild(guild);
-            }}
-            className="flex items-center gap-2"
-          >
-            <GuildRow guild={guild} />
-          </DropdownMenuItem>
-        ))}
+        {manageable.length > 0 ? (
+          <>
+            <DropdownMenuLabel>Manage</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {manageable.map((guild) => (
+              <DropdownMenuItem
+                key={guild.id}
+                onClick={() => {
+                  if (selectedGuild?.id === guild.id) return;
+                  selectGuild(guild);
+                }}
+                className="flex items-center gap-2"
+              >
+                <GuildRow guild={guild} />
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : (
+          <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+            <Server className="mx-auto mb-1 h-4 w-4" />
+            You need mod or admin permissions to manage a server.
+          </div>
+        )}
 
         {/* ── Member-only servers ── */}
         {memberOnly.length > 0 && (
