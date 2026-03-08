@@ -12,5 +12,5 @@ Server rules — reference when evaluating moderation:
 9. Respect IP — no piracy or cracked software
 10. Use common sense
 
-Consequences: warning → mute → ban.
+Consequences: warning → timeout → ban.
 </community-rules>
