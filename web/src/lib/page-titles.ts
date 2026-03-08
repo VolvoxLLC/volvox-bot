@@ -25,47 +25,57 @@ const dashboardTitleMatchers: DashboardTitleMatcher[] = [
     title: 'Overview',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/moderation'),
+    matches: (pathname) =>
+      pathname === '/dashboard/moderation' || pathname.startsWith('/dashboard/moderation/'),
     title: 'Moderation',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/temp-roles'),
+    matches: (pathname) =>
+      pathname === '/dashboard/temp-roles' || pathname.startsWith('/dashboard/temp-roles/'),
     title: 'Temp Roles',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/ai'),
+    matches: (pathname) => pathname === '/dashboard/ai' || pathname.startsWith('/dashboard/ai/'),
     title: 'AI Chat',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/members'),
+    matches: (pathname) =>
+      pathname === '/dashboard/members' || pathname.startsWith('/dashboard/members/'),
     title: 'Members',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/conversations'),
+    matches: (pathname) =>
+      pathname === '/dashboard/conversations' || pathname.startsWith('/dashboard/conversations/'),
     title: 'Conversations',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/tickets'),
+    matches: (pathname) =>
+      pathname === '/dashboard/tickets' || pathname.startsWith('/dashboard/tickets/'),
     title: 'Tickets',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/config'),
+    matches: (pathname) =>
+      pathname === '/dashboard/config' || pathname.startsWith('/dashboard/config/'),
     title: 'Bot Config',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/audit-log'),
+    matches: (pathname) =>
+      pathname === '/dashboard/audit-log' || pathname.startsWith('/dashboard/audit-log/'),
     title: 'Audit Log',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/performance'),
+    matches: (pathname) =>
+      pathname === '/dashboard/performance' || pathname.startsWith('/dashboard/performance/'),
     title: 'Performance',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/logs'),
+    matches: (pathname) =>
+      pathname === '/dashboard/logs' || pathname.startsWith('/dashboard/logs/'),
     title: 'Logs',
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/settings'),
+    matches: (pathname) =>
+      pathname === '/dashboard/settings' || pathname.startsWith('/dashboard/settings/'),
     title: 'Settings',
   },
 ];

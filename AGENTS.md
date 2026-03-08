@@ -99,6 +99,13 @@ web/                      # Next.js dashboard
 - Mobile-responsive design
 - Real-time updates via WebSocket
 
+#### Dashboard Tab Titles
+Browser tab titles are managed via two mechanisms:
+- **SSR entry points** (`/dashboard`, `/dashboard/config`, `/dashboard/performance`): export `metadata` using `createPageMetadata()` from `web/src/lib/page-titles.ts`
+- **Client-side navigations**: `DashboardTitleSync` component (mounted in the dashboard shell) syncs `document.title` using `getDashboardDocumentTitle()`
+
+**When adding a new dashboard route**, you must add a matcher entry to `dashboardTitleMatchers` in `web/src/lib/page-titles.ts`. Use exact equality for leaf routes (`pathname === '/dashboard/my-route'`) plus a subtree check (`pathname.startsWith('/dashboard/my-route/')`) to avoid false-positive matches on future sibling routes. For SSR entry points, also export `metadata` from the page file using `createPageMetadata(title)`.
+
 ## Common Tasks
 
 ### Adding a New Feature
@@ -109,6 +116,7 @@ web/                      # Next.js dashboard
 5. Create database migration if needed
 6. Write tests in `tests/`
 7. Update dashboard UI if configurable
+8. If adding a new dashboard route, add a matcher entry to `dashboardTitleMatchers` in `web/src/lib/page-titles.ts` (see Web Dashboard section above)
 
 ### Adding a New Command
 1. Create file in `src/commands/`
