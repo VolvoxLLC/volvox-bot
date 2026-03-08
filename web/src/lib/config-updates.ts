@@ -106,7 +106,7 @@ export function updateNestedField<K extends GuildConfigSectionKey>(
  */
 export function updateArrayItem<T>(
   config: GuildConfig,
-  section: keyof GuildConfig,
+  section: GuildConfigSectionKey,
   path: string[],
   index: number,
   item: T,
@@ -162,7 +162,7 @@ export function updateArrayItem<T>(
  */
 export function removeArrayItem(
   config: GuildConfig,
-  section: keyof GuildConfig,
+  section: GuildConfigSectionKey,
   path: string[],
   index: number,
 ): GuildConfig {
@@ -220,7 +220,7 @@ export function removeArrayItem(
  */
 export function appendArrayItem<T>(
   config: GuildConfig,
-  section: keyof GuildConfig,
+  section: GuildConfigSectionKey,
   path: string[],
   item: T,
 ): GuildConfig {
