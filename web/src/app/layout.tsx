@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Providers } from '@/components/providers';
+import { APP_TITLE } from '@/lib/page-titles';
 import './globals.css';
 
 const inter = Inter({
@@ -14,7 +15,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Volvox Bot - AI-Powered Discord Bot',
+  title: {
+    default: APP_TITLE,
+    template: `%s - ${APP_TITLE}`,
+  },
   description:
     'The AI-powered Discord bot for modern communities. Moderation, AI chat, dynamic welcomes, spam detection, and a fully configurable web dashboard.',
 };

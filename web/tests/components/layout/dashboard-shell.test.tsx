@@ -1,20 +1,24 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 
 // Mock child components — DashboardShell is now a server component
-vi.mock("@/components/layout/header", () => ({
+vi.mock('@/components/layout/header', () => ({
   Header: () => <header data-testid="header">Header</header>,
 }));
 
-vi.mock("@/components/layout/sidebar", () => ({
+vi.mock('@/components/layout/dashboard-title-sync', () => ({
+  DashboardTitleSync: () => <div data-testid="dashboard-title-sync" />,
+}));
+
+vi.mock('@/components/layout/sidebar', () => ({
   Sidebar: () => <nav data-testid="sidebar">Sidebar</nav>,
 }));
 
-vi.mock("@/components/layout/server-selector", () => ({
+vi.mock('@/components/layout/server-selector', () => ({
   ServerSelector: () => <div data-testid="server-selector">Servers</div>,
 }));
 
-import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { DashboardShell } from '@/components/layout/dashboard-shell';
 
 describe("DashboardShell", () => {
   it("renders header, sidebar, and content", () => {
@@ -24,6 +28,7 @@ describe("DashboardShell", () => {
       </DashboardShell>,
     );
     expect(screen.getByTestId("header")).toBeInTheDocument();
+    expect(screen.getByTestId("dashboard-title-sync")).toBeInTheDocument();
     expect(screen.getByTestId("sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("content")).toBeInTheDocument();
   });
