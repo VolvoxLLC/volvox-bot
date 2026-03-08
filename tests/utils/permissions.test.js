@@ -509,6 +509,18 @@ describe('isModerator', () => {
     expect(isModerator(member, config)).toBe(true);
   });
 
+  it('should grant moderator via legacy adminRoleId even when adminRoleIds:[] default is present', () => {
+    // isModerator() checks admin roles first — legacy adminRoleId must be found
+    const member = {
+      permissions: { has: vi.fn().mockReturnValue(false) },
+      roles: { cache: { has: (id) => id === 'legacy-admin-123' } },
+    };
+    const config = {
+      permissions: { adminRoleIds: [], adminRoleId: 'legacy-admin-123', moderatorRoleIds: [] },
+    };
+    expect(isModerator(member, config)).toBe(true);
+  });
+
   it('should return false for regular members', () => {
     const member = {
       permissions: { has: vi.fn().mockReturnValue(false) },

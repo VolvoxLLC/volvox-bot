@@ -211,7 +211,8 @@ export const CONFIG_SCHEMA = {
       moderatorRoleId: { type: 'string', nullable: true },
       modRoles: { type: 'array', items: { type: 'string' } },
       botOwners: { type: 'array', items: { type: 'string' } },
-      allowedCommands: { type: 'object' },
+      // allowedCommands is a freeform map of command → permission level — no fixed property list
+      allowedCommands: { type: 'object', openProperties: true },
     },
   },
 };
@@ -289,9 +290,10 @@ export function validateValue(value, schema, path) {
         for (const [key, val] of Object.entries(value)) {
           if (Object.hasOwn(schema.properties, key)) {
             errors.push(...validateValue(val, schema.properties[key], `${path}.${key}`));
-          } else {
+          } else if (!schema.openProperties) {
             errors.push(`${path}.${key}: unknown config key`);
           }
+          // openProperties: true — freeform map, unknown keys are allowed
         }
       }
       break;

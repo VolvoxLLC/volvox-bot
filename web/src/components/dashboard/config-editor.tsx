@@ -872,7 +872,12 @@ export function ConfigEditor() {
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
-        return { ...prev, permissions: { ...prev.permissions, [field]: value } } as GuildConfig;
+        const updated = { ...prev.permissions, [field]: value };
+        // Auto-clear legacy singular fields whenever the plural arrays are written,
+        // so computePatches never includes both the old and new forms simultaneously.
+        if (field === 'adminRoleIds') updated.adminRoleId = null;
+        if (field === 'moderatorRoleIds') updated.moderatorRoleId = null;
+        return { ...prev, permissions: updated } as GuildConfig;
       });
     },
     [updateDraftConfig],
@@ -2011,10 +2016,6 @@ export function ConfigEditor() {
                       ]}
                       onChange={(selected) => {
                         updatePermissionsField('adminRoleIds', selected);
-                        // Clear legacy field once user has interacted with the multi-selector
-                        if (draftConfig.permissions?.adminRoleId) {
-                          updatePermissionsField('adminRoleId', null);
-                        }
                       }}
                       placeholder="Select admin roles"
                       disabled={saving}
@@ -2036,10 +2037,6 @@ export function ConfigEditor() {
                       ]}
                       onChange={(selected) => {
                         updatePermissionsField('moderatorRoleIds', selected);
-                        // Clear legacy field once user has interacted with the multi-selector
-                        if (draftConfig.permissions?.moderatorRoleId) {
-                          updatePermissionsField('moderatorRoleId', null);
-                        }
                       }}
                       placeholder="Select moderator roles"
                       disabled={saving}
