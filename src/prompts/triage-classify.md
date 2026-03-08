@@ -23,7 +23,7 @@ When classifying as "moderate", recommend an action proportional to severity:
 - **ban** -- severe harassment, hate speech, scam/phishing, illegal content
 - **delete** -- message should be removed (spam, scam links, doxxing) regardless of user action
 
-Identify which community rule was violated (e.g. "Rule 1: Respect", "Rule 4: No spam/shilling").
+Identify which community rule was violated (e.g. "Rule 1: Respect", "Rule 4: No spam or drive-by promotion").
 
 **respond** -- The bot was directly addressed or a clear help request was made.
 Classify as respond when ANY of these apply:
