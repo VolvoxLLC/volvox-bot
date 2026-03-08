@@ -7,9 +7,9 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: true
-  pull-requests: true
-  issues: true
+  contents: write
+  pull-requests: write
+  issues: write
 
 tools:
   github:
@@ -55,10 +55,11 @@ Keep the AGENTS.md file accurate and current by:
    - Resources section: Add new links if applicable
 
 5. **Create Pull Request**: If changes are needed:
-   - Create a branch named `docs/maintain-docs-YYYY-MM-DD`
+   - Create a branch named `copilot/maintain-docs-YYYY-MM-DD`
      <!-- NOTE: Replace YYYY-MM-DD with the actual run date on each execution,
-          e.g. docs/maintain-docs-2026-03-07. A static date causes branch collisions
-          on repeated daily runs. Use a date expression or ${{ github.run_id }}. -->
+          e.g. copilot/maintain-docs-2026-03-07. A static date causes branch collisions
+          on repeated daily runs. Use a date expression or ${{ github.run_id }}.
+          The `copilot/` prefix is required for GitHub Copilot coding agent branches. -->
    - Update AGENTS.md with discovered changes
    - Create a PR with:
      - Title: "docs: update AGENTS.md from merged PRs and source changes"
