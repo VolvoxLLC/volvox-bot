@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
@@ -22,10 +22,14 @@ interface StarboardSectionProps {
  * @returns A JSX element containing inputs and toggles for configuring the starboard feature.
  */
 export function StarboardSection({ draftConfig, saving, onFieldChange }: StarboardSectionProps) {
-  // Local state buffers the raw comma-separated string to avoid mid-type parses
-  const [ignoredChannelsRaw, setIgnoredChannelsRaw] = useState(
-    (draftConfig.starboard?.ignoredChannels ?? []).join(', '),
-  );
+  // Local state buffers the raw comma-separated string to avoid mid-type parses.
+  // Sync with external draftConfig changes (guild switch, discard) via useEffect.
+  const ignoredChannelsDisplay = (draftConfig.starboard?.ignoredChannels ?? []).join(', ');
+  const [ignoredChannelsRaw, setIgnoredChannelsRaw] = useState(ignoredChannelsDisplay);
+
+  useEffect(() => {
+    setIgnoredChannelsRaw(ignoredChannelsDisplay);
+  }, [ignoredChannelsDisplay]);
 
   return (
     <Card>
@@ -44,13 +48,13 @@ export function StarboardSection({ draftConfig, saving, onFieldChange }: Starboa
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <label htmlFor="channel-id" className="space-y-2">
+        <label htmlFor="starboard-channel-id" className="space-y-2">
           <span className="text-sm font-medium">Channel ID</span>
           <input
-            id="channel-id"
+            id="starboard-channel-id"
             type="text"
             value={draftConfig.starboard?.channelId ?? ''}
-            onChange={(e) => onFieldChange('channelId', e.target.value)}
+            onChange={(e) => onFieldChange('channelId', e.target.value.trim() || null)}
             disabled={saving}
             className={inputClasses}
             placeholder="Starboard channel ID"
