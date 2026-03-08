@@ -19,9 +19,20 @@ import { PermissionFlagsBits } from 'discord.js';
  * @returns {string[]} Deduplicated merged list
  */
 export function mergeRoleIds(roleIds, roleId) {
-  const merged = [...(roleIds ?? [])];
-  if (roleId && !merged.includes(roleId)) merged.push(roleId);
-  return merged;
+  // Normalize roleIds defensively — persisted config may contain a string instead of an array
+  let base;
+  if (Array.isArray(roleIds)) {
+    base = roleIds;
+  } else if (typeof roleIds === 'string' && roleIds.length > 0) {
+    base = [roleIds];
+  } else {
+    base = [];
+  }
+  const merged = new Set(base);
+  if (typeof roleId === 'string' && roleId.length > 0) {
+    merged.add(roleId);
+  }
+  return [...merged];
 }
 
 /**

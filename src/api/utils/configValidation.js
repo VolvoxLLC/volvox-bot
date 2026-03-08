@@ -206,6 +206,9 @@ export const CONFIG_SCHEMA = {
       usePermissions: { type: 'boolean' },
       adminRoleIds: { type: 'array', items: { type: 'string' } },
       moderatorRoleIds: { type: 'array', items: { type: 'string' } },
+      // Legacy singular fields — kept for backward compat during migration
+      adminRoleId: { type: 'string', nullable: true },
+      moderatorRoleId: { type: 'string', nullable: true },
       modRoles: { type: 'array', items: { type: 'string' } },
       botOwners: { type: 'array', items: { type: 'string' } },
       allowedCommands: { type: 'object' },
