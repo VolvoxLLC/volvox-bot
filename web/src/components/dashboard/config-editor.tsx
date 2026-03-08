@@ -440,9 +440,14 @@ export function ConfigEditor() {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        if (hasChanges && !saving && !hasValidationErrors) {
-          openDiffModal();
+        // Only intercept when we can actually handle the save.
+        // If there are validation errors, let the browser default fire so
+        // Ctrl+S doesn't silently eat the keystroke with no feedback.
+        if (hasChanges && !hasValidationErrors) {
+          e.preventDefault();
+          if (!saving) {
+            openDiffModal();
+          }
         }
       }
     }
