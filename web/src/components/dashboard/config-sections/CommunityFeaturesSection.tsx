@@ -35,6 +35,9 @@ const COMMUNITY_FEATURES = [
   },
 ] as const;
 
+/** Keys of GuildConfig that correspond to community feature toggle sections. */
+type CommunityFeatureKey = (typeof COMMUNITY_FEATURES)[number]['key'];
+
 /**
  * Render the Community Features configuration card with a toggle for each feature.
  *
@@ -67,7 +70,7 @@ export function CommunityFeaturesSection({
             </div>
             <ToggleSwitch
               checked={
-                (draftConfig[key as keyof GuildConfig] as ToggleSectionConfig | undefined)
+                (draftConfig[key as CommunityFeatureKey] as ToggleSectionConfig | undefined)
                   ?.enabled ?? false
               }
               onChange={(v) => onToggleChange(key, v)}
