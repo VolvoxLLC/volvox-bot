@@ -9,8 +9,8 @@
  */
 
 import { info, error as logError, warn } from '../logger.js';
-import { getConfig } from '../modules/config.js';
 import { purgeOldAuditLogs } from '../modules/auditLogger.js';
+import { getConfig } from '../modules/config.js';
 
 /** Track optional tables we've already warned about to avoid hourly log spam */
 const warnedMissingOptionalTables = new Set();
