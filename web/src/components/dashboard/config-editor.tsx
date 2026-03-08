@@ -662,6 +662,7 @@ export function ConfigEditor() {
       {/* Triage Section */}
       <TriageSection
         draftConfig={draftConfig}
+        guildId={guildId}
         saving={saving}
         onEnabledChange={triageUpdater.setEnabled}
         onFieldChange={triageUpdater.setField}

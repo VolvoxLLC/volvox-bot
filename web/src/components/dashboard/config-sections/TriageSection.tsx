@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
@@ -8,6 +9,7 @@ import { inputClasses } from './shared';
 
 interface TriageSectionProps {
   draftConfig: GuildConfig;
+  guildId: string;
   saving: boolean;
   onEnabledChange: (enabled: boolean) => void;
   onFieldChange: (field: string, value: unknown) => void;
@@ -22,6 +24,7 @@ interface TriageSectionProps {
  * `draftConfig.triage` is not present.
  *
  * @param draftConfig - Draft guild configuration containing `triage` settings
+ * @param guildId - Discord guild ID used by ChannelSelector to fetch available channels
  * @param saving - When true, disables interactions while changes are being saved
  * @param onEnabledChange - Invoked when the top-level Triage enabled toggle changes
  * @param onFieldChange - Invoked when a specific triage field changes; receives the field name and its new value
@@ -29,6 +32,7 @@ interface TriageSectionProps {
  */
 export function TriageSection({
   draftConfig,
+  guildId,
   saving,
   onEnabledChange,
   onFieldChange,
@@ -212,18 +216,25 @@ export function TriageSection({
             label="Status Reactions"
           />
         </div>
-        <label htmlFor="moderation-log-channel" className="space-y-2">
-          <span className="text-sm font-medium">Moderation Log Channel</span>
-          <input
+        <div className="space-y-2">
+          <label htmlFor="moderation-log-channel" className="text-sm font-medium">
+            Moderation Log Channel
+          </label>
+          <ChannelSelector
             id="moderation-log-channel"
-            type="text"
-            value={draftConfig.triage?.moderationLogChannel ?? ''}
-            onChange={(e) => onFieldChange('moderationLogChannel', e.target.value.trim() || null)}
+            guildId={guildId}
+            selected={
+              draftConfig.triage?.moderationLogChannel
+                ? [draftConfig.triage.moderationLogChannel]
+                : []
+            }
+            onChange={(selected) => onFieldChange('moderationLogChannel', selected[0] ?? null)}
+            placeholder="Select moderation log channel..."
             disabled={saving}
-            className={inputClasses}
-            placeholder="Channel ID for moderation logs"
+            maxSelections={1}
+            filter="text"
           />
-        </label>
+        </div>
       </CardContent>
     </Card>
   );
