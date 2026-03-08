@@ -58,15 +58,14 @@ export function ChallengesSection({
             />
           </label>
           <label htmlFor="post-time-hh-mm" className="space-y-2">
-            <span className="text-sm font-medium">Post Time (HH:MM)</span>
+            <span className="text-sm font-medium">Post Time</span>
             <input
               id="post-time-hh-mm"
-              type="text"
+              type="time"
               value={draftConfig.challenges?.postTime ?? '09:00'}
               onChange={(e) => onFieldChange('postTime', e.target.value)}
               disabled={saving}
               className={inputClasses}
-              placeholder="09:00"
             />
           </label>
           <label htmlFor="challenge-timezone" className="space-y-2 col-span-2">

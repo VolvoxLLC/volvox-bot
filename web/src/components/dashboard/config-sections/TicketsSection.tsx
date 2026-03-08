@@ -126,9 +126,10 @@ export function TicketsSection({
               className={inputClasses}
             />
           </label>
-          <label className="space-y-2 col-span-2">
+          <label htmlFor="transcript-channel-id" className="space-y-2 col-span-2">
             <span className="text-sm font-medium">Transcript Channel ID</span>
             <input
+              id="transcript-channel-id"
               type="text"
               value={draftConfig.tickets?.transcriptChannel ?? ''}
               onChange={(e) => onFieldChange('transcriptChannel', e.target.value.trim() || null)}

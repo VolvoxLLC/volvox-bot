@@ -247,7 +247,16 @@ export function ModerationSection({
               id="blocked-domains"
               type="text"
               value={blockedDomainsRaw}
-              onChange={(e) => setBlockedDomainsRaw(e.target.value)}
+              onChange={(e) => {
+                setBlockedDomainsRaw(e.target.value);
+                onLinkFilterChange(
+                  'blockedDomains',
+                  e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                );
+              }}
               onBlur={() =>
                 onLinkFilterChange(
                   'blockedDomains',
