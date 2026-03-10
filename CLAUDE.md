@@ -32,3 +32,16 @@ See [AGENTS.md](./AGENTS.md) for full project context, architecture, and coding 
   - Mounted `DashboardTitleSync` in `web/src/components/layout/dashboard-shell.tsx` so client-rendered dashboard pages update `document.title` on pathname changes without needing a server-wrapper refactor for every route.
   - Added static metadata for server-rendered dashboard entry pages (`/dashboard`, `/dashboard/config`, `/dashboard/performance`) and switched the root app metadata to a title template so direct loads and client transitions use the same suffix format.
   - Coverage lives in `web/tests/lib/page-titles.test.ts` and `web/tests/components/layout/dashboard-title-sync.test.tsx`.
+
+
+## Session Notes (2026-03-10)
+
+- Fixed authorization gap on dashboard operational endpoints:
+  - `web/src/app/api/log-stream/ws-ticket/route.ts` now enforces guild-admin authorization via `authorizeGuildAdmin` and requires `guildId` query param before minting WS tickets.
+  - `web/src/app/api/bot-health/route.ts` now requires `guildId` and enforces `authorizeGuildAdmin` before proxying `/health`.
+- Wired dashboard clients to send selected guild context for privileged endpoints:
+  - `useLogStream` now accepts `{ enabled, guildId }` and requests `/api/log-stream/ws-ticket?guildId=...`.
+  - Logs page passes selected guild into `useLogStream`; health section now calls `/api/bot-health?guildId=...`.
+- Added API route tests for the above authorization behavior:
+  - `web/tests/api/log-stream-ws-ticket.test.ts`
+  - `web/tests/api/bot-health-route.test.ts`

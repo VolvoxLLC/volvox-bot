@@ -32,6 +32,11 @@ export interface UseLogStreamResult {
   clearLogs: () => void;
 }
 
+export interface UseLogStreamOptions {
+  enabled?: boolean;
+  guildId?: string | null;
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MAX_LOGS = 1000;
@@ -89,9 +94,10 @@ function normalizeEntry(raw: unknown, id: string): LogEntry | null {
  * Fetches WS URL + auth secret from the Next.js API route first, then
  * maintains a WebSocket connection with auto-reconnect (exponential backoff).
  *
- * @param enabled - Set to false to disable connection (e.g. when page is hidden)
+ * @param options - Connection options including whether the stream is enabled and target guild ID.
  */
-export function useLogStream(enabled = true): UseLogStreamResult {
+export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamResult {
+  const { enabled = true, guildId = null } = options;
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
 
@@ -108,7 +114,9 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; ticket: string } | null> => {
     // Always fetch a fresh ticket — they're short-lived HMAC tokens
     try {
-      const res = await fetch('/api/log-stream/ws-ticket', { cache: 'no-store' });
+      if (!guildId) return null;
+      const params = new URLSearchParams({ guildId });
+      const res = await fetch(`/api/log-stream/ws-ticket?${params.toString()}`, { cache: 'no-store' });
       if (!res.ok) return null;
       const data = (await res.json()) as { wsUrl?: string; ticket?: string };
       if (!data.wsUrl || !data.ticket) return null;
@@ -117,7 +125,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     } catch {
       return null;
     }
-  }, []);
+  }, [guildId]);
 
   // ── Connect ────────────────────────────────────────────────────────────────
   const connect = useCallback(async () => {
@@ -261,11 +269,11 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'filter', ...filter }));
     }
-  }, []);
+  }, [guildId]);
 
   const clearLogs = useCallback(() => {
     setLogs([]);
-  }, []);
+  }, [guildId]);
 
   return { logs, status, sendFilter, clearLogs };
 }
