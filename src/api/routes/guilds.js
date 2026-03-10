@@ -454,7 +454,13 @@ function getGuildChannels(guild) {
   const channels = [];
   for (const ch of guild.channels.cache.values()) {
     if (channels.length >= MAX_CHANNELS) break;
-    channels.push({ id: ch.id, name: ch.name, type: ch.type });
+    channels.push({
+      id: ch.id,
+      name: ch.name,
+      type: ch.type,
+      parentId: ch.parentId ?? null,
+      position: ch.position ?? 0,
+    });
   }
   return channels;
 }
