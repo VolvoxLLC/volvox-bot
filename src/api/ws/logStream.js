@@ -192,7 +192,8 @@ async function handleMessage(ws, data) {
 }
 
 /**
- * Validate an HMAC ticket of the form `nonce.expiry.hmac`.
+ * Validate an HMAC ticket of the form `nonce.expiry.hmac` (legacy)
+ * or `nonce.expiry.guildId.hmac` (guild-bound).
  *
  * @param {string} ticket - The ticket string from the client
  * @param {string} secret - The BOT_API_SECRET used to derive the HMAC
@@ -202,17 +203,21 @@ function validateTicket(ticket, secret) {
   if (typeof ticket !== 'string' || typeof secret !== 'string') return false;
 
   const parts = ticket.split('.');
-  if (parts.length !== 3) return false;
+  if (parts.length !== 3 && parts.length !== 4) return false;
 
-  const [nonce, expiry, hmac] = parts;
+  const [nonce, expiry, maybeGuildId, maybeHmac] = parts;
+  const guildId = parts.length === 4 ? maybeGuildId : null;
+  const hmac = parts.length === 4 ? maybeHmac : maybeGuildId;
   if (!nonce || !expiry || !hmac) return false;
+  if (parts.length === 4 && !guildId) return false;
 
   // Check expiry — guard against NaN from non-numeric strings
   const expiryNum = Number(expiry);
   if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return false;
 
   // Re-derive HMAC and compare with timing-safe equality
-  const expected = createHmac('sha256', secret).update(`${nonce}.${expiry}`).digest('hex');
+  const payload = guildId ? `${nonce}.${expiry}.${guildId}` : `${nonce}.${expiry}`;
+  const expected = createHmac('sha256', secret).update(payload).digest('hex');
 
   try {
     return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hmac, 'hex'));

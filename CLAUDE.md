@@ -32,3 +32,12 @@ See [AGENTS.md](./AGENTS.md) for full project context, architecture, and coding 
   - Mounted `DashboardTitleSync` in `web/src/components/layout/dashboard-shell.tsx` so client-rendered dashboard pages update `document.title` on pathname changes without needing a server-wrapper refactor for every route.
   - Added static metadata for server-rendered dashboard entry pages (`/dashboard`, `/dashboard/config`, `/dashboard/performance`) and switched the root app metadata to a title template so direct loads and client transitions use the same suffix format.
   - Coverage lives in `web/tests/lib/page-titles.test.ts` and `web/tests/components/layout/dashboard-title-sync.test.tsx`.
+
+## Session Notes (2026-03-10)
+
+- Security fix: bound audit-log WebSocket auth tickets to a guild context.
+  - Updated audit stream ticket validation in `src/api/ws/auditStream.js` to require `nonce.expiry.guildId.hmac` and persist authenticated `ws.guildId`.
+  - Enforced tenant scoping server-side: `handleFilter()` now rejects mismatched `guildId`, and broadcast matching now requires `entry.guild_id === ws.guildId` even when no filter is provided.
+  - Updated dashboard ws-ticket issuer in `web/src/app/api/log-stream/ws-ticket/route.ts` to include `guildId` in the signed payload.
+  - Added backward-compatible ticket parsing in `src/api/ws/logStream.js` to accept both legacy 3-part and new 4-part tickets so existing log stream behavior remains intact.
+  - Extended `tests/api/ws/auditStream.test.js` with cross-guild isolation coverage (no-filter cross-guild drop + mismatched filter rejection).

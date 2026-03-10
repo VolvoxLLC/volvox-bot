@@ -7,7 +7,7 @@
  *
  * Protocol (JSON messages):
  *   Client → Server:
- *     { type: 'auth', ticket: '<nonce>.<expiry>.<hmac>' }
+ *     { type: 'auth', ticket: '<nonce>.<expiry>.<guildId>.<hmac>' }
  *     { type: 'filter', guildId: '...', action: '...', userId: '...' }
  *
  *   Server → Client:
@@ -41,25 +41,32 @@ let heartbeatTimer = null;
 let authenticatedCount = 0;
 
 /**
- * Validate an HMAC ticket of the form `nonce.expiry.hmac`.
+ * Validate an HMAC ticket of the form `nonce.expiry.guildId.hmac`.
  *
  * @param {string} ticket
  * @param {string} secret
- * @returns {boolean}
+ * @returns {{ valid: boolean, guildId: string | null }}
  */
 function validateTicket(ticket, secret) {
-  if (typeof ticket !== 'string' || typeof secret !== 'string') return false;
+  if (typeof ticket !== 'string' || typeof secret !== 'string') {
+    return { valid: false, guildId: null };
+  }
   const parts = ticket.split('.');
-  if (parts.length !== 3) return false;
-  const [nonce, expiry, hmac] = parts;
-  if (!nonce || !expiry || !hmac) return false;
+  if (parts.length !== 4) return { valid: false, guildId: null };
+  const [nonce, expiry, guildId, hmac] = parts;
+  if (!nonce || !expiry || !guildId || !hmac) return { valid: false, guildId: null };
   const expiryNum = Number(expiry);
-  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return false;
-  const expected = createHmac('sha256', secret).update(`${nonce}.${expiry}`).digest('hex');
+  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return { valid: false, guildId: null };
+  const expected = createHmac('sha256', secret)
+    .update(`${nonce}.${expiry}.${guildId}`)
+    .digest('hex');
   try {
-    return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hmac, 'hex'));
+    return {
+      valid: timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hmac, 'hex')),
+      guildId,
+    };
   } catch {
-    return false;
+    return { valid: false, guildId: null };
   }
 }
 
@@ -108,7 +115,8 @@ function handleAuth(ws, msg) {
     return;
   }
 
-  if (!validateTicket(msg.ticket, process.env.BOT_API_SECRET)) {
+  const authResult = validateTicket(msg.ticket, process.env.BOT_API_SECRET);
+  if (!authResult.valid || !authResult.guildId) {
     warn('Audit stream auth failed', { reason: 'invalid ticket' });
     ws.close(4003, 'Authentication failed');
     return;
@@ -121,6 +129,7 @@ function handleAuth(ws, msg) {
   }
 
   ws.authenticated = true;
+  ws.guildId = authResult.guildId;
   authenticatedCount++;
 
   if (ws.authTimeout) {
@@ -145,8 +154,13 @@ function handleFilter(ws, msg) {
     return;
   }
 
+  if (msg.guildId && msg.guildId !== ws.guildId) {
+    sendJson(ws, { type: 'error', message: 'Guild filter does not match authenticated guild' });
+    return;
+  }
+
   ws.auditFilter = {
-    guildId: typeof msg.guildId === 'string' ? msg.guildId : null,
+    guildId: ws.guildId,
     action: typeof msg.action === 'string' ? msg.action : null,
     userId: typeof msg.userId === 'string' ? msg.userId : null,
   };
@@ -194,6 +208,7 @@ function handleMessage(ws, data) {
 function handleConnection(ws) {
   ws.isAlive = true;
   ws.authenticated = false;
+  ws.guildId = null;
   ws.auditFilter = null;
 
   ws.authTimeout = setTimeout(() => {
@@ -227,8 +242,9 @@ function handleConnection(ws) {
  * @param {Object} entry - Audit log entry
  * @returns {boolean}
  */
-function matchesFilter(filter, entry) {
-  if (!filter) return true; // No filter → receive everything
+function matchesFilter(filter, entry, authenticatedGuildId) {
+  if (!authenticatedGuildId) return false;
+  if (!filter) return entry.guild_id === authenticatedGuildId;
   if (filter.guildId && entry.guild_id !== filter.guildId) return false;
   if (filter.action && entry.action !== filter.action) return false;
   if (filter.userId && entry.user_id !== filter.userId) return false;
@@ -247,7 +263,7 @@ export function broadcastAuditEntry(entry) {
   if (!wss) return;
 
   for (const ws of wss.clients) {
-    if (ws.authenticated && matchesFilter(ws.auditFilter, entry)) {
+    if (ws.authenticated && matchesFilter(ws.auditFilter, entry, ws.guildId)) {
       sendJson(ws, { type: 'entry', entry });
     }
   }
