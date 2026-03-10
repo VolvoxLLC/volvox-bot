@@ -73,16 +73,14 @@ describe('getChannelMode()', () => {
   // ── channelModes map ──────────────────────────────────────────────────────
 
   it('returns per-channel mode when channel is in channelModes', () => {
-    getConfig.mockReturnValue(
-      aiConfig({ channelModes: { '123': 'off', '456': 'vibe' } }),
-    );
+    getConfig.mockReturnValue(aiConfig({ channelModes: { 123: 'off', 456: 'vibe' } }));
     expect(getChannelMode('123', null, 'guild1')).toBe('off');
     expect(getChannelMode('456', null, 'guild1')).toBe('vibe');
   });
 
   it('falls through to defaultChannelMode for channels not in channelModes', () => {
     getConfig.mockReturnValue(
-      aiConfig({ channelModes: { '123': 'off' }, defaultChannelMode: 'vibe' }),
+      aiConfig({ channelModes: { 123: 'off' }, defaultChannelMode: 'vibe' }),
     );
     expect(getChannelMode('999', null, 'guild1')).toBe('vibe');
   });
@@ -90,9 +88,7 @@ describe('getChannelMode()', () => {
   // ── Thread parent inheritance ─────────────────────────────────────────────
 
   it('thread inherits parent channel mode when thread itself is not in channelModes', () => {
-    getConfig.mockReturnValue(
-      aiConfig({ channelModes: { 'parent-ch': 'vibe' } }),
-    );
+    getConfig.mockReturnValue(aiConfig({ channelModes: { 'parent-ch': 'vibe' } }));
     expect(getChannelMode('thread-id', 'parent-ch', 'guild1')).toBe('vibe');
   });
 
@@ -104,16 +100,12 @@ describe('getChannelMode()', () => {
   });
 
   it('thread with no entry and parent with no entry falls back to default', () => {
-    getConfig.mockReturnValue(
-      aiConfig({ channelModes: {}, defaultChannelMode: 'mention' }),
-    );
+    getConfig.mockReturnValue(aiConfig({ channelModes: {}, defaultChannelMode: 'mention' }));
     expect(getChannelMode('thread-id', 'parent-ch', 'guild1')).toBe('mention');
   });
 
   it('thread with null parentId only checks direct channel', () => {
-    getConfig.mockReturnValue(
-      aiConfig({ channelModes: { 'thread-id': 'vibe' } }),
-    );
+    getConfig.mockReturnValue(aiConfig({ channelModes: { 'thread-id': 'vibe' } }));
     expect(getChannelMode('thread-id', null, 'guild1')).toBe('vibe');
   });
 
@@ -140,9 +132,7 @@ describe('getChannelMode()', () => {
   });
 
   it('empty blockedChannelIds array does not block anything', () => {
-    getConfig.mockReturnValue(
-      aiConfig({ blockedChannelIds: [], channelModes: { '123': 'vibe' } }),
-    );
+    getConfig.mockReturnValue(aiConfig({ blockedChannelIds: [], channelModes: { 123: 'vibe' } }));
     expect(getChannelMode('123', null, 'guild1')).toBe('vibe');
   });
 
@@ -150,7 +140,7 @@ describe('getChannelMode()', () => {
     getConfig.mockReturnValue(
       aiConfig({
         blockedChannelIds: ['other-ch'],
-        channelModes: { '123': 'vibe' },
+        channelModes: { 123: 'vibe' },
       }),
     );
     expect(getChannelMode('123', null, 'guild1')).toBe('vibe');
