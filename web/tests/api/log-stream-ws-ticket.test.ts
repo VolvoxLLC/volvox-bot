@@ -54,7 +54,7 @@ describe('GET /api/log-stream/ws-ticket', () => {
     expect(mockAuthorizeGuildAdmin).toHaveBeenCalledWith(
       expect.any(NextRequest),
       'guild-1',
-      '[api/logs/ws-ticket]',
+      '[api/log-stream/ws-ticket]',
     );
     expect(response.status).toBe(200);
 

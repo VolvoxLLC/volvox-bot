@@ -116,7 +116,9 @@ export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamRes
     try {
       if (!guildId) return null;
       const params = new URLSearchParams({ guildId });
-      const res = await fetch(`/api/log-stream/ws-ticket?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/log-stream/ws-ticket?${params.toString()}`, {
+        cache: 'no-store',
+      });
       if (!res.ok) return null;
       const data = (await res.json()) as { wsUrl?: string; ticket?: string };
       if (!data.wsUrl || !data.ticket) return null;
@@ -269,11 +271,11 @@ export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamRes
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'filter', ...filter }));
     }
-  }, [guildId]);
+  }, []);
 
   const clearLogs = useCallback(() => {
     setLogs([]);
-  }, [guildId]);
+  }, []);
 
   return { logs, status, sendFilter, clearLogs };
 }

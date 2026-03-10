@@ -39,14 +39,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, '[api/logs/ws-ticket]');
+  const authError = await authorizeGuildAdmin(request, guildId, '[api/log-stream/ws-ticket]');
   if (authError) return authError;
 
   const botApiUrl = process.env.BOT_API_URL;
   const botApiSecret = process.env.BOT_API_SECRET;
 
   if (!botApiUrl || !botApiSecret) {
-    logger.error('[api/logs/ws-ticket] BOT_API_URL and BOT_API_SECRET are required');
+    logger.error('[api/log-stream/ws-ticket] BOT_API_URL and BOT_API_SECRET are required');
     return NextResponse.json({ error: 'Bot API is not configured' }, { status: 500 });
   }
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     wsUrl = `${url.origin}/ws/logs`;
   } catch {
-    logger.error('[api/logs/ws-ticket] Invalid BOT_API_URL', { botApiUrl });
+    logger.error('[api/log-stream/ws-ticket] Invalid BOT_API_URL', { botApiUrl });
     return NextResponse.json({ error: 'Bot API is not configured correctly' }, { status: 500 });
   }
 
