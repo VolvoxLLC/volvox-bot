@@ -62,6 +62,48 @@ describe('temp roles routes', () => {
     );
   }
 
+  it('returns 400 when guildId query param is missing on DELETE', async () => {
+    const token = createOAuthToken('user-no-guild');
+
+    const res = await request(app)
+      .delete('/api/v1/temp-roles/55')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/guildId/i);
+    expect(revokeTempRoleById).not.toHaveBeenCalled();
+  });
+
+  it('allows DELETE /temp-roles/:id for a moderator with valid guildId and record id', async () => {
+    const token = createOAuthToken('user-mod');
+
+    // Mock Discord guilds API — return MANAGE_GUILD permission (0x20)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ id: 'guild-123', permissions: String(0x20) }],
+    });
+
+    const fakeRecord = {
+      id: 55,
+      user_id: 'target-user',
+      role_id: 'role-abc',
+      guild_id: 'guild-123',
+    };
+    revokeTempRoleById.mockResolvedValueOnce(fakeRecord);
+
+    // Stub Discord client so best-effort role removal is skipped gracefully
+    app.locals = app.locals || {};
+    app.locals.client = null;
+
+    const res = await request(app)
+      .delete('/api/v1/temp-roles/55?guildId=guild-123')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(revokeTempRoleById).toHaveBeenCalledWith(55, 'guild-123');
+  });
+
   it('blocks DELETE /temp-roles/:id for oauth users without moderator access', async () => {
     const token = createOAuthToken('user-no-mod');
 
