@@ -51,7 +51,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "3001:3001"
+      - "6968:6968"
     volumes:
       - botdata:/app/data
     env_file:
@@ -60,8 +60,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/volvoxbot
       DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
-      BOT_API_PORT: "3001"
-      DASHBOARD_URL: http://localhost:3000
+      BOT_API_PORT: "6968"
+      DASHBOARD_URL: http://localhost:6969
       DISABLE_PROMPT_CACHING: "1"
     logging:
       driver: json-file
@@ -83,15 +83,16 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "6969:6969"
     env_file:
       - .env
     environment:
+      PORT: "6969"
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/volvoxbot
       DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
-      NEXTAUTH_URL: http://localhost:3000
-      BOT_API_URL: http://bot:3001
+      NEXTAUTH_URL: http://localhost:6969
+      BOT_API_URL: http://bot:6968
     logging:
       driver: json-file
       options:
