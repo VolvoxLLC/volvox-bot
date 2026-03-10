@@ -26,6 +26,44 @@ let cleanupTimer = null;
 const pendingHydrations = new Map();
 
 /**
+ * Resolve the effective AI response mode for a channel.
+ * Priority: blockedChannelIds → channelModes map → defaultChannelMode → 'mention'
+ *
+ * For threads, check parentId against the modes map (inherit parent's mode).
+ *
+ * @param {string} channelId
+ * @param {string|null} parentId - For threads, the parent channel ID
+ * @param {string} guildId
+ * @returns {'off'|'mention'|'vibe'}
+ */
+export function getChannelMode(channelId, parentId = null, guildId) {
+  try {
+    const config = getConfig(guildId);
+    // Hard block from blockedChannelIds takes precedence
+    const blocked = config?.ai?.blockedChannelIds;
+    if (Array.isArray(blocked) && blocked.length > 0) {
+      if (blocked.includes(channelId)) return 'off';
+      if (parentId && blocked.includes(parentId)) return 'off';
+    }
+
+    const modes = config?.ai?.channelModes;
+    const defaultMode = config?.ai?.defaultChannelMode ?? 'mention';
+
+    if (modes && typeof modes === 'object') {
+      // Direct channel match
+      if (modes[channelId]) return modes[channelId];
+      // Thread inherits parent mode
+      if (parentId && modes[parentId]) return modes[parentId];
+    }
+
+    return defaultMode;
+  } catch {
+    // Config not loaded yet — fail open (default to mention)
+    return 'mention';
+  }
+}
+
+/**
  * Check whether a channel (or its parent thread channel) is in the AI blocklist.
  *
  * When `parentId` is provided (i.e. the message is inside a thread), the parent
