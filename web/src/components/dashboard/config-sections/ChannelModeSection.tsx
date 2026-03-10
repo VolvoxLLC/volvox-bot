@@ -329,60 +329,73 @@ export function ChannelModeSection({
 
         {!loading &&
           !error &&
-          categories.map((cat) => (
-            <div key={cat.id ?? '__uncategorized__'} className="space-y-1">
-              {/* Category header */}
-              <p className="text-xs font-semibold text-muted-foreground tracking-wider px-1 py-1 flex items-center gap-1.5">
-                <span>📁</span>
-                {cat.name}
-              </p>
+          categories.map((cat) => {
+            const categoryOverrides = cat.channels.filter(
+              (ch) => channelModes[ch.id] !== undefined && channelModes[ch.id] !== defaultMode,
+            );
+            const hasCategoryOverrides = categoryOverrides.length > 0;
 
-              {/* Channels */}
-              <div className="rounded-md border overflow-hidden divide-y divide-border">
-                {cat.channels.map((ch) => {
-                  const override = channelModes[ch.id] as ChannelMode | undefined;
-                  const effectiveMode: ChannelMode = override ?? defaultMode;
-                  const isOverridden = override !== undefined && override !== defaultMode;
-
-                  return (
-                    <div
-                      key={ch.id}
-                      className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between bg-card hover:bg-muted/30 transition-colors"
+            return (
+              <div key={cat.id ?? '__uncategorized__'} className="space-y-1">
+                {/* Category header */}
+                <div className="flex items-center justify-between px-1 py-1">
+                  <p className="text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                    <span>📁</span>
+                    {cat.name}
+                  </p>
+                  {hasCategoryOverrides && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        for (const ch of categoryOverrides) {
+                          onChannelModeChange(ch.id, undefined);
+                        }
+                      }}
+                      disabled={saving}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                      aria-label={`Reset all channels in ${cat.name} to default`}
                     >
-                      {/* Channel name */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        <ChannelIcon type={ch.type} />
-                        <span className="text-sm truncate">{ch.name}</span>
-                        {isOverridden && <ModeDot mode={effectiveMode} />}
-                      </div>
+                      <RotateCcw className="h-3 w-3" />
+                      Reset
+                    </button>
+                  )}
+                </div>
 
-                      {/* Controls */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <ModeSelector
-                          mode={effectiveMode}
-                          onChange={(m) => handleChannelMode(ch.id, m)}
-                          disabled={saving}
-                          isDefault={!isOverridden}
-                        />
-                        {isOverridden && (
-                          <button
-                            type="button"
-                            onClick={() => onChannelModeChange(ch.id, undefined)}
+                {/* Channels */}
+                <div className="rounded-md border overflow-hidden divide-y divide-border">
+                  {cat.channels.map((ch) => {
+                    const override = channelModes[ch.id] as ChannelMode | undefined;
+                    const effectiveMode: ChannelMode = override ?? defaultMode;
+                    const isOverridden = override !== undefined && override !== defaultMode;
+
+                    return (
+                      <div
+                        key={ch.id}
+                        className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between bg-card hover:bg-muted/30 transition-colors"
+                      >
+                        {/* Channel name */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ChannelIcon type={ch.type} />
+                          <span className="text-sm truncate">{ch.name}</span>
+                          {isOverridden && <ModeDot mode={effectiveMode} />}
+                        </div>
+
+                        {/* Controls */}
+                        <div className="flex items-center shrink-0">
+                          <ModeSelector
+                            mode={effectiveMode}
+                            onChange={(m) => handleChannelMode(ch.id, m)}
                             disabled={saving}
-                            title="Reset to default"
-                            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                            aria-label={`Reset #${ch.name} to default`}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                            isDefault={!isOverridden}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
         {/* Reset all */}
         {hasOverrides && (
