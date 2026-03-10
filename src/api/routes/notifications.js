@@ -11,9 +11,17 @@ import { Router } from 'express';
 import { info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { getDeliveryLog, testEndpoint, WEBHOOK_EVENTS } from '../../modules/webhookNotifier.js';
+import { requireGuildAdmin } from './guilds.js';
 import { validateUrlForSsrfSync } from '../utils/ssrfProtection.js';
 
 const router = Router();
+
+function normalizeGuildParam(req, _res, next) {
+  req.params.id = req.params.guildId;
+  next();
+}
+
+router.use('/:guildId/notifications', normalizeGuildParam, requireGuildAdmin);
 
 /**
  * Redact a URL for safe logging by replacing any query string or credentials.
