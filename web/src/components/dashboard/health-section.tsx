@@ -3,6 +3,7 @@
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { Button } from '@/components/ui/button';
 import { HealthCards } from './health-cards';
 import { RestartHistory } from './restart-history';
@@ -20,6 +21,7 @@ function formatLastUpdated(date: Date): string {
 
 export function HealthSection() {
   const router = useRouter();
+  const guildId = useGuildSelection();
   const [health, setHealth] = useState<BotHealth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,12 @@ export function HealthSection() {
       }
 
       try {
-        const response = await fetch('/api/bot-health', {
+        if (!guildId) {
+          return;
+        }
+
+        const params = new URLSearchParams({ guildId });
+        const response = await fetch(`/api/bot-health?${params.toString()}`, {
           cache: 'no-store',
           signal: controller.signal,
         });
@@ -83,7 +90,7 @@ export function HealthSection() {
         }
       }
     },
-    [router],
+    [guildId, router],
   );
 
   // Initial fetch

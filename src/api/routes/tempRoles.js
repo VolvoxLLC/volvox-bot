@@ -43,6 +43,18 @@ function adaptBodyGuildId(req, _res, next) {
   next();
 }
 
+/**
+ * Adapt delete route params for requireGuildModerator.
+ * Keeps the temp-role record id available while mapping guildId to req.params.id.
+ */
+function adaptDeleteGuildIdParam(req, _res, next) {
+  if (req.query.guildId) {
+    req.params.tempRoleId = req.params.id;
+    req.params.id = req.query.guildId;
+  }
+  next();
+}
+
 router.use(tempRoleRateLimit);
 
 // ─── GET /temp-roles ──────────────────────────────────────────────────────────
@@ -116,7 +128,7 @@ router.get('/', adaptGuildIdParam, requireGuildModerator, async (req, res) => {
  *       "200": { description: Revoked }
  *       "404": { description: Not found or already removed }
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adaptDeleteGuildIdParam, requireGuildModerator, async (req, res) => {
   try {
     const guildId = req.query.guildId;
 
@@ -125,7 +137,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(400).json({ error: 'guildId is required and must be a string' });
     }
 
-    const id = Number.parseInt(req.params.id, 10);
+    const id = Number.parseInt(req.params.tempRoleId || req.params.id, 10);
 
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ error: 'Invalid id' });
