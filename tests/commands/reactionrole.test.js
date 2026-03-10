@@ -256,6 +256,40 @@ describe('/reactionrole command', () => {
       );
     });
 
+    it('denies action when member fetch fails (fail closed)', async () => {
+      makePool();
+      const menu = {
+        id: 7,
+        guild_id: 'guild-1',
+        channel_id: 'ch-1',
+        message_id: 'msg-1',
+        title: 'T',
+        description: null,
+      };
+      findMenuByMessageId.mockResolvedValue(menu);
+
+      const role = { id: 'r-star', name: 'Star', position: 5 };
+      const interaction = makeInteraction('add', {
+        strings: { message_id: 'msg-1', emoji: '⭐' },
+        role,
+        // Not the guild owner
+        userId: 'regular-user',
+        ownerId: 'owner-1',
+      });
+      // Simulate member fetch failure
+      interaction.guild.members.fetch.mockRejectedValue(new Error('Rate limited'));
+
+      await execute(interaction);
+
+      expect(upsertReactionRoleEntry).not.toHaveBeenCalled();
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('Could not verify your permissions'),
+        }),
+      );
+    });
+
     it('allows guild owner to configure higher roles', async () => {
       makePool();
       const menu = {

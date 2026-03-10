@@ -205,13 +205,23 @@ async function handleAdd(interaction) {
   }
 
   // Guard: invoker must be allowed to manage the role
-  const invokingMember = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-  const isGuildOwner = interaction.guild.ownerId === invokingMember?.id;
-  if (!isGuildOwner && invokingMember && role.position >= invokingMember.roles.highest.position) {
-    await safeEditReply(interaction, {
-      content: `❌ You can't configure **${role.name}** because it's higher than (or equal to) your highest role.`,
-    });
-    return;
+  const invokingMember = await interaction.guild.members
+    .fetch(interaction.user.id)
+    .catch(() => null);
+  const isGuildOwner = interaction.guild.ownerId === interaction.user.id;
+  if (!isGuildOwner) {
+    if (!invokingMember) {
+      await safeEditReply(interaction, {
+        content: '❌ Could not verify your permissions. Please try again.',
+      });
+      return;
+    }
+    if (role.position >= invokingMember.roles.highest.position) {
+      await safeEditReply(interaction, {
+        content: `❌ You can't configure **${role.name}** because it's higher than (or equal to) your highest role.`,
+      });
+      return;
+    }
   }
 
   // Normalise emoji to a stable string
