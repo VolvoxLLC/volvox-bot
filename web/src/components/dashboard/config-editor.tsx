@@ -1028,7 +1028,7 @@ export function ConfigEditor() {
       {hasChanges && (
         <output
           aria-live="polite"
-          className="relative z-10 mb-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
+          className="relative z-10 mb-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
         >
           You have unsaved changes in {changedCategoryCount}{' '}
           {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
