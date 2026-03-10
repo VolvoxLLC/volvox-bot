@@ -54,7 +54,7 @@ export function StarboardSection({ draftConfig, saving, onFieldChange }: Starboa
             id="starboard-channel-id"
             type="text"
             value={draftConfig.starboard?.channelId ?? ''}
-            onChange={(e) => onFieldChange('channelId', e.target.value.trim() || null)}
+            onChange={(e) => onFieldChange('channelId', e.target.value.trim() || '')}
             disabled={saving}
             className={inputClasses}
             placeholder="Starboard channel ID"
@@ -122,7 +122,15 @@ export function StarboardSection({ draftConfig, saving, onFieldChange }: Starboa
             id="ignored-channels"
             type="text"
             value={ignoredChannelsRaw}
-            onChange={(e) => setIgnoredChannelsRaw(e.target.value)}
+            onChange={(e) => {
+              setIgnoredChannelsRaw(e.target.value);
+              // also flush to draft so Ctrl+S captures current value
+              const parsed = e.target.value
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+              onFieldChange('ignoredChannels', parsed);
+            }}
             onBlur={() => {
               const parsed = ignoredChannelsRaw
                 .split(',')

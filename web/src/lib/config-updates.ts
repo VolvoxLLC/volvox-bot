@@ -127,13 +127,14 @@ export function updateArrayItem<T>(
 
   const lastKey = path[path.length - 1];
 
-  // Guard: if the target is not an array, bail out rather than spreading a non-iterable
-  if (!Array.isArray(cursor[lastKey])) return config;
+  // Guard: if the target exists but is not an array, bail out rather than spreading a non-iterable
+  if (cursor[lastKey] !== undefined && !Array.isArray(cursor[lastKey])) return config;
 
-  const arr = [...(cursor[lastKey] as T[])];
+  // Initialize as empty array if missing, then update/append the item
+  const arr = Array.isArray(cursor[lastKey]) ? [...(cursor[lastKey] as T[])] : [];
 
-  // Validate index bounds
-  if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
+  // Validate index bounds (allow index === arr.length to append into freshly initialized array)
+  if (!Number.isInteger(index) || index < 0 || index > arr.length) {
     return config;
   }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
@@ -11,6 +12,15 @@ interface ChallengesSectionProps {
   onEnabledChange: (enabled: boolean) => void;
   onFieldChange: (field: string, value: unknown) => void;
 }
+
+const isValidTimezone = (tz: string) => {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Render the Daily Coding Challenges configuration card.
@@ -29,6 +39,9 @@ export function ChallengesSection({
   onEnabledChange,
   onFieldChange,
 }: ChallengesSectionProps) {
+  const currentTimezone = draftConfig.challenges?.timezone ?? 'America/New_York';
+  const [timezoneError, setTimezoneError] = useState<string | null>(null);
+
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
@@ -73,15 +86,27 @@ export function ChallengesSection({
             <input
               id="challenge-timezone"
               type="text"
-              value={draftConfig.challenges?.timezone ?? 'America/New_York'}
-              onChange={(e) => onFieldChange('timezone', e.target.value)}
+              value={currentTimezone}
+              onChange={(e) => {
+                const tz = e.target.value;
+                onFieldChange('timezone', tz);
+                if (tz && !isValidTimezone(tz)) {
+                  setTimezoneError(`"${tz}" is not a valid IANA timezone`);
+                } else {
+                  setTimezoneError(null);
+                }
+              }}
               disabled={saving}
               className={inputClasses}
               placeholder="America/New_York"
             />
-            <p className="text-xs text-muted-foreground">
-              IANA timezone (e.g. America/Chicago, Europe/London)
-            </p>
+            {timezoneError ? (
+              <p className="text-xs text-destructive">{timezoneError}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                IANA timezone (e.g. America/Chicago, Europe/London)
+              </p>
+            )}
           </label>
         </div>
       </CardContent>
