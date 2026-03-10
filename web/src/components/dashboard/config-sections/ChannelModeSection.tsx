@@ -75,7 +75,7 @@ function ModeSelector({
           onClick={() => onChange(value)}
           disabled={disabled}
           className={cn(
-            'px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'px-3 py-1 text-xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
             activeClasses(value),
           )}
           aria-pressed={mode === value}
