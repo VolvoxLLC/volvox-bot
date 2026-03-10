@@ -13,15 +13,15 @@ const TICKET_TTL_MS = 30_000;
  * Generate a short-lived HMAC ticket the WS server can validate
  * without the browser ever seeing the raw secret.
  *
- * Format: `<nonce>.<expiry>.<hmac>`
+ * Format: `<nonce>.<expiry>.<guildId>.<hmac>`
  *
- * The bot WS server recreates the HMAC from (nonce + expiry) using the
+ * The bot WS server recreates the HMAC from (nonce + expiry + guildId) using the
  * shared BOT_API_SECRET and verifies it matches + isn't expired.
  */
-function createTicket(secret: string): string {
+function createTicket(secret: string, guildId: string): string {
   const nonce = randomBytes(16).toString('hex');
   const expiry = Date.now() + TICKET_TTL_MS;
-  const payload = `${nonce}.${expiry}`;
+  const payload = `${nonce}.${expiry}.${guildId}`;
   const hmac = createHmac('sha256', secret).update(payload).digest('hex');
   return `${payload}.${hmac}`;
 }
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Bot API is not configured correctly' }, { status: 500 });
   }
 
-  const ticket = createTicket(botApiSecret);
+  const ticket = createTicket(botApiSecret, guildId);
 
   return NextResponse.json({ wsUrl, ticket });
 }

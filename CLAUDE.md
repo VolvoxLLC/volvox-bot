@@ -45,3 +45,21 @@ See [AGENTS.md](./AGENTS.md) for full project context, architecture, and coding 
 - Added API route tests for the above authorization behavior:
   - `web/tests/api/log-stream-ws-ticket.test.ts`
   - `web/tests/api/bot-health-route.test.ts`
+## Session Notes (2026-03-10)
+
+- Security hardening for temp-role revoke endpoint:
+  - Added `adaptDeleteGuildIdParam` in `src/api/routes/tempRoles.js` so DELETE requests can enforce guild moderation checks without losing the temp-role record id.
+  - Applied `requireGuildModerator` to `DELETE /temp-roles/:id` to align authorization with GET/POST temp-role routes.
+  - Added regression test `tests/api/routes/tempRoles.test.js` verifying OAuth users without moderator permissions receive 403 and cannot revoke temp roles.
+- Security fix: `/reactionrole add` now enforces invoker role hierarchy for target role assignment in addition to existing bot-role hierarchy check.
+  - Added guard in `src/commands/reactionrole.js` that blocks non-owner invokers from configuring roles at or above their highest role.
+  - Guild owners are explicitly exempted, matching Discord permission model expectations.
+- Extended command tests in `tests/commands/reactionrole.test.js`:
+  - Added coverage for rejection when invoker cannot manage the target role.
+  - Added coverage confirming guild owners can still configure higher roles.
+- Security fix: bound audit-log WebSocket auth tickets to a guild context.
+  - Updated audit stream ticket validation in `src/api/ws/auditStream.js` to require `nonce.expiry.guildId.hmac` and persist authenticated `ws.guildId`.
+  - Enforced tenant scoping server-side: `handleFilter()` now rejects mismatched `guildId`, and broadcast matching now requires `entry.guild_id === ws.guildId` even when no filter is provided.
+  - Updated dashboard ws-ticket issuer in `web/src/app/api/log-stream/ws-ticket/route.ts` to include `guildId` in the signed payload.
+  - Added backward-compatible ticket parsing in `src/api/ws/logStream.js` to accept both legacy 3-part and new 4-part tickets so existing log stream behavior remains intact.
+  - Extended `tests/api/ws/auditStream.test.js` with cross-guild isolation coverage (no-filter cross-guild drop + mismatched filter rejection).
