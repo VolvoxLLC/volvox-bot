@@ -16,12 +16,16 @@ import { validateUrlForSsrfSync } from '../utils/ssrfProtection.js';
 
 const router = Router();
 
-function normalizeGuildParam(req, _res, next) {
-  req.params.id = req.params.guildId;
-  next();
-}
-
-router.use('/:guildId/notifications', normalizeGuildParam, requireGuildAdmin);
+/*
+ * Use `:id` (not `:guildId`) here so that `requireGuildAdmin` — which reads
+ * `req.params.id` — sees the guild ID without an extra normalisation step.
+ * Express scopes `req.params` per routing layer, so a middleware that copies
+ * `:guildId` → `id` would be lost by the time the next layer runs.
+ *
+ * Individual route handlers below still use `req.params.id` to retrieve the
+ * guild identifier.
+ */
+router.use('/:id/notifications', requireGuildAdmin);
 
 /**
  * Redact a URL for safe logging by replacing any query string or credentials.
@@ -79,8 +83,8 @@ function maskEndpoint(ep) {
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.get('/:guildId/notifications/webhooks', async (req, res, next) => {
-  const { guildId } = req.params;
+router.get('/:id/notifications/webhooks', async (req, res, next) => {
+  const { id: guildId } = req.params;
 
   try {
     const cfg = getConfig(guildId);
@@ -141,8 +145,8 @@ router.get('/:guildId/notifications/webhooks', async (req, res, next) => {
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.post('/:guildId/notifications/webhooks', async (req, res, next) => {
-  const { guildId } = req.params;
+router.post('/:id/notifications/webhooks', async (req, res, next) => {
+  const { id: guildId } = req.params;
   const { url, events, secret, enabled = true } = req.body || {};
 
   if (!url || typeof url !== 'string') {
@@ -241,8 +245,8 @@ router.post('/:guildId/notifications/webhooks', async (req, res, next) => {
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.delete('/:guildId/notifications/webhooks/:endpointId', async (req, res, next) => {
-  const { guildId, endpointId } = req.params;
+router.delete('/:id/notifications/webhooks/:endpointId', async (req, res, next) => {
+  const { id: guildId, endpointId } = req.params;
 
   try {
     const cfg = getConfig(guildId);
@@ -290,8 +294,8 @@ router.delete('/:guildId/notifications/webhooks/:endpointId', async (req, res, n
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.post('/:guildId/notifications/webhooks/:endpointId/test', async (req, res, next) => {
-  const { guildId, endpointId } = req.params;
+router.post('/:id/notifications/webhooks/:endpointId/test', async (req, res, next) => {
+  const { id: guildId, endpointId } = req.params;
 
   try {
     const cfg = getConfig(guildId);
@@ -342,8 +346,8 @@ router.post('/:guildId/notifications/webhooks/:endpointId/test', async (req, res
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  */
-router.get('/:guildId/notifications/deliveries', async (req, res, next) => {
-  const { guildId } = req.params;
+router.get('/:id/notifications/deliveries', async (req, res, next) => {
+  const { id: guildId } = req.params;
 
   // Clamp limit to positive range (1-100) to prevent DB errors from negative values
   const rawLimit = parseInt(req.query.limit, 10) || 50;

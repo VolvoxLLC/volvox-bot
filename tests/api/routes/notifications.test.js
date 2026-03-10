@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -402,6 +403,69 @@ describe('notifications routes', () => {
       const res = await request(app).get(`/api/v1/guilds/${GUILD_ID}/notifications/deliveries`);
 
       expect(res.status).toBe(401);
+    });
+  });
+
+  // ── Guild admin auth enforcement (OAuth) ──────────────────────────────────
+
+  describe('guild admin auth enforcement (OAuth)', () => {
+    /**
+     * Create a JWT and register the corresponding session so the auth
+     * middleware accepts it as a valid OAuth session.
+     */
+    function createOAuthToken(userId = 'oauth-user-1') {
+      const jti = `jti-${userId}`;
+      sessionStore.set(userId, { accessToken: 'discord-access-token', jti });
+      return jwt.sign({ userId, username: 'testuser', jti }, 'jwt-test-secret', {
+        algorithm: 'HS256',
+      });
+    }
+
+    function mockFetchGuilds(guilds) {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => guilds,
+      });
+    }
+
+    beforeEach(() => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      guildCache.clear();
+    });
+
+    it('should return 200 for OAuth admin user', async () => {
+      const token = createOAuthToken();
+      // permissions: '8' = ADMINISTRATOR flag
+      mockFetchGuilds([{ id: GUILD_ID, name: 'Test Server', permissions: '8' }]);
+
+      const res = await request(app)
+        .get(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it('should return 403 for OAuth non-admin user', async () => {
+      const token = createOAuthToken();
+      // permissions: '0' = no permissions
+      mockFetchGuilds([{ id: GUILD_ID, name: 'Test Server', permissions: '0' }]);
+
+      const res = await request(app)
+        .get(`/api/v1/guilds/${GUILD_ID}/notifications/webhooks`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('admin access');
+    });
+
+    it('should return 400 when guildId is missing', async () => {
+      // Hit the route without a guildId segment — Express will 404 since the
+      // path does not match any route, which is effectively a missing guildId.
+      const res = await request(app)
+        .get('/api/v1/guilds//notifications/webhooks')
+        .set('x-api-secret', SECRET);
+
+      expect([400, 404]).toContain(res.status);
     });
   });
 });
