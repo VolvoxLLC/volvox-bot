@@ -5,6 +5,9 @@ export interface AiThreadMode {
   reuseWindowMinutes: number;
 }
 
+/** Per-channel AI response mode. */
+export type ChannelMode = 'off' | 'mention' | 'vibe';
+
 /** AI chat configuration. */
 export interface AiConfig {
   enabled: boolean;
@@ -14,6 +17,8 @@ export interface AiConfig {
   historyLength: number;
   historyTTLDays: number;
   threadMode: AiThreadMode;
+  channelModes: Record<string, ChannelMode>;
+  defaultChannelMode: ChannelMode;
 }
 
 /** AI Auto-Moderation configuration. */
