@@ -32,3 +32,10 @@ See [AGENTS.md](./AGENTS.md) for full project context, architecture, and coding 
   - Mounted `DashboardTitleSync` in `web/src/components/layout/dashboard-shell.tsx` so client-rendered dashboard pages update `document.title` on pathname changes without needing a server-wrapper refactor for every route.
   - Added static metadata for server-rendered dashboard entry pages (`/dashboard`, `/dashboard/config`, `/dashboard/performance`) and switched the root app metadata to a title template so direct loads and client transitions use the same suffix format.
   - Coverage lives in `web/tests/lib/page-titles.test.ts` and `web/tests/components/layout/dashboard-title-sync.test.tsx`.
+
+## Session Notes (2026-03-10)
+
+- Security fix for notifications API authorization bypass:
+  - Added guild-admin enforcement to notification webhook routes in `src/api/routes/notifications.js`.
+  - Normalized `:guildId` route param to `req.params.id` before applying `requireGuildAdmin`, preserving existing route paths while reusing standard guild permission checks.
+  - This ensures OAuth-authenticated users cannot manage notification webhooks for guilds where they lack admin access.
