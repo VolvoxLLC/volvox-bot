@@ -23,11 +23,12 @@ import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { computePatches, deepEqual } from '@/lib/config-utils';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
-import type { BotConfig, DeepPartial } from '@/types/config';
+import type { BotConfig, ChannelMode, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { ConfigDiff } from './config-diff';
 import { ConfigDiffModal } from './config-diff-modal';
 import { AuditLogSection } from './config-sections/AuditLogSection';
+import { ChannelModeSection } from './config-sections/ChannelModeSection';
 import { CommunitySettingsSection } from './config-sections/CommunitySettingsSection';
 import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
@@ -646,6 +647,39 @@ export function ConfigEditor() {
     [updateDraftConfig],
   );
 
+  const updateChannelMode = useCallback(
+    (channelId: string, mode: ChannelMode | undefined) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        const modes = { ...(prev.ai?.channelModes ?? {}) } as Record<string, ChannelMode>;
+        if (mode === undefined) {
+          delete modes[channelId];
+        } else {
+          modes[channelId] = mode;
+        }
+        return { ...prev, ai: { ...prev.ai, channelModes: modes } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateDefaultChannelMode = useCallback(
+    (mode: ChannelMode) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, ai: { ...prev.ai, defaultChannelMode: mode } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const resetAllChannelModes = useCallback(() => {
+    updateDraftConfig((prev) => {
+      if (!prev) return prev;
+      return { ...prev, ai: { ...prev.ai, channelModes: {} } } as GuildConfig;
+    });
+  }, [updateDraftConfig]);
+
   const updateWelcomeEnabled = useCallback(
     (enabled: boolean) => {
       updateDraftConfig((prev) => {
@@ -1091,6 +1125,18 @@ export function ConfigEditor() {
                 )
               }
               forceOpenAdvanced={forceOpenAdvancedFeatureId === 'ai-chat'}
+            />
+          )}
+
+          {/* Channel Mode section */}
+          {activeCategoryId === 'ai-automation' && visibleFeatureIds.has('ai-chat') && guildId && (
+            <ChannelModeSection
+              draftConfig={draftConfig}
+              saving={saving}
+              guildId={guildId}
+              onChannelModeChange={updateChannelMode}
+              onDefaultModeChange={updateDefaultChannelMode}
+              onResetAll={resetAllChannelModes}
             />
           )}
 
