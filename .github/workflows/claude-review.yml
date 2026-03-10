@@ -31,12 +31,10 @@ jobs:
           timeout_minutes: 15
           track_progress: true
           use_sticky_comment: true
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
           prompt: |
-            Run /code-review --comment on PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }} and post a comment with findings.
 
-            In addition to CLAUDE.md and AGENTS.md (which the plugin reads automatically),
+            In addition to CLAUDE.md and AGENTS.md,
             enforce these project-specific rules that the plugin cannot infer:
 
             HARD RULES (flag as high-confidence issues):
