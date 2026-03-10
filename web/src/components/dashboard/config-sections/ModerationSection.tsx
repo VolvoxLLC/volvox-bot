@@ -148,7 +148,7 @@ export function ModerationSection({
               label="Rate Limiting"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label htmlFor="max-messages" className="space-y-2">
               <span className="text-sm text-muted-foreground">Max Messages</span>
               <input
@@ -180,7 +180,7 @@ export function ModerationSection({
               />
             </label>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label htmlFor="mute-after-triggers" className="space-y-2">
               <span className="text-sm text-muted-foreground">Mute After Triggers</span>
               <input

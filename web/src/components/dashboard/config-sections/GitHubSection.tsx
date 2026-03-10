@@ -1,7 +1,6 @@
 'use client';
 
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { inputClasses } from './shared';
@@ -56,10 +55,10 @@ export function GitHubSection({ draftConfig, saving, onFieldChange }: GitHubSect
               id="poll-interval-minutes"
               type="number"
               min={1}
-              value={feed.pollIntervalMinutes ?? 5}
+              value={draftConfig.github?.feed?.pollIntervalMinutes ?? 5}
               onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 1);
-                if (num !== undefined) onFieldChange('pollIntervalMinutes', num);
+                const val = Math.max(1, parseInt(e.target.value, 10) || 5);
+                onFieldChange('pollIntervalMinutes', val);
               }}
               disabled={saving}
               className={inputClasses}

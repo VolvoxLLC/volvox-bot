@@ -91,9 +91,10 @@ export function AiAutoModSection({ draftConfig, saving, onFieldChange }: AiAutoM
                   if (val === '') return; // don't write 0 while user is clearing
                   const parsed = Number(val);
                   if (!Number.isNaN(parsed)) {
+                    const clamped = Math.min(100, Math.max(0, parsed));
                     onFieldChange('thresholds', {
                       ...thresholds,
-                      [cat]: percentToDecimal(parsed),
+                      [cat]: percentToDecimal(clamped),
                     });
                   }
                 }}

@@ -82,7 +82,7 @@ export function TriageSection({
             placeholder="e.g. claude-sonnet-4-6"
           />
         </label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label htmlFor="classify-budget" className="space-y-2">
             <span className="text-sm font-medium">Classify Budget</span>
             <input
@@ -116,7 +116,7 @@ export function TriageSection({
             />
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label htmlFor="default-interval-ms" className="space-y-2">
             <span className="text-sm font-medium">Default Interval (ms)</span>
             <input
@@ -148,7 +148,7 @@ export function TriageSection({
             />
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label htmlFor="context-messages" className="space-y-2">
             <span className="text-sm font-medium">Context Messages</span>
             <input
