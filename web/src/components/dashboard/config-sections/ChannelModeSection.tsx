@@ -6,9 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import type { GuildConfig } from '@/lib/config-utils';
 import { cn } from '@/lib/utils';
 import type { ChannelMode } from '@/types/config';
-import type { GuildConfig } from '@/lib/config-utils';
 
 // ── Discord channel types ──────────────────────────────────────────────────
 
@@ -54,7 +54,8 @@ function ModeSelector({
   ];
 
   function activeClasses(m: ChannelMode) {
-    if (mode !== m) return 'bg-transparent text-muted-foreground hover:bg-muted/60 border border-border';
+    if (mode !== m)
+      return 'bg-transparent text-muted-foreground hover:bg-muted/60 border border-border';
     switch (m) {
       case 'off':
         return 'bg-destructive/10 text-destructive border border-destructive/30 font-medium';
@@ -80,9 +81,7 @@ function ModeSelector({
           aria-pressed={mode === value}
         >
           {label}
-          {isDefault && value === mode && (
-            <span className="ml-1 opacity-60">✓</span>
-          )}
+          {isDefault && value === mode && <span className="ml-1 opacity-60">✓</span>}
         </button>
       ))}
     </div>
@@ -106,11 +105,7 @@ function ChannelIcon({ type }: { type: number }) {
 
 function ModeDot({ mode }: { mode: ChannelMode }) {
   const color =
-    mode === 'off'
-      ? 'bg-destructive'
-      : mode === 'vibe'
-        ? 'bg-emerald-500'
-        : 'bg-primary';
+    mode === 'off' ? 'bg-destructive' : mode === 'vibe' ? 'bg-emerald-500' : 'bg-primary';
   return <span className={cn('inline-block h-1.5 w-1.5 rounded-full shrink-0', color)} />;
 }
 
@@ -181,15 +176,10 @@ export function ChannelModeSection({
         if (!Array.isArray(data)) throw new Error('Invalid response');
 
         const channels: RawChannel[] = data
-          .filter(
-            (c): c is Record<string, unknown> =>
-              typeof c === 'object' && c !== null,
-          )
+          .filter((c): c is Record<string, unknown> => typeof c === 'object' && c !== null)
           .filter(
             (c) =>
-              typeof c.id === 'string' &&
-              typeof c.name === 'string' &&
-              typeof c.type === 'number',
+              typeof c.id === 'string' && typeof c.name === 'string' && typeof c.type === 'number',
           )
           .map((c) => ({
             id: c.id as string,
@@ -234,7 +224,8 @@ export function ChannelModeSection({
     for (const ch of visible) {
       const key = ch.parentId;
       if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(ch);
+      const bucket = map.get(key);
+      if (bucket) bucket.push(ch);
     }
 
     const result: Category[] = [];
@@ -328,9 +319,7 @@ export function ChannelModeSection({
           </div>
         )}
 
-        {error && (
-          <p className="text-sm text-destructive py-4">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive py-4">{error}</p>}
 
         {!loading && !error && categories.length === 0 && (
           <p className="text-sm text-muted-foreground py-4 text-center">
@@ -338,60 +327,62 @@ export function ChannelModeSection({
           </p>
         )}
 
-        {!loading && !error && categories.map((cat) => (
-          <div key={cat.id ?? '__uncategorized__'} className="space-y-1">
-            {/* Category header */}
-            <p className="text-xs font-semibold text-muted-foreground tracking-wider px-1 py-1 flex items-center gap-1.5">
-              <span>📁</span>
-              {cat.name}
-            </p>
+        {!loading &&
+          !error &&
+          categories.map((cat) => (
+            <div key={cat.id ?? '__uncategorized__'} className="space-y-1">
+              {/* Category header */}
+              <p className="text-xs font-semibold text-muted-foreground tracking-wider px-1 py-1 flex items-center gap-1.5">
+                <span>📁</span>
+                {cat.name}
+              </p>
 
-            {/* Channels */}
-            <div className="rounded-md border overflow-hidden divide-y divide-border">
-              {cat.channels.map((ch) => {
-                const override = channelModes[ch.id] as ChannelMode | undefined;
-                const effectiveMode: ChannelMode = override ?? defaultMode;
-                const isOverridden = override !== undefined && override !== defaultMode;
+              {/* Channels */}
+              <div className="rounded-md border overflow-hidden divide-y divide-border">
+                {cat.channels.map((ch) => {
+                  const override = channelModes[ch.id] as ChannelMode | undefined;
+                  const effectiveMode: ChannelMode = override ?? defaultMode;
+                  const isOverridden = override !== undefined && override !== defaultMode;
 
-                return (
-                  <div
-                    key={ch.id}
-                    className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between bg-card hover:bg-muted/30 transition-colors"
-                  >
-                    {/* Channel name */}
-                    <div className="flex items-center gap-2 min-w-0">
-                      <ChannelIcon type={ch.type} />
-                      <span className="text-sm truncate">{ch.name}</span>
-                      {isOverridden && <ModeDot mode={effectiveMode} />}
-                    </div>
+                  return (
+                    <div
+                      key={ch.id}
+                      className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between bg-card hover:bg-muted/30 transition-colors"
+                    >
+                      {/* Channel name */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <ChannelIcon type={ch.type} />
+                        <span className="text-sm truncate">{ch.name}</span>
+                        {isOverridden && <ModeDot mode={effectiveMode} />}
+                      </div>
 
-                    {/* Controls */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <ModeSelector
-                        mode={effectiveMode}
-                        onChange={(m) => handleChannelMode(ch.id, m)}
-                        disabled={saving}
-                        isDefault={!isOverridden}
-                      />
-                      {isOverridden && (
-                        <button
-                          type="button"
-                          onClick={() => onChannelModeChange(ch.id, undefined)}
+                      {/* Controls */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <ModeSelector
+                          mode={effectiveMode}
+                          onChange={(m) => handleChannelMode(ch.id, m)}
                           disabled={saving}
-                          title="Reset to default"
-                          className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                          aria-label={`Reset #${ch.name} to default`}
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                          isDefault={!isOverridden}
+                        />
+                        {isOverridden && (
+                          <button
+                            type="button"
+                            onClick={() => onChannelModeChange(ch.id, undefined)}
+                            disabled={saving}
+                            title="Reset to default"
+                            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                            aria-label={`Reset #${ch.name} to default`}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
         {/* Reset all */}
         {hasOverrides && (
