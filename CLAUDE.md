@@ -32,3 +32,12 @@ See [AGENTS.md](./AGENTS.md) for full project context, architecture, and coding 
   - Mounted `DashboardTitleSync` in `web/src/components/layout/dashboard-shell.tsx` so client-rendered dashboard pages update `document.title` on pathname changes without needing a server-wrapper refactor for every route.
   - Added static metadata for server-rendered dashboard entry pages (`/dashboard`, `/dashboard/config`, `/dashboard/performance`) and switched the root app metadata to a title template so direct loads and client transitions use the same suffix format.
   - Coverage lives in `web/tests/lib/page-titles.test.ts` and `web/tests/components/layout/dashboard-title-sync.test.tsx`.
+
+## Session Notes (2026-03-10)
+
+- Security fix: `/reactionrole add` now enforces invoker role hierarchy for target role assignment in addition to existing bot-role hierarchy check.
+  - Added guard in `src/commands/reactionrole.js` that blocks non-owner invokers from configuring roles at or above their highest role.
+  - Guild owners are explicitly exempted, matching Discord permission model expectations.
+- Extended command tests in `tests/commands/reactionrole.test.js`:
+  - Added coverage for rejection when invoker cannot manage the target role.
+  - Added coverage confirming guild owners can still configure higher roles.

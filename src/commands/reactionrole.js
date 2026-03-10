@@ -204,6 +204,16 @@ async function handleAdd(interaction) {
     return;
   }
 
+  // Guard: invoker must be allowed to manage the role
+  const invokingMember = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  const isGuildOwner = interaction.guild.ownerId === invokingMember?.id;
+  if (!isGuildOwner && invokingMember && role.position >= invokingMember.roles.highest.position) {
+    await safeEditReply(interaction, {
+      content: `❌ You can't configure **${role.name}** because it's higher than (or equal to) your highest role.`,
+    });
+    return;
+  }
+
   // Normalise emoji to a stable string
   const emojiKey = normaliseInputEmoji(emojiInput);
 
