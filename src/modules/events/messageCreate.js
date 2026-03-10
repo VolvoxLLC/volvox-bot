@@ -8,7 +8,7 @@ import { error as logError, warn } from '../../logger.js';
 import { getUserFriendlyMessage } from '../../utils/errors.js';
 import { safeReply } from '../../utils/safeSend.js';
 import { handleAfkMentions } from '../afkHandler.js';
-import { isChannelBlocked } from '../ai.js';
+import { getChannelMode, isChannelBlocked } from '../ai.js';
 import { checkAiAutoMod } from '../aiAutoMod.js';
 import { getConfig } from '../config.js';
 import { trackMessage } from '../engagement.js';
@@ -138,7 +138,7 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       }
     })();
 
-    // AI chat — @mention or reply to bot → instant triage evaluation
+    // AI chat — mode-based routing (off / mention / vibe)
     if (guildConfig.ai?.enabled) {
       const isMentioned = message.mentions.has(client.user);
 
@@ -163,7 +163,7 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         }
       }
 
-      // Check if in allowed channel (if configured)
+      // Check if in allowed channel (if configured) — backward compat whitelist.
       // When inside a thread, check the parent channel ID against the allowlist
       // so thread replies aren't blocked by the whitelist.
       const allowedChannels = guildConfig.ai?.channels || [];
@@ -173,18 +173,28 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       const isAllowedChannel =
         allowedChannels.length === 0 || allowedChannels.includes(channelIdToCheck);
 
-      // Check blocklist — blocked channels never get AI responses.
-      // For threads, parentId is also checked so blocking the parent channel
-      // blocks all its child threads.
+      // Resolve per-channel mode (off/mention/vibe).
+      // getChannelMode already handles blockedChannelIds internally.
       const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
+      const mode = getChannelMode(message.channel.id, parentId, message.guild.id);
+
+      // 'off' → No AI at all (no accumulate, no evaluate)
+      if (mode === 'off') return;
+
+      // Backward-compat: isChannelBlocked is now folded into getChannelMode,
+      // but keep the explicit call as a safety net for any callers that bypass mode.
       if (isChannelBlocked(message.channel.id, parentId, message.guild.id)) return;
 
-      if ((isMentioned || isReply) && isAllowedChannel) {
+      /**
+       * Helper: run quiet-mode command handler + quiet-mode gate + evaluateNow.
+       * Used by both 'mention' and 'vibe' paths when isMentioned || isReply.
+       */
+      const handleDirectMention = async () => {
         // Quiet mode: handle commands first (even during quiet mode so users can unquiet)
         if (isMentioned) {
           try {
             const wasQuietCommand = await handleQuietCommand(message, guildConfig);
-            if (wasQuietCommand) return;
+            if (wasQuietCommand) return true; // signal caller to return
           } catch (qmErr) {
             logError('Quiet mode command handler failed', {
               channelId: message.channel.id,
@@ -197,7 +207,7 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         // Quiet mode: suppress AI responses when quiet mode is active (gated on feature enabled)
         if (guildConfig.quietMode?.enabled) {
           try {
-            if (await isQuietMode(message.guild.id, message.channel.id)) return;
+            if (await isQuietMode(message.guild.id, message.channel.id)) return true;
           } catch (qmErr) {
             logError('Quiet mode check failed', {
               channelId: message.channel.id,
@@ -217,7 +227,7 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
             channelId: message.channel.id,
             error: accErr?.message,
           });
-          return;
+          return true;
         }
 
         // Show typing indicator immediately so the user sees feedback
@@ -248,7 +258,24 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
           }
         }
 
-        return; // Don't accumulate again below
+        return true; // handled
+      };
+
+      if (mode === 'mention') {
+        // Only respond to @mentions/replies (current default behavior)
+        if ((isMentioned || isReply) && isAllowedChannel) {
+          await handleDirectMention();
+          return; // Don't accumulate again below
+        }
+      } else if (mode === 'vibe') {
+        if ((isMentioned || isReply) && isAllowedChannel) {
+          // Direct mention in vibe mode → immediate evaluation
+          const handled = await handleDirectMention();
+          if (handled) return; // Don't accumulate again below
+        }
+        // In vibe mode, ALL messages (in allowed channels) get accumulated for triage.
+        // Fall through to the accumulate block below.
+        if (!isAllowedChannel) return;
       }
     }
 
