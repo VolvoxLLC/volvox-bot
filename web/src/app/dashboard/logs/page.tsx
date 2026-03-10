@@ -3,6 +3,7 @@
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
 
 /**
@@ -13,7 +14,8 @@ import { useLogStream } from '@/lib/log-ws';
  * Also displays health cards and restart history.
  */
 export default function LogsPage() {
-  const { logs, status, sendFilter, clearLogs } = useLogStream();
+  const guildId = useGuildSelection();
+  const { logs, status, sendFilter, clearLogs } = useLogStream(guildId);
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col gap-6">

@@ -56,7 +56,8 @@ function validateTicket(ticket, secret) {
   const [nonce, expiry, guildId, hmac] = parts;
   if (!nonce || !expiry || !guildId || !hmac) return { valid: false, guildId: null };
   const expiryNum = Number(expiry);
-  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return { valid: false, guildId: null };
+  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now())
+    return { valid: false, guildId: null };
   const expected = createHmac('sha256', secret)
     .update(`${nonce}.${expiry}.${guildId}`)
     .digest('hex');
@@ -238,8 +239,11 @@ function handleConnection(ws) {
 /**
  * Check whether an entry matches a client's filter.
  *
- * @param {Object} filter - Client's active filter (may be null)
+ * @param {Object|null} filter - Client's active filter. When null (no filter
+ *   set), only entries whose `guild_id` matches `authenticatedGuildId` pass.
  * @param {Object} entry - Audit log entry
+ * @param {string} authenticatedGuildId - The guild ID the client authenticated
+ *   with. Entries are always scoped to this guild; a missing value returns false.
  * @returns {boolean}
  */
 function matchesFilter(filter, entry, authenticatedGuildId) {

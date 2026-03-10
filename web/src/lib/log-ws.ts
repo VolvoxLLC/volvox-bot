@@ -89,9 +89,11 @@ function normalizeEntry(raw: unknown, id: string): LogEntry | null {
  * Fetches WS URL + auth secret from the Next.js API route first, then
  * maintains a WebSocket connection with auto-reconnect (exponential backoff).
  *
+ * @param guildId - The Discord guild ID to scope the connection to. Connection
+ *   is disabled until a guildId is provided.
  * @param enabled - Set to false to disable connection (e.g. when page is hidden)
  */
-export function useLogStream(enabled = true): UseLogStreamResult {
+export function useLogStream(guildId: string | null, enabled = true): UseLogStreamResult {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
 
@@ -106,9 +108,11 @@ export function useLogStream(enabled = true): UseLogStreamResult {
 
   // ── Fetch ticket once ──────────────────────────────────────────────────────
   const fetchTicket = useCallback(async (): Promise<{ wsUrl: string; ticket: string } | null> => {
+    if (!guildId) return null;
     // Always fetch a fresh ticket — they're short-lived HMAC tokens
     try {
-      const res = await fetch('/api/log-stream/ws-ticket', { cache: 'no-store' });
+      const url = `/api/log-stream/ws-ticket?guildId=${encodeURIComponent(guildId)}`;
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) return null;
       const data = (await res.json()) as { wsUrl?: string; ticket?: string };
       if (!data.wsUrl || !data.ticket) return null;
@@ -117,7 +121,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
     } catch {
       return null;
     }
-  }, []);
+  }, [guildId]);
 
   // ── Connect ────────────────────────────────────────────────────────────────
   const connect = useCallback(async () => {
@@ -236,7 +240,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
   useEffect(() => {
     unmountedRef.current = false;
 
-    if (enabled) {
+    if (enabled && guildId) {
       setStatus('reconnecting');
       connect();
     }
@@ -253,7 +257,7 @@ export function useLogStream(enabled = true): UseLogStreamResult {
       }
       setStatus('disconnected');
     };
-  }, [enabled, connect]);
+  }, [enabled, guildId, connect]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const sendFilter = useCallback((filter: LogFilter) => {

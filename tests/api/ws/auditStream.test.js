@@ -24,9 +24,7 @@ const TEST_SECRET = 'audit-stream-test-secret';
 function makeTicket(guildId = 'guild1', secret = TEST_SECRET, ttlMs = 60_000) {
   const nonce = randomBytes(16).toString('hex');
   const expiry = String(Date.now() + ttlMs);
-  const hmac = createHmac('sha256', secret)
-    .update(`${nonce}.${expiry}.${guildId}`)
-    .digest('hex');
+  const hmac = createHmac('sha256', secret).update(`${nonce}.${expiry}.${guildId}`).digest('hex');
   return `${nonce}.${expiry}.${guildId}.${hmac}`;
 }
 
@@ -275,17 +273,16 @@ describe('Audit Log WebSocket Stream', () => {
     await waitForClose(ws);
   });
 
-  it('should NOT broadcast to client with non-matching guildId filter', async () => {
+  it('should NOT broadcast cross-guild entries to a guild1-authenticated client', async () => {
     const ws = await connectWs(port);
     const q = createMessageQueue(ws);
-    sendJson(ws, { type: 'auth', ticket: makeTicket() });
+    sendJson(ws, { type: 'auth', ticket: makeTicket('guild1') });
     await q.next(); // auth_ok
-    sendJson(ws, { type: 'filter', guildId: 'other-guild' });
-    await q.next(); // filter_ok
 
+    // Broadcast an entry from a different guild — the server should not forward it
     broadcastAuditEntry({
       id: 3,
-      guild_id: 'guild1',
+      guild_id: 'other-guild',
       user_id: 'user1',
       action: 'config.update',
       created_at: new Date().toISOString(),
