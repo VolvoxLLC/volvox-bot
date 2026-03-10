@@ -71,6 +71,7 @@ function makeInteraction(subcommand, options = {}) {
 
   const fakeGuild = {
     id: options.guildId ?? 'guild-1',
+    ownerId: options.ownerId ?? 'owner-1',
     channels: {
       fetch: vi.fn().mockResolvedValue(fakeChannel),
     },
@@ -78,11 +79,16 @@ function makeInteraction(subcommand, options = {}) {
       fetchMe: vi.fn().mockResolvedValue({
         roles: { highest: { position: 100 } },
       }),
+      fetch: vi.fn().mockResolvedValue({
+        id: options.userId ?? 'user-1',
+        roles: { highest: { position: options.memberHighestRolePosition ?? 50 } },
+      }),
     },
   };
 
   return {
     guildId: options.guildId ?? 'guild-1',
+    user: { id: options.userId ?? 'user-1' },
     guild: fakeGuild,
     channel: fakeChannel,
     deferReply: vi.fn().mockResolvedValue(undefined),
@@ -220,6 +226,61 @@ describe('/reactionrole command', () => {
         interaction,
         expect.objectContaining({ content: expect.stringContaining('Added') }),
       );
+    });
+
+    it('rejects when invoker cannot manage target role', async () => {
+      makePool();
+      const menu = {
+        id: 7,
+        guild_id: 'guild-1',
+        channel_id: 'ch-1',
+        message_id: 'msg-1',
+        title: 'T',
+        description: null,
+      };
+      findMenuByMessageId.mockResolvedValue(menu);
+
+      const role = { id: 'r-admin', name: 'Admin', position: 80 };
+      const interaction = makeInteraction('add', {
+        strings: { message_id: 'msg-1', emoji: '⭐' },
+        role,
+        memberHighestRolePosition: 50,
+      });
+
+      await execute(interaction);
+
+      expect(upsertReactionRoleEntry).not.toHaveBeenCalled();
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining("can't configure") }),
+      );
+    });
+
+    it('allows guild owner to configure higher roles', async () => {
+      makePool();
+      const menu = {
+        id: 7,
+        guild_id: 'guild-1',
+        channel_id: 'ch-1',
+        message_id: 'msg-1',
+        title: 'T',
+        description: null,
+      };
+      findMenuByMessageId.mockResolvedValue(menu);
+      upsertReactionRoleEntry.mockResolvedValue({ id: 1 });
+
+      const role = { id: 'r-admin', name: 'Admin', position: 80 };
+      const interaction = makeInteraction('add', {
+        strings: { message_id: 'msg-1', emoji: '⭐' },
+        role,
+        userId: 'owner-1',
+        ownerId: 'owner-1',
+        memberHighestRolePosition: 10,
+      });
+
+      await execute(interaction);
+
+      expect(upsertReactionRoleEntry).toHaveBeenCalledWith(7, '⭐', 'r-admin');
     });
   });
 

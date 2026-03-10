@@ -21,11 +21,13 @@ vi.mock('../../../src/logger.js', () => ({
 
 const TEST_SECRET = 'audit-stream-test-secret';
 
-function makeTicket(secret = TEST_SECRET, ttlMs = 60_000) {
+function makeTicket(guildId = 'guild1', secret = TEST_SECRET, ttlMs = 60_000) {
   const nonce = randomBytes(16).toString('hex');
   const expiry = String(Date.now() + ttlMs);
-  const hmac = createHmac('sha256', secret).update(`${nonce}.${expiry}`).digest('hex');
-  return `${nonce}.${expiry}.${hmac}`;
+  const hmac = createHmac('sha256', secret)
+    .update(`${nonce}.${expiry}.${guildId}`)
+    .digest('hex');
+  return `${nonce}.${expiry}.${guildId}.${hmac}`;
 }
 
 function createTestServer() {
@@ -150,7 +152,7 @@ describe('Audit Log WebSocket Stream', () => {
 
   it('should reject an expired ticket', async () => {
     const ws = await connectWs(port);
-    const expired = makeTicket(TEST_SECRET, -1000);
+    const expired = makeTicket('guild1', TEST_SECRET, -1000);
     sendJson(ws, { type: 'auth', ticket: expired });
     const code = await waitForClose(ws);
     expect(code).toBe(4003);
@@ -208,7 +210,7 @@ describe('Audit Log WebSocket Stream', () => {
 
   // ─── broadcastAuditEntry ─────────────────────────────────────────────────
 
-  it('should broadcast entry to authenticated clients with no filter', async () => {
+  it('should broadcast entry to authenticated clients for their authenticated guild with no filter', async () => {
     const ws = await connectWs(port);
     const q = createMessageQueue(ws);
     sendJson(ws, { type: 'auth', ticket: makeTicket() });
@@ -226,6 +228,25 @@ describe('Audit Log WebSocket Stream', () => {
     const msg = await q.next();
     expect(msg.type).toBe('entry');
     expect(msg.entry.action).toBe('config.update');
+    ws.close();
+    await waitForClose(ws);
+  });
+
+  it('should NOT broadcast entries from other guilds without filter', async () => {
+    const ws = await connectWs(port);
+    const q = createMessageQueue(ws);
+    sendJson(ws, { type: 'auth', ticket: makeTicket('guild1') });
+    await q.next(); // auth_ok
+
+    broadcastAuditEntry({
+      id: 200,
+      guild_id: 'guild2',
+      user_id: 'user1',
+      action: 'config.update',
+      created_at: new Date().toISOString(),
+    });
+
+    await expect(q.next(500)).rejects.toThrow('Message timeout');
     ws.close();
     await waitForClose(ws);
   });
@@ -347,5 +368,20 @@ describe('Audit Log WebSocket Stream', () => {
   it('should not throw if broadcastAuditEntry called before setup', async () => {
     await stopAuditStream(); // force wss to null
     expect(() => broadcastAuditEntry({ id: 99, guild_id: 'x', action: 'y' })).not.toThrow();
+  });
+
+  it('should reject filter guildId that differs from authenticated guild', async () => {
+    const ws = await connectWs(port);
+    const q = createMessageQueue(ws);
+    sendJson(ws, { type: 'auth', ticket: makeTicket('guild1') });
+    await q.next(); // auth_ok
+
+    sendJson(ws, { type: 'filter', guildId: 'guild2', action: 'config.update' });
+    const msg = await q.next();
+    expect(msg.type).toBe('error');
+    expect(msg.message).toContain('Guild filter does not match authenticated guild');
+
+    ws.close();
+    await waitForClose(ws);
   });
 });
