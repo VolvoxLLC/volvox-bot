@@ -47,7 +47,7 @@ function LoginForm() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-discord text-white font-bold text-2xl shadow-lg mb-4">
             B
           </div>
-          <CardTitle className="text-2xl">Welcome to Bill Bot</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Volvox.Bot</CardTitle>
           <CardDescription>
             Sign in with your Discord account to manage your server.
           </CardDescription>

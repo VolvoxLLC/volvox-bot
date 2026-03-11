@@ -1,5 +1,5 @@
 /**
- * Volvox Bot - Volvox Discord Bot
+ * Volvox.Bot - Volvox Discord Bot
  * Main entry point - orchestrates modules
  *
  * Features:
@@ -107,7 +107,7 @@ let config = {};
 // below (e.g. { parse: ['users', 'roles'] }). You would also need to update
 // SAFE_ALLOWED_MENTIONS in src/utils/safeSend.js to match.
 //
-// See: https://github.com/BillChirico/volvox-bot/issues/61
+// See: https://github.com/VolvoxLLC/volvox-bot/issues/61
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,

@@ -28,6 +28,8 @@ export const CONFIG_SCHEMA = {
           reuseWindowMinutes: { type: 'number' },
         },
       },
+      channelModes: { type: 'object', openProperties: true },
+      defaultChannelMode: { type: 'string' },
     },
   },
   welcome: {

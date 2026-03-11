@@ -3,8 +3,8 @@
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { Button } from '@/components/ui/button';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { HealthCards } from './health-cards';
 import { RestartHistory } from './restart-history';
 import { type BotHealth, isBotHealth } from './types';

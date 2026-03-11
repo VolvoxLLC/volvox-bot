@@ -1,19 +1,27 @@
-# AGENTS.md - Volvox Bot Workspace
+# AGENTS.md - Volvox.Bot Workspace
 
 Coding agent workspace for VolvoxLLC/volvox-bot Discord bot development.
 
-## Every Session
+## Prerequisites
 
-Before doing anything else:
+- **Node.js >=22.0.0** (required by `engines` field)
+- **pnpm** (package manager — `pnpm-workspace.yaml` monorepo)
+- **PostgreSQL** — primary data store
+- **Redis** — optional, falls back to in-memory
 
-1. Read `CLAUDE.md` — coding standards and persona
+### Environment Setup
 
-## Before Ending Session
+```bash
+cp .env.example .env   # Fill in values — see .env.example for full docs
+pnpm install
+pnpm migrate           # Run database migrations
+pnpm deploy            # Register slash commands with Discord
+pnpm start             # Start the bot
+```
 
-After completing infrastructure work:
-
-- Update **CLAUDE.md** with technical decisions and session notes
-- **Self-check:** "Did I document the important stuff?"
+**Required env vars:** `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DATABASE_URL`
+**Required for dashboard:** `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `BOT_API_SECRET`
+**Required for AI features:** `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (not both)
 
 ## Code Quality Standards
 
@@ -33,32 +41,90 @@ src/
 ├── index.js              # Bot entry point, event handlers
 ├── logger.js             # Winston logger singleton
 ├── redis.js              # Redis client with graceful degradation
+├── deploy-commands.js    # Slash command registration (pnpm deploy)
 ├── modules/
 │   ├── ai.js             # AI chat + channel blocklist
 │   ├── aiAutoMod.js      # Claude-powered auto-moderation
+│   ├── aiFeedback.js     # 👍👎 reaction feedback tracking
+│   ├── afkHandler.js     # AFK status management
+│   ├── auditLogger.js    # Audit log recording
+│   ├── backup.js         # Guild config backup/restore
+│   ├── botStatus.js      # Bot presence/status management
+│   ├── challengeScheduler.js # Scheduled community challenges
+│   ├── cli-process.js    # Claude CLI subprocess management
+│   ├── commandAliases.js # Command alias resolution
 │   ├── config.js         # Config management (DB-backed)
+│   ├── engagement.js     # User engagement tracking
+│   ├── events.js         # Scheduled events
+│   ├── githubFeed.js     # GitHub webhook → Discord feed
+│   ├── linkFilter.js     # Link filtering/moderation
+│   ├── memory.js         # User long-term memory (mem0)
 │   ├── moderation.js     # Mod actions + case management
+│   ├── optout.js         # User opt-out handling
 │   ├── performanceMonitor.js  # Memory/CPU tracking
+│   ├── pollHandler.js    # Poll creation/management
+│   ├── quietMode.js      # Quiet hours/mode
+│   ├── rateLimit.js      # Rate limiting logic
+│   ├── reactionRoles.js  # Reaction-based role assignment
+│   ├── reminderHandler.js # Scheduled reminders
+│   ├── reputation.js     # Reputation/XP system
+│   ├── reputationDefaults.js # Default reputation config
+│   ├── reviewHandler.js  # Review/approval workflows
+│   ├── roleMenuTemplates.js  # Role menu system
+│   ├── scheduler.js      # Task scheduling
+│   ├── spam.js           # Spam detection
+│   ├── starboard.js      # Starboard feature
+│   ├── tempRoleHandler.js # Temporary role assignment
+│   ├── threading.js      # Thread management
+│   ├── ticketHandler.js  # Support ticket system
+│   ├── triage.js         # AI triage orchestrator
+│   ├── triage-*.js       # Triage sub-modules (buffer, config, filter, parse, prompt, respond)
+│   ├── voice.js          # Voice channel features
+│   ├── warningEngine.js  # Warning/strike system
 │   ├── webhookNotifier.js     # Outbound webhooks
-│   ├── roleMenuTemplates.js   # Role menu system
-│   └── ...               # Other modules
-├── commands/             # Slash commands
-├── api/                  # REST API (Express)
-│   ├── routes/           # API endpoints
+│   ├── welcome.js        # Welcome messages
+│   └── welcomeOnboarding.js   # New member onboarding flow
+├── commands/             # Slash commands (~45 commands)
+├── prompts/              # AI prompt templates
+│   ├── index.js          # Prompt loader
+│   ├── triage-*.md       # Triage system/user prompts
+│   ├── anti-abuse.md     # Anti-abuse guardrails
+│   ├── community-rules.md    # Community rule context
+│   └── search-guardrails.md  # Search safety rules
+├── api/                  # REST API (Express 5)
+│   ├── server.js         # Express app setup + route mounting
+│   ├── swagger.js        # OpenAPI/Swagger config
+│   ├── routes/           # 19 route files (auth, config, moderation, etc.)
 │   ├── middleware/       # Auth, rate limiting
 │   │   └── redisRateLimit.js # Distributed rate limiting
 │   └── utils/            # Helpers (configAllowlist, validation)
 ├── utils/
-│   ├── cache.js          # Redis cache wrapper
-│   └── discordCache.js   # Discord API response caching
+│   ├── cache.js          # Redis cache wrapper (Redis + in-memory fallback)
+│   ├── discordCache.js   # Discord API response caching
+│   ├── reputationCache.js # Leaderboard/rank caching
+│   ├── safeSend.js       # Safe Discord message helpers
+│   ├── permissions.js    # Permission checking
+│   ├── errors.js         # Error types and handling
+│   ├── modAction.js      # Mod action recording
+│   ├── modExempt.js      # Mod exemption checks
+│   ├── retry.js          # Retry with backoff
+│   ├── loadCommands.js   # Command file loader
+│   ├── registerCommands.js # Discord API command registration
+│   ├── health.js         # Health check utilities
+│   ├── timeParser.js     # Duration/time parsing
+│   ├── cronParser.js     # Cron expression parsing
+│   ├── sanitizeMentions.js # Mention sanitization
+│   └── ...               # + splitMessage, logQuery, duration, etc.
 └── transports/
-    └── sentry.js         # Sentry Winston transport
+    ├── sentry.js         # Sentry Winston transport
+    ├── postgres.js        # PostgreSQL Winston transport
+    └── websocket.js       # WebSocket log streaming
 
-web/                      # Next.js dashboard
+web/                      # Next.js 16 dashboard
 ├── src/
 │   ├── app/              # App router pages
 │   ├── components/       # React components
-│   └── lib/              # Utilities
+│   └── lib/              # Utilities (page-titles.ts, etc.)
 ```
 
 ## Key Patterns
@@ -88,9 +154,8 @@ web/                      # Next.js dashboard
 - Channel blocklist for ignoring specific channels
 
 ### Database
-- node-pg-migrate for migrations (`.cjs` files, ESM conflict)
-- Sequential migration numbering (001, 002, ...)
-- All queries use parameterized SQL
+- All queries use parameterized SQL — never string interpolation
+- See "Database Migrations" section above for migration commands
 
 ### Web Dashboard
 - Next.js 16 with App Router
@@ -105,6 +170,17 @@ Browser tab titles are managed via two mechanisms:
 - **Client-side navigations**: `DashboardTitleSync` component (mounted in the dashboard shell) syncs `document.title` using `getDashboardDocumentTitle()`
 
 **When adding a new dashboard route**, you must add a matcher entry to `dashboardTitleMatchers` in `web/src/lib/page-titles.ts`. Use exact equality for leaf routes (`pathname === '/dashboard/my-route'`) plus a subtree check (`pathname.startsWith('/dashboard/my-route/')`) to avoid false-positive matches on future sibling routes. For SSR entry points, also export `metadata` from the page file using `createPageMetadata(title)`.
+
+#### Visual Change Verification (MANDATORY)
+
+**Every single visual change to the dashboard MUST be verified using the Chrome DevTools MCP server. This is non-negotiable and cannot be skipped.** After any UI modification (layout, styling, components, theming, responsive adjustments), you must:
+
+1. Use `mcp__chrome-devtools__take_screenshot` to capture the result
+2. Visually confirm the change renders correctly
+3. Check both dark and light themes if the change affects colors/theming
+4. Verify responsive behavior if the change affects layout
+
+Do NOT mark dashboard UI work as complete without visual verification. If the dashboard is not running or the MCP server is unavailable, flag it — do not silently skip verification.
 
 ## Common Tasks
 
@@ -129,6 +205,33 @@ Browser tab titles are managed via two mechanisms:
 3. Add auth middleware if needed
 4. Document in OpenAPI spec
 5. Add tests in `tests/api/`
+
+## Running the Bot
+
+```bash
+pnpm start               # Start the bot (node src/index.js)
+pnpm dev                 # Start with --watch (auto-restart on changes)
+pnpm deploy              # Register slash commands with Discord
+LOG_LEVEL=debug pnpm start  # Debug mode
+```
+
+## Database Migrations
+
+```bash
+pnpm migrate             # Run pending migrations
+pnpm migrate:down        # Roll back last migration
+pnpm migrate:create NAME # Create new migration file
+```
+
+Migrations live in `migrations/` as `.cjs` files (ESM conflict with node-pg-migrate). Sequential numbering (001, 002, ...).
+
+## API Documentation
+
+```bash
+pnpm docs:generate       # Regenerate OpenAPI spec from JSDoc annotations
+```
+
+OpenAPI spec: `docs/openapi.json`. Swagger annotations in `src/api/swagger.js`.
 
 ## Monorepo Tooling
 
@@ -191,12 +294,6 @@ All bots re-review on every push. Fix real bugs, resolve stale threads in batche
 3. **Tests failing** — Check if migration ran, verify test DB is clean
 4. **Config not saving** — Verify key is in `SAFE_CONFIG_KEYS`
 5. **CI failing** — Run `pnpm test:coverage` locally, check threshold
-
-### Debug Mode
-
-```bash
-LOG_LEVEL=debug pnpm start
-```
 
 ## Resources
 

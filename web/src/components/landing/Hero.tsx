@@ -62,7 +62,7 @@ function ChatPreview() {
     {
       id: 'bot-1',
       role: 'bot',
-      content: "Hey! I'm Volvox Bot. I can help with moderation, AI chat, and more!",
+      content: "Hey! I'm Volvox.Bot. I can help with moderation, AI chat, and more!",
     },
   ];
 

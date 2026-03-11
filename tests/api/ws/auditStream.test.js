@@ -24,9 +24,7 @@ const TEST_SECRET = 'audit-stream-test-secret';
 function makeTicket(guildId = 'guild1', secret = TEST_SECRET, ttlMs = 60_000) {
   const nonce = randomBytes(16).toString('hex');
   const expiry = String(Date.now() + ttlMs);
-  const hmac = createHmac('sha256', secret)
-    .update(`${nonce}.${expiry}.${guildId}`)
-    .digest('hex');
+  const hmac = createHmac('sha256', secret).update(`${nonce}.${expiry}.${guildId}`).digest('hex');
   return `${nonce}.${expiry}.${guildId}.${hmac}`;
 }
 
@@ -275,14 +273,16 @@ describe('Audit Log WebSocket Stream', () => {
     await waitForClose(ws);
   });
 
-  it('should NOT broadcast to client with non-matching guildId filter', async () => {
+  it('should reject filter with non-matching guildId and still deliver entries for authenticated guild', async () => {
     const ws = await connectWs(port);
     const q = createMessageQueue(ws);
     sendJson(ws, { type: 'auth', ticket: makeTicket() });
     await q.next(); // auth_ok
     sendJson(ws, { type: 'filter', guildId: 'other-guild' });
-    await q.next(); // filter_ok
+    const errMsg = await q.next(); // error — guild mismatch
+    expect(errMsg.type).toBe('error');
 
+    // No valid filter was set, so entries for the authenticated guild still arrive
     broadcastAuditEntry({
       id: 3,
       guild_id: 'guild1',
@@ -291,8 +291,9 @@ describe('Audit Log WebSocket Stream', () => {
       created_at: new Date().toISOString(),
     });
 
-    // No message should arrive — timeout should fire
-    await expect(q.next(500)).rejects.toThrow('Message timeout');
+    const msg = await q.next();
+    expect(msg.type).toBe('entry');
+    expect(msg.entry.guild_id).toBe('guild1');
     ws.close();
     await waitForClose(ws);
   });

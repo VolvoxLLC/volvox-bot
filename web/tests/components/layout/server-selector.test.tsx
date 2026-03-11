@@ -52,7 +52,7 @@ describe("ServerSelector", () => {
     await waitFor(() => {
       expect(screen.getByText("No mutual servers")).toBeInTheDocument();
       expect(
-        screen.getByText(/Bill Bot isn't in any of your Discord servers/),
+        screen.getByText(/Volvox.Bot isn't in any of your Discord servers/),
       ).toBeInTheDocument();
     });
   });
