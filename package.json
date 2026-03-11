@@ -42,7 +42,7 @@
     "jsonwebtoken": "^9.0.3",
     "mem0ai": "^2.2.4",
     "node-pg-migrate": "^8.0.4",
-    "pg": "^8.19.0",
+    "pg": "^8.20.0",
     "swagger-jsdoc": "^6.2.8",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
