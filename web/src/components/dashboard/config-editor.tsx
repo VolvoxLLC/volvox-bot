@@ -1047,7 +1047,7 @@ export function ConfigEditor() {
             You have unsaved changes in {changedCategoryCount}{' '}
             {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
             <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
-              Ctrl+S
+              Ctrl/⌘+S
             </kbd>{' '}
             to save.
           </output>
