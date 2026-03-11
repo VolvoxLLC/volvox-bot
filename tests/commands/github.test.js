@@ -116,7 +116,7 @@ function makeInteraction(subcommandGroup, subcommand, options = {}) {
 describe('isValidRepo', () => {
   it('accepts valid owner/repo', () => {
     expect(isValidRepo('VolvoxLLC/volvox-bot')).toBe(true);
-    expect(isValidRepo('VolvoxLLC/volvox-bot')).toBe(true);
+    expect(isValidRepo('octocat/hello-world')).toBe(true);
   });
 
   it('rejects missing slash', () => {
