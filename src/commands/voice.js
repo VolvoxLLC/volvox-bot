@@ -88,6 +88,10 @@ export async function execute(interaction) {
   if (sub === 'leaderboard') return handleLeaderboard(interaction);
   if (sub === 'stats') return handleStats(interaction);
   if (sub === 'export') return handleExport(interaction);
+
+  return safeEditReply(interaction, {
+    content: `❌ Unknown subcommand: \`${sub}\``,
+  });
 }
 
 // ─── /voice leaderboard ───────────────────────────────────────────────────────

@@ -21,6 +21,10 @@ import { autocomplete, data, execute } from '../../src/commands/config.js';
 import { getConfig, resetConfig, setConfigValue } from '../../src/modules/config.js';
 import { hasPermission } from '../../src/utils/permissions.js';
 
+function getEmbedField(embed, fieldName) {
+  return embed.fields.find((field) => field.name === fieldName);
+}
+
 describe('config command', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -139,6 +143,32 @@ describe('config command', () => {
       const choices = mockRespond.mock.calls[0][0];
       expect(choices.some((c) => c.value.startsWith('ai.'))).toBe(true);
     });
+
+    it('should include empty arrays and objects in autocomplete results', async () => {
+      getConfig.mockReturnValueOnce({
+        features: {},
+        channels: [],
+        permissions: { enabled: true, usePermissions: true },
+      });
+
+      const mockRespond = vi.fn();
+      const interaction = {
+        guildId: 'test-guild',
+        options: {
+          getFocused: vi.fn().mockReturnValue({ name: 'path', value: '' }),
+        },
+        respond: mockRespond,
+      };
+
+      await autocomplete(interaction);
+      const choices = mockRespond.mock.calls[0][0];
+      expect(choices).toEqual(
+        expect.arrayContaining([
+          { name: 'channels', value: 'channels' },
+          { name: 'features', value: 'features' },
+        ]),
+      );
+    });
   });
 
   describe('execute', () => {
@@ -175,6 +205,26 @@ describe('config command', () => {
         expect(mockReply).toHaveBeenCalledWith(
           expect.objectContaining({ embeds: expect.any(Array), ephemeral: true }),
         );
+      });
+
+      it('should truncate oversized section output', async () => {
+        const largeValue = 'x'.repeat(1500);
+        getConfig
+          .mockReturnValueOnce({ permissions: { enabled: true, usePermissions: true } })
+          .mockReturnValueOnce({ ai: { payload: largeValue } });
+        const mockReply = vi.fn();
+        const interaction = {
+          guildId: 'test-guild',
+          options: {
+            getSubcommand: vi.fn().mockReturnValue('view'),
+            getString: vi.fn().mockReturnValue('ai'),
+          },
+          reply: mockReply,
+        };
+
+        await execute(interaction);
+        const embed = mockReply.mock.calls[0][0].embeds[0].toJSON();
+        expect(getEmbedField(embed, 'Settings')?.value).toContain('...');
       });
 
       it('should error for unknown section', async () => {
@@ -317,6 +367,50 @@ describe('config command', () => {
         await execute(interaction);
         expect(setConfigValue).toHaveBeenCalledWith('ai.model', 'new-model', 'test-guild');
         expect(mockEditReply).toHaveBeenCalled();
+      });
+
+      it('should truncate large updated values in the success embed', async () => {
+        setConfigValue.mockResolvedValueOnce({ payload: 'x'.repeat(1500) });
+        const mockEditReply = vi.fn();
+        const interaction = {
+          guildId: 'test-guild',
+          options: {
+            getSubcommand: vi.fn().mockReturnValue('set'),
+            getString: vi.fn().mockImplementation((name) => {
+              if (name === 'path') return 'ai.payload';
+              if (name === 'value') return 'ignored';
+              return null;
+            }),
+          },
+          deferReply: vi.fn().mockResolvedValue(undefined),
+          editReply: mockEditReply,
+        };
+
+        await execute(interaction);
+        const embed = mockEditReply.mock.calls[0][0].embeds[0].toJSON();
+        expect(getEmbedField(embed, 'New Value')?.value).toContain('...');
+      });
+
+      it('should fall back to the raw value when the updated leaf is undefined', async () => {
+        setConfigValue.mockResolvedValueOnce({});
+        const mockEditReply = vi.fn();
+        const interaction = {
+          guildId: 'test-guild',
+          options: {
+            getSubcommand: vi.fn().mockReturnValue('set'),
+            getString: vi.fn().mockImplementation((name) => {
+              if (name === 'path') return 'ai.unknownLeaf';
+              if (name === 'value') return 'raw-value';
+              return null;
+            }),
+          },
+          deferReply: vi.fn().mockResolvedValue(undefined),
+          editReply: mockEditReply,
+        };
+
+        await execute(interaction);
+        const embed = mockEditReply.mock.calls[0][0].embeds[0].toJSON();
+        expect(getEmbedField(embed, 'New Value')?.value).toContain('raw-value');
       });
 
       it('should reject invalid section', async () => {

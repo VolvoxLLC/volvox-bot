@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APP_TITLE } from '@/lib/page-titles';
@@ -48,6 +49,39 @@ describe('DashboardTitleSync', () => {
 
     await waitFor(() => {
       expect(document.title).toBe(APP_TITLE);
+    });
+  });
+
+  it('does not leave a stale metadata title stuck on the next client-only route', async () => {
+    document.title = 'Custom Members - Volvox.Bot - AI Powered Discord Bot';
+    mockPathname = '/dashboard/members';
+
+    const { rerender } = render(<DashboardTitleSync />);
+
+    await waitFor(() => {
+      expect(document.title).toBe('Custom Members - Volvox.Bot - AI Powered Discord Bot');
+    });
+
+    mockPathname = '/dashboard/config';
+    rerender(<DashboardTitleSync />);
+
+    await waitFor(() => {
+      expect(document.title).toBe('Bot Config - Volvox.Bot - AI Powered Discord Bot');
+    });
+  });
+
+  it('preserves page metadata during strict mode mount replay on the same route', async () => {
+    document.title = 'Custom Members - Volvox.Bot - AI Powered Discord Bot';
+    mockPathname = '/dashboard/members';
+
+    render(
+      <StrictMode>
+        <DashboardTitleSync />
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(document.title).toBe('Custom Members - Volvox.Bot - AI Powered Discord Bot');
     });
   });
 });
