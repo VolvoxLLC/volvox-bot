@@ -1,3 +1,4 @@
+import { Events } from 'discord.js';
 import { describe, expect, it, vi } from 'vitest';
 
 const mockSafeReply = vi.fn().mockResolvedValue(undefined);
@@ -37,6 +38,7 @@ function createClient() {
 }
 
 function getRegisteredHandler(client) {
+  expect(client.on).toHaveBeenCalledWith(Events.InteractionCreate, expect.any(Function));
   return client.on.mock.calls[0][1];
 }
 

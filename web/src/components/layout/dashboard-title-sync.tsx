@@ -15,11 +15,13 @@ import { APP_TITLE, getDashboardDocumentTitle } from '@/lib/page-titles';
 export function DashboardTitleSync() {
   const pathname = usePathname();
   const lastSyncedTitleRef = useRef<string | null>(null);
+  const lastSyncedPathnameRef = useRef<string | null>(null);
 
   useEffect(() => {
     const computed = getDashboardDocumentTitle(pathname);
     const current = document.title;
     const lastSyncedTitle = lastSyncedTitleRef.current;
+    const lastSyncedPathname = lastSyncedPathnameRef.current;
 
     // If the current title already ends with our app suffix and is more specific
     // than what we'd set (i.e. different prefix), respect the page-level metadata.
@@ -27,14 +29,16 @@ export function DashboardTitleSync() {
       current.endsWith(APP_TITLE) &&
       current !== computed &&
       current !== APP_TITLE &&
-      current !== lastSyncedTitle
+      (pathname === lastSyncedPathname || current !== lastSyncedTitle)
     ) {
       lastSyncedTitleRef.current = current;
+      lastSyncedPathnameRef.current = pathname;
       return;
     }
 
     document.title = computed;
     lastSyncedTitleRef.current = computed;
+    lastSyncedPathnameRef.current = pathname;
   }, [pathname]);
 
   return null;

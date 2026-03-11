@@ -1,3 +1,4 @@
+import { GuildMemberFlagsBitField } from 'discord.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/logger.js', () => ({
@@ -100,8 +101,13 @@ describe('welcomeOnboarding module', () => {
   });
 
   it('detects returning members via the DidRejoin flag', () => {
-    expect(isReturningMember({ flags: { has: vi.fn().mockReturnValue(true) } })).toBe(true);
-    expect(isReturningMember({ flags: { has: vi.fn().mockReturnValue(false) } })).toBe(false);
+    const hasDidRejoin = vi.fn().mockReturnValue(true);
+    expect(isReturningMember({ flags: { has: hasDidRejoin } })).toBe(true);
+    expect(hasDidRejoin).toHaveBeenCalledWith(GuildMemberFlagsBitField.Flags.DidRejoin);
+
+    const hasNotRejoined = vi.fn().mockReturnValue(false);
+    expect(isReturningMember({ flags: { has: hasNotRejoined } })).toBe(false);
+    expect(hasNotRejoined).toHaveBeenCalledWith(GuildMemberFlagsBitField.Flags.DidRejoin);
   });
 
   it('returns null when role menu is disabled or empty', () => {

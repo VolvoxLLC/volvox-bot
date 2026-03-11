@@ -39,8 +39,10 @@ describe('Providers', () => {
         <div data-testid="child">Hello</div>
       </Providers>,
     );
-    expect(screen.getByTestId('session-provider')).toBeDefined();
-    expect(screen.getByTestId('child')).toBeDefined();
+    const sessionProvider = screen.getByTestId('session-provider');
+    const child = screen.getByTestId('child');
+
+    expect(sessionProvider).toContainElement(child);
     expect(screen.getByTestId('toaster')).toHaveAttribute('data-theme', 'dark');
   });
 

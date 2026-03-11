@@ -19,11 +19,13 @@ vi.mock('../../src/redis.js', () => ({
 describe('discordCache.js', () => {
   let discordCache;
   let cache;
+  let warn;
 
   beforeEach(async () => {
     vi.resetModules();
     cache = await import('../../src/utils/cache.js');
     discordCache = await import('../../src/utils/discordCache.js');
+    ({ warn } = await import('../../src/logger.js'));
     cache._resetCache();
   });
 
@@ -139,7 +141,7 @@ describe('discordCache.js', () => {
       expect(guild.channels.fetch).not.toHaveBeenCalled();
     });
 
-    it('filters null channels, sorts by position, and falls back to an empty list on error', async () => {
+    it('filters null guild channels', async () => {
       const channels = new Map([
         ['2', { id: '2', name: 'random', type: 0, position: 4, parentId: null }],
         ['1', { id: '1', name: 'general', type: 0, position: 1, parentId: null }],
@@ -152,9 +154,27 @@ describe('discordCache.js', () => {
 
       const result = await discordCache.fetchGuildChannelsCached(guild);
       expect(result.map((channel) => channel.id)).toEqual(['1', '2']);
+    });
 
-      guild.channels.fetch.mockRejectedValueOnce(new Error('discord down'));
-      await discordCache.invalidateGuildCache('guild-sort');
+    it('sorts guild channels by position', async () => {
+      const channels = new Map([
+        ['2', { id: '2', name: 'random', type: 0, position: 4, parentId: null }],
+        ['1', { id: '1', name: 'general', type: 0, position: 1, parentId: null }],
+      ]);
+      const guild = {
+        id: 'guild-sort-order',
+        channels: { fetch: vi.fn().mockResolvedValue(channels) },
+      };
+
+      const result = await discordCache.fetchGuildChannelsCached(guild);
+      expect(result.map((channel) => channel.id)).toEqual(['1', '2']);
+    });
+
+    it('returns an empty list when guild channel fetch fails', async () => {
+      const guild = {
+        id: 'guild-sort',
+        channels: { fetch: vi.fn().mockRejectedValue(new Error('discord down')) },
+      };
 
       await expect(discordCache.fetchGuildChannelsCached(guild)).resolves.toEqual([]);
     });
@@ -252,7 +272,7 @@ describe('discordCache.js', () => {
       });
     });
 
-    it('rechecks the Discord.js member cache after a metadata hit and suppresses unknown members', async () => {
+    it('rechecks the Discord.js member cache after a metadata hit', async () => {
       const cachedMember = { id: 'member-2', displayName: 'Member Two' };
       const memberCache = new Map();
       const guild = {
@@ -291,6 +311,10 @@ describe('discordCache.js', () => {
       };
 
       await expect(discordCache.fetchMemberCached(guild, 'user-err')).resolves.toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        'Failed to fetch guild member',
+        expect.objectContaining({ guildId: 'guild-error', userId: 'user-err' }),
+      );
     });
   });
 

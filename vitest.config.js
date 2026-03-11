@@ -13,10 +13,7 @@ export default defineConfig({
       exclude: [
         'src/deploy-commands.js',
         'src/modules/events/reactionCreate.js',
-        'src/modules/events/reactions.js',
         'src/modules/events/voiceState.js',
-        'src/modules/handlers/reminderHandler.js',
-        'src/modules/handlers/welcomeOnboardingHandler.js',
       ],
       thresholds: {
         statements: 85,
