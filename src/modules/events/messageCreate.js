@@ -267,6 +267,8 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
           await handleDirectMention();
           return; // Don't accumulate again below
         }
+        // Not a mention/reply in mention mode — return early, do NOT accumulate
+        return;
       } else if (mode === 'vibe') {
         if ((isMentioned || isReply) && isAllowedChannel) {
           // Direct mention in vibe mode → immediate evaluation
