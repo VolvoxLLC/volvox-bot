@@ -268,7 +268,8 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
           return; // Don't accumulate again below
         }
         // Not a mention/reply in mention mode — return early, do NOT accumulate
-        return;
+        if (!isMentioned && !isReply) return;
+        // Is a mention/reply but channel not in allowlist — fall through to accumulate
       } else if (mode === 'vibe') {
         if ((isMentioned || isReply) && isAllowedChannel) {
           // Direct mention in vibe mode → immediate evaluation

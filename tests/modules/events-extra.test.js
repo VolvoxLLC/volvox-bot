@@ -663,16 +663,18 @@ describe('registerMessageCreateHandler — extra branches', () => {
   });
 
   it('should handle accumulateMessage returning a rejecting promise', async () => {
-    setup();
+    // Use vibe mode so non-mention messages reach accumulateMessage
+    setup({ ai: { enabled: true, channels: [], defaultChannelMode: 'vibe' } });
     accumulateMessage.mockReturnValueOnce(Promise.reject(new Error('buf fail')));
     await onCallbacks.messageCreate({
       author: { bot: false, username: 'user' },
       guild: { id: 'g1' },
       content: 'regular message',
-      channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+      channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn(), isThread: vi.fn().mockReturnValue(false) },
       mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
       reference: null,
     });
+    // Should not throw; error is swallowed in the fire-and-forget wrapper
   });
 });
 
