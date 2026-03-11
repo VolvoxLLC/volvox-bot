@@ -257,7 +257,7 @@ export function ChannelModeSection({
     return result;
   }, [rawChannels, search]);
 
-  const hasOverrides = Object.keys(channelModes).length > 0;
+  const hasOverrides = Object.values(channelModes).some((v) => v != null);
 
   const handleChannelMode = useCallback(
     (channelId: string, mode: ChannelMode) => {
@@ -331,7 +331,7 @@ export function ChannelModeSection({
           !error &&
           categories.map((cat) => {
             const categoryOverrides = cat.channels.filter(
-              (ch) => channelModes[ch.id] !== undefined && channelModes[ch.id] !== defaultMode,
+              (ch) => channelModes[ch.id] != null && channelModes[ch.id] !== defaultMode,
             );
             const hasCategoryOverrides = categoryOverrides.length > 0;
 
@@ -364,9 +364,9 @@ export function ChannelModeSection({
                 {/* Channels */}
                 <div className="rounded-md border overflow-hidden divide-y divide-border">
                   {cat.channels.map((ch) => {
-                    const override = channelModes[ch.id] as ChannelMode | undefined;
+                    const override = channelModes[ch.id] as ChannelMode | null | undefined;
                     const effectiveMode: ChannelMode = override ?? defaultMode;
-                    const isOverridden = override !== undefined && override !== defaultMode;
+                    const isOverridden = override != null && override !== defaultMode;
 
                     return (
                       <div
