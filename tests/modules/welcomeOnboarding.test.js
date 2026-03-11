@@ -32,12 +32,14 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 }));
 
 import {
-  buildRulesAgreementMessage,
   buildRoleMenuMessage,
+  buildRulesAgreementMessage,
   handleRoleMenuSelection,
   handleRulesAcceptButton,
   isReturningMember,
   normalizeWelcomeOnboardingConfig,
+  ROLE_MENU_SELECT_ID,
+  RULES_ACCEPT_BUTTON_ID,
 } from '../../src/modules/welcomeOnboarding.js';
 import { safeEditReply, safeSend } from '../../src/utils/safeSend.js';
 
@@ -94,10 +96,12 @@ describe('welcomeOnboarding module', () => {
 
   it('builds the rules agreement message with accept button', () => {
     const message = buildRulesAgreementMessage();
+    const button = message.components[0].components[0].toJSON();
 
     expect(message.content).toContain('Read the server rules');
     expect(message.components).toHaveLength(1);
-    expect(message.components[0].components[0].data.label).toBe('Accept Rules');
+    expect(button.label).toBe('Accept Rules');
+    expect(button.custom_id).toBe(RULES_ACCEPT_BUTTON_ID);
   });
 
   it('detects returning members via the DidRejoin flag', () => {
@@ -112,7 +116,9 @@ describe('welcomeOnboarding module', () => {
 
   it('returns null when role menu is disabled or empty', () => {
     expect(
-      buildRoleMenuMessage({ roleMenu: { enabled: false, options: [{ label: 'A', roleId: '1' }] } }),
+      buildRoleMenuMessage({
+        roleMenu: { enabled: false, options: [{ label: 'A', roleId: '1' }] },
+      }),
     ).toBeNull();
     expect(buildRoleMenuMessage({ roleMenu: { enabled: true, options: [] } })).toBeNull();
   });
@@ -124,9 +130,10 @@ describe('welcomeOnboarding module', () => {
     }));
 
     const message = buildRoleMenuMessage({ roleMenu: { enabled: true, options } });
-    const builtOptions = message?.components?.[0]?.components?.[0]?.options;
+    const select = message?.components?.[0]?.components?.[0]?.toJSON();
 
-    expect(builtOptions).toHaveLength(25);
+    expect(select?.custom_id).toBe(ROLE_MENU_SELECT_ID);
+    expect(select?.options).toHaveLength(25);
   });
 
   it('handles rules acceptance by granting verified role and posting intro prompt', async () => {

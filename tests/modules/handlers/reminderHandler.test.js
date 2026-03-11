@@ -133,7 +133,11 @@ describe('reminder button handler', () => {
 
     expect(mockLogError).toHaveBeenCalledWith(
       'Reminder button handler failed',
-      expect.objectContaining({ customId: 'reminder_snooze_42_600', userId: 'user-1', error: 'bad snooze' }),
+      expect.objectContaining({
+        customId: 'reminder_snooze_42_600',
+        userId: 'user-1',
+        error: 'bad snooze',
+      }),
     );
     expect(mockSafeReply).toHaveBeenCalledWith(interaction, {
       content: '❌ Something went wrong processing your request.',
@@ -154,6 +158,24 @@ describe('reminder button handler', () => {
       user: { id: 'user-1' },
       replied: false,
       deferred: true,
+    });
+
+    expect(mockSafeReply).not.toHaveBeenCalled();
+  });
+
+  it('skips the fallback reply when the interaction has already been replied to', async () => {
+    mockHandleReminderDismiss.mockRejectedValueOnce(new Error('bad dismiss'));
+    const client = createClient();
+    registerReminderButtonHandler(client);
+    const handler = getRegisteredHandler(client);
+
+    await handler({
+      isButton: () => true,
+      customId: 'reminder_dismiss_42',
+      guildId: 'guild-1',
+      user: { id: 'user-1' },
+      replied: true,
+      deferred: false,
     });
 
     expect(mockSafeReply).not.toHaveBeenCalled();

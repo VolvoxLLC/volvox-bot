@@ -11,12 +11,14 @@ vi.mock('../../../src/modules/config.js', () => ({
   getConfig: (...args) => mockGetConfig(...args),
 }));
 
-vi.mock('../../../src/modules/welcomeOnboarding.js', () => ({
-  RULES_ACCEPT_BUTTON_ID: 'welcome_rules_accept',
-  ROLE_MENU_SELECT_ID: 'welcome_role_select',
-  handleRulesAcceptButton: (...args) => mockHandleRulesAcceptButton(...args),
-  handleRoleMenuSelection: (...args) => mockHandleRoleMenuSelection(...args),
-}));
+vi.mock('../../../src/modules/welcomeOnboarding.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    handleRulesAcceptButton: (...args) => mockHandleRulesAcceptButton(...args),
+    handleRoleMenuSelection: (...args) => mockHandleRoleMenuSelection(...args),
+  };
+});
 
 vi.mock('../../../src/utils/safeSend.js', () => ({
   safeEditReply: (...args) => mockSafeEditReply(...args),
@@ -27,6 +29,10 @@ vi.mock('../../../src/logger.js', () => ({
 }));
 
 import { registerWelcomeOnboardingHandlers } from '../../../src/modules/handlers/welcomeOnboardingHandler.js';
+import {
+  ROLE_MENU_SELECT_ID,
+  RULES_ACCEPT_BUTTON_ID,
+} from '../../../src/modules/welcomeOnboarding.js';
 
 function createClient() {
   return {
@@ -74,7 +80,7 @@ describe('welcome onboarding interaction handler', () => {
     const handler = getRegisteredHandler(client);
     const interaction = {
       guildId: 'guild-1',
-      customId: 'welcome_rules_accept',
+      customId: RULES_ACCEPT_BUTTON_ID,
       isButton: () => true,
       isStringSelectMenu: () => false,
     };
@@ -93,7 +99,7 @@ describe('welcome onboarding interaction handler', () => {
     const handler = getRegisteredHandler(client);
     const interaction = {
       guildId: 'guild-1',
-      customId: 'welcome_rules_accept',
+      customId: RULES_ACCEPT_BUTTON_ID,
       isButton: () => true,
       isStringSelectMenu: () => false,
       user: { id: 'user-1' },
@@ -118,7 +124,7 @@ describe('welcome onboarding interaction handler', () => {
     const handler = getRegisteredHandler(client);
     const interaction = {
       guildId: 'guild-1',
-      customId: 'welcome_role_select',
+      customId: ROLE_MENU_SELECT_ID,
       isButton: () => false,
       isStringSelectMenu: () => true,
     };
@@ -137,7 +143,7 @@ describe('welcome onboarding interaction handler', () => {
     const handler = getRegisteredHandler(client);
     const interaction = {
       guildId: 'guild-1',
-      customId: 'welcome_role_select',
+      customId: ROLE_MENU_SELECT_ID,
       isButton: () => false,
       isStringSelectMenu: () => true,
       user: { id: 'user-1' },
