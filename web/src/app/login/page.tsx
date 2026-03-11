@@ -45,7 +45,7 @@ function LoginForm() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-discord text-white font-bold text-2xl shadow-lg mb-4">
-            B
+            V
           </div>
           <CardTitle className="text-2xl">Welcome to Volvox.Bot</CardTitle>
           <CardDescription>
