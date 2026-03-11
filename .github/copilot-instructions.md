@@ -103,8 +103,8 @@ pnpm test:coverage         # Run with coverage thresholds enforced
 
 - **Framework:** Vitest 4 with `node` environment
 - **Test files:** `tests/**/*.test.js` (JavaScript, ESM)
-- **Coverage thresholds:** statements 85%, branches 82%, functions 85%, lines 85%
-- **Never lower coverage thresholds** — add tests instead
+- **Coverage thresholds** (from `vitest.config.js`): statements 85%, branches 82%, functions 85%, lines 85%
+- **Never lower coverage thresholds** — add tests to cover new code instead
 
 ### Web Dashboard Tests
 
@@ -193,7 +193,7 @@ All four checks must pass. The `lint-and-test` gate job aggregates lint + test r
 3. Update `SAFE_CONFIG_KEYS` in `src/api/utils/configAllowlist.js`
 4. Add slash command in `src/commands/` if needed
 5. Create database migration if needed (`pnpm migrate:create`)
-6. Write tests in `tests/` (maintain 82%+ branch coverage)
+6. Write tests in `tests/` (maintain coverage above `vitest.config.js` thresholds)
 7. Update dashboard UI in `web/` if the feature is configurable
 
 ### Adding a New Slash Command
@@ -266,7 +266,7 @@ The web dashboard has its own `pnpm-lock.yaml` and dependencies. Use `pnpm --pre
 
 2. **No `console.*`:** Biome treats `console.log`, `console.error`, etc. as errors via the `noConsole` rule. Always use the Winston logger from `src/logger.js`.
 
-3. **Coverage thresholds are strict:** Bot tests require 82%+ branch coverage; web tests require 85%. If your changes reduce coverage below these thresholds, the CI will fail. Write tests for new code.
+3. **Coverage thresholds are strict:** Bot tests enforce thresholds from `vitest.config.js` (statements 85%, branches 82%, functions 85%, lines 85%); web tests require 85% across all metrics. If your changes reduce coverage, CI fails. Write tests for new code.
 
 4. **`pnpm` only:** The project uses `engine-strict=true` in `.npmrc` and requires pnpm 10.30.3+. Do not use npm or yarn.
 
