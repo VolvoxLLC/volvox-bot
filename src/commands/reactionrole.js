@@ -205,7 +205,9 @@ async function handleAdd(interaction) {
   }
 
   // Guard: invoker must be allowed to manage the role
-  const invokingMember = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  const invokingMember = await interaction.guild.members
+    .fetch(interaction.user.id)
+    .catch(() => null);
   const isGuildOwner = interaction.guild.ownerId === invokingMember?.id;
   if (!isGuildOwner && invokingMember && role.position >= invokingMember.roles.highest.position) {
     await safeEditReply(interaction, {

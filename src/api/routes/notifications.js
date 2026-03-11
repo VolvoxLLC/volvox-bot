@@ -11,8 +11,8 @@ import { Router } from 'express';
 import { info } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { getDeliveryLog, testEndpoint, WEBHOOK_EVENTS } from '../../modules/webhookNotifier.js';
-import { requireGuildAdmin } from './guilds.js';
 import { validateUrlForSsrfSync } from '../utils/ssrfProtection.js';
+import { requireGuildAdmin } from './guilds.js';
 
 const router = Router();
 

@@ -56,7 +56,8 @@ function validateTicket(ticket, secret) {
   const [nonce, expiry, guildId, hmac] = parts;
   if (!nonce || !expiry || !guildId || !hmac) return { valid: false, guildId: null };
   const expiryNum = Number(expiry);
-  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return { valid: false, guildId: null };
+  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now())
+    return { valid: false, guildId: null };
   const expected = createHmac('sha256', secret)
     .update(`${nonce}.${expiry}.${guildId}`)
     .digest('hex');
