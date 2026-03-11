@@ -670,7 +670,12 @@ describe('registerMessageCreateHandler — extra branches', () => {
       author: { bot: false, username: 'user' },
       guild: { id: 'g1' },
       content: 'regular message',
-      channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn(), isThread: vi.fn().mockReturnValue(false) },
+      channel: {
+        id: 'c1',
+        sendTyping: vi.fn(),
+        send: vi.fn(),
+        isThread: vi.fn().mockReturnValue(false),
+      },
       mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
       reference: null,
     });
