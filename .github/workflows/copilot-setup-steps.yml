@@ -1,0 +1,42 @@
+name: "Copilot Setup Steps"
+
+# Automatically run the setup steps when they are changed to allow for easy
+# validation, and allow manual testing through the repository's "Actions" tab
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+# The job MUST be called `copilot-setup-steps` or it will not be picked up by
+# Copilot.
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    # Set the permissions to the lowest permissions possible needed for your
+    # steps. Copilot will be given its own token for its operations.
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4.2.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.2.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install bot dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install web dashboard dependencies
+        run: pnpm --prefix web install --frozen-lockfile
