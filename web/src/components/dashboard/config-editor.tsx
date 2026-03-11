@@ -361,7 +361,7 @@ export function ConfigEditor() {
     const frameId = window.requestAnimationFrame(() => {
       const target = document.getElementById(`feature-${focusFeatureId}`);
       if (!target) return;
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       const focusable = target.querySelector<HTMLElement>(
         'input, textarea, select, button, [role="switch"]',
       );
