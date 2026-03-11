@@ -53,6 +53,20 @@
       ],
       "outputs": ["coverage/**", "web/coverage/**"]
     },
+    "test:coverage": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!.next/**",
+        "!web/.next/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!web/node_modules/**",
+        "!openclaw-studio/**",
+        "!logs/**",
+        "!data/**"
+      ],
+      "outputs": ["coverage/**"]
+    },
     "typecheck": {
       "inputs": [
         "$TURBO_DEFAULT$",

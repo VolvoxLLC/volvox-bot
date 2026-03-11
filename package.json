@@ -14,6 +14,7 @@
     "mono:build": "turbo run build",
     "mono:lint": "turbo run lint",
     "mono:test": "turbo run test",
+    "mono:test:coverage": "turbo run test:coverage",
     "mono:typecheck": "turbo run typecheck",
     "deploy": "node src/deploy-commands.js",
     "test": "vitest run",
