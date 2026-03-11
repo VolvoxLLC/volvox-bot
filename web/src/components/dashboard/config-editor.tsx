@@ -1024,31 +1024,30 @@ export function ConfigEditor() {
         </div>
       </div>
 
-      {/* Unsaved changes banner */}
-      {hasChanges && (
-        <output
-          aria-live="polite"
-          className="relative z-10 mb-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
-        >
-          You have unsaved changes in {changedCategoryCount}{' '}
-          {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
-          <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
-            Ctrl+S
-          </kbd>{' '}
-          to save.
-        </output>
-      )}
-
-      {hasValidationErrors && (
-        <output
-          aria-live="polite"
-          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-        >
-          Fix validation errors before changes can be saved.
-        </output>
-      )}
-
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
+        {/* Unsaved changes banner — spans both columns */}
+        {hasChanges && (
+          <output
+            aria-live="polite"
+            className="col-span-full rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
+          >
+            You have unsaved changes in {changedCategoryCount}{' '}
+            {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
+            <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
+              Ctrl+S
+            </kbd>{' '}
+            to save.
+          </output>
+        )}
+
+        {hasValidationErrors && (
+          <output
+            aria-live="polite"
+            className="col-span-full rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            Fix validation errors before changes can be saved.
+          </output>
+        )}
         <CategoryNavigation
           activeCategoryId={activeCategoryId}
           dirtyCounts={dirtyCategoryCounts}
