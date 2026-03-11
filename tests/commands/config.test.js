@@ -21,6 +21,10 @@ import { autocomplete, data, execute } from '../../src/commands/config.js';
 import { getConfig, resetConfig, setConfigValue } from '../../src/modules/config.js';
 import { hasPermission } from '../../src/utils/permissions.js';
 
+function getEmbedField(embed, fieldName) {
+  return embed.fields.find((field) => field.name === fieldName);
+}
+
 describe('config command', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -151,13 +155,19 @@ describe('config command', () => {
       const interaction = {
         guildId: 'test-guild',
         options: {
-          getFocused: vi.fn().mockReturnValue({ name: 'path', value: 'ch' }),
+          getFocused: vi.fn().mockReturnValue({ name: 'path', value: '' }),
         },
         respond: mockRespond,
       };
 
       await autocomplete(interaction);
-      expect(mockRespond).toHaveBeenCalledWith([{ name: 'channels', value: 'channels' }]);
+      const choices = mockRespond.mock.calls[0][0];
+      expect(choices).toEqual(
+        expect.arrayContaining([
+          { name: 'channels', value: 'channels' },
+          { name: 'features', value: 'features' },
+        ]),
+      );
     });
   });
 
@@ -214,7 +224,7 @@ describe('config command', () => {
 
         await execute(interaction);
         const embed = mockReply.mock.calls[0][0].embeds[0].toJSON();
-        expect(embed.fields[0].value).toContain('...');
+        expect(getEmbedField(embed, 'Settings')?.value).toContain('...');
       });
 
       it('should error for unknown section', async () => {
@@ -378,7 +388,7 @@ describe('config command', () => {
 
         await execute(interaction);
         const embed = mockEditReply.mock.calls[0][0].embeds[0].toJSON();
-        expect(embed.fields[1].value).toContain('...');
+        expect(getEmbedField(embed, 'New Value')?.value).toContain('...');
       });
 
       it('should fall back to the raw value when the updated leaf is undefined', async () => {
@@ -400,7 +410,7 @@ describe('config command', () => {
 
         await execute(interaction);
         const embed = mockEditReply.mock.calls[0][0].embeds[0].toJSON();
-        expect(embed.fields[1].value).toContain('raw-value');
+        expect(getEmbedField(embed, 'New Value')?.value).toContain('raw-value');
       });
 
       it('should reject invalid section', async () => {

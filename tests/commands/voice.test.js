@@ -249,6 +249,9 @@ describe('voice command', () => {
 
     await execute(interaction);
 
+    const payload = interaction.editReply.mock.calls[0][0];
+    const csv = payload.files[0].attachment.toString('utf8');
+
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: '📊 Voice session export — **1** sessions (month)',
@@ -259,6 +262,8 @@ describe('voice command', () => {
         ],
       }),
     );
+    expect(csv).toContain('id,user_id,channel_id,joined_at,left_at,duration_seconds');
+    expect(csv).toContain('1,user-1,channel-1,2025-01-01T00:00:00.000Z,2025-01-01T01:00:00.000Z,3600');
   });
 
   it('shows a failure message when export throws', async () => {
@@ -273,13 +278,15 @@ describe('voice command', () => {
     });
   });
 
-  it('does nothing for an unknown subcommand after deferring', async () => {
+  it('shows an explicit error for an unknown subcommand after deferring', async () => {
     getConfig.mockReturnValueOnce({ voice: { enabled: true } });
     const interaction = createInteraction({ subcommand: 'mystery' });
 
     await execute(interaction);
 
     expect(interaction.deferReply).toHaveBeenCalledOnce();
-    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenCalledWith({
+      content: '❌ Unknown subcommand: `mystery`',
+    });
   });
 });

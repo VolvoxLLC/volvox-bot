@@ -29,6 +29,7 @@ export function DashboardTitleSync() {
       current !== APP_TITLE &&
       current !== lastSyncedTitle
     ) {
+      lastSyncedTitleRef.current = current;
       return;
     }
 

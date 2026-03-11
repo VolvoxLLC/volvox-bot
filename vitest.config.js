@@ -16,9 +16,7 @@ export default defineConfig({
         'src/modules/events/reactions.js',
         'src/modules/events/voiceState.js',
         'src/modules/handlers/reminderHandler.js',
-        'src/modules/handlers/ticketHandler.js',
         'src/modules/handlers/welcomeOnboardingHandler.js',
-        'src/utils/discordCache.js',
       ],
       thresholds: {
         statements: 85,

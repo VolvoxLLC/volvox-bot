@@ -50,4 +50,22 @@ describe('DashboardTitleSync', () => {
       expect(document.title).toBe(APP_TITLE);
     });
   });
+
+  it('does not leave a stale metadata title stuck on the next client-only route', async () => {
+    document.title = 'Custom Members - Volvox.Bot - AI Powered Discord Bot';
+    mockPathname = '/dashboard/members';
+
+    const { rerender } = render(<DashboardTitleSync />);
+
+    await waitFor(() => {
+      expect(document.title).toBe('Custom Members - Volvox.Bot - AI Powered Discord Bot');
+    });
+
+    mockPathname = '/dashboard/config';
+    rerender(<DashboardTitleSync />);
+
+    await waitFor(() => {
+      expect(document.title).toBe('Bot Config - Volvox.Bot - AI Powered Discord Bot');
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/logger.js', () => ({
   info: vi.fn(),
@@ -41,6 +41,10 @@ import {
 import { safeEditReply, safeSend } from '../../src/utils/safeSend.js';
 
 describe('welcomeOnboarding module', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('applies safe defaults when welcome onboarding fields are missing', () => {
     const result = normalizeWelcomeOnboardingConfig({});
 
@@ -87,18 +91,23 @@ describe('welcomeOnboarding module', () => {
     });
   });
 
-  it('builds the rules agreement message and detects returning members', () => {
+  it('builds the rules agreement message with accept button', () => {
     const message = buildRulesAgreementMessage();
 
     expect(message.content).toContain('Read the server rules');
     expect(message.components).toHaveLength(1);
     expect(message.components[0].components[0].data.label).toBe('Accept Rules');
+  });
+
+  it('detects returning members via the DidRejoin flag', () => {
     expect(isReturningMember({ flags: { has: vi.fn().mockReturnValue(true) } })).toBe(true);
     expect(isReturningMember({ flags: { has: vi.fn().mockReturnValue(false) } })).toBe(false);
   });
 
   it('returns null when role menu is disabled or empty', () => {
-    expect(buildRoleMenuMessage({ roleMenu: { enabled: false, options: [{ label: 'A', roleId: '1' }] } })).toBeNull();
+    expect(
+      buildRoleMenuMessage({ roleMenu: { enabled: false, options: [{ label: 'A', roleId: '1' }] } }),
+    ).toBeNull();
     expect(buildRoleMenuMessage({ roleMenu: { enabled: true, options: [] } })).toBeNull();
   });
 
@@ -423,8 +432,6 @@ describe('welcomeOnboarding module', () => {
       interaction,
       expect.objectContaining({ content: expect.stringContaining('not configured') }),
     );
-
-    safeEditReply.mockClear();
 
     const role = { id: 'role-a', editable: true };
     const noChangeInteraction = {

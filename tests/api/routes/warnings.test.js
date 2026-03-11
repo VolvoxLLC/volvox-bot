@@ -19,6 +19,10 @@ vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
 import { createApp } from '../../../src/api/server.js';
 import { getPool } from '../../../src/db.js';
 
+function authed(req) {
+  return req.set('x-api-secret', 'warnings-secret');
+}
+
 describe('warnings routes', () => {
   let app;
   let mockPool;
@@ -47,10 +51,6 @@ describe('warnings routes', () => {
     vi.unstubAllEnvs();
   });
 
-  function authed(req) {
-    return req.set('x-api-secret', 'warnings-secret');
-  }
-
   it('returns 400 when listing warnings without guildId', async () => {
     const res = await authed(request(app).get('/api/v1/warnings'));
 
@@ -60,9 +60,17 @@ describe('warnings routes', () => {
   });
 
   it('lists warnings with filters and normalized pagination', async () => {
-    mockPool.query
-      .mockResolvedValueOnce({ rows: [{ id: 1, user_id: 'user-1', severity: 'high' }] })
-      .mockResolvedValueOnce({ rows: [{ total: 12 }] });
+    mockPool.query.mockImplementation(async (sql, params) => {
+      if (sql.includes('SELECT COUNT(*)::integer AS total FROM warnings')) {
+        expect(params).toEqual(['guild-1', 'user-1', true, 'high']);
+        return { rows: [{ total: 12 }] };
+      }
+
+      expect(sql).toContain('SELECT * FROM warnings');
+      expect(sql).toContain('WHERE guild_id = $1 AND user_id = $2 AND active = $3 AND severity = $4');
+      expect(params).toEqual(['guild-1', 'user-1', true, 'high', 10, 10]);
+      return { rows: [{ id: 1, user_id: 'user-1', severity: 'high' }] };
+    });
 
     const res = await authed(
       request(app).get(
@@ -78,16 +86,7 @@ describe('warnings routes', () => {
       limit: 10,
       pages: 2,
     });
-    expect(mockPool.query).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining('WHERE guild_id = $1 AND user_id = $2 AND active = $3 AND severity = $4'),
-      ['guild-1', 'user-1', true, 'high', 10, 10],
-    );
-    expect(mockPool.query).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('SELECT COUNT(*)::integer AS total'),
-      ['guild-1', 'user-1', true, 'high'],
-    );
+    expect(mockPool.query).toHaveBeenCalledTimes(2);
   });
 
   it('returns 500 when listing warnings fails', async () => {

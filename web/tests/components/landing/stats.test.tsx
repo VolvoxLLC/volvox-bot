@@ -28,18 +28,27 @@ import { Stats } from '@/components/landing/Stats';
 describe('Stats', () => {
   const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
   const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
-  let timestamp = 0;
+  let nextHandle = 1;
+  let lastTimestamp = 0;
+  let cancelledHandles: Set<number>;
 
   beforeEach(() => {
     mockUseInView.mockReturnValue(true);
-    timestamp = 0;
+    nextHandle = 1;
+    lastTimestamp = 0;
+    cancelledHandles = new Set();
     globalThis.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
-      return window.setTimeout(() => {
-        timestamp += 2_000;
-        callback(timestamp);
-      }, 0);
+      const handle = nextHandle++;
+      queueMicrotask(() => {
+        if (cancelledHandles.has(handle)) return;
+        lastTimestamp += 2_000;
+        callback(lastTimestamp);
+      });
+      return handle;
     });
-    globalThis.cancelAnimationFrame = vi.fn((handle: number) => clearTimeout(handle));
+    globalThis.cancelAnimationFrame = vi.fn((handle: number) => {
+      cancelledHandles.add(handle);
+    });
   });
 
   afterEach(() => {

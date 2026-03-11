@@ -50,6 +50,7 @@ describe('Hero', () => {
       vi.advanceTimersByTime(1_500);
     });
 
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('> volvox-bot');
     expect(screen.getByText(/The AI-powered Discord bot for modern communities/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open Dashboard/i })).toHaveAttribute(
       'href',
