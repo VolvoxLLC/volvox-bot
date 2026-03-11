@@ -46,6 +46,12 @@ describe('use-guild-role', () => {
     );
   });
 
+  it('prefers admin over moderator when both permission tiers are present', () => {
+    expect(getGuildDashboardRole(createGuild({ permissions: String(0x8n | 0x2n) }))).toBe(
+      'admin',
+    );
+  });
+
   it('returns viewer for non-manageable guilds', () => {
     const guild = createGuild({ permissions: '0' });
 

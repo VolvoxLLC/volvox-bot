@@ -186,6 +186,17 @@ describe('bot-api-proxy branch coverage', () => {
   });
 
   it('maps timeout and generic failures to the right status codes', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce({ name: 'AbortError' });
+    const abortResponse = await proxyToBotApi(
+      new URL('https://bot.internal/test'),
+      'secret',
+      '[test]',
+      'Aborted',
+    );
+
+    expect(abortResponse.status).toBe(504);
+    await expect(abortResponse.json()).resolves.toEqual({ error: 'Aborted' });
+
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce({ name: 'TimeoutError' });
     const timeoutResponse = await proxyToBotApi(
       new URL('https://bot.internal/test'),

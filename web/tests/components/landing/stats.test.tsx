@@ -58,7 +58,7 @@ describe('Stats', () => {
   });
 
   it('renders formatted live stats after a successful fetch', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
         servers: 1_234,
@@ -87,7 +87,7 @@ describe('Stats', () => {
   });
 
   it('renders the error fallback when fetching stats fails', async () => {
-    vi.spyOn(global, 'fetch').mockRejectedValue(new Error('boom'));
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('boom'));
 
     render(<Stats />);
 
