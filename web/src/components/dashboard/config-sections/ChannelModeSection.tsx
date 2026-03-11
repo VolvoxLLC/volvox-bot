@@ -220,10 +220,14 @@ export function ChannelModeSection({
       ? textChannels.filter((c) => c.name.toLowerCase().includes(lc))
       : textChannels;
 
-    // Group by parentId
+    // Build a set of known category IDs for orphan detection
+    const knownCategoryIds = new Set(categoryChannels.map((c) => c.id));
+
+    // Group by parentId; channels whose parentId doesn't match any category
+    // are treated as uncategorized (parentId → null)
     const map = new Map<string | null, RawChannel[]>();
     for (const ch of visible) {
-      const key = ch.parentId;
+      const key = ch.parentId !== null && knownCategoryIds.has(ch.parentId) ? ch.parentId : null;
       if (!map.has(key)) map.set(key, []);
       const bucket = map.get(key);
       if (bucket) bucket.push(ch);
@@ -231,7 +235,7 @@ export function ChannelModeSection({
 
     const result: Category[] = [];
 
-    // Uncategorized first
+    // Uncategorized first (includes orphaned channels whose parent wasn't fetched)
     if (map.has(null) && (map.get(null)?.length ?? 0) > 0) {
       result.push({
         id: null,
