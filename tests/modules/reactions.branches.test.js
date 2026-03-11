@@ -97,6 +97,7 @@ describe('reaction event branch coverage', () => {
 
     await addHandler(reaction, { id: 'user-1', bot: false });
 
+    expect(mockTrackReaction).toHaveBeenCalled();
     expect(mockRecordFeedback).toHaveBeenCalledWith({
       messageId: 'message-1',
       channelId: 'channel-1',
