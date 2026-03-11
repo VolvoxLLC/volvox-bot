@@ -12,7 +12,6 @@ export default defineConfig({
       include: ['src/**/*.js'],
       exclude: [
         'src/deploy-commands.js',
-        'src/modules/events/voiceState.js',
       ],
       thresholds: {
         statements: 85,
