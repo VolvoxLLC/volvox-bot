@@ -25,6 +25,9 @@ let cleanupTimer = null;
 /** In-flight async hydrations keyed by channel ID (dedupes concurrent DB reads) */
 const pendingHydrations = new Map();
 
+/** Valid AI channel mode values */
+const VALID_MODES = new Set(['off', 'mention', 'vibe']);
+
 /**
  * Resolve the effective AI response mode for a channel.
  * Priority: blockedChannelIds → channelModes map → defaultChannelMode → 'mention'
@@ -47,13 +50,18 @@ export function getChannelMode(channelId, parentId = null, guildId) {
     }
 
     const modes = config?.ai?.channelModes;
-    const defaultMode = config?.ai?.defaultChannelMode ?? 'mention';
+    const rawDefault = config?.ai?.defaultChannelMode ?? 'mention';
+    const defaultMode = VALID_MODES.has(rawDefault) ? rawDefault : 'mention';
 
     if (modes && typeof modes === 'object') {
-      // Direct channel match
-      if (modes[channelId]) return modes[channelId];
-      // Thread inherits parent mode
-      if (parentId && modes[parentId]) return modes[parentId];
+      // Direct channel match — validate before returning
+      if (modes[channelId]) {
+        return VALID_MODES.has(modes[channelId]) ? modes[channelId] : defaultMode;
+      }
+      // Thread inherits parent mode — validate before returning
+      if (parentId && modes[parentId]) {
+        return VALID_MODES.has(modes[parentId]) ? modes[parentId] : defaultMode;
+      }
     }
 
     return defaultMode;
