@@ -59,7 +59,7 @@ describe('Pricing', () => {
     expect(screen.getByText('Save $129.88/year')).toBeInTheDocument();
   });
 
-  it('uses github for the free tier and disables paid ctas when no invite url exists', () => {
+  it('uses GitHub for the free tier and disables paid ctas when no invite url exists', () => {
     mockGetBotInviteUrl.mockReturnValue(null);
 
     render(<Pricing />);
