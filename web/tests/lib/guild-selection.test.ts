@@ -32,4 +32,17 @@ describe("guild-selection", () => {
     expect(localStorage.getItem(SELECTED_GUILD_KEY)).toBeNull();
     expect(dispatchSpy).not.toHaveBeenCalled();
   });
+
+  it("still dispatches when localStorage persistence throws", () => {
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("storage blocked");
+    });
+
+    broadcastSelectedGuild("guild-999");
+
+    expect(dispatchSpy).toHaveBeenCalledTimes(1);
+    const event = dispatchSpy.mock.calls[0][0] as CustomEvent<string>;
+    expect(event.detail).toBe("guild-999");
+  });
 });

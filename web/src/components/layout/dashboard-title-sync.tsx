@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { APP_TITLE, getDashboardDocumentTitle } from '@/lib/page-titles';
 
 /**
@@ -14,18 +14,26 @@ import { APP_TITLE, getDashboardDocumentTitle } from '@/lib/page-titles';
  */
 export function DashboardTitleSync() {
   const pathname = usePathname();
+  const lastSyncedTitleRef = useRef<string | null>(null);
 
   useEffect(() => {
     const computed = getDashboardDocumentTitle(pathname);
     const current = document.title;
+    const lastSyncedTitle = lastSyncedTitleRef.current;
 
     // If the current title already ends with our app suffix and is more specific
     // than what we'd set (i.e. different prefix), respect the page-level metadata.
-    if (current.endsWith(APP_TITLE) && current !== computed && current !== APP_TITLE) {
+    if (
+      current.endsWith(APP_TITLE) &&
+      current !== computed &&
+      current !== APP_TITLE &&
+      current !== lastSyncedTitle
+    ) {
       return;
     }
 
     document.title = computed;
+    lastSyncedTitleRef.current = computed;
   }, [pathname]);
 
   return null;

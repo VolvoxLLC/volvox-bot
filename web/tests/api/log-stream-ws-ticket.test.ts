@@ -60,6 +60,8 @@ describe('GET /api/log-stream/ws-ticket', () => {
 
     const body = (await response.json()) as { wsUrl: string; ticket: string };
     expect(body.wsUrl).toBe('wss://bot.internal:3001/ws/logs');
-    expect(body.ticket.split('.')).toHaveLength(3);
+    const ticketParts = body.ticket.split('.');
+    expect(ticketParts).toHaveLength(4);
+    expect(ticketParts[2]).toBe('guild-1');
   });
 });

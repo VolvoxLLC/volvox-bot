@@ -21,6 +21,10 @@ if (typeof window.matchMedia !== 'function') {
   });
 }
 
+if (typeof HTMLElement !== 'undefined' && !HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+}
+
 afterEach(() => {
   cleanup();
 });
