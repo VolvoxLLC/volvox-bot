@@ -305,6 +305,7 @@ describe('Audit Log WebSocket Stream', () => {
     sendJson(ws, { type: 'auth', ticket: makeTicket() });
     await q.next(); // auth_ok
     sendJson(ws, { type: 'filter', guildId: 'guild2' });
+
     const filterError = await q.next();
     expect(filterError).toEqual({
       type: 'error',
