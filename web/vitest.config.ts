@@ -30,7 +30,9 @@ export default defineConfig({
         'src/components/ui/**',
         'src/components/error-card.tsx',
         'src/components/theme-provider.tsx',
-        // Dashboard UI is covered via end-to-end tests and excluded from the unit-test coverage contract.
+        // Dashboard UI is currently excluded from unit-test coverage thresholds because it is exercised
+        // primarily via higher-level manual and integration testing. TODO: Introduce a dedicated e2e
+        // suite (for example, using Playwright) and revisit this exclusion once those tests are in place.
         'src/components/dashboard/**',
         'src/components/landing/index.ts',
         'src/components/layout/mobile-sidebar.tsx',
