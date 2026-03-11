@@ -11,17 +11,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: [
-        'src/proxy.ts',
-        'src/components/**/*.{ts,tsx}',
-        'src/hooks/**/*.{ts,tsx}',
-        'src/lib/**/*.{ts,tsx}',
-        'src/app/api/bot-health/route.ts',
-        'src/app/api/guilds/route.ts',
-        'src/app/api/guilds/*/analytics/route.ts',
-        'src/app/api/health/route.ts',
-        'src/app/api/log-stream/ws-ticket/route.ts',
-      ],
+      /**
+       * Use a broad include pattern so all source files contribute to coverage
+       * metrics by default. Rely on the `exclude` list below for any files
+       * that should be intentionally ignored (e.g., framework glue code,
+       * types, or UI that is impractical to test).
+       */
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/types/**',
         'src/app/**/page.tsx',
