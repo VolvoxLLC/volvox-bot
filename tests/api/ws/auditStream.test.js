@@ -24,9 +24,7 @@ const TEST_SECRET = 'audit-stream-test-secret';
 function makeTicket(guildId = 'guild1', secret = TEST_SECRET, ttlMs = 60_000) {
   const nonce = randomBytes(16).toString('hex');
   const expiry = String(Date.now() + ttlMs);
-  const hmac = createHmac('sha256', secret)
-    .update(`${nonce}.${expiry}.${guildId}`)
-    .digest('hex');
+  const hmac = createHmac('sha256', secret).update(`${nonce}.${expiry}.${guildId}`).digest('hex');
   return `${nonce}.${expiry}.${guildId}.${hmac}`;
 }
 

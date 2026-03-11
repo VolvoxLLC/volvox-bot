@@ -46,7 +46,6 @@ vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
   stopJwtCleanup: vi.fn(),
 }));
 
-import { redisRateLimit } from '../../../src/api/middleware/redisRateLimit.js';
 import { createApp } from '../../../src/api/server.js';
 import { cacheGetOrSet } from '../../../src/utils/cache.js';
 
