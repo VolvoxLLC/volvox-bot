@@ -652,7 +652,10 @@ export function ConfigEditor() {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
         const modes = { ...(prev.ai?.channelModes ?? {}) } as Record<string, ChannelMode>;
-        if (mode === undefined) {
+        const currentDefault: ChannelMode =
+          (prev.ai?.defaultChannelMode as ChannelMode) ?? 'mention';
+        if (mode === undefined || mode === currentDefault) {
+          // Don't persist overrides that match the default — remove them
           delete modes[channelId];
         } else {
           modes[channelId] = mode;
@@ -667,7 +670,17 @@ export function ConfigEditor() {
     (mode: ChannelMode) => {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
-        return { ...prev, ai: { ...prev.ai, defaultChannelMode: mode } } as GuildConfig;
+        // Prune any per-channel overrides that now match the new default
+        const existingModes = { ...(prev.ai?.channelModes ?? {}) } as Record<string, ChannelMode>;
+        for (const [channelId, channelMode] of Object.entries(existingModes)) {
+          if (channelMode === mode) {
+            delete existingModes[channelId];
+          }
+        }
+        return {
+          ...prev,
+          ai: { ...prev.ai, defaultChannelMode: mode, channelModes: existingModes },
+        } as GuildConfig;
       });
     },
     [updateDraftConfig],
