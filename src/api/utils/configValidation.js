@@ -29,7 +29,7 @@ export const CONFIG_SCHEMA = {
         },
       },
       channelModes: { type: 'object', openProperties: true },
-      defaultChannelMode: { type: 'string' },
+      defaultChannelMode: { type: 'string', enum: ['off', 'mention', 'vibe'] },
     },
   },
   welcome: {
@@ -250,6 +250,8 @@ export function validateValue(value, schema, path) {
     case 'string':
       if (typeof value !== 'string') {
         errors.push(`${path}: expected string, got ${typeof value}`);
+      } else if (schema.enum && !schema.enum.includes(value)) {
+        errors.push(`${path}: must be one of [${schema.enum.join(', ')}], got "${value}"`);
       }
       break;
     case 'number':
