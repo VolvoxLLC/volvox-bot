@@ -168,6 +168,14 @@ describe('Audit Log WebSocket Stream', () => {
     await waitForClose(ws);
   });
 
+  it('should reject tickets with malformed HMAC bytes', async () => {
+    const ws = await connectWs(port);
+    const parts = makeTicket().split('.');
+    sendJson(ws, { type: 'auth', ticket: `${parts[0]}.${parts[1]}.${parts[2]}.zz` });
+    const code = await waitForClose(ws);
+    expect(code).toBe(4003);
+  });
+
   it('should decrement client count on disconnect', async () => {
     const ws = await connectWs(port);
     const q = createMessageQueue(ws);
@@ -202,6 +210,24 @@ describe('Audit Log WebSocket Stream', () => {
     sendJson(ws, { type: 'filter', guildId: 'guild1' });
     const msg = await q.next();
     expect(msg.type).toBe('error');
+    ws.close();
+    await waitForClose(ws);
+  });
+
+  it('should normalize non-string filter values to null', async () => {
+    const ws = await connectWs(port);
+    const q = createMessageQueue(ws);
+    sendJson(ws, { type: 'auth', ticket: makeTicket() });
+    await q.next();
+
+    sendJson(ws, { type: 'filter', action: 42, userId: { nope: true } });
+    const msg = await q.next();
+
+    expect(msg).toEqual({
+      type: 'filter_ok',
+      filter: { guildId: 'guild1', action: null, userId: null },
+    });
+
     ws.close();
     await waitForClose(ws);
   });
@@ -273,14 +299,27 @@ describe('Audit Log WebSocket Stream', () => {
     await waitForClose(ws);
   });
 
-  it('should reject filter with non-matching guildId and still deliver entries for authenticated guild', async () => {
+  it('should ignore a rejected guild filter and keep the authenticated guild scope', async () => {
     const ws = await connectWs(port);
     const q = createMessageQueue(ws);
     sendJson(ws, { type: 'auth', ticket: makeTicket() });
     await q.next(); // auth_ok
-    sendJson(ws, { type: 'filter', guildId: 'other-guild' });
-    const errMsg = await q.next(); // error — guild mismatch
-    expect(errMsg.type).toBe('error');
+    sendJson(ws, { type: 'filter', guildId: 'guild2' });
+
+    const filterError = await q.next();
+    expect(filterError).toEqual({
+      type: 'error',
+      message: 'Guild filter does not match authenticated guild',
+    });
+
+    broadcastAuditEntry({
+      id: 300,
+      guild_id: 'guild2',
+      user_id: 'user2',
+      action: 'config.update',
+      created_at: new Date().toISOString(),
+    });
+    await expect(q.next(500)).rejects.toThrow('Message timeout');
 
     // No valid filter was set, so entries for the authenticated guild still arrive
     broadcastAuditEntry({
@@ -329,6 +368,36 @@ describe('Audit Log WebSocket Stream', () => {
     await waitForClose(ws);
   });
 
+  it('should filter by user id', async () => {
+    const ws = await connectWs(port);
+    const q = createMessageQueue(ws);
+    sendJson(ws, { type: 'auth', ticket: makeTicket() });
+    await q.next();
+    sendJson(ws, { type: 'filter', userId: 'user-2' });
+    await q.next();
+
+    broadcastAuditEntry({
+      id: 41,
+      guild_id: 'guild1',
+      user_id: 'user-1',
+      action: 'config.update',
+      created_at: new Date().toISOString(),
+    });
+    broadcastAuditEntry({
+      id: 42,
+      guild_id: 'guild1',
+      user_id: 'user-2',
+      action: 'config.update',
+      created_at: new Date().toISOString(),
+    });
+
+    const msg = await q.next();
+    expect(msg.entry.id).toBe(42);
+
+    ws.close();
+    await waitForClose(ws);
+  });
+
   it('should not broadcast to unauthenticated clients', async () => {
     const ws = await connectWs(port);
     const q = createMessageQueue(ws);
@@ -364,6 +433,16 @@ describe('Audit Log WebSocket Stream', () => {
     await waitForClose(ws);
   });
 
+  it('should handle missing message type', async () => {
+    const ws = await connectWs(port);
+    const q = createMessageQueue(ws);
+    sendJson(ws, { nope: true });
+    const msg = await q.next();
+    expect(msg).toEqual({ type: 'error', message: 'Missing message type' });
+    ws.close();
+    await waitForClose(ws);
+  });
+
   // ─── broadcastAuditEntry with no wss ─────────────────────────────────────
 
   it('should not throw if broadcastAuditEntry called before setup', async () => {
@@ -384,5 +463,28 @@ describe('Audit Log WebSocket Stream', () => {
 
     ws.close();
     await waitForClose(ws);
+  });
+
+  it('should enforce the max authenticated client limit', async () => {
+    const sockets = [];
+
+    for (let i = 0; i < 10; i++) {
+      const ws = await connectWs(port);
+      const q = createMessageQueue(ws);
+      sendJson(ws, { type: 'auth', ticket: makeTicket(`guild${i}`) });
+      const msg = await q.next();
+      expect(msg.type).toBe('auth_ok');
+      sockets.push(ws);
+    }
+
+    const overflow = await connectWs(port);
+    sendJson(overflow, { type: 'auth', ticket: makeTicket('guild-overflow') });
+    const code = await waitForClose(overflow);
+    expect(code).toBe(4029);
+
+    for (const ws of sockets) {
+      ws.close();
+      await waitForClose(ws);
+    }
   });
 });

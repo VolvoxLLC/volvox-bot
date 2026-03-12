@@ -54,13 +54,13 @@ export function getChannelMode(channelId, parentId = null, guildId) {
     const defaultMode = VALID_MODES.has(rawDefault) ? rawDefault : 'mention';
 
     if (modes && typeof modes === 'object') {
-      // Direct channel match — validate before returning
-      if (modes[channelId]) {
-        return VALID_MODES.has(modes[channelId]) ? modes[channelId] : defaultMode;
-      }
-      // Thread inherits parent mode — validate before returning
-      if (parentId && modes[parentId]) {
+      // Threads inherit the parent mode first unless explicitly blocked above.
+      if (parentId && modes[parentId] != null) {
         return VALID_MODES.has(modes[parentId]) ? modes[parentId] : defaultMode;
+      }
+
+      if (modes[channelId] != null) {
+        return VALID_MODES.has(modes[channelId]) ? modes[channelId] : defaultMode;
       }
     }
 

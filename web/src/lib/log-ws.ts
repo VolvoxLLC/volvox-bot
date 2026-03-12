@@ -266,19 +266,16 @@ export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamRes
   }, [enabled, connect]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  const sendFilter = useCallback(
-    (filter: LogFilter) => {
-      activeFilterRef.current = filter;
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'filter', ...filter }));
-      }
-    },
-    [guildId],
-  );
+  const sendFilter = useCallback((filter: LogFilter) => {
+    activeFilterRef.current = filter;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'filter', ...filter }));
+    }
+  }, []);
 
   const clearLogs = useCallback(() => {
     setLogs([]);
-  }, [guildId]);
+  }, []);
 
   return { logs, status, sendFilter, clearLogs };
 }

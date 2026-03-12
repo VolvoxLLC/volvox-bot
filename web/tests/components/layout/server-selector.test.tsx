@@ -26,6 +26,7 @@ import { SELECTED_GUILD_KEY } from "@/lib/guild-selection";
 
 describe("ServerSelector", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
+  const originalClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
   beforeEach(() => {
     localStorage.clear();
@@ -35,6 +36,11 @@ describe("ServerSelector", () => {
 
   afterEach(() => {
     fetchSpy.mockRestore();
+    if (originalClientId === undefined) {
+      delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+    } else {
+      process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = originalClientId;
+    }
   });
 
   it("shows loading state initially", () => {
@@ -44,6 +50,7 @@ describe("ServerSelector", () => {
   });
 
   it("shows no mutual servers message when empty", async () => {
+    delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
     fetchSpy.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([]),
@@ -54,6 +61,23 @@ describe("ServerSelector", () => {
       expect(
         screen.getByText(/Volvox.Bot isn't in any of your Discord servers/),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("shows the invite button when no mutual servers and a client id exists", async () => {
+    process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = "discord-client-id";
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    } as Response);
+
+    render(<ServerSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /Invite Bill Bot/i })).toHaveAttribute(
+        "href",
+        expect.stringContaining("client_id=discord-client-id"),
+      );
     });
   });
 
@@ -229,5 +253,75 @@ describe("ServerSelector", () => {
     });
     // Initial call + retry call
     expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows member-only servers when the user cannot manage any guilds", async () => {
+    const guilds = [
+      {
+        id: "viewer-1",
+        name: "Viewer Server",
+        icon: "a_hash",
+        owner: false,
+        permissions: "0",
+        features: [],
+        botPresent: true,
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    render(<ServerSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No manageable servers")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("button", { name: /No manageable servers/i }));
+
+    expect(screen.getByText(/You need mod or admin permissions/i)).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Viewer Server/i })).toHaveAttribute(
+      "href",
+      "/community/viewer-1",
+    );
+    expect(screen.getByAltText("Viewer Server")).toHaveAttribute(
+      "src",
+      expect.stringContaining("/icons/viewer-1/a_hash.gif"),
+    );
+    expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
+  });
+
+  it("ignores invalid guild records from the api response", async () => {
+    const guilds = [
+      {
+        id: "valid-1",
+        name: "Valid Server",
+        icon: null,
+        owner: true,
+        permissions: "8",
+        features: [],
+        botPresent: true,
+      },
+      {
+        id: "broken-1",
+        name: "Broken Server",
+        owner: "yes",
+        permissions: "8",
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    render(<ServerSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Valid Server")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Broken Server")).not.toBeInTheDocument();
   });
 });

@@ -19,11 +19,13 @@ vi.mock('../../src/redis.js', () => ({
 describe('discordCache.js', () => {
   let discordCache;
   let cache;
+  let warn;
 
   beforeEach(async () => {
     vi.resetModules();
     cache = await import('../../src/utils/cache.js');
     discordCache = await import('../../src/utils/discordCache.js');
+    ({ warn } = await import('../../src/logger.js'));
     cache._resetCache();
   });
 
@@ -64,6 +66,44 @@ describe('discordCache.js', () => {
       expect(client.channels.fetch).toHaveBeenCalledWith('456');
     });
 
+    it('refetches from the API when metadata is cached but Discord.js cache is empty', async () => {
+      const cachedChannel = { id: '456', name: 'general', type: 0, guildId: '789' };
+      const client = {
+        channels: {
+          cache: new Map(),
+          fetch: vi.fn().mockResolvedValue(cachedChannel),
+        },
+      };
+
+      await cache.cacheSet('discord:channel:456', { id: '456' }, cache.TTL.CHANNEL_DETAIL);
+
+      const result = await discordCache.fetchChannelCached(client, '456');
+      expect(result).toBe(cachedChannel);
+      expect(client.channels.fetch).toHaveBeenCalledWith('456');
+    });
+
+    it('returns a rechecked Discord.js cache hit after metadata lookup', async () => {
+      const mockChannel = { id: '789', name: 'alerts', type: 0 };
+      const cacheStore = new Map();
+      const client = {
+        channels: {
+          cache: {
+            get: vi.fn((channelId) => cacheStore.get(channelId)),
+          },
+          fetch: vi.fn(),
+        },
+      };
+
+      await cache.cacheSet('discord:channel:789', { id: '789' }, cache.TTL.CHANNEL_DETAIL);
+      client.channels.cache.get
+        .mockImplementationOnce(() => undefined)
+        .mockImplementationOnce(() => mockChannel);
+
+      const result = await discordCache.fetchChannelCached(client, '789');
+      expect(result).toBe(mockChannel);
+      expect(client.channels.fetch).not.toHaveBeenCalled();
+    });
+
     it('returns null on API error', async () => {
       const client = {
         channels: {
@@ -100,6 +140,44 @@ describe('discordCache.js', () => {
       // fetch should NOT be called again (served from cache)
       expect(guild.channels.fetch).not.toHaveBeenCalled();
     });
+
+    it('filters null guild channels', async () => {
+      const channels = new Map([
+        ['2', { id: '2', name: 'random', type: 0, position: 4, parentId: null }],
+        ['1', { id: '1', name: 'general', type: 0, position: 1, parentId: null }],
+        ['3', null],
+      ]);
+      const guild = {
+        id: 'guild-sort',
+        channels: { fetch: vi.fn().mockResolvedValue(channels) },
+      };
+
+      const result = await discordCache.fetchGuildChannelsCached(guild);
+      expect(result.map((channel) => channel.id)).toEqual(['1', '2']);
+    });
+
+    it('sorts guild channels by position', async () => {
+      const channels = new Map([
+        ['2', { id: '2', name: 'random', type: 0, position: 4, parentId: null }],
+        ['1', { id: '1', name: 'general', type: 0, position: 1, parentId: null }],
+      ]);
+      const guild = {
+        id: 'guild-sort-order',
+        channels: { fetch: vi.fn().mockResolvedValue(channels) },
+      };
+
+      const result = await discordCache.fetchGuildChannelsCached(guild);
+      expect(result.map((channel) => channel.id)).toEqual(['1', '2']);
+    });
+
+    it('returns an empty list when guild channel fetch fails', async () => {
+      const guild = {
+        id: 'guild-sort',
+        channels: { fetch: vi.fn().mockRejectedValue(new Error('discord down')) },
+      };
+
+      await expect(discordCache.fetchGuildChannelsCached(guild)).resolves.toEqual([]);
+    });
   });
 
   describe('fetchGuildRolesCached', () => {
@@ -120,6 +198,15 @@ describe('discordCache.js', () => {
       const result = await discordCache.fetchGuildRolesCached(guild);
       expect(result).toHaveLength(2);
       expect(result.find((r) => r.name === 'Admin')).toBeDefined();
+    });
+
+    it('returns an empty list when guild role fetch fails', async () => {
+      const guild = {
+        id: 'guild-roles-error',
+        roles: { fetch: vi.fn().mockRejectedValue(new Error('discord down')) },
+      };
+
+      await expect(discordCache.fetchGuildRolesCached(guild)).resolves.toEqual([]);
     });
   });
 
@@ -158,6 +245,76 @@ describe('discordCache.js', () => {
 
       const result = await discordCache.fetchMemberCached(guild, '999');
       expect(result).toBeNull();
+    });
+
+    it('returns a member from the API and caches the metadata', async () => {
+      const mockMember = {
+        id: 'member-1',
+        displayName: 'Member One',
+        joinedAt: new Date('2025-01-01T00:00:00Z'),
+      };
+      const guild = {
+        id: 'guild1',
+        members: {
+          cache: new Map(),
+          fetch: vi.fn().mockResolvedValue(mockMember),
+        },
+      };
+
+      const result = await discordCache.fetchMemberCached(guild, 'member-1');
+      expect(result).toBe(mockMember);
+      expect(
+        await cache.cacheGet('discord:guild:guild1:member:member-1'),
+      ).toEqual({
+        id: 'member-1',
+        displayName: 'Member One',
+        joinedAt: '2025-01-01T00:00:00.000Z',
+      });
+    });
+
+    it('rechecks the Discord.js member cache after a metadata hit', async () => {
+      const cachedMember = { id: 'member-2', displayName: 'Member Two' };
+      const memberCache = new Map();
+      const guild = {
+        id: 'guild-cache',
+        members: {
+          cache: {
+            get: vi.fn((userId) => memberCache.get(userId)),
+          },
+          fetch: vi.fn(),
+        },
+      };
+
+      await cache.cacheSet(
+        'discord:guild:guild-cache:member:member-2',
+        { id: 'member-2' },
+        cache.TTL.MEMBERS,
+      );
+      guild.members.cache.get
+        .mockImplementationOnce(() => undefined)
+        .mockImplementationOnce(() => cachedMember);
+
+      const result = await discordCache.fetchMemberCached(guild, 'member-2');
+      expect(result).toBe(cachedMember);
+      expect(guild.members.fetch).not.toHaveBeenCalled();
+    });
+
+    it('returns null for non-10007 fetch errors without throwing', async () => {
+      const err = new Error('discord down');
+      err.code = 50013;
+      const guild = {
+        id: 'guild-error',
+        members: {
+          cache: new Map(),
+          fetch: vi.fn().mockRejectedValue(err),
+        },
+      };
+
+      await expect(discordCache.fetchMemberCached(guild, 'user-err')).resolves.toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        'Failed to fetch guild member',
+        expect.objectContaining({ guildId: 'guild-error', userId: 'user-err' }),
+      );
     });
   });
 

@@ -17,6 +17,7 @@ import { handleQuietCommand, isQuietMode } from '../quietMode.js';
 import { checkRateLimit } from '../rateLimit.js';
 import { handleXpGain } from '../reputation.js';
 import { isSpam, sendSpamAlert } from '../spam.js';
+import { clearChannelState } from '../triage-buffer.js';
 import { accumulateMessage, evaluateNow } from '../triage.js';
 import { recordCommunityActivity } from '../welcome.js';
 
@@ -179,7 +180,10 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       const mode = getChannelMode(message.channel.id, parentId, message.guild.id);
 
       // 'off' → No AI at all (no accumulate, no evaluate)
-      if (mode === 'off') return;
+      if (mode === 'off') {
+        clearChannelState(message.channel.id);
+        return;
+      }
 
       // Backward-compat: isChannelBlocked is now folded into getChannelMode,
       // but keep the explicit call as a safety net for any callers that bypass mode.
@@ -265,11 +269,8 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         // Only respond to @mentions/replies (current default behavior)
         if ((isMentioned || isReply) && isAllowedChannel) {
           await handleDirectMention();
-          return; // Don't accumulate again below
         }
-        // Not a mention/reply in mention mode — return early, do NOT accumulate
-        if (!isMentioned && !isReply) return;
-        // Is a mention/reply but channel not in allowlist — fall through to accumulate
+        return;
       } else if (mode === 'vibe') {
         if ((isMentioned || isReply) && isAllowedChannel) {
           // Direct mention in vibe mode → immediate evaluation
