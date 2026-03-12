@@ -1,4 +1,4 @@
-# 🤖 Volvox Bot
+# 🤖 Volvox.Bot
 
 [![CI](https://github.com/VolvoxLLC/volvox-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/VolvoxLLC/volvox-bot/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/github/VolvoxLLC/volvox-bot/badge.svg?branch=main)](https://coveralls.io/github/VolvoxLLC/volvox-bot?branch=main)
@@ -57,7 +57,7 @@ Discord User
      │
      ▼
 ┌─────────────┐     ┌──────────────┐
-│  Volvox Bot  │────▶│   Claude API │
+│  Volvox.Bot  │────▶│   Claude API │
 │  (Node.js)  │◀────│   (Anthropic)│
 └──────┬──────┘     └──────────────┘
        │

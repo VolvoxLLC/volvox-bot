@@ -15,7 +15,7 @@ const options = {
   definition: {
     openapi: '3.0.3',
     info: {
-      title: 'Volvox Bot API',
+      title: 'Volvox.Bot API',
       version,
       description:
         'REST API for the Volvox Discord bot — guild management, moderation, analytics, AI conversations, and more.',

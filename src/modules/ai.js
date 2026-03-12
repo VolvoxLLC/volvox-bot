@@ -25,6 +25,52 @@ let cleanupTimer = null;
 /** In-flight async hydrations keyed by channel ID (dedupes concurrent DB reads) */
 const pendingHydrations = new Map();
 
+/** Valid AI channel mode values */
+const VALID_MODES = new Set(['off', 'mention', 'vibe']);
+
+/**
+ * Resolve the effective AI response mode for a channel.
+ * Priority: blockedChannelIds → channelModes map → defaultChannelMode → 'mention'
+ *
+ * For threads, check parentId against the modes map (inherit parent's mode).
+ *
+ * @param {string} channelId
+ * @param {string|null} parentId - For threads, the parent channel ID
+ * @param {string} guildId
+ * @returns {'off'|'mention'|'vibe'}
+ */
+export function getChannelMode(channelId, parentId = null, guildId) {
+  try {
+    const config = getConfig(guildId);
+    // Hard block from blockedChannelIds takes precedence
+    const blocked = config?.ai?.blockedChannelIds;
+    if (Array.isArray(blocked) && blocked.length > 0) {
+      if (blocked.includes(channelId)) return 'off';
+      if (parentId && blocked.includes(parentId)) return 'off';
+    }
+
+    const modes = config?.ai?.channelModes;
+    const rawDefault = config?.ai?.defaultChannelMode ?? 'mention';
+    const defaultMode = VALID_MODES.has(rawDefault) ? rawDefault : 'mention';
+
+    if (modes && typeof modes === 'object') {
+      // Threads inherit the parent mode first unless explicitly blocked above.
+      if (parentId && modes[parentId] != null) {
+        return VALID_MODES.has(modes[parentId]) ? modes[parentId] : defaultMode;
+      }
+
+      if (modes[channelId] != null) {
+        return VALID_MODES.has(modes[channelId]) ? modes[channelId] : defaultMode;
+      }
+    }
+
+    return defaultMode;
+  } catch {
+    // Config not loaded yet — fail open (default to mention)
+    return 'mention';
+  }
+}
+
 /**
  * Check whether a channel (or its parent thread channel) is in the AI blocklist.
  *

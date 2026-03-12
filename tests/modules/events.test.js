@@ -306,8 +306,8 @@ describe('events module', () => {
       };
       await onCallbacks.messageCreate(message);
       expect(evaluateNow).not.toHaveBeenCalled();
-      // Message should still be accumulated via the generic path
-      expect(accumulateMessage).toHaveBeenCalled();
+      // In mention mode, messages always return early — no accumulation
+      expect(accumulateMessage).not.toHaveBeenCalled();
     });
 
     // ── Thread parent allowlist ───────────────────────────────────────
@@ -440,18 +440,46 @@ describe('events module', () => {
 
     // ── Non-mention ───────────────────────────────────────────────────
 
-    it('should call accumulateMessage only (not evaluateNow) for non-mention', async () => {
+    it('should not accumulate or evaluate for non-mention in mention mode', async () => {
+      // In mention mode (the default), non-mention messages must NOT be buffered
+      // for triage — that would cause unsolicited responses.
       setup();
       const message = {
         author: { bot: false, username: 'user' },
         guild: { id: 'g1' },
         content: 'regular message',
-        channel: { id: 'c1', sendTyping: vi.fn(), send: vi.fn() },
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
         mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
         reference: null,
       };
       await onCallbacks.messageCreate(message);
-      expect(accumulateMessage).toHaveBeenCalledWith(message, config);
+      expect(accumulateMessage).not.toHaveBeenCalled();
+      expect(evaluateNow).not.toHaveBeenCalled();
+    });
+
+    it('should accumulate non-mention messages in vibe mode', async () => {
+      // In vibe mode, non-mention messages should be buffered for periodic triage.
+      setup({ ai: { enabled: true, channels: [], defaultChannelMode: 'vibe' } });
+      const message = {
+        author: { bot: false, username: 'user' },
+        guild: { id: 'g1' },
+        content: 'regular message',
+        channel: {
+          id: 'c1',
+          sendTyping: vi.fn(),
+          send: vi.fn(),
+          isThread: vi.fn().mockReturnValue(false),
+        },
+        mentions: { has: vi.fn().mockReturnValue(false), repliedUser: null },
+        reference: null,
+      };
+      await onCallbacks.messageCreate(message);
+      expect(accumulateMessage).toHaveBeenCalled();
       expect(evaluateNow).not.toHaveBeenCalled();
     });
 

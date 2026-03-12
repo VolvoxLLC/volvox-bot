@@ -163,12 +163,12 @@ export function ServerSelector({ className }: ServerSelectorProps) {
       <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground text-center">
         <Bot className="h-5 w-5" />
         <span className="font-medium">No mutual servers</span>
-        <span className="text-xs">Bill Bot isn&apos;t in any of your Discord servers yet.</span>
+        <span className="text-xs">Volvox.Bot isn&apos;t in any of your Discord servers yet.</span>
         {inviteUrl ? (
           <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
             <Button variant="discord" size="sm" className="gap-1">
               <Bot className="h-3 w-3" />
-              Invite Bill Bot
+              Invite Volvox.Bot
             </Button>
           </a>
         ) : (

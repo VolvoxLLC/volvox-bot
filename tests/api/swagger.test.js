@@ -37,7 +37,7 @@ describe('OpenAPI / Swagger', () => {
     it('should generate a valid OpenAPI spec with paths', () => {
       expect(swaggerSpec).toBeDefined();
       expect(swaggerSpec.openapi).toBe('3.0.3');
-      expect(swaggerSpec.info.title).toBe('Volvox Bot API');
+      expect(swaggerSpec.info.title).toBe('Volvox.Bot API');
       expect(swaggerSpec.paths).toBeDefined();
       expect(Object.keys(swaggerSpec.paths).length).toBeGreaterThan(0);
     });

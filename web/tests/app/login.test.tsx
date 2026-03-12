@@ -34,7 +34,7 @@ describe("LoginPage", () => {
   it("renders the sign-in card", async () => {
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Welcome to Bill Bot")).toBeInTheDocument();
+      expect(screen.getByText("Welcome to Volvox.Bot")).toBeInTheDocument();
     });
     expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
   });
@@ -89,7 +89,7 @@ describe("LoginPage", () => {
     // LoginForm no longer calls signOut — Header handles it centrally
     expect(mockSignOut).not.toHaveBeenCalled();
     // Should show the login form (not the loading spinner)
-    expect(screen.getByText("Welcome to Bill Bot")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to Volvox.Bot")).toBeInTheDocument();
   });
 
   it("redirects authenticated users instead of showing login form", async () => {
@@ -102,6 +102,6 @@ describe("LoginPage", () => {
       expect(mockPush).toHaveBeenCalledWith("/dashboard");
     });
     // Should show loading state, not the login form
-    expect(screen.queryByText("Welcome to Bill Bot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Welcome to Volvox.Bot")).not.toBeInTheDocument();
   });
 });

@@ -529,7 +529,7 @@ export function buildTicketPanel(guildId) {
         channelDescription +
         'and our support team will assist you.',
     )
-    .setFooter({ text: 'Volvox Bot • Ticket System' });
+    .setFooter({ text: 'Volvox.Bot • Ticket System' });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()

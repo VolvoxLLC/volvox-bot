@@ -454,7 +454,13 @@ function getGuildChannels(guild) {
   const channels = [];
   for (const ch of guild.channels.cache.values()) {
     if (channels.length >= MAX_CHANNELS) break;
-    channels.push({ id: ch.id, name: ch.name, type: ch.type });
+    channels.push({
+      id: ch.id,
+      name: ch.name,
+      type: ch.type,
+      parentId: ch.parentId ?? null,
+      position: ch.position ?? 0,
+    });
   }
   return channels;
 }
@@ -561,6 +567,14 @@ router.get('/:id', requireGuildAdmin, validateGuild, (req, res) => {
  *                     type: string
  *                   type:
  *                     type: integer
+ *                     description: "Discord channel type enum (0=Text, 2=Voice, 4=Category, 5=Announcement, 13=Stage, 15=Forum, 16=Media)"
+ *                   parentId:
+ *                     type: string
+ *                     nullable: true
+ *                     description: "ID of the parent category channel, or null if uncategorized"
+ *                   position:
+ *                     type: integer
+ *                     description: "Sorted position of the channel within its category"
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  *       "403":

@@ -116,7 +116,7 @@ function makeInteraction(subcommandGroup, subcommand, options = {}) {
 describe('isValidRepo', () => {
   it('accepts valid owner/repo', () => {
     expect(isValidRepo('VolvoxLLC/volvox-bot')).toBe(true);
-    expect(isValidRepo('bill/my-project')).toBe(true);
+    expect(isValidRepo('octocat/hello-world')).toBe(true);
   });
 
   it('rejects missing slash', () => {
@@ -314,7 +314,7 @@ describe('github command', () => {
           feed: {
             enabled: true,
             channelId: 'ch-1',
-            repos: ['VolvoxLLC/volvox-bot', 'bill/other'],
+            repos: ['VolvoxLLC/volvox-bot', 'VolvoxLLC/volvox-bot'],
             events: ['pr'],
             pollIntervalMinutes: 5,
           },

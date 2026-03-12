@@ -19,7 +19,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { MobileSidebar } from './mobile-sidebar';
 
 /**
- * Renders the top navigation header for the Bill Bot Dashboard, including branding, a theme toggle, and a session-aware user menu.
+ * Renders the top navigation header for the Volvox.Bot Dashboard, including branding, a theme toggle, and a session-aware user menu.
  *
  * If the session reports a `RefreshTokenError`, initiates sign-out and redirects to `/login`; a guard prevents duplicate sign-out attempts.
  *
@@ -48,9 +48,9 @@ export function Header() {
 
       <div className="flex items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-discord text-white font-bold text-sm">
-          B
+          V
         </div>
-        <span className="font-semibold hidden sm:inline-block">Bill Bot Dashboard</span>
+        <span className="font-semibold hidden sm:inline-block">Volvox.Bot Dashboard</span>
       </div>
 
       <div className="ml-auto flex items-center gap-4">

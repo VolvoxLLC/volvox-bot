@@ -23,11 +23,12 @@ import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { computePatches, deepEqual } from '@/lib/config-utils';
 import { GUILD_SELECTED_EVENT, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
-import type { BotConfig, DeepPartial } from '@/types/config';
+import type { BotConfig, ChannelMode, DeepPartial } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { ConfigDiff } from './config-diff';
 import { ConfigDiffModal } from './config-diff-modal';
 import { AuditLogSection } from './config-sections/AuditLogSection';
+import { ChannelModeSection } from './config-sections/ChannelModeSection';
 import { CommunitySettingsSection } from './config-sections/CommunitySettingsSection';
 import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
@@ -360,7 +361,7 @@ export function ConfigEditor() {
     const frameId = window.requestAnimationFrame(() => {
       const target = document.getElementById(`feature-${focusFeatureId}`);
       if (!target) return;
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       const focusable = target.querySelector<HTMLElement>(
         'input, textarea, select, button, [role="switch"]',
       );
@@ -645,6 +646,52 @@ export function ConfigEditor() {
     },
     [updateDraftConfig],
   );
+
+  const updateChannelMode = useCallback(
+    (channelId: string, mode: ChannelMode | undefined) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        const modes = { ...(prev.ai?.channelModes ?? {}) } as Record<string, ChannelMode>;
+        const currentDefault: ChannelMode =
+          (prev.ai?.defaultChannelMode as ChannelMode) ?? 'mention';
+        if (mode === undefined || mode === currentDefault) {
+          // Don't persist overrides that match the default — remove them
+          delete modes[channelId];
+        } else {
+          modes[channelId] = mode;
+        }
+        return { ...prev, ai: { ...prev.ai, channelModes: modes } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateDefaultChannelMode = useCallback(
+    (mode: ChannelMode) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        // Prune any per-channel overrides that now match the new default
+        const existingModes = { ...(prev.ai?.channelModes ?? {}) } as Record<string, ChannelMode>;
+        for (const [channelId, channelMode] of Object.entries(existingModes)) {
+          if (channelMode === mode) {
+            delete existingModes[channelId];
+          }
+        }
+        return {
+          ...prev,
+          ai: { ...prev.ai, defaultChannelMode: mode, channelModes: existingModes },
+        } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const resetAllChannelModes = useCallback(() => {
+    updateDraftConfig((prev) => {
+      if (!prev) return prev;
+      return { ...prev, ai: { ...prev.ai, channelModes: {} } } as GuildConfig;
+    });
+  }, [updateDraftConfig]);
 
   const updateWelcomeEnabled = useCallback(
     (enabled: boolean) => {
@@ -990,31 +1037,30 @@ export function ConfigEditor() {
         </div>
       </div>
 
-      {/* Unsaved changes banner */}
-      {hasChanges && (
-        <output
-          aria-live="polite"
-          className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
-        >
-          You have unsaved changes in {changedCategoryCount}{' '}
-          {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
-          <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
-            Ctrl+S
-          </kbd>{' '}
-          to save.
-        </output>
-      )}
-
-      {hasValidationErrors && (
-        <output
-          aria-live="polite"
-          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-        >
-          Fix validation errors before changes can be saved.
-        </output>
-      )}
-
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
+        {/* Unsaved changes banner — spans both columns */}
+        {hasChanges && (
+          <output
+            aria-live="polite"
+            className="col-span-full rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
+          >
+            You have unsaved changes in {changedCategoryCount}{' '}
+            {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
+            <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
+              Ctrl/⌘+S
+            </kbd>{' '}
+            to save.
+          </output>
+        )}
+
+        {hasValidationErrors && (
+          <output
+            aria-live="polite"
+            className="col-span-full rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            Fix validation errors before changes can be saved.
+          </output>
+        )}
         <CategoryNavigation
           activeCategoryId={activeCategoryId}
           dirtyCounts={dirtyCategoryCounts}
@@ -1091,6 +1137,18 @@ export function ConfigEditor() {
                 )
               }
               forceOpenAdvanced={forceOpenAdvancedFeatureId === 'ai-chat'}
+            />
+          )}
+
+          {/* Channel Mode section */}
+          {activeCategoryId === 'ai-automation' && visibleFeatureIds.has('ai-chat') && guildId && (
+            <ChannelModeSection
+              draftConfig={draftConfig}
+              saving={saving}
+              guildId={guildId}
+              onChannelModeChange={updateChannelMode}
+              onDefaultModeChange={updateDefaultChannelMode}
+              onResetAll={resetAllChannelModes}
             />
           )}
 

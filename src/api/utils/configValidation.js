@@ -28,6 +28,8 @@ export const CONFIG_SCHEMA = {
           reuseWindowMinutes: { type: 'number' },
         },
       },
+      channelModes: { type: 'object', openProperties: true },
+      defaultChannelMode: { type: 'string', enum: ['off', 'mention', 'vibe'] },
     },
   },
   welcome: {
@@ -248,6 +250,8 @@ export function validateValue(value, schema, path) {
     case 'string':
       if (typeof value !== 'string') {
         errors.push(`${path}: expected string, got ${typeof value}`);
+      } else if (schema.enum && !schema.enum.includes(value)) {
+        errors.push(`${path}: must be one of [${schema.enum.join(', ')}], got "${value}"`);
       }
       break;
     case 'number':
@@ -319,10 +323,14 @@ export function validateSingleValue(path, value) {
   // Walk the schema tree to find the leaf schema for this path
   let currentSchema = schema;
   for (let i = 1; i < segments.length; i++) {
-    if (!currentSchema.properties || !Object.hasOwn(currentSchema.properties, segments[i])) {
+    if (currentSchema.properties && Object.hasOwn(currentSchema.properties, segments[i])) {
+      currentSchema = currentSchema.properties[segments[i]];
+    } else if (currentSchema.openProperties) {
+      // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value
+      break;
+    } else {
       return [`Unknown config path: ${path}`];
     }
-    currentSchema = currentSchema.properties[segments[i]];
   }
 
   return validateValue(value, currentSchema, path);

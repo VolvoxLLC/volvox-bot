@@ -17,7 +17,7 @@ describe('loadCommandsFromDirectory', () => {
   });
 
   it('loads valid commands and handles invalid/broken modules per file', async () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'bill-bot-commands-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'volvox-bot-commands-'));
 
     writeFileSync(
       join(tempDir, 'ping.js'),
@@ -54,7 +54,7 @@ describe('loadCommandsFromDirectory', () => {
   });
 
   it('supports disabling success logs', async () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'bill-bot-commands-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'volvox-bot-commands-'));
 
     writeFileSync(
       join(tempDir, 'status.js'),

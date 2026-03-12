@@ -321,6 +321,7 @@ describe('Audit Log WebSocket Stream', () => {
     });
     await expect(q.next(500)).rejects.toThrow('Message timeout');
 
+    // No valid filter was set, so entries for the authenticated guild still arrive
     broadcastAuditEntry({
       id: 3,
       guild_id: 'guild1',
