@@ -306,8 +306,8 @@ describe('events module', () => {
       };
       await onCallbacks.messageCreate(message);
       expect(evaluateNow).not.toHaveBeenCalled();
-      // Message should still be accumulated via the generic path
-      expect(accumulateMessage).toHaveBeenCalled();
+      // In mention mode, messages always return early — no accumulation
+      expect(accumulateMessage).not.toHaveBeenCalled();
     });
 
     // ── Thread parent allowlist ───────────────────────────────────────

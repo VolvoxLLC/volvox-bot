@@ -323,10 +323,14 @@ export function validateSingleValue(path, value) {
   // Walk the schema tree to find the leaf schema for this path
   let currentSchema = schema;
   for (let i = 1; i < segments.length; i++) {
-    if (!currentSchema.properties || !Object.hasOwn(currentSchema.properties, segments[i])) {
+    if (currentSchema.properties && Object.hasOwn(currentSchema.properties, segments[i])) {
+      currentSchema = currentSchema.properties[segments[i]];
+    } else if (currentSchema.openProperties) {
+      // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value
+      break;
+    } else {
       return [`Unknown config path: ${path}`];
     }
-    currentSchema = currentSchema.properties[segments[i]];
   }
 
   return validateValue(value, currentSchema, path);

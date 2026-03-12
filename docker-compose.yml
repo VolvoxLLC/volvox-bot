@@ -60,6 +60,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/volvoxbot
       DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
+      PORT: "6968"
       BOT_API_PORT: "6968"
       DASHBOARD_URL: http://localhost:6969
       DISABLE_PROMPT_CACHING: "1"

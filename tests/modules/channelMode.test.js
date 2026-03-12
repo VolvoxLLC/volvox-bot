@@ -92,11 +92,12 @@ describe('getChannelMode()', () => {
     expect(getChannelMode('thread-id', 'parent-ch', 'guild1')).toBe('vibe');
   });
 
-  it('thread direct entry takes precedence over parent', () => {
+  it('thread inherits parent mode over its own direct entry', () => {
     getConfig.mockReturnValue(
       aiConfig({ channelModes: { 'thread-id': 'off', 'parent-ch': 'vibe' } }),
     );
-    expect(getChannelMode('thread-id', 'parent-ch', 'guild1')).toBe('off');
+    // Parent-first: threads inherit parent channel mode
+    expect(getChannelMode('thread-id', 'parent-ch', 'guild1')).toBe('vibe');
   });
 
   it('thread with no entry and parent with no entry falls back to default', () => {
