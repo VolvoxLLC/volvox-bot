@@ -22,7 +22,20 @@ ARG NEXT_PUBLIC_DISCORD_CLIENT_ID
 ENV NEXT_PUBLIC_DISCORD_CLIENT_ID=$NEXT_PUBLIC_DISCORD_CLIENT_ID
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 RUN pnpm build
+# Flatten standalone output if nested (monorepo turbopack.root creates subdirs)
+RUN if [ -f .next/standalone/server.js ]; then \
+      echo "server.js at root"; \
+    elif [ -f .next/standalone/web/server.js ]; then \
+      echo "server.js nested under web/, flattening..."; \
+      cp -a .next/standalone/web/* .next/standalone/; \
+      rm -rf .next/standalone/web; \
+    else \
+      echo "ERROR: server.js not found in standalone output"; \
+      find .next/standalone -name server.js; \
+      exit 1; \
+    fi
 
 # --- Runner ---
 FROM node:22-alpine AS runner
@@ -34,10 +47,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Standalone output nests under web/ due to monorepo turbopack.root.
+# Standalone output places server.js at the root (turbopack.root disabled in production).
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./web/public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
@@ -49,4 +62,4 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-CMD ["node", "web/server.js"]
+CMD ["node", "server.js"]
