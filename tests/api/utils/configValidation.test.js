@@ -244,7 +244,7 @@ describe('configValidation', () => {
 
     it('should reject rotation messages missing text', () => {
       const errors = validateSingleValue('botStatus.rotation.messages', [{ type: 'Watching' }]);
-      expect(errors.some((e) => e.includes('missing required key \"text\"'))).toBe(true);
+      expect(errors.some((e) => e.includes('missing required key "text"'))).toBe(true);
     });
   });
 

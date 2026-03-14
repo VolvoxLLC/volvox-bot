@@ -263,7 +263,9 @@ describe('voice command', () => {
       }),
     );
     expect(csv).toContain('id,user_id,channel_id,joined_at,left_at,duration_seconds');
-    expect(csv).toContain('1,user-1,channel-1,2025-01-01T00:00:00.000Z,2025-01-01T01:00:00.000Z,3600');
+    expect(csv).toContain(
+      '1,user-1,channel-1,2025-01-01T00:00:00.000Z,2025-01-01T01:00:00.000Z,3600',
+    );
   });
 
   it('shows a failure message when export throws', async () => {

@@ -42,11 +42,11 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
-import { loadConfig } from './modules/config.js';
+import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
+import { getConfig, loadConfig } from './modules/config.js';
 
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
-import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';

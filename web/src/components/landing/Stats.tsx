@@ -85,7 +85,8 @@ function SkeletonCard() {
       <div
         className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite]"
         style={{
-          background: 'linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.04) 50%, transparent 100%)',
+          background:
+            'linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.04) 50%, transparent 100%)',
         }}
       />
       <div className="flex flex-col items-center gap-3">
@@ -109,7 +110,15 @@ interface StatCardProps {
   isInView: boolean;
 }
 
-function StatCard({ icon, color, value, label, formatter = formatNumber, delay, isInView }: StatCardProps) {
+function StatCard({
+  icon,
+  color,
+  value,
+  label,
+  formatter = formatNumber,
+  delay,
+  isInView,
+}: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -206,17 +215,58 @@ export function Stats() {
   }, []);
 
   const s = stats ?? {
-    servers: 0, members: 0, commandsServed: 0,
-    activeConversations: 0, uptime: 0, messagesProcessed: 0, cachedAt: '',
+    servers: 0,
+    members: 0,
+    commandsServed: 0,
+    activeConversations: 0,
+    uptime: 0,
+    messagesProcessed: 0,
+    cachedAt: '',
   };
 
   const statCards = [
-    { icon: <Globe className="w-6 h-6" />, color: '#22c55e', value: s.servers, label: 'Servers', formatter: formatNumber },
-    { icon: <Users className="w-6 h-6" />, color: '#22c55e', value: s.members, label: 'Members', formatter: formatNumber },
-    { icon: <Terminal className="w-6 h-6" />, color: '#ff9500', value: s.commandsServed, label: 'Commands Served', formatter: formatNumber },
-    { icon: <MessageSquare className="w-6 h-6" />, color: '#af58da', value: s.activeConversations, label: 'Active Conversations', formatter: formatNumber },
-    { icon: <Clock className="w-6 h-6" />, color: '#14b8a6', value: s.uptime, label: 'Uptime', formatter: formatUptime },
-    { icon: <Activity className="w-6 h-6" />, color: '#f43f5e', value: s.messagesProcessed, label: 'Messages Processed', formatter: formatNumber },
+    {
+      icon: <Globe className="w-6 h-6" />,
+      color: '#22c55e',
+      value: s.servers,
+      label: 'Servers',
+      formatter: formatNumber,
+    },
+    {
+      icon: <Users className="w-6 h-6" />,
+      color: '#22c55e',
+      value: s.members,
+      label: 'Members',
+      formatter: formatNumber,
+    },
+    {
+      icon: <Terminal className="w-6 h-6" />,
+      color: '#ff9500',
+      value: s.commandsServed,
+      label: 'Commands Served',
+      formatter: formatNumber,
+    },
+    {
+      icon: <MessageSquare className="w-6 h-6" />,
+      color: '#af58da',
+      value: s.activeConversations,
+      label: 'Active Conversations',
+      formatter: formatNumber,
+    },
+    {
+      icon: <Clock className="w-6 h-6" />,
+      color: '#14b8a6',
+      value: s.uptime,
+      label: 'Uptime',
+      formatter: formatUptime,
+    },
+    {
+      icon: <Activity className="w-6 h-6" />,
+      color: '#f43f5e',
+      value: s.messagesProcessed,
+      label: 'Messages Processed',
+      formatter: formatNumber,
+    },
   ];
 
   return (
@@ -255,7 +305,10 @@ export function Stats() {
                     transition={{ duration: 0.5, delay: i * 0.07 }}
                     className="p-6 rounded-2xl border border-border bg-card text-center"
                   >
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4" style={{ backgroundColor: `${card.color}15`, color: card.color }}>
+                    <div
+                      className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
+                      style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                    >
                       {card.icon}
                     </div>
                     <div className="text-3xl font-bold text-muted-foreground mb-2">—</div>
