@@ -44,6 +44,6 @@ logs
 data/*
 !data/.gitkeep
 
-# Web dashboard — excluded from bot image via Dockerfile (only copies src/).
-# Not excluded here because web/Dockerfile also uses root context.
-# web
+# Web dashboard and docs — not needed in bot image
+web
+docs

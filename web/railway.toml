@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerLayerCaching = false
+dockerLayerCaching = true
 
 [deploy]
 healthcheckPath = "/api/health"

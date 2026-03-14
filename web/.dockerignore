@@ -2,4 +2,23 @@ node_modules
 .next
 coverage
 tests
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation and markdown
 *.md
+
+# Tooling
+biome.json
+.editorconfig
+vitest.config.ts

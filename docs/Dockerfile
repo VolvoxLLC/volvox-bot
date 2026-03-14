@@ -1,16 +1,21 @@
-# Mintlify Docs Deployment
-FROM node:20-alpine
+# syntax=docker/dockerfile:1
+
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Install latest mintlify
-RUN npm install -g mintlify@latest
+RUN npm install -g mintlify@4.2.433
 
-# Copy docs content
-COPY . .
+RUN addgroup --system --gid 1001 docsgroup && \
+    adduser --system --uid 1001 docsuser
 
-# Expose port (Railway sets $PORT)
+COPY --chown=docsuser:docsgroup . .
+
+USER docsuser
+
 EXPOSE 3000
 
-# Start mintlify dev server on Railway's PORT
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000} || exit 1
+
 CMD ["sh", "-c", "mintlify dev --port ${PORT:-3000}"]
