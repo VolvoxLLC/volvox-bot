@@ -104,7 +104,15 @@ describe('configValidation', () => {
   describe('CONFIG_SCHEMA', () => {
     it('should have schemas for all expected top-level sections', () => {
       expect(Object.keys(CONFIG_SCHEMA)).toEqual(
-        expect.arrayContaining(['ai', 'welcome', 'spam', 'moderation', 'triage', 'auditLog']),
+        expect.arrayContaining([
+          'ai',
+          'welcome',
+          'spam',
+          'moderation',
+          'triage',
+          'auditLog',
+          'botStatus',
+        ]),
       );
     });
   });
@@ -214,6 +222,29 @@ describe('configValidation', () => {
       // channelModes has openProperties — any channel-ID sub-key is dynamic;
       // the value is validated against the parent object schema, so an object passes
       expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual([]);
+
+  describe('botStatus schema validation', () => {
+    it('should accept valid botStatus rotation settings', () => {
+      expect(validateSingleValue('botStatus.enabled', true)).toEqual([]);
+      expect(validateSingleValue('botStatus.status', 'online')).toEqual([]);
+      expect(validateSingleValue('botStatus.rotation.enabled', false)).toEqual([]);
+      expect(validateSingleValue('botStatus.rotation.intervalMinutes', 5)).toEqual([]);
+      expect(
+        validateSingleValue('botStatus.rotation.messages', [
+          { type: 'Watching', text: '{guildCount} servers' },
+        ]),
+      ).toEqual([]);
+    });
+
+    it('should reject invalid botStatus status value', () => {
+      const errors = validateSingleValue('botStatus.status', 'busy');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('must be one of');
+    });
+
+    it('should reject rotation messages missing text', () => {
+      const errors = validateSingleValue('botStatus.rotation.messages', [{ type: 'Watching' }]);
+      expect(errors.some((e) => e.includes('missing required key \"text\"'))).toBe(true);
     });
   });
 

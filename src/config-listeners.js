@@ -113,6 +113,10 @@ export function registerConfigListeners({ dbPool, config }) {
     'botStatus.activityType',
     'botStatus.activities',
     'botStatus.rotateIntervalMs',
+    'botStatus.rotation',
+    'botStatus.rotation.enabled',
+    'botStatus.rotation.intervalMinutes',
+    'botStatus.rotation.messages',
   ]) {
     onConfigChange(key, (_newValue, _oldValue, _path, guildId) => {
       // Bot presence is global — ignore per-guild overrides here

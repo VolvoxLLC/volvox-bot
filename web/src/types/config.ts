@@ -246,6 +246,23 @@ export interface ToggleSectionConfig {
   enabled: boolean;
 }
 
+export interface BotStatusRotationMessage {
+  type: 'Playing' | 'Watching' | 'Listening' | 'Competing' | 'Streaming' | 'Custom';
+  text: string;
+}
+
+export interface BotStatusRotationConfig {
+  enabled: boolean;
+  intervalMinutes: number;
+  messages: BotStatusRotationMessage[];
+}
+
+export interface BotStatusConfig {
+  enabled: boolean;
+  status: 'online' | 'idle' | 'dnd' | 'invisible';
+  rotation: BotStatusRotationConfig;
+}
+
 /** TL;DR summary feature settings. */
 export interface TldrConfig extends ToggleSectionConfig {
   defaultMessages: number;
@@ -348,6 +365,7 @@ export interface BotConfig {
   challenges?: ChallengesConfig;
   tickets?: TicketsConfig;
   auditLog?: AuditLogConfig;
+  botStatus?: BotStatusConfig;
 }
 
 /** All config sections shown in the editor. */
@@ -373,7 +391,8 @@ export type ConfigSection =
   | 'review'
   | 'challenges'
   | 'tickets'
-  | 'auditLog';
+  | 'auditLog'
+  | 'botStatus';
 
 /**
  * @deprecated Use {@link ConfigSection} directly.
