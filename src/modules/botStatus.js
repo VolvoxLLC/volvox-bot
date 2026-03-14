@@ -145,7 +145,9 @@ export function resolvePresenceStatus(cfg) {
  */
 export function resolveActivityType(typeStr) {
   if (!typeStr) return ActivityType.Playing;
-  return ACTIVITY_TYPE_MAP[typeStr] !== undefined ? ACTIVITY_TYPE_MAP[typeStr] : ActivityType.Playing;
+  return ACTIVITY_TYPE_MAP[typeStr] !== undefined
+    ? ACTIVITY_TYPE_MAP[typeStr]
+    : ActivityType.Playing;
 }
 
 /**
@@ -182,7 +184,8 @@ function normalizeMessage(entry, fallbackType) {
   const rawText = typeof entry.text === 'string' ? entry.text.trim() : '';
   if (!rawText) return null;
 
-  const type = typeof entry.type === 'string' && entry.type.trim() ? entry.type : fallbackType ?? 'Playing';
+  const type =
+    typeof entry.type === 'string' && entry.type.trim() ? entry.type : (fallbackType ?? 'Playing');
   return { type, text: rawText };
 }
 
