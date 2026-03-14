@@ -92,12 +92,15 @@ describe('config-listeners', () => {
       expect(registeredKeys).toContain('welcome.*');
       expect(registeredKeys).toContain('starboard.*');
       expect(registeredKeys).toContain('reputation.*');
+      expect(registeredKeys).toContain('botStatus.rotation.enabled');
+      expect(registeredKeys).toContain('botStatus.rotation.intervalMinutes');
+      expect(registeredKeys).toContain('botStatus.rotation.messages');
     });
 
-    it('registers exactly 18 listeners', () => {
+    it('registers exactly 22 listeners', () => {
       const config = { logging: { database: { enabled: false } } };
       registerConfigListeners({ dbPool: {}, config });
-      expect(onConfigChange).toHaveBeenCalledTimes(18);
+      expect(onConfigChange).toHaveBeenCalledTimes(22);
     });
   });
 

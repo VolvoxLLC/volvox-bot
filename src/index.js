@@ -46,6 +46,7 @@ import { loadConfig } from './modules/config.js';
 
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
+import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
 import { checkMem0Health, markUnavailable } from './modules/memory.js';
 import { startTempbanScheduler, stopTempbanScheduler } from './modules/moderation.js';
 import { loadOptOuts } from './modules/optout.js';
@@ -193,6 +194,7 @@ async function gracefulShutdown(signal) {
   stopWarningExpiryScheduler();
   stopScheduler();
   stopGithubFeed();
+  stopBotStatus();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -366,6 +368,9 @@ async function startup() {
 
   // Start triage module (per-channel message classification + response)
   await startTriage(client, config, healthMonitor);
+
+  // Start configurable bot presence rotation
+  startBotStatus(client);
 
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {

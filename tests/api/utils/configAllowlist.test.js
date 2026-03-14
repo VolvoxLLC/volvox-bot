@@ -20,6 +20,7 @@ describe('configAllowlist', () => {
       expect(SAFE_CONFIG_KEYS.has('starboard')).toBe(true);
       expect(SAFE_CONFIG_KEYS.has('permissions')).toBe(true);
       expect(SAFE_CONFIG_KEYS.has('memory')).toBe(true);
+      expect(SAFE_CONFIG_KEYS.has('botStatus')).toBe(true);
     });
   });
 
@@ -35,6 +36,7 @@ describe('configAllowlist', () => {
       expect(READABLE_CONFIG_KEYS).toContain('memory');
       expect(READABLE_CONFIG_KEYS).toContain('permissions');
       expect(READABLE_CONFIG_KEYS).toContain('starboard');
+      expect(READABLE_CONFIG_KEYS).toContain('botStatus');
     });
   });
 
