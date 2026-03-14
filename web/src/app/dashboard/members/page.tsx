@@ -3,12 +3,14 @@
 import { RefreshCw, Search, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef } from 'react';
+import { EmptyState } from '@/components/dashboard/empty-state';
 import {
   type MemberRow,
   MemberTable,
   type SortColumn,
   type SortOrder,
 } from '@/components/dashboard/member-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
@@ -231,44 +233,59 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Users className="h-6 w-6" />
-            Members
-          </h2>
-          <p className="text-muted-foreground">
-            View member activity, XP, levels, and moderation history.
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={handleRefresh}
-          disabled={!guildId || loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        icon={Users}
+        title="Members"
+        description="View member activity, XP, levels, and moderation history."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* No guild selected */}
       {!guildId && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            Select a server from the sidebar to view members.
-          </p>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="Select a server"
+          description="Choose a server from the sidebar to view members."
+        />
       )}
 
       {/* Content */}
       {guildId && (
         <>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-border/50 bg-card p-4">
+              <p className="text-xs font-medium text-muted-foreground">Total Members</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">
+                {total.toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card p-4">
+              <p className="text-xs font-medium text-muted-foreground">Filtered Results</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">
+                {(filteredTotal ?? total).toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card p-4">
+              <p className="text-xs font-medium text-muted-foreground">Sort Order</p>
+              <p className="mt-3 text-lg font-semibold tracking-tight capitalize">
+                {sortColumn} · {sortOrder}
+              </p>
+            </div>
+          </div>
+
           {/* Search + stats bar */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/50 bg-card p-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

@@ -3,6 +3,8 @@
 import { RefreshCw, Search, Ticket, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { EmptyState } from '@/components/dashboard/empty-state';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +42,7 @@ function TicketsSkeleton() {
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
             <TableRow key={`skeleton-${i}`}>
               <TableCell>
                 <Skeleton className="h-4 w-8" />
@@ -270,62 +273,68 @@ export default function TicketsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Ticket className="h-6 w-6" />
-            Tickets
-          </h2>
-          <p className="text-muted-foreground">Manage support tickets and view transcripts.</p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={handleRefresh}
-          disabled={!guildId || loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        icon={Ticket}
+        title="Tickets"
+        description="Manage support tickets and view transcripts."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-medium text-muted-foreground">Open Tickets</div>
-            <div className="mt-1 text-2xl font-bold">{stats.openCount}</div>
+          <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Open Tickets
+            </div>
+            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">
+              {stats.openCount}
+            </div>
           </div>
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-medium text-muted-foreground">Avg Resolution</div>
-            <div className="mt-1 text-2xl font-bold">
+          <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Avg Resolution
+            </div>
+            <div className="mt-3 text-3xl font-semibold tracking-tight">
               {formatDuration(stats.avgResolutionSeconds)}
             </div>
           </div>
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-medium text-muted-foreground">This Week</div>
-            <div className="mt-1 text-2xl font-bold">{stats.ticketsThisWeek}</div>
+          <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              This Week
+            </div>
+            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">
+              {stats.ticketsThisWeek}
+            </div>
           </div>
         </div>
       )}
 
       {/* No guild selected */}
       {!guildId && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            Select a server from the sidebar to view tickets.
-          </p>
-        </div>
+        <EmptyState
+          icon={Ticket}
+          title="Select a server"
+          description="Choose a server from the sidebar to view tickets."
+        />
       )}
 
       {/* Content */}
       {guildId && (
         <>
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -385,7 +394,7 @@ export default function TicketsPage() {
           {loading && tickets.length === 0 ? (
             <TicketsSkeleton />
           ) : tickets.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-2xl border border-border/50 bg-card shadow-sm">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -435,13 +444,15 @@ export default function TicketsPage() {
               </Table>
             </div>
           ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">
-                {statusFilter || debouncedSearch
-                  ? 'No tickets match your filters.'
-                  : 'No tickets found.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={Ticket}
+              title={statusFilter || debouncedSearch ? 'No matching tickets' : 'No tickets found'}
+              description={
+                statusFilter || debouncedSearch
+                  ? 'Try adjusting status or user filters.'
+                  : 'Tickets will appear here once they are created.'
+              }
+            />
           )}
 
           {/* Pagination */}

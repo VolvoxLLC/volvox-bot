@@ -38,7 +38,7 @@ function GuildRow({ guild }: { guild: MutualGuild }) {
       ) : (
         <Server className="h-4 w-4 shrink-0" />
       )}
-      <span className="truncate">{guild.name}</span>
+      <span className="truncate text-sm">{guild.name}</span>
     </>
   );
 }
@@ -138,7 +138,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-sm text-muted-foreground">
         <Server className="h-4 w-4 animate-pulse" />
         <span>Loading servers...</span>
       </div>
@@ -147,7 +147,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-3 text-sm text-muted-foreground">
         <span>Failed to load servers</span>
         <Button variant="outline" size="sm" className="gap-1" onClick={() => loadGuilds()}>
           <RefreshCw className="h-3 w-3" />
@@ -160,7 +160,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   if (guilds.length === 0) {
     const inviteUrl = getBotInviteUrl();
     return (
-      <div className="flex flex-col items-center gap-2 px-3 py-2 text-sm text-muted-foreground text-center">
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-3 text-center text-sm text-muted-foreground">
         <Bot className="h-5 w-5" />
         <span className="font-medium">No mutual servers</span>
         <span className="text-xs">Volvox.Bot isn&apos;t in any of your Discord servers yet.</span>
@@ -185,7 +185,13 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className={cn('w-full justify-between', className)}>
+        <Button
+          variant="outline"
+          className={cn(
+            'h-11 w-full justify-between rounded-xl border-border/70 bg-background px-3',
+            className,
+          )}
+        >
           <div className="flex items-center gap-2 truncate">
             {selectedGuild?.icon ? (
               <Image
@@ -198,7 +204,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
             ) : (
               <Server className="h-4 w-4 shrink-0" />
             )}
-            <span className="truncate">
+            <span className="truncate text-sm font-medium">
               {manageable.length === 0
                 ? 'No manageable servers'
                 : (selectedGuild?.name ?? 'Select server')}
@@ -207,11 +213,16 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="start">
+      <DropdownMenuContent
+        className="w-72 rounded-xl border-border/70 bg-popover p-1"
+        align="start"
+      >
         {/* ── Manageable servers (mod / admin / owner) ── */}
         {manageable.length > 0 ? (
           <>
-            <DropdownMenuLabel>Manage</DropdownMenuLabel>
+            <DropdownMenuLabel className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Manage
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {manageable.map((guild) => (
               <DropdownMenuItem
@@ -220,7 +231,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
                   if (selectedGuild?.id === guild.id) return;
                   selectGuild(guild);
                 }}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 rounded-lg py-2"
               >
                 <GuildRow guild={guild} />
               </DropdownMenuItem>
@@ -237,14 +248,14 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         {memberOnly.length > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="flex items-center gap-1 text-muted-foreground">
+            <DropdownMenuLabel className="flex items-center gap-1 px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Member Only
             </DropdownMenuLabel>
             {memberOnly.map((guild) => (
               <DropdownMenuItem key={guild.id} asChild>
                 <Link
                   href={`/community/${guild.id}`}
-                  className="flex items-center gap-2 text-muted-foreground"
+                  className="flex items-center gap-2 rounded-lg py-2 text-muted-foreground"
                 >
                   <GuildRow guild={guild} />
                   <ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-50" />

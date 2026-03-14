@@ -3,6 +3,8 @@
 import { ChevronDown, ChevronRight, ClipboardList, RefreshCw, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { EmptyState } from '@/components/dashboard/empty-state';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -267,37 +269,31 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <ClipboardList className="h-6 w-6" />
-            Audit Log
-          </h2>
-          <p className="text-muted-foreground">
-            Track all admin actions and configuration changes.
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={handleRefresh}
-          disabled={!guildId || loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        icon={ClipboardList}
+        title="Audit Log"
+        description="Track all admin actions and configuration changes."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* No guild selected */}
       {!guildId && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            Select a server from the sidebar to view the audit log.
-          </p>
-        </div>
+        <EmptyState
+          icon={ClipboardList}
+          title="Select a server"
+          description="Choose a server from the sidebar to view the audit log."
+        />
       )}
 
       {/* Content */}
@@ -389,7 +385,7 @@ export default function AuditLogPage() {
           {loading && entries.length === 0 ? (
             <AuditLogSkeleton />
           ) : entries.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-xl border border-border/50 bg-card">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -442,8 +438,8 @@ export default function AuditLogPage() {
                         </TableRow>
                         {isExpanded && entry.details && (
                           <TableRow key={`${entry.id}-details`}>
-                            <TableCell colSpan={6} className="bg-muted/30 p-4">
-                              <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs">
+                            <TableCell colSpan={6} className="bg-muted/20 p-4">
+                              <pre className="max-h-64 overflow-auto rounded-lg border border-border/50 bg-background p-3 text-xs">
                                 {JSON.stringify(entry.details, null, 2)}
                               </pre>
                             </TableCell>
@@ -456,13 +452,19 @@ export default function AuditLogPage() {
               </Table>
             </div>
           ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">
-                {actionFilter || debouncedUserSearch || startDate || endDate
-                  ? 'No audit entries match your filters.'
-                  : 'No audit log entries found.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={ClipboardList}
+              title={
+                actionFilter || debouncedUserSearch || startDate || endDate
+                  ? 'No matching entries'
+                  : 'No audit entries'
+              }
+              description={
+                actionFilter || debouncedUserSearch || startDate || endDate
+                  ? 'Try adjusting your filters.'
+                  : 'Actions will appear here as your team uses the dashboard.'
+              }
+            />
           )}
 
           {/* Pagination */}

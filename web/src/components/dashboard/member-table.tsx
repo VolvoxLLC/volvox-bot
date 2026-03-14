@@ -235,7 +235,7 @@ export function MemberTable({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-border/50 bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -282,11 +282,15 @@ export function MemberTable({
               <TableSkeleton />
             ) : showEmpty ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-16 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Users className="h-8 w-8" />
-                    <p className="text-sm font-medium">No members found</p>
-                    <p className="text-xs">Try adjusting your search or filters.</p>
+                <TableCell colSpan={8} className="py-20 text-center">
+                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <Users className="h-6 w-6" />
+                    </span>
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-foreground">No members found</p>
+                      <p className="text-sm">Try adjusting your search or filters.</p>
+                    </div>
                   </div>
                 </TableCell>
               </TableRow>
