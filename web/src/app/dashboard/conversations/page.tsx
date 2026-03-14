@@ -3,6 +3,8 @@
 import { Hash, MessageSquare, RefreshCw, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { EmptyState } from '@/components/dashboard/empty-state';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +42,7 @@ function ConversationsSkeleton() {
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
             <TableRow key={`skeleton-${i}`}>
               <TableCell>
                 <Skeleton className="h-4 w-24" />
@@ -273,35 +276,31 @@ export default function ConversationsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <MessageSquare className="h-6 w-6" />
-            Conversations
-          </h2>
-          <p className="text-muted-foreground">Browse, search, and replay AI conversations.</p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={handleRefresh}
-          disabled={!guildId || loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        icon={MessageSquare}
+        title="Conversations"
+        description="Browse, search, and replay AI conversations."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* No guild selected */}
       {!guildId && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            Select a server from the sidebar to view conversations.
-          </p>
-        </div>
+        <EmptyState
+          icon={MessageSquare}
+          title="Select a server"
+          description="Choose a server from the sidebar to view conversations."
+        />
       )}
 
       {/* Content */}
@@ -371,7 +370,7 @@ export default function ConversationsPage() {
           {loading && conversations.length === 0 ? (
             <ConversationsSkeleton />
           ) : conversations.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-xl border border-border/50 bg-card">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -434,13 +433,19 @@ export default function ConversationsPage() {
               </Table>
             </div>
           ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">
-                {debouncedSearch || channelFilter
-                  ? 'No conversations match your filters.'
-                  : 'No conversations found.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={MessageSquare}
+              title={
+                debouncedSearch || channelFilter
+                  ? 'No matching conversations'
+                  : 'No conversations found'
+              }
+              description={
+                debouncedSearch || channelFilter
+                  ? 'Try adjusting search or channel filters.'
+                  : 'Conversations will appear here once users start chatting.'
+              }
+            />
           )}
 
           {/* Pagination */}

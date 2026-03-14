@@ -3,13 +3,15 @@
 import {
   Activity,
   Bot,
+  ChevronDown,
   ClipboardList,
   Clock,
+  Cog,
   LayoutDashboard,
+  LifeBuoy,
   MessageSquare,
   MessagesSquare,
   ScrollText,
-  Settings,
   Shield,
   Ticket,
   Users,
@@ -17,10 +19,9 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 
-const navigation = [
+const primaryNav = [
   {
     name: 'Overview',
     href: '/dashboard',
@@ -32,24 +33,9 @@ const navigation = [
     icon: Shield,
   },
   {
-    name: 'Temp Roles',
-    href: '/dashboard/temp-roles',
-    icon: Clock,
-  },
-  {
-    name: 'AI Chat',
-    href: '/dashboard/ai',
-    icon: MessageSquare,
-  },
-  {
     name: 'Members',
     href: '/dashboard/members',
     icon: Users,
-  },
-  {
-    name: 'Conversations',
-    href: '/dashboard/conversations',
-    icon: MessagesSquare,
   },
   {
     name: 'Tickets',
@@ -59,7 +45,25 @@ const navigation = [
   {
     name: 'Bot Config',
     href: '/dashboard/config',
-    icon: Bot,
+    icon: Cog,
+  },
+];
+
+const secondaryNav = [
+  {
+    name: 'AI Chat',
+    href: '/dashboard/ai',
+    icon: MessageSquare,
+  },
+  {
+    name: 'Conversations',
+    href: '/dashboard/conversations',
+    icon: MessagesSquare,
+  },
+  {
+    name: 'Temp Roles',
+    href: '/dashboard/temp-roles',
+    icon: Clock,
   },
   {
     name: 'Audit Log',
@@ -79,7 +83,7 @@ const navigation = [
   {
     name: 'Settings',
     href: '/dashboard/settings',
-    icon: Settings,
+    icon: Bot,
   },
 ];
 
@@ -90,17 +94,24 @@ interface SidebarProps {
 
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
+  const isNavItemActive = (href: string) =>
+    pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
+  const hasActiveSecondaryItem = secondaryNav.some((item) => isNavItemActive(item.href));
 
   return (
-    <div className={cn('flex h-full flex-col', className)}>
+    <div
+      className={cn('flex h-full flex-col rounded-2xl border border-border/50 bg-card', className)}
+    >
       <div className="flex-1 px-3 py-4">
-        <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Navigation</h2>
-        <Separator className="mb-4" />
+        <div className="mb-3 px-3">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Main
+          </h2>
+        </div>
+
         <nav className="space-y-1">
-          {navigation.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
+          {primaryNav.map((item) => {
+            const isActive = isNavItemActive(item.href);
 
             return (
               <Link
@@ -108,24 +119,75 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
                 href={item.href}
                 onClick={onNavClick}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground',
-                  isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground',
+                  'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                  'hover:bg-muted/75 hover:text-foreground',
+                  isActive
+                    ? 'bg-primary/12 text-foreground ring-1 ring-primary/30 shadow-sm'
+                    : 'text-muted-foreground',
                 )}
               >
-                <item.icon className="h-4 w-4" />
-                {item.name}
+                <item.icon
+                  className={cn(
+                    'h-4 w-4 transition-colors',
+                    isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
+                  )}
+                />
+                <span>{item.name}</span>
               </Link>
             );
           })}
         </nav>
+
+        <Separator className="my-4" />
+
+        <details className="group" open={hasActiveSecondaryItem}>
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:bg-muted/60">
+            More tools
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+          </summary>
+          <nav className="mt-2 space-y-1">
+            {secondaryNav.map((item) => {
+              const isActive = isNavItemActive(item.href);
+
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={onNavClick}
+                  className={cn(
+                    'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                    'hover:bg-muted/75 hover:text-foreground',
+                    isActive
+                      ? 'bg-primary/12 text-foreground ring-1 ring-primary/30 shadow-sm'
+                      : 'text-muted-foreground',
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      'h-4 w-4 transition-colors',
+                      isActive
+                        ? 'text-primary'
+                        : 'text-muted-foreground group-hover:text-foreground',
+                    )}
+                  />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </details>
       </div>
 
-      {/* Theme toggle pinned to sidebar bottom */}
-      <div className="px-3 py-4 border-t">
-        <div className="flex items-center gap-2 px-1">
-          <ThemeToggle />
-          <span className="text-sm text-muted-foreground">Toggle theme</span>
-        </div>
+      <div className="border-t border-border/60 p-3">
+        <Link
+          href="https://joinvolvox.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/80 px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <LifeBuoy className="h-3.5 w-3.5" />
+          <span>Support and community</span>
+        </Link>
       </div>
     </div>
   );

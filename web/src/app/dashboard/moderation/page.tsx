@@ -4,7 +4,9 @@ import { RefreshCw, Search, Shield, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import { CaseTable } from '@/components/dashboard/case-table';
+import { EmptyState } from '@/components/dashboard/empty-state';
 import { ModerationStats } from '@/components/dashboard/moderation-stats';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
@@ -102,37 +104,33 @@ export default function ModerationPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Shield className="h-6 w-6" />
-            Moderation
-          </h2>
-          <p className="text-muted-foreground">
-            Review cases, track activity, and audit your moderation team.
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={handleRefresh}
-          disabled={!guildId || statsLoading || casesLoading}
-        >
-          <RefreshCw className={`h-4 w-4 ${statsLoading || casesLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        icon={Shield}
+        title="Moderation"
+        description="Review cases, track activity, and audit your moderation team."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || statsLoading || casesLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${statsLoading || casesLoading ? 'animate-spin' : ''}`}
+            />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* No guild selected */}
       {!guildId && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            Select a server from the sidebar to view moderation data.
-          </p>
-        </div>
+        <EmptyState
+          icon={Shield}
+          title="Select a server"
+          description="Choose a server from the sidebar to view moderation data."
+        />
       )}
 
       {/* Content */}
