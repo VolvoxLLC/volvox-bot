@@ -150,6 +150,28 @@
       "flushIntervalMs": 5000
     }
   },
+  "botStatus": {
+    "enabled": true,
+    "status": "online",
+    "rotation": {
+      "enabled": true,
+      "intervalMinutes": 5,
+      "messages": [
+        {
+          "type": "Watching",
+          "text": "{guildCount} servers"
+        },
+        {
+          "type": "Listening",
+          "text": "to {memberCount} members"
+        },
+        {
+          "type": "Playing",
+          "text": "with /help"
+        }
+      ]
+    }
+  },
   "permissions": {
     "enabled": true,
     "adminRoleIds": [],

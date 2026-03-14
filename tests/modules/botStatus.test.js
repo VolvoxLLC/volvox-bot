@@ -14,9 +14,11 @@ import { ActivityType } from 'discord.js';
 import {
   applyPresence,
   getActivities,
+  getRotationMessages,
   interpolateActivity,
   reloadBotStatus,
   resolvePresenceConfig,
+  resolveRotationIntervalMs,
   startBotStatus,
   stopBotStatus,
 } from '../../src/modules/botStatus.js';
@@ -102,6 +104,20 @@ describe('interpolateActivity', () => {
     const client = { user: { username: 'Bot' }, guilds: null };
     const result = interpolateActivity('{memberCount}', client);
     expect(result).toBe('0');
+  });
+
+  it('replaces {commandCount} and {uptime}', () => {
+    const client = makeClient();
+    client.commands = { size: 42 };
+    client.uptime = 3_660_000; // 1h 1m
+    const result = interpolateActivity('{commandCount} commands - {uptime}', client);
+    expect(result).toBe('42 commands - 1h 1m');
+  });
+
+  it('replaces {version} from package.json', () => {
+    const client = makeClient();
+    const result = interpolateActivity('v{version}', client);
+    expect(result).toMatch(/^v.+/);
   });
 });
 
@@ -190,6 +206,28 @@ describe('getActivities', () => {
   it('returns default activity when cfg is null', () => {
     const result = getActivities(null);
     expect(result).toEqual(['with Discord']);
+  });
+});
+
+describe('getRotationMessages / resolveRotationIntervalMs', () => {
+  it('uses rotation.messages when configured', () => {
+    const messages = getRotationMessages({
+      rotation: {
+        messages: [
+          { type: 'Watching', text: '{guildCount} servers' },
+          { type: 'Playing', text: 'with /help' },
+        ],
+      },
+    });
+    expect(messages).toEqual([
+      { type: 'Watching', text: '{guildCount} servers' },
+      { type: 'Playing', text: 'with /help' },
+    ]);
+  });
+
+  it('uses intervalMinutes from rotation config', () => {
+    const intervalMs = resolveRotationIntervalMs({ rotation: { intervalMinutes: 5 } });
+    expect(intervalMs).toBe(300_000);
   });
 });
 
@@ -362,6 +400,28 @@ describe('startBotStatus / stopBotStatus', () => {
     vi.advanceTimersByTime(100);
     // Wraps back to first
     expect(calls[2][0].activities[0].name).toBe('first');
+  });
+
+  it('rotates using new rotation config shape', () => {
+    const cfg = makeConfig({
+      activities: undefined,
+      rotation: {
+        enabled: true,
+        intervalMinutes: 0.001, // 60ms for test speed
+        messages: [
+          { type: 'Watching', text: 'first' },
+          { type: 'Playing', text: 'second' },
+        ],
+      },
+    });
+    getConfig.mockReturnValue(cfg);
+    const client = makeClient();
+
+    startBotStatus(client);
+    expect(client.user.setPresence.mock.calls[0][0].activities[0].name).toBe('first');
+
+    vi.advanceTimersByTime(60);
+    expect(client.user.setPresence.mock.calls[1][0].activities[0].name).toBe('second');
   });
 });
 

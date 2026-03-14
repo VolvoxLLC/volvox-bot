@@ -45,7 +45,10 @@ function useTypewriter(text: string, speed = 100, delay = 500) {
 
 function BlinkingCursor() {
   return (
-    <span aria-hidden="true" className="inline-block w-[3px] h-[0.9em] bg-primary ml-1 terminal-cursor align-baseline" />
+    <span
+      aria-hidden="true"
+      className="inline-block w-[3px] h-[0.9em] bg-primary ml-1 terminal-cursor align-baseline"
+    />
   );
 }
 
@@ -61,13 +64,31 @@ interface ScriptLine {
 
 const script: ScriptLine[] = [
   { role: 'user', content: '/help' },
-  { role: 'bot', content: "Hey! I'm Volvox.Bot — your AI-powered Discord companion. What can I help with?", icon: 'bot' },
+  {
+    role: 'bot',
+    content: "Hey! I'm Volvox.Bot — your AI-powered Discord companion. What can I help with?",
+    icon: 'bot',
+  },
   { role: 'user', content: 'Can you moderate my server?' },
-  { role: 'bot', content: 'Absolutely. I use Claude to detect spam, toxicity, and raids in real-time. Zero config needed.', icon: 'shield' },
+  {
+    role: 'bot',
+    content:
+      'Absolutely. I use Claude to detect spam, toxicity, and raids in real-time. Zero config needed.',
+    icon: 'shield',
+  },
   { role: 'user', content: 'What about AI chat?' },
-  { role: 'bot', content: 'Just @mention me — I understand context, remember conversations, and actually help your community.', icon: 'sparkles' },
+  {
+    role: 'bot',
+    content:
+      'Just @mention me — I understand context, remember conversations, and actually help your community.',
+    icon: 'sparkles',
+  },
   { role: 'user', content: 'How fast is setup?' },
-  { role: 'bot', content: 'One click to invite, 30 seconds to configure. Your server is already smarter.', icon: 'zap' },
+  {
+    role: 'bot',
+    content: 'One click to invite, 30 seconds to configure. Your server is already smarter.',
+    icon: 'zap',
+  },
 ];
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -108,7 +129,7 @@ function BotBubble({ text, onDone }: { text: string; onDone: () => void }) {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCharIndex(prev => {
+      setCharIndex((prev) => {
         const next = prev + 1;
         if (next >= text.length && !doneRef.current) {
           doneRef.current = true;
@@ -148,7 +169,7 @@ type Phase =
   | { kind: 'after-user'; index: number }
   | { kind: 'show-typing'; index: number }
   | { kind: 'show-bot'; index: number }
-  | { kind: 'typing-bot'; index: number }   // typewriter is running
+  | { kind: 'typing-bot'; index: number } // typewriter is running
   | { kind: 'after-bot'; index: number }
   | { kind: 'done' };
 
@@ -157,7 +178,7 @@ interface VisibleMessage {
   role: 'user' | 'bot';
   content: string;
   icon?: IconType;
-  isTyping: boolean;  // true = bot bubble should typewrite
+  isTyping: boolean; // true = bot bubble should typewrite
 }
 
 function ChatConsole() {
@@ -171,7 +192,10 @@ function ChatConsole() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearTimer = () => {
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   };
 
   // Auto-scroll
@@ -195,31 +219,46 @@ function ChatConsole() {
 
       case 'show-user': {
         const line = script[phase.index];
-        setMessages(prev => [...prev, { key: `msg-${phase.index}`, role: 'user', content: line.content, isTyping: false }]);
-        timerRef.current = setTimeout(() => setPhase({ kind: 'after-user', index: phase.index }), 300);
+        setMessages((prev) => [
+          ...prev,
+          { key: `msg-${phase.index}`, role: 'user', content: line.content, isTyping: false },
+        ]);
+        timerRef.current = setTimeout(
+          () => setPhase({ kind: 'after-user', index: phase.index }),
+          300,
+        );
         break;
       }
 
       case 'after-user': {
         const nextIdx = phase.index + 1;
-        if (nextIdx >= script.length) { setPhase({ kind: 'done' }); break; }
+        if (nextIdx >= script.length) {
+          setPhase({ kind: 'done' });
+          break;
+        }
         // Next must be a bot line — show typing dots
         setDotsIcon(script[nextIdx].icon ?? 'bot');
         setShowDots(true);
-        timerRef.current = setTimeout(() => setPhase({ kind: 'show-bot', index: nextIdx }), 500 + Math.random() * 300);
+        timerRef.current = setTimeout(
+          () => setPhase({ kind: 'show-bot', index: nextIdx }),
+          500 + Math.random() * 300,
+        );
         break;
       }
 
       case 'show-bot': {
         const line = script[phase.index];
         setShowDots(false);
-        setMessages(prev => [...prev, {
-          key: `msg-${phase.index}`,
-          role: 'bot',
-          content: line.content,
-          icon: line.icon,
-          isTyping: true,
-        }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            key: `msg-${phase.index}`,
+            role: 'bot',
+            content: line.content,
+            icon: line.icon,
+            isTyping: true,
+          },
+        ]);
         // Now we wait — BotBubble's onDone will advance us
         setPhase({ kind: 'typing-bot', index: phase.index });
         break;
@@ -231,7 +270,10 @@ function ChatConsole() {
 
       case 'after-bot': {
         const nextIdx = phase.index + 1;
-        if (nextIdx >= script.length) { setPhase({ kind: 'done' }); break; }
+        if (nextIdx >= script.length) {
+          setPhase({ kind: 'done' });
+          break;
+        }
         // Pause, then show next user message
         timerRef.current = setTimeout(() => setPhase({ kind: 'show-user', index: nextIdx }), 500);
         break;
@@ -247,7 +289,9 @@ function ChatConsole() {
   // Called by the bot bubble when typewriter finishes
   const handleBotDone = useCallback((index: number) => {
     // Mark the message as no longer typing (so it stops showing cursor)
-    setMessages(prev => prev.map(m => m.key === `msg-${index}` ? { ...m, isTyping: false } : m));
+    setMessages((prev) =>
+      prev.map((m) => (m.key === `msg-${index}` ? { ...m, isTyping: false } : m)),
+    );
     setPhase({ kind: 'after-bot', index });
   }, []);
 
@@ -275,12 +319,17 @@ function ChatConsole() {
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-[10px] text-primary font-medium uppercase tracking-wider">Live</span>
+            <span className="text-[10px] text-primary font-medium uppercase tracking-wider">
+              Live
+            </span>
           </div>
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="p-4 space-y-3 min-h-[240px] max-h-[340px] overflow-y-auto scroll-smooth">
+        <div
+          ref={scrollRef}
+          className="p-4 space-y-3 min-h-[240px] max-h-[340px] overflow-y-auto scroll-smooth"
+        >
           <AnimatePresence>
             {messages.map((msg) => (
               <motion.div
@@ -356,7 +405,10 @@ export function Hero() {
   const { displayText, isComplete } = useTypewriter('volvox-bot', 80, 300);
 
   return (
-    <section ref={ref} className="relative min-h-screen pt-32 md:pt-[180px] flex flex-col items-center overflow-hidden">
+    <section
+      ref={ref}
+      className="relative min-h-screen pt-32 md:pt-[180px] flex flex-col items-center overflow-hidden"
+    >
       <div className="hero-glow absolute -top-[20%] left-1/2 -translate-x-1/2 w-[80vw] h-[80vw] -z-[1] pointer-events-none" />
 
       <div className="text-center max-w-[1100px] px-4 z-[2]">
@@ -394,8 +446,8 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-[clamp(1rem,2vw,1.25rem)] text-foreground/70 leading-relaxed mb-10 max-w-[700px] mx-auto"
         >
-          A software-powered bot for modern communities. Moderation, AI chat,
-          dynamic welcomes, and a fully configurable dashboard — all in one place.
+          A software-powered bot for modern communities. Moderation, AI chat, dynamic welcomes, and
+          a fully configurable dashboard — all in one place.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -405,7 +457,10 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="flex flex-col gap-4 sm:flex-row justify-center mb-16"
         >
-          <InviteButton size="lg" className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform" />
+          <InviteButton
+            size="lg"
+            className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform"
+          />
           <Button
             variant="outline"
             size="lg"
@@ -417,8 +472,17 @@ export function Hero() {
               Open Dashboard
             </Link>
           </Button>
-          <Button variant="ghost" size="lg" className="rounded-full text-primary hover:bg-muted" asChild>
-            <a href="https://github.com/VolvoxLLC/volvox-bot" target="_blank" rel="noopener noreferrer">
+          <Button
+            variant="ghost"
+            size="lg"
+            className="rounded-full text-primary hover:bg-muted"
+            asChild
+          >
+            <a
+              href="https://github.com/VolvoxLLC/volvox-bot"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               View on GitHub
               <ArrowRight className="ml-2 h-4 w-4" />
             </a>

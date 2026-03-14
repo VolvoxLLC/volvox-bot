@@ -177,6 +177,33 @@ export const CONFIG_SCHEMA = {
       retentionDays: { type: 'number' },
     },
   },
+  botStatus: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      status: { type: 'string', enum: ['online', 'idle', 'dnd', 'invisible'] },
+      activityType: {
+        type: 'string',
+        enum: ['Playing', 'Watching', 'Listening', 'Competing', 'Streaming', 'Custom'],
+      },
+      activities: { type: 'array', items: { type: 'string' } },
+      rotateIntervalMs: { type: 'number' },
+      rotation: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          intervalMinutes: { type: 'number' },
+          messages: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['text'],
+            },
+          },
+        },
+      },
+    },
+  },
   reminders: {
     type: 'object',
     properties: {
