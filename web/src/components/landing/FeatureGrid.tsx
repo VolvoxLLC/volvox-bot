@@ -1,8 +1,8 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
-import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import { useRef } from 'react';
 
 const features: { icon: LucideIcon; title: string; description: string; color: string }[] = [
@@ -61,12 +61,8 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
       </div>
 
       {/* Content */}
-      <h3 className="text-xl font-bold text-foreground mb-3 tracking-tight">
-        {feature.title}
-      </h3>
-      <p className="text-muted-foreground leading-relaxed">
-        {feature.description}
-      </p>
+      <h3 className="text-xl font-bold text-foreground mb-3 tracking-tight">{feature.title}</h3>
+      <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
     </motion.div>
   );
 }

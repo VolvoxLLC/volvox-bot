@@ -263,9 +263,7 @@ describe('discordCache.js', () => {
 
       const result = await discordCache.fetchMemberCached(guild, 'member-1');
       expect(result).toBe(mockMember);
-      expect(
-        await cache.cacheGet('discord:guild:guild1:member:member-1'),
-      ).toEqual({
+      expect(await cache.cacheGet('discord:guild:guild1:member:member-1')).toEqual({
         id: 'member-1',
         displayName: 'Member One',
         joinedAt: '2025-01-01T00:00:00.000Z',
