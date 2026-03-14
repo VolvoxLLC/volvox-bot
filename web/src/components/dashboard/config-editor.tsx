@@ -116,6 +116,7 @@ function isGuildConfig(data: unknown): data is GuildConfig {
     'challenges',
     'tickets',
     'auditLog',
+    'botStatus',
   ] as const;
   const hasKnownSection = knownSections.some((key) => key in obj);
   if (!hasKnownSection) return false;
@@ -935,6 +936,32 @@ export function ConfigEditor() {
       updateDraftConfig((prev) => {
         if (!prev) return prev;
         return { ...prev, memory: { ...prev.memory, [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateBotStatusField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return { ...prev, botStatus: { ...prev.botStatus, [field]: value } } as GuildConfig;
+      });
+    },
+    [updateDraftConfig],
+  );
+
+  const updateBotStatusRotationField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          botStatus: {
+            ...(prev.botStatus ?? {}),
+            rotation: { ...(prev.botStatus?.rotation ?? {}), [field]: value },
+          },
+        } as GuildConfig;
       });
     },
     [updateDraftConfig],
@@ -2185,6 +2212,65 @@ export function ConfigEditor() {
                 </div>
               }
               forceOpenAdvanced={forceOpenAdvancedFeatureId === 'memory'}
+            />
+          )}
+
+          {activeCategoryId === 'community-tools' && visibleFeatureIds.has('bot-status') && (
+            <SettingsFeatureCard
+              featureId="bot-status"
+              title="Bot Presence"
+              description="Set bot presence and rotate status messages."
+              enabled={draftConfig.botStatus?.enabled ?? true}
+              onEnabledChange={(v) => updateBotStatusField('enabled', v)}
+              disabled={saving}
+              basicContent={
+                <div className="space-y-4">
+                  <label htmlFor="bot-status-value" className="space-y-2 block">
+                    <span className="text-sm font-medium">Presence Status</span>
+                    <select
+                      id="bot-status-value"
+                      value={draftConfig.botStatus?.status ?? 'online'}
+                      onChange={(e) => updateBotStatusField('status', e.target.value)}
+                      disabled={saving}
+                      className={inputClasses}
+                    >
+                      <option value="online">Online</option>
+                      <option value="idle">Idle</option>
+                      <option value="dnd">Do Not Disturb</option>
+                      <option value="invisible">Invisible</option>
+                    </select>
+                  </label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Enable Rotation</span>
+                    <ToggleSwitch
+                      checked={draftConfig.botStatus?.rotation?.enabled ?? false}
+                      onChange={(v) => updateBotStatusRotationField('enabled', v)}
+                      disabled={saving}
+                      label="Enable Rotation"
+                    />
+                  </div>
+                </div>
+              }
+              advancedContent={
+                <div className="space-y-4">
+                  <label htmlFor="bot-status-interval-minutes" className="space-y-2 block">
+                    <span className="text-sm font-medium">Rotation Interval (minutes)</span>
+                    <input
+                      id="bot-status-interval-minutes"
+                      type="number"
+                      min={1}
+                      value={draftConfig.botStatus?.rotation?.intervalMinutes ?? 5}
+                      onChange={(e) => {
+                        const num = parseNumberInput(e.target.value, 1);
+                        if (num !== undefined) updateBotStatusRotationField('intervalMinutes', num);
+                      }}
+                      disabled={saving}
+                      className={inputClasses}
+                    />
+                  </label>
+                </div>
+              }
+              forceOpenAdvanced={forceOpenAdvancedFeatureId === 'bot-status'}
             />
           )}
 
