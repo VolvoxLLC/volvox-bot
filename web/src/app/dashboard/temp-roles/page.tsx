@@ -10,17 +10,7 @@
 import { Clock, RefreshCw, Shield, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
@@ -73,7 +63,6 @@ export default function TempRolesPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [revoking, setRevoking] = useState<number | null>(null);
-  const [confirmRevoke, setConfirmRevoke] = useState<TempRole | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const onGuildChange = useCallback(() => setPage(1), []);
@@ -134,6 +123,7 @@ export default function TempRolesPage() {
   const handleRevoke = useCallback(
     async (record: TempRole) => {
       if (!guildId) return;
+      if (!confirm(`Revoke ${record.role_name} from ${record.user_tag}?`)) return;
 
       setRevoking(record.id);
       try {
@@ -151,24 +141,16 @@ export default function TempRolesPage() {
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          toast.error('Failed to revoke temp role', {
-            description: body.error || 'An unexpected error occurred.',
-          });
+          alert(body.error || 'Failed to revoke temp role');
           return;
         }
 
-        toast.success('Temp role revoked', {
-          description: `Removed ${record.role_name} from ${record.user_tag}.`,
-        });
         // Refresh list
         void fetchTempRoles(guildId, page);
       } catch {
-        toast.error('Failed to revoke temp role', {
-          description: 'A network error occurred. Please try again.',
-        });
+        alert('Failed to revoke temp role');
       } finally {
         setRevoking(null);
-        setConfirmRevoke(null);
       }
     },
     [guildId, page, fetchTempRoles, onUnauthorized],
@@ -182,7 +164,6 @@ export default function TempRolesPage() {
   const pagination = data?.pagination;
 
   return (
-    <ErrorBoundary title="Temp roles failed to load">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -217,7 +198,7 @@ export default function TempRolesPage() {
 
       {/* Table */}
       {guildId && !error && (
-        <div className="rounded-lg border overflow-x-auto">
+        <div className="rounded-lg border">
           {loading && rows.length === 0 ? (
             <div className="divide-y">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -240,10 +221,10 @@ export default function TempRolesPage() {
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">User</th>
                   <th className="px-4 py-3 text-left font-medium">Role</th>
-                  <th className="hidden sm:table-cell px-4 py-3 text-left font-medium">Duration</th>
+                  <th className="px-4 py-3 text-left font-medium">Duration</th>
                   <th className="px-4 py-3 text-left font-medium">Expires</th>
-                  <th className="hidden md:table-cell px-4 py-3 text-left font-medium">Moderator</th>
-                  <th className="hidden lg:table-cell px-4 py-3 text-left font-medium">Reason</th>
+                  <th className="px-4 py-3 text-left font-medium">Moderator</th>
+                  <th className="px-4 py-3 text-left font-medium">Reason</th>
                   <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
@@ -260,7 +241,7 @@ export default function TempRolesPage() {
                         {row.role_name}
                       </span>
                     </td>
-                    <td className="hidden sm:table-cell px-4 py-3 text-muted-foreground">{row.duration}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{row.duration}</td>
                     <td className="px-4 py-3">
                       <span
                         className="text-amber-600 dark:text-amber-400"
@@ -269,8 +250,8 @@ export default function TempRolesPage() {
                         {formatRelativeTime(row.expires_at)}
                       </span>
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3 text-muted-foreground text-xs">{row.moderator_tag}</td>
-                    <td className="hidden lg:table-cell px-4 py-3 text-muted-foreground max-w-[200px] truncate text-xs">
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{row.moderator_tag}</td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate text-xs">
                       {row.reason ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -278,7 +259,7 @@ export default function TempRolesPage() {
                         variant="ghost"
                         size="sm"
                         className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                        onClick={() => setConfirmRevoke(row)}
+                        onClick={() => handleRevoke(row)}
                         disabled={revoking === row.id}
                         title="Revoke this temp role"
                       >
@@ -320,33 +301,6 @@ export default function TempRolesPage() {
           </div>
         </div>
       )}
-
-      {/* Revoke confirmation dialog */}
-      <Dialog open={!!confirmRevoke} onOpenChange={(open) => !open && setConfirmRevoke(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Revoke Temporary Role</DialogTitle>
-            <DialogDescription>
-              Remove <span className="font-semibold">{confirmRevoke?.role_name}</span> from{' '}
-              <span className="font-semibold">{confirmRevoke?.user_tag}</span>? This action cannot
-              be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmRevoke(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={revoking !== null}
-              onClick={() => confirmRevoke && handleRevoke(confirmRevoke)}
-            >
-              {revoking ? 'Revoking…' : 'Revoke'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
-    </ErrorBoundary>
   );
 }

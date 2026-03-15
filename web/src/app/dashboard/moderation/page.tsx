@@ -2,16 +2,13 @@
 
 import { RefreshCw, Search, Shield, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { CaseTable } from '@/components/dashboard/case-table';
 import { ModerationStats } from '@/components/dashboard/moderation-stats';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-import { useModerationCases } from '@/hooks/use-moderation-cases';
-import { useModerationStats } from '@/hooks/use-moderation-stats';
-import { useUserHistory } from '@/hooks/use-user-history';
 import { useModerationStore } from '@/stores/moderation-store';
 
 export default function ModerationPage() {
@@ -25,6 +22,15 @@ export default function ModerationPage() {
     userHistoryInput,
     lookupUserId,
     userHistoryPage,
+    casesData,
+    casesLoading,
+    casesError,
+    stats,
+    statsLoading,
+    statsError,
+    userHistoryData,
+    userHistoryLoading,
+    userHistoryError,
     setPage,
     toggleSortDesc,
     setActionFilter,
@@ -35,9 +41,16 @@ export default function ModerationPage() {
     clearFilters,
     clearUserHistory,
     resetOnGuildChange,
+    fetchStats,
+    fetchCases,
+    fetchUserHistory,
   } = useModerationStore();
 
+  // AbortController for automatic cleanup of in-flight requests
+  const abortRef = useRef<AbortController | null>(null);
+
   const onGuildChange = useCallback(() => {
+    abortRef.current?.abort();
     resetOnGuildChange();
   }, [resetOnGuildChange]);
 
@@ -45,34 +58,58 @@ export default function ModerationPage() {
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
-  const {
-    stats,
-    statsLoading,
-    statsError,
-    refetch: refetchStats,
-  } = useModerationStats({ guildId, onUnauthorized });
+  // Helper to run a fetch and handle the unauthorized result
+  const runFetch = useCallback(
+    async (fn: (signal: AbortSignal) => Promise<'ok' | 'unauthorized' | 'error'>) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const result = await fn(controller.signal);
+      if (result === 'unauthorized') onUnauthorized();
+    },
+    [onUnauthorized],
+  );
 
-  const {
-    casesData,
-    casesLoading,
-    casesError,
-    refetch: refetchCases,
-  } = useModerationCases({ guildId, page, sortDesc, actionFilter, userSearch, onUnauthorized });
+  // Fetch stats when guild changes
+  useEffect(() => {
+    if (!guildId) return;
+    void runFetch((signal) => fetchStats(guildId, { signal }));
+  }, [guildId, fetchStats, runFetch]);
 
-  const {
-    userHistoryData,
-    userHistoryLoading,
-    userHistoryError,
-    setUserHistoryData,
-    setUserHistoryError,
-    fetchUserHistory,
-  } = useUserHistory({ guildId, lookupUserId, page: userHistoryPage, onUnauthorized });
+  // Fetch cases when guild / filters change.
+  // page, actionFilter, userSearch are read inside fetchCases via get() but must
+  // appear in deps so the effect re-fires when they change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filter deps trigger refetch
+  useEffect(() => {
+    if (!guildId) return;
+    void runFetch((signal) => fetchCases(guildId, { signal }));
+  }, [guildId, page, actionFilter, userSearch, fetchCases, runFetch]);
+
+  // Fetch user history on page change
+  useEffect(() => {
+    if (!guildId || !lookupUserId) return;
+    void runFetch((signal) => fetchUserHistory(guildId, lookupUserId, userHistoryPage, { signal }));
+  }, [guildId, lookupUserId, userHistoryPage, fetchUserHistory, runFetch]);
+
+  // Abort on unmount
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const handleRefresh = useCallback(() => {
-    refetchStats();
-    refetchCases();
-    if (lookupUserId && guildId) fetchUserHistory(guildId, lookupUserId, userHistoryPage);
-  }, [refetchStats, refetchCases, lookupUserId, guildId, fetchUserHistory, userHistoryPage]);
+    if (!guildId) return;
+    void runFetch(async (signal) => {
+      const [statsResult, casesResult] = await Promise.all([
+        fetchStats(guildId, { signal }),
+        fetchCases(guildId, { signal }),
+      ]);
+      if (lookupUserId) {
+        await fetchUserHistory(guildId, lookupUserId, userHistoryPage, { signal });
+      }
+      if (statsResult === 'unauthorized' || casesResult === 'unauthorized') return 'unauthorized';
+      return 'ok';
+    });
+  }, [guildId, lookupUserId, userHistoryPage, fetchStats, fetchCases, fetchUserHistory, runFetch]);
 
   const handleUserHistorySearch = useCallback(
     (e: React.FormEvent) => {
@@ -81,27 +118,16 @@ export default function ModerationPage() {
       if (!trimmed || !guildId) return;
       setLookupUserId(trimmed);
       setUserHistoryPage(1);
-      setUserHistoryData(null);
-      void fetchUserHistory(guildId, trimmed, 1);
+      void runFetch((signal) => fetchUserHistory(guildId, trimmed, 1, { signal }));
     },
-    [
-      guildId,
-      userHistoryInput,
-      fetchUserHistory,
-      setUserHistoryData,
-      setLookupUserId,
-      setUserHistoryPage,
-    ],
+    [guildId, userHistoryInput, fetchUserHistory, setLookupUserId, setUserHistoryPage, runFetch],
   );
 
   const handleClearUserHistory = useCallback(() => {
     clearUserHistory();
-    setUserHistoryData(null);
-    setUserHistoryError(null);
-  }, [clearUserHistory, setUserHistoryData, setUserHistoryError]);
+  }, [clearUserHistory]);
 
   return (
-    <ErrorBoundary title="Moderation failed to load">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -242,6 +268,5 @@ export default function ModerationPage() {
         </>
       )}
     </div>
-    </ErrorBoundary>
   );
 }

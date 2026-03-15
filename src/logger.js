@@ -7,9 +7,11 @@
  * - Structured output
  * - Console transport (file transport added in phase 3)
  *
- * NOTE: This module uses Winston + Node.js APIs (fs, path) and cannot be imported in
- * browser/Next.js client components. The dashboard uses a separate browser-compatible
- * logger shim at `web/src/lib/logger.ts` with the same interface (info/warn/error/debug).
+ * TODO: Logger browser shim — this module uses Winston + Node.js APIs (fs, path) and cannot
+ * be imported in browser/Next.js client components. If client-side structured logging is
+ * needed (e.g. for error tracking or debug mode), create a thin `web/src/lib/logger.ts`
+ * shim that wraps the browser console with the same interface (info/warn/error/debug)
+ * and optionally forwards to a remote logging endpoint.
  */
 
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
