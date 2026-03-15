@@ -93,6 +93,84 @@ describe('rateLimit middleware', () => {
     expect(next).toHaveBeenCalled();
   });
 
+  it('should expose size() returning the number of tracked IPs', () => {
+    const middleware = rateLimit({ windowMs: 60000, max: 10 });
+    expect(middleware.size()).toBe(0);
+
+    middleware(req, res, next);
+    expect(middleware.size()).toBe(1);
+
+    middleware({ ip: '10.0.0.1' }, res, vi.fn());
+    middleware({ ip: '10.0.0.2' }, res, vi.fn());
+    expect(middleware.size()).toBe(3);
+  });
+
+  it('sweep() should remove expired entries and return count', () => {
+    vi.useFakeTimers();
+    const middleware = rateLimit({ windowMs: 1000, max: 10 });
+    // Destroy the automatic interval so we can test sweep() in isolation
+    middleware.destroy();
+
+    // Create entries from 3 IPs
+    middleware(req, res, next);
+    middleware({ ip: '10.0.0.1' }, res, vi.fn());
+    middleware({ ip: '10.0.0.2' }, res, vi.fn());
+    expect(middleware.size()).toBe(3);
+
+    // Nothing expired yet
+    expect(middleware.sweep()).toBe(0);
+    expect(middleware.size()).toBe(3);
+
+    // Advance past window — entries expire
+    vi.advanceTimersByTime(1001);
+
+    // Manual sweep removes all 3
+    expect(middleware.sweep()).toBe(3);
+    expect(middleware.size()).toBe(0);
+  });
+
+  it('sweep() should only remove expired entries, keeping active ones', () => {
+    vi.useFakeTimers();
+    const middleware = rateLimit({ windowMs: 2000, max: 10 });
+    middleware.destroy();
+
+    // First IP at t=0 (resetAt = 2000)
+    middleware(req, res, next);
+    expect(middleware.size()).toBe(1);
+
+    // Advance 1500ms
+    vi.advanceTimersByTime(1500);
+
+    // Second IP at t=1500 (resetAt = 3500)
+    middleware({ ip: '10.0.0.1' }, res, vi.fn());
+    expect(middleware.size()).toBe(2);
+
+    // Advance another 600ms (t=2100) — first IP expired, second still active
+    vi.advanceTimersByTime(600);
+    expect(middleware.sweep()).toBe(1);
+    expect(middleware.size()).toBe(1);
+  });
+
+  it('automatic interval should sweep stale entries', () => {
+    vi.useFakeTimers();
+    const middleware = rateLimit({ windowMs: 1000, max: 10 });
+
+    middleware(req, res, next);
+    expect(middleware.size()).toBe(1);
+
+    // Advance past the window — interval fires and cleans up
+    vi.advanceTimersByTime(1001);
+    expect(middleware.size()).toBe(0);
+  });
+
+  it('destroy() should clean up the interval timer', () => {
+    const middleware = rateLimit({ windowMs: 1000, max: 1 });
+    // Should not throw
+    expect(() => middleware.destroy()).not.toThrow();
+    // After destroy, sweep still works (it's independent of the timer)
+    expect(middleware.sweep()).toBe(0);
+  });
+
   it('should use custom message when provided', () => {
     const middleware = rateLimit({
       windowMs: 60000,

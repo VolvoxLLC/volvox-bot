@@ -15,17 +15,17 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      systemPrompt: { type: 'string' },
+      systemPrompt: { type: 'string', maxLength: 4000 },
       channels: { type: 'array' },
       blockedChannelIds: { type: 'array' },
-      historyLength: { type: 'number' },
-      historyTTLDays: { type: 'number' },
+      historyLength: { type: 'number', min: 1, max: 100 },
+      historyTTLDays: { type: 'number', min: 1, max: 365 },
       threadMode: {
         type: 'object',
         properties: {
           enabled: { type: 'boolean' },
-          autoArchiveMinutes: { type: 'number' },
-          reuseWindowMinutes: { type: 'number' },
+          autoArchiveMinutes: { type: 'number', min: 60, max: 10080 },
+          reuseWindowMinutes: { type: 'number', min: 1, max: 1440 },
         },
       },
       channelModes: { type: 'object', openProperties: true },
@@ -59,8 +59,8 @@ export const CONFIG_SCHEMA = {
         properties: {
           enabled: { type: 'boolean' },
           timezone: { type: 'string' },
-          activityWindowMinutes: { type: 'number' },
-          milestoneInterval: { type: 'number' },
+          activityWindowMinutes: { type: 'number', min: 1, max: 10080 },
+          milestoneInterval: { type: 'number', min: 1, max: 10000 },
           highlightChannels: { type: 'array' },
           excludeChannels: { type: 'array' },
         },
@@ -145,23 +145,23 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      defaultInterval: { type: 'number' },
-      maxBufferSize: { type: 'number' },
+      defaultInterval: { type: 'number', min: 1, max: 3600 },
+      maxBufferSize: { type: 'number', min: 1, max: 1000 },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
       classifyModel: { type: 'string' },
-      classifyBudget: { type: 'number' },
+      classifyBudget: { type: 'number', min: 0, max: 100000 },
       respondModel: { type: 'string' },
-      respondBudget: { type: 'number' },
-      thinkingTokens: { type: 'number' },
+      respondBudget: { type: 'number', min: 0, max: 100000 },
+      thinkingTokens: { type: 'number', min: 0, max: 100000 },
       classifyBaseUrl: { type: 'string', nullable: true },
       classifyApiKey: { type: 'string', nullable: true },
       respondBaseUrl: { type: 'string', nullable: true },
       respondApiKey: { type: 'string', nullable: true },
       streaming: { type: 'boolean' },
-      tokenRecycleLimit: { type: 'number' },
-      contextMessages: { type: 'number' },
-      timeout: { type: 'number' },
+      tokenRecycleLimit: { type: 'number', min: 0, max: 1000000 },
+      contextMessages: { type: 'number', min: 0, max: 100 },
+      timeout: { type: 'number', min: 1000, max: 300000 },
       moderationResponse: { type: 'boolean' },
       channels: { type: 'array' },
       excludeChannels: { type: 'array' },
@@ -174,21 +174,21 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      retentionDays: { type: 'number' },
+      retentionDays: { type: 'number', min: 1, max: 365 },
     },
   },
   reminders: {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      maxPerUser: { type: 'number' },
+      maxPerUser: { type: 'number', min: 1, max: 100 },
     },
   },
   quietMode: {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      maxDurationMinutes: { type: 'number' },
+      maxDurationMinutes: { type: 'number', min: 1, max: 10080 },
       allowedRoles: { type: 'array' },
     },
   },
@@ -196,8 +196,8 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      xpPerMinute: { type: 'number' },
-      dailyXpCap: { type: 'number' },
+      xpPerMinute: { type: 'number', min: 0, max: 1000 },
+      dailyXpCap: { type: 'number', min: 0, max: 1000000 },
       logChannel: { type: 'string', nullable: true },
     },
   },
@@ -250,13 +250,25 @@ export function validateValue(value, schema, path) {
     case 'string':
       if (typeof value !== 'string') {
         errors.push(`${path}: expected string, got ${typeof value}`);
-      } else if (schema.enum && !schema.enum.includes(value)) {
-        errors.push(`${path}: must be one of [${schema.enum.join(', ')}], got "${value}"`);
+      } else {
+        if (schema.enum && !schema.enum.includes(value)) {
+          errors.push(`${path}: must be one of [${schema.enum.join(', ')}], got "${value}"`);
+        }
+        if (schema.maxLength != null && value.length > schema.maxLength) {
+          errors.push(`${path}: exceeds max length of ${schema.maxLength}`);
+        }
       }
       break;
     case 'number':
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         errors.push(`${path}: expected finite number, got ${typeof value}`);
+      } else {
+        if (schema.min != null && value < schema.min) {
+          errors.push(`${path}: must be >= ${schema.min}`);
+        }
+        if (schema.max != null && value > schema.max) {
+          errors.push(`${path}: must be <= ${schema.max}`);
+        }
       }
       break;
     case 'array':
