@@ -174,9 +174,9 @@ describe('configValidation', () => {
     });
 
     it('should accept strings within maxLength', () => {
-      expect(
-        validateValue('x'.repeat(4000), { type: 'string', maxLength: 4000 }, 'test'),
-      ).toEqual([]);
+      expect(validateValue('x'.repeat(4000), { type: 'string', maxLength: 4000 }, 'test')).toEqual(
+        [],
+      );
     });
 
     it('should enforce ai.systemPrompt maxLength', () => {
@@ -199,7 +199,7 @@ describe('configValidation', () => {
   describe('openProperties support', () => {
     it('should allow unknown keys in open-properties objects', () => {
       const errors = validateValue(
-        { '12345': 'vibe', '67890': 'mention' },
+        { 12345: 'vibe', 67890: 'mention' },
         { type: 'object', openProperties: true },
         'test',
       );
@@ -207,7 +207,7 @@ describe('configValidation', () => {
     });
 
     it('should validate ai.channelModes as open-properties', () => {
-      expect(validateSingleValue('ai.channelModes', { '12345': 'vibe' })).toEqual([]);
+      expect(validateSingleValue('ai.channelModes', { 12345: 'vibe' })).toEqual([]);
     });
 
     it('should resolve dynamic keys in validateSingleValue (channelModes path)', () => {
@@ -215,7 +215,7 @@ describe('configValidation', () => {
       // so the leaf value is validated against the channelModes object schema.
       // A string value gets type-rejected against the object schema, which is expected.
       // Setting the whole channelModes map is the correct usage:
-      expect(validateSingleValue('ai.channelModes', { '12345': 'vibe' })).toEqual([]);
+      expect(validateSingleValue('ai.channelModes', { 12345: 'vibe' })).toEqual([]);
     });
   });
 
