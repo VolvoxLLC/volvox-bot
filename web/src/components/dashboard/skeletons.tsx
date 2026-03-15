@@ -1,5 +1,5 @@
-import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * Skeleton for a stat/KPI card used in overview and moderation dashboards.
