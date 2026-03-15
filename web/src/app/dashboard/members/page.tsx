@@ -3,23 +3,11 @@
 import { RefreshCw, Search, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef } from 'react';
-import {
-  type MemberRow,
-  MemberTable,
-  type SortColumn,
-  type SortOrder,
-} from '@/components/dashboard/member-table';
+import { MemberTable } from '@/components/dashboard/member-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useMembersStore } from '@/stores/members-store';
-
-interface MembersApiResponse {
-  members: MemberRow[];
-  nextAfter: string | null;
-  total: number;
-  filteredTotal?: number;
-}
 
 /**
  * Renders the Members page with search, sorting, pagination, and a member list table.
@@ -27,8 +15,6 @@ interface MembersApiResponse {
  * Displays a searchable and sortable list of guild members, supports cursor-based
  * pagination, refreshing, row navigation to a member detail page, and shows totals
  * and errors. If the API responds with an unauthorized status, navigates to `/login`.
- *
- * @returns The React element for the Members page UI.
  */
 export default function MembersPage() {
   const router = useRouter();
@@ -44,27 +30,19 @@ export default function MembersPage() {
     debouncedSearch,
     sortColumn,
     sortOrder,
-    setMembers,
-    appendMembers,
-    setNextAfter,
-    setTotal,
-    setFilteredTotal,
-    setLoading,
-    setError,
     setSearch,
     setDebouncedSearch,
     setSortColumn,
     setSortOrder,
     resetPagination,
     resetAll,
+    fetchMembers,
   } = useMembersStore();
 
   // Debounce search
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  // AbortController and request sequencing to prevent stale responses
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const requestIdRef = useRef(0);
+  // AbortController for cancelling in-flight requests
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
@@ -77,11 +55,12 @@ export default function MembersPage() {
   // Abort in-flight request on unmount
   useEffect(() => {
     return () => {
-      abortControllerRef.current?.abort();
+      abortRef.current?.abort();
     };
   }, []);
 
   const onGuildChange = useCallback(() => {
+    abortRef.current?.abort();
     resetAll();
   }, [resetAll]);
 
@@ -89,86 +68,22 @@ export default function MembersPage() {
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
-  // Fetch members — uses AbortController to cancel stale in-flight requests
-  // and a monotonic request ID to discard out-of-order responses.
-  const fetchMembers = useCallback(
-    async (opts: {
-      guildId: string;
-      search: string;
-      sortColumn: SortColumn;
-      sortOrder: SortOrder;
-      after: string | null;
-      append: boolean;
-    }) => {
-      // Abort any previous in-flight request
-      abortControllerRef.current?.abort();
+  // Fetch helper that manages abort controller and unauthorized redirect
+  const runFetch = useCallback(
+    async (opts: Parameters<typeof fetchMembers>[0]) => {
+      abortRef.current?.abort();
       const controller = new AbortController();
-      abortControllerRef.current = controller;
-      const requestId = ++requestIdRef.current;
-
-      setLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams();
-        if (opts.search) params.set('search', opts.search);
-        params.set('sort', opts.sortColumn);
-        params.set('order', opts.sortOrder);
-        if (opts.after) params.set('after', opts.after);
-        params.set('limit', '50');
-
-        const res = await fetch(
-          `/api/guilds/${encodeURIComponent(opts.guildId)}/members?${params.toString()}`,
-          { signal: controller.signal },
-        );
-
-        // Discard stale response if a newer request was issued
-        if (requestId !== requestIdRef.current) return;
-
-        if (res.status === 401) {
-          onUnauthorized();
-          return;
-        }
-        if (!res.ok) {
-          throw new Error(`Failed to fetch members (${res.status})`);
-        }
-        const data = (await res.json()) as MembersApiResponse;
-        if (opts.append) {
-          appendMembers(data.members);
-        } else {
-          setMembers(data.members);
-        }
-        setNextAfter(data.nextAfter);
-        setTotal(data.total);
-        setFilteredTotal(data.filteredTotal ?? null);
-      } catch (err) {
-        // Silently ignore aborted requests
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        // Discard errors from stale requests
-        if (requestId !== requestIdRef.current) return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch members');
-      } finally {
-        // Only clear loading for the current (non-superseded) request
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
-      }
+      abortRef.current = controller;
+      const result = await fetchMembers({ ...opts, signal: controller.signal });
+      if (result === 'unauthorized') onUnauthorized();
     },
-    [
-      onUnauthorized,
-      appendMembers,
-      setMembers,
-      setNextAfter,
-      setTotal,
-      setFilteredTotal,
-      setLoading,
-      setError,
-    ],
+    [fetchMembers, onUnauthorized],
   );
 
   // Fetch on guild/search/sort change
   useEffect(() => {
     if (!guildId) return;
-    void fetchMembers({
+    void runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -176,10 +91,10 @@ export default function MembersPage() {
       after: null,
       append: false,
     });
-  }, [guildId, debouncedSearch, sortColumn, sortOrder, fetchMembers]);
+  }, [guildId, debouncedSearch, sortColumn, sortOrder, runFetch]);
 
   const handleSort = useCallback(
-    (col: SortColumn) => {
+    (col: typeof sortColumn) => {
       if (col === sortColumn) {
         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
       } else {
@@ -193,7 +108,7 @@ export default function MembersPage() {
 
   const handleLoadMore = useCallback(() => {
     if (!guildId || !nextAfter || loading) return;
-    void fetchMembers({
+    void runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -201,12 +116,12 @@ export default function MembersPage() {
       after: nextAfter,
       append: true,
     });
-  }, [guildId, nextAfter, loading, fetchMembers, debouncedSearch, sortColumn, sortOrder]);
+  }, [guildId, nextAfter, loading, runFetch, debouncedSearch, sortColumn, sortOrder]);
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
     resetPagination();
-    void fetchMembers({
+    void runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -214,7 +129,7 @@ export default function MembersPage() {
       after: null,
       append: false,
     });
-  }, [guildId, fetchMembers, debouncedSearch, sortColumn, sortOrder, resetPagination]);
+  }, [guildId, runFetch, debouncedSearch, sortColumn, sortOrder, resetPagination]);
 
   const handleRowClick = useCallback(
     (userId: string) => {
