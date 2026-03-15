@@ -8,6 +8,8 @@ import {
   ConversationReplay,
 } from '@/components/dashboard/conversation-replay';
 import { Button } from '@/components/ui/button';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ConversationDetailResponse {
   messages: ConversationMessage[];
@@ -68,6 +70,7 @@ export default function ConversationDetailPage() {
   }, [fetchDetail]);
 
   return (
+    <ErrorBoundary title="Conversation detail failed to load">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -88,10 +91,18 @@ export default function ConversationDetailPage() {
         </div>
       </div>
 
-      {/* Loading */}
+      {/* Loading skeleton */}
       {loading && (
-        <div className="flex h-48 items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading conversation...</p>
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
+            <div key={i} className={`flex gap-3 ${i % 2 === 0 ? '' : 'justify-end'}`}>
+              <div className={`space-y-2 ${i % 2 === 0 ? 'max-w-[70%]' : 'max-w-[70%]'}`}>
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-12 w-64 rounded-lg" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -127,5 +138,6 @@ export default function ConversationDetailPage() {
         />
       )}
     </div>
+    </ErrorBoundary>
   );
 }
