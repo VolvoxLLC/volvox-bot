@@ -339,7 +339,7 @@ export default function ConversationsPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="All channels" />
               </SelectTrigger>
               <SelectContent>
@@ -373,7 +373,7 @@ export default function ConversationsPage() {
           {loading && conversations.length === 0 ? (
             <ConversationsSkeleton />
           ) : conversations.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
