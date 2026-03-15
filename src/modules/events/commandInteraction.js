@@ -4,10 +4,10 @@
  */
 
 import { debug, error, info, warn } from '../../logger.js';
-import { getConfig } from '../config.js';
 import { logCommandUsage } from '../../utils/commandUsage.js';
 import { getPermissionError, hasPermission } from '../../utils/permissions.js';
 import { safeFollowUp, safeReply } from '../../utils/safeSend.js';
+import { getConfig } from '../config.js';
 
 /**
  * Register the interactionCreate handler for slash commands and autocomplete.

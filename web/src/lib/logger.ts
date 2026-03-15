@@ -54,10 +54,7 @@ const CONSOLE_METHOD: Record<LogLevel, 'debug' | 'info' | 'warn' | 'error'> = {
   error: 'error',
 };
 
-const isDev =
-  typeof process !== 'undefined'
-    ? process.env.NODE_ENV === 'development'
-    : false;
+const isDev = typeof process !== 'undefined' ? process.env.NODE_ENV === 'development' : false;
 
 const noop = (..._args: unknown[]) => {};
 
@@ -70,8 +67,7 @@ function makeBrowserLogger(level: LogLevel): (...args: unknown[]) => void {
   const method = CONSOLE_METHOD[level];
 
   return (...args: unknown[]) => {
-    // biome-ignore lint/suspicious/noConsole: intentional — browser logger shim wraps console for structured output
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: browser logger shim wraps console for structured output
     console[method](`[VolvoxDash] [${level.toUpperCase()}]`, ...args);
   };
 }

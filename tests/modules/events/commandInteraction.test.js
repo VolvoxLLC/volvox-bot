@@ -26,11 +26,10 @@ vi.mock('../../../src/utils/commandUsage.js', () => ({
   logCommandUsage: vi.fn(),
 }));
 
-import { info, warn, error, debug } from '../../../src/logger.js';
-import { getConfig } from '../../../src/modules/config.js';
-import { hasPermission, getPermissionError } from '../../../src/utils/permissions.js';
-import { logCommandUsage } from '../../../src/utils/commandUsage.js';
+import { error, info, warn } from '../../../src/logger.js';
 import { registerCommandInteractionHandler } from '../../../src/modules/events/commandInteraction.js';
+import { logCommandUsage } from '../../../src/utils/commandUsage.js';
+import { getPermissionError, hasPermission } from '../../../src/utils/permissions.js';
 
 describe('commandInteraction handler', () => {
   let client;

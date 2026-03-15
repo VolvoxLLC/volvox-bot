@@ -10,8 +10,8 @@ vi.mock('../../../src/utils/registerCommands.js', () => ({
 }));
 
 import { error } from '../../../src/logger.js';
-import { registerCommands } from '../../../src/utils/registerCommands.js';
 import { registerClientReadyHandler } from '../../../src/modules/events/clientReady.js';
+import { registerCommands } from '../../../src/utils/registerCommands.js';
 
 describe('clientReady handler', () => {
   let client;
