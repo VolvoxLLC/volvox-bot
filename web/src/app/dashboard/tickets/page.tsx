@@ -356,7 +356,7 @@ export default function TicketsPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -387,7 +387,7 @@ export default function TicketsPage() {
           {loading && tickets.length === 0 ? (
             <TicketsSkeleton />
           ) : tickets.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
