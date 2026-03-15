@@ -11,6 +11,12 @@ export const dynamic = 'force-dynamic';
 
 const LOG_PREFIX = '[api/guilds/:guildId/members/:userId/xp]';
 
+/** Maximum absolute XP adjustment allowed in a single request. */
+const MAX_XP_AMOUNT = 1_000_000;
+
+/** Maximum length of the optional reason string. */
+const MAX_REASON_LENGTH = 500;
+
 /**
  * Proxy an XP adjustment request for a guild member to the bot API.
  *
@@ -58,9 +64,27 @@ export async function POST(
         { status: 400 },
       );
     }
+    if (payload.amount === 0) {
+      return NextResponse.json(
+        { error: 'Field "amount" must not be zero' },
+        { status: 400 },
+      );
+    }
+    if (Math.abs(payload.amount as number) > MAX_XP_AMOUNT) {
+      return NextResponse.json(
+        { error: `Field "amount" must be between -${MAX_XP_AMOUNT} and ${MAX_XP_AMOUNT}` },
+        { status: 400 },
+      );
+    }
     if ('reason' in payload && payload.reason !== undefined && typeof payload.reason !== 'string') {
       return NextResponse.json(
         { error: 'Field "reason" must be a string when provided' },
+        { status: 400 },
+      );
+    }
+    if (typeof payload.reason === 'string' && payload.reason.length > MAX_REASON_LENGTH) {
+      return NextResponse.json(
+        { error: `Field "reason" must be at most ${MAX_REASON_LENGTH} characters` },
         { status: 400 },
       );
     }

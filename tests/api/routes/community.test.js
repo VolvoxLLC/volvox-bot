@@ -244,7 +244,7 @@ describe('community routes', () => {
     it('returns community stats', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ count: 42 }] }) // memberCount
-        .mockResolvedValueOnce({ rows: [{ total: 1337 }] }) // messagesThisWeek
+        .mockResolvedValueOnce({ rows: [{ total: 1337 }] }) // totalMessagesSent (all-time)
         .mockResolvedValueOnce({ rows: [{ count: 15 }] }) // activeProjects
         .mockResolvedValueOnce({ rows: [{ count: 88 }] }) // challengesCompleted
         .mockResolvedValueOnce({

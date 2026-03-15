@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { MemberRow, SortColumn, SortOrder } from '@/components/dashboard/member-table';
 
+interface MembersApiResponse {
+  members: MemberRow[];
+  nextAfter: string | null;
+  total: number;
+  filteredTotal?: number;
+}
+
 interface MembersState {
   // Data
   members: MemberRow[];
@@ -18,7 +25,7 @@ interface MembersState {
   sortColumn: SortColumn;
   sortOrder: SortOrder;
 
-  // Actions
+  // Actions — setters
   setMembers: (members: MemberRow[]) => void;
   appendMembers: (members: MemberRow[]) => void;
   setNextAfter: (cursor: string | null) => void;
@@ -32,6 +39,17 @@ interface MembersState {
   setSortOrder: (order: SortOrder) => void;
   resetPagination: () => void;
   resetAll: () => void;
+
+  // Actions — data fetching
+  fetchMembers: (opts: {
+    guildId: string;
+    search: string;
+    sortColumn: SortColumn;
+    sortOrder: SortOrder;
+    after: string | null;
+    append: boolean;
+    signal?: AbortSignal;
+  }) => Promise<'ok' | 'unauthorized' | 'error'>;
 }
 
 const initialState = {
@@ -72,4 +90,55 @@ export const useMembersStore = create<MembersState>((set) => ({
     set({
       ...initialState,
     }),
+
+  fetchMembers: async (opts) => {
+    set({ loading: true, error: null });
+    try {
+      const params = new URLSearchParams();
+      if (opts.search) params.set('search', opts.search);
+      params.set('sort', opts.sortColumn);
+      params.set('order', opts.sortOrder);
+      if (opts.after) params.set('after', opts.after);
+      params.set('limit', '50');
+
+      const res = await fetch(
+        `/api/guilds/${encodeURIComponent(opts.guildId)}/members?${params.toString()}`,
+        { signal: opts.signal },
+      );
+
+      if (res.status === 401) {
+        set({ loading: false });
+        return 'unauthorized';
+      }
+      if (!res.ok) {
+        throw new Error(`Failed to fetch members (${res.status})`);
+      }
+      const data = (await res.json()) as MembersApiResponse;
+      if (opts.append) {
+        set((state) => ({
+          members: [...state.members, ...data.members],
+          nextAfter: data.nextAfter,
+          total: data.total,
+          filteredTotal: data.filteredTotal ?? null,
+          loading: false,
+        }));
+      } else {
+        set({
+          members: data.members,
+          nextAfter: data.nextAfter,
+          total: data.total,
+          filteredTotal: data.filteredTotal ?? null,
+          loading: false,
+        });
+      }
+      return 'ok';
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'ok';
+      set({
+        error: err instanceof Error ? err.message : 'Failed to fetch members',
+        loading: false,
+      });
+      return 'error';
+    }
+  },
 }));

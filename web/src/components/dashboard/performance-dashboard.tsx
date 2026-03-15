@@ -2,6 +2,7 @@
 
 import { Activity, AlertTriangle, Clock, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   Area,
   AreaChart,
@@ -13,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -203,12 +205,15 @@ export function PerformanceDashboard() {
             ? String((json as Record<string, unknown>).error)
             : 'Failed to save thresholds';
         setThresholdMsg(`Error: ${msg}`);
+        toast.error('Failed to save thresholds', { description: msg });
         return;
       }
       setThresholdMsg('Thresholds saved.');
+      toast.success('Thresholds saved', { description: 'Alert thresholds updated successfully.' });
       void fetchData(true);
     } catch {
       setThresholdMsg('Error: Network failure');
+      toast.error('Failed to save thresholds', { description: 'A network error occurred.' });
     } finally {
       setThresholdSaving(false);
     }

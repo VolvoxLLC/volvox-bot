@@ -3,6 +3,7 @@
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
 
@@ -21,25 +22,27 @@ export default function LogsPage() {
   });
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] flex-col gap-6">
-      {/* Health cards + restart history */}
-      <HealthSection />
+    <ErrorBoundary title="Logs failed to load">
+      <div className="flex h-[calc(100vh-7rem)] flex-col gap-6">
+        {/* Health cards + restart history */}
+        <HealthSection />
 
-      {/* Log stream section */}
-      <div className="flex flex-1 flex-col gap-3 min-h-0">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h1 className="text-xl font-semibold">Log Stream</h1>
-            <p className="text-sm text-muted-foreground">Real-time logs from the bot API</p>
+        {/* Log stream section */}
+        <div className="flex flex-1 flex-col gap-3 min-h-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h1 className="text-xl font-semibold">Log Stream</h1>
+              <p className="text-sm text-muted-foreground">Real-time logs from the bot API</p>
+            </div>
+          </div>
+
+          <LogFilters onFilterChange={sendFilter} disabled={status !== 'connected'} />
+
+          <div className="flex-1 min-h-0">
+            <LogViewer logs={logs} status={status} onClear={clearLogs} />
           </div>
         </div>
-
-        <LogFilters onFilterChange={sendFilter} disabled={status !== 'connected'} />
-
-        <div className="flex-1 min-h-0">
-          <LogViewer logs={logs} status={status} onClear={clearLogs} />
-        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

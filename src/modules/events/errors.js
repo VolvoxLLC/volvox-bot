@@ -1,21 +1,36 @@
 /**
  * Error Event Handlers
- * Handles Discord client errors and process-level error handling
+ * Handles Discord client errors, shard disconnects, and process-level error handling.
  */
 
 import { Events } from 'discord.js';
-import { error as logError } from '../../logger.js';
+import { error as logError, warn as logWarn } from '../../logger.js';
 
 /** @type {boolean} Guard against duplicate process-level handler registration */
 let processHandlersRegistered = false;
 
 /**
  * Register error event handlers
- * @param {Client} client - Discord client
+ * @param {import('discord.js').Client} client - Discord client
  */
 export function registerErrorHandlers(client) {
   client.on(Events.Error, (err) => {
-    logError('Discord error', { error: err.message, stack: err.stack });
+    logError('Discord client error', {
+      error: err.message,
+      stack: err.stack,
+      code: err.code,
+      source: 'discord_client',
+    });
+  });
+
+  client.on(Events.ShardDisconnect, (event, shardId) => {
+    if (event.code !== 1000) {
+      logWarn('Shard disconnected unexpectedly', {
+        shardId,
+        code: event.code,
+        source: 'discord_shard',
+      });
+    }
   });
 
   if (!processHandlersRegistered) {

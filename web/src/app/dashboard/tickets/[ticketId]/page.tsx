@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TranscriptMessage {
   author: string;
@@ -89,143 +91,179 @@ export default function TicketDetailPage() {
   }, [fetchDetail]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Ticket className="h-6 w-6" />
-            Ticket Detail
-          </h2>
+    <ErrorBoundary title="Ticket detail failed to load">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <Ticket className="h-6 w-6" />
+              Ticket Detail
+            </h2>
+          </div>
         </div>
-      </div>
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex h-48 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
-        >
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {/* Ticket Info */}
-      {data && !loading && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Ticket #{data.id}</span>
-                <Badge variant={data.status === 'open' ? 'default' : 'secondary'}>
-                  {data.status === 'open' ? '🟢 Open' : '🔒 Closed'}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Topic</span>
-                  <p>{data.topic || 'No topic provided'}</p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Opened by</span>
-                  <p className="flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    <span className="font-mono text-sm">{data.user_id}</span>
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Created</span>
-                  <p className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatTimestamp(data.created_at)}
-                  </p>
-                </div>
-                {data.closed_at && (
-                  <div>
-                    <span className="text-sm font-medium text-muted-foreground">Closed</span>
-                    <p className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatTimestamp(data.closed_at)}
-                    </p>
-                  </div>
-                )}
-                {data.closed_by && (
-                  <div>
-                    <span className="text-sm font-medium text-muted-foreground">Closed by</span>
-                    <p className="font-mono text-sm">{data.closed_by}</p>
-                  </div>
-                )}
-                {data.close_reason && (
-                  <div>
-                    <span className="text-sm font-medium text-muted-foreground">Close reason</span>
-                    <p>{data.close_reason}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Transcript */}
-          {data.transcript && data.transcript.length > 0 && (
+        {/* Loading skeleton */}
+        {loading && (
+          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Transcript ({data.transcript.length} messages)</CardTitle>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {data.transcript.map((msg) => (
-                    <div key={msg.timestamp} className="flex gap-3 rounded-lg border p-3">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
-                        {msg.author.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{msg.author}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatTimestamp(msg.timestamp)}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                          {msg.content || (
-                            <span className="italic text-muted-foreground">[no content]</span>
-                          )}
-                        </p>
-                      </div>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
+                    <div key={i} className="space-y-1">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-5 w-32" />
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-          )}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-5 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
+                  <div key={i} className="space-y-1">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-          {data.transcript && data.transcript.length === 0 && (
-            <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">No transcript available.</p>
-            </div>
-          )}
+        {/* Error */}
+        {error && (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+          >
+            <strong>Error:</strong> {error}
+          </div>
+        )}
 
-          {!data.transcript && data.status === 'open' && (
-            <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">
-                Transcript will be saved when the ticket is closed.
-              </p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+        {/* Ticket Info */}
+        {data && !loading && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Ticket #{data.id}</span>
+                  <Badge variant={data.status === 'open' ? 'default' : 'secondary'}>
+                    {data.status === 'open' ? '🟢 Open' : '🔒 Closed'}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Topic</span>
+                    <p>{data.topic || 'No topic provided'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Opened by</span>
+                    <p className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      <span className="font-mono text-sm">{data.user_id}</span>
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Created</span>
+                    <p className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatTimestamp(data.created_at)}
+                    </p>
+                  </div>
+                  {data.closed_at && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Closed</span>
+                      <p className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatTimestamp(data.closed_at)}
+                      </p>
+                    </div>
+                  )}
+                  {data.closed_by && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Closed by</span>
+                      <p className="font-mono text-sm">{data.closed_by}</p>
+                    </div>
+                  )}
+                  {data.close_reason && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Close reason
+                      </span>
+                      <p>{data.close_reason}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Transcript */}
+            {data.transcript && data.transcript.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transcript ({data.transcript.length} messages)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                    {data.transcript.map((msg) => (
+                      <div key={msg.timestamp} className="flex gap-3 rounded-lg border p-3">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
+                          {msg.author.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{msg.author}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatTimestamp(msg.timestamp)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                            {msg.content || (
+                              <span className="italic text-muted-foreground">[no content]</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {data.transcript && data.transcript.length === 0 && (
+              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
+                <p className="text-sm text-muted-foreground">No transcript available.</p>
+              </div>
+            )}
+
+            {!data.transcript && data.status === 'open' && (
+              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  Transcript will be saved when the ticket is closed.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }

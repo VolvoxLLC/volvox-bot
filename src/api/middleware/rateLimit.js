@@ -67,5 +67,26 @@ export function rateLimit({
 
   middleware.destroy = () => clearInterval(cleanup);
 
+  /**
+   * Manually trigger a sweep of stale entries.
+   * Useful in tests and for on-demand memory reclamation.
+   *
+   * @returns {number} Number of entries removed.
+   */
+  middleware.sweep = () => {
+    const now = Date.now();
+    let removed = 0;
+    for (const [ip, entry] of clients) {
+      if (now >= entry.resetAt) {
+        clients.delete(ip);
+        removed++;
+      }
+    }
+    return removed;
+  };
+
+  /** Current number of tracked IPs. */
+  middleware.size = () => clients.size;
+
   return middleware;
 }

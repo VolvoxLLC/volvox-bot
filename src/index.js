@@ -17,7 +17,7 @@ import './sentry.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer } from './api/server.js';
 import {
@@ -29,7 +29,6 @@ import { closeDb, getPool, initDb } from './db.js';
 import {
   addPostgresTransport,
   addWebSocketTransport,
-  debug,
   error,
   info,
   removeWebSocketTransport,
@@ -43,7 +42,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
-import { getConfig, loadConfig } from './modules/config.js';
+import { loadConfig } from './modules/config.js';
 
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
@@ -60,14 +59,9 @@ import {
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
 import { stopCacheCleanup } from './utils/cache.js';
-import { logCommandUsage } from './utils/commandUsage.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
-import { getPermissionError, hasPermission } from './utils/permissions.js';
-import { registerCommands } from './utils/registerCommands.js';
 import { recordRestart, updateUptimeOnShutdown } from './utils/restartTracker.js';
-
-import { safeFollowUp, safeReply } from './utils/safeSend.js';
 
 // ES module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -181,102 +175,8 @@ async function loadCommands() {
   });
 }
 
-// Event handlers are registered after config loads (see startup below)
-
-// Extend ready handler to register slash commands
-client.once(Events.ClientReady, async () => {
-  // Register slash commands with Discord
-  try {
-    const commands = Array.from(client.commands.values());
-    await registerCommands(commands, client.user.id, process.env.DISCORD_TOKEN);
-  } catch (err) {
-    error('Command registration failed', { error: err.message });
-  }
-});
-
-// Handle slash commands and autocomplete
-client.on('interactionCreate', async (interaction) => {
-  // Handle autocomplete
-  if (interaction.isAutocomplete()) {
-    const command = client.commands.get(interaction.commandName);
-    if (command?.autocomplete) {
-      try {
-        await command.autocomplete(interaction);
-      } catch (err) {
-        error('Autocomplete error', { command: interaction.commandName, error: err.message });
-      }
-    }
-    return;
-  }
-
-  if (!interaction.isChatInputCommand()) return;
-
-  const { commandName, member } = interaction;
-
-  try {
-    info('Slash command received', { command: commandName, user: interaction.user.tag });
-
-    // Permission check
-    const guildConfig = getConfig(interaction.guildId);
-    if (!hasPermission(member, commandName, guildConfig)) {
-      const permLevel = guildConfig.permissions?.allowedCommands?.[commandName] || 'administrator';
-      await safeReply(interaction, {
-        content: getPermissionError(commandName, permLevel),
-        ephemeral: true,
-      });
-      warn('Permission denied', { user: interaction.user.tag, command: commandName });
-      return;
-    }
-
-    // Execute command from collection
-    const command = client.commands.get(commandName);
-    if (!command) {
-      await safeReply(interaction, {
-        content: '❌ Command not found.',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    await command.execute(interaction);
-    info('Command executed', {
-      command: commandName,
-      user: interaction.user.tag,
-      guildId: interaction.guildId,
-      channelId: interaction.channelId,
-    });
-
-    // Log command usage to dedicated analytics table (fire-and-forget)
-    logCommandUsage({
-      guildId: interaction.guildId,
-      userId: interaction.user.id,
-      commandName,
-      channelId: interaction.channelId,
-    });
-  } catch (err) {
-    error('Command error', {
-      command: commandName,
-      error: err.message,
-      stack: err.stack,
-      source: 'slash_command',
-    });
-
-    const errorMessage = {
-      content: '❌ An error occurred while executing this command.',
-      ephemeral: true,
-    };
-
-    if (interaction.replied || interaction.deferred) {
-      await safeFollowUp(interaction, errorMessage).catch((replyErr) => {
-        debug('Failed to send error follow-up', { error: replyErr.message, command: commandName });
-      });
-    } else {
-      await safeReply(interaction, errorMessage).catch((replyErr) => {
-        debug('Failed to send error reply', { error: replyErr.message, command: commandName });
-      });
-    }
-  }
-});
+// Event handlers (including slash commands, errors, and shard disconnect)
+// are registered via registerEventHandlers() after config loads — see startup below.
 
 /**
  * Perform an orderly shutdown of the bot: stop background services, persist runtime state, close external resources, and exit the process.
@@ -350,22 +250,6 @@ async function gracefulShutdown(signal) {
 // Handle shutdown signals
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Error handling
-client.on('error', (err) => {
-  error('Discord client error', {
-    error: err.message,
-    stack: err.stack,
-    code: err.code,
-    source: 'discord_client',
-  });
-});
-
-client.on('shardDisconnect', (event, shardId) => {
-  if (event.code !== 1000) {
-    warn('Shard disconnected unexpectedly', { shardId, code: event.code, source: 'discord_shard' });
-  }
-});
 
 // Start bot
 const token = process.env.DISCORD_TOKEN;

@@ -1,14 +1,19 @@
 /**
  * Dashboard logger shim.
  *
- * Browser runtime: no-op to keep client bundles free of direct logging.
- * Server runtime: lightweight stderr/stdout logger.
+ * Browser runtime: thin wrapper around console methods that adds a
+ * `[VolvoxDash]` prefix and timestamp for consistent structured logging
+ * visible in DevTools. Only `warn` and `error` are active in production
+ * builds; `debug` and `info` are suppressed unless `NODE_ENV === 'development'`.
+ *
+ * Server runtime: lightweight stderr/stdout logger (no Winston dependency).
  */
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const noop = (..._args: unknown[]) => {};
 const isBrowser = typeof window !== 'undefined';
+
+// ─── Server logger ──────────────────────────────────────────────────────────
 
 function formatArg(arg: unknown): string {
   if (typeof arg === 'string') return arg;
@@ -39,12 +44,42 @@ const makeServerLogger =
     writeServerLog(level, args);
   };
 
+// ─── Browser logger ─────────────────────────────────────────────────────────
+
+/** Map log levels to their corresponding console methods. */
+const CONSOLE_METHOD: Record<LogLevel, 'debug' | 'info' | 'warn' | 'error'> = {
+  debug: 'debug',
+  info: 'info',
+  warn: 'warn',
+  error: 'error',
+};
+
+const isDev = typeof process !== 'undefined' ? process.env.NODE_ENV === 'development' : false;
+
+const noop = (..._args: unknown[]) => {};
+
+function makeBrowserLogger(level: LogLevel): (...args: unknown[]) => void {
+  // In production, suppress noisy debug/info — only surface warnings and errors.
+  if (!isDev && (level === 'debug' || level === 'info')) {
+    return noop;
+  }
+
+  const method = CONSOLE_METHOD[level];
+
+  return (...args: unknown[]) => {
+    // biome-ignore lint/suspicious/noConsole: browser logger shim wraps console for structured output
+    console[method](`[VolvoxDash] [${level.toUpperCase()}]`, ...args);
+  };
+}
+
+// ─── Export ──────────────────────────────────────────────────────────────────
+
 export const logger = isBrowser
   ? {
-      debug: noop,
-      info: noop,
-      warn: noop,
-      error: noop,
+      debug: makeBrowserLogger('debug'),
+      info: makeBrowserLogger('info'),
+      warn: makeBrowserLogger('warn'),
+      error: makeBrowserLogger('error'),
     }
   : {
       debug: makeServerLogger('debug'),

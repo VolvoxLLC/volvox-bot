@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -269,209 +270,211 @@ export default function TicketsPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Ticket className="h-6 w-6" />
-            Tickets
-          </h2>
-          <p className="text-muted-foreground">Manage support tickets and view transcripts.</p>
+    <ErrorBoundary title="Tickets failed to load">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <Ticket className="h-6 w-6" />
+              Tickets
+            </h2>
+            <p className="text-muted-foreground">Manage support tickets and view transcripts.</p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 self-start sm:self-auto"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={handleRefresh}
-          disabled={!guildId || loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-medium text-muted-foreground">Open Tickets</div>
-            <div className="mt-1 text-2xl font-bold">{stats.openCount}</div>
-          </div>
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-medium text-muted-foreground">Avg Resolution</div>
-            <div className="mt-1 text-2xl font-bold">
-              {formatDuration(stats.avgResolutionSeconds)}
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-lg border p-4">
+              <div className="text-sm font-medium text-muted-foreground">Open Tickets</div>
+              <div className="mt-1 text-2xl font-bold">{stats.openCount}</div>
+            </div>
+            <div className="rounded-lg border p-4">
+              <div className="text-sm font-medium text-muted-foreground">Avg Resolution</div>
+              <div className="mt-1 text-2xl font-bold">
+                {formatDuration(stats.avgResolutionSeconds)}
+              </div>
+            </div>
+            <div className="rounded-lg border p-4">
+              <div className="text-sm font-medium text-muted-foreground">This Week</div>
+              <div className="mt-1 text-2xl font-bold">{stats.ticketsThisWeek}</div>
             </div>
           </div>
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-medium text-muted-foreground">This Week</div>
-            <div className="mt-1 text-2xl font-bold">{stats.ticketsThisWeek}</div>
+        )}
+
+        {/* No guild selected */}
+        {!guildId && (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
+            <p className="text-sm text-muted-foreground">
+              Select a server from the sidebar to view tickets.
+            </p>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* No guild selected */}
-      {!guildId && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            Select a server from the sidebar to view tickets.
-          </p>
-        </div>
-      )}
+        {/* Content */}
+        {guildId && (
+          <>
+            {/* Filters */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative w-full sm:flex-1 sm:max-w-sm">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9 pr-8"
+                  placeholder="Search by user ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search tickets by user"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={handleClearSearch}
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
 
-      {/* Content */}
-      {guildId && (
-        <>
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9 pr-8"
-                placeholder="Search by user ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search tickets by user"
-              />
-              {search && (
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={handleClearSearch}
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val === 'all' ? '' : val);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {total > 0 && (
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {total.toLocaleString()} {total === 1 ? 'ticket' : 'tickets'}
+                </span>
               )}
             </div>
 
-            <Select
-              value={statusFilter}
-              onValueChange={(val) => {
-                setStatusFilter(val === 'all' ? '' : val);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {total > 0 && (
-              <span className="text-sm text-muted-foreground tabular-nums">
-                {total.toLocaleString()} {total === 1 ? 'ticket' : 'tickets'}
-              </span>
-            )}
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
-            >
-              <strong>Error:</strong> {error}
-            </div>
-          )}
-
-          {/* Table */}
-          {loading && tickets.length === 0 ? (
-            <TicketsSkeleton />
-          ) : tickets.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16">ID</TableHead>
-                    <TableHead>Topic</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="hidden md:table-cell">Closed</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tickets.map((ticket) => (
-                    <TableRow
-                      key={ticket.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      tabIndex={0}
-                      onClick={() => handleRowClick(ticket.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleRowClick(ticket.id);
-                        }
-                      }}
-                    >
-                      <TableCell className="font-mono text-sm">#{ticket.id}</TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {ticket.topic || (
-                          <span className="text-muted-foreground italic">No topic</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{ticket.user_id}</TableCell>
-                      <TableCell>
-                        <Badge variant={ticket.status === 'open' ? 'default' : 'secondary'}>
-                          {ticket.status === 'open' ? '🟢 Open' : '🔒 Closed'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(ticket.created_at)}
-                      </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                        {ticket.closed_at ? formatDate(ticket.closed_at) : '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">
-                {statusFilter || debouncedSearch
-                  ? 'No tickets match your filters.'
-                  : 'No tickets found.'}
-              </p>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
+            {/* Error */}
+            {error && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+              >
+                <strong>Error:</strong> {error}
               </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            )}
+
+            {/* Table */}
+            {loading && tickets.length === 0 ? (
+              <TicketsSkeleton />
+            ) : tickets.length > 0 ? (
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">ID</TableHead>
+                      <TableHead>Topic</TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="hidden md:table-cell">Closed</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tickets.map((ticket) => (
+                      <TableRow
+                        key={ticket.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        tabIndex={0}
+                        onClick={() => handleRowClick(ticket.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleRowClick(ticket.id);
+                          }
+                        }}
+                      >
+                        <TableCell className="font-mono text-sm">#{ticket.id}</TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {ticket.topic || (
+                            <span className="text-muted-foreground italic">No topic</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{ticket.user_id}</TableCell>
+                        <TableCell>
+                          <Badge variant={ticket.status === 'open' ? 'default' : 'secondary'}>
+                            {ticket.status === 'open' ? '🟢 Open' : '🔒 Closed'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(ticket.created_at)}
+                        </TableCell>
+                        <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                          {ticket.closed_at ? formatDate(ticket.closed_at) : '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  {statusFilter || debouncedSearch
+                    ? 'No tickets match your filters.'
+                    : 'No tickets found.'}
+                </p>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
