@@ -274,206 +274,206 @@ export default function ConversationsPage() {
 
   return (
     <ErrorBoundary title="Conversations failed to load">
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <MessageSquare className="h-6 w-6" />
-            Conversations
-          </h2>
-          <p className="text-muted-foreground">Browse, search, and replay AI conversations.</p>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <MessageSquare className="h-6 w-6" />
+              Conversations
+            </h2>
+            <p className="text-muted-foreground">Browse, search, and replay AI conversations.</p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 self-start sm:self-auto"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={handleRefresh}
-          disabled={!guildId || loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+        {/* No guild selected */}
+        {!guildId && (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
+            <p className="text-sm text-muted-foreground">
+              Select a server from the sidebar to view conversations.
+            </p>
+          </div>
+        )}
 
-      {/* No guild selected */}
-      {!guildId && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            Select a server from the sidebar to view conversations.
-          </p>
-        </div>
-      )}
+        {/* Content */}
+        {guildId && (
+          <>
+            {/* Filters */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative w-full sm:flex-1 sm:max-w-sm">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9 pr-8"
+                  placeholder="Search conversations..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search conversations"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={handleClearSearch}
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
 
-      {/* Content */}
-      {guildId && (
-        <>
-          {/* Filters */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="relative w-full sm:flex-1 sm:max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9 pr-8"
-                placeholder="Search conversations..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search conversations"
-              />
-              {search && (
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={handleClearSearch}
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+              <Select
+                value={channelFilter}
+                onValueChange={(val) => {
+                  setChannelFilter(val === 'all' ? '' : val);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="All channels" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All channels</SelectItem>
+                  {channels.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>
+                      #{ch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {total > 0 && (
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {total.toLocaleString()} {total === 1 ? 'conversation' : 'conversations'}
+                </span>
               )}
             </div>
 
-            <Select
-              value={channelFilter}
-              onValueChange={(val) => {
-                setChannelFilter(val === 'all' ? '' : val);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="All channels" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All channels</SelectItem>
-                {channels.map((ch) => (
-                  <SelectItem key={ch.id} value={ch.id}>
-                    #{ch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {total > 0 && (
-              <span className="text-sm text-muted-foreground tabular-nums">
-                {total.toLocaleString()} {total === 1 ? 'conversation' : 'conversations'}
-              </span>
-            )}
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
-            >
-              <strong>Error:</strong> {error}
-            </div>
-          )}
-
-          {/* Table */}
-          {loading && conversations.length === 0 ? (
-            <ConversationsSkeleton />
-          ) : conversations.length > 0 ? (
-            <div className="rounded-md border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Channel</TableHead>
-                    <TableHead>Participants</TableHead>
-                    <TableHead className="text-center">Messages</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead className="hidden md:table-cell">Preview</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {conversations.map((convo) => (
-                    <TableRow
-                      key={convo.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleRowClick(convo.id)}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Hash className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-medium">{convo.channelName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex -space-x-1">
-                          {convo.participants.slice(0, 3).map((p) => (
-                            <div
-                              key={p.username}
-                              className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white ring-2 ring-background ${
-                                p.role === 'user' ? 'bg-blue-500' : 'bg-gray-500'
-                              }`}
-                              title={`${p.username} (${p.role})`}
-                            >
-                              {p.username.slice(0, 2).toUpperCase()}
-                            </div>
-                          ))}
-                          {convo.participants.length > 3 && (
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-2 ring-background">
-                              +{convo.participants.length - 3}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">{convo.messageCount}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDuration(convo.firstMessageAt, convo.lastMessageAt)}
-                      </TableCell>
-                      <TableCell className="hidden max-w-xs truncate md:table-cell">
-                        <span className="text-sm text-muted-foreground">{convo.preview}</span>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(convo.firstMessageAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">
-                {debouncedSearch || channelFilter
-                  ? 'No conversations match your filters.'
-                  : 'No conversations found.'}
-              </p>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
+            {/* Error */}
+            {error && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+              >
+                <strong>Error:</strong> {error}
               </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            )}
+
+            {/* Table */}
+            {loading && conversations.length === 0 ? (
+              <ConversationsSkeleton />
+            ) : conversations.length > 0 ? (
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Channel</TableHead>
+                      <TableHead>Participants</TableHead>
+                      <TableHead className="text-center">Messages</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead className="hidden md:table-cell">Preview</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {conversations.map((convo) => (
+                      <TableRow
+                        key={convo.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleRowClick(convo.id)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Hash className="h-3 w-3 text-muted-foreground" />
+                            <span className="font-medium">{convo.channelName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex -space-x-1">
+                            {convo.participants.slice(0, 3).map((p) => (
+                              <div
+                                key={p.username}
+                                className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white ring-2 ring-background ${
+                                  p.role === 'user' ? 'bg-blue-500' : 'bg-gray-500'
+                                }`}
+                                title={`${p.username} (${p.role})`}
+                              >
+                                {p.username.slice(0, 2).toUpperCase()}
+                              </div>
+                            ))}
+                            {convo.participants.length > 3 && (
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-2 ring-background">
+                                +{convo.participants.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary">{convo.messageCount}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDuration(convo.firstMessageAt, convo.lastMessageAt)}
+                        </TableCell>
+                        <TableCell className="hidden max-w-xs truncate md:table-cell">
+                          <span className="text-sm text-muted-foreground">{convo.preview}</span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(convo.firstMessageAt)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  {debouncedSearch || channelFilter
+                    ? 'No conversations match your filters.'
+                    : 'No conversations found.'}
+                </p>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </ErrorBoundary>
   );
 }
