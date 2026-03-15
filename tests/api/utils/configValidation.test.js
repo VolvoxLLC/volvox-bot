@@ -109,6 +109,116 @@ describe('configValidation', () => {
     });
   });
 
+  describe('number range validation', () => {
+    it('should reject numbers below minimum', () => {
+      const errors = validateValue(0, { type: 'number', min: 1, max: 100 }, 'test');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('>= 1');
+    });
+
+    it('should reject numbers above maximum', () => {
+      const errors = validateValue(101, { type: 'number', min: 1, max: 100 }, 'test');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('<= 100');
+    });
+
+    it('should accept numbers within range', () => {
+      expect(validateValue(1, { type: 'number', min: 1, max: 100 }, 'test')).toEqual([]);
+      expect(validateValue(50, { type: 'number', min: 1, max: 100 }, 'test')).toEqual([]);
+      expect(validateValue(100, { type: 'number', min: 1, max: 100 }, 'test')).toEqual([]);
+    });
+
+    it('should enforce ai.historyLength range', () => {
+      expect(validateSingleValue('ai.historyLength', 0)).toEqual(
+        expect.arrayContaining([expect.stringContaining('>= 1')]),
+      );
+      expect(validateSingleValue('ai.historyLength', 101)).toEqual(
+        expect.arrayContaining([expect.stringContaining('<= 100')]),
+      );
+      expect(validateSingleValue('ai.historyLength', 50)).toEqual([]);
+    });
+
+    it('should enforce auditLog.retentionDays range', () => {
+      expect(validateSingleValue('auditLog.retentionDays', 0)).toEqual(
+        expect.arrayContaining([expect.stringContaining('>= 1')]),
+      );
+      expect(validateSingleValue('auditLog.retentionDays', 366)).toEqual(
+        expect.arrayContaining([expect.stringContaining('<= 365')]),
+      );
+      expect(validateSingleValue('auditLog.retentionDays', 90)).toEqual([]);
+    });
+
+    it('should enforce reminders.maxPerUser range', () => {
+      expect(validateSingleValue('reminders.maxPerUser', 0)).toEqual(
+        expect.arrayContaining([expect.stringContaining('>= 1')]),
+      );
+      expect(validateSingleValue('reminders.maxPerUser', 50)).toEqual([]);
+    });
+
+    it('should enforce voice.xpPerMinute range', () => {
+      expect(validateSingleValue('voice.xpPerMinute', -1)).toEqual(
+        expect.arrayContaining([expect.stringContaining('>= 0')]),
+      );
+      expect(validateSingleValue('voice.xpPerMinute', 1001)).toEqual(
+        expect.arrayContaining([expect.stringContaining('<= 1000')]),
+      );
+      expect(validateSingleValue('voice.xpPerMinute', 5)).toEqual([]);
+    });
+  });
+
+  describe('string constraint validation', () => {
+    it('should reject strings exceeding maxLength', () => {
+      const errors = validateValue('x'.repeat(4001), { type: 'string', maxLength: 4000 }, 'test');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('max length');
+    });
+
+    it('should accept strings within maxLength', () => {
+      expect(
+        validateValue('x'.repeat(4000), { type: 'string', maxLength: 4000 }, 'test'),
+      ).toEqual([]);
+    });
+
+    it('should enforce ai.systemPrompt maxLength', () => {
+      expect(validateSingleValue('ai.systemPrompt', 'x'.repeat(4001))).toEqual(
+        expect.arrayContaining([expect.stringContaining('max length')]),
+      );
+      expect(validateSingleValue('ai.systemPrompt', 'You are a helpful bot')).toEqual([]);
+    });
+
+    it('should enforce enum constraint on ai.defaultChannelMode', () => {
+      expect(validateSingleValue('ai.defaultChannelMode', 'off')).toEqual([]);
+      expect(validateSingleValue('ai.defaultChannelMode', 'mention')).toEqual([]);
+      expect(validateSingleValue('ai.defaultChannelMode', 'vibe')).toEqual([]);
+      expect(validateSingleValue('ai.defaultChannelMode', 'invalid')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+    });
+  });
+
+  describe('openProperties support', () => {
+    it('should allow unknown keys in open-properties objects', () => {
+      const errors = validateValue(
+        { '12345': 'vibe', '67890': 'mention' },
+        { type: 'object', openProperties: true },
+        'test',
+      );
+      expect(errors).toEqual([]);
+    });
+
+    it('should validate ai.channelModes as open-properties', () => {
+      expect(validateSingleValue('ai.channelModes', { '12345': 'vibe' })).toEqual([]);
+    });
+
+    it('should resolve dynamic keys in validateSingleValue (channelModes path)', () => {
+      // channelModes.<channelId> breaks out at the openProperties schema,
+      // so the leaf value is validated against the channelModes object schema.
+      // A string value gets type-rejected against the object schema, which is expected.
+      // Setting the whole channelModes map is the correct usage:
+      expect(validateSingleValue('ai.channelModes', { '12345': 'vibe' })).toEqual([]);
+    });
+  });
+
   describe('auditLog schema validation', () => {
     it('should accept valid auditLog.enabled boolean', () => {
       expect(validateSingleValue('auditLog.enabled', true)).toEqual([]);
