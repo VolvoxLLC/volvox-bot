@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -266,6 +267,7 @@ export default function AuditLogPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
+    <ErrorBoundary title="Audit log failed to load">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -304,8 +306,8 @@ export default function AuditLogPage() {
       {guildId && (
         <>
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative w-full sm:flex-1 sm:max-w-sm">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9 pr-8"
@@ -333,7 +335,7 @@ export default function AuditLogPage() {
                 setOffset(0);
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="All actions" />
               </SelectTrigger>
               <SelectContent>
@@ -346,27 +348,29 @@ export default function AuditLogPage() {
               </SelectContent>
             </Select>
 
-            <Input
-              type="date"
-              className="w-[150px]"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setOffset(0);
-              }}
-              aria-label="Start date filter"
-            />
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Input
+                type="date"
+                className="flex-1 sm:w-[150px]"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setOffset(0);
+                }}
+                aria-label="Start date filter"
+              />
 
-            <Input
-              type="date"
-              className="w-[150px]"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setOffset(0);
-              }}
-              aria-label="End date filter"
-            />
+              <Input
+                type="date"
+                className="flex-1 sm:w-[150px]"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setOffset(0);
+                }}
+                aria-label="End date filter"
+              />
+            </div>
 
             {total > 0 && (
               <span className="text-sm text-muted-foreground tabular-nums">
@@ -494,5 +498,6 @@ export default function AuditLogPage() {
         </>
       )}
     </div>
+    </ErrorBoundary>
   );
 }

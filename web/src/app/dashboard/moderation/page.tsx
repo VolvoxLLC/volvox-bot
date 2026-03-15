@@ -101,6 +101,7 @@ export default function ModerationPage() {
   }, [clearUserHistory, setUserHistoryData, setUserHistoryError]);
 
   return (
+    <ErrorBoundary title="Moderation failed to load">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -241,5 +242,6 @@ export default function ModerationPage() {
         </>
       )}
     </div>
+    </ErrorBoundary>
   );
 }

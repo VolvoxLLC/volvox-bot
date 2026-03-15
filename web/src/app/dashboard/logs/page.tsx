@@ -3,6 +3,7 @@
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
 
@@ -21,6 +22,7 @@ export default function LogsPage() {
   });
 
   return (
+    <ErrorBoundary title="Logs failed to load">
     <div className="flex h-[calc(100vh-7rem)] flex-col gap-6">
       {/* Health cards + restart history */}
       <HealthSection />
@@ -41,5 +43,6 @@ export default function LogsPage() {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

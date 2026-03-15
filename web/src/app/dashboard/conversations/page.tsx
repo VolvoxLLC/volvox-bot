@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -272,6 +273,7 @@ export default function ConversationsPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
+    <ErrorBoundary title="Conversations failed to load">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -308,8 +310,8 @@ export default function ConversationsPage() {
       {guildId && (
         <>
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative w-full sm:flex-1 sm:max-w-sm">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9 pr-8"
@@ -472,5 +474,6 @@ export default function ConversationsPage() {
         </>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
