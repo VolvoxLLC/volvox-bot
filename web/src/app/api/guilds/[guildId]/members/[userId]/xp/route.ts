@@ -70,7 +70,7 @@ export async function POST(
         { status: 400 },
       );
     }
-    if (Math.abs(payload.amount as number) > MAX_XP_AMOUNT) {
+    if (Math.abs(payload.amount) > MAX_XP_AMOUNT) {
       return NextResponse.json(
         { error: `Field "amount" must be between -${MAX_XP_AMOUNT} and ${MAX_XP_AMOUNT}` },
         { status: 400 },

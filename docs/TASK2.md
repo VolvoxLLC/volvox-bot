@@ -23,7 +23,8 @@ Already done (skip these):
 
 ### 3. console.error cleanup in browser code
 - `rg -rn "console\.error" web/src/` — find all occurrences in client components
-- Replace with: toast.error() for user-facing errors, or keep console.error where it's truly logging-only
+- Replace with: use the dashboard logger (`web/src/lib/logger.ts`) for diagnostic logging and toast (`sonner`) for user-facing errors
+- For bot/server code, use Winston (`src/logger.js`) — never use `console.*` directly
 - Do NOT replace server-side console.error (only client components)
 
 ### 4. events.js function extraction
