@@ -255,7 +255,7 @@ describe('community routes', () => {
 
       expect(res.body).toMatchObject({
         memberCount: 42,
-        totalMessagesSent: '1337',
+        totalMessagesSent: 1337,
         activeProjects: 15,
         challengesCompleted: 88,
       });

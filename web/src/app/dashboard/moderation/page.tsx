@@ -117,14 +117,12 @@ export default function ModerationPage() {
       e.preventDefault();
       const trimmed = userHistoryInput.trim();
       if (!trimmed || !guildId) return;
+      // Setting lookupUserId + userHistoryPage triggers the useEffect
+      // which handles the fetch — no manual fetch needed here.
       setLookupUserId(trimmed);
       setUserHistoryPage(1);
-      void (async () => {
-        const result = await fetchUserHistory(guildId, trimmed, 1);
-        if (result === 'unauthorized') onUnauthorized();
-      })();
     },
-    [guildId, userHistoryInput, fetchUserHistory, setLookupUserId, setUserHistoryPage, onUnauthorized],
+    [guildId, userHistoryInput, setLookupUserId, setUserHistoryPage],
   );
 
   const handleClearUserHistory = useCallback(() => {

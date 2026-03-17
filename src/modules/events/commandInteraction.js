@@ -26,7 +26,10 @@ export function registerCommandInteractionHandler(client) {
       try {
         await command.autocomplete(interaction);
       } catch (err) {
-        error('Autocomplete error', { command: interaction.commandName, error: err instanceof Error ? err.message : String(err) });
+        error('Autocomplete error', {
+          command: interaction.commandName,
+          error: err instanceof Error ? err.message : String(err),
+        });
         await interaction.respond([]);
       }
       return;
@@ -76,7 +79,11 @@ export function registerCommandInteractionHandler(client) {
         userId: interaction.user.id,
         commandName,
         channelId: interaction.channelId,
-      }).catch((err) => error('Failed to log command usage', { error: err instanceof Error ? err.message : String(err) }));
+      }).catch((err) =>
+        error('Failed to log command usage', {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     } catch (err) {
       error('Command error', {
         command: commandName,
