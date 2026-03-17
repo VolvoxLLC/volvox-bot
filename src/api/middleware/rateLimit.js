@@ -26,15 +26,24 @@ export function rateLimit({
 
   const clients = new Map();
 
-  // Periodically clean up expired entries to prevent memory leaks
-  const cleanup = setInterval(() => {
+  /**
+   * Remove all expired entries from the client map.
+   * @returns {number} Number of entries removed.
+   */
+  function sweepStaleEntries() {
     const now = Date.now();
+    let removed = 0;
     for (const [ip, entry] of clients) {
       if (now >= entry.resetAt) {
         clients.delete(ip);
+        removed++;
       }
     }
-  }, windowMs);
+    return removed;
+  }
+
+  // Periodically clean up expired entries to prevent memory leaks
+  const cleanup = setInterval(sweepStaleEntries, windowMs);
 
   // Allow the timer to not prevent process exit
   cleanup.unref();
@@ -73,17 +82,7 @@ export function rateLimit({
    *
    * @returns {number} Number of entries removed.
    */
-  middleware.sweep = () => {
-    const now = Date.now();
-    let removed = 0;
-    for (const [ip, entry] of clients) {
-      if (now >= entry.resetAt) {
-        clients.delete(ip);
-        removed++;
-      }
-    }
-    return removed;
-  };
+  middleware.sweep = sweepStaleEntries;
 
   /** Current number of tracked IPs. */
   middleware.size = () => clients.size;
