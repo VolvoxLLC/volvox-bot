@@ -18,12 +18,15 @@ export function registerCommandInteractionHandler(client) {
     // Handle autocomplete
     if (interaction.isAutocomplete()) {
       const command = client.commands.get(interaction.commandName);
-      if (command?.autocomplete) {
-        try {
-          await command.autocomplete(interaction);
-        } catch (err) {
-          error('Autocomplete error', { command: interaction.commandName, error: err.message });
-        }
+      if (!command?.autocomplete) {
+        await interaction.respond([]);
+        return;
+      }
+      try {
+        await command.autocomplete(interaction);
+      } catch (err) {
+        error('Autocomplete error', { command: interaction.commandName, error: err.message });
+        await interaction.respond([]);
       }
       return;
     }
