@@ -17,7 +17,9 @@ const isBrowser = typeof window !== 'undefined';
 
 function formatArg(arg: unknown): string {
   if (typeof arg === 'string') return arg;
-
+  if (arg instanceof Error) {
+    return JSON.stringify({ name: arg.name, message: arg.message, stack: arg.stack });
+  }
   try {
     return JSON.stringify(arg);
   } catch {
