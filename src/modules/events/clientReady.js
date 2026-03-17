@@ -17,7 +17,7 @@ export function registerClientReadyHandler(client) {
       const commands = Array.from(client.commands.values());
       await registerCommands(commands, client.user.id, process.env.DISCORD_TOKEN);
     } catch (err) {
-      error('Command registration failed', { error: err.message });
+      error('Command registration failed', { error: err instanceof Error ? err.message : String(err) });
     }
   });
 }
