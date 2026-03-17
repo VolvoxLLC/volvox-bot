@@ -66,8 +66,8 @@ export default function ModerationPage() {
   }, [guildId, fetchStats, onUnauthorized]);
 
   // Fetch cases when guild / filters change — own AbortController
-  // page, actionFilter, userSearch are read inside fetchCases via get() but must
-  // appear in deps so the effect re-fires when they change.
+  // page, actionFilter, userSearch, sortDesc are read inside fetchCases via get()
+  // but must appear in deps so the effect re-fires when they change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: filter deps trigger refetch
   useEffect(() => {
     if (!guildId) return;
@@ -77,14 +77,16 @@ export default function ModerationPage() {
       if (result === 'unauthorized') onUnauthorized();
     })();
     return () => controller.abort();
-  }, [guildId, page, actionFilter, userSearch, fetchCases, onUnauthorized]);
+  }, [guildId, page, actionFilter, userSearch, sortDesc, fetchCases, onUnauthorized]);
 
   // Fetch user history on page change — own AbortController
   useEffect(() => {
     if (!guildId || !lookupUserId) return;
     const controller = new AbortController();
     void (async () => {
-      const result = await fetchUserHistory(guildId, lookupUserId, userHistoryPage, { signal: controller.signal });
+      const result = await fetchUserHistory(
+        guildId, lookupUserId, userHistoryPage, { signal: controller.signal },
+      );
       if (result === 'unauthorized') onUnauthorized();
     })();
     return () => controller.abort();

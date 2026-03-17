@@ -281,6 +281,17 @@ describe('useModerationStore', () => {
     expect(url).not.toContain('action=');
   });
 
+  it('fetchCases silently handles AbortError', async () => {
+    const abortError = new DOMException('Aborted', 'AbortError');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(abortError);
+
+    const result = await useModerationStore.getState().fetchCases('guild1');
+
+    expect(result).toBe('ok');
+    expect(useModerationStore.getState().casesError).toBeNull();
+    expect(useModerationStore.getState().casesLoading).toBe(false);
+  });
+
   it('fetchCases sets error on server error with message', async () => {
     mockFetchSuccess({ error: 'Custom error message' }, 500);
 

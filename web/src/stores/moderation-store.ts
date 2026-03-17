@@ -3,6 +3,8 @@ import type { CaseListResponse, ModStats } from '@/components/dashboard/moderati
 
 const PAGE_LIMIT = 25;
 
+type FetchResult = 'ok' | 'unauthorized' | 'error';
+
 interface ModerationState {
   // Cases filters & pagination
   page: number;
@@ -45,17 +47,17 @@ interface ModerationState {
   fetchStats: (
     guildId: string,
     opts?: { signal?: AbortSignal },
-  ) => Promise<'ok' | 'unauthorized' | 'error'>;
+  ) => Promise<FetchResult>;
   fetchCases: (
     guildId: string,
     opts?: { signal?: AbortSignal },
-  ) => Promise<'ok' | 'unauthorized' | 'error'>;
+  ) => Promise<FetchResult>;
   fetchUserHistory: (
     guildId: string,
     userId: string,
     histPage: number,
     opts?: { signal?: AbortSignal },
-  ) => Promise<'ok' | 'unauthorized' | 'error'>;
+  ) => Promise<FetchResult>;
 }
 
 const initialFilters = {
