@@ -265,4 +265,79 @@ describe('useMembersStore', () => {
     expect(useMembersStore.getState().error).toBeNull();
     expect(useMembersStore.getState().loading).toBe(false);
   });
+
+  it('ignores stale errors from superseded requests', async () => {
+    let rejectFirst!: (reason?: unknown) => void;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    fetchSpy
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectFirst = reject;
+          }) as Promise<Response>,
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ members: [], nextAfter: null, total: 0 }),
+      } as Response);
+
+    const firstRequest = useMembersStore.getState().fetchMembers({
+      guildId: 'guild1',
+      search: '',
+      sortColumn: 'xp',
+      sortOrder: 'desc',
+      after: null,
+      append: false,
+    });
+
+    const secondResult = await useMembersStore.getState().fetchMembers({
+      guildId: 'guild1',
+      search: 'fresh',
+      sortColumn: 'xp',
+      sortOrder: 'desc',
+      after: null,
+      append: false,
+    });
+
+    rejectFirst(new Error('stale request failed'));
+    const firstResult = await firstRequest;
+
+    expect(secondResult).toBe('ok');
+    expect(firstResult).toBe('ok');
+    expect(useMembersStore.getState().error).toBeNull();
+  });
+
+  it('resetAll invalidates in-flight requests', async () => {
+    let resolveFirst!: (value: Response | PromiseLike<Response>) => void;
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFirst = resolve;
+        }) as Promise<Response>,
+    );
+
+    const pendingRequest = useMembersStore.getState().fetchMembers({
+      guildId: 'guild1',
+      search: '',
+      sortColumn: 'xp',
+      sortOrder: 'desc',
+      after: null,
+      append: false,
+    });
+
+    useMembersStore.getState().resetAll();
+    resolveFirst({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({ members: [fakeMember({ id: 'late' })], nextAfter: null, total: 1 }),
+    } as Response);
+
+    const result = await pendingRequest;
+
+    expect(result).toBe('ok');
+    expect(useMembersStore.getState().members).toEqual([]);
+  });
 });

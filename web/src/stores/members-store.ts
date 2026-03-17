@@ -88,10 +88,12 @@ export const useMembersStore = create<MembersState>((set) => ({
       nextAfter: null,
     }),
 
-  resetAll: () =>
+  resetAll: () => {
+    ++latestMembersRequestId;
     set({
       ...initialState,
-    }),
+    });
+  },
 
   fetchMembers: async (opts) => {
     const requestId = ++latestMembersRequestId;
@@ -141,6 +143,8 @@ export const useMembersStore = create<MembersState>((set) => ({
       }
       return 'ok';
     } catch (err) {
+      if (requestId !== latestMembersRequestId) return 'ok';
+
       if (err instanceof DOMException && err.name === 'AbortError') {
         set({ loading: false });
         return 'ok';

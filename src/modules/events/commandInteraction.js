@@ -10,28 +10,70 @@ import { getPermissionError, hasPermission } from '../../utils/permissions.js';
 import { safeFollowUp, safeReply } from '../../utils/safeSend.js';
 import { getConfig } from '../config.js';
 
+function getErrorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Handle autocomplete interactions.
+ * @param {import('discord.js').Client} client - Discord client
+ * @param {import('discord.js').AutocompleteInteraction} interaction - Autocomplete interaction
+ */
+async function handleAutocomplete(client, interaction) {
+  const command = client.commands.get(interaction.commandName);
+  if (!command?.autocomplete) {
+    await interaction.respond([]);
+    return;
+  }
+
+  try {
+    await command.autocomplete(interaction);
+  } catch (err) {
+    error('Autocomplete error', {
+      command: interaction.commandName,
+      error: getErrorMessage(err),
+    });
+    await interaction.respond([]);
+  }
+}
+
+/**
+ * Send a safe command execution error response.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Command interaction
+ * @param {string} commandName - Slash command name
+ */
+async function sendCommandExecutionError(interaction, commandName) {
+  const errorMessage = {
+    content: '❌ An error occurred while executing this command.',
+    ephemeral: true,
+  };
+
+  if (interaction.replied || interaction.deferred) {
+    await safeFollowUp(interaction, errorMessage).catch((replyErr) => {
+      debug('Failed to send error follow-up', {
+        error: getErrorMessage(replyErr),
+        command: commandName,
+      });
+    });
+    return;
+  }
+
+  await safeReply(interaction, errorMessage).catch((replyErr) => {
+    debug('Failed to send error reply', {
+      error: getErrorMessage(replyErr),
+      command: commandName,
+    });
+  });
+}
+
 /**
  * Register the interactionCreate handler for slash commands and autocomplete.
  * @param {import('discord.js').Client} client - Discord client
  */
 export function registerCommandInteractionHandler(client) {
   client.on(Events.InteractionCreate, async (interaction) => {
-    // Handle autocomplete
     if (interaction.isAutocomplete()) {
-      const command = client.commands.get(interaction.commandName);
-      if (!command?.autocomplete) {
-        await interaction.respond([]);
-        return;
-      }
-      try {
-        await command.autocomplete(interaction);
-      } catch (err) {
-        error('Autocomplete error', {
-          command: interaction.commandName,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        await interaction.respond([]);
-      }
+      await handleAutocomplete(client, interaction);
       return;
     }
 
@@ -42,7 +84,6 @@ export function registerCommandInteractionHandler(client) {
     try {
       info('Slash command received', { command: commandName, user: interaction.user.tag });
 
-      // Permission check
       const guildConfig = getConfig(interaction.guildId);
       if (!hasPermission(member, commandName, guildConfig)) {
         const permLevel =
@@ -55,7 +96,6 @@ export function registerCommandInteractionHandler(client) {
         return;
       }
 
-      // Execute command from collection
       const command = client.commands.get(commandName);
       if (!command) {
         await safeReply(interaction, {
@@ -73,42 +113,25 @@ export function registerCommandInteractionHandler(client) {
         channelId: interaction.channelId,
       });
 
-      // Log command usage to dedicated analytics table (fire-and-forget)
-      logCommandUsage({
+      void logCommandUsage({
         guildId: interaction.guildId,
         userId: interaction.user.id,
         commandName,
         channelId: interaction.channelId,
       }).catch((err) =>
         error('Failed to log command usage', {
-          error: err instanceof Error ? err.message : String(err),
+          error: getErrorMessage(err),
         }),
       );
     } catch (err) {
       error('Command error', {
         command: commandName,
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
         stack: err instanceof Error ? err.stack : undefined,
         source: 'slash_command',
       });
 
-      const errorMessage = {
-        content: '❌ An error occurred while executing this command.',
-        ephemeral: true,
-      };
-
-      if (interaction.replied || interaction.deferred) {
-        await safeFollowUp(interaction, errorMessage).catch((replyErr) => {
-          debug('Failed to send error follow-up', {
-            error: replyErr.message,
-            command: commandName,
-          });
-        });
-      } else {
-        await safeReply(interaction, errorMessage).catch((replyErr) => {
-          debug('Failed to send error reply', { error: replyErr.message, command: commandName });
-        });
-      }
+      await sendCommandExecutionError(interaction, commandName);
     }
   });
 }

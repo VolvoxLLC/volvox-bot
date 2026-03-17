@@ -4,7 +4,7 @@
  */
 
 import { Events } from 'discord.js';
-import { error } from '../../logger.js';
+import logger from '../../logger.js';
 import { registerCommands } from '../../utils/registerCommands.js';
 
 /**
@@ -17,8 +17,9 @@ export function registerClientReadyHandler(client) {
       const commands = Array.from(client.commands.values());
       await registerCommands(commands, client.user.id, process.env.DISCORD_TOKEN);
     } catch (err) {
-      error('Command registration failed', {
+      logger.error('Command registration failed', {
         error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
       });
     }
   });

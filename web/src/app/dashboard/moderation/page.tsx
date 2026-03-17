@@ -54,7 +54,6 @@ export default function ModerationPage() {
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
-  // Fetch stats when guild changes — own AbortController
   useEffect(() => {
     if (!guildId) return;
     const controller = new AbortController();
@@ -65,7 +64,6 @@ export default function ModerationPage() {
     return () => controller.abort();
   }, [guildId, fetchStats, onUnauthorized]);
 
-  // Fetch cases when guild / filters change — own AbortController
   // page, actionFilter, userSearch, sortDesc are read inside fetchCases via get()
   // but must appear in deps so the effect re-fires when they change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: filter deps trigger refetch
@@ -79,14 +77,13 @@ export default function ModerationPage() {
     return () => controller.abort();
   }, [guildId, page, actionFilter, userSearch, sortDesc, fetchCases, onUnauthorized]);
 
-  // Fetch user history on page change — own AbortController
   useEffect(() => {
     if (!guildId || !lookupUserId) return;
     const controller = new AbortController();
     void (async () => {
-      const result = await fetchUserHistory(
-        guildId, lookupUserId, userHistoryPage, { signal: controller.signal },
-      );
+      const result = await fetchUserHistory(guildId, lookupUserId, userHistoryPage, {
+        signal: controller.signal,
+      });
       if (result === 'unauthorized') onUnauthorized();
     })();
     return () => controller.abort();
@@ -110,15 +107,21 @@ export default function ModerationPage() {
         onUnauthorized();
       }
     })();
-  }, [guildId, lookupUserId, userHistoryPage, fetchStats, fetchCases, fetchUserHistory, onUnauthorized]);
+  }, [
+    guildId,
+    lookupUserId,
+    userHistoryPage,
+    fetchStats,
+    fetchCases,
+    fetchUserHistory,
+    onUnauthorized,
+  ]);
 
   const handleUserHistorySearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       const trimmed = userHistoryInput.trim();
       if (!trimmed || !guildId) return;
-      // Setting lookupUserId + userHistoryPage triggers the useEffect
-      // which handles the fetch — no manual fetch needed here.
       setLookupUserId(trimmed);
       setUserHistoryPage(1);
     },
@@ -132,7 +135,6 @@ export default function ModerationPage() {
   return (
     <ErrorBoundary title="Moderation failed to load">
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
@@ -158,7 +160,6 @@ export default function ModerationPage() {
           </Button>
         </div>
 
-        {/* No guild selected */}
         {!guildId && (
           <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
             <p className="text-sm text-muted-foreground">
@@ -167,15 +168,12 @@ export default function ModerationPage() {
           </div>
         )}
 
-        {/* Content */}
         {guildId && (
           <>
-            {/* Stats */}
             <ErrorBoundary title="Stats failed to load">
               <ModerationStats stats={stats} loading={statsLoading} error={statsError} />
             </ErrorBoundary>
 
-            {/* Cases */}
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">Cases</h3>
               <CaseTable
@@ -195,7 +193,6 @@ export default function ModerationPage() {
               />
             </div>
 
-            {/* User History Lookup */}
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">User History Lookup</h3>
               <p className="text-sm text-muted-foreground">
@@ -203,7 +200,7 @@ export default function ModerationPage() {
               </p>
 
               <form onSubmit={handleUserHistorySearch} className="flex items-center gap-2">
-                <div className="relative flex-1 max-w-sm">
+                <div className="relative max-w-sm flex-1">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     className="pl-9"
@@ -232,6 +229,7 @@ export default function ModerationPage() {
                     size="sm"
                     onClick={handleClearUserHistory}
                     title="Clear user history"
+                    aria-label="Clear user history"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -257,7 +255,7 @@ export default function ModerationPage() {
                     loading={userHistoryLoading}
                     error={userHistoryError}
                     page={userHistoryPage}
-                    sortDesc={true}
+                    sortDesc
                     actionFilter="all"
                     userSearch=""
                     guildId={guildId}

@@ -150,6 +150,7 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
 
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const order = req.query.order === 'asc' ? 'ASC' : 'DESC';
   const offset = (page - 1) * limit;
 
   try {
@@ -189,7 +190,7 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
            created_at
          FROM mod_cases
          WHERE ${where}
-         ORDER BY created_at DESC
+         ORDER BY created_at ${order}
          LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         [...values, limit, offset],
       ),

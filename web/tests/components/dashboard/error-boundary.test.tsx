@@ -1,16 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
+vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn() } }));
 
-// Suppress console.error output during error boundary tests
+const originalNodeEnv = process.env.NODE_ENV;
+
+// Suppress console output during error boundary tests
 const originalConsoleError = console.error;
 beforeEach(() => {
   console.error = vi.fn();
 });
+
 afterEach(() => {
   console.error = originalConsoleError;
+  if (originalNodeEnv === undefined) {
+    vi.unstubAllEnvs();
+  } else {
+    vi.stubEnv('NODE_ENV', originalNodeEnv);
+  }
+  vi.clearAllMocks();
 });
 
 function ThrowingComponent({ shouldThrow }: Readonly<{ shouldThrow: boolean }>) {
@@ -33,7 +44,7 @@ describe('ErrorBoundary', () => {
   it('renders default error UI when child throws', () => {
     render(
       <ErrorBoundary>
-        <ThrowingComponent shouldThrow={true} />
+        <ThrowingComponent shouldThrow />
       </ErrorBoundary>,
     );
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
@@ -42,8 +53,8 @@ describe('ErrorBoundary', () => {
 
   it('renders custom title and description', () => {
     render(
-      <ErrorBoundary title="Custom Error" description="Custom description text">
-        <ThrowingComponent shouldThrow={true} />
+      <ErrorBoundary title='Custom Error' description='Custom description text'>
+        <ThrowingComponent shouldThrow />
       </ErrorBoundary>,
     );
     expect(screen.getByText('Custom Error')).toBeInTheDocument();
@@ -51,7 +62,6 @@ describe('ErrorBoundary', () => {
   });
 
   it('recovers when Try Again is clicked', () => {
-    // We need a component that can toggle between throwing and not
     let shouldThrow = true;
     function ToggleThrow() {
       if (shouldThrow) {
@@ -68,11 +78,9 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
 
-    // Stop throwing, then click Try Again
     shouldThrow = false;
     fireEvent.click(screen.getByRole('button', { name: /try again/i }));
 
-    // After resetting, ErrorBoundary re-renders children
     expect(screen.getByText('Recovered content')).toBeInTheDocument();
   });
 
@@ -82,13 +90,43 @@ describe('ErrorBoundary', () => {
         fallback={(error, reset) => (
           <div>
             <span>Custom fallback: {error.message}</span>
-            <button type="button" onClick={reset}>Reset</button>
+            <button type='button' onClick={reset}>
+              Reset
+            </button>
           </div>
         )}
       >
-        <ThrowingComponent shouldThrow={true} />
+        <ThrowingComponent shouldThrow />
       </ErrorBoundary>,
     );
     expect(screen.getByText('Custom fallback: Test error')).toBeInTheDocument();
+  });
+
+  it('uses detailed toast description in development', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+
+    render(
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow />
+      </ErrorBoundary>,
+    );
+
+    expect(toast.error).toHaveBeenCalledWith('Something went wrong', {
+      description: 'Test error',
+    });
+  });
+
+  it('uses generic toast description in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    render(
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow />
+      </ErrorBoundary>,
+    );
+
+    expect(toast.error).toHaveBeenCalledWith('Something went wrong', {
+      description: 'An unexpected error occurred. Please try again.',
+    });
   });
 });

@@ -2,14 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
 vi.mock('../../../src/logger.js', () => ({
-  error: vi.fn(),
+  default: {
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('../../../src/utils/registerCommands.js', () => ({
   registerCommands: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { error } from '../../../src/logger.js';
+import logger from '../../../src/logger.js';
 import { registerClientReadyHandler } from '../../../src/modules/events/clientReady.js';
 import { registerCommands } from '../../../src/utils/registerCommands.js';
 
@@ -54,12 +56,14 @@ describe('clientReady handler', () => {
   });
 
   it('should handle command registration failure', async () => {
-    registerCommands.mockRejectedValueOnce(new Error('register fail'));
+    const failure = new Error('register fail');
+    registerCommands.mockRejectedValueOnce(failure);
 
     await onceHandlers.clientReady[0]();
 
-    expect(error).toHaveBeenCalledWith('Command registration failed', {
+    expect(logger.error).toHaveBeenCalledWith('Command registration failed', {
       error: 'register fail',
+      stack: failure.stack,
     });
   });
 });

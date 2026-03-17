@@ -328,7 +328,7 @@ export default function MemberDetailPage() {
       a.href = url;
       a.download = `members-${guildId}.csv`;
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
       toast.success('Export downloaded', { description: `members-${guildId}.csv` });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Failed to export CSV';
@@ -398,209 +398,211 @@ export default function MemberDetailPage() {
   return (
     <ErrorBoundary
       title="Member details failed to load"
-      description="There was a problem loading this member's details. Try again or refresh the page."
+      description="There was a problem loading this member&apos;s details. Try again or refresh the page."
     >
       <div className="space-y-6">
-      {/* Back button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-2"
-        onClick={() => router.push('/dashboard/members')}
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Members
-      </Button>
+        {/* Back button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          onClick={() => router.push('/dashboard/members')}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Members
+        </Button>
 
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <Avatar className="h-20 w-20">
-          {data.avatar ? (
-            <Image
-              src={data.avatar}
-              alt={data.username}
-              width={80}
-              height={80}
-              className="aspect-square h-full w-full rounded-full"
-            />
-          ) : (
-            <AvatarFallback className="text-2xl">
-              {(data.displayName || data.username).charAt(0).toUpperCase()}
-            </AvatarFallback>
-          )}
-        </Avatar>
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">{data.displayName || data.username}</h2>
-          <p className="font-mono text-sm text-muted-foreground">@{data.username}</p>
-          {data.roles.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {data.roles.map((role) => (
-                <span
-                  key={role.id}
-                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border"
-                  style={{
-                    color: roleColorStyle(role.color),
-                    borderColor: `${roleColorStyle(role.color)}40`,
-                    backgroundColor: `${roleColorStyle(role.color)}15`,
-                  }}
-                >
-                  {role.name}
-                </span>
-              ))}
-            </div>
-          )}
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <Avatar className="h-20 w-20">
+            {data.avatar ? (
+              <Image
+                src={data.avatar}
+                alt={data.username}
+                width={80}
+                height={80}
+                className="aspect-square h-full w-full rounded-full"
+              />
+            ) : (
+              <AvatarFallback className="text-2xl">
+                {(data.displayName || data.username).charAt(0).toUpperCase()}
+              </AvatarFallback>
+            )}
+          </Avatar>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">
+              {data.displayName || data.username}
+            </h2>
+            <p className="font-mono text-sm text-muted-foreground">@{data.username}</p>
+            {data.roles.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {data.roles.map((role) => (
+                  <span
+                    key={role.id}
+                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border"
+                    style={{
+                      color: roleColorStyle(role.color),
+                      borderColor: `${roleColorStyle(role.color)}40`,
+                      backgroundColor: `${roleColorStyle(role.color)}15`,
+                    }}
+                  >
+                    {role.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Messages Sent"
-          value={data.stats?.messages_sent ?? 0}
-          icon={MessageSquare}
-        />
-        <StatCard label="Days Active" value={data.stats?.days_active ?? 0} icon={Calendar} />
-        <StatCard
-          label="XP"
-          value={data.reputation.xp}
-          icon={Sparkles}
-          subtext={
-            <XpProgress
-              level={data.reputation.level}
-              xp={data.reputation.xp}
-              nextLevelXp={data.reputation.next_level_xp}
-            />
-          }
-        />
-        <StatCard
-          label="Reactions"
-          value={`${data.stats?.reactions_given ?? 0} / ${data.stats?.reactions_received ?? 0}`}
-          icon={Smile}
-          subtext={<p className="text-xs text-muted-foreground">Given / Received</p>}
-        />
-      </div>
+        {/* Stats Cards */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Messages Sent"
+            value={data.stats?.messages_sent ?? 0}
+            icon={MessageSquare}
+          />
+          <StatCard label="Days Active" value={data.stats?.days_active ?? 0} icon={Calendar} />
+          <StatCard
+            label="XP"
+            value={data.reputation.xp}
+            icon={Sparkles}
+            subtext={
+              <XpProgress
+                level={data.reputation.level}
+                xp={data.reputation.xp}
+                nextLevelXp={data.reputation.next_level_xp}
+              />
+            }
+          />
+          <StatCard
+            label="Reactions"
+            value={`${data.stats?.reactions_given ?? 0} / ${data.stats?.reactions_received ?? 0}`}
+            icon={Smile}
+            subtext={<p className="text-xs text-muted-foreground">Given / Received</p>}
+          />
+        </div>
 
-      {/* Warning History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Warning History</CardTitle>
-          <CardDescription>
-            {cases.length === 0
-              ? 'No warnings on record.'
-              : `${data.warnings.count} ${data.warnings.count === 1 ? 'warning' : 'warnings'} total · showing ${cases.length} most recent`}
-          </CardDescription>
-        </CardHeader>
-        {cases.length > 0 && (
-          <CardContent>
-            <div className="rounded-md border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-20">Case #</TableHead>
-                    <TableHead className="w-28">Action</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead className="hidden md:table-cell">Moderator</TableHead>
-                    <TableHead className="w-36">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cases.map((c) => (
-                    <TableRow key={c.case_number}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        #{c.case_number}
-                      </TableCell>
-                      <TableCell>
-                        <ActionBadge action={c.action} />
-                      </TableCell>
-                      <TableCell className="max-w-[300px] truncate text-sm">
-                        {c.reason ?? <span className="italic text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {c.moderator_tag}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {formatDate(c.created_at)}
-                      </TableCell>
+        {/* Warning History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Warning History</CardTitle>
+            <CardDescription>
+              {cases.length === 0
+                ? 'No warnings on record.'
+                : `${data.warnings.count} ${data.warnings.count === 1 ? 'warning' : 'warnings'} total · showing ${cases.length} most recent`}
+            </CardDescription>
+          </CardHeader>
+          {cases.length > 0 && (
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-20">Case #</TableHead>
+                      <TableHead className="w-28">Action</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="hidden md:table-cell">Moderator</TableHead>
+                      <TableHead className="w-36">Date</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {cases.map((c) => (
+                      <TableRow key={c.case_number}>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          #{c.case_number}
+                        </TableCell>
+                        <TableCell>
+                          <ActionBadge action={c.action} />
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate text-sm">
+                          {c.reason ?? <span className="italic text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                          {c.moderator_tag}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatDate(c.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Admin Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Admin Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Adjust XP */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Adjust XP
+              </h4>
+              <form
+                onSubmit={handleAdjustXp}
+                className="flex flex-col gap-2 sm:flex-row sm:items-end"
+              >
+                <div className="space-y-1">
+                  <label htmlFor="xp-amount" className="text-xs text-muted-foreground">
+                    Amount (negative to subtract)
+                  </label>
+                  <Input
+                    id="xp-amount"
+                    type="number"
+                    placeholder="e.g. 100 or -50"
+                    value={xpAmount}
+                    onChange={(e) => setXpAmount(e.target.value)}
+                    className="w-40"
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label htmlFor="xp-reason" className="text-xs text-muted-foreground">
+                    Reason (optional)
+                  </label>
+                  <Input
+                    id="xp-reason"
+                    placeholder="Reason for adjustment..."
+                    value={xpReason}
+                    onChange={(e) => setXpReason(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" size="sm" disabled={!xpAmount || xpSubmitting}>
+                  {xpSubmitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                  Submit
+                </Button>
+              </form>
+              {xpSuccess && <p className="text-sm text-green-500">{xpSuccess}</p>}
+              {xpError && <p className="text-sm text-destructive">{xpError}</p>}
+            </div>
+
+            {/* Export */}
+            <div className="flex flex-col gap-2 pt-2 border-t">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleExport}
+                  disabled={exporting}
+                >
+                  {exporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Export All Members (CSV)
+                </Button>
+              </div>
+              {exportError && <p className="text-sm text-destructive">{exportError}</p>}
             </div>
           </CardContent>
-        )}
-      </Card>
-
-      {/* Admin Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Admin Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Adjust XP */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Adjust XP
-            </h4>
-            <form
-              onSubmit={handleAdjustXp}
-              className="flex flex-col gap-2 sm:flex-row sm:items-end"
-            >
-              <div className="space-y-1">
-                <label htmlFor="xp-amount" className="text-xs text-muted-foreground">
-                  Amount (negative to subtract)
-                </label>
-                <Input
-                  id="xp-amount"
-                  type="number"
-                  placeholder="e.g. 100 or -50"
-                  value={xpAmount}
-                  onChange={(e) => setXpAmount(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <div className="flex-1 space-y-1">
-                <label htmlFor="xp-reason" className="text-xs text-muted-foreground">
-                  Reason (optional)
-                </label>
-                <Input
-                  id="xp-reason"
-                  placeholder="Reason for adjustment..."
-                  value={xpReason}
-                  onChange={(e) => setXpReason(e.target.value)}
-                />
-              </div>
-              <Button type="submit" size="sm" disabled={!xpAmount || xpSubmitting}>
-                {xpSubmitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                Submit
-              </Button>
-            </form>
-            {xpSuccess && <p className="text-sm text-green-500">{xpSuccess}</p>}
-            {xpError && <p className="text-sm text-destructive">{xpError}</p>}
-          </div>
-
-          {/* Export */}
-          <div className="flex flex-col gap-2 pt-2 border-t">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={handleExport}
-                disabled={exporting}
-              >
-                {exporting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Export All Members (CSV)
-              </Button>
-            </div>
-            {exportError && <p className="text-sm text-destructive">{exportError}</p>}
-          </div>
-        </CardContent>
-      </Card>
+        </Card>
       </div>
     </ErrorBoundary>
   );
