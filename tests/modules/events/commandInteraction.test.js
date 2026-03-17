@@ -18,12 +18,12 @@ vi.mock('../../../src/utils/permissions.js', () => ({
 }));
 
 vi.mock('../../../src/utils/safeSend.js', () => ({
-  safeReply: vi.fn((t, opts) => t.reply(opts)),
-  safeFollowUp: vi.fn((t, opts) => t.followUp(opts)),
+  safeReply: vi.fn((t, opts) => Promise.resolve(t.reply(opts))),
+  safeFollowUp: vi.fn((t, opts) => Promise.resolve(t.followUp(opts))),
 }));
 
 vi.mock('../../../src/utils/commandUsage.js', () => ({
-  logCommandUsage: vi.fn(),
+  logCommandUsage: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { Events } from 'discord.js';

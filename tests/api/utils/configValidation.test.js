@@ -211,8 +211,9 @@ describe('configValidation', () => {
     });
 
     it('should resolve nested dynamic keys in validateSingleValue (channelModes path)', () => {
-      // Validate a nested path with a specific channel ID to exercise dynamic key resolution
-      expect(validateSingleValue('ai.channelModes.12345', 'vibe')).toEqual([]);
+      // channelModes has openProperties — any channel-ID sub-key is dynamic;
+      // the value is validated against the parent object schema, so an object passes
+      expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual([]);
     });
   });
 
