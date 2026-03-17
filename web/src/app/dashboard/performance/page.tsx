@@ -11,8 +11,8 @@ export const metadata: Metadata = createPageMetadata(
 export default function PerformancePage() {
   return (
     <ErrorBoundary
-      title='Performance metrics failed to load'
-      description='There was a problem loading the performance dashboard. Try again or refresh the page.'
+      title="Performance metrics failed to load"
+      description="There was a problem loading the performance dashboard. Try again or refresh the page."
     >
       <PerformanceDashboard />
     </ErrorBoundary>

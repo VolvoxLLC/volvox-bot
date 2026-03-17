@@ -166,7 +166,7 @@ export default function TicketDetailPage() {
         )}
 
         {/* Ticket Info */}
-        {data && !loading && (
+        {data && !loading && !error && guildId && (
           <>
             <Card>
               <CardHeader>

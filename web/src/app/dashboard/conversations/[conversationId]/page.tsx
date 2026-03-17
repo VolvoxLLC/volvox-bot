@@ -100,7 +100,7 @@ export default function ConversationDetailPage() {
             {Array.from({ length: 5 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
               <div key={i} className={`flex gap-3 ${i % 2 === 0 ? '' : 'justify-end'}`}>
-                <div className={`space-y-2 ${i % 2 === 0 ? 'max-w-[70%]' : 'max-w-[70%]'}`}>
+                <div className="space-y-2 max-w-[70%]">
                   <Skeleton className="h-3 w-20" />
                   <Skeleton className="h-12 w-64 rounded-lg" />
                 </div>
@@ -129,7 +129,7 @@ export default function ConversationDetailPage() {
         )}
 
         {/* Replay */}
-        {data && guildId && (
+        {data && guildId && !loading && !error && (
           <ConversationReplay
             messages={data.messages}
             channelId={data.channelId}

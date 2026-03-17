@@ -396,8 +396,11 @@ export default function MemberDetailPage() {
   const cases = data.warnings.recent;
 
   return (
-    <ErrorBoundary title="Member details failed to load" description="There was a problem loading this member's details. Try again or refresh the page.">
-    <div className="space-y-6">
+    <ErrorBoundary
+      title="Member details failed to load"
+      description="There was a problem loading this member's details. Try again or refresh the page."
+    >
+      <div className="space-y-6">
       {/* Back button */}
       <Button
         variant="ghost"
@@ -598,7 +601,7 @@ export default function MemberDetailPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
     </ErrorBoundary>
   );
 }
