@@ -72,7 +72,7 @@ export function registerCommandInteractionHandler(client) {
         userId: interaction.user.id,
         commandName,
         channelId: interaction.channelId,
-      });
+      }).catch((err) => error('Failed to log command usage', { error: err.message }));
     } catch (err) {
       error('Command error', {
         command: commandName,
