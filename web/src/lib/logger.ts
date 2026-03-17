@@ -63,9 +63,7 @@ const noop = (..._args: unknown[]) => {};
 
 function makeBrowserLogger(level: LogLevel): (...args: unknown[]) => void {
   // In production, suppress noisy debug/info — only surface warnings and errors.
-  if (isDev || level === 'warn' || level === 'error') {
-    // active in all envs
-  } else {
+  if (!isDev && level !== 'warn' && level !== 'error') {
     return noop;
   }
 

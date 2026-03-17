@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
+
 // Suppress console.error output during error boundary tests
 const originalConsoleError = console.error;
 beforeEach(() => {
