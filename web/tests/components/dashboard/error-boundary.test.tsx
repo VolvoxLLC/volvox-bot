@@ -11,7 +11,7 @@ afterEach(() => {
   console.error = originalConsoleError;
 });
 
-function ThrowingComponent({ shouldThrow }: { shouldThrow: boolean }) {
+function ThrowingComponent({ shouldThrow }: Readonly<{ shouldThrow: boolean }>) {
   if (shouldThrow) {
     throw new Error('Test error');
   }
@@ -58,7 +58,7 @@ describe('ErrorBoundary', () => {
       return <div>Recovered content</div>;
     }
 
-    const { rerender } = render(
+    render(
       <ErrorBoundary>
         <ToggleThrow />
       </ErrorBoundary>,

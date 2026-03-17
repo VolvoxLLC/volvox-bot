@@ -210,12 +210,9 @@ describe('configValidation', () => {
       expect(validateSingleValue('ai.channelModes', { 12345: 'vibe' })).toEqual([]);
     });
 
-    it('should resolve dynamic keys in validateSingleValue (channelModes path)', () => {
-      // channelModes.<channelId> breaks out at the openProperties schema,
-      // so the leaf value is validated against the channelModes object schema.
-      // A string value gets type-rejected against the object schema, which is expected.
-      // Setting the whole channelModes map is the correct usage:
-      expect(validateSingleValue('ai.channelModes', { 12345: 'vibe' })).toEqual([]);
+    it('should resolve nested dynamic keys in validateSingleValue (channelModes path)', () => {
+      // Validate a nested path with a specific channel ID to exercise dynamic key resolution
+      expect(validateSingleValue('ai.channelModes.12345', 'vibe')).toEqual([]);
     });
   });
 

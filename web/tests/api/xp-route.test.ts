@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
@@ -87,22 +87,22 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
   });
 
   it('accepts valid positive amount', async () => {
-    const res = await POST(makeRequest({ amount: 100 }), makeParams());
+    await POST(makeRequest({ amount: 100 }), makeParams());
     expect(mockProxyToBotApi).toHaveBeenCalled();
   });
 
   it('accepts valid negative amount', async () => {
-    const res = await POST(makeRequest({ amount: -50 }), makeParams());
+    await POST(makeRequest({ amount: -50 }), makeParams());
     expect(mockProxyToBotApi).toHaveBeenCalled();
   });
 
   it('accepts amount at the boundary (1000000)', async () => {
-    const res = await POST(makeRequest({ amount: 1_000_000 }), makeParams());
+    await POST(makeRequest({ amount: 1_000_000 }), makeParams());
     expect(mockProxyToBotApi).toHaveBeenCalled();
   });
 
   it('accepts reason at the boundary (500 chars)', async () => {
-    const res = await POST(
+    await POST(
       makeRequest({ amount: 10, reason: 'x'.repeat(500) }),
       makeParams(),
     );
