@@ -2,9 +2,10 @@
  * Dashboard logger shim.
  *
  * Browser runtime: thin wrapper around console methods that adds a
- * `[VolvoxDash]` prefix and timestamp for consistent structured logging
- * visible in DevTools. Only `warn` and `error` are active in production
- * builds; `debug` and `info` are suppressed unless `NODE_ENV === 'development'`.
+ * `[VolvoxDash] [ISO-8601 timestamp] [LEVEL]` prefix for consistent
+ * structured logging visible in DevTools. Only `warn` and `error` are
+ * active in production builds; `debug` and `info` are suppressed unless
+ * `NODE_ENV === 'development'`.
  *
  * Server runtime: lightweight stderr/stdout logger (no Winston dependency).
  */
@@ -72,7 +73,7 @@ function makeBrowserLogger(level: LogLevel): (...args: unknown[]) => void {
 
   return (...args: unknown[]) => {
     // biome-ignore lint/suspicious/noConsole: browser logger shim wraps console for structured output
-    console[method](`[VolvoxDash] [${level.toUpperCase()}]`, ...args);
+    console[method](`[VolvoxDash] [${new Date().toISOString()}] [${level.toUpperCase()}]`, ...args);
   };
 }
 

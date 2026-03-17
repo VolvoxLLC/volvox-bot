@@ -146,6 +146,15 @@ export default function TicketDetailPage() {
           </div>
         )}
 
+        {/* No guild */}
+        {!guildId && !loading && (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
+            <p className="text-sm text-muted-foreground">
+              No guild selected. Please navigate from the tickets list.
+            </p>
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div

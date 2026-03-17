@@ -391,6 +391,15 @@ export default function ConversationsPage() {
                         key={convo.id}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleRowClick(convo.id)}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View conversation in ${convo.channelName}`}
+                        onKeyDown={(e: React.KeyboardEvent) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleRowClick(convo.id);
+                          }
+                        }}
                       >
                         <TableCell>
                           <div className="flex items-center gap-1">

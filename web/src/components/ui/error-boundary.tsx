@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -47,6 +48,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, info: ErrorInfo) {
     // biome-ignore lint/suspicious/noConsole: server logger is a no-op in the browser; console.error is the correct approach here
     console.error('[ErrorBoundary] Caught error:', error, info.componentStack);
+    toast.error('Something went wrong', {
+      description:
+        process.env.NODE_ENV === 'development'
+          ? error.message
+          : 'An unexpected error occurred. Please try again.',
+    });
   }
 
   reset = () => {

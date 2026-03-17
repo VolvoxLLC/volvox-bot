@@ -76,7 +76,10 @@ export default function TempRolesPage() {
   const [confirmRevoke, setConfirmRevoke] = useState<TempRole | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const onGuildChange = useCallback(() => setPage(1), []);
+  const onGuildChange = useCallback(() => {
+    setPage(1);
+    setData(null);
+  }, []);
   const guildId = useGuildSelection({ onGuildChange });
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);

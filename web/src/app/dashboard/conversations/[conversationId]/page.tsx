@@ -34,7 +34,10 @@ export default function ConversationDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDetail = useCallback(async () => {
-    if (!guildId || !conversationId) return;
+    if (!guildId || !conversationId) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);

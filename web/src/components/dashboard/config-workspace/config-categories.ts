@@ -362,7 +362,7 @@ export function getCategoryById(categoryId: ConfigCategoryId): ConfigCategoryMet
   const found = CONFIG_CATEGORIES.find((category) => category.id === categoryId);
   if (!found) {
     logger.warn(`getCategoryById: unknown categoryId "${categoryId}", falling back to default.`);
-    return CONFIG_CATEGORIES[0];
+    return CONFIG_CATEGORIES.find((c) => c.id === DEFAULT_CONFIG_CATEGORY) ?? CONFIG_CATEGORIES[0];
   }
   return found;
 }

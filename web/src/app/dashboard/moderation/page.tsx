@@ -2,7 +2,7 @@
 
 import { RefreshCw, Search, Shield, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { CaseTable } from '@/components/dashboard/case-table';
 import { ModerationStats } from '@/components/dashboard/moderation-stats';
 import { Button } from '@/components/ui/button';
@@ -46,11 +46,7 @@ export default function ModerationPage() {
     fetchUserHistory,
   } = useModerationStore();
 
-  // AbortController for automatic cleanup of in-flight requests
-  const abortRef = useRef<AbortController | null>(null);
-
   const onGuildChange = useCallback(() => {
-    abortRef.current?.abort();
     resetOnGuildChange();
   }, [resetOnGuildChange]);
 
@@ -58,58 +54,61 @@ export default function ModerationPage() {
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
-  // Helper to run a fetch and handle the unauthorized result
-  const runFetch = useCallback(
-    async (fn: (signal: AbortSignal) => Promise<'ok' | 'unauthorized' | 'error'>) => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      const result = await fn(controller.signal);
-      if (result === 'unauthorized') onUnauthorized();
-    },
-    [onUnauthorized],
-  );
-
-  // Fetch stats when guild changes
+  // Fetch stats when guild changes — own AbortController
   useEffect(() => {
     if (!guildId) return;
-    void runFetch((signal) => fetchStats(guildId, { signal }));
-  }, [guildId, fetchStats, runFetch]);
+    const controller = new AbortController();
+    void (async () => {
+      const result = await fetchStats(guildId, { signal: controller.signal });
+      if (result === 'unauthorized') onUnauthorized();
+    })();
+    return () => controller.abort();
+  }, [guildId, fetchStats, onUnauthorized]);
 
-  // Fetch cases when guild / filters change.
+  // Fetch cases when guild / filters change — own AbortController
   // page, actionFilter, userSearch are read inside fetchCases via get() but must
   // appear in deps so the effect re-fires when they change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: filter deps trigger refetch
   useEffect(() => {
     if (!guildId) return;
-    void runFetch((signal) => fetchCases(guildId, { signal }));
-  }, [guildId, page, actionFilter, userSearch, fetchCases, runFetch]);
+    const controller = new AbortController();
+    void (async () => {
+      const result = await fetchCases(guildId, { signal: controller.signal });
+      if (result === 'unauthorized') onUnauthorized();
+    })();
+    return () => controller.abort();
+  }, [guildId, page, actionFilter, userSearch, fetchCases, onUnauthorized]);
 
-  // Fetch user history on page change
+  // Fetch user history on page change — own AbortController
   useEffect(() => {
     if (!guildId || !lookupUserId) return;
-    void runFetch((signal) => fetchUserHistory(guildId, lookupUserId, userHistoryPage, { signal }));
-  }, [guildId, lookupUserId, userHistoryPage, fetchUserHistory, runFetch]);
-
-  // Abort on unmount
-  useEffect(() => {
-    return () => abortRef.current?.abort();
-  }, []);
+    const controller = new AbortController();
+    void (async () => {
+      const result = await fetchUserHistory(guildId, lookupUserId, userHistoryPage, { signal: controller.signal });
+      if (result === 'unauthorized') onUnauthorized();
+    })();
+    return () => controller.abort();
+  }, [guildId, lookupUserId, userHistoryPage, fetchUserHistory, onUnauthorized]);
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
-    void runFetch(async (signal) => {
+    void (async () => {
       const [statsResult, casesResult] = await Promise.all([
-        fetchStats(guildId, { signal }),
-        fetchCases(guildId, { signal }),
+        fetchStats(guildId),
+        fetchCases(guildId),
       ]);
       if (lookupUserId) {
-        await fetchUserHistory(guildId, lookupUserId, userHistoryPage, { signal });
+        const historyResult = await fetchUserHistory(guildId, lookupUserId, userHistoryPage);
+        if (historyResult === 'unauthorized') {
+          onUnauthorized();
+          return;
+        }
       }
-      if (statsResult === 'unauthorized' || casesResult === 'unauthorized') return 'unauthorized';
-      return 'ok';
-    });
-  }, [guildId, lookupUserId, userHistoryPage, fetchStats, fetchCases, fetchUserHistory, runFetch]);
+      if (statsResult === 'unauthorized' || casesResult === 'unauthorized') {
+        onUnauthorized();
+      }
+    })();
+  }, [guildId, lookupUserId, userHistoryPage, fetchStats, fetchCases, fetchUserHistory, onUnauthorized]);
 
   const handleUserHistorySearch = useCallback(
     (e: React.FormEvent) => {
@@ -118,9 +117,12 @@ export default function ModerationPage() {
       if (!trimmed || !guildId) return;
       setLookupUserId(trimmed);
       setUserHistoryPage(1);
-      void runFetch((signal) => fetchUserHistory(guildId, trimmed, 1, { signal }));
+      void (async () => {
+        const result = await fetchUserHistory(guildId, trimmed, 1);
+        if (result === 'unauthorized') onUnauthorized();
+      })();
     },
-    [guildId, userHistoryInput, fetchUserHistory, setLookupUserId, setUserHistoryPage, runFetch],
+    [guildId, userHistoryInput, fetchUserHistory, setLookupUserId, setUserHistoryPage, onUnauthorized],
   );
 
   const handleClearUserHistory = useCallback(() => {
