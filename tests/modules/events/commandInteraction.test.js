@@ -49,7 +49,7 @@ describe('commandInteraction handler', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
     hasPermission.mockReturnValue(true);
   });
 
