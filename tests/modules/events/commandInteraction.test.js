@@ -81,6 +81,7 @@ describe('commandInteraction handler', () => {
     const interaction = {
       isAutocomplete: () => true,
       commandName: 'config',
+      respond: vi.fn().mockResolvedValue(undefined),
     };
 
     await getHandler()(interaction);
@@ -88,6 +89,7 @@ describe('commandInteraction handler', () => {
       command: 'config',
       error: 'autocomplete fail',
     });
+    expect(interaction.respond).toHaveBeenCalledWith([]);
   });
 
   it('should skip autocomplete for commands without autocomplete handler', async () => {
@@ -96,10 +98,11 @@ describe('commandInteraction handler', () => {
     const interaction = {
       isAutocomplete: () => true,
       commandName: 'ping',
+      respond: vi.fn().mockResolvedValue(undefined),
     };
 
     await getHandler()(interaction);
-    // Should not throw
+    expect(interaction.respond).toHaveBeenCalledWith([]);
   });
 
   it('should ignore non-chat interactions', async () => {
