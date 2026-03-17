@@ -522,7 +522,7 @@ describe('index.js', () => {
   // in the current test harness.
   it.skip('should continue startup when command import fails', () => {});
 
-  // Discord client error tests moved to tests/modules/events/errors.test.js
+  // Discord client error and shard disconnect tests moved to tests/modules/events/errors.test.js
 
   it('should handle startup failure and exit', async () => {
     await importIndex({

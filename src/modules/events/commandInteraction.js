@@ -3,6 +3,7 @@
  * Handles slash command dispatch and autocomplete interactions.
  */
 
+import { Events } from 'discord.js';
 import { debug, error, info, warn } from '../../logger.js';
 import { logCommandUsage } from '../../utils/commandUsage.js';
 import { getPermissionError, hasPermission } from '../../utils/permissions.js';
@@ -14,7 +15,7 @@ import { getConfig } from '../config.js';
  * @param {import('discord.js').Client} client - Discord client
  */
 export function registerCommandInteractionHandler(client) {
-  client.on('interactionCreate', async (interaction) => {
+  client.on(Events.InteractionCreate, async (interaction) => {
     // Handle autocomplete
     if (interaction.isAutocomplete()) {
       const command = client.commands.get(interaction.commandName);

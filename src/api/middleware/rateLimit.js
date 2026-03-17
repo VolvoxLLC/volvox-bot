@@ -13,7 +13,7 @@ const DEFAULT_MESSAGE = 'Too many requests, please try again later';
  * @param {number} [options.windowMs=900000] - Time window in milliseconds (default: 15 minutes)
  * @param {number} [options.max=100] - Maximum requests per window per IP (default: 100)
  * @param {string} [options.message] - Custom error message for 429 responses
- * @returns {import('express').RequestHandler & { destroy: () => void }} Express middleware with a destroy method to clear the cleanup timer
+ * @returns {import('express').RequestHandler & { destroy: () => void, sweep: () => number, size: () => number }} Express middleware with destroy (clears cleanup timer), sweep (removes stale entries, returns count removed), and size (returns tracked IP count)
  */
 export function rateLimit({
   windowMs = 15 * 60 * 1000,

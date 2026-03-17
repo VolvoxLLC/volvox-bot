@@ -26,6 +26,7 @@ vi.mock('../../../src/utils/commandUsage.js', () => ({
   logCommandUsage: vi.fn(),
 }));
 
+import { Events } from 'discord.js';
 import { error, info, warn } from '../../../src/logger.js';
 import { registerCommandInteractionHandler } from '../../../src/modules/events/commandInteraction.js';
 import { logCommandUsage } from '../../../src/utils/commandUsage.js';
@@ -54,11 +55,11 @@ describe('commandInteraction handler', () => {
   });
 
   function getHandler() {
-    return handlers.interactionCreate[0];
+    return handlers[Events.InteractionCreate][0];
   }
 
   it('should register interactionCreate handler', () => {
-    expect(client.on).toHaveBeenCalledWith('interactionCreate', expect.any(Function));
+    expect(client.on).toHaveBeenCalledWith(Events.InteractionCreate, expect.any(Function));
   });
 
   it('should handle autocomplete interactions', async () => {
