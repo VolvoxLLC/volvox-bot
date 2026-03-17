@@ -88,13 +88,10 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
   setPage: (page) => set({ page }),
   setSortDesc: (sortDesc) => set({ sortDesc }),
   toggleSortDesc: () =>
-    set((state) => {
-      // Reverse the currently-loaded cases client-side for immediate feedback
-      const reversed = state.casesData
-        ? { ...state.casesData, cases: [...state.casesData.cases].reverse() }
-        : null;
-      return { sortDesc: !state.sortDesc, casesData: reversed };
-    }),
+    set((state) => ({
+      sortDesc: !state.sortDesc,
+      casesData: null,
+    })),
   setActionFilter: (actionFilter) => set({ actionFilter }),
   setUserSearch: (userSearch) => set({ userSearch }),
   setUserHistoryInput: (userHistoryInput) => set({ userHistoryInput }),
@@ -143,7 +140,10 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
       set({ stats: payload as ModStats, statsLoading: false });
       return 'ok';
     } catch (err) {
-      if (isAbortError(err)) return 'ok';
+      if (isAbortError(err)) {
+        set({ statsLoading: false });
+        return 'ok';
+      }
       set({
         statsError: err instanceof Error ? err.message : 'Failed to fetch stats',
         statsLoading: false,
@@ -160,6 +160,7 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
         guildId,
         page: String(page),
         limit: String(PAGE_LIMIT),
+        order: sortDesc ? 'desc' : 'asc',
       });
       if (actionFilter !== 'all') params.set('action', actionFilter);
       if (userSearch.trim()) params.set('targetId', userSearch.trim());
@@ -179,14 +180,13 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
         throw new Error(msg);
       }
 
-      const data = payload as CaseListResponse;
-      if (!sortDesc) {
-        data.cases = [...data.cases].reverse();
-      }
-      set({ casesData: data, casesLoading: false });
+      set({ casesData: payload as CaseListResponse, casesLoading: false });
       return 'ok';
     } catch (err) {
-      if (isAbortError(err)) return 'ok';
+      if (isAbortError(err)) {
+        set({ casesLoading: false });
+        return 'ok';
+      }
       set({
         casesError: err instanceof Error ? err.message : 'Failed to fetch cases',
         casesLoading: false,
@@ -220,7 +220,10 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
       set({ userHistoryData: payload as CaseListResponse, userHistoryLoading: false });
       return 'ok';
     } catch (err) {
-      if (isAbortError(err)) return 'ok';
+      if (isAbortError(err)) {
+        set({ userHistoryLoading: false });
+        return 'ok';
+      }
       set({
         userHistoryError: err instanceof Error ? err.message : 'Failed to fetch user history',
         userHistoryLoading: false,

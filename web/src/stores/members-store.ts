@@ -65,6 +65,8 @@ const initialState = {
   sortOrder: 'desc' as SortOrder,
 };
 
+let latestMembersRequestId = 0;
+
 export const useMembersStore = create<MembersState>((set) => ({
   ...initialState,
 
@@ -92,6 +94,7 @@ export const useMembersStore = create<MembersState>((set) => ({
     }),
 
   fetchMembers: async (opts) => {
+    const requestId = ++latestMembersRequestId;
     set({ loading: true, error: null });
     try {
       const params = new URLSearchParams();
@@ -106,6 +109,8 @@ export const useMembersStore = create<MembersState>((set) => ({
         { signal: opts.signal },
       );
 
+      if (requestId !== latestMembersRequestId) return 'ok';
+
       if (res.status === 401) {
         set({ loading: false });
         return 'unauthorized';
@@ -114,6 +119,9 @@ export const useMembersStore = create<MembersState>((set) => ({
         throw new Error(`Failed to fetch members (${res.status})`);
       }
       const data = (await res.json()) as MembersApiResponse;
+
+      if (requestId !== latestMembersRequestId) return 'ok';
+
       if (opts.append) {
         set((state) => ({
           members: [...state.members, ...data.members],
@@ -133,7 +141,10 @@ export const useMembersStore = create<MembersState>((set) => ({
       }
       return 'ok';
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'ok';
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        set({ loading: false });
+        return 'ok';
+      }
       set({
         error: err instanceof Error ? err.message : 'Failed to fetch members',
         loading: false,

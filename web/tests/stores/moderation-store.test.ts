@@ -52,7 +52,7 @@ function mockFetchSuccess(data: unknown, status = 200) {
   vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
-    json: () => Promise.resolve(data),
+    json: () => Promise.resolve(structuredClone(data)),
   } as Response);
 }
 
@@ -97,15 +97,13 @@ describe('useModerationStore', () => {
     expect(useModerationStore.getState().page).toBe(3);
   });
 
-  it('toggleSortDesc flips sortDesc and reverses cases', () => {
-    // Set up some cases first
+  it('toggleSortDesc flips sortDesc and resets casesData', () => {
     useModerationStore.setState({ casesData: { ...fakeCases } });
-    const firstCaseId = useModerationStore.getState().casesData!.cases[0].id;
 
     useModerationStore.getState().toggleSortDesc();
     expect(useModerationStore.getState().sortDesc).toBe(false);
-    // Cases should be reversed
-    expect(useModerationStore.getState().casesData!.cases[0].id).not.toBe(firstCaseId);
+    // Cases should be reset to null so the component re-fetches
+    expect(useModerationStore.getState().casesData).toBeNull();
 
     useModerationStore.getState().toggleSortDesc();
     expect(useModerationStore.getState().sortDesc).toBe(true);
@@ -212,6 +210,7 @@ describe('useModerationStore', () => {
 
     expect(result).toBe('ok');
     expect(useModerationStore.getState().statsError).toBeNull();
+    expect(useModerationStore.getState().statsLoading).toBe(false);
   });
 
   // ─── fetchCases ──────────────────────────────────────────────────
@@ -226,15 +225,18 @@ describe('useModerationStore', () => {
     expect(useModerationStore.getState().casesLoading).toBe(false);
   });
 
-  it('fetchCases reverses cases when sortDesc is false', async () => {
+  it('fetchCases sends order=asc when sortDesc is false', async () => {
     useModerationStore.getState().setSortDesc(false);
-    mockFetchSuccess(fakeCases);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(structuredClone(fakeCases)),
+    } as Response);
 
     await useModerationStore.getState().fetchCases('guild1');
 
-    const cases = useModerationStore.getState().casesData!.cases;
-    expect(cases[0].id).toBe(2);
-    expect(cases[1].id).toBe(1);
+    const url = fetchSpy.mock.calls[0][0] as string;
+    expect(url).toContain('order=asc');
   });
 
   it('fetchCases returns unauthorized on 401', async () => {
@@ -341,5 +343,6 @@ describe('useModerationStore', () => {
 
     expect(result).toBe('ok');
     expect(useModerationStore.getState().userHistoryError).toBeNull();
+    expect(useModerationStore.getState().userHistoryLoading).toBe(false);
   });
 });

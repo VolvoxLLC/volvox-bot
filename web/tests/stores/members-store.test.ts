@@ -263,5 +263,6 @@ describe('useMembersStore', () => {
 
     expect(result).toBe('ok');
     expect(useMembersStore.getState().error).toBeNull();
+    expect(useMembersStore.getState().loading).toBe(false);
   });
 });
