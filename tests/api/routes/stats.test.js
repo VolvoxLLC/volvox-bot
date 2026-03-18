@@ -68,7 +68,7 @@ function buildPool(overrides = {}) {
   return {
     query: vi.fn().mockImplementation(async (sql) => {
       if (sql.includes('command_usage')) return { rows: [{ count: 42 }] };
-      if (sql.includes('messages')) return { rows: [{ count: 999 }] };
+      if (sql.includes('conversations')) return { rows: [{ count: 999 }] };
       return { rows: [] };
     }),
     ...overrides,

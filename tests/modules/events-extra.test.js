@@ -81,14 +81,13 @@ import { handleAfkMentions } from '../../src/modules/afkHandler.js';
 import { handleHintButton, handleSolveButton } from '../../src/modules/challengeScheduler.js';
 import { getConfig } from '../../src/modules/config.js';
 import {
-  registerChallengeButtonHandler,
   registerMessageCreateHandler,
   registerReactionHandlers,
   registerReadyHandler,
-  registerReviewClaimHandler,
-  registerShowcaseButtonHandler,
-  registerShowcaseModalHandler,
 } from '../../src/modules/events.js';
+import { handleChallengeButton } from '../../src/modules/handlers/challengeHandler.js';
+import { handleReviewButton } from '../../src/modules/handlers/reviewHandler.js';
+import { handleShowcaseButton, handleShowcaseModal } from '../../src/modules/handlers/showcaseHandler.js';
 import { checkLinks } from '../../src/modules/linkFilter.js';
 import { checkRateLimit } from '../../src/modules/rateLimit.js';
 import { handleReviewClaim } from '../../src/modules/reviewHandler.js';
@@ -100,70 +99,56 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// ── registerReviewClaimHandler ───────────────────────────────────────
+// ── handleReviewButton ───────────────────────────────────────────────
 
-describe('registerReviewClaimHandler', () => {
-  let handlers;
-  let client;
-
-  function setup() {
-    handlers = new Map();
-    client = { on: (event, fn) => handlers.set(event, fn) };
-    getConfig.mockReturnValue({ review: { enabled: true } });
-    registerReviewClaimHandler(client);
-  }
-
+describe('handleReviewButton', () => {
   it('should ignore non-button interactions', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isButton: () => false });
+    expect(await handleReviewButton({ isButton: () => false })).toBe(false);
     expect(handleReviewClaim).not.toHaveBeenCalled();
   });
 
   it('should ignore buttons with non-review customId', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isButton: () => true, customId: 'other' });
+    expect(await handleReviewButton({ isButton: () => true, customId: 'other' })).toBe(false);
     expect(handleReviewClaim).not.toHaveBeenCalled();
   });
 
   it('should skip when review feature is disabled', async () => {
-    setup();
     getConfig.mockReturnValue({ review: { enabled: false } });
-    await handlers.get('interactionCreate')({
+    expect(await handleReviewButton({
       isButton: () => true,
       customId: 'review_claim_123',
       guildId: 'g1',
-    });
+    })).toBe(true);
     expect(handleReviewClaim).not.toHaveBeenCalled();
   });
 
   it('should skip when review config is absent', async () => {
-    setup();
     getConfig.mockReturnValue({});
-    await handlers.get('interactionCreate')({
+    expect(await handleReviewButton({
       isButton: () => true,
       customId: 'review_claim_123',
       guildId: 'g1',
-    });
+    })).toBe(true);
     expect(handleReviewClaim).not.toHaveBeenCalled();
   });
 
   it('should call handleReviewClaim for review_claim_ buttons', async () => {
-    setup();
+    getConfig.mockReturnValue({ review: { enabled: true } });
     const interaction = {
       isButton: () => true,
       customId: 'review_claim_123',
       guildId: 'g1',
       user: { id: 'u1' },
     };
-    await handlers.get('interactionCreate')(interaction);
+    await handleReviewButton(interaction);
     expect(handleReviewClaim).toHaveBeenCalledWith(interaction);
   });
 
   it('should handle errors and reply with ephemeral error', async () => {
-    setup();
+    getConfig.mockReturnValue({ review: { enabled: true } });
     handleReviewClaim.mockRejectedValueOnce(new Error('boom'));
     const reply = vi.fn().mockResolvedValue(undefined);
-    await handlers.get('interactionCreate')({
+    await handleReviewButton({
       isButton: () => true,
       customId: 'review_claim_123',
       guildId: 'g1',
@@ -176,10 +161,10 @@ describe('registerReviewClaimHandler', () => {
   });
 
   it('should skip reply when already replied', async () => {
-    setup();
+    getConfig.mockReturnValue({ review: { enabled: true } });
     handleReviewClaim.mockRejectedValueOnce(new Error('boom'));
     const reply = vi.fn();
-    await handlers.get('interactionCreate')({
+    await handleReviewButton({
       isButton: () => true,
       customId: 'review_claim_456',
       guildId: 'g1',
@@ -192,63 +177,48 @@ describe('registerReviewClaimHandler', () => {
   });
 
   it('should swallow inner safeReply error', async () => {
-    setup();
+    getConfig.mockReturnValue({ review: { enabled: true } });
     handleReviewClaim.mockRejectedValueOnce(new Error('boom'));
     const reply = vi.fn().mockRejectedValue(new Error('reply also failed'));
-    await expect(
-      handlers.get('interactionCreate')({
-        isButton: () => true,
-        customId: 'review_claim_789',
-        guildId: 'g1',
-        user: { id: 'u1' },
-        replied: false,
-        deferred: false,
-        reply,
-      }),
-    ).resolves.toBeUndefined();
+    await expect(handleReviewButton({
+      isButton: () => true,
+      customId: 'review_claim_789',
+      guildId: 'g1',
+      user: { id: 'u1' },
+      replied: false,
+      deferred: false,
+      reply,
+    })).resolves.toBe(true);
   });
 });
 
-// ── registerShowcaseButtonHandler ────────────────────────────────────
+// ── handleShowcaseButton ─────────────────────────────────────────────
 
-describe('registerShowcaseButtonHandler', () => {
-  let handlers;
-  let client;
-
-  function setup() {
-    handlers = new Map();
-    client = { on: (event, fn) => handlers.set(event, fn) };
-    registerShowcaseButtonHandler(client);
-  }
-
+describe('handleShowcaseButton', () => {
   it('should ignore non-button interactions', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isButton: () => false });
+    expect(await handleShowcaseButton({ isButton: () => false })).toBe(false);
     expect(handleShowcaseUpvote).not.toHaveBeenCalled();
   });
 
   it('should ignore buttons with non-showcase customId', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isButton: () => true, customId: 'other' });
+    expect(await handleShowcaseButton({ isButton: () => true, customId: 'other' })).toBe(false);
     expect(handleShowcaseUpvote).not.toHaveBeenCalled();
   });
 
   it('should call handleShowcaseUpvote for showcase_upvote_ buttons', async () => {
-    setup();
     const interaction = {
       isButton: () => true,
       customId: 'showcase_upvote_abc',
       user: { id: 'u1' },
     };
-    await handlers.get('interactionCreate')(interaction);
+    await handleShowcaseButton(interaction);
     expect(handleShowcaseUpvote).toHaveBeenCalledWith(interaction, expect.anything());
   });
 
   it('should handle upvote error and reply ephemerally', async () => {
-    setup();
     handleShowcaseUpvote.mockRejectedValueOnce(new Error('upvote boom'));
     const reply = vi.fn().mockResolvedValue(undefined);
-    await handlers.get('interactionCreate')({
+    await handleShowcaseButton({
       isButton: () => true,
       customId: 'showcase_upvote_abc',
       user: { id: 'u1' },
@@ -260,10 +230,9 @@ describe('registerShowcaseButtonHandler', () => {
   });
 
   it('should skip error reply when already replied', async () => {
-    setup();
     handleShowcaseUpvote.mockRejectedValueOnce(new Error('boom'));
     const reply = vi.fn();
-    await handlers.get('interactionCreate')({
+    await handleShowcaseButton({
       isButton: () => true,
       customId: 'showcase_upvote_abc',
       user: { id: 'u1' },
@@ -275,46 +244,33 @@ describe('registerShowcaseButtonHandler', () => {
   });
 });
 
-// ── registerShowcaseModalHandler ─────────────────────────────────────
+// ── handleShowcaseModal ──────────────────────────────────────────────
 
-describe('registerShowcaseModalHandler', () => {
-  let handlers;
-  let client;
-
-  function setup() {
-    handlers = new Map();
-    client = { on: (event, fn) => handlers.set(event, fn) };
-    registerShowcaseModalHandler(client);
-  }
-
+describe('handleShowcaseModal', () => {
   it('should ignore non-modal interactions', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isModalSubmit: () => false });
+    expect(await handleShowcaseModal({ isModalSubmit: () => false })).toBe(false);
     expect(handleShowcaseModalSubmit).not.toHaveBeenCalled();
   });
 
   it('should ignore modals with wrong customId', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isModalSubmit: () => true, customId: 'other_modal' });
+    expect(await handleShowcaseModal({ isModalSubmit: () => true, customId: 'other_modal' })).toBe(false);
     expect(handleShowcaseModalSubmit).not.toHaveBeenCalled();
   });
 
   it('should call handleShowcaseModalSubmit for showcase_submit_modal', async () => {
-    setup();
     const interaction = {
       isModalSubmit: () => true,
       customId: 'showcase_submit_modal',
       deferred: false,
     };
-    await handlers.get('interactionCreate')(interaction);
+    await handleShowcaseModal(interaction);
     expect(handleShowcaseModalSubmit).toHaveBeenCalledWith(interaction, expect.anything());
   });
 
   it('should handle error with safeReply when not deferred', async () => {
-    setup();
     handleShowcaseModalSubmit.mockRejectedValueOnce(new Error('modal boom'));
     const reply = vi.fn().mockResolvedValue(undefined);
-    await handlers.get('interactionCreate')({
+    await handleShowcaseModal({
       isModalSubmit: () => true,
       customId: 'showcase_submit_modal',
       deferred: false,
@@ -327,10 +283,9 @@ describe('registerShowcaseModalHandler', () => {
   });
 
   it('should handle error with safeEditReply when deferred', async () => {
-    setup();
     handleShowcaseModalSubmit.mockRejectedValueOnce(new Error('modal boom'));
     const editReply = vi.fn().mockResolvedValue(undefined);
-    await handlers.get('interactionCreate')({
+    await handleShowcaseModal({
       isModalSubmit: () => true,
       customId: 'showcase_submit_modal',
       deferred: true,
@@ -343,34 +298,21 @@ describe('registerShowcaseModalHandler', () => {
   });
 });
 
-// ── registerChallengeButtonHandler ───────────────────────────────────
+// ── handleChallengeButton ────────────────────────────────────────────
 
-describe('registerChallengeButtonHandler', () => {
-  let handlers;
-  let client;
-
-  function setup() {
-    handlers = new Map();
-    client = { on: (event, fn) => handlers.set(event, fn) };
-    getConfig.mockReturnValue({ challenges: { enabled: true } });
-    registerChallengeButtonHandler(client);
-  }
-
+describe('handleChallengeButton', () => {
   it('should ignore non-button interactions', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isButton: () => false });
+    expect(await handleChallengeButton({ isButton: () => false })).toBe(false);
     expect(handleSolveButton).not.toHaveBeenCalled();
     expect(handleHintButton).not.toHaveBeenCalled();
   });
 
   it('should ignore buttons with unrelated customId', async () => {
-    setup();
-    await handlers.get('interactionCreate')({ isButton: () => true, customId: 'other_button' });
+    expect(await handleChallengeButton({ isButton: () => true, customId: 'other_button' })).toBe(false);
     expect(handleSolveButton).not.toHaveBeenCalled();
   });
 
   it('should call handleSolveButton for challenge_solve_ buttons', async () => {
-    setup();
     getConfig.mockReturnValue({ challenges: { enabled: true } });
     const interaction = {
       isButton: () => true,
@@ -378,12 +320,11 @@ describe('registerChallengeButtonHandler', () => {
       user: { id: 'u1' },
       guildId: 'g1',
     };
-    await handlers.get('interactionCreate')(interaction);
+    await handleChallengeButton(interaction);
     expect(handleSolveButton).toHaveBeenCalledWith(interaction, 5);
   });
 
   it('should call handleHintButton for challenge_hint_ buttons', async () => {
-    setup();
     getConfig.mockReturnValue({ challenges: { enabled: true } });
     const interaction = {
       isButton: () => true,
@@ -391,26 +332,26 @@ describe('registerChallengeButtonHandler', () => {
       user: { id: 'u1' },
       guildId: 'g1',
     };
-    await handlers.get('interactionCreate')(interaction);
+    await handleChallengeButton(interaction);
     expect(handleHintButton).toHaveBeenCalledWith(interaction, 3);
   });
 
-  it('should return early on NaN challenge index', async () => {
-    setup();
-    await handlers.get('interactionCreate')({
+  it('should return true on NaN challenge index', async () => {
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
+    expect(await handleChallengeButton({
       isButton: () => true,
       customId: 'challenge_solve_abc',
       user: { id: 'u1' },
-    });
+      guildId: 'g1',
+    })).toBe(true);
     expect(handleSolveButton).not.toHaveBeenCalled();
   });
 
   it('should handle solve error and reply ephemerally', async () => {
-    setup();
     getConfig.mockReturnValue({ challenges: { enabled: true } });
     handleSolveButton.mockRejectedValueOnce(new Error('solve boom'));
     const reply = vi.fn().mockResolvedValue(undefined);
-    await handlers.get('interactionCreate')({
+    await handleChallengeButton({
       isButton: () => true,
       customId: 'challenge_solve_0',
       user: { id: 'u1' },
@@ -423,11 +364,10 @@ describe('registerChallengeButtonHandler', () => {
   });
 
   it('should handle hint error and reply ephemerally', async () => {
-    setup();
     getConfig.mockReturnValue({ challenges: { enabled: true } });
     handleHintButton.mockRejectedValueOnce(new Error('hint boom'));
     const reply = vi.fn().mockResolvedValue(undefined);
-    await handlers.get('interactionCreate')({
+    await handleChallengeButton({
       isButton: () => true,
       customId: 'challenge_hint_2',
       user: { id: 'u1' },
@@ -440,13 +380,14 @@ describe('registerChallengeButtonHandler', () => {
   });
 
   it('should skip error reply when deferred', async () => {
-    setup();
+    getConfig.mockReturnValue({ challenges: { enabled: true } });
     handleSolveButton.mockRejectedValueOnce(new Error('boom'));
     const reply = vi.fn();
-    await handlers.get('interactionCreate')({
+    await handleChallengeButton({
       isButton: () => true,
       customId: 'challenge_solve_1',
       user: { id: 'u1' },
+      guildId: 'g1',
       replied: false,
       deferred: true,
       reply,
