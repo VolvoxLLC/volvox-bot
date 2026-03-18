@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ConfigEditor } from '@/components/dashboard/config-editor';
+import { ConfigLandingContent } from '@/components/dashboard/config-categories/config-landing';
 import { createPageMetadata } from '@/lib/page-titles';
 
 export const metadata: Metadata = createPageMetadata(
@@ -8,10 +8,8 @@ export const metadata: Metadata = createPageMetadata(
 );
 
 /**
- * Page component that renders the dashboard configuration editor.
- *
- * @returns The React element rendering the `ConfigEditor` for managing dashboard configuration.
+ * Config landing page — renders category cards for navigating to config sections.
  */
 export default function ConfigPage() {
-  return <ConfigEditor />;
+  return <ConfigLandingContent />;
 }
