@@ -1,9 +1,11 @@
 'use client';
 
 import { Bot, MessageSquareWarning, Sparkles, Ticket, Users } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { CONFIG_CATEGORIES } from './config-categories';
 import type { ConfigCategoryIcon, ConfigCategoryId } from './types';
 
@@ -16,24 +18,24 @@ const CATEGORY_ICONS: Record<ConfigCategoryIcon, typeof Sparkles> = {
 };
 
 interface CategoryNavigationProps {
-  activeCategoryId: ConfigCategoryId;
   dirtyCounts: Record<ConfigCategoryId, number>;
-  onCategoryChange: (categoryId: ConfigCategoryId) => void;
 }
 
 /**
- * Render responsive category navigation with selectable categories and per-category dirty counts.
+ * Route-based category navigation for the config editor.
  *
- * @param activeCategoryId - The id of the currently active category.
- * @param dirtyCounts - A record mapping category ids to their dirty/unsaved item counts.
- * @param onCategoryChange - Callback invoked with a `ConfigCategoryId` when the user selects or clicks a category.
- * @returns A React element that renders a labeled select for mobile and a vertical list of category buttons for desktop; each item shows an icon, label, and an optional badge with the dirty count.
+ * Desktop: renders a vertical list of Link elements.
+ * Mobile: renders a select that uses router.push() for programmatic navigation.
+ *
+ * @param dirtyCounts - A record mapping category ids to their unsaved change counts.
  */
-export function CategoryNavigation({
-  activeCategoryId,
-  dirtyCounts,
-  onCategoryChange,
-}: CategoryNavigationProps) {
+export function CategoryNavigation({ dirtyCounts }: CategoryNavigationProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const pathSegments = pathname.split('/');
+  const activeSlug = pathSegments.length > 3 ? pathSegments[3] : null;
+
   return (
     <>
       <div className="space-y-2 md:hidden">
@@ -43,9 +45,17 @@ export function CategoryNavigation({
         <select
           id="config-category-picker"
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          value={activeCategoryId}
-          onChange={(event) => onCategoryChange(event.target.value as ConfigCategoryId)}
+          value={activeSlug ?? ''}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value) {
+              router.push(`/dashboard/config/${value}`);
+            } else {
+              router.push('/dashboard/config');
+            }
+          }}
         >
+          <option value="">Overview</option>
           {CONFIG_CATEGORIES.map((category) => {
             const dirtyCount = dirtyCounts[category.id];
             const dirtyLabel = dirtyCount > 0 ? ` (${dirtyCount})` : '';
@@ -63,27 +73,31 @@ export function CategoryNavigation({
         <div className="sticky top-24 space-y-2 rounded-lg border bg-card p-3">
           {CONFIG_CATEGORIES.map((category) => {
             const Icon = CATEGORY_ICONS[category.icon];
-            const isActive = activeCategoryId === category.id;
+            const isActive = activeSlug === category.id;
             const dirtyCount = dirtyCounts[category.id];
 
             return (
-              <Button
+              <Link
                 key={category.id}
-                variant={isActive ? 'secondary' : 'ghost'}
-                className="h-auto w-full justify-between px-3 py-2 text-left"
-                onClick={() => onCategoryChange(category.id)}
+                href={`/dashboard/config/${category.id}`}
+                className={cn(
+                  'flex h-auto w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                )}
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="flex items-center gap-2">
                   <Icon className="h-4 w-4" aria-hidden="true" />
-                  <span className="text-sm">{category.label}</span>
+                  <span>{category.label}</span>
                 </span>
                 {dirtyCount > 0 && (
                   <Badge variant="default" className="min-w-5 justify-center px-1.5">
                     {dirtyCount}
                   </Badge>
                 )}
-              </Button>
+              </Link>
             );
           })}
         </div>

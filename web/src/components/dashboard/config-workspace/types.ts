@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import type { ConfigSection } from '@/types/config';
 
 export type ConfigCategoryId =
@@ -49,11 +48,3 @@ export interface ConfigSearchItem {
   isAdvanced: boolean;
 }
 
-export interface ConfigWorkspaceProps {
-  categoryId: ConfigCategoryId;
-  onCategoryChange: (categoryId: ConfigCategoryId) => void;
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
-  changedSections: string[];
-  children: ReactNode;
-}
