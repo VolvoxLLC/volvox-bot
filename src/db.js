@@ -102,7 +102,10 @@ async function runMigrations(databaseUrl) {
     dir: migrationsDir,
     direction: 'up',
     migrationsTable: 'pgmigrations',
-    log: (msg) => info(msg),
+    log: (msg) => {
+      if (typeof msg === 'string' && msg.includes("Can't determine timestamp")) return;
+      info(msg);
+    },
   });
 
   info('Database migrations applied');

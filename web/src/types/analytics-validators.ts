@@ -119,7 +119,7 @@ export function isDashboardAnalyticsPayload(value: unknown): value is DashboardA
 
   if (value.commandUsage !== undefined) {
     if (!isRecord(value.commandUsage)) return false;
-    if (value.commandUsage.source !== 'logs' && value.commandUsage.source !== 'unavailable') {
+    if (!isString(value.commandUsage.source)) {
       return false;
     }
     if (

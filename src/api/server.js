@@ -65,7 +65,10 @@ export function createApp(client, dbPool) {
     rateLimiter = null;
   }
   rateLimiter = redisRateLimit();
-  app.use(rateLimiter);
+  app.use((req, res, next) => {
+    if (req.path === '/api/v1/health') return next();
+    return rateLimiter(req, res, next);
+  });
 
   // Raw OpenAPI spec (JSON) — public for Mintlify
   app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
