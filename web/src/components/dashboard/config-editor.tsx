@@ -2192,9 +2192,6 @@ export function ConfigEditor() {
             draftConfig={draftConfig}
             saving={saving}
             guildId={guildId}
-            inputClasses={inputClasses}
-            defaultActivityBadges={DEFAULT_ACTIVITY_BADGES}
-            parseNumberInput={parseNumberInput}
             updateDraftConfig={updateDraftConfig}
             activeCategoryId={activeCategoryId}
             visibleFeatureIds={visibleFeatureIds}

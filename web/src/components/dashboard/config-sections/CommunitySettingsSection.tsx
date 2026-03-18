@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  DEFAULT_ACTIVITY_BADGES,
+  inputClasses,
+  parseNumberInput,
+} from '@/components/dashboard/config-editor-utils';
 import { SettingsFeatureCard } from '@/components/dashboard/config-workspace/settings-feature-card';
 import type {
   ConfigCategoryId,
@@ -20,9 +25,6 @@ interface CommunitySettingsSectionProps {
   draftConfig: GuildConfig;
   saving: boolean;
   guildId: string;
-  inputClasses: string;
-  defaultActivityBadges: readonly { days: number; label: string }[];
-  parseNumberInput: (raw: string, min?: number, max?: number) => number | undefined;
   updateDraftConfig: (updater: (prev: GuildConfig) => GuildConfig) => void;
   activeCategoryId: ConfigCategoryId;
   visibleFeatureIds: Set<ConfigFeatureId>;
@@ -39,9 +41,6 @@ interface CommunitySettingsSectionProps {
  * @param draftConfig - Partial guild configuration used to populate control values
  * @param saving - When true, disable interactive inputs to prevent changes during persistence
  * @param guildId - Guild identifier passed to channel/role selectors
- * @param inputClasses - CSS classes applied to native input elements
- * @param defaultActivityBadges - Default badge list used when engagement activity badges are not set
- * @param parseNumberInput - Helper to parse and validate numeric input values (may accept min/max)
  * @param updateDraftConfig - Functional updater used to immutably modify `draftConfig`
  * @param activeCategoryId - Currently active configuration category; only cards matching this category are rendered
  * @param visibleFeatureIds - Set of feature ids that are allowed to be shown
@@ -52,9 +51,6 @@ export function CommunitySettingsSection({
   draftConfig,
   saving,
   guildId,
-  inputClasses,
-  defaultActivityBadges,
-  parseNumberInput,
   updateDraftConfig,
   activeCategoryId,
   visibleFeatureIds,
@@ -149,7 +145,7 @@ export function CommunitySettingsSection({
           disabled={saving}
           basicContent={
             <div className="space-y-3">
-              {(draftConfig.engagement?.activityBadges ?? defaultActivityBadges).map(
+              {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
                 (badge: Badge, index: number) => (
                   <div key={`badge-${index}`} className="flex items-center gap-2">
                     <Input
@@ -159,7 +155,7 @@ export function CommunitySettingsSection({
                       value={badge.days ?? 0}
                       onChange={(event) => {
                         const badges = [
-                          ...(draftConfig.engagement?.activityBadges ?? defaultActivityBadges),
+                          ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
                         ];
                         badges[index] = {
                           ...badges[index],
@@ -178,7 +174,7 @@ export function CommunitySettingsSection({
                       value={badge.label ?? ''}
                       onChange={(event) => {
                         const badges = [
-                          ...(draftConfig.engagement?.activityBadges ?? defaultActivityBadges),
+                          ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
                         ];
                         badges[index] = { ...badges[index], label: event.target.value };
                         updateDraftConfig((prev) => ({
@@ -193,7 +189,7 @@ export function CommunitySettingsSection({
                       size="sm"
                       onClick={() => {
                         const badges = [
-                          ...(draftConfig.engagement?.activityBadges ?? defaultActivityBadges),
+                          ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
                         ].filter((_, idx) => idx !== index);
                         updateDraftConfig((prev) => ({
                           ...prev,
@@ -202,7 +198,7 @@ export function CommunitySettingsSection({
                       }}
                       disabled={
                         saving ||
-                        (draftConfig.engagement?.activityBadges ?? defaultActivityBadges).length <=
+                        (draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).length <=
                           1
                       }
                     >
@@ -216,7 +212,7 @@ export function CommunitySettingsSection({
                 size="sm"
                 onClick={() => {
                   const badges = [
-                    ...(draftConfig.engagement?.activityBadges ?? defaultActivityBadges),
+                    ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
                     { days: 0, label: 'New Badge' },
                   ];
                   updateDraftConfig((prev) => ({
