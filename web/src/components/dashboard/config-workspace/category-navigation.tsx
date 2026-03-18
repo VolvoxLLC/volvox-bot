@@ -49,9 +49,9 @@ export function CategoryNavigation({ dirtyCounts }: CategoryNavigationProps) {
           onChange={(event) => {
             const value = event.target.value;
             if (value) {
-              router.push(`/dashboard/config/${value}`);
+              router.push(`/dashboard/settings/${value}`);
             } else {
-              router.push('/dashboard/config');
+              router.push('/dashboard/settings');
             }
           }}
         >
@@ -79,7 +79,7 @@ export function CategoryNavigation({ dirtyCounts }: CategoryNavigationProps) {
             return (
               <Link
                 key={category.id}
-                href={`/dashboard/config/${category.id}`}
+                href={`/dashboard/settings/${category.id}`}
                 className={cn(
                   'flex h-auto w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
                   isActive

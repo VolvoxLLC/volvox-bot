@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  Bot,
   ClipboardList,
   Clock,
   LayoutDashboard,
@@ -55,11 +54,6 @@ const navigation = [
     name: 'Tickets',
     href: '/dashboard/tickets',
     icon: Ticket,
-  },
-  {
-    name: 'Bot Config',
-    href: '/dashboard/config',
-    icon: Bot,
   },
   {
     name: 'Audit Log',

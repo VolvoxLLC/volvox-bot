@@ -81,11 +81,11 @@ export function useConfigContext(): ConfigContextValue {
 /**
  * Parse the active config category slug from a dashboard pathname.
  *
- * @param pathname - The current URL pathname (e.g. `/dashboard/config/ai-automation`)
+ * @param pathname - The current URL pathname (e.g. `/dashboard/settings/ai-automation`)
  * @returns The category id if the pathname has a valid category segment; `null` for the landing page.
  */
 function parseCategoryFromPathname(pathname: string): ConfigCategoryId | null {
-  const prefix = '/dashboard/config/';
+  const prefix = '/dashboard/settings/';
   if (!pathname.startsWith(prefix)) return null;
   const slug = pathname.slice(prefix.length).split('/')[0];
   if (!slug) return null;
@@ -312,7 +312,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   // ── Search handlers ────────────────────────────────────────────
   const handleSearchSelect = useCallback(
     (item: ConfigSearchItem) => {
-      router.push(`/dashboard/config/${item.categoryId}`);
+      router.push(`/dashboard/settings/${item.categoryId}`);
       setFocusFeatureId(item.featureId);
       setSelectedSearchItemId(item.id);
     },

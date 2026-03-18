@@ -1,15 +1,8 @@
-import type { Metadata } from 'next';
-import { ConfigLandingContent } from '@/components/dashboard/config-categories/config-landing';
-import { createPageMetadata } from '@/lib/page-titles';
-
-export const metadata: Metadata = createPageMetadata(
-  'Bot Config',
-  'Manage your bot configuration settings.',
-);
+import { redirect } from 'next/navigation';
 
 /**
- * Config landing page — renders category cards for navigating to config sections.
+ * Redirect /dashboard/config to /dashboard/settings.
  */
-export default function ConfigPage() {
-  return <ConfigLandingContent />;
+export default function ConfigRedirectPage() {
+  redirect('/dashboard/settings');
 }

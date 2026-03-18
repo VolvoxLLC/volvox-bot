@@ -7,7 +7,7 @@ vi.mock('sonner', () => ({
 }));
 
 const mockPush = vi.fn();
-const mockPathname = vi.fn(() => '/dashboard/config');
+const mockPathname = vi.fn(() => '/dashboard/settings');
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
   useRouter: () => ({ push: mockPush }),
@@ -32,7 +32,7 @@ describe('ConfigProvider', () => {
     vi.resetModules();
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
-    mockPathname.mockReturnValue('/dashboard/config');
+    mockPathname.mockReturnValue('/dashboard/settings');
     mockPush.mockClear();
   });
 
@@ -129,7 +129,7 @@ describe('ConfigProvider', () => {
   });
 
   it('derives activeCategoryId as null on landing page', async () => {
-    mockPathname.mockReturnValue('/dashboard/config');
+    mockPathname.mockReturnValue('/dashboard/settings');
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -152,7 +152,7 @@ describe('ConfigProvider', () => {
   });
 
   it('derives activeCategoryId from pathname', async () => {
-    mockPathname.mockReturnValue('/dashboard/config/ai-automation');
+    mockPathname.mockReturnValue('/dashboard/settings/ai-automation');
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -175,7 +175,7 @@ describe('ConfigProvider', () => {
   });
 
   it('returns empty visibleFeatureIds when activeCategoryId is null', async () => {
-    mockPathname.mockReturnValue('/dashboard/config');
+    mockPathname.mockReturnValue('/dashboard/settings');
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -227,6 +227,6 @@ describe('ConfigProvider', () => {
         isAdvanced: false,
       });
     });
-    expect(mockPush).toHaveBeenCalledWith('/dashboard/config/ai-automation');
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/settings/ai-automation');
   });
 });

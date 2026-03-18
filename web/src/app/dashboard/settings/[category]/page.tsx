@@ -27,8 +27,8 @@ interface CategoryPageProps {
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { category } = await params;
   const meta = CONFIG_CATEGORIES.find((c) => c.id === category);
-  if (!meta) return createPageMetadata('Bot Config');
-  return createPageMetadata(`Bot Config - ${meta.label}`, meta.description);
+  if (!meta) return createPageMetadata('Settings');
+  return createPageMetadata(`Settings - ${meta.label}`, meta.description);
 }
 
 /**

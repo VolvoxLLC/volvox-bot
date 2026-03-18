@@ -64,7 +64,7 @@ vi.mock('@/components/dashboard/config-diff', () => ({
   ConfigDiff: () => <div data-testid="config-diff" />,
 }));
 
-let mockPathname = '/dashboard/config/ai-automation';
+let mockPathname = '/dashboard/settings/ai-automation';
 
 const minimalConfig = {
   ai: { enabled: false, systemPrompt: '', blockedChannelIds: [] },
@@ -107,7 +107,7 @@ const minimalConfig = {
 
 describe('ConfigEditor workspace integration (new architecture)', () => {
   beforeEach(() => {
-    mockPathname = '/dashboard/config/ai-automation';
+    mockPathname = '/dashboard/settings/ai-automation';
     mockPush.mockClear();
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
@@ -145,7 +145,7 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
   });
 
   it('renders onboarding features when on the onboarding route', async () => {
-    mockPathname = '/dashboard/config/onboarding-growth';
+    mockPathname = '/dashboard/settings/onboarding-growth';
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -173,7 +173,7 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
   });
 
   it('filters visible feature cards by search query', async () => {
-    mockPathname = '/dashboard/config/onboarding-growth';
+    mockPathname = '/dashboard/settings/onboarding-growth';
     const user = userEvent.setup();
 
     const fetchMock = vi.fn().mockResolvedValue({

@@ -66,7 +66,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Bot Configuration</CardTitle>
+          <CardTitle>Settings</CardTitle>
           <CardDescription>
             Select a server from the sidebar to manage its configuration.
           </CardDescription>
@@ -109,7 +109,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Bot Configuration</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground">
             Manage settings by category for faster edits and fewer misses.
           </p>
@@ -190,7 +190,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
           {activeCategory && (
             <div className="space-y-3 rounded-lg border bg-card p-4">
               <Link
-                href="/dashboard/config"
+                href="/dashboard/settings"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ArrowLeft className="h-3 w-3" aria-hidden="true" />
