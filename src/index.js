@@ -116,6 +116,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildPresences,
   ],
   partials: [Partials.Message, Partials.Reaction],
   allowedMentions: { parse: ['users'] },
