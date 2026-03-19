@@ -4,7 +4,7 @@
  */
 
 import { Events } from 'discord.js';
-import { debug, error, info, warn } from '../../logger.js';
+import logger from '../../logger.js';
 import { logCommandUsage } from '../../utils/commandUsage.js';
 import { getPermissionError, hasPermission } from '../../utils/permissions.js';
 import { safeFollowUp, safeReply } from '../../utils/safeSend.js';
@@ -29,7 +29,7 @@ async function handleAutocomplete(client, interaction) {
   try {
     await command.autocomplete(interaction);
   } catch (err) {
-    error('Autocomplete error', {
+    logger.error('Autocomplete error', {
       command: interaction.commandName,
       error: getErrorMessage(err),
     });
@@ -50,7 +50,7 @@ async function sendCommandExecutionError(interaction, commandName) {
 
   if (interaction.replied || interaction.deferred) {
     await safeFollowUp(interaction, errorMessage).catch((replyErr) => {
-      debug('Failed to send error follow-up', {
+      logger.debug('Failed to send error follow-up', {
         error: getErrorMessage(replyErr),
         command: commandName,
       });
@@ -59,7 +59,7 @@ async function sendCommandExecutionError(interaction, commandName) {
   }
 
   await safeReply(interaction, errorMessage).catch((replyErr) => {
-    debug('Failed to send error reply', {
+    logger.debug('Failed to send error reply', {
       error: getErrorMessage(replyErr),
       command: commandName,
     });
@@ -82,7 +82,7 @@ export function registerCommandInteractionHandler(client) {
     const { commandName, member } = interaction;
 
     try {
-      info('Slash command received', { command: commandName, user: interaction.user.tag });
+      logger.info('Slash command received', { command: commandName, user: interaction.user.tag });
 
       const guildConfig = getConfig(interaction.guildId);
       if (!hasPermission(member, commandName, guildConfig)) {
@@ -92,7 +92,7 @@ export function registerCommandInteractionHandler(client) {
           content: getPermissionError(commandName, permLevel),
           ephemeral: true,
         });
-        warn('Permission denied', { user: interaction.user.tag, command: commandName });
+        logger.warn('Permission denied', { user: interaction.user.tag, command: commandName });
         return;
       }
 
@@ -106,7 +106,7 @@ export function registerCommandInteractionHandler(client) {
       }
 
       await command.execute(interaction);
-      info('Command executed', {
+      logger.info('Command executed', {
         command: commandName,
         user: interaction.user.tag,
         guildId: interaction.guildId,
@@ -119,12 +119,12 @@ export function registerCommandInteractionHandler(client) {
         commandName,
         channelId: interaction.channelId,
       }).catch((err) =>
-        error('Failed to log command usage', {
+        logger.error('Failed to log command usage', {
           error: getErrorMessage(err),
         }),
       );
     } catch (err) {
-      error('Command error', {
+      logger.error('Command error', {
         command: commandName,
         error: getErrorMessage(err),
         stack: err instanceof Error ? err.stack : undefined,

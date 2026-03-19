@@ -267,14 +267,14 @@ describe('useMembersStore', () => {
   });
 
   it('ignores stale errors from superseded requests', async () => {
-    let rejectFirst!: (reason?: unknown) => void;
+    let rejectFirst = vi.fn<[reason?: unknown], void>();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     fetchSpy
       .mockImplementationOnce(
         () =>
           new Promise((_, reject) => {
-            rejectFirst = reject;
+            rejectFirst.mockImplementation(reject);
           }) as Promise<Response>,
       )
       .mockResolvedValueOnce({

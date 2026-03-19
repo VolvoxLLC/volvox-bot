@@ -124,23 +124,13 @@ export const useMembersStore = create<MembersState>((set) => ({
 
       if (requestId !== latestMembersRequestId) return 'ok';
 
-      if (opts.append) {
-        set((state) => ({
-          members: [...state.members, ...data.members],
-          nextAfter: data.nextAfter,
-          total: data.total,
-          filteredTotal: data.filteredTotal ?? null,
-          loading: false,
-        }));
-      } else {
-        set({
-          members: data.members,
-          nextAfter: data.nextAfter,
-          total: data.total,
-          filteredTotal: data.filteredTotal ?? null,
-          loading: false,
-        });
-      }
+      set((state) => ({
+        members: opts.append ? [...state.members, ...data.members] : data.members,
+        nextAfter: data.nextAfter,
+        total: data.total,
+        filteredTotal: data.filteredTotal ?? null,
+        loading: false,
+      }));
       return 'ok';
     } catch (err) {
       if (requestId !== latestMembersRequestId) return 'ok';

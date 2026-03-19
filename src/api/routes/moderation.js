@@ -75,6 +75,13 @@ router.use(adaptGuildIdParam, requireGuildModerator);
  *           type: integer
  *           default: 25
  *           maximum: 100
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order for results (asc or desc)
  *     responses:
  *       "200":
  *         description: Paginated mod cases

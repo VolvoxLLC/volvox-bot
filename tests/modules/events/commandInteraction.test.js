@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
-vi.mock('../../../src/logger.js', () => ({
+const mockLogger = vi.hoisted(() => ({
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
   debug: vi.fn(),
+}));
+
+vi.mock('../../../src/logger.js', () => ({
+  default: mockLogger,
+  ...mockLogger,
 }));
 
 vi.mock('../../../src/modules/config.js', () => ({
@@ -27,7 +32,7 @@ vi.mock('../../../src/utils/commandUsage.js', () => ({
 }));
 
 import { Events } from 'discord.js';
-import { error, info, warn } from '../../../src/logger.js';
+import logger from '../../../src/logger.js';
 import { registerCommandInteractionHandler } from '../../../src/modules/events/commandInteraction.js';
 import { logCommandUsage } from '../../../src/utils/commandUsage.js';
 import { getPermissionError, hasPermission } from '../../../src/utils/permissions.js';
@@ -86,7 +91,7 @@ describe('commandInteraction handler', () => {
     };
 
     await getHandler()(interaction);
-    expect(error).toHaveBeenCalledWith('Autocomplete error', {
+    expect(logger.error).toHaveBeenCalledWith('Autocomplete error', {
       command: 'config',
       error: 'autocomplete fail',
     });
@@ -133,7 +138,7 @@ describe('commandInteraction handler', () => {
 
     await getHandler()(interaction);
     expect(interaction.reply).toHaveBeenCalledWith({ content: 'denied', ephemeral: true });
-    expect(warn).toHaveBeenCalledWith('Permission denied', {
+    expect(logger.warn).toHaveBeenCalledWith('Permission denied', {
       user: 'user#1',
       command: 'config',
     });
@@ -174,7 +179,7 @@ describe('commandInteraction handler', () => {
 
     await getHandler()(interaction);
     expect(execute).toHaveBeenCalledWith(interaction);
-    expect(info).toHaveBeenCalledWith('Command executed', {
+    expect(logger.info).toHaveBeenCalledWith('Command executed', {
       command: 'ping',
       user: 'user#1',
       guildId: 'guild1',

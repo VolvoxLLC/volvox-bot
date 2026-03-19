@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { logger } from '@/lib/logger';
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn() } }));
@@ -9,18 +10,17 @@ vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn() } }));
 const originalNodeEnv = process.env.NODE_ENV;
 
 // Suppress console output during error boundary tests
-const originalConsoleError = console.error;
 beforeEach(() => {
-  console.error = vi.fn();
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
-  console.error = originalConsoleError;
   if (originalNodeEnv === undefined) {
     vi.unstubAllEnvs();
   } else {
     vi.stubEnv('NODE_ENV', originalNodeEnv);
   }
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
@@ -49,6 +49,7 @@ describe('ErrorBoundary', () => {
     );
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it('renders custom title and description', () => {
