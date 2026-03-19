@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
+import { useEffect, useState } from 'react';
 import { ToggleSwitch } from '../toggle-switch';
 import { inputClasses } from './shared';
 
@@ -37,7 +38,56 @@ export function TriageSection({
   onEnabledChange,
   onFieldChange,
 }: TriageSectionProps) {
+  // Local string state for all numeric inputs to allow intermediate values like "" and "0."
+  const [rawValues, setRawValues] = useState({
+    classifyBudget: String(draftConfig.triage?.classifyBudget ?? 0),
+    respondBudget: String(draftConfig.triage?.respondBudget ?? 0),
+    defaultInterval: String(draftConfig.triage?.defaultInterval ?? 3000),
+    timeout: String(draftConfig.triage?.timeout ?? 30000),
+    contextMessages: String(draftConfig.triage?.contextMessages ?? 10),
+    maxBufferSize: String(draftConfig.triage?.maxBufferSize ?? 30),
+  });
+
+  // Sync from external draftConfig changes (e.g. reset/load)
+  useEffect(() => {
+    setRawValues({
+      classifyBudget: String(draftConfig.triage?.classifyBudget ?? 0),
+      respondBudget: String(draftConfig.triage?.respondBudget ?? 0),
+      defaultInterval: String(draftConfig.triage?.defaultInterval ?? 3000),
+      timeout: String(draftConfig.triage?.timeout ?? 30000),
+      contextMessages: String(draftConfig.triage?.contextMessages ?? 10),
+      maxBufferSize: String(draftConfig.triage?.maxBufferSize ?? 30),
+    });
+  }, [
+    draftConfig.triage?.classifyBudget,
+    draftConfig.triage?.respondBudget,
+    draftConfig.triage?.defaultInterval,
+    draftConfig.triage?.timeout,
+    draftConfig.triage?.contextMessages,
+    draftConfig.triage?.maxBufferSize,
+  ]);
+
   if (!draftConfig.triage) return null;
+
+  /** Update raw string value on change; commit parsed value on blur */
+  function handleNumericChange(field: keyof typeof rawValues, value: string) {
+    setRawValues((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleNumericBlur(
+    field: keyof typeof rawValues,
+    configField: string,
+    fallback: number,
+    min: number,
+  ) {
+    const num = parseNumberInput(rawValues[field], min);
+    if (num !== undefined) onFieldChange(configField, num);
+    // Reset raw to canonical value from draftConfig (or fallback if still undefined)
+    setRawValues((prev) => ({
+      ...prev,
+      [field]: String((draftConfig.triage as Record<string, unknown>)?.[configField] ?? fallback),
+    }));
+  }
 
   return (
     <Card>
@@ -90,11 +140,9 @@ export function TriageSection({
               type="number"
               step="0.01"
               min={0}
-              value={draftConfig.triage?.classifyBudget ?? 0}
-              onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 0);
-                if (num !== undefined) onFieldChange('classifyBudget', num);
-              }}
+              value={rawValues.classifyBudget}
+              onChange={(e) => handleNumericChange('classifyBudget', e.target.value)}
+              onBlur={() => handleNumericBlur('classifyBudget', 'classifyBudget', 0, 0)}
               disabled={saving}
               className={inputClasses}
             />
@@ -106,11 +154,9 @@ export function TriageSection({
               type="number"
               step="0.01"
               min={0}
-              value={draftConfig.triage?.respondBudget ?? 0}
-              onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 0);
-                if (num !== undefined) onFieldChange('respondBudget', num);
-              }}
+              value={rawValues.respondBudget}
+              onChange={(e) => handleNumericChange('respondBudget', e.target.value)}
+              onBlur={() => handleNumericBlur('respondBudget', 'respondBudget', 0, 0)}
               disabled={saving}
               className={inputClasses}
             />
@@ -123,11 +169,9 @@ export function TriageSection({
               id="default-interval-ms"
               type="number"
               min={1}
-              value={draftConfig.triage?.defaultInterval ?? 3000}
-              onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 1);
-                if (num !== undefined) onFieldChange('defaultInterval', num);
-              }}
+              value={rawValues.defaultInterval}
+              onChange={(e) => handleNumericChange('defaultInterval', e.target.value)}
+              onBlur={() => handleNumericBlur('defaultInterval', 'defaultInterval', 3000, 1)}
               disabled={saving}
               className={inputClasses}
             />
@@ -138,11 +182,9 @@ export function TriageSection({
               id="timeout-ms"
               type="number"
               min={1}
-              value={draftConfig.triage?.timeout ?? 30000}
-              onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 1);
-                if (num !== undefined) onFieldChange('timeout', num);
-              }}
+              value={rawValues.timeout}
+              onChange={(e) => handleNumericChange('timeout', e.target.value)}
+              onBlur={() => handleNumericBlur('timeout', 'timeout', 30000, 1)}
               disabled={saving}
               className={inputClasses}
             />
@@ -155,11 +197,9 @@ export function TriageSection({
               id="context-messages"
               type="number"
               min={1}
-              value={draftConfig.triage?.contextMessages ?? 10}
-              onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 1);
-                if (num !== undefined) onFieldChange('contextMessages', num);
-              }}
+              value={rawValues.contextMessages}
+              onChange={(e) => handleNumericChange('contextMessages', e.target.value)}
+              onBlur={() => handleNumericBlur('contextMessages', 'contextMessages', 10, 1)}
               disabled={saving}
               className={inputClasses}
             />
@@ -170,11 +210,9 @@ export function TriageSection({
               id="max-buffer-size"
               type="number"
               min={1}
-              value={draftConfig.triage?.maxBufferSize ?? 30}
-              onChange={(e) => {
-                const num = parseNumberInput(e.target.value, 1);
-                if (num !== undefined) onFieldChange('maxBufferSize', num);
-              }}
+              value={rawValues.maxBufferSize}
+              onChange={(e) => handleNumericChange('maxBufferSize', e.target.value)}
+              onBlur={() => handleNumericBlur('maxBufferSize', 'maxBufferSize', 30, 1)}
               disabled={saving}
               className={inputClasses}
             />
