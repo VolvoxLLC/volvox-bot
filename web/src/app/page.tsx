@@ -94,20 +94,20 @@ export default function LandingPage() {
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <title>Close menu</title>
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+                  d='M6 18L18 6M6 6l12 12'
                 />
               </svg>
             ) : (
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <title>Open menu</title>
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
+                  d='M4 6h16M4 12h16M4 18h16'
                 />
               </svg>
             )}
@@ -142,7 +142,7 @@ export default function LandingPage() {
                 Pricing
               </button>
               <a
-                href="https://docs.volvox.dev"
+                href="https://docs.volvox.bot"
                 className="text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
               >
                 Docs

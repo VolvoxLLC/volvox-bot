@@ -79,7 +79,9 @@ export function Pricing() {
           {/* Toggle */}
           <div className="flex items-center justify-center gap-4">
             <span
-              className={`text-sm font-medium transition-colors ${!isAnnual ? 'text-foreground' : 'text-muted-foreground'}`}
+              className={`text-sm font-medium transition-colors ${
+                isAnnual ? 'text-muted-foreground' : 'text-foreground'
+              }`}
             >
               Monthly
             </span>
@@ -98,7 +100,9 @@ export function Pricing() {
               />
             </button>
             <span
-              className={`text-sm font-medium transition-colors ${isAnnual ? 'text-foreground' : 'text-muted-foreground'}`}
+              className={`text-sm font-medium transition-colors ${
+                isAnnual ? 'text-foreground' : 'text-muted-foreground'
+              }`}
             >
               Annual <span className="text-accent font-bold">Save 36%</span>
             </span>
