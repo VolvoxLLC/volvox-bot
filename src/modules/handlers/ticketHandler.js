@@ -38,9 +38,7 @@ export async function handleTicketOpenButton(interaction) {
     return true;
   }
 
-  const modal = new ModalBuilder()
-    .setCustomId('ticket_open_modal')
-    .setTitle('Open Support Ticket');
+  const modal = new ModalBuilder().setCustomId('ticket_open_modal').setTitle('Open Support Ticket');
 
   const topicInput = new TextInputBuilder()
     .setCustomId('ticket_topic')
