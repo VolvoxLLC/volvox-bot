@@ -36,13 +36,18 @@ import { getConfig } from './config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-/** Map Discord activity type strings to ActivityType enum values */
+/**
+ * Map Discord activity type strings to ActivityType enum values.
+ *
+ * Note: Streaming is intentionally excluded — Discord requires a valid Twitch/YouTube
+ * `url` for Streaming activities, but the config schema has no URL field. Without a URL
+ * it silently renders as "Playing." Re-add Streaming here once URL support is added.
+ */
 const ACTIVITY_TYPE_MAP = {
   Playing: ActivityType.Playing,
   Watching: ActivityType.Watching,
   Listening: ActivityType.Listening,
   Competing: ActivityType.Competing,
-  Streaming: ActivityType.Streaming,
   Custom: ActivityType.Custom,
 };
 
@@ -204,14 +209,6 @@ export function resolvePresenceConfig(cfg) {
 }
 
 /**
- * Normalize a configured status message entry.
- *
- * @param {unknown} entry
- * @param {string | undefined} fallbackType
- * @param {string} source
- * @returns {{type: string, text: string} | null}
- */
-/**
  * Determine the type label for an entry for logging purposes.
  * @param {unknown} entry
  * @returns {string}
@@ -222,6 +219,14 @@ function getEntryTypeLabel(entry) {
   return typeof entry;
 }
 
+/**
+ * Normalize a configured status message entry.
+ *
+ * @param {unknown} entry
+ * @param {string | undefined} fallbackType
+ * @param {string} source
+ * @returns {{type: string, text: string} | null}
+ */
 function normalizeMessage(entry, fallbackType, source) {
   const resolvedFallbackType = resolveFallbackType(fallbackType, `${source}.fallbackType`);
 
@@ -417,9 +422,7 @@ export function applyPresence(client) {
  * @param {import('discord.js').Client} client - Discord client
  */
 function rotate(client) {
-  const cfg = getConfig()?.botStatus;
-  const messages = getRotationMessages(cfg);
-  currentActivityIndex = (currentActivityIndex + 1) % Math.max(messages.length, 1);
+  currentActivityIndex += 1;
   applyPresence(client);
 }
 
@@ -476,6 +479,8 @@ export function stopBotStatus() {
 /**
  * Reload bot status - called when config changes.
  * Stops any running rotation and restarts with new config.
+ * If the module is now disabled, clears Discord presence so the last activity
+ * doesn't remain stuck.
  *
  * @param {import('discord.js').Client} [client] - Discord client (uses cached if omitted)
  */
@@ -483,6 +488,17 @@ export function reloadBotStatus(client) {
   const target = client ?? _client;
   stopBotStatus();
   if (target) {
+    const cfg = getConfig()?.botStatus;
+    if (!cfg?.enabled) {
+      // Clear Discord presence so the last activity doesn't remain displayed
+      try {
+        target.user?.setPresence({ activities: [], status: 'online' });
+        info('Bot presence cleared (module disabled)');
+      } catch (err) {
+        warn('Failed to clear bot presence', { error: err.message });
+      }
+      return;
+    }
     startBotStatus(target);
   }
 }

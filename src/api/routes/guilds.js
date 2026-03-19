@@ -740,9 +740,12 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
   }
 
   const { path, value, topLevelKey } = result;
-  // botStatus is global (not per-guild) — in single-tenant deployments any guild admin
-  // may configure it. For multi-tenant scenarios, add bot-owner auth here.
-  const writeScope = topLevelKey === 'botStatus' ? 'global' : req.params.id;
+  // botStatus is global (not per-guild) — only bot owners may write to it.
+  const isGlobalBotStatusWrite = topLevelKey === 'botStatus';
+  if (isGlobalBotStatusWrite && req.authMethod === 'oauth' && !isOAuthBotOwner(req.user)) {
+    return res.status(403).json({ error: 'Only bot owners can update global bot status' });
+  }
+  const writeScope = isGlobalBotStatusWrite ? 'global' : req.params.id;
 
   try {
     await setConfigValue(path, value, writeScope === 'global' ? undefined : req.params.id);
