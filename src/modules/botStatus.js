@@ -51,6 +51,8 @@ const VALID_STATUSES = new Set(['online', 'idle', 'dnd', 'invisible']);
 
 const DEFAULT_LEGACY_ROTATE_INTERVAL_MS = 30_000;
 const DEFAULT_ROTATE_INTERVAL_MINUTES = 5;
+const DEFAULT_ACTIVITY_TYPE = 'Playing';
+const DEFAULT_ACTIVITY_TEXT = 'with Discord';
 
 /** @type {ReturnType<typeof setInterval> | null} */
 let rotateInterval = null;
@@ -102,6 +104,37 @@ function getPackageVersion() {
 }
 
 /**
+ * Check whether an activity type string is supported by Discord presence handling.
+ *
+ * @param {string | undefined} typeStr
+ * @returns {boolean}
+ */
+function isSupportedActivityType(typeStr) {
+  return typeof typeStr === 'string' && Object.hasOwn(ACTIVITY_TYPE_MAP, typeStr);
+}
+
+/**
+ * Resolve a fallback activity type string for normalization paths.
+ *
+ * @param {string | undefined} typeStr
+ * @param {string} source
+ * @returns {string}
+ */
+function resolveFallbackType(typeStr, source) {
+  if (!typeStr) return DEFAULT_ACTIVITY_TYPE;
+
+  if (isSupportedActivityType(typeStr)) {
+    return typeStr;
+  }
+
+  warn('Invalid bot status activity type, falling back to Playing', {
+    source,
+    invalidType: typeStr,
+  });
+  return DEFAULT_ACTIVITY_TYPE;
+}
+
+/**
  * Interpolate variables in an activity text string.
  *
  * @param {string} text - Activity template string
@@ -145,9 +178,15 @@ export function resolvePresenceStatus(cfg) {
  */
 export function resolveActivityType(typeStr) {
   if (!typeStr) return ActivityType.Playing;
-  return ACTIVITY_TYPE_MAP[typeStr] !== undefined
-    ? ACTIVITY_TYPE_MAP[typeStr]
-    : ActivityType.Playing;
+  if (isSupportedActivityType(typeStr)) {
+    return ACTIVITY_TYPE_MAP[typeStr];
+  }
+
+  warn('Invalid bot status activity type, falling back to Playing', {
+    source: 'botStatus',
+    invalidType: typeStr,
+  });
+  return ActivityType.Playing;
 }
 
 /**
@@ -168,24 +207,48 @@ export function resolvePresenceConfig(cfg) {
  *
  * @param {unknown} entry
  * @param {string | undefined} fallbackType
+ * @param {string} source
  * @returns {{type: string, text: string} | null}
  */
-function normalizeMessage(entry, fallbackType) {
+function normalizeMessage(entry, fallbackType, source) {
+  const resolvedFallbackType = resolveFallbackType(fallbackType, `${source}.fallbackType`);
+
   if (typeof entry === 'string') {
     const text = entry.trim();
-    if (!text) return null;
-    return { type: fallbackType ?? 'Playing', text };
+    if (!text) {
+      warn('Ignoring empty bot status message entry', { source });
+      return null;
+    }
+    return { type: resolvedFallbackType, text };
   }
 
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    warn('Ignoring invalid bot status message entry', {
+      source,
+      entryType: Array.isArray(entry) ? 'array' : entry === null ? 'null' : typeof entry,
+    });
     return null;
   }
 
   const rawText = typeof entry.text === 'string' ? entry.text.trim() : '';
-  if (!rawText) return null;
+  if (!rawText) {
+    warn('Ignoring bot status message without valid text', { source });
+    return null;
+  }
 
-  const type =
-    typeof entry.type === 'string' && entry.type.trim() ? entry.type : (fallbackType ?? 'Playing');
+  let type = resolvedFallbackType;
+  if (typeof entry.type === 'string' && entry.type.trim()) {
+    if (isSupportedActivityType(entry.type)) {
+      type = entry.type;
+    } else {
+      warn('Invalid bot status message type, falling back to configured/default type', {
+        source,
+        invalidType: entry.type,
+        fallbackType: resolvedFallbackType,
+      });
+    }
+  }
+
   return { type, text: rawText };
 }
 
@@ -199,24 +262,40 @@ export function getRotationMessages(cfg) {
   const rotationMessages = cfg?.rotation?.messages;
   if (Array.isArray(rotationMessages)) {
     const normalized = rotationMessages
-      .map((entry) => normalizeMessage(entry, cfg?.activityType))
+      .map((entry, index) =>
+        normalizeMessage(entry, cfg?.activityType, `botStatus.rotation.messages[${index}]`),
+      )
       .filter((entry) => entry !== null);
     if (normalized.length > 0) {
       return normalized;
+    }
+
+    if (rotationMessages.length > 0) {
+      warn('Configured botStatus.rotation.messages had no usable entries; falling back', {
+        fallback: Array.isArray(cfg?.activities) && cfg.activities.length > 0
+          ? 'botStatus.activities'
+          : 'default',
+      });
     }
   }
 
   const legacyActivities = cfg?.activities;
   if (Array.isArray(legacyActivities)) {
     const normalized = legacyActivities
-      .map((entry) => normalizeMessage(entry, cfg?.activityType))
+      .map((entry, index) =>
+        normalizeMessage(entry, cfg?.activityType, `botStatus.activities[${index}]`),
+      )
       .filter((entry) => entry !== null);
     if (normalized.length > 0) {
       return normalized;
     }
+
+    if (legacyActivities.length > 0) {
+      warn('Configured botStatus.activities had no usable entries; using default activity', {});
+    }
   }
 
-  return [{ type: 'Playing', text: 'with Discord' }];
+  return [{ type: DEFAULT_ACTIVITY_TYPE, text: DEFAULT_ACTIVITY_TEXT }];
 }
 
 /**
