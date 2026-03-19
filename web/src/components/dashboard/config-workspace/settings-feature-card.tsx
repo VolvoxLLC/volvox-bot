@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 import type { ConfigFeatureId } from './types';
 
 interface SettingsFeatureCardProps {
@@ -19,6 +20,7 @@ interface SettingsFeatureCardProps {
   onEnabledChange?: (enabled: boolean) => void;
   disabled?: boolean;
   forceOpenAdvanced?: boolean;
+  className?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ interface SettingsFeatureCardProps {
  * @param onEnabledChange - Optional handler invoked with the new enabled state when the switch is toggled; when omitted, no switch is shown.
  * @param disabled - When true, the enabled switch (if rendered) is disabled.
  * @param forceOpenAdvanced - When true, ensures the Advanced section is opened.
+ * @param className - Optional additional class names merged into the root card.
  * @returns The rendered feature card element.
  */
 export function SettingsFeatureCard({
@@ -45,6 +48,7 @@ export function SettingsFeatureCard({
   onEnabledChange,
   disabled = false,
   forceOpenAdvanced = false,
+  className,
 }: SettingsFeatureCardProps) {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const switchId = useId();
@@ -60,7 +64,10 @@ export function SettingsFeatureCard({
   return (
     <Card
       id={`feature-${featureId}`}
-      className="scroll-mt-24 transition-shadow duration-200 motion-reduce:transition-none"
+      className={cn(
+        'scroll-mt-24 min-w-0 transition-shadow duration-200 motion-reduce:transition-none',
+        className,
+      )}
     >
       <CardHeader>
         <div className="flex items-start justify-between gap-4">

@@ -34,6 +34,7 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from './empty-state';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
@@ -102,6 +103,19 @@ function formatDeltaPercent(deltaPercent: number | null): string {
   if (deltaPercent === null) return '—';
   if (deltaPercent === 0) return '0%';
   return `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%`;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) {
+    return `rgba(88, 101, 242, ${alpha})`;
+  }
+
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export function AnalyticsDashboard() {
@@ -278,6 +292,12 @@ export function AnalyticsDashboard() {
   );
 
   const topChannels = analytics?.topChannels ?? analytics?.channelActivity ?? [];
+  const hasMessageVolumeData = (analytics?.messageVolume?.length ?? 0) > 0;
+  const hasModelUsageData = modelUsageData.length > 0;
+  const hasTokenUsageData =
+    (analytics?.aiUsage.tokens.prompt ?? 0) > 0 || (analytics?.aiUsage.tokens.completion ?? 0) > 0;
+  const hasTopChannelsData = topChannels.length > 0;
+  const canShowNoDataStates = !loading && analytics !== null;
 
   const kpiCards = useMemo<KpiCard[]>(
     () => [
@@ -643,86 +663,141 @@ export function AnalyticsDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
+      <div className="grid gap-4 xl:grid-cols-12">
+        <Card className="dashboard-panel xl:col-span-6">
           <CardHeader>
             <CardTitle>Message volume</CardTitle>
             <CardDescription>Messages and AI requests over the selected range.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={analytics?.messageVolume ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                  <XAxis dataKey="label" minTickGap={20} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="messages"
-                    name="Messages"
-                    stroke={chart.primary}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="aiRequests"
-                    name="AI Requests"
-                    stroke={chart.success}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {hasMessageVolumeData ? (
+              <div className="h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={analytics?.messageVolume ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                    <XAxis dataKey="label" minTickGap={20} tick={{ fill: chart.tooltipText }} />
+                    <YAxis allowDecimals={false} tick={{ fill: chart.tooltipText }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chart.tooltipBg,
+                        borderColor: chart.tooltipBorder,
+                        borderRadius: 10,
+                        color: chart.tooltipText,
+                      }}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="messages"
+                      name="Messages"
+                      stroke={chart.primary}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="aiRequests"
+                      name="AI Requests"
+                      stroke={chart.success}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : canShowNoDataStates ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No message volume yet"
+                description="Run activity in this range to populate the trend chart."
+                className="min-h-[340px]"
+              />
+            ) : (
+              <div className="min-h-[340px]" aria-hidden="true" />
+            )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="dashboard-panel xl:col-span-6">
           <CardHeader>
             <CardTitle>AI usage breakdown</CardTitle>
             <CardDescription>Request distribution by model and token usage.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 lg:grid-cols-2">
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={modelUsageData}
-                    dataKey="requests"
-                    nameKey="model"
-                    outerRadius={80}
-                    label
-                  >
-                    {modelUsageData.map((entry) => (
-                      <Cell key={entry.model} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tokenBreakdownData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                  <XAxis dataKey="label" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="prompt" name="Prompt tokens" fill={chart.primary} />
-                  <Bar dataKey="completion" name="Completion tokens" fill={chart.success} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <CardContent className="space-y-5">
+            {hasModelUsageData ? (
+              <div className="h-[160px] rounded-xl border border-border/60 bg-background/50 p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={modelUsageData}
+                      dataKey="requests"
+                      nameKey="model"
+                      outerRadius={72}
+                      labelLine={false}
+                    >
+                      {modelUsageData.map((entry) => (
+                        <Cell key={entry.model} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chart.tooltipBg,
+                        borderColor: chart.tooltipBorder,
+                        borderRadius: 10,
+                        color: chart.tooltipText,
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : canShowNoDataStates ? (
+              <EmptyState
+                icon={Bot}
+                title="No model usage"
+                description="AI model distribution appears after AI requests are processed."
+                className="min-h-[160px]"
+              />
+            ) : (
+              <div className="min-h-[160px]" aria-hidden="true" />
+            )}
+
+            {hasTokenUsageData ? (
+              <div className="h-[160px] rounded-xl border border-border/60 bg-background/50 p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={tokenBreakdownData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                    <XAxis dataKey="label" tick={{ fill: chart.tooltipText }} />
+                    <YAxis allowDecimals={false} tick={{ fill: chart.tooltipText }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chart.tooltipBg,
+                        borderColor: chart.tooltipBorder,
+                        borderRadius: 10,
+                        color: chart.tooltipText,
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="prompt" name="Prompt tokens" fill={chart.primary} />
+                    <Bar dataKey="completion" name="Completion tokens" fill={chart.success} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : canShowNoDataStates ? (
+              <EmptyState
+                icon={Coins}
+                title="No token metrics"
+                description="Token usage will appear once prompt/completion usage is recorded."
+                className="min-h-[160px]"
+              />
+            ) : (
+              <div className="min-h-[160px]" aria-hidden="true" />
+            )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
+      <div className="grid gap-4 xl:grid-cols-12">
+        <Card className="dashboard-panel xl:col-span-6">
           <CardHeader>
             <CardTitle>Top channels breakdown</CardTitle>
             <CardDescription>
@@ -730,41 +805,64 @@ export function AnalyticsDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topChannels}
-                  layout="vertical"
-                  margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                  <XAxis type="number" allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={120} />
-                  <Tooltip />
-                  <Bar
-                    dataKey="messages"
-                    fill={chart.success}
-                    radius={[0, 6, 6, 0]}
-                    onClick={(_value, index) => {
-                      const selected = topChannels[index]?.channelId;
-                      if (!selected) return;
-                      setChannelFilter((current) => (current === selected ? null : selected));
-                    }}
+            {hasTopChannelsData ? (
+              <div className="h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={topChannels}
+                    layout="vertical"
+                    margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
                   >
-                    {topChannels.map((channel) => (
-                      <Cell
-                        key={channel.channelId}
-                        fill={channel.channelId === channelFilter ? chart.primary : chart.success}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                    <XAxis type="number" allowDecimals={false} tick={{ fill: chart.tooltipText }} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={140}
+                      tick={{ fill: chart.tooltipText }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chart.tooltipBg,
+                        borderColor: chart.tooltipBorder,
+                        borderRadius: 10,
+                        color: chart.tooltipText,
+                      }}
+                    />
+                    <Bar
+                      dataKey="messages"
+                      fill={chart.success}
+                      radius={[0, 6, 6, 0]}
+                      onClick={(_value, index) => {
+                        const selected = topChannels[index]?.channelId;
+                        if (!selected) return;
+                        setChannelFilter((current) => (current === selected ? null : selected));
+                      }}
+                    >
+                      {topChannels.map((channel) => (
+                        <Cell
+                          key={channel.channelId}
+                          fill={channel.channelId === channelFilter ? chart.primary : chart.success}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : canShowNoDataStates ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No channel activity"
+                description="Top channel breakdown appears when messages are recorded in the selected range."
+                className="min-h-[220px]"
+              />
+            ) : (
+              <div className="min-h-[220px]" aria-hidden="true" />
+            )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="dashboard-panel xl:col-span-6">
           <CardHeader>
             <CardTitle>Command usage stats</CardTitle>
             <CardDescription>Most used slash commands for the selected range.</CardDescription>
@@ -795,12 +893,14 @@ export function AnalyticsDashboard() {
                   </tbody>
                 </table>
               </div>
-            ) : (
+            ) : canShowNoDataStates ? (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                 {analytics?.commandUsage?.source === 'unavailable'
                   ? 'Command usage source is currently unavailable. Showing empty state until telemetry is ready.'
                   : 'No command usage found for this range.'}
               </div>
+            ) : (
+              <div className="min-h-[120px]" aria-hidden="true" />
             )}
           </CardContent>
         </Card>
@@ -930,7 +1030,7 @@ export function AnalyticsDashboard() {
         </div>
       ) : null}
 
-      <Card>
+      <Card className="dashboard-panel">
         <CardHeader>
           <CardTitle>Activity heatmap</CardTitle>
           <CardDescription>Message density by day of week and hour of day.</CardDescription>
@@ -975,7 +1075,7 @@ export function AnalyticsDashboard() {
                             backgroundColor:
                               value === 0
                                 ? 'transparent'
-                                : `rgba(88, 101, 242, ${alpha.toFixed(3)})`,
+                                : hexToRgba(chart.primary, Number(alpha.toFixed(3))),
                           }}
                         />
                       </td>

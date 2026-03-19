@@ -14,21 +14,27 @@ interface DashboardShellProps {
  */
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="dashboard-canvas dashboard-grid flex min-h-screen flex-col bg-background">
       <DashboardTitleSync />
       <Header />
 
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1">
         {/* Desktop sidebar */}
-        <aside className="hidden w-64 shrink-0 border-r bg-background md:block">
-          <div className="p-4">
+        <aside className="hidden min-h-0 w-80 shrink-0 border-r border-border/60 bg-gradient-to-b from-card/85 via-card/65 to-background/70 md:flex md:flex-col">
+          <div className="px-4 pt-5 pb-3">
             <ServerSelector />
           </div>
-          <Sidebar />
+          <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-3">
+            <Sidebar />
+          </div>
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-[1560px] p-3 md:p-6 lg:p-8">
+            <div className="dashboard-fade-in min-h-[calc(100vh-7.9rem)]">{children}</div>
+          </div>
+        </main>
       </div>
     </div>
   );

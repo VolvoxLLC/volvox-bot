@@ -1,0 +1,493 @@
+'use client';
+
+import { RefreshCw, Search, Ticket, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { EmptyState } from '@/components/dashboard/empty-state';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
+
+function TicketsSkeleton() {
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-16">ID</TableHead>
+            <TableHead>Topic</TableHead>
+            <TableHead>User</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="hidden md:table-cell">Closed</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 8 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
+            <TableRow key={`skeleton-${i}`}>
+              <TableCell>
+                <Skeleton className="h-4 w-8" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-40" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-28 font-mono" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-16" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+interface TicketSummary {
+  id: number;
+  guild_id: string;
+  user_id: string;
+  topic: string | null;
+  status: string;
+  thread_id: string;
+  channel_id: string | null;
+  closed_by: string | null;
+  close_reason: string | null;
+  created_at: string;
+  closed_at: string | null;
+}
+
+interface TicketsApiResponse {
+  tickets: TicketSummary[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+interface TicketStats {
+  openCount: number;
+  avgResolutionSeconds: number;
+  ticketsThisWeek: number;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds === 0) return 'N/A';
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    return `${days}d ${hours % 24}h`;
+  }
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+const PAGE_SIZE = 25;
+
+export default function TicketsClient() {
+  const router = useRouter();
+
+  const [tickets, setTickets] = useState<TicketSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const [stats, setStats] = useState<TicketStats | null>(null);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(searchTimerRef.current);
+  }, [search]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  const onGuildChange = useCallback(() => {
+    setTickets([]);
+    setTotal(0);
+    setPage(1);
+    setError(null);
+    setStats(null);
+  }, []);
+
+  const guildId = useGuildSelection({ onGuildChange });
+
+  const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
+
+  // Fetch stats — extracted as a reusable callback
+  const fetchStats = useCallback(async (targetGuildId: string, signal?: AbortSignal) => {
+    try {
+      const res = await fetch(
+        `/api/guilds/${encodeURIComponent(targetGuildId)}/tickets/stats`,
+        signal ? { signal } : undefined,
+      );
+      if (res.ok) {
+        const data = (await res.json()) as TicketStats;
+        setStats(data);
+      }
+    } catch {
+      // Non-critical (includes AbortError)
+    }
+  }, []);
+
+  // Fetch stats on guild change
+  useEffect(() => {
+    if (!guildId) return;
+    const controller = new AbortController();
+    void fetchStats(guildId, controller.signal);
+    return () => controller.abort();
+  }, [guildId, fetchStats]);
+
+  // Fetch tickets
+  const fetchTickets = useCallback(
+    async (opts: { guildId: string; status: string; user: string; page: number }) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const requestId = ++requestIdRef.current;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams();
+        params.set('page', String(opts.page));
+        params.set('limit', String(PAGE_SIZE));
+        if (opts.status) params.set('status', opts.status);
+        if (opts.user) params.set('user', opts.user);
+
+        const res = await fetch(
+          `/api/guilds/${encodeURIComponent(opts.guildId)}/tickets?${params.toString()}`,
+          { signal: controller.signal },
+        );
+
+        if (requestId !== requestIdRef.current) return;
+
+        if (res.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        if (!res.ok) {
+          throw new Error(`Failed to fetch tickets (${res.status})`);
+        }
+
+        const data = (await res.json()) as TicketsApiResponse;
+        setTickets(data.tickets);
+        setTotal(data.total);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (requestId !== requestIdRef.current) return;
+        setError(err instanceof Error ? err.message : 'Failed to fetch tickets');
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [onUnauthorized],
+  );
+
+  useEffect(() => {
+    if (!guildId) return;
+    void fetchTickets({
+      guildId,
+      status: statusFilter,
+      user: debouncedSearch,
+      page,
+    });
+  }, [guildId, statusFilter, debouncedSearch, page, fetchTickets]);
+
+  const handleRefresh = useCallback(() => {
+    if (!guildId) return;
+    void fetchStats(guildId);
+    void fetchTickets({
+      guildId,
+      status: statusFilter,
+      user: debouncedSearch,
+      page,
+    });
+  }, [guildId, fetchStats, fetchTickets, statusFilter, debouncedSearch, page]);
+
+  const handleRowClick = useCallback(
+    (ticketId: number) => {
+      if (!guildId) return;
+      router.push(`/dashboard/tickets/${ticketId}?guildId=${encodeURIComponent(guildId)}`);
+    },
+    [router, guildId],
+  );
+
+  const handleClearSearch = useCallback(() => {
+    setSearch('');
+    setDebouncedSearch('');
+    setPage(1);
+  }, []);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        icon={Ticket}
+        title="Tickets"
+        description="Manage support tickets and view transcripts."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-primary/12 to-background p-4 md:p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Open Tickets
+            </div>
+            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+              {stats.openCount}
+            </div>
+          </div>
+          <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-secondary/10 to-background p-4 md:p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Avg Resolution
+            </div>
+            <div className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+              {formatDuration(stats.avgResolutionSeconds)}
+            </div>
+          </div>
+          <div className="dashboard-panel rounded-2xl p-4 md:p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              This Week
+            </div>
+            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+              {stats.ticketsThisWeek}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No guild selected */}
+      {!guildId && (
+        <EmptyState
+          icon={Ticket}
+          title="Select a server"
+          description="Choose a server from the sidebar to view tickets."
+        />
+      )}
+
+      {/* Content */}
+      {guildId && (
+        <>
+          {/* Filters */}
+          <div className="dashboard-panel flex flex-wrap items-center gap-3 rounded-2xl p-4 md:p-5">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="h-10 rounded-xl border-border/70 bg-background/70 pl-9 pr-8"
+                placeholder="Search by user ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search tickets by user"
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={handleClearSearch}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                setStatusFilter(val === 'all' ? '' : val);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-10 w-[170px] rounded-xl border-border/70 bg-background/70">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {total > 0 && (
+              <span className="text-sm text-muted-foreground tabular-nums">
+                {total.toLocaleString()} {total === 1 ? 'ticket' : 'tickets'}
+              </span>
+            )}
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+            >
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+
+          {/* Table */}
+          {loading && tickets.length === 0 ? (
+            <TicketsSkeleton />
+          ) : tickets.length > 0 ? (
+            <div className="dashboard-panel overflow-x-auto rounded-2xl">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">ID</TableHead>
+                    <TableHead>Topic</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="hidden md:table-cell">Closed</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tickets.map((ticket) => (
+                    <TableRow
+                      key={ticket.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      tabIndex={0}
+                      onClick={() => handleRowClick(ticket.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleRowClick(ticket.id);
+                        }
+                      }}
+                    >
+                      <TableCell className="font-mono text-sm">#{ticket.id}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {ticket.topic || (
+                          <span className="text-muted-foreground italic">No topic</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{ticket.user_id}</TableCell>
+                      <TableCell>
+                        <Badge variant={ticket.status === 'open' ? 'default' : 'secondary'}>
+                          {ticket.status === 'open' ? 'Open' : 'Closed'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(ticket.created_at)}
+                      </TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                        {ticket.closed_at ? formatDate(ticket.closed_at) : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState
+              icon={Ticket}
+              title={statusFilter || debouncedSearch ? 'No matching tickets' : 'No tickets found'}
+              description={
+                statusFilter || debouncedSearch
+                  ? 'Try adjusting status or user filters.'
+                  : 'Tickets will appear here once they are created.'
+              }
+            />
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="dashboard-chip flex items-center justify-between rounded-xl px-3 py-2">
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

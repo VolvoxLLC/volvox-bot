@@ -9,23 +9,23 @@ import { cn } from '@/lib/utils';
 
 const LEVEL_STYLES: Record<LogLevel, { badge: string; row: string; label: string }> = {
   error: {
-    badge: 'text-red-400 font-bold',
-    row: 'hover:bg-red-950/30',
+    badge: 'text-destructive font-semibold',
+    row: 'hover:bg-destructive/10',
     label: 'ERR ',
   },
   warn: {
-    badge: 'text-yellow-400 font-bold',
-    row: 'hover:bg-yellow-950/30',
+    badge: 'text-amber-500 font-semibold',
+    row: 'hover:bg-amber-500/10',
     label: 'WARN',
   },
   info: {
-    badge: 'text-blue-400',
-    row: 'hover:bg-blue-950/20',
+    badge: 'text-primary',
+    row: 'hover:bg-primary/10',
     label: 'INFO',
   },
   debug: {
-    badge: 'text-gray-500',
-    row: 'hover:bg-gray-800/30',
+    badge: 'text-muted-foreground',
+    row: 'hover:bg-muted/50',
     label: 'DBUG',
   },
 };
@@ -68,7 +68,7 @@ function LogRow({
   const hasMeta = entry.meta && Object.keys(entry.meta).length > 0;
 
   const rowClassName = cn(
-    'group border-b border-gray-800/50 px-3 py-1 font-mono text-xs transition-colors',
+    'group border-b border-border/60 px-3 py-1.5 font-mono text-xs transition-colors',
     level.row,
   );
 
@@ -76,29 +76,29 @@ function LogRow({
   const mainRow = (
     <div className="flex items-start gap-2 min-w-0">
       {/* Timestamp */}
-      <span className="shrink-0 text-gray-600 select-none">{time}</span>
+      <span className="shrink-0 text-muted-foreground/90 select-none">{time}</span>
 
       {/* Level badge */}
       <span className={cn('shrink-0 min-w-[3rem] select-none', level.badge)}>{level.label}</span>
 
       {/* Module */}
       {entry.module && (
-        <span className="shrink-0 text-purple-400 max-w-[120px] truncate">[{entry.module}]</span>
+        <span className="shrink-0 text-secondary max-w-[120px] truncate">[{entry.module}]</span>
       )}
 
       {/* Message */}
-      <span className="text-gray-200 break-words min-w-0">{entry.message}</span>
+      <span className="text-foreground break-words min-w-0">{entry.message}</span>
 
       {/* Expand indicator */}
       {hasMeta && (
-        <span className="ml-auto shrink-0 text-gray-600 select-none">{isExpanded ? '▲' : '▼'}</span>
+        <span className="ml-auto shrink-0 text-muted-foreground select-none">{isExpanded ? '▲' : '▼'}</span>
       )}
     </div>
   );
 
   if (hasMeta) {
     return (
-      <div className={cn('border-b border-gray-800/50', level.row)}>
+      <div className={cn('border-b border-border/60', level.row)}>
         <button
           type="button"
           className="group w-full cursor-pointer px-3 py-1 font-mono text-xs text-left transition-colors"
@@ -110,7 +110,7 @@ function LogRow({
 
         {/* Expanded metadata — outside the button so text is selectable */}
         {isExpanded && (
-          <div className="mt-1 ml-14 rounded bg-gray-900 p-2 text-gray-400">
+          <div className="mt-1 ml-14 rounded border border-border/60 bg-muted/40 p-2 text-muted-foreground">
             <pre className="whitespace-pre-wrap break-words text-[11px]">
               {JSON.stringify(entry.meta, null, 2)}
             </pre>
@@ -185,18 +185,18 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
   }, []);
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-gray-800 bg-gray-950 overflow-hidden">
+    <div className="flex h-full min-h-[18rem] flex-col overflow-hidden rounded-xl border border-border/70 bg-background/75">
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-gray-800 bg-gray-900 px-3 py-2">
+      <div className="flex items-center justify-between border-b border-border/70 bg-muted/35 px-3 py-2">
         <StatusIndicator status={status} />
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600">{logs.length} entries</span>
+          <span className="text-xs text-muted-foreground">{logs.length} entries</span>
           <Button
             size="sm"
             variant="outline"
             className={cn(
-              'h-6 px-2 text-xs border-gray-700 hover:bg-gray-800',
-              paused && 'border-yellow-600 text-yellow-400 hover:bg-yellow-950/30',
+              'h-7 rounded-md border-border/80 px-2 text-xs',
+              paused && 'border-amber-500/70 text-amber-500 hover:bg-amber-500/10',
             )}
             onClick={togglePause}
           >
@@ -205,7 +205,7 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
           <Button
             size="sm"
             variant="outline"
-            className="h-6 px-2 text-xs border-gray-700 hover:bg-gray-800"
+            className="h-7 rounded-md border-border/80 px-2 text-xs"
             onClick={onClear}
           >
             Clear
@@ -221,7 +221,7 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
         style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" }}
       >
         {logs.length === 0 ? (
-          <div className="flex h-32 items-center justify-center text-xs text-gray-600">
+          <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
             {status === 'connected'
               ? 'Waiting for logs…'
               : status === 'reconnecting'

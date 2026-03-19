@@ -37,7 +37,7 @@ export function ConfigSearch({ value, onChange, results, onSelect }: ConfigSearc
           id="config-search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="pl-9 pr-9"
+          className="h-10 rounded-xl border-input/80 bg-background/80 pl-9 pr-9"
           placeholder="Search settings, channels, roles, or features..."
           aria-label="Search settings"
         />
@@ -56,7 +56,7 @@ export function ConfigSearch({ value, onChange, results, onSelect }: ConfigSearc
       </div>
 
       {normalizedValue.length > 0 && (
-        <div className="rounded-md border bg-card p-2">
+        <div className="rounded-xl border border-border/70 bg-background/70 p-2">
           {limitedResults.length === 0 ? (
             <p className="px-2 py-1 text-xs text-muted-foreground">No matching settings.</p>
           ) : (
@@ -66,7 +66,7 @@ export function ConfigSearch({ value, onChange, results, onSelect }: ConfigSearc
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-auto w-full justify-start px-2 py-2 text-left"
+                    className="h-auto w-full justify-start rounded-lg px-2 py-2 text-left"
                     onClick={() => onSelect(item)}
                   >
                     <span className="flex flex-col">

@@ -1,8 +1,10 @@
 'use client';
 
+import { ScrollText } from 'lucide-react';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
@@ -23,25 +25,31 @@ export default function LogsPage() {
 
   return (
     <ErrorBoundary title="Logs failed to load">
-      <div className="flex h-[calc(100vh-7rem)] flex-col gap-6">
+      <div className="min-h-0 space-y-6">
+        <PageHeader
+          icon={ScrollText}
+          title="Logs"
+          description="Monitor bot health and stream live logs with filters."
+        />
+
         {/* Health cards + restart history */}
         <HealthSection />
 
         {/* Log stream section */}
-        <div className="flex flex-1 flex-col gap-3 min-h-0">
+        <section className="dashboard-panel min-h-[24rem] space-y-4 rounded-2xl p-4 md:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h1 className="text-xl font-semibold">Log Stream</h1>
+              <h2 className="text-xl font-semibold tracking-tight">Log Stream</h2>
               <p className="text-sm text-muted-foreground">Real-time logs from the bot API</p>
             </div>
           </div>
 
           <LogFilters onFilterChange={sendFilter} disabled={status !== 'connected'} />
 
-          <div className="flex-1 min-h-0">
+          <div className="min-h-[18rem]">
             <LogViewer logs={logs} status={status} onClear={clearLogs} />
           </div>
-        </div>
+        </section>
       </div>
     </ErrorBoundary>
   );

@@ -180,6 +180,89 @@
   opacity: 0.03;
 }
 
+/* ─── Dashboard canvas & panels ───────────────────────────────────────────── */
+
+.dashboard-canvas {
+  position: relative;
+  isolation: isolate;
+}
+
+.dashboard-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(1200px 600px at 8% -10%, hsl(var(--primary) / 0.14), transparent 65%),
+    radial-gradient(900px 500px at 95% 0%, hsl(var(--secondary) / 0.1), transparent 60%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+}
+
+.dark .dashboard-canvas::before {
+  background:
+    radial-gradient(1200px 600px at 8% -10%, hsl(var(--primary) / 0.16), transparent 65%),
+    radial-gradient(900px 500px at 95% 0%, hsl(var(--secondary) / 0.08), transparent 60%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+}
+
+.dashboard-grid {
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.03) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.dark .dashboard-grid {
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px);
+}
+
+.dashboard-panel {
+  border: 1px solid hsl(var(--border) / 0.7);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--card) / 0.94) 0%,
+    hsl(var(--card) / 0.9) 100%
+  );
+  box-shadow:
+    0 1px 0 hsl(var(--foreground) / 0.03),
+    0 18px 30px -24px hsl(var(--foreground) / 0.28);
+}
+
+.dark .dashboard-panel {
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--card) / 0.9) 0%,
+    hsl(var(--card) / 0.84) 100%
+  );
+  box-shadow:
+    0 1px 0 hsl(var(--foreground) / 0.06),
+    0 20px 36px -28px hsl(0 0% 0% / 0.8);
+}
+
+.dashboard-chip {
+  border: 1px solid hsl(var(--border) / 0.9);
+  background: hsl(var(--background) / 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.dashboard-fade-in {
+  animation: dashboard-fade-in 260ms ease-out;
+}
+
+@keyframes dashboard-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ─── Floating nav island ─────────────────────────────────────────────────── */
 
 .nav-island {

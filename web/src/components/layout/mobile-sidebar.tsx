@@ -19,7 +19,7 @@ export function MobileSidebar() {
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden"
+        className="dashboard-chip rounded-xl md:hidden"
         onClick={() => setOpen(true)}
         aria-label="Toggle menu"
       >
@@ -27,14 +27,19 @@ export function MobileSidebar() {
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-64 p-0">
-          <SheetHeader className="p-4 pb-0">
-            <SheetTitle>Navigation</SheetTitle>
+        <SheetContent
+          side="left"
+          className="w-[min(21.5rem,92vw)] border-r border-border/70 bg-gradient-to-b from-card via-card/90 to-background p-0"
+        >
+          <SheetHeader className="border-b border-border/60 p-4 pb-3 text-left">
+            <SheetTitle className="text-base font-semibold tracking-tight">Control Room</SheetTitle>
           </SheetHeader>
-          <div className="p-4">
+          <div className="p-4 pb-2">
             <ServerSelector />
           </div>
-          <Sidebar onNavClick={() => setOpen(false)} />
+          <div className="px-4 pb-4">
+            <Sidebar onNavClick={() => setOpen(false)} />
+          </div>
         </SheetContent>
       </Sheet>
     </>

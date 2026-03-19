@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { EmptyState } from './empty-state';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -235,7 +236,7 @@ export function MemberTable({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-border/50 bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -282,12 +283,13 @@ export function MemberTable({
               <TableSkeleton />
             ) : showEmpty ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-16 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Users className="h-8 w-8" />
-                    <p className="text-sm font-medium">No members found</p>
-                    <p className="text-xs">Try adjusting your search or filters.</p>
-                  </div>
+                <TableCell colSpan={8} className="py-20 text-center">
+                  <EmptyState
+                    icon={Users}
+                    title="No members found"
+                    description="Try adjusting your search or filters."
+                    className="min-h-0 border-0 bg-transparent p-0"
+                  />
                 </TableCell>
               </TableRow>
             ) : (

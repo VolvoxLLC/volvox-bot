@@ -104,10 +104,10 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
   }, []);
 
   const inputCls =
-    'h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
+    'h-10 rounded-xl border border-input/80 bg-background/80 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2.5">
       {/* Level selector */}
       <select
         value={level ?? 'all'}
@@ -131,7 +131,7 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         disabled={disabled}
         placeholder="Module (e.g. triage)"
         aria-label="Filter by module name"
-        className={`${inputCls} w-40`}
+        className={`${inputCls} w-52`}
       />
 
       {/* Search */}
@@ -142,7 +142,7 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         disabled={disabled}
         placeholder="Search messages…"
         aria-label="Search log messages"
-        className={`${inputCls} w-52`}
+        className={`${inputCls} w-64`}
       />
 
       {/* Clear */}
@@ -151,7 +151,7 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         variant="outline"
         onClick={handleClear}
         disabled={disabled}
-        className="h-8 px-3 text-xs"
+        className="h-10 rounded-xl px-3 text-sm"
       >
         Clear filters
       </Button>

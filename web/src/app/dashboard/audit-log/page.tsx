@@ -3,6 +3,8 @@
 import { ChevronDown, ChevronRight, ClipboardList, RefreshCw, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { EmptyState } from '@/components/dashboard/empty-state';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
@@ -268,48 +270,69 @@ export default function AuditLogPage() {
   return (
     <ErrorBoundary title="Audit log failed to load">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-              <ClipboardList className="h-6 w-6" />
-              Audit Log
-            </h2>
-            <p className="text-muted-foreground">
-              Track all admin actions and configuration changes.
-            </p>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 self-start sm:self-auto"
-            onClick={handleRefresh}
-            disabled={!guildId || loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        <PageHeader
+          icon={ClipboardList}
+          title="Audit Log"
+          description="Track all admin actions and configuration changes."
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleRefresh}
+              disabled={!guildId || loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          }
+        />
 
         {/* No guild selected */}
         {!guildId && (
-          <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-            <p className="text-sm text-muted-foreground">
-              Select a server from the sidebar to view the audit log.
-            </p>
-          </div>
+          <EmptyState
+            icon={ClipboardList}
+            title="Select a server"
+            description="Choose a server from the sidebar to view the audit log."
+          />
         )}
 
         {/* Content */}
         {guildId && (
           <>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-primary/12 to-background p-4 md:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Total Entries
+                </p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+                  {total.toLocaleString()}
+                </p>
+              </div>
+              <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-secondary/10 to-background p-4 md:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Active Filters
+                </p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+                  {[actionFilter, debouncedUserSearch, startDate, endDate].filter(Boolean).length}
+                </p>
+              </div>
+              <div className="dashboard-panel rounded-2xl p-4 md:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Expanded Rows
+                </p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+                  {expandedRows.size}
+                </p>
+              </div>
+            </div>
+
             {/* Filters */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="relative w-full sm:flex-1 sm:max-w-sm">
+            <div className="dashboard-panel flex flex-wrap items-center gap-3 rounded-2xl p-4 md:p-5">
+              <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="pl-9 pr-8"
+                  className="h-10 rounded-xl border-border/70 bg-background/70 pl-9 pr-8"
                   placeholder="Filter by user ID..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
@@ -334,7 +357,7 @@ export default function AuditLogPage() {
                   setOffset(0);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="h-10 w-[200px] rounded-xl border-border/70 bg-background/70">
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
                 <SelectContent>
@@ -347,29 +370,27 @@ export default function AuditLogPage() {
                 </SelectContent>
               </Select>
 
-              <div className="flex gap-3 w-full sm:w-auto">
-                <Input
-                  type="date"
-                  className="flex-1 sm:w-[150px]"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setOffset(0);
-                  }}
-                  aria-label="Start date filter"
-                />
+              <Input
+                type="date"
+                className="h-10 w-[165px] rounded-xl border-border/70 bg-background/70"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setOffset(0);
+                }}
+                aria-label="Start date filter"
+              />
 
-                <Input
-                  type="date"
-                  className="flex-1 sm:w-[150px]"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setOffset(0);
-                  }}
-                  aria-label="End date filter"
-                />
-              </div>
+              <Input
+                type="date"
+                className="h-10 w-[165px] rounded-xl border-border/70 bg-background/70"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setOffset(0);
+                }}
+                aria-label="End date filter"
+              />
 
               {total > 0 && (
                 <span className="text-sm text-muted-foreground tabular-nums">
@@ -392,7 +413,7 @@ export default function AuditLogPage() {
             {loading && entries.length === 0 ? (
               <AuditLogSkeleton />
             ) : entries.length > 0 ? (
-              <div className="rounded-md border overflow-x-auto">
+              <div className="dashboard-panel overflow-x-auto rounded-2xl">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -445,8 +466,8 @@ export default function AuditLogPage() {
                           </TableRow>
                           {isExpanded && entry.details && (
                             <TableRow key={`${entry.id}-details`}>
-                              <TableCell colSpan={6} className="bg-muted/30 p-4">
-                                <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs">
+                              <TableCell colSpan={6} className="bg-muted/20 p-4">
+                                <pre className="max-h-64 overflow-auto rounded-lg border border-border/50 bg-background p-3 text-xs">
                                   {JSON.stringify(entry.details, null, 2)}
                                 </pre>
                               </TableCell>
@@ -459,18 +480,24 @@ export default function AuditLogPage() {
                 </Table>
               </div>
             ) : (
-              <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">
-                  {actionFilter || debouncedUserSearch || startDate || endDate
-                    ? 'No audit entries match your filters.'
-                    : 'No audit log entries found.'}
-                </p>
-              </div>
+              <EmptyState
+                icon={ClipboardList}
+                title={
+                  actionFilter || debouncedUserSearch || startDate || endDate
+                    ? 'No matching entries'
+                    : 'No audit entries'
+                }
+                description={
+                  actionFilter || debouncedUserSearch || startDate || endDate
+                    ? 'Try adjusting your filters.'
+                    : 'Actions will appear here as your team uses the dashboard.'
+                }
+              />
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between">
+              <div className="dashboard-chip flex items-center justify-between rounded-xl px-3 py-2">
                 <span className="text-sm text-muted-foreground">
                   Page {currentPage} of {totalPages}
                 </span>
