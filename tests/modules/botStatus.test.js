@@ -11,6 +11,7 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 import { ActivityType } from 'discord.js';
+import { warn } from '../../src/logger.js';
 import {
   applyPresence,
   getActivities,
@@ -23,7 +24,6 @@ import {
   stopBotStatus,
 } from '../../src/modules/botStatus.js';
 import { getConfig } from '../../src/modules/config.js';
-import { warn } from '../../src/logger.js';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 

@@ -57,8 +57,9 @@ describe('configValidation', () => {
       expect(validateValue([{ type: 'Watching', text: '' }], schema, 'test')[0]).toContain(
         'at least 1 characters',
       );
-      expect(validateValue([{ type: 'Watching', text: 'ready', extra: true }], schema, 'test')[0])
-        .toContain('unknown config key');
+      expect(
+        validateValue([{ type: 'Watching', text: 'ready', extra: true }], schema, 'test')[0],
+      ).toContain('unknown config key');
     });
   });
 
@@ -246,6 +247,8 @@ describe('configValidation', () => {
       // channelModes has openProperties — any channel-ID sub-key is dynamic;
       // the value is validated against the parent object schema, so an object passes
       expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual([]);
+    });
+  });
 
   describe('botStatus schema validation', () => {
     it('should accept valid botStatus rotation settings', () => {
