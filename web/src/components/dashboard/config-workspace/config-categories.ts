@@ -36,7 +36,15 @@ export const CONFIG_CATEGORIES: ConfigCategoryMeta[] = [
     icon: 'bot',
     label: 'Community Tools',
     description: 'Member-facing utility commands and review workflows.',
-    sectionKeys: ['help', 'announce', 'snippet', 'poll', 'showcase', 'review', 'botStatus'],
+    sectionKeys: [
+      'help',
+      'announce',
+      'snippet',
+      'poll',
+      'showcase',
+      'review',
+      'botStatus',
+    ],
     featureIds: ['community-tools', 'bot-status'],
   },
   {

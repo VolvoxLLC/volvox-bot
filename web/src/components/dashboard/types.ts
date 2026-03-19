@@ -68,10 +68,7 @@ export function validateBotHealth(value: unknown): string | null {
   if (!isObject(value.system)) return 'missing system';
   if (typeof value.system.nodeVersion !== 'string') return 'invalid system.nodeVersion';
   if (!isObject(value.system.cpuUsage)) return 'missing system.cpuUsage';
-  if (
-    typeof value.system.cpuUsage.user !== 'number' ||
-    typeof value.system.cpuUsage.system !== 'number'
-  )
+  if (typeof value.system.cpuUsage.user !== 'number' || typeof value.system.cpuUsage.system !== 'number')
     return 'invalid system.cpuUsage fields';
 
   if (!Array.isArray(value.restarts)) return 'missing restarts';
