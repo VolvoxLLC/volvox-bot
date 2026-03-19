@@ -2,9 +2,9 @@ name: Claude Code Review
 
 on:
   pull_request_review_comment:
-    types: [created]
+    types: [created, edited]
   pull_request_review:
-    types: [submitted]
+    types: [submitted, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,11 +12,11 @@ concurrency:
 
 jobs:
   claude-review:
-    if: |
-      github.event.review.user.login != 'github-actions[bot]' &&
-      github.event.review.user.login != 'copilot-pull-request-reviewer[bot]' &&
+    if: >-
       github.actor != 'github-actions[bot]' &&
       github.actor != 'copilot-pull-request-reviewer[bot]' &&
+      github.actor != 'coderabbitai[bot]' &&
+      github.actor != 'greptile-apps[bot]' &&
       (
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body || '', '@claude')) ||
         (github.event_name == 'pull_request_review' && contains(github.event.review.body || '', '@claude'))
