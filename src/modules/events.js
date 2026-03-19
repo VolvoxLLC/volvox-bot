@@ -1,11 +1,13 @@
 /**
  * Events Module
- * Handles Discord event listeners and handlers
+ * Handles Discord event listeners and handlers.
  *
  * This module serves as the main entry point for all event handlers.
  * Individual handlers are organized in the events/ subdirectory.
  */
 
+import { registerClientReadyHandler } from './events/clientReady.js';
+import { registerCommandInteractionHandler } from './events/commandInteraction.js';
 import { registerErrorHandlers } from './events/errors.js';
 import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
 import {
@@ -28,6 +30,8 @@ import { registerVoiceStateHandler } from './events/voiceState.js';
 
 // Re-export for backward compatibility
 export {
+  registerClientReadyHandler,
+  registerCommandInteractionHandler,
   registerReadyHandler,
   registerMessageCreateHandler,
   registerGuildMemberAddHandler,
@@ -50,16 +54,27 @@ export {
 
 /**
  * Register all event handlers
- * @param {Object} client - Discord client
+ * @param {import('discord.js').Client} client - Discord client
  * @param {Object} config - Bot configuration
- * @param {Object} healthMonitor - Health monitor instance
+ * @param {import('../utils/health.js').HealthMonitor} healthMonitor - Health monitor instance
  */
 export function registerEventHandlers(client, config, healthMonitor) {
+  // Core lifecycle
   registerReadyHandler(client, config, healthMonitor);
+  registerClientReadyHandler(client);
+  registerErrorHandlers(client);
+
+  // Message & reaction handlers
   registerGuildMemberAddHandler(client, config);
   registerMessageCreateHandler(client, config, healthMonitor);
   registerReactionHandlers(client, config);
+
+  // Slash command dispatch
+  registerCommandInteractionHandler(client);
+
+  // Button / modal interaction handlers (consolidated)
   registerComponentHandlers(client);
+
+  // Voice state
   registerVoiceStateHandler(client);
-  registerErrorHandlers(client);
 }

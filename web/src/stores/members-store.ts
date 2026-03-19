@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { MemberRow, SortColumn, SortOrder } from '@/components/dashboard/member-table';
 
+interface MembersApiResponse {
+  members: MemberRow[];
+  nextAfter: string | null;
+  total: number;
+  filteredTotal?: number;
+}
+
 interface MembersState {
   // Data
   members: MemberRow[];
@@ -18,7 +25,7 @@ interface MembersState {
   sortColumn: SortColumn;
   sortOrder: SortOrder;
 
-  // Actions
+  // Actions — setters
   setMembers: (members: MemberRow[]) => void;
   appendMembers: (members: MemberRow[]) => void;
   setNextAfter: (cursor: string | null) => void;
@@ -32,6 +39,17 @@ interface MembersState {
   setSortOrder: (order: SortOrder) => void;
   resetPagination: () => void;
   resetAll: () => void;
+
+  // Actions — data fetching
+  fetchMembers: (opts: {
+    guildId: string;
+    search: string;
+    sortColumn: SortColumn;
+    sortOrder: SortOrder;
+    after: string | null;
+    append: boolean;
+    signal?: AbortSignal;
+  }) => Promise<'ok' | 'unauthorized' | 'error'>;
 }
 
 const initialState = {
@@ -46,6 +64,8 @@ const initialState = {
   sortColumn: 'xp' as SortColumn,
   sortOrder: 'desc' as SortOrder,
 };
+
+let latestMembersRequestId = 0;
 
 export const useMembersStore = create<MembersState>((set) => ({
   ...initialState,
@@ -68,8 +88,62 @@ export const useMembersStore = create<MembersState>((set) => ({
       nextAfter: null,
     }),
 
-  resetAll: () =>
+  resetAll: () => {
+    ++latestMembersRequestId;
     set({
       ...initialState,
-    }),
+    });
+  },
+
+  fetchMembers: async (opts) => {
+    const requestId = ++latestMembersRequestId;
+    set({ loading: true, error: null });
+    try {
+      const params = new URLSearchParams();
+      if (opts.search) params.set('search', opts.search);
+      params.set('sort', opts.sortColumn);
+      params.set('order', opts.sortOrder);
+      if (opts.after) params.set('after', opts.after);
+      params.set('limit', '50');
+
+      const res = await fetch(
+        `/api/guilds/${encodeURIComponent(opts.guildId)}/members?${params.toString()}`,
+        { signal: opts.signal },
+      );
+
+      if (requestId !== latestMembersRequestId) return 'ok';
+
+      if (res.status === 401) {
+        set({ loading: false });
+        return 'unauthorized';
+      }
+      if (!res.ok) {
+        throw new Error(`Failed to fetch members (${res.status})`);
+      }
+      const data = (await res.json()) as MembersApiResponse;
+
+      if (requestId !== latestMembersRequestId) return 'ok';
+
+      set((state) => ({
+        members: opts.append ? [...state.members, ...data.members] : data.members,
+        nextAfter: data.nextAfter,
+        total: data.total,
+        filteredTotal: data.filteredTotal ?? null,
+        loading: false,
+      }));
+      return 'ok';
+    } catch (err) {
+      if (requestId !== latestMembersRequestId) return 'ok';
+
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        set({ loading: false });
+        return 'ok';
+      }
+      set({
+        error: err instanceof Error ? err.message : 'Failed to fetch members',
+        loading: false,
+      });
+      return 'error';
+    }
+  },
 }));

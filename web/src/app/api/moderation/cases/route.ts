@@ -10,7 +10,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 const LOG_PREFIX = '[api/moderation/cases]';
-const ALLOWED_PARAMS = ['guildId', 'targetId', 'action', 'page', 'limit'];
+const ALLOWED_PARAMS = ['guildId', 'targetId', 'action', 'page', 'limit', 'order'];
 
 /**
  * GET /api/moderation/cases

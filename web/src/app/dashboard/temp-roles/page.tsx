@@ -10,7 +10,17 @@
 import { Clock, RefreshCw, Shield, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 
@@ -63,9 +73,13 @@ export default function TempRolesPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [revoking, setRevoking] = useState<number | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<TempRole | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const onGuildChange = useCallback(() => setPage(1), []);
+  const onGuildChange = useCallback(() => {
+    setPage(1);
+    setData(null);
+  }, []);
   const guildId = useGuildSelection({ onGuildChange });
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
@@ -123,7 +137,6 @@ export default function TempRolesPage() {
   const handleRevoke = useCallback(
     async (record: TempRole) => {
       if (!guildId) return;
-      if (!confirm(`Revoke ${record.role_name} from ${record.user_tag}?`)) return;
 
       setRevoking(record.id);
       try {
@@ -141,16 +154,24 @@ export default function TempRolesPage() {
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          alert(body.error || 'Failed to revoke temp role');
+          toast.error('Failed to revoke temp role', {
+            description: body.error || 'An unexpected error occurred.',
+          });
           return;
         }
 
+        toast.success('Temp role revoked', {
+          description: `Removed ${record.role_name} from ${record.user_tag}.`,
+        });
         // Refresh list
         void fetchTempRoles(guildId, page);
       } catch {
-        alert('Failed to revoke temp role');
+        toast.error('Failed to revoke temp role', {
+          description: 'A network error occurred. Please try again.',
+        });
       } finally {
         setRevoking(null);
+        setConfirmRevoke(null);
       }
     },
     [guildId, page, fetchTempRoles, onUnauthorized],
@@ -164,143 +185,184 @@ export default function TempRolesPage() {
   const pagination = data?.pagination;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Clock className="h-6 w-6" />
-            Temporary Roles
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Active role assignments that expire automatically.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading || !guildId}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-
-      {/* No guild selected */}
-      {!guildId && (
-        <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
-          Select a server from the top bar to view temp roles.
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-          {error}
-        </div>
-      )}
-
-      {/* Table */}
-      {guildId && !error && (
-        <div className="rounded-lg border">
-          {loading && rows.length === 0 ? (
-            <div className="divide-y">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={`skeleton-${i}`} className="flex items-center gap-4 px-4 py-3">
-                  <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-              ))}
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="text-muted-foreground p-8 text-center text-sm">
-              No active temporary roles.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium">User</th>
-                  <th className="px-4 py-3 text-left font-medium">Role</th>
-                  <th className="px-4 py-3 text-left font-medium">Duration</th>
-                  <th className="px-4 py-3 text-left font-medium">Expires</th>
-                  <th className="px-4 py-3 text-left font-medium">Moderator</th>
-                  <th className="px-4 py-3 text-left font-medium">Reason</th>
-                  <th className="px-4 py-3 text-right font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-muted/25 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-medium">{row.user_tag}</span>
-                      <span className="text-muted-foreground ml-1 text-xs">({row.user_id})</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium">
-                        <Shield className="h-3 w-3" />
-                        {row.role_name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{row.duration}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="text-amber-600 dark:text-amber-400"
-                        title={new Date(row.expires_at).toLocaleString()}
-                      >
-                        {formatRelativeTime(row.expires_at)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{row.moderator_tag}</td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate text-xs">
-                      {row.reason ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                        onClick={() => handleRevoke(row)}
-                        disabled={revoking === row.id}
-                        title="Revoke this temp role"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Revoke</span>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {pagination && pagination.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-muted-foreground text-sm">
-            Page {pagination.page} of {pagination.pages} — {pagination.total} total
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1 || loading}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= pagination.pages || loading}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
+    <ErrorBoundary title="Temp roles failed to load">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <Clock className="h-6 w-6" />
+              Temporary Roles
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Active role assignments that expire automatically.
+            </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading || !guildId}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
-      )}
-    </div>
+
+        {/* No guild selected */}
+        {!guildId && (
+          <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
+            Select a server from the top bar to view temp roles.
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
+        {/* Table */}
+        {guildId && !error && (
+          <div className="rounded-lg border overflow-x-auto">
+            {loading && rows.length === 0 ? (
+              <div className="divide-y">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={`skeleton-${i}`} className="flex items-center gap-4 px-4 py-3">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="text-muted-foreground p-8 text-center text-sm">
+                No active temporary roles.
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">User</th>
+                    <th className="px-4 py-3 text-left font-medium">Role</th>
+                    <th className="hidden sm:table-cell px-4 py-3 text-left font-medium">
+                      Duration
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">Expires</th>
+                    <th className="hidden md:table-cell px-4 py-3 text-left font-medium">
+                      Moderator
+                    </th>
+                    <th className="hidden lg:table-cell px-4 py-3 text-left font-medium">Reason</th>
+                    <th className="px-4 py-3 text-right font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-muted/25 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="font-medium">{row.user_tag}</span>
+                        <span className="text-muted-foreground ml-1 text-xs">({row.user_id})</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium">
+                          <Shield className="h-3 w-3" />
+                          {row.role_name}
+                        </span>
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-muted-foreground">
+                        {row.duration}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className="text-amber-600 dark:text-amber-400"
+                          title={new Date(row.expires_at).toLocaleString()}
+                        >
+                          {formatRelativeTime(row.expires_at)}
+                        </span>
+                      </td>
+                      <td className="hidden md:table-cell px-4 py-3 text-muted-foreground text-xs">
+                        {row.moderator_tag}
+                      </td>
+                      <td className="hidden lg:table-cell px-4 py-3 text-muted-foreground max-w-[200px] truncate text-xs">
+                        {row.reason ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                          onClick={() => setConfirmRevoke(row)}
+                          disabled={revoking === row.id}
+                          title="Revoke this temp role"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Revoke</span>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination && pagination.pages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground text-sm">
+              Page {pagination.page} of {pagination.pages} — {pagination.total} total
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= pagination.pages || loading}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Revoke confirmation dialog */}
+        <Dialog open={!!confirmRevoke} onOpenChange={(open) => !open && setConfirmRevoke(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Revoke Temporary Role</DialogTitle>
+              <DialogDescription>
+                Remove <span className="font-semibold">{confirmRevoke?.role_name}</span> from{' '}
+                <span className="font-semibold">{confirmRevoke?.user_tag}</span>? This action cannot
+                be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmRevoke(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={revoking !== null}
+                onClick={() => confirmRevoke && handleRevoke(confirmRevoke)}
+              >
+                {revoking ? 'Revoking…' : 'Revoke'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </ErrorBoundary>
   );
 }

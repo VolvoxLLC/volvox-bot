@@ -145,6 +145,20 @@ describe('moderation routes', () => {
       expect(res.body.pages).toBe(10);
     });
 
+    it('should support ascending sort when order=asc', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ total: 0 }] });
+
+      const app = buildApp();
+      const res = await authed(
+        request(app).get('/api/v1/moderation/cases?guildId=guild1&order=asc'),
+      );
+
+      expect(res.status).toBe(200);
+      expect(mockPool.query.mock.calls[0][0]).toContain('ORDER BY created_at ASC');
+    });
+
     it('should cap limit at 100', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })

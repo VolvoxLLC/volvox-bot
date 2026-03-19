@@ -13,7 +13,14 @@ const DEFAULT_MESSAGE = 'Too many requests, please try again later';
  * @param {number} [options.windowMs=900000] - Time window in milliseconds (default: 15 minutes)
  * @param {number} [options.max=100] - Maximum requests per window per IP (default: 100)
  * @param {string} [options.message] - Custom error message for 429 responses
- * @returns {import('express').RequestHandler & { destroy: () => void }} Express middleware with a destroy method to clear the cleanup timer
+ * @returns {import('express').RequestHandler & {
+ *   destroy: () => void;
+ *   sweep: () => number;
+ *   size: () => number;
+ * }} Express middleware with lifecycle helpers:
+ *   - destroy: clears the cleanup timer
+ *   - sweep: removes stale entries, returns count removed
+ *   - size: returns tracked IP count
  */
 export function rateLimit({
   windowMs = 15 * 60 * 1000,
@@ -26,15 +33,24 @@ export function rateLimit({
 
   const clients = new Map();
 
-  // Periodically clean up expired entries to prevent memory leaks
-  const cleanup = setInterval(() => {
+  /**
+   * Remove all expired entries from the client map.
+   * @returns {number} Number of entries removed.
+   */
+  function sweepStaleEntries() {
     const now = Date.now();
+    let removed = 0;
     for (const [ip, entry] of clients) {
       if (now >= entry.resetAt) {
         clients.delete(ip);
+        removed++;
       }
     }
-  }, windowMs);
+    return removed;
+  }
+
+  // Periodically clean up expired entries to prevent memory leaks
+  const cleanup = setInterval(sweepStaleEntries, windowMs);
 
   // Allow the timer to not prevent process exit
   cleanup.unref();
@@ -66,6 +82,17 @@ export function rateLimit({
   };
 
   middleware.destroy = () => clearInterval(cleanup);
+
+  /**
+   * Manually trigger a sweep of stale entries.
+   * Useful in tests and for on-demand memory reclamation.
+   *
+   * @returns {number} Number of entries removed.
+   */
+  middleware.sweep = sweepStaleEntries;
+
+  /** Current number of tracked IPs. */
+  middleware.size = () => clients.size;
 
   return middleware;
 }

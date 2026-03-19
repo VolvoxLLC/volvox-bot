@@ -8,6 +8,8 @@ import {
   ConversationReplay,
 } from '@/components/dashboard/conversation-replay';
 import { Button } from '@/components/ui/button';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ConversationDetailResponse {
   messages: ConversationMessage[];
@@ -32,7 +34,10 @@ export default function ConversationDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDetail = useCallback(async () => {
-    if (!guildId || !conversationId) return;
+    if (!guildId || !conversationId) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -68,64 +73,74 @@ export default function ConversationDetailPage() {
   }, [fetchDetail]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <MessageSquare className="h-6 w-6" />
-            Conversation Detail
-          </h2>
-          {data && (
+    <ErrorBoundary title="Conversation detail failed to load">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <MessageSquare className="h-6 w-6" />
+              Conversation Detail
+            </h2>
+            {data && (
+              <p className="text-sm text-muted-foreground">
+                #{data.channelName ?? data.channelId} · {data.messages.length} messages
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Loading skeleton */}
+        {loading && (
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
+              <div key={i} className={`flex gap-3 ${i % 2 === 0 ? '' : 'justify-end'}`}>
+                <div className="space-y-2 max-w-[70%]">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-12 w-64 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+          >
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
+        {/* No guild */}
+        {!guildId && !loading && (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
             <p className="text-sm text-muted-foreground">
-              #{data.channelName ?? data.channelId} · {data.messages.length} messages
+              No guild selected. Please navigate from the conversations list.
             </p>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Replay */}
+        {data && guildId && !loading && !error && (
+          <ConversationReplay
+            messages={data.messages}
+            channelId={data.channelId}
+            channelName={data.channelName}
+            duration={data.duration}
+            tokenEstimate={data.tokenEstimate}
+            guildId={guildId}
+            onFlagSubmitted={fetchDetail}
+          />
+        )}
       </div>
-
-      {/* Loading */}
-      {loading && (
-        <div className="flex h-48 items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading conversation...</p>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
-        >
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {/* No guild */}
-      {!guildId && !loading && (
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-sm text-muted-foreground">
-            No guild selected. Please navigate from the conversations list.
-          </p>
-        </div>
-      )}
-
-      {/* Replay */}
-      {data && guildId && (
-        <ConversationReplay
-          messages={data.messages}
-          channelId={data.channelId}
-          channelName={data.channelName}
-          duration={data.duration}
-          tokenEstimate={data.tokenEstimate}
-          guildId={guildId}
-          onFlagSubmitted={fetchDetail}
-        />
-      )}
-    </div>
+    </ErrorBoundary>
   );
 }

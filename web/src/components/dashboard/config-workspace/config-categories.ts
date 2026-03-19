@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import type {
   ConfigCategoryId,
   ConfigCategoryMeta,
@@ -360,9 +361,8 @@ export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
 export function getCategoryById(categoryId: ConfigCategoryId): ConfigCategoryMeta {
   const found = CONFIG_CATEGORIES.find((category) => category.id === categoryId);
   if (!found) {
-    // biome-ignore lint/suspicious/noConsole: intentional warning for unexpected/missing categoryId
-    console.warn(`getCategoryById: unknown categoryId "${categoryId}", falling back to default.`);
-    return CONFIG_CATEGORIES[0];
+    logger.warn(`getCategoryById: unknown categoryId "${categoryId}", falling back to default.`);
+    return CONFIG_CATEGORIES.find((c) => c.id === DEFAULT_CONFIG_CATEGORY) ?? CONFIG_CATEGORIES[0];
   }
   return found;
 }

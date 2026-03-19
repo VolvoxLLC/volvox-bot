@@ -420,6 +420,7 @@ router.get('/:guildId/showcases', async (req, res) => {
  *                   type: integer
  *                 totalMessagesSent:
  *                   type: integer
+ *                   description: All-time cumulative message count across all tracked users in the guild (clamped to Number.MAX_SAFE_INTEGER)
  *                 activeProjects:
  *                   type: integer
  *                 challengesCompleted:
@@ -468,9 +469,9 @@ router.get('/:guildId/stats', async (req, res) => {
           [guildId],
         ),
         pool.query(
-          `SELECT COALESCE(SUM(messages_sent), 0)::int AS total
+          `SELECT COALESCE(SUM(messages_sent), 0)::bigint AS total
            FROM user_stats
-           WHERE guild_id = $1 AND last_active >= NOW() - INTERVAL '7 days'`,
+           WHERE guild_id = $1`,
           [guildId],
         ),
         pool.query(
@@ -528,7 +529,10 @@ router.get('/:guildId/stats', async (req, res) => {
 
     res.json({
       memberCount: memberCount.rows[0]?.count ?? 0,
-      totalMessagesSent: messagesResult.rows[0]?.total ?? 0,
+      totalMessagesSent: Math.min(
+        Number(messagesResult.rows[0]?.total ?? 0),
+        Number.MAX_SAFE_INTEGER,
+      ),
       activeProjects: projectsResult.rows[0]?.count ?? 0,
       challengesCompleted: challengesResult.rows[0]?.count ?? 0,
       topContributors: top3,
