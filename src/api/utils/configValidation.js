@@ -202,7 +202,7 @@ export const CONFIG_SCHEMA = {
                   type: 'string',
                   enum: ['Playing', 'Watching', 'Listening', 'Competing', 'Streaming', 'Custom'],
                 },
-                text: { type: 'string', minLength: 1 },
+                text: { type: 'string', minLength: 1, pattern: '\\S' },
               },
               required: ['text'],
             },
@@ -293,6 +293,9 @@ export function validateValue(value, schema, path) {
         }
         if (schema.maxLength != null && value.length > schema.maxLength) {
           errors.push(`${path}: exceeds max length of ${schema.maxLength}`);
+        }
+        if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
+          errors.push(`${path}: does not match required pattern`);
         }
       }
       break;
