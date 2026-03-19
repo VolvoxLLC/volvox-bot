@@ -60,7 +60,7 @@ export function ConfigLandingContent() {
           const Icon = CATEGORY_ICONS[category.icon];
           const dirtyCount = dirtyCategoryCounts[category.id];
           const gradient = CATEGORY_GRADIENTS[category.id];
-          const iconBg = CATEGORY_ICON_BG[category.id] ?? 'bg-primary/12 text-primary';
+          const iconBg = CATEGORY_ICON_BG[category.id];
 
           return (
             <Link key={category.id} href={`/dashboard/settings/${category.id}`} className="group">
