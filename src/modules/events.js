@@ -11,8 +11,8 @@ import { registerCommandInteractionHandler } from './events/commandInteraction.j
 import { registerErrorHandlers } from './events/errors.js';
 import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
 import {
-  registerComponentHandlers,
   registerChallengeButtonHandler,
+  registerComponentHandlers,
   registerPollButtonHandler,
   registerReminderButtonHandler,
   registerReviewClaimHandler,
@@ -30,18 +30,17 @@ import { registerVoiceStateHandler } from './events/voiceState.js';
 
 // Re-export for backward compatibility
 export {
-  registerClientReadyHandler,
-  registerCommandInteractionHandler,
-  registerReadyHandler,
-  registerMessageCreateHandler,
-  registerGuildMemberAddHandler,
-  registerComponentHandlers,
-  registerReactionHandlers,
-  registerErrorHandlers,
-  registerVoiceStateHandler,
   // Deprecated — use handler functions directly
   registerChallengeButtonHandler,
+  registerClientReadyHandler,
+  registerCommandInteractionHandler,
+  registerComponentHandlers,
+  registerErrorHandlers,
+  registerGuildMemberAddHandler,
+  registerMessageCreateHandler,
   registerPollButtonHandler,
+  registerReactionHandlers,
+  registerReadyHandler,
   registerReminderButtonHandler,
   registerReviewClaimHandler,
   registerShowcaseButtonHandler,
@@ -49,6 +48,7 @@ export {
   registerTicketCloseButtonHandler,
   registerTicketModalHandler,
   registerTicketOpenButtonHandler,
+  registerVoiceStateHandler,
   registerWelcomeOnboardingHandlers,
 };
 

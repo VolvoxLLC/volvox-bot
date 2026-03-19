@@ -42,6 +42,7 @@ import {
   startConversationCleanup,
   stopConversationCleanup,
 } from './modules/ai.js';
+import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
 import { loadConfig } from './modules/config.js';
 
 import { registerEventHandlers } from './modules/events.js';
@@ -193,6 +194,7 @@ async function gracefulShutdown(signal) {
   stopWarningExpiryScheduler();
   stopScheduler();
   stopGithubFeed();
+  stopBotStatus();
 
   // 1.5. Stop API server (drain in-flight HTTP requests before closing DB)
   try {
@@ -378,6 +380,9 @@ async function startup() {
   // Load commands and login
   await loadCommands();
   await client.login(token);
+
+  // Start configurable bot presence rotation after login so client.user is available
+  startBotStatus(client);
 
   // Set Sentry context now that we know the bot identity (no-op if disabled)
   import('./sentry.js')

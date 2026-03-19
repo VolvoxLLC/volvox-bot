@@ -67,7 +67,9 @@ describe('warnings routes', () => {
       }
 
       expect(sql).toContain('SELECT * FROM warnings');
-      expect(sql).toContain('WHERE guild_id = $1 AND user_id = $2 AND active = $3 AND severity = $4');
+      expect(sql).toContain(
+        'WHERE guild_id = $1 AND user_id = $2 AND active = $3 AND severity = $4',
+      );
       expect(params).toEqual(['guild-1', 'user-1', true, 'high', 10, 10]);
       return { rows: [{ id: 1, user_id: 'user-1', severity: 'high' }] };
     });

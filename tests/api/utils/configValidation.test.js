@@ -36,6 +36,31 @@ describe('configValidation', () => {
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('unknown config key');
     });
+
+    it('should validate nested object arrays using item properties', () => {
+      const schema = {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', enum: ['Playing', 'Watching'] },
+            text: { type: 'string', minLength: 1 },
+          },
+          required: ['text'],
+        },
+      };
+
+      expect(validateValue([{ type: 'Watching', text: 'ready' }], schema, 'test')).toEqual([]);
+      expect(validateValue([{ type: 'Bad', text: 'ready' }], schema, 'test')[0]).toContain(
+        'must be one of',
+      );
+      expect(validateValue([{ type: 'Watching', text: '' }], schema, 'test')[0]).toContain(
+        'at least 1 characters',
+      );
+      expect(
+        validateValue([{ type: 'Watching', text: 'ready', extra: true }], schema, 'test')[0],
+      ).toContain('unknown config key');
+    });
   });
 
   describe('validateSingleValue', () => {
@@ -104,7 +129,15 @@ describe('configValidation', () => {
   describe('CONFIG_SCHEMA', () => {
     it('should have schemas for all expected top-level sections', () => {
       expect(Object.keys(CONFIG_SCHEMA)).toEqual(
-        expect.arrayContaining(['ai', 'welcome', 'spam', 'moderation', 'triage', 'auditLog']),
+        expect.arrayContaining([
+          'ai',
+          'welcome',
+          'spam',
+          'moderation',
+          'triage',
+          'auditLog',
+          'botStatus',
+        ]),
       );
     });
   });
@@ -214,6 +247,52 @@ describe('configValidation', () => {
       // channelModes has openProperties — any channel-ID sub-key is dynamic;
       // the value is validated against the parent object schema, so an object passes
       expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual([]);
+    });
+  });
+
+  describe('botStatus schema validation', () => {
+    it('should accept valid botStatus rotation settings', () => {
+      expect(validateSingleValue('botStatus.enabled', true)).toEqual([]);
+      expect(validateSingleValue('botStatus.status', 'online')).toEqual([]);
+      expect(validateSingleValue('botStatus.rotation.enabled', false)).toEqual([]);
+      expect(validateSingleValue('botStatus.rotation.intervalMinutes', 5)).toEqual([]);
+      expect(
+        validateSingleValue('botStatus.rotation.messages', [
+          { type: 'Watching', text: '{guildCount} servers' },
+        ]),
+      ).toEqual([]);
+    });
+
+    it('should reject invalid botStatus status value', () => {
+      const errors = validateSingleValue('botStatus.status', 'busy');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('must be one of');
+    });
+
+    it('should reject rotation messages missing text', () => {
+      const errors = validateSingleValue('botStatus.rotation.messages', [{ type: 'Watching' }]);
+      expect(errors.some((e) => e.includes('missing required key "text"'))).toBe(true);
+    });
+
+    it('should reject rotation messages with invalid type', () => {
+      const errors = validateSingleValue('botStatus.rotation.messages', [
+        { type: 'Dancing', text: '{guildCount} servers' },
+      ]);
+      expect(errors.some((e) => e.includes('must be one of'))).toBe(true);
+    });
+
+    it('should reject rotation messages with blank text', () => {
+      const errors = validateSingleValue('botStatus.rotation.messages', [
+        { type: 'Watching', text: '' },
+      ]);
+      expect(errors.some((e) => e.includes('at least 1 characters'))).toBe(true);
+    });
+
+    it('should reject rotation messages with unknown keys', () => {
+      const errors = validateSingleValue('botStatus.rotation.messages', [
+        { type: 'Watching', text: '{guildCount} servers', extra: true },
+      ]);
+      expect(errors.some((e) => e.includes('unknown config key'))).toBe(true);
     });
   });
 

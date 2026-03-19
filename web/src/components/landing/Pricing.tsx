@@ -78,7 +78,11 @@ export function Pricing() {
 
           {/* Toggle */}
           <div className="flex items-center justify-center gap-4">
-            <span className={`text-sm font-medium transition-colors ${!isAnnual ? 'text-foreground' : 'text-muted-foreground'}`}>
+            <span
+              className={`text-sm font-medium transition-colors ${
+                isAnnual ? 'text-muted-foreground' : 'text-foreground'
+              }`}
+            >
               Monthly
             </span>
             <button
@@ -95,7 +99,11 @@ export function Pricing() {
                 className="absolute top-1 w-5 h-5 rounded-full bg-primary"
               />
             </button>
-            <span className={`text-sm font-medium transition-colors ${isAnnual ? 'text-foreground' : 'text-muted-foreground'}`}>
+            <span
+              className={`text-sm font-medium transition-colors ${
+                isAnnual ? 'text-foreground' : 'text-muted-foreground'
+              }`}
+            >
               Annual <span className="text-accent font-bold">Save 36%</span>
             </span>
           </div>
@@ -152,9 +160,13 @@ export function Pricing() {
                 disabled={!tier.href && !botInviteUrl}
               >
                 {tier.href ? (
-                  <a href={tier.href} target="_blank" rel="noopener noreferrer">{tier.cta}</a>
+                  <a href={tier.href} target="_blank" rel="noopener noreferrer">
+                    {tier.cta}
+                  </a>
                 ) : botInviteUrl ? (
-                  <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">{tier.cta}</a>
+                  <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
+                    {tier.cta}
+                  </a>
                 ) : (
                   <span>{tier.cta}</span>
                 )}

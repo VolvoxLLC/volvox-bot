@@ -17,8 +17,8 @@ import { handleQuietCommand, isQuietMode } from '../quietMode.js';
 import { checkRateLimit } from '../rateLimit.js';
 import { handleXpGain } from '../reputation.js';
 import { isSpam, sendSpamAlert } from '../spam.js';
-import { clearChannelState } from '../triage-buffer.js';
 import { accumulateMessage, evaluateNow } from '../triage.js';
+import { clearChannelState } from '../triage-buffer.js';
 import { recordCommunityActivity } from '../welcome.js';
 
 /**

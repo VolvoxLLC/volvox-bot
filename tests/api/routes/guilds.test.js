@@ -467,6 +467,35 @@ describe('guilds routes', () => {
       expect(getConfig).toHaveBeenCalledWith('guild1');
     });
 
+    it('should route botStatus writes to global config', async () => {
+      getConfig.mockReturnValueOnce({});
+      getConfig.mockReturnValueOnce({
+        botStatus: {
+          enabled: true,
+          status: 'idle',
+        },
+      });
+      getConfig.mockReturnValueOnce({
+        botStatus: {
+          enabled: true,
+          status: 'idle',
+        },
+      });
+
+      const res = await request(app)
+        .patch('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send({ path: 'botStatus.status', value: 'idle' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        enabled: true,
+        status: 'idle',
+      });
+      expect(setConfigValue).toHaveBeenCalledWith('botStatus.status', 'idle', undefined);
+      expect(getConfig.mock.calls.some((call) => call.length === 0)).toBe(true);
+    });
+
     it('should return 400 when request body is missing', async () => {
       const res = await request(app)
         .patch('/api/v1/guilds/guild1/config')

@@ -1,8 +1,8 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
-import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import { useRef } from 'react';
 
 const features: { icon: LucideIcon; title: string; description: string; color: string }[] = [

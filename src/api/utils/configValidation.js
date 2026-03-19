@@ -177,6 +177,40 @@ export const CONFIG_SCHEMA = {
       retentionDays: { type: 'number', min: 1, max: 365 },
     },
   },
+  botStatus: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      status: { type: 'string', enum: ['online', 'idle', 'dnd', 'invisible'] },
+      activityType: {
+        type: 'string',
+        enum: ['Playing', 'Watching', 'Listening', 'Competing', 'Streaming', 'Custom'],
+      },
+      activities: { type: 'array', items: { type: 'string' } },
+      rotateIntervalMs: { type: 'number' },
+      rotation: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          intervalMinutes: { type: 'number' },
+          messages: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['Playing', 'Watching', 'Listening', 'Competing', 'Streaming', 'Custom'],
+                },
+                text: { type: 'string', minLength: 1, pattern: '\\S' },
+              },
+              required: ['text'],
+            },
+          },
+        },
+      },
+    },
+  },
   reminders: {
     type: 'object',
     properties: {
@@ -251,11 +285,17 @@ export function validateValue(value, schema, path) {
       if (typeof value !== 'string') {
         errors.push(`${path}: expected string, got ${typeof value}`);
       } else {
+        if (typeof schema.minLength === 'number' && value.length < schema.minLength) {
+          errors.push(`${path}: must be at least ${schema.minLength} characters`);
+        }
         if (schema.enum && !schema.enum.includes(value)) {
           errors.push(`${path}: must be one of [${schema.enum.join(', ')}], got "${value}"`);
         }
         if (schema.maxLength != null && value.length > schema.maxLength) {
           errors.push(`${path}: exceeds max length of ${schema.maxLength}`);
+        }
+        if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
+          errors.push(`${path}: does not match required pattern`);
         }
       }
       break;
@@ -276,24 +316,7 @@ export function validateValue(value, schema, path) {
         errors.push(`${path}: expected array, got ${typeof value}`);
       } else if (schema.items) {
         for (let i = 0; i < value.length; i++) {
-          const item = value[i];
-          if (schema.items.type === 'string') {
-            if (typeof item !== 'string') {
-              errors.push(`${path}[${i}]: expected string, got ${typeof item}`);
-            }
-          } else if (schema.items.type === 'object') {
-            if (typeof item !== 'object' || item === null || Array.isArray(item)) {
-              errors.push(
-                `${path}[${i}]: expected object, got ${Array.isArray(item) ? 'array' : item === null ? 'null' : typeof item}`,
-              );
-            } else if (schema.items.required) {
-              for (const key of schema.items.required) {
-                if (!(key in item)) {
-                  errors.push(`${path}[${i}]: missing required key "${key}"`);
-                }
-              }
-            }
-          }
+          errors.push(...validateValue(value[i], schema.items, `${path}[${i}]`));
         }
       }
       break;
@@ -302,14 +325,24 @@ export function validateValue(value, schema, path) {
         errors.push(
           `${path}: expected object, got ${Array.isArray(value) ? 'array' : typeof value}`,
         );
-      } else if (schema.properties) {
-        for (const [key, val] of Object.entries(value)) {
-          if (Object.hasOwn(schema.properties, key)) {
-            errors.push(...validateValue(val, schema.properties[key], `${path}.${key}`));
-          } else if (!schema.openProperties) {
-            errors.push(`${path}.${key}: unknown config key`);
+      } else {
+        if (schema.required) {
+          for (const key of schema.required) {
+            if (!Object.hasOwn(value, key)) {
+              errors.push(`${path}: missing required key "${key}"`);
+            }
           }
-          // openProperties: true — freeform map, unknown keys are allowed
+        }
+
+        if (schema.properties) {
+          for (const [key, val] of Object.entries(value)) {
+            if (Object.hasOwn(schema.properties, key)) {
+              errors.push(...validateValue(val, schema.properties[key], `${path}.${key}`));
+            } else if (!schema.openProperties) {
+              errors.push(`${path}.${key}: unknown config key`);
+            }
+            // openProperties: true — freeform map, unknown keys are allowed
+          }
         }
       }
       break;

@@ -1,46 +1,64 @@
 /**
  * Bot Status Module
- * Manages configurable bot presence: status and activity messages.
+ * Manages configurable bot presence with optional rotation and template variables.
  *
- * Features:
- * - Configurable status (online, idle, dnd, invisible)
- * - Custom activity text with variable interpolation
- * - Rotating activities (cycles through a list on configurable interval)
- *
- * Config shape (config.botStatus):
+ * Supported config formats:
+ * 1) New format:
  * {
  *   enabled: true,
- *   status: "online",           // online | idle | dnd | invisible
- *   activityType: "Playing",    // Playing | Watching | Listening | Competing | Streaming | Custom
- *   activities: [               // Rotated in order; single entry = static
- *     "with {memberCount} members",
- *     "in {guildCount} servers"
- *   ],
- *   rotateIntervalMs: 30000     // How often to rotate (ms), default 30s
+ *   status: 'online',
+ *   rotation: {
+ *     enabled: true,
+ *     intervalMinutes: 5,
+ *     messages: [
+ *       { type: 'Watching', text: '{guildCount} servers' },
+ *       { type: 'Playing', text: 'with /help' }
+ *     ]
+ *   }
  * }
  *
- * Variables available in activity text:
- *   {memberCount}   Total member count across all guilds
- *   {guildCount}    Number of guilds the bot is in
- *   {botName}       The bot's username
+ * 2) Legacy format (kept for compatibility):
+ * {
+ *   enabled: true,
+ *   status: 'online',
+ *   activityType: 'Playing',
+ *   activities: ['with Discord', 'in {guildCount} servers'],
+ *   rotateIntervalMs: 30000
+ * }
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ActivityType } from 'discord.js';
 import { info, warn } from '../logger.js';
 import { getConfig } from './config.js';
 
-/** Map Discord activity type strings to ActivityType enum values */
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Map Discord activity type strings to ActivityType enum values.
+ *
+ * Note: Streaming is intentionally excluded — Discord requires a valid Twitch/YouTube
+ * `url` for Streaming activities, but the config schema has no URL field. Without a URL
+ * it silently renders as "Playing." Re-add Streaming here once URL support is added.
+ */
 const ACTIVITY_TYPE_MAP = {
   Playing: ActivityType.Playing,
   Watching: ActivityType.Watching,
   Listening: ActivityType.Listening,
   Competing: ActivityType.Competing,
-  Streaming: ActivityType.Streaming,
   Custom: ActivityType.Custom,
 };
 
 /** Valid Discord presence status strings */
 const VALID_STATUSES = new Set(['online', 'idle', 'dnd', 'invisible']);
+
+const DEFAULT_LEGACY_ROTATE_INTERVAL_MS = 30_000;
+const DEFAULT_ROTATE_INTERVAL_MINUTES = 5;
+const MIN_PRESENCE_INTERVAL_MS = 20_000;
+const DEFAULT_ACTIVITY_TYPE = 'Playing';
+const DEFAULT_ACTIVITY_TEXT = 'with Discord';
 
 /** @type {ReturnType<typeof setInterval> | null} */
 let rotateInterval = null;
@@ -50,6 +68,77 @@ let currentActivityIndex = 0;
 
 /** @type {import('discord.js').Client | null} */
 let _client = null;
+
+/** @type {string | null} */
+let cachedVersion = null;
+
+/**
+ * Format milliseconds into a compact uptime string (e.g. '2d 3h 15m').
+ *
+ * @param {number} uptimeMs
+ * @returns {string}
+ */
+export function formatUptime(uptimeMs) {
+  if (!Number.isFinite(uptimeMs) || uptimeMs <= 0) return '0m';
+
+  const totalMinutes = Math.floor(uptimeMs / 60_000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return parts.join(' ');
+}
+
+/**
+ * Resolve package version from root package.json.
+ *
+ * @returns {string}
+ */
+function getPackageVersion() {
+  if (cachedVersion) return cachedVersion;
+  try {
+    const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8'));
+    cachedVersion = typeof pkg?.version === 'string' ? pkg.version : 'unknown';
+  } catch {
+    cachedVersion = 'unknown';
+  }
+  return cachedVersion;
+}
+
+/**
+ * Check whether an activity type string is supported by Discord presence handling.
+ *
+ * @param {string | undefined} typeStr
+ * @returns {boolean}
+ */
+function isSupportedActivityType(typeStr) {
+  return typeof typeStr === 'string' && Object.hasOwn(ACTIVITY_TYPE_MAP, typeStr);
+}
+
+/**
+ * Resolve a fallback activity type string for normalization paths.
+ *
+ * @param {string | undefined} typeStr
+ * @param {string} source
+ * @returns {string}
+ */
+function resolveFallbackType(typeStr, source) {
+  if (!typeStr) return DEFAULT_ACTIVITY_TYPE;
+
+  if (isSupportedActivityType(typeStr)) {
+    return typeStr;
+  }
+
+  warn('Invalid bot status activity type, falling back to Playing', {
+    source,
+    invalidType: typeStr,
+  });
+  return DEFAULT_ACTIVITY_TYPE;
+}
 
 /**
  * Interpolate variables in an activity text string.
@@ -64,42 +153,230 @@ export function interpolateActivity(text, client) {
   const memberCount = client.guilds?.cache?.reduce((sum, g) => sum + (g.memberCount ?? 0), 0) ?? 0;
   const guildCount = client.guilds?.cache?.size ?? 0;
   const botName = client.user?.username ?? 'Bot';
+  const commandCount = client.commands?.size ?? 0;
+  const uptime = formatUptime(client.uptime ?? 0);
+  const version = getPackageVersion();
 
   return text
-    .replace(/\{memberCount\}/g, String(memberCount))
-    .replace(/\{guildCount\}/g, String(guildCount))
-    .replace(/\{botName\}/g, botName);
+    .replaceAll('{memberCount}', String(memberCount))
+    .replaceAll('{guildCount}', String(guildCount))
+    .replaceAll('{botName}', botName)
+    .replaceAll('{commandCount}', String(commandCount))
+    .replaceAll('{uptime}', uptime)
+    .replaceAll('{version}', version);
 }
 
 /**
- * Resolve status and activity type from config with safe fallbacks.
+ * Resolve the configured global online status with safe fallback.
  *
- * @param {Object} cfg - botStatus config section
- * @returns {{ status: string, activityType: ActivityType }} Resolved values
+ * @param {Object} cfg
+ * @returns {string}
+ */
+export function resolvePresenceStatus(cfg) {
+  return VALID_STATUSES.has(cfg?.status) ? cfg.status : 'online';
+}
+
+/**
+ * Resolve a configured activity type string into Discord enum.
+ *
+ * @param {string | undefined} typeStr
+ * @returns {ActivityType}
+ */
+export function resolveActivityType(typeStr) {
+  if (!typeStr) return ActivityType.Playing;
+  if (isSupportedActivityType(typeStr)) {
+    return ACTIVITY_TYPE_MAP[typeStr];
+  }
+
+  warn('Invalid bot status activity type, falling back to Playing', {
+    source: 'botStatus',
+    invalidType: typeStr,
+  });
+  return ActivityType.Playing;
+}
+
+/**
+ * Legacy helper kept for backward compatibility with existing call sites/tests.
+ *
+ * @param {Object} cfg
+ * @returns {{ status: string, activityType: ActivityType }}
  */
 export function resolvePresenceConfig(cfg) {
-  const status = VALID_STATUSES.has(cfg?.status) ? cfg.status : 'online';
-
-  const typeStr = cfg?.activityType ?? 'Playing';
-  const activityType =
-    ACTIVITY_TYPE_MAP[typeStr] !== undefined ? ACTIVITY_TYPE_MAP[typeStr] : ActivityType.Playing;
-
-  return { status, activityType };
+  return {
+    status: resolvePresenceStatus(cfg),
+    activityType: resolveActivityType(cfg?.activityType),
+  };
 }
 
 /**
- * Get the active activities list from config.
- * Falls back to a sensible default if none configured.
+ * Determine the type label for an entry for logging purposes.
+ * @param {unknown} entry
+ * @returns {string}
+ */
+function getEntryTypeLabel(entry) {
+  if (Array.isArray(entry)) return 'array';
+  if (entry === null) return 'null';
+  return typeof entry;
+}
+
+/**
+ * Normalize a configured status message entry.
+ *
+ * @param {unknown} entry
+ * @param {string | undefined} fallbackType
+ * @param {string} source
+ * @returns {{type: string, text: string} | null}
+ */
+function normalizeMessage(entry, fallbackType, source) {
+  const resolvedFallbackType = resolveFallbackType(fallbackType, `${source}.fallbackType`);
+
+  if (typeof entry === 'string') {
+    const text = entry.trim();
+    if (!text) {
+      warn('Ignoring empty bot status message entry', { source });
+      return null;
+    }
+    return { type: resolvedFallbackType, text };
+  }
+
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    warn('Ignoring invalid bot status message entry', {
+      source,
+      entryType: getEntryTypeLabel(entry),
+    });
+    return null;
+  }
+
+  const rawText = typeof entry.text === 'string' ? entry.text.trim() : '';
+  if (!rawText) {
+    warn('Ignoring bot status message without valid text', { source });
+    return null;
+  }
+
+  let type = resolvedFallbackType;
+  if (typeof entry.type === 'string' && entry.type.trim()) {
+    if (isSupportedActivityType(entry.type)) {
+      type = entry.type;
+    } else {
+      warn('Invalid bot status message type, falling back to configured/default type', {
+        source,
+        invalidType: entry.type,
+        fallbackType: resolvedFallbackType,
+      });
+    }
+  }
+
+  return { type, text: rawText };
+}
+
+/**
+ * Return normalized rotation messages from new or legacy config fields.
  *
  * @param {Object} cfg - botStatus config section
- * @returns {string[]} Non-empty array of activity strings
+ * @returns {{type: string, text: string}[]}
+ */
+export function getRotationMessages(cfg) {
+  const rotationMessages = cfg?.rotation?.messages;
+  if (Array.isArray(rotationMessages)) {
+    const normalized = rotationMessages
+      .map((entry, index) =>
+        normalizeMessage(entry, cfg?.activityType, `botStatus.rotation.messages[${index}]`),
+      )
+      .filter((entry) => entry !== null);
+    if (normalized.length > 0) {
+      return normalized;
+    }
+
+    if (rotationMessages.length > 0) {
+      warn('Configured botStatus.rotation.messages had no usable entries; falling back', {
+        fallback:
+          Array.isArray(cfg?.activities) && cfg.activities.length > 0
+            ? 'botStatus.activities'
+            : 'default',
+      });
+    }
+  }
+
+  const legacyActivities = cfg?.activities;
+  if (Array.isArray(legacyActivities)) {
+    const normalized = legacyActivities
+      .map((entry, index) =>
+        normalizeMessage(entry, cfg?.activityType, `botStatus.activities[${index}]`),
+      )
+      .filter((entry) => entry !== null);
+    if (normalized.length > 0) {
+      return normalized;
+    }
+
+    if (legacyActivities.length > 0) {
+      warn('Configured botStatus.activities had no usable entries; using default activity', {});
+    }
+  }
+
+  return [{ type: DEFAULT_ACTIVITY_TYPE, text: DEFAULT_ACTIVITY_TEXT }];
+}
+
+/**
+ * Legacy helper kept for backward compatibility with existing call sites/tests.
+ *
+ * @param {Object} cfg
+ * @returns {string[]}
  */
 export function getActivities(cfg) {
-  const list = cfg?.activities;
-  if (Array.isArray(list) && list.length > 0) {
-    return list.filter((a) => typeof a === 'string' && a.trim().length > 0);
+  return getRotationMessages(cfg).map((entry) => entry.text);
+}
+
+/**
+ * Resolve rotation interval in milliseconds with Discord-safe minimum.
+ *
+ * @param {Object} cfg - botStatus config section
+ * @returns {number}
+ */
+export function resolveRotationIntervalMs(cfg) {
+  if (typeof cfg?.rotation?.intervalMinutes === 'number' && cfg.rotation.intervalMinutes > 0) {
+    return Math.max(Math.round(cfg.rotation.intervalMinutes * 60_000), MIN_PRESENCE_INTERVAL_MS);
   }
-  return ['with Discord'];
+
+  // New-format fallback must come before legacy — prevents cross-format leakage
+  // when intervalMinutes is 0 or negative but rotation key exists.
+  if (cfg?.rotation) {
+    return DEFAULT_ROTATE_INTERVAL_MINUTES * 60_000;
+  }
+
+  if (typeof cfg?.rotateIntervalMs === 'number' && cfg.rotateIntervalMs > 0) {
+    return Math.max(cfg.rotateIntervalMs, MIN_PRESENCE_INTERVAL_MS);
+  }
+
+  return DEFAULT_LEGACY_ROTATE_INTERVAL_MS;
+}
+
+/**
+ * Determine whether rotation should be active.
+ * New format obeys rotation.enabled. Legacy format rotates when multiple activities exist.
+ *
+ * @param {Object} cfg - botStatus config section
+ * @param {number} messageCount
+ * @returns {boolean}
+ */
+export function isRotationEnabled(cfg, messageCount) {
+  if (cfg?.rotation && typeof cfg.rotation.enabled === 'boolean') {
+    return cfg.rotation.enabled && messageCount > 1;
+  }
+  return messageCount > 1;
+}
+
+/**
+ * Build Discord activity payload for presence update.
+ *
+ * @param {string} text
+ * @param {ActivityType} type
+ * @returns {{name: string, type: ActivityType, state?: string}}
+ */
+function buildActivityPayload(text, type) {
+  if (type === ActivityType.Custom) {
+    return { name: 'Custom Status', state: text, type };
+  }
+  return { name: text, type };
 }
 
 /**
@@ -108,32 +385,30 @@ export function getActivities(cfg) {
  * @param {import('discord.js').Client} client - Discord client
  */
 export function applyPresence(client) {
-  const globalCfg = getConfig();
-  const cfg = globalCfg?.botStatus;
+  const cfg = getConfig()?.botStatus;
 
-  if (!cfg?.enabled) return;
+  if (!cfg?.enabled || !client?.user) return;
 
-  const { status, activityType } = resolvePresenceConfig(cfg);
-  const activities = getActivities(cfg);
+  const status = resolvePresenceStatus(cfg);
+  const messages = getRotationMessages(cfg);
+  if (messages.length === 0) return;
 
-  // Guard against empty list after filter
-  if (activities.length === 0) return;
-
-  // Clamp index to list length
-  currentActivityIndex = currentActivityIndex % activities.length;
-  const rawText = activities[currentActivityIndex];
-  const name = interpolateActivity(rawText, client);
+  currentActivityIndex = currentActivityIndex % messages.length;
+  const activeMessage = messages[currentActivityIndex];
+  const activityType = resolveActivityType(activeMessage.type);
+  const text = interpolateActivity(activeMessage.text, client);
+  const activity = buildActivityPayload(text, activityType);
 
   try {
     client.user.setPresence({
       status,
-      activities: [{ name, type: activityType }],
+      activities: [activity],
     });
 
     info('Bot presence updated', {
       status,
-      activityType: cfg.activityType ?? 'Playing',
-      activity: name,
+      activityType: activeMessage.type,
+      activity: text,
       index: currentActivityIndex,
     });
   } catch (err) {
@@ -147,9 +422,7 @@ export function applyPresence(client) {
  * @param {import('discord.js').Client} client - Discord client
  */
 function rotate(client) {
-  const cfg = getConfig()?.botStatus;
-  const activities = getActivities(cfg);
-  currentActivityIndex = (currentActivityIndex + 1) % Math.max(activities.length, 1);
+  currentActivityIndex += 1;
   applyPresence(client);
 }
 
@@ -160,36 +433,35 @@ function rotate(client) {
  * @param {import('discord.js').Client} client - Discord client
  */
 export function startBotStatus(client) {
+  if (rotateInterval) {
+    clearInterval(rotateInterval);
+    rotateInterval = null;
+  }
   _client = client;
 
   const cfg = getConfig()?.botStatus;
   if (!cfg?.enabled) {
-    info('Bot status module disabled — skipping');
+    info('Bot status module disabled - skipping');
     return;
   }
 
-  // Apply immediately
   currentActivityIndex = 0;
   applyPresence(client);
 
-  const activities = getActivities(cfg);
-  const intervalMs =
-    typeof cfg.rotateIntervalMs === 'number' && cfg.rotateIntervalMs > 0
-      ? cfg.rotateIntervalMs
-      : 30_000;
-
-  // Only start rotation interval if there are multiple activities to rotate through
-  if (activities.length > 1) {
-    rotateInterval = setInterval(() => rotate(client), intervalMs);
-    info('Bot status rotation started', {
-      activitiesCount: activities.length,
-      intervalMs,
+  const messages = getRotationMessages(cfg);
+  if (!isRotationEnabled(cfg, messages.length)) {
+    info('Bot status set (rotation disabled or single message)', {
+      activity: messages[0]?.text ?? '',
     });
-  } else {
-    info('Bot status set (single activity — no rotation)', {
-      activity: activities[0],
-    });
+    return;
   }
+
+  const intervalMs = resolveRotationIntervalMs(cfg);
+  rotateInterval = setInterval(() => rotate(client), intervalMs);
+  info('Bot status rotation started', {
+    messagesCount: messages.length,
+    intervalMs,
+  });
 }
 
 /**
@@ -205,16 +477,28 @@ export function stopBotStatus() {
 }
 
 /**
- * Reload bot status — called when config changes.
+ * Reload bot status - called when config changes.
  * Stops any running rotation and restarts with new config.
+ * If the module is now disabled, clears Discord presence so the last activity
+ * doesn't remain stuck.
  *
  * @param {import('discord.js').Client} [client] - Discord client (uses cached if omitted)
  */
 export function reloadBotStatus(client) {
-  // Capture cached client BEFORE stopBotStatus() nulls it out
   const target = client ?? _client;
   stopBotStatus();
   if (target) {
+    const cfg = getConfig()?.botStatus;
+    if (!cfg?.enabled) {
+      // Clear Discord presence so the last activity doesn't remain displayed
+      try {
+        target.user?.setPresence({ activities: [], status: 'online' });
+        info('Bot presence cleared (module disabled)');
+      } catch (err) {
+        warn('Failed to clear bot presence', { error: err.message });
+      }
+      return;
+    }
     startBotStatus(target);
   }
 }

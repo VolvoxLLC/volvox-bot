@@ -740,14 +740,25 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
   }
 
   const { path, value, topLevelKey } = result;
+  // botStatus is global (not per-guild) — only bot owners may write to it.
+  const isGlobalBotStatusWrite = topLevelKey === 'botStatus';
+  if (isGlobalBotStatusWrite && req.authMethod === 'oauth' && !isOAuthBotOwner(req.user)) {
+    return res.status(403).json({ error: 'Only bot owners can update global bot status' });
+  }
+  const writeScope = isGlobalBotStatusWrite ? 'global' : req.params.id;
 
   try {
-    await setConfigValue(path, value, req.params.id);
-    const effectiveConfig = getConfig(req.params.id);
+    await setConfigValue(path, value, writeScope === 'global' ? undefined : req.params.id);
+    const effectiveConfig = writeScope === 'global' ? getConfig() : getConfig(req.params.id);
     const effectiveSection = effectiveConfig[topLevelKey] || {};
     const sensitivePattern = /key|secret|token|password/i;
     const logValue = sensitivePattern.test(path) ? '[REDACTED]' : value;
-    info('Config updated via API', { path, value: logValue, guild: req.params.id });
+    info('Config updated via API', {
+      path,
+      value: logValue,
+      guild: req.params.id,
+      scope: writeScope,
+    });
     fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
       event: 'config.updated',
       guildId: req.params.id,
