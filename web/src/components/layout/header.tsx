@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleDot, ExternalLink, LogOut } from 'lucide-react';
+import { ExternalLink, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
@@ -47,23 +47,24 @@ export function Header() {
   }, [session?.error]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border/40 bg-background/70 backdrop-blur-2xl">
       <div className="mx-auto flex h-[4.35rem] w-full max-w-[1920px] items-center gap-3 px-3 md:px-6">
         <MobileSidebar />
 
         <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary to-secondary text-sm font-extrabold text-primary-foreground shadow">
+          {/* Logo mark with animated gradient */}
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary to-secondary text-sm font-extrabold text-primary-foreground shadow-lg shadow-primary/20">
             <span className="absolute inset-0 rounded-xl border border-white/20" />
-            V
+            <span className="relative z-10">V</span>
           </div>
           <div className="hidden min-w-0 sm:block">
             <p className="truncate text-sm font-semibold tracking-tight">Volvox Control Room</p>
             <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 font-medium">
-                <CircleDot className="h-3 w-3 text-primary" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 font-medium text-primary">
+                <span className="status-dot-live" />
                 Live
               </span>
-              <span className="truncate">
+              <span className="truncate text-muted-foreground/70">
                 {currentPageTitle && currentPageTitle !== 'Overview'
                   ? currentPageTitle
                   : 'Overview'}
@@ -85,19 +86,19 @@ export function Header() {
           {session?.user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="dashboard-chip relative h-9 w-9 rounded-full">
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-1 ring-border/50 transition-all hover:ring-primary/30">
                   <Avatar className="h-8 w-8">
                     <AvatarImage
                       src={session.user.image ?? undefined}
                       alt={session.user.name ?? 'User'}
                     />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                       {session.user.name?.charAt(0)?.toUpperCase() ?? 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56 rounded-xl border-border/60" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{session.user.name}</p>

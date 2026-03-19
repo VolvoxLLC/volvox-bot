@@ -25,9 +25,15 @@ function formatBytes(bytes: number): string {
 }
 
 function pingColor(ping: number): string {
-  if (ping < 100) return 'text-green-500';
+  if (ping < 100) return 'text-emerald-500';
   if (ping <= 300) return 'text-yellow-500';
   return 'text-red-500';
+}
+
+function pingBg(ping: number): string {
+  if (ping < 100) return 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400';
+  if (ping <= 300) return 'bg-yellow-500/12 text-yellow-600 dark:text-yellow-400';
+  return 'bg-red-500/12 text-red-600 dark:text-red-400';
 }
 
 function errorColor(count: number): string {
@@ -36,7 +42,7 @@ function errorColor(count: number): string {
 
 function SkeletonCard() {
   return (
-    <Card>
+    <Card className="kpi-card rounded-2xl">
       <CardHeader className="pb-2">
         <Skeleton className="h-4 w-28" />
       </CardHeader>
@@ -50,7 +56,7 @@ function SkeletonCard() {
 export function HealthCards({ health, loading }: HealthCardsProps) {
   if (loading && !health) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-fade-in">
         {(['hc-0', 'hc-1', 'hc-2', 'hc-3', 'hc-4', 'hc-5', 'hc-6', 'hc-7'] as const).map((key) => (
           <SkeletonCard key={key} />
         ))}
@@ -73,30 +79,34 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
   const cpuPct = Math.min(Math.max(rawPct, 0), 100).toFixed(1);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-fade-in">
       {/* Uptime */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/12 text-primary">
+              <Clock className="h-3.5 w-3.5" />
+            </span>
             Uptime
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">{health ? formatUptime(health.uptime) : '—'}</span>
+          <span className="text-2xl font-bold tracking-tight">{health ? formatUptime(health.uptime) : '—'}</span>
         </CardContent>
       </Card>
 
       {/* Memory */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <MemoryStick className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/12 text-secondary">
+              <MemoryStick className="h-3.5 w-3.5" />
+            </span>
             Memory
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">
+          <span className="text-2xl font-bold tracking-tight">
             {health ? formatBytes(health.memory.heapUsed) : '—'}
           </span>
           {health ? (
@@ -104,9 +114,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
               <p className="mt-1 text-xs text-muted-foreground">
                 of {formatBytes(health.memory.heapTotal)} ({heapPct.toFixed(0)}%)
               </p>
-              <div className="mt-2 h-1.5 w-full rounded-full bg-muted">
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-1.5 rounded-full bg-primary transition-all"
+                  className="h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
                   style={{ width: `${Math.min(heapPct, 100).toFixed(1)}%` }}
                 />
               </div>
@@ -116,46 +126,52 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
       </Card>
 
       {/* Discord Ping */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Wifi className="h-4 w-4 text-muted-foreground" />
+            <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${health ? pingBg(health.discord.ping) : 'bg-muted text-muted-foreground'}`}>
+              <Wifi className="h-3.5 w-3.5" />
+            </span>
             Discord Ping
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className={`text-2xl font-bold ${health ? pingColor(health.discord.ping) : ''}`}>
+          <span className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}>
             {health ? `${health.discord.ping}ms` : '—'}
           </span>
         </CardContent>
       </Card>
 
       {/* Guilds */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Globe className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/12 text-cyan-600 dark:text-cyan-400">
+              <Globe className="h-3.5 w-3.5" />
+            </span>
             Guilds
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">
+          <span className="text-2xl font-bold tracking-tight">
             {health ? health.discord.guilds.toLocaleString() : '—'}
           </span>
         </CardContent>
       </Card>
 
       {/* Errors (1h) */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/12 text-orange-600 dark:text-orange-400">
+              <AlertTriangle className="h-3.5 w-3.5" />
+            </span>
             Errors (1h)
           </CardTitle>
         </CardHeader>
         <CardContent>
           <span
-            className={`text-2xl font-bold ${health && health.errors.lastHour != null ? errorColor(health.errors.lastHour) : ''}`}
+            className={`text-2xl font-bold tracking-tight ${health && health.errors.lastHour != null ? errorColor(health.errors.lastHour) : ''}`}
           >
             {health ? (health.errors.lastHour?.toLocaleString() ?? '—') : '—'}
           </span>
@@ -163,16 +179,18 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
       </Card>
 
       {/* Errors (24h) */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/12 text-orange-600 dark:text-orange-400">
+              <Activity className="h-3.5 w-3.5" />
+            </span>
             Errors (24h)
           </CardTitle>
         </CardHeader>
         <CardContent>
           <span
-            className={`text-2xl font-bold ${health && health.errors.lastDay != null ? errorColor(health.errors.lastDay) : ''}`}
+            className={`text-2xl font-bold tracking-tight ${health && health.errors.lastDay != null ? errorColor(health.errors.lastDay) : ''}`}
           >
             {health ? (health.errors.lastDay?.toLocaleString() ?? '—') : '—'}
           </span>
@@ -180,33 +198,45 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
       </Card>
 
       {/* CPU — estimated utilisation from cumulative cpuUsage / uptime */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Cpu className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/12 text-primary">
+              <Cpu className="h-3.5 w-3.5" />
+            </span>
             CPU
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">{health ? `${cpuPct}%` : '—'}</span>
+          <span className="text-2xl font-bold tracking-tight">{health ? `${cpuPct}%` : '—'}</span>
           {health ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              user {cpuUserSec.toFixed(1)}s / sys {cpuSystemSec.toFixed(1)}s
-            </p>
+            <>
+              <p className="mt-1 text-xs text-muted-foreground">
+                user {cpuUserSec.toFixed(1)}s / sys {cpuSystemSec.toFixed(1)}s
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
+                  style={{ width: `${cpuPct}%` }}
+                />
+              </div>
+            </>
           ) : null}
         </CardContent>
       </Card>
 
       {/* Node Version */}
-      <Card>
+      <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <Server className="h-3.5 w-3.5" />
+            </span>
             Node
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold">{health ? health.system.nodeVersion : '—'}</span>
+          <span className="text-2xl font-bold tracking-tight">{health ? health.system.nodeVersion : '—'}</span>
         </CardContent>
       </Card>
     </div>

@@ -54,7 +54,7 @@
 
 @layer base {
   :root {
-    /* Volvox Green Light Mode */
+    /* Volvox Green Light Mode — deeper, more vibrant */
     --background: 150 30% 97%;
     --foreground: 160 50% 8%;
     --card: 150 25% 95%;
@@ -63,7 +63,7 @@
     --popover-foreground: 160 50% 8%;
     --primary: 152 76% 40%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 275 58% 55%;
+    --secondary: 270 65% 55%;
     --secondary-foreground: 0 0% 100%;
     --muted: 150 20% 93%;
     --muted-foreground: 160 10% 38%;
@@ -75,6 +75,13 @@
     --input: 150 15% 84%;
     --ring: 152 76% 40%;
     --radius: 0.75rem;
+
+    /* Extended palette */
+    --neon-green: 152 82% 48%;
+    --neon-purple: 270 80% 60%;
+    --neon-cyan: 185 85% 50%;
+    --neon-orange: 33 100% 55%;
+    --surface-glow: 152 76% 40%;
 
     /* Semantic tokens for landing components */
     --bg-primary: hsl(var(--background));
@@ -91,30 +98,37 @@
   }
 
   .dark {
-    /* Volvox Green Dark Mode */
-    --background: 160 30% 5%;
+    /* Volvox Green Dark Mode — richer, deeper */
+    --background: 160 35% 4%;
     --foreground: 150 15% 90%;
-    --card: 160 25% 8%;
+    --card: 160 30% 7%;
     --card-foreground: 150 15% 90%;
-    --popover: 160 25% 8%;
+    --popover: 160 30% 7%;
     --popover-foreground: 150 15% 90%;
     --primary: 152 76% 42%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 275 58% 55%;
+    --secondary: 270 65% 55%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 160 20% 12%;
+    --muted: 160 25% 11%;
     --muted-foreground: 155 12% 48%;
     --accent: 33 100% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 4 80% 40%;
     --destructive-foreground: 0 0% 98%;
-    --border: 160 15% 15%;
-    --input: 160 15% 15%;
+    --border: 160 18% 14%;
+    --input: 160 18% 14%;
     --ring: 152 76% 42%;
+
+    /* Extended palette — dark */
+    --neon-green: 152 85% 50%;
+    --neon-purple: 270 85% 65%;
+    --neon-cyan: 185 90% 55%;
+    --neon-orange: 33 100% 58%;
+    --surface-glow: 152 80% 45%;
 
     /* Semantic tokens (dark mode) */
     --bg-primary: hsl(var(--background));
-    --bg-secondary: hsl(160 25% 7%);
+    --bg-secondary: hsl(160 30% 6%);
     --bg-tertiary: hsl(var(--muted));
     --text-primary: hsl(var(--foreground));
     --text-secondary: hsl(var(--muted-foreground));
@@ -195,13 +209,15 @@
   background:
     radial-gradient(1200px 600px at 8% -10%, hsl(var(--primary) / 0.14), transparent 65%),
     radial-gradient(900px 500px at 95% 0%, hsl(var(--secondary) / 0.1), transparent 60%),
+    radial-gradient(600px 400px at 50% 100%, hsl(var(--neon-cyan) / 0.05), transparent 70%),
     linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
 }
 
 .dark .dashboard-canvas::before {
   background:
-    radial-gradient(1200px 600px at 8% -10%, hsl(var(--primary) / 0.16), transparent 65%),
-    radial-gradient(900px 500px at 95% 0%, hsl(var(--secondary) / 0.08), transparent 60%),
+    radial-gradient(1200px 600px at 8% -10%, hsl(var(--primary) / 0.18), transparent 65%),
+    radial-gradient(900px 500px at 95% 0%, hsl(var(--secondary) / 0.1), transparent 60%),
+    radial-gradient(600px 400px at 50% 100%, hsl(var(--neon-cyan) / 0.04), transparent 70%),
     linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
 }
 
@@ -214,8 +230,8 @@
 
 .dark .dashboard-grid {
   background-image:
-    linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px);
+    linear-gradient(hsl(var(--foreground) / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.025) 1px, transparent 1px);
 }
 
 .dashboard-panel {
@@ -225,6 +241,7 @@
     hsl(var(--card) / 0.94) 0%,
     hsl(var(--card) / 0.9) 100%
   );
+  backdrop-filter: blur(12px);
   box-shadow:
     0 1px 0 hsl(var(--foreground) / 0.03),
     0 18px 30px -24px hsl(var(--foreground) / 0.28);
@@ -237,6 +254,7 @@
     hsl(var(--card) / 0.9) 0%,
     hsl(var(--card) / 0.84) 100%
   );
+  backdrop-filter: blur(12px);
   box-shadow:
     0 1px 0 hsl(var(--foreground) / 0.06),
     0 20px 36px -28px hsl(0 0% 0% / 0.8);
@@ -263,6 +281,233 @@
   }
 }
 
+/* ─── Glow card — vibrant hover cards ─────────────────────────────────────── */
+
+.glow-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--card) / 0.95) 0%,
+    hsl(var(--card) / 0.88) 100%
+  );
+  backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    hsl(var(--primary) / 0.08),
+    transparent 40%
+  );
+  transition: opacity 0.3s ease;
+}
+
+.glow-card:hover::before {
+  opacity: 1;
+}
+
+.glow-card:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.1),
+    0 8px 32px -8px hsl(var(--primary) / 0.15),
+    0 24px 48px -16px hsl(0 0% 0% / 0.2);
+}
+
+.dark .glow-card:hover {
+  border-color: hsl(var(--primary) / 0.4);
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.15),
+    0 8px 32px -8px hsl(var(--primary) / 0.2),
+    0 24px 48px -16px hsl(0 0% 0% / 0.5);
+}
+
+/* ─── KPI card accents ────────────────────────────────────────────────────── */
+
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    hsl(var(--primary)),
+    hsl(var(--neon-cyan)),
+    hsl(var(--secondary))
+  );
+  opacity: 0.7;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px -8px hsl(var(--primary) / 0.15),
+    0 4px 8px -4px hsl(0 0% 0% / 0.1);
+}
+
+.dark .kpi-card:hover {
+  box-shadow:
+    0 8px 24px -8px hsl(var(--primary) / 0.2),
+    0 4px 8px -4px hsl(0 0% 0% / 0.3);
+}
+
+/* ─── Neon pulse — live status indicator ──────────────────────────────────── */
+
+.neon-pulse {
+  position: relative;
+}
+
+.neon-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: hsl(var(--primary));
+  opacity: 0;
+  animation: neon-breathe 3s ease-in-out infinite;
+  z-index: -1;
+  filter: blur(6px);
+}
+
+@keyframes neon-breathe {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.3; }
+}
+
+/* ─── Status dot — pulsing live indicator ─────────────────────────────────── */
+
+.status-dot-live {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.6);
+}
+
+.status-dot-live::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid hsl(var(--primary) / 0.4);
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* ─── Sidebar glow — active nav item ──────────────────────────────────────── */
+
+.sidebar-item-active {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.12) 0%,
+    hsl(var(--primary) / 0.06) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 0.2);
+  box-shadow: 0 0 12px -4px hsl(var(--primary) / 0.15);
+}
+
+.dark .sidebar-item-active {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.15) 0%,
+    hsl(var(--primary) / 0.08) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 0.25);
+  box-shadow: 0 0 16px -4px hsl(var(--primary) / 0.2);
+}
+
+/* ─── Settings category card ──────────────────────────────────────────────── */
+
+.settings-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.95) 0%,
+    hsl(var(--card) / 0.85) 100%
+  );
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--card-accent, linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary))));
+  opacity: 0.8;
+  transition: opacity 0.3s;
+}
+
+.settings-card:hover {
+  border-color: hsl(var(--primary) / 0.25);
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 32px -12px hsl(var(--primary) / 0.12),
+    0 4px 12px -4px hsl(0 0% 0% / 0.08);
+}
+
+.settings-card:hover::before {
+  opacity: 1;
+}
+
+.dark .settings-card:hover {
+  border-color: hsl(var(--primary) / 0.35);
+  box-shadow:
+    0 12px 32px -12px hsl(var(--primary) / 0.18),
+    0 4px 12px -4px hsl(0 0% 0% / 0.3);
+}
+
+/* ─── Feature card — settings feature ─────────────────────────────────────── */
+
+.feature-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--card) / 0.92);
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease;
+}
+
+.feature-card[data-enabled="true"] {
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.feature-card[data-enabled="true"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--neon-cyan)));
+  border-radius: 3px 0 0 3px;
+}
+
 /* ─── Floating nav island ─────────────────────────────────────────────────── */
 
 .nav-island {
@@ -284,6 +529,83 @@
   border-radius: 99px;
   padding: 0.3rem;
   gap: 0.25rem;
+}
+
+/* ─── Gradient text utilities ─────────────────────────────────────────────── */
+
+.text-gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--neon-cyan)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-vibrant {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Animated border gradient ────────────────────────────────────────────── */
+
+.border-gradient-animated {
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.border-gradient-animated::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    var(--border-angle, 0deg),
+    hsl(var(--primary)),
+    hsl(var(--secondary)),
+    hsl(var(--neon-cyan)),
+    hsl(var(--primary))
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: border-spin 4s linear infinite;
+}
+
+@keyframes border-spin {
+  to { --border-angle: 360deg; }
+}
+
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* ─── Stagger entrance animations ─────────────────────────────────────────── */
+
+.stagger-fade-in > * {
+  animation: stagger-item 300ms ease-out both;
+}
+
+.stagger-fade-in > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-fade-in > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-fade-in > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-fade-in > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-fade-in > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-fade-in > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-fade-in > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-fade-in > *:nth-child(8) { animation-delay: 350ms; }
+
+@keyframes stagger-item {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Animations ──────────────────────────────────────────────────────────── */
@@ -311,4 +633,43 @@
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+/* ─── Glass morphism utility ──────────────────────────────────────────────── */
+
+.glass {
+  background: hsl(var(--card) / 0.6);
+  backdrop-filter: blur(16px) saturate(1.5);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+.dark .glass {
+  background: hsl(var(--card) / 0.5);
+  backdrop-filter: blur(16px) saturate(1.8);
+  border: 1px solid hsl(var(--border) / 0.6);
+}
+
+/* ─── Scrollbar styling ───────────────────────────────────────────────────── */
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.3);
 }

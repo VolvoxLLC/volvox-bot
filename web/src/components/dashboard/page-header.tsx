@@ -25,12 +25,20 @@ export function PageHeader({
         className,
       )}
     >
-      <span className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-primary via-primary/70 to-secondary/80" />
+      {/* Accent gradient bar */}
+      <span className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary via-primary/60 to-secondary/70" />
+
+      {/* Subtle background shimmer */}
+      <span className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight md:text-[1.9rem]">
-            {Icon && <Icon className="h-5 w-5 text-primary" aria-hidden="true" />}
+          <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight md:text-[1.9rem]">
+            {Icon && (
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+              </span>
+            )}
             <span className="truncate">{title}</span>
           </h1>
           {description && (
@@ -39,7 +47,7 @@ export function PageHeader({
         </div>
 
         {actions && (
-          <div className="dashboard-chip flex shrink-0 items-center gap-2 self-start rounded-xl px-2 py-1 sm:self-start">
+          <div className="flex shrink-0 items-center gap-2 self-start rounded-xl border border-border/50 bg-background/60 backdrop-blur-sm px-2.5 py-1.5 sm:self-start">
             {actions}
           </div>
         )}
