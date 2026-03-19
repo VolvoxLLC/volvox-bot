@@ -117,7 +117,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
             Manage settings by category. Changes are tracked in real-time.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Undo last save — visible only after a successful save with no new changes */}
           {prevSavedConfig && !hasChanges && (
             <Button
