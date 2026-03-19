@@ -447,6 +447,7 @@ describe('index.js', () => {
     expect(mocks.fs.writeFileSync).toHaveBeenCalled();
     expect(mocks.db.closeDb).toHaveBeenCalled();
     expect(mocks.client.destroy).toHaveBeenCalled();
+    expect(mocks.botStatus.stopBotStatus).toHaveBeenCalled();
   });
 
   it('should log save-state failure during shutdown', async () => {
