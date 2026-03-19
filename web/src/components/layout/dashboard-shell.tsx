@@ -20,17 +20,17 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
       <div className="flex min-h-0 flex-1">
         {/* Desktop sidebar */}
-        <aside className="hidden min-h-0 w-80 shrink-0 border-r border-border/60 bg-gradient-to-b from-card/85 via-card/65 to-background/70 md:flex md:flex-col">
-          <div className="px-4 pt-5 pb-3">
+        <aside className="hidden min-h-0 w-72 shrink-0 border-r border-border/40 bg-gradient-to-b from-card/90 via-card/60 to-background/80 md:flex md:flex-col">
+          <div className="px-3 pt-4 pb-3">
             <ServerSelector />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin pb-3">
             <Sidebar />
           </div>
         </aside>
 
         {/* Main content */}
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           <div className="mx-auto w-full max-w-[1560px] p-3 md:p-6 lg:p-8">
             <div className="dashboard-fade-in min-h-[calc(100vh-7.9rem)]">{children}</div>
           </div>

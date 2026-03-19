@@ -13,8 +13,10 @@ import {
   ScrollText,
   Settings,
   Shield,
+  Sparkles,
   Ticket,
   Users,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -61,25 +63,34 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
       onClick={onNavClick}
       className={cn(
         'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
-        'hover:bg-muted/75 hover:text-foreground',
         isActive
-          ? 'bg-primary/12 text-foreground ring-1 ring-primary/25'
-          : 'text-muted-foreground',
+          ? 'sidebar-item-active text-foreground'
+          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
       )}
     >
+      {/* Active indicator bar */}
       <span
         className={cn(
-          'absolute left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full transition-colors',
-          isActive ? 'bg-primary/90' : 'bg-transparent group-hover:bg-border',
+          'absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full transition-all duration-200',
+          isActive
+            ? 'bg-gradient-to-b from-primary to-primary/60 shadow-[0_0_8px_hsl(var(--primary)/0.4)]'
+            : 'bg-transparent group-hover:h-4 group-hover:bg-border',
         )}
       />
-      <item.icon
+      <span
         className={cn(
-          'h-4 w-4 transition-colors',
-          isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
+          'flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200',
+          isActive
+            ? 'bg-primary/15 text-primary shadow-sm'
+            : 'text-muted-foreground group-hover:text-foreground',
         )}
-      />
-      <span>{item.name}</span>
+      >
+        <item.icon className="h-4 w-4" />
+      </span>
+      <span className="truncate">{item.name}</span>
+      {isActive && (
+        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
+      )}
     </Link>
   );
 }
@@ -99,62 +110,70 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   }, [activeSecondaryHref]);
 
   return (
-    <div className={cn('dashboard-panel flex h-full flex-col rounded-2xl', className)}>
+    <div className={cn('flex h-full flex-col', className)}>
       <div className="flex-1 px-3 py-4">
-        <div className="mb-3 rounded-xl border border-border/60 bg-background/70 px-3 py-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.17em] text-muted-foreground">
+        {/* Section label */}
+        <div className="mb-3 flex items-center gap-2 px-3">
+          <Zap className="h-3.5 w-3.5 text-primary" />
+          <p className="text-[11px] font-semibold uppercase tracking-[0.17em] text-gradient-primary">
             Command Deck
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Navigate core moderation and ops tools.
           </p>
         </div>
 
-        <nav className="space-y-1">
+        <nav className="space-y-0.5">
           {primaryNav.map((item) => renderNavItem(item, isNavItemActive(item.href), onNavClick))}
         </nav>
 
-        <Separator className="my-4 opacity-70" />
+        <Separator className="my-4 opacity-50" />
 
         <details
           className="group"
           open={isSecondaryOpen}
           onToggle={(event) => setIsSecondaryOpen((event.currentTarget as HTMLDetailsElement).open)}
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:bg-muted/60">
-            Extensions
-            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+            <span className="flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5" />
+              Extensions
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" />
           </summary>
-          <nav className="mt-2 space-y-1">
+          <nav className="mt-2 space-y-0.5">
             {secondaryNav.map((item) =>
               renderNavItem(item, isNavItemActive(item.href), onNavClick),
             )}
           </nav>
         </details>
 
-        <div className="mt-4 rounded-xl border border-border/60 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Workflow
+        {/* Workflow tip card */}
+        <div className="mt-5 overflow-hidden rounded-xl border border-primary/15 bg-gradient-to-br from-primary/8 via-background to-secondary/8 p-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15">
+              <Zap className="h-3 w-3 text-primary" />
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary/80">
+              Workflow
+            </p>
+          </div>
+          <p className="mt-2 text-sm font-medium leading-snug">
+            Tickets → Moderation → Review
           </p>
-          <p className="mt-1.5 text-sm font-medium">
-            Start with tickets, then moderation, then conversation review.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            This sequence helps you clear urgent issues first and keep response quality high.
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Clear urgent issues first, then moderate, then review conversations.
           </p>
         </div>
       </div>
 
-      <div className="border-t border-border/60 p-3">
+      <div className="border-t border-border/40 p-3">
         <Link
           href='https://joinvolvox.com/'
           target="_blank"
           rel="noopener noreferrer"
           onClick={onNavClick}
-          className="dashboard-chip flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-muted-foreground transition-all hover:bg-muted/50 hover:text-foreground"
         >
           <LifeBuoy className="h-3.5 w-3.5" />
-          <span>Support and community</span>
+          <span>Support & Community</span>
         </Link>
       </div>
     </div>
