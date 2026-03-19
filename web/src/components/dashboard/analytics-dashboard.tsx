@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from './empty-state';
 import { useChartTheme } from '@/hooks/use-chart-theme';
+import { useGlowCard } from '@/hooks/use-glow-card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
 import {
@@ -141,6 +142,8 @@ export function AnalyticsDashboard() {
   const [customRangeError, setCustomRangeError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useGlowCard();
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
