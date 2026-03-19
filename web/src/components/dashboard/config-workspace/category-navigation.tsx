@@ -18,7 +18,7 @@ const CATEGORY_ICONS: Record<ConfigCategoryIcon, typeof Sparkles> = {
 };
 
 /** Icon tint classes per category */
-const CATEGORY_ICON_ACTIVE: Record<string, string> = {
+const CATEGORY_ICON_ACTIVE: Record<ConfigCategoryId, string> = {
   'ai-automation': 'bg-primary/15 text-primary',
   'onboarding-growth': 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
   'moderation-safety': 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
@@ -96,7 +96,7 @@ export function CategoryNavigation({ dirtyCounts }: CategoryNavigationProps) {
                 key={category.id}
                 href={`/dashboard/settings/${category.id}`}
                 className={cn(
-                  'flex h-auto w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-200',
+                  'flex h-auto w-full items-center justify-between rounded-xl border border-transparent px-3 py-2.5 text-left text-sm font-medium transition-all duration-200',
                   isActive
                     ? 'sidebar-item-active text-foreground'
                     : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
