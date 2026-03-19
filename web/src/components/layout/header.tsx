@@ -86,7 +86,10 @@ export function Header() {
           {session?.user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-1 ring-border/50 transition-all hover:ring-primary/30">
+                <Button
+                  variant="ghost"
+                  className="relative h-9 w-9 rounded-full ring-1 ring-border/50 transition-all hover:ring-primary/30"
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
                       src={session.user.image ?? undefined}
