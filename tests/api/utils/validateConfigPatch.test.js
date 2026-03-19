@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { SAFE_CONFIG_KEYS } from '../../../src/api/utils/configAllowlist.js';
 import { validateConfigPatchBody } from '../../../src/api/utils/validateConfigPatch.js';
 
 // Mock the validateSingleValue function from config.js
@@ -11,8 +12,6 @@ vi.mock('../../../src/api/routes/config.js', () => ({
     return [];
   }),
 }));
-
-const SAFE_CONFIG_KEYS = new Set(['ai', 'welcome', 'spam', 'moderation', 'triage', 'botStatus']);
 
 describe('validateConfigPatch', () => {
   describe('validateConfigPatchBody', () => {
@@ -86,7 +85,7 @@ describe('validateConfigPatch', () => {
 
     it('should reject unsafe top-level keys', () => {
       const body = {
-        path: 'permissions.botOwners',
+        path: 'database.password',
         value: ['user123'],
       };
 
