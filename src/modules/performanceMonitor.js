@@ -269,4 +269,4 @@ class PerformanceMonitor {
 
 PerformanceMonitor.instance = null;
 
-export { PerformanceMonitor, CircularBuffer, DEFAULT_THRESHOLDS, SAMPLE_INTERVAL_MS };
+export { CircularBuffer, DEFAULT_THRESHOLDS, PerformanceMonitor, SAMPLE_INTERVAL_MS };
