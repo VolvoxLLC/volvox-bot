@@ -302,6 +302,7 @@
   inset: 0;
   z-index: 0;
   opacity: 0;
+  pointer-events: none;
   background: radial-gradient(
     600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
     hsl(var(--primary) / 0.08),
@@ -633,6 +634,46 @@
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .text-aurora {
+    animation: none;
+  }
+
+  .neon-pulse::before {
+    animation: none;
+  }
+
+  .status-dot-live::after {
+    animation: none;
+  }
+
+  .animated-border::before {
+    animation: none;
+  }
+
+  .stagger-fade-in > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-float-slow {
+    animation: none;
+  }
+
+  .terminal-cursor {
+    animation: none;
+  }
+
+  .dashboard-fade-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ─── Glass morphism utility ──────────────────────────────────────────────── */
