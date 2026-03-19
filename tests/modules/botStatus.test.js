@@ -236,6 +236,16 @@ describe('getRotationMessages / resolveRotationIntervalMs', () => {
     expect(intervalMs).toBe(300_000);
   });
 
+  it('clamps rotation intervalMinutes to the Discord-safe minimum', () => {
+    const intervalMs = resolveRotationIntervalMs({ rotation: { intervalMinutes: 0.001 } });
+    expect(intervalMs).toBe(20_000);
+  });
+
+  it('clamps legacy rotateIntervalMs to the Discord-safe minimum', () => {
+    const intervalMs = resolveRotationIntervalMs({ rotateIntervalMs: 100 });
+    expect(intervalMs).toBe(20_000);
+  });
+
   it('warns and falls back when activityType cannot be resolved', () => {
     const messages = getRotationMessages({
       activityType: 'BadType',
@@ -381,7 +391,7 @@ describe('startBotStatus / stopBotStatus', () => {
   it('rotates activities on interval', () => {
     const cfg = makeConfig({
       activities: ['activity A', 'activity B', 'activity C'],
-      rotateIntervalMs: 100,
+      rotateIntervalMs: 20_000,
     });
     getConfig.mockReturnValue(cfg);
     const client = makeClient();
@@ -389,10 +399,10 @@ describe('startBotStatus / stopBotStatus', () => {
     startBotStatus(client);
     expect(client.user.setPresence).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(20_000);
     expect(client.user.setPresence).toHaveBeenCalledTimes(2);
 
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(20_000);
     expect(client.user.setPresence).toHaveBeenCalledTimes(3);
   });
 
@@ -407,16 +417,16 @@ describe('startBotStatus / stopBotStatus', () => {
   });
 
   it('stops rotation on stopBotStatus', () => {
-    const cfg = makeConfig({ activities: ['A', 'B'], rotateIntervalMs: 100 });
+    const cfg = makeConfig({ activities: ['A', 'B'], rotateIntervalMs: 20_000 });
     getConfig.mockReturnValue(cfg);
     const client = makeClient();
 
     startBotStatus(client);
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(20_000);
     expect(client.user.setPresence).toHaveBeenCalledTimes(2);
 
     stopBotStatus();
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(20_000);
     // No new calls after stop
     expect(client.user.setPresence).toHaveBeenCalledTimes(2);
   });
@@ -445,7 +455,7 @@ describe('startBotStatus / stopBotStatus', () => {
   it('wraps activity index around when activities cycle through', () => {
     const cfg = makeConfig({
       activities: ['first', 'second'],
-      rotateIntervalMs: 100,
+      rotateIntervalMs: 20_000,
     });
     getConfig.mockReturnValue(cfg);
     const client = makeClient();
@@ -455,10 +465,10 @@ describe('startBotStatus / stopBotStatus', () => {
     const calls = client.user.setPresence.mock.calls;
     expect(calls[0][0].activities[0].name).toBe('first');
 
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(20_000);
     expect(calls[1][0].activities[0].name).toBe('second');
 
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(20_000);
     // Wraps back to first
     expect(calls[2][0].activities[0].name).toBe('first');
   });
@@ -468,7 +478,7 @@ describe('startBotStatus / stopBotStatus', () => {
       activities: undefined,
       rotation: {
         enabled: true,
-        intervalMinutes: 0.001, // 60ms for test speed
+        intervalMinutes: 0.001,
         messages: [
           { type: 'Watching', text: 'first' },
           { type: 'Playing', text: 'second' },
@@ -481,7 +491,7 @@ describe('startBotStatus / stopBotStatus', () => {
     startBotStatus(client);
     expect(client.user.setPresence.mock.calls[0][0].activities[0].name).toBe('first');
 
-    vi.advanceTimersByTime(60);
+    vi.advanceTimersByTime(20_000);
     expect(client.user.setPresence.mock.calls[1][0].activities[0].name).toBe('second');
   });
 });

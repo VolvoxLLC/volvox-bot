@@ -62,6 +62,11 @@ const mocks = vi.hoisted(() => ({
     stopTempbanScheduler: vi.fn(),
   },
 
+  botStatus: {
+    startBotStatus: vi.fn(),
+    stopBotStatus: vi.fn(),
+  },
+
   health: {
     instance: {},
     getInstance: vi.fn(),
@@ -205,6 +210,11 @@ vi.mock('../src/utils/health.js', () => ({
   },
 }));
 
+vi.mock('../src/modules/botStatus.js', () => ({
+  startBotStatus: mocks.botStatus.startBotStatus,
+  stopBotStatus: mocks.botStatus.stopBotStatus,
+}));
+
 vi.mock('../src/utils/permissions.js', () => ({
   hasPermission: mocks.permissions.hasPermission,
   getPermissionError: mocks.permissions.getPermissionError,
@@ -338,6 +348,7 @@ async function importIndex({
 
 describe('index.js', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     delete process.env.DISCORD_TOKEN;
     delete process.env.DATABASE_URL;
   });
@@ -367,6 +378,16 @@ describe('index.js', () => {
     expect(mocks.events.registerEventHandlers).toHaveBeenCalled();
     expect(mocks.moderation.startTempbanScheduler).toHaveBeenCalled();
     expect(mocks.client.login).toHaveBeenCalledWith('abc');
+  });
+
+  it('should start bot status after client login completes', async () => {
+    await importIndex({ token: 'abc', databaseUrl: null });
+
+    expect(mocks.client.login).toHaveBeenCalledWith('abc');
+    expect(mocks.botStatus.startBotStatus).toHaveBeenCalledWith(mocks.client);
+    expect(mocks.client.login.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.botStatus.startBotStatus.mock.invocationCallOrder.at(-1),
+    );
   });
 
   it('should warn and skip db init when DATABASE_URL is not set', async () => {
