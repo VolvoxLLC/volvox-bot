@@ -15,6 +15,10 @@ vi.mock('../src/modules/config.js', () => ({
   onConfigChange: vi.fn(),
 }));
 
+vi.mock('../src/utils/cache.js', () => ({
+  cacheDelPattern: vi.fn().mockResolvedValue(0),
+}));
+
 describe('config-listeners', () => {
   let registerConfigListeners, removeLoggingTransport, setInitialTransport;
   let onConfigChange, addPostgresTransport, removePostgresTransportMock;
@@ -23,16 +27,6 @@ describe('config-listeners', () => {
   beforeEach(async () => {
     vi.resetModules();
 
-    // Re-apply mock implementations after module reset
-    vi.mock('../src/logger.js', () => ({
-      addPostgresTransport: vi.fn().mockReturnValue({ close: vi.fn() }),
-      removePostgresTransport: vi.fn().mockResolvedValue(undefined),
-      info: vi.fn(),
-      error: vi.fn(),
-    }));
-    vi.mock('../src/modules/config.js', () => ({
-      onConfigChange: vi.fn(),
-    }));
     // Import fresh copies of the mocked modules
     const loggerMod = await import('../src/logger.js');
     addPostgresTransport = loggerMod.addPostgresTransport;
@@ -49,10 +43,6 @@ describe('config-listeners', () => {
     removeLoggingTransport = mod.removeLoggingTransport;
     setInitialTransport = mod.setInitialTransport;
   });
-
-  vi.mock('../src/utils/cache.js', () => ({
-    cacheDelPattern: vi.fn().mockResolvedValue(0),
-  }));
 
   afterEach(() => {
     vi.clearAllMocks();

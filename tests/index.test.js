@@ -230,6 +230,8 @@ async function importIndex({
   stateFile = false,
   stateRaw = null,
   readdirFiles = [],
+  initDbReject = null,
+  registerEventHandlersThrow = null,
   loadConfigReject = null,
   loadConfigResult = null,
   throwOnExit = true,
@@ -264,7 +266,12 @@ async function importIndex({
   mocks.logger.addPostgresTransport.mockReset().mockReturnValue({ _transport: true });
   mocks.logger.removePostgresTransport.mockReset().mockResolvedValue(undefined);
 
-  mocks.db.initDb.mockReset().mockResolvedValue({ query: vi.fn() });
+  mocks.db.initDb.mockReset();
+  if (initDbReject) {
+    mocks.db.initDb.mockRejectedValue(initDbReject);
+  } else {
+    mocks.db.initDb.mockResolvedValue({ query: vi.fn() });
+  }
   mocks.db.closeDb.mockReset().mockResolvedValue(undefined);
 
   mocks.ai.getConversationHistory.mockReset().mockReturnValue(new Map());
@@ -292,6 +299,11 @@ async function importIndex({
   });
 
   mocks.events.registerEventHandlers.mockReset();
+  if (registerEventHandlersThrow) {
+    mocks.events.registerEventHandlers.mockImplementation(() => {
+      throw registerEventHandlersThrow;
+    });
+  }
   mocks.moderation.startTempbanScheduler.mockReset();
   mocks.moderation.stopTempbanScheduler.mockReset();
   mocks.health.getInstance.mockReset().mockReturnValue({});
@@ -757,6 +769,83 @@ describe('index.js', () => {
       expect(mocks.logger.info).toHaveBeenCalledWith('Moderation config updated', {
         path: 'moderation.automod',
         newValue: false,
+      });
+    });
+  });
+
+  // ── Startup failure coverage ──────────────────────────────────────────
+
+  describe('startup failure recovery', () => {
+    it('should exit when initDb fails', async () => {
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        initDbReject: new Error('connection refused'),
+        throwOnExit: false,
+      });
+
+      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(mocks.logger.error).toHaveBeenCalledWith('Startup failed', {
+        error: 'connection refused',
+        stack: expect.any(String),
+      });
+    });
+
+    it('should handle state file with invalid JSON gracefully', async () => {
+      await importIndex({
+        token: 'abc',
+        databaseUrl: null,
+        stateFile: true,
+        stateRaw: '{invalid json!!!',
+      });
+
+      // Should log an error and continue
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('state'),
+        expect.any(Object),
+      );
+      expect(mocks.client.login).toHaveBeenCalled();
+    });
+
+    it('should handle mem0 health check timeout gracefully', async () => {
+      // Simulate a slow health check that resolves to false
+      mocks.memory.checkMem0Health.mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve(false), 50)),
+      );
+
+      await importIndex({ token: 'abc', databaseUrl: null });
+
+      // Bot should still login
+      expect(mocks.client.login).toHaveBeenCalled();
+    });
+
+    it('should exit when registerEventHandlers fails', async () => {
+      await importIndex({
+        token: 'abc',
+        databaseUrl: null,
+        registerEventHandlersThrow: new Error('event registration failed'),
+        throwOnExit: false,
+      });
+
+      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(mocks.logger.error).toHaveBeenCalledWith('Startup failed', {
+        error: 'event registration failed',
+        stack: expect.any(String),
+      });
+    });
+
+    it('should exit when loadConfig fails', async () => {
+      await importIndex({
+        token: 'abc',
+        databaseUrl: 'postgres://db',
+        loadConfigReject: new Error('config fail'),
+        throwOnExit: false,
+      });
+
+      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(mocks.logger.error).toHaveBeenCalledWith('Startup failed', {
+        error: 'config fail',
+        stack: expect.any(String),
       });
     });
   });

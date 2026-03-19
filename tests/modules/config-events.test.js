@@ -24,19 +24,6 @@ describe('config change events', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    vi.mock('../../src/logger.js', () => ({
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-    }));
-    vi.mock('../../src/db.js', () => ({
-      getPool: vi.fn(),
-    }));
-    vi.mock('node:fs', () => ({
-      existsSync: vi.fn(),
-      readFileSync: vi.fn(),
-    }));
 
     const { existsSync: mockExists, readFileSync: mockRead } = await import('node:fs');
     mockExists.mockReturnValue(true);
