@@ -85,8 +85,14 @@ function SkeletonCard() {
       <div
         className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite]"
         style={{
-          background:
-            'linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.04) 50%, transparent 100%)',
+          background: [
+            'linear-gradient(',
+            '90deg, ',
+            'transparent 0%, ',
+            'hsl(var(--primary) / 0.04) 50%, ',
+            'transparent 100%',
+            ')',
+          ].join(''),
         }}
       />
       <div className="flex flex-col items-center gap-3">
@@ -101,13 +107,13 @@ function SkeletonCard() {
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
 interface StatCardProps {
-  icon: React.ReactNode;
-  color: string;
-  value: number;
-  label: string;
-  formatter?: (n: number) => string;
-  delay: number;
-  isInView: boolean;
+  readonly icon: React.ReactNode;
+  readonly color: string;
+  readonly value: number;
+  readonly label: string;
+  readonly formatter?: (n: number) => string;
+  readonly delay: number;
+  readonly isInView: boolean;
 }
 
 function StatCard({
@@ -307,7 +313,10 @@ export function Stats() {
                   >
                     <div
                       className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-                      style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                      style={{
+                        backgroundColor: `${card.color}15`,
+                        color: card.color,
+                      }}
                     >
                       {card.icon}
                     </div>
