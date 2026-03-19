@@ -51,6 +51,7 @@ const VALID_STATUSES = new Set(['online', 'idle', 'dnd', 'invisible']);
 
 const DEFAULT_LEGACY_ROTATE_INTERVAL_MS = 30_000;
 const DEFAULT_ROTATE_INTERVAL_MINUTES = 5;
+const MIN_PRESENCE_INTERVAL_MS = 20_000;
 const DEFAULT_ACTIVITY_TYPE = 'Playing';
 const DEFAULT_ACTIVITY_TEXT = 'with Discord';
 
@@ -316,11 +317,11 @@ export function getActivities(cfg) {
  */
 export function resolveRotationIntervalMs(cfg) {
   if (typeof cfg?.rotation?.intervalMinutes === 'number' && cfg.rotation.intervalMinutes > 0) {
-    return Math.round(cfg.rotation.intervalMinutes * 60_000);
+    return Math.max(Math.round(cfg.rotation.intervalMinutes * 60_000), MIN_PRESENCE_INTERVAL_MS);
   }
 
   if (typeof cfg?.rotateIntervalMs === 'number' && cfg.rotateIntervalMs > 0) {
-    return cfg.rotateIntervalMs;
+    return Math.max(cfg.rotateIntervalMs, MIN_PRESENCE_INTERVAL_MS);
   }
 
   if (cfg?.rotation) {

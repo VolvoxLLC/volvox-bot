@@ -369,9 +369,6 @@ async function startup() {
   // Start triage module (per-channel message classification + response)
   await startTriage(client, config, healthMonitor);
 
-  // Start configurable bot presence rotation
-  startBotStatus(client);
-
   // Start tempban scheduler for automatic unbans (DB required)
   if (dbPool) {
     startTempbanScheduler(client);
@@ -383,6 +380,9 @@ async function startup() {
   // Load commands and login
   await loadCommands();
   await client.login(token);
+
+  // Start configurable bot presence rotation after login so client.user is available
+  startBotStatus(client);
 
   // Set Sentry context now that we know the bot identity (no-op if disabled)
   import('./sentry.js')
