@@ -1,17 +1,12 @@
 'use client';
 
-import {
-  ArrowRight,
-  Bot,
-  MessageSquareWarning,
-  Sparkles,
-  Ticket,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, Bot, MessageSquareWarning, Sparkles, Ticket, Users } from 'lucide-react';
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_CATEGORIES } from '@/components/dashboard/config-workspace/config-categories';
 import type { ConfigCategoryIcon } from '@/components/dashboard/config-workspace/types';
+import type { ConfigCategoryId } from '@/components/dashboard/config-workspace/types';
 import { Badge } from '@/components/ui/badge';
 
 const CATEGORY_ICONS: Record<ConfigCategoryIcon, typeof Sparkles> = {
@@ -23,7 +18,7 @@ const CATEGORY_ICONS: Record<ConfigCategoryIcon, typeof Sparkles> = {
 };
 
 /** Gradient accent per category for the top bar */
-const CATEGORY_GRADIENTS: Record<string, string> = {
+const CATEGORY_GRADIENTS: Record<ConfigCategoryId, string> = {
   'ai-automation': 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--neon-cyan)))',
   'onboarding-growth': 'linear-gradient(135deg, hsl(var(--neon-cyan)), hsl(var(--secondary)))',
   'moderation-safety': 'linear-gradient(135deg, hsl(var(--neon-orange)), hsl(var(--destructive)))',
@@ -32,7 +27,7 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
 };
 
 /** Icon background tint per category */
-const CATEGORY_ICON_BG: Record<string, string> = {
+const CATEGORY_ICON_BG: Record<ConfigCategoryId, string> = {
   'ai-automation': 'bg-primary/12 text-primary',
   'onboarding-growth': 'bg-cyan-500/12 text-cyan-600 dark:text-cyan-400',
   'moderation-safety': 'bg-orange-500/12 text-orange-600 dark:text-orange-400',
@@ -69,10 +64,15 @@ export function ConfigLandingContent() {
 
           return (
             <Link key={category.id} href={`/dashboard/settings/${category.id}`} className="group">
-              <div className="settings-card h-full rounded-2xl p-5" style={{ '--card-accent': gradient } as React.CSSProperties}>
+              <div
+                className="settings-card h-full rounded-2xl p-5"
+                style={{ '--card-accent': gradient } as CSSProperties}
+              >
                 <div className="relative z-10 flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-2">
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}
+                    >
                       <Icon className="h-5 w-5" aria-hidden="true" />
                     </span>
                     {dirtyCount > 0 && (
@@ -86,7 +86,9 @@ export function ConfigLandingContent() {
                   </div>
                   <div>
                     <p className="text-base font-semibold tracking-tight">{category.label}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{category.description}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {category.description}
+                    </p>
                   </div>
                   <div className="flex items-center gap-1 text-xs font-medium text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                     <span>Configure</span>
