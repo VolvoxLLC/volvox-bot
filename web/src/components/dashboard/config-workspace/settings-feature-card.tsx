@@ -59,12 +59,13 @@ export function SettingsFeatureCard({
   }, [forceOpenAdvanced]);
 
   const hasAdvanced = Boolean(advancedContent);
-  const isEnabled = enabled ?? true;
+  const hasExplicitEnabledState = typeof enabled === 'boolean';
+  const isEnabled = enabled === true;
 
   return (
     <div
       id={`feature-${featureId}`}
-      data-enabled={isEnabled}
+      data-enabled={hasExplicitEnabledState ? isEnabled : undefined}
       className={cn(
         'feature-card scroll-mt-24 min-w-0 rounded-2xl transition-all duration-200 motion-reduce:transition-none',
         className,
@@ -75,7 +76,7 @@ export function SettingsFeatureCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold tracking-tight">{title}</h3>
-            {isEnabled && (
+            {hasExplicitEnabledState && isEnabled && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
                 <Zap className="h-2.5 w-2.5" />
                 Active
