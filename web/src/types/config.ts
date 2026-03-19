@@ -247,7 +247,7 @@ export interface ToggleSectionConfig {
 }
 
 export interface BotStatusRotationMessage {
-  type?: 'Playing' | 'Watching' | 'Listening' | 'Competing' | 'Streaming' | 'Custom';
+  type?: 'Playing' | 'Watching' | 'Listening' | 'Competing' | 'Custom';
   text: string;
 }
 
@@ -258,9 +258,13 @@ export interface BotStatusRotationConfig {
 }
 
 export interface BotStatusConfig {
-  enabled: boolean;
-  status: 'online' | 'idle' | 'dnd' | 'invisible';
+  enabled?: boolean;
+  status?: 'online' | 'idle' | 'dnd' | 'invisible';
   rotation?: BotStatusRotationConfig;
+  // Legacy fields for backward compatibility
+  activityType?: string;
+  activities?: string[];
+  rotateIntervalMs?: number;
 }
 
 /** TL;DR summary feature settings. */
