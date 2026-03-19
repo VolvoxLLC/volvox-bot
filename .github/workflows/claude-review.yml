@@ -13,8 +13,14 @@ concurrency:
 jobs:
   claude-review:
     if: |
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      github.event.review.user.login != 'github-actions[bot]' &&
+      github.event.review.user.login != 'copilot-pull-request-reviewer[bot]' &&
+      github.actor != 'github-actions[bot]' &&
+      github.actor != 'copilot-pull-request-reviewer[bot]' &&
+      (
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body || '', '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body || '', '@claude'))
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

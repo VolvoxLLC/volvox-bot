@@ -651,7 +651,7 @@
     animation: none;
   }
 
-  .animated-border::before {
+  .border-gradient-animated::before {
     animation: none;
   }
 
