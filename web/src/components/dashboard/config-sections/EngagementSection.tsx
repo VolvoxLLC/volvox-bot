@@ -39,7 +39,7 @@ export function EngagementSection({
           active days.
         </p>
         {badges.map((badge, i) => (
-          <div key={badge.label || `badge-row-${i}`} className="flex items-center gap-2">
+          <div key={`badge-row-${i}`} className="flex items-center gap-2">
             <Input
               className="w-20"
               type="number"
@@ -54,6 +54,7 @@ export function EngagementSection({
                 onActivityBadgesChange(newBadges);
               }}
               disabled={saving}
+              aria-label={`Badge ${i + 1} minimum active days`}
             />
             <span className="text-xs text-muted-foreground">days →</span>
             <Input
@@ -65,6 +66,7 @@ export function EngagementSection({
                 onActivityBadgesChange(newBadges);
               }}
               disabled={saving}
+              aria-label={`Badge ${i + 1} label`}
             />
             <Button
               variant="ghost"
@@ -74,7 +76,7 @@ export function EngagementSection({
                 onActivityBadgesChange(newBadges);
               }}
               disabled={saving || badges.length <= 1}
-              aria-label={`Remove badge ${badge.label || i + 1}`}
+              aria-label={`Remove badge ${badge.label ?? i + 1}`}
             >
               ✕
             </Button>

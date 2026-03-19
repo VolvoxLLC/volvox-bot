@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { parseNumberInput } from '@/lib/config-normalization';
 import type { GuildConfig } from '@/lib/config-utils';
 import { ToggleSwitch } from '../toggle-switch';
+import { inputClasses } from './shared';
 
 interface ModerationSectionProps {
   draftConfig: GuildConfig;
@@ -22,10 +23,6 @@ interface ModerationSectionProps {
   onProtectRolesChange: (field: string, value: unknown) => void;
   onProtectRoleIdsRawChange: (value: string) => void;
 }
-
-/** Shared input styling for text inputs. */
-const inputClasses =
-  'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
  * Moderation configuration section.
