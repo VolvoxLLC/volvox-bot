@@ -5,6 +5,7 @@ node_modules/
 coverage/
 .next/
 package-lock.json
+.DS_Store
 
 # Auto Claude data directory and files
 .auto-claude/
