@@ -740,6 +740,8 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
   }
 
   const { path, value, topLevelKey } = result;
+  // botStatus is global (not per-guild) — in single-tenant deployments any guild admin
+  // may configure it. For multi-tenant scenarios, add bot-owner auth here.
   const writeScope = topLevelKey === 'botStatus' ? 'global' : req.params.id;
 
   try {

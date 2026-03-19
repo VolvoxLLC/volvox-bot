@@ -153,12 +153,12 @@ export function interpolateActivity(text, client) {
   const version = getPackageVersion();
 
   return text
-    .replace(/\{memberCount\}/g, String(memberCount))
-    .replace(/\{guildCount\}/g, String(guildCount))
-    .replace(/\{botName\}/g, botName)
-    .replace(/\{commandCount\}/g, String(commandCount))
-    .replace(/\{uptime\}/g, uptime)
-    .replace(/\{version\}/g, version);
+    .replaceAll('{memberCount}', String(memberCount))
+    .replaceAll('{guildCount}', String(guildCount))
+    .replaceAll('{botName}', botName)
+    .replaceAll('{commandCount}', String(commandCount))
+    .replaceAll('{uptime}', uptime)
+    .replaceAll('{version}', version);
 }
 
 /**
@@ -211,6 +211,17 @@ export function resolvePresenceConfig(cfg) {
  * @param {string} source
  * @returns {{type: string, text: string} | null}
  */
+/**
+ * Determine the type label for an entry for logging purposes.
+ * @param {unknown} entry
+ * @returns {string}
+ */
+function getEntryTypeLabel(entry) {
+  if (Array.isArray(entry)) return 'array';
+  if (entry === null) return 'null';
+  return typeof entry;
+}
+
 function normalizeMessage(entry, fallbackType, source) {
   const resolvedFallbackType = resolveFallbackType(fallbackType, `${source}.fallbackType`);
 
@@ -226,7 +237,7 @@ function normalizeMessage(entry, fallbackType, source) {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
     warn('Ignoring invalid bot status message entry', {
       source,
-      entryType: Array.isArray(entry) ? 'array' : entry === null ? 'null' : typeof entry,
+      entryType: getEntryTypeLabel(entry),
     });
     return null;
   }
@@ -321,12 +332,14 @@ export function resolveRotationIntervalMs(cfg) {
     return Math.max(Math.round(cfg.rotation.intervalMinutes * 60_000), MIN_PRESENCE_INTERVAL_MS);
   }
 
-  if (typeof cfg?.rotateIntervalMs === 'number' && cfg.rotateIntervalMs > 0) {
-    return Math.max(cfg.rotateIntervalMs, MIN_PRESENCE_INTERVAL_MS);
-  }
-
+  // New-format fallback must come before legacy — prevents cross-format leakage
+  // when intervalMinutes is 0 or negative but rotation key exists.
   if (cfg?.rotation) {
     return DEFAULT_ROTATE_INTERVAL_MINUTES * 60_000;
+  }
+
+  if (typeof cfg?.rotateIntervalMs === 'number' && cfg.rotateIntervalMs > 0) {
+    return Math.max(cfg.rotateIntervalMs, MIN_PRESENCE_INTERVAL_MS);
   }
 
   return DEFAULT_LEGACY_ROTATE_INTERVAL_MS;
