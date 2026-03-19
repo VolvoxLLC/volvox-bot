@@ -23,6 +23,7 @@ import {
   stopBotStatus,
 } from '../../src/modules/botStatus.js';
 import { getConfig } from '../../src/modules/config.js';
+import { warn } from '../../src/logger.js';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -117,6 +118,7 @@ describe('interpolateActivity', () => {
   it('replaces {version} from package.json', () => {
     const client = makeClient();
     const result = interpolateActivity('v{version}', client);
+    expect(result).not.toContain('{version}');
     expect(result).toMatch(/^v.+/);
   });
 });
@@ -210,6 +212,10 @@ describe('getActivities', () => {
 });
 
 describe('getRotationMessages / resolveRotationIntervalMs', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('uses rotation.messages when configured', () => {
     const messages = getRotationMessages({
       rotation: {
@@ -228,6 +234,62 @@ describe('getRotationMessages / resolveRotationIntervalMs', () => {
   it('uses intervalMinutes from rotation config', () => {
     const intervalMs = resolveRotationIntervalMs({ rotation: { intervalMinutes: 5 } });
     expect(intervalMs).toBe(300_000);
+  });
+
+  it('warns and falls back when activityType cannot be resolved', () => {
+    const messages = getRotationMessages({
+      activityType: 'BadType',
+      activities: ['with /help'],
+    });
+
+    expect(messages).toEqual([{ type: 'Playing', text: 'with /help' }]);
+    expect(warn).toHaveBeenCalledWith(
+      'Invalid bot status activity type, falling back to Playing',
+      expect.objectContaining({
+        invalidType: 'BadType',
+      }),
+    );
+  });
+
+  it('warns and falls back when a rotation message type is invalid', () => {
+    const messages = getRotationMessages({
+      activityType: 'Watching',
+      rotation: {
+        messages: [{ type: 'BadType', text: '{guildCount} servers' }],
+      },
+    });
+
+    expect(messages).toEqual([{ type: 'Watching', text: '{guildCount} servers' }]);
+    expect(warn).toHaveBeenCalledWith(
+      'Invalid bot status message type, falling back to configured/default type',
+      expect.objectContaining({
+        invalidType: 'BadType',
+        fallbackType: 'Watching',
+      }),
+    );
+  });
+
+  it('warns when configured messages are unusable and default is used', () => {
+    const messages = getRotationMessages({
+      rotation: {
+        messages: [{ type: 'Watching', text: '   ' }],
+      },
+      activities: [],
+    });
+
+    expect(messages).toEqual([{ type: 'Playing', text: 'with Discord' }]);
+    expect(warn).toHaveBeenCalledWith(
+      'Ignoring bot status message without valid text',
+      expect.objectContaining({
+        source: 'botStatus.rotation.messages[0]',
+      }),
+    );
+    expect(warn).toHaveBeenCalledWith(
+      'Configured botStatus.rotation.messages had no usable entries; falling back',
+      expect.objectContaining({
+        fallback: 'default',
+      }),
+    );
   });
 });
 
@@ -286,7 +348,6 @@ describe('applyPresence', () => {
   });
 
   it('warns instead of throwing when setPresence throws', async () => {
-    const { warn } = await import('../../src/logger.js');
     getConfig.mockReturnValue(makeConfig({ activities: ['hi'] }));
     const client = makeClient();
     client.user.setPresence = vi.fn(() => {
