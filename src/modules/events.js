@@ -11,8 +11,8 @@ import { registerCommandInteractionHandler } from './events/commandInteraction.j
 import { registerErrorHandlers } from './events/errors.js';
 import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
 import {
-  registerComponentHandlers,
   registerChallengeButtonHandler,
+  registerComponentHandlers,
   registerPollButtonHandler,
   registerReminderButtonHandler,
   registerReviewClaimHandler,

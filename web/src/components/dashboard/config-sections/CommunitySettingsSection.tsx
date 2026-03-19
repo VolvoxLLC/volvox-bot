@@ -130,6 +130,95 @@ export function CommunitySettingsSection({
         />
       )}
 
+      {showFeature('bot-status') && activeCategoryId === 'community-tools' && (
+        <SettingsFeatureCard
+          featureId="bot-status"
+          title="Bot Presence"
+          description="Set bot presence and rotate status messages."
+          enabled={draftConfig.botStatus?.enabled ?? true}
+          onEnabledChange={(value) =>
+            updateDraftConfig((prev) => ({
+              ...prev,
+              botStatus: { ...prev.botStatus, enabled: value },
+            }))
+          }
+          disabled={saving}
+          basicContent={
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="bot-status-value">Presence Status</Label>
+                <select
+                  id="bot-status-value"
+                  value={draftConfig.botStatus?.status ?? 'online'}
+                  onChange={(event) =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      botStatus: {
+                        ...prev.botStatus,
+                        status: event.target.value as 'online' | 'idle' | 'dnd' | 'invisible',
+                      },
+                    }))
+                  }
+                  disabled={saving}
+                  className={inputClasses}
+                >
+                  <option value="online">Online</option>
+                  <option value="idle">Idle</option>
+                  <option value="dnd">Do Not Disturb</option>
+                  <option value="invisible">Invisible</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Enable Rotation</p>
+                  <p className="text-xs text-muted-foreground">
+                    Rotate through configured presence messages.
+                  </p>
+                </div>
+                <Switch
+                  checked={draftConfig.botStatus?.rotation?.enabled ?? false}
+                  onCheckedChange={(value) =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      botStatus: {
+                        ...prev.botStatus,
+                        rotation: { ...prev.botStatus?.rotation, enabled: value },
+                      },
+                    }))
+                  }
+                  disabled={saving}
+                  aria-label="Enable bot status rotation"
+                />
+              </div>
+            </div>
+          }
+          advancedContent={
+            <div className="space-y-2">
+              <Label htmlFor="bot-status-interval-minutes">Rotation Interval (minutes)</Label>
+              <Input
+                id="bot-status-interval-minutes"
+                type="number"
+                min={1}
+                value={draftConfig.botStatus?.rotation?.intervalMinutes ?? 5}
+                onChange={(event) => {
+                  const num = parseNumberInput(event.target.value, 1);
+                  if (num === undefined) return;
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    botStatus: {
+                      ...prev.botStatus,
+                      rotation: { ...prev.botStatus?.rotation, intervalMinutes: num },
+                    },
+                  }));
+                }}
+                disabled={saving}
+              />
+            </div>
+          }
+          forceOpenAdvanced={forceOpenAdvancedFeatureId === 'bot-status'}
+        />
+      )}
+
       {showFeature('engagement') && activeCategoryId === 'onboarding-growth' && (
         <SettingsFeatureCard
           featureId="engagement"
@@ -198,8 +287,8 @@ export function CommunitySettingsSection({
                       }}
                       disabled={
                         saving ||
-                        (draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).length <=
-                          1
+                        (draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES)
+                          .length <= 1
                       }
                     >
                       ✕

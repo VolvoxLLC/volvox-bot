@@ -273,9 +273,10 @@ export function getRotationMessages(cfg) {
 
     if (rotationMessages.length > 0) {
       warn('Configured botStatus.rotation.messages had no usable entries; falling back', {
-        fallback: Array.isArray(cfg?.activities) && cfg.activities.length > 0
-          ? 'botStatus.activities'
-          : 'default',
+        fallback:
+          Array.isArray(cfg?.activities) && cfg.activities.length > 0
+            ? 'botStatus.activities'
+            : 'default',
       });
     }
   }

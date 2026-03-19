@@ -87,7 +87,10 @@ import {
 } from '../../src/modules/events.js';
 import { handleChallengeButton } from '../../src/modules/handlers/challengeHandler.js';
 import { handleReviewButton } from '../../src/modules/handlers/reviewHandler.js';
-import { handleShowcaseButton, handleShowcaseModal } from '../../src/modules/handlers/showcaseHandler.js';
+import {
+  handleShowcaseButton,
+  handleShowcaseModal,
+} from '../../src/modules/handlers/showcaseHandler.js';
 import { checkLinks } from '../../src/modules/linkFilter.js';
 import { checkRateLimit } from '../../src/modules/rateLimit.js';
 import { handleReviewClaim } from '../../src/modules/reviewHandler.js';
@@ -114,21 +117,25 @@ describe('handleReviewButton', () => {
 
   it('should skip when review feature is disabled', async () => {
     getConfig.mockReturnValue({ review: { enabled: false } });
-    expect(await handleReviewButton({
-      isButton: () => true,
-      customId: 'review_claim_123',
-      guildId: 'g1',
-    })).toBe(true);
+    expect(
+      await handleReviewButton({
+        isButton: () => true,
+        customId: 'review_claim_123',
+        guildId: 'g1',
+      }),
+    ).toBe(true);
     expect(handleReviewClaim).not.toHaveBeenCalled();
   });
 
   it('should skip when review config is absent', async () => {
     getConfig.mockReturnValue({});
-    expect(await handleReviewButton({
-      isButton: () => true,
-      customId: 'review_claim_123',
-      guildId: 'g1',
-    })).toBe(true);
+    expect(
+      await handleReviewButton({
+        isButton: () => true,
+        customId: 'review_claim_123',
+        guildId: 'g1',
+      }),
+    ).toBe(true);
     expect(handleReviewClaim).not.toHaveBeenCalled();
   });
 
@@ -180,15 +187,17 @@ describe('handleReviewButton', () => {
     getConfig.mockReturnValue({ review: { enabled: true } });
     handleReviewClaim.mockRejectedValueOnce(new Error('boom'));
     const reply = vi.fn().mockRejectedValue(new Error('reply also failed'));
-    await expect(handleReviewButton({
-      isButton: () => true,
-      customId: 'review_claim_789',
-      guildId: 'g1',
-      user: { id: 'u1' },
-      replied: false,
-      deferred: false,
-      reply,
-    })).resolves.toBe(true);
+    await expect(
+      handleReviewButton({
+        isButton: () => true,
+        customId: 'review_claim_789',
+        guildId: 'g1',
+        user: { id: 'u1' },
+        replied: false,
+        deferred: false,
+        reply,
+      }),
+    ).resolves.toBe(true);
   });
 });
 
@@ -253,7 +262,9 @@ describe('handleShowcaseModal', () => {
   });
 
   it('should ignore modals with wrong customId', async () => {
-    expect(await handleShowcaseModal({ isModalSubmit: () => true, customId: 'other_modal' })).toBe(false);
+    expect(await handleShowcaseModal({ isModalSubmit: () => true, customId: 'other_modal' })).toBe(
+      false,
+    );
     expect(handleShowcaseModalSubmit).not.toHaveBeenCalled();
   });
 
@@ -308,7 +319,9 @@ describe('handleChallengeButton', () => {
   });
 
   it('should ignore buttons with unrelated customId', async () => {
-    expect(await handleChallengeButton({ isButton: () => true, customId: 'other_button' })).toBe(false);
+    expect(await handleChallengeButton({ isButton: () => true, customId: 'other_button' })).toBe(
+      false,
+    );
     expect(handleSolveButton).not.toHaveBeenCalled();
   });
 
@@ -338,12 +351,14 @@ describe('handleChallengeButton', () => {
 
   it('should return true on NaN challenge index', async () => {
     getConfig.mockReturnValue({ challenges: { enabled: true } });
-    expect(await handleChallengeButton({
-      isButton: () => true,
-      customId: 'challenge_solve_abc',
-      user: { id: 'u1' },
-      guildId: 'g1',
-    })).toBe(true);
+    expect(
+      await handleChallengeButton({
+        isButton: () => true,
+        customId: 'challenge_solve_abc',
+        user: { id: 'u1' },
+        guildId: 'g1',
+      }),
+    ).toBe(true);
     expect(handleSolveButton).not.toHaveBeenCalled();
   });
 

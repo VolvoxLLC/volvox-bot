@@ -17,14 +17,20 @@ import {
   handleTicketModal,
   handleTicketOpenButton,
 } from '../handlers/ticketHandler.js';
-import { handleWelcomeOnboarding, registerWelcomeOnboardingHandlers } from '../handlers/welcomeOnboardingHandler.js';
+import {
+  handleWelcomeOnboarding,
+  registerWelcomeOnboardingHandlers,
+} from '../handlers/welcomeOnboardingHandler.js';
 
 // Backward-compatible re-exports (deprecated — use handler functions directly)
 export { registerChallengeButtonHandler } from '../handlers/challengeHandler.js';
 export { registerPollButtonHandler } from '../handlers/pollHandler.js';
 export { registerReminderButtonHandler } from '../handlers/reminderHandler.js';
 export { registerReviewClaimHandler } from '../handlers/reviewHandler.js';
-export { registerShowcaseButtonHandler, registerShowcaseModalHandler } from '../handlers/showcaseHandler.js';
+export {
+  registerShowcaseButtonHandler,
+  registerShowcaseModalHandler,
+} from '../handlers/showcaseHandler.js';
 export {
   registerTicketCloseButtonHandler,
   registerTicketModalHandler,
