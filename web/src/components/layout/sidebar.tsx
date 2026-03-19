@@ -62,7 +62,7 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
       href={item.href}
       onClick={onNavClick}
       className={cn(
-        'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+        'group relative flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm font-medium transition-all duration-200',
         isActive
           ? 'sidebar-item-active text-foreground'
           : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
