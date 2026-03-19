@@ -247,20 +247,20 @@ export interface ToggleSectionConfig {
 }
 
 export interface BotStatusRotationMessage {
-  type: 'Playing' | 'Watching' | 'Listening' | 'Competing' | 'Streaming' | 'Custom';
+  type?: 'Playing' | 'Watching' | 'Listening' | 'Competing' | 'Streaming' | 'Custom';
   text: string;
 }
 
 export interface BotStatusRotationConfig {
-  enabled: boolean;
-  intervalMinutes: number;
-  messages: BotStatusRotationMessage[];
+  enabled?: boolean;
+  intervalMinutes?: number;
+  messages?: BotStatusRotationMessage[];
 }
 
 export interface BotStatusConfig {
   enabled: boolean;
   status: 'online' | 'idle' | 'dnd' | 'invisible';
-  rotation: BotStatusRotationConfig;
+  rotation?: BotStatusRotationConfig;
 }
 
 /** TL;DR summary feature settings. */
