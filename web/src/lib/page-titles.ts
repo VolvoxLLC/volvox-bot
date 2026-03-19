@@ -54,9 +54,29 @@ const dashboardTitleMatchers: DashboardTitleMatcher[] = [
     title: 'Tickets',
   },
   {
+    matches: (pathname) => pathname === '/dashboard/settings/ai-automation',
+    title: 'Settings - AI & Automation',
+  },
+  {
+    matches: (pathname) => pathname === '/dashboard/settings/onboarding-growth',
+    title: 'Settings - Onboarding & Growth',
+  },
+  {
+    matches: (pathname) => pathname === '/dashboard/settings/moderation-safety',
+    title: 'Settings - Moderation & Safety',
+  },
+  {
+    matches: (pathname) => pathname === '/dashboard/settings/community-tools',
+    title: 'Settings - Community Tools',
+  },
+  {
+    matches: (pathname) => pathname === '/dashboard/settings/support-integrations',
+    title: 'Settings - Support & Integrations',
+  },
+  {
     matches: (pathname) =>
-      pathname === '/dashboard/config' || pathname.startsWith('/dashboard/config/'),
-    title: 'Bot Config',
+      pathname === '/dashboard/settings' || pathname.startsWith('/dashboard/settings/'),
+    title: 'Settings',
   },
   {
     matches: (pathname) =>

@@ -1,6 +1,13 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockPush = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockPathname,
+  useRouter: () => ({ push: mockPush }),
+}));
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
@@ -57,6 +64,8 @@ vi.mock('@/components/dashboard/config-diff', () => ({
   ConfigDiff: () => <div data-testid="config-diff" />,
 }));
 
+let mockPathname = '/dashboard/settings/ai-automation';
+
 const minimalConfig = {
   ai: { enabled: false, systemPrompt: '', blockedChannelIds: [] },
   aiAutoMod: {
@@ -96,8 +105,10 @@ const minimalConfig = {
   afk: { enabled: false },
 };
 
-describe('ConfigEditor workspace integration', () => {
+describe('ConfigEditor workspace integration (new architecture)', () => {
   beforeEach(() => {
+    mockPathname = '/dashboard/settings/ai-automation';
+    mockPush.mockClear();
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
   });
@@ -107,7 +118,7 @@ describe('ConfigEditor workspace integration', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders category navigation and AI category by default', async () => {
+  it('renders category navigation and AI features', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -115,19 +126,27 @@ describe('ConfigEditor workspace integration', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { AiAutomationCategory } = await import(
+      '@/components/dashboard/config-categories/ai-automation'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <AiAutomationCategory />
+      </ConfigLayoutShell>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /AI & Automation/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /AI & Automation/i })).toBeInTheDocument();
     });
 
     expect(screen.getByRole('heading', { name: 'AI Chat' })).toBeInTheDocument();
-    expect(screen.queryByText('Welcome Messages')).not.toBeInTheDocument();
   });
 
-  it('switches categories and renders onboarding features', async () => {
-    const user = userEvent.setup();
+  it('renders onboarding features when on the onboarding route', async () => {
+    mockPathname = '/dashboard/settings/onboarding-growth';
+
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -135,21 +154,28 @@ describe('ConfigEditor workspace integration', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { OnboardingGrowthCategory } = await import(
+      '@/components/dashboard/config-categories/onboarding-growth'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <OnboardingGrowthCategory />
+      </ConfigLayoutShell>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Onboarding & Growth/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Welcome Messages' })).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /Onboarding & Growth/i }));
-
-    expect(screen.getByRole('heading', { name: 'Welcome Messages' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Reputation / XP' })).toBeInTheDocument();
   });
 
-  it('filters visible feature cards by search query in the active category', async () => {
+  it('filters visible feature cards by search query', async () => {
+    mockPathname = '/dashboard/settings/onboarding-growth';
     const user = userEvent.setup();
+
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -157,22 +183,28 @@ describe('ConfigEditor workspace integration', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { OnboardingGrowthCategory } = await import(
+      '@/components/dashboard/config-categories/onboarding-growth'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <OnboardingGrowthCategory />
+      </ConfigLayoutShell>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Onboarding & Growth/i })).toBeInTheDocument();
+      expect(screen.getByLabelText('Search settings')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /Onboarding & Growth/i }));
     await user.type(screen.getByLabelText('Search settings'), 'reputation');
 
     expect(screen.getByRole('heading', { name: 'Reputation / XP' })).toBeInTheDocument();
-    expect(screen.queryByText('Welcome Messages')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Welcome Messages' })).not.toBeInTheDocument();
   });
 
-  it('search quick-jump switches category and auto-opens advanced content', async () => {
-    const user = userEvent.setup();
+  it('shows unsaved changes banner after edits', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -180,55 +212,16 @@ describe('ConfigEditor workspace integration', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { AiAutomationCategory } = await import(
+      '@/components/dashboard/config-categories/ai-automation'
+    );
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('Search settings')).toBeInTheDocument();
-    });
-
-    await user.type(screen.getByLabelText('Search settings'), 'bot owners');
-    await user.click(screen.getByRole('button', { name: /Bot Owners/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Permissions' })).toBeInTheDocument();
-      expect(screen.getByLabelText(/Bot Owners/i)).toBeInTheDocument();
-    });
-  });
-
-  it('auto-opens advanced controls for active category search matches', async () => {
-    const user = userEvent.setup();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Search settings')).toBeInTheDocument();
-    });
-
-    await user.type(screen.getByLabelText('Search settings'), 'blocked channels');
-
-    await waitFor(() => {
-      expect(document.getElementById('ai-blocked-channels')).toBeInTheDocument();
-    });
-  });
-
-  it('shows category-aware unsaved banner after edits', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+    render(
+      <ConfigLayoutShell>
+        <AiAutomationCategory />
+      </ConfigLayoutShell>,
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
@@ -239,8 +232,6 @@ describe('ConfigEditor workspace integration', () => {
     });
 
     expect(screen.getByText(/unsaved changes in 1 category/i)).toBeInTheDocument();
-    const aiCategoryButton = screen.getByRole('button', { name: /AI & Automation/i });
-    expect(within(aiCategoryButton).getByText('1')).toBeInTheDocument();
   });
 
   it('requires diff confirmation before PATCH and sends PATCH after confirm', async () => {
@@ -258,8 +249,16 @@ describe('ConfigEditor workspace integration', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { AiAutomationCategory } = await import(
+      '@/components/dashboard/config-categories/ai-automation'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <AiAutomationCategory />
+      </ConfigLayoutShell>,
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
@@ -298,8 +297,16 @@ describe('ConfigEditor workspace integration', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
-    render(<ConfigEditor />);
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { AiAutomationCategory } = await import(
+      '@/components/dashboard/config-categories/ai-automation'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <AiAutomationCategory />
+      </ConfigLayoutShell>,
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('system-prompt')).toBeInTheDocument();

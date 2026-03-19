@@ -11,6 +11,7 @@ import { registerCommandInteractionHandler } from './events/commandInteraction.j
 import { registerErrorHandlers } from './events/errors.js';
 import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
 import {
+  registerComponentHandlers,
   registerChallengeButtonHandler,
   registerPollButtonHandler,
   registerReminderButtonHandler,
@@ -27,26 +28,28 @@ import { registerReactionHandlers } from './events/reactions.js';
 import { registerReadyHandler } from './events/ready.js';
 import { registerVoiceStateHandler } from './events/voiceState.js';
 
-// Re-export all handlers for backward compatibility
+// Re-export for backward compatibility
 export {
   registerClientReadyHandler,
   registerCommandInteractionHandler,
   registerReadyHandler,
   registerMessageCreateHandler,
   registerGuildMemberAddHandler,
-  registerPollButtonHandler,
-  registerReviewClaimHandler,
-  registerShowcaseButtonHandler,
-  registerShowcaseModalHandler,
-  registerChallengeButtonHandler,
-  registerWelcomeOnboardingHandlers,
-  registerReminderButtonHandler,
-  registerTicketOpenButtonHandler,
-  registerTicketModalHandler,
-  registerTicketCloseButtonHandler,
+  registerComponentHandlers,
   registerReactionHandlers,
   registerErrorHandlers,
   registerVoiceStateHandler,
+  // Deprecated — use handler functions directly
+  registerChallengeButtonHandler,
+  registerPollButtonHandler,
+  registerReminderButtonHandler,
+  registerReviewClaimHandler,
+  registerShowcaseButtonHandler,
+  registerShowcaseModalHandler,
+  registerTicketCloseButtonHandler,
+  registerTicketModalHandler,
+  registerTicketOpenButtonHandler,
+  registerWelcomeOnboardingHandlers,
 };
 
 /**
@@ -69,17 +72,8 @@ export function registerEventHandlers(client, config, healthMonitor) {
   // Slash command dispatch
   registerCommandInteractionHandler(client);
 
-  // Button / modal interaction handlers
-  registerPollButtonHandler(client);
-  registerChallengeButtonHandler(client);
-  registerReviewClaimHandler(client);
-  registerShowcaseButtonHandler(client);
-  registerShowcaseModalHandler(client);
-  registerTicketOpenButtonHandler(client);
-  registerTicketModalHandler(client);
-  registerTicketCloseButtonHandler(client);
-  registerReminderButtonHandler(client);
-  registerWelcomeOnboardingHandlers(client);
+  // Button / modal interaction handlers (consolidated)
+  registerComponentHandlers(client);
 
   // Voice state
   registerVoiceStateHandler(client);

@@ -217,6 +217,8 @@ export class CLIProcess {
   // Long-lived consume-loop bookkeeping
   #pendingResolve = null;
   #pendingReject = null;
+  /** @type {string[]} Accumulated text blocks for the current long-lived turn */
+  #longLivedTextParts = [];
 
   // Short-lived: reference to the in-flight process for abort
   #inflightProc = null;
@@ -335,7 +337,21 @@ export class CLIProcess {
         return;
       }
 
+      // Accumulate text from assistant messages (long-lived mode)
+      if (msg.type === 'assistant' && msg.message?.content) {
+        for (const block of msg.message.content) {
+          if (block.type === 'text' && block.text) {
+            this.#longLivedTextParts.push(block.text);
+          }
+        }
+      }
+
       if (msg.type === 'result') {
+        // Reconstruct result text from accumulated assistant blocks
+        if (msg.result === undefined && this.#longLivedTextParts.length > 0) {
+          msg.result = this.#longLivedTextParts.join('');
+        }
+        this.#longLivedTextParts = [];
         this.#trackTokens(msg);
         this.#pendingResolve?.(msg);
         this.#pendingResolve = null;
@@ -424,6 +440,7 @@ export class CLIProcess {
       }, this.#timeout);
 
       let result = null;
+      const textParts = [];
 
       // Capture stderr
       proc.stderr.on('data', (chunk) => {
@@ -446,9 +463,27 @@ export class CLIProcess {
           return;
         }
         if (msg.type === 'result') {
+          // The result message no longer carries a `result` field in newer
+          // claude-code versions. Reconstruct it from the accumulated
+          // assistant text blocks collected during the stream.
+          if (msg.result === undefined && textParts.length > 0) {
+            msg.result = textParts.join('');
+          }
           result = msg;
-        } else if (onEvent) {
-          onEvent(msg);
+        } else {
+          // Accumulate text from assistant messages so we can attach it
+          // to the result message (claude-code >=2.1.77 moved text out
+          // of the result envelope into streamed assistant messages).
+          if (msg.type === 'assistant' && msg.message?.content) {
+            for (const block of msg.message.content) {
+              if (block.type === 'text' && block.text) {
+                textParts.push(block.text);
+              }
+            }
+          }
+          if (onEvent) {
+            onEvent(msg);
+          }
         }
       });
 
@@ -488,6 +523,9 @@ export class CLIProcess {
     if (!this.#alive) {
       throw new CLIProcessError(`${this.#name}: process is not alive`, 'exit');
     }
+
+    // Reset text accumulator for new turn
+    this.#longLivedTextParts = [];
 
     return new Promise((resolve, reject) => {
       this.#pendingResolve = (msg) => {

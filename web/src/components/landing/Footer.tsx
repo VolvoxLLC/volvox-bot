@@ -71,7 +71,7 @@ export function Footer() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="flex flex-wrap justify-center gap-8 mb-12"
         >
-          <a href="https://docs.volvox.dev" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm font-medium">
+          <a href="https://docs.volvox.bot" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm font-medium">
             <BookOpen className="w-4 h-4" />
             Documentation
           </a>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { HealthCards } from './health-cards';
 import { RestartHistory } from './restart-history';
-import { type BotHealth, isBotHealth } from './types';
+import { type BotHealth, validateBotHealth } from './types';
 
 const AUTO_REFRESH_MS = 60_000;
 
@@ -74,11 +74,12 @@ export function HealthSection() {
           throw new Error(message);
         }
 
-        if (!isBotHealth(payload)) {
-          throw new Error('Invalid health payload from server');
+        const validationError = validateBotHealth(payload);
+        if (validationError) {
+          throw new Error(`Invalid health payload: ${validationError}`);
         }
 
-        setHealth(payload);
+        setHealth(payload as BotHealth);
         setError(null);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {

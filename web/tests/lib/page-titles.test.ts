@@ -22,8 +22,8 @@ describe('page titles', () => {
     // All leaf routes should match exactly and within subtree
     expect(getDashboardPageTitle('/dashboard/ai')).toBe('AI Chat');
     expect(getDashboardPageTitle('/dashboard/ai/settings')).toBe('AI Chat');
-    expect(getDashboardPageTitle('/dashboard/config')).toBe('Bot Config');
-    expect(getDashboardPageTitle('/dashboard/config/advanced')).toBe('Bot Config');
+    expect(getDashboardPageTitle('/dashboard/settings')).toBe('Settings');
+    expect(getDashboardPageTitle('/dashboard/settings/ai-automation')).toBe('Settings - AI & Automation');
     expect(getDashboardPageTitle('/dashboard/audit-log')).toBe('Audit Log');
     expect(getDashboardPageTitle('/dashboard/performance')).toBe('Performance');
   });

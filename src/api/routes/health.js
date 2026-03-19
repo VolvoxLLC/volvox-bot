@@ -209,7 +209,7 @@ router.get('/', async (req, res) => {
               r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
             reason: r.reason || 'unknown',
             version: r.version ?? null,
-            uptimeBefore: r.uptime_seconds ?? null,
+            uptimeBefore: r.uptime_seconds != null ? Number(r.uptime_seconds) : null,
           }));
         } else {
           body.restarts = [];

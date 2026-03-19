@@ -182,9 +182,14 @@ export function ChannelSelector({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const abortControllerRef = React.useRef<AbortController | null>(null);
+  const hasFetchedRef = React.useRef(false);
 
+  // Fetch channels when the popover opens, or eagerly on mount when there
+  // are pre-selected IDs (so they display names instead of "unknown channel").
   React.useEffect(() => {
-    if (!guildId || !open) return;
+    if (!guildId) return;
+    const needsEagerFetch = selected.length > 0 && !hasFetchedRef.current;
+    if (!open && !needsEagerFetch) return;
 
     async function fetchChannels() {
       abortControllerRef.current?.abort();
@@ -234,6 +239,7 @@ export function ChannelSelector({
 
         if (abortControllerRef.current === controller) {
           setChannels(sortedChannels);
+          hasFetchedRef.current = true;
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -252,7 +258,8 @@ export function ChannelSelector({
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [guildId, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selected.length triggers eager fetch once via hasFetchedRef
+  }, [guildId, open, selected.length]);
 
   const filteredChannels = React.useMemo(
     () => filterChannelsByType(channels, filter),

@@ -27,7 +27,7 @@ const statsRateLimit = redisRateLimit({
  * @param {string} table - Table name to count rows from
  * @returns {Promise<number>} Row count or 0 on failure
  */
-const ALLOWED_TABLES = new Set(['command_usage', 'messages']);
+const ALLOWED_TABLES = new Set(['command_usage', 'conversations']);
 
 async function safeCount(pool, table) {
   if (!ALLOWED_TABLES.has(table)) {
@@ -115,7 +115,7 @@ router.get('/', statsRateLimit, async (req, res) => {
         if (pool) {
           [commandsServed, messagesProcessed] = await Promise.all([
             safeCount(pool, 'command_usage'),
-            safeCount(pool, 'messages'),
+            safeCount(pool, 'conversations'),
           ]);
         }
 

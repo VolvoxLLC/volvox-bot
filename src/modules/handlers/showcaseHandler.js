@@ -3,104 +3,111 @@
  * Handles Discord button interactions for showcase upvotes and modal submissions.
  */
 
-import { Events } from 'discord.js';
 import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../../commands/showcase.js';
 import { error as logError } from '../../logger.js';
 import { safeEditReply, safeReply } from '../../utils/safeSend.js';
 import { getConfig } from '../config.js';
 
 /**
- * Register an interactionCreate handler for showcase upvote buttons.
- * Listens for button clicks with customId matching `showcase_upvote_<id>`.
+ * Handle a showcase upvote button interaction.
+ * Expects button clicks with customId matching `showcase_upvote_<id>`.
  *
- * @param {Client} client - Discord client instance
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @returns {Promise<boolean>} true if handled, false if not applicable
  */
-export function registerShowcaseButtonHandler(client) {
-  client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isButton()) return;
-    if (!interaction.customId.startsWith('showcase_upvote_')) return;
+export async function handleShowcaseButton(interaction) {
+  if (!interaction.isButton()) return false;
+  if (!interaction.customId.startsWith('showcase_upvote_')) return false;
 
-    // Gate on showcase feature being enabled for this guild
-    const guildConfig = getConfig(interaction.guildId);
-    if (guildConfig.showcase?.enabled === false) return;
+  const guildConfig = getConfig(interaction.guildId);
+  if (guildConfig.showcase?.enabled === false) return true;
 
-    let pool;
+  let pool;
+  try {
+    pool = (await import('../../db.js')).getPool();
+  } catch {
     try {
-      pool = (await import('../../db.js')).getPool();
-    } catch {
-      try {
-        await safeReply(interaction, {
-          content: '❌ Database is not available.',
-          ephemeral: true,
-        });
-      } catch {
-        // Ignore
-      }
-      return;
-    }
-
-    try {
-      await handleShowcaseUpvote(interaction, pool);
-    } catch (err) {
-      logError('Showcase upvote handler failed', {
-        customId: interaction.customId,
-        userId: interaction.user?.id,
-        error: err.message,
+      await safeReply(interaction, {
+        content: '❌ Database is not available.',
+        ephemeral: true,
       });
-
-      try {
-        const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
-        await reply(interaction, {
-          content: '❌ Something went wrong processing your upvote.',
-          ephemeral: true,
-        });
-      } catch {
-        // Ignore — we tried
-      }
+    } catch {
+      // Ignore
     }
-  });
+    return true;
+  }
+
+  try {
+    await handleShowcaseUpvote(interaction, pool);
+  } catch (err) {
+    logError('Showcase upvote handler failed', {
+      customId: interaction.customId,
+      userId: interaction.user?.id,
+      error: err.message,
+    });
+
+    try {
+      const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
+      await reply(interaction, {
+        content: '❌ Something went wrong processing your upvote.',
+        ephemeral: true,
+      });
+    } catch {
+      // Ignore — we tried
+    }
+  }
+  return true;
 }
 
 /**
- * Register an interactionCreate handler for showcase modal submissions.
- * Listens for modal submits with customId `showcase_submit_modal`.
+ * Handle a showcase modal submission interaction.
+ * Expects modal submits with customId `showcase_submit_modal`.
  *
- * @param {Client} client - Discord client instance
+ * @param {import('discord.js').ModalSubmitInteraction} interaction
+ * @returns {Promise<boolean>} true if handled, false if not applicable
  */
-export function registerShowcaseModalHandler(client) {
-  client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isModalSubmit()) return;
-    if (interaction.customId !== 'showcase_submit_modal') return;
+export async function handleShowcaseModal(interaction) {
+  if (!interaction.isModalSubmit()) return false;
+  if (interaction.customId !== 'showcase_submit_modal') return false;
 
-    // Gate on showcase feature being enabled for this guild
-    const guildConfig = getConfig(interaction.guildId);
-    if (guildConfig.showcase?.enabled === false) return;
+  const guildConfig = getConfig(interaction.guildId);
+  if (guildConfig.showcase?.enabled === false) return true;
 
-    let pool;
+  let pool;
+  try {
+    pool = (await import('../../db.js')).getPool();
+  } catch {
     try {
-      pool = (await import('../../db.js')).getPool();
+      await safeReply(interaction, {
+        content: '❌ Database is not available.',
+        ephemeral: true,
+      });
     } catch {
-      try {
-        await safeReply(interaction, {
-          content: '❌ Database is not available.',
-          ephemeral: true,
-        });
-      } catch {
-        // Ignore
-      }
-      return;
+      // Ignore
     }
+    return true;
+  }
 
+  try {
+    await handleShowcaseModalSubmit(interaction, pool);
+  } catch (err) {
+    logError('Showcase modal error', { error: err.message });
     try {
-      await handleShowcaseModalSubmit(interaction, pool);
-    } catch (err) {
-      logError('Showcase modal error', { error: err.message });
-      try {
-        const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
-        await reply(interaction, { content: '❌ Something went wrong.' });
-      } catch (replyErr) {
-        logError('Failed to send fallback reply', { error: replyErr?.message });
-      }
+      const reply = interaction.deferred || interaction.replied ? safeEditReply : safeReply;
+      await reply(interaction, { content: '❌ Something went wrong.' });
+    } catch (replyErr) {
+      logError('Failed to send fallback reply', { error: replyErr?.message });
     }
-  });
+  }
+  return true;
+}
+
+/** @deprecated Use handleShowcaseButton directly */
+export function registerShowcaseButtonHandler(client) {
+  client.on('interactionCreate', handleShowcaseButton);
+}
+
+/** @deprecated Use handleShowcaseModal directly */
+export function registerShowcaseModalHandler(client) {
+  client.on('interactionCreate', handleShowcaseModal);
 }

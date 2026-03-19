@@ -4,7 +4,7 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-RUN npm install -g mintlify@4.2.433
+RUN npm install -g mintlify@4.2.437
 
 RUN addgroup --system --gid 1001 docsgroup && \
     adduser --system --uid 1001 docsuser

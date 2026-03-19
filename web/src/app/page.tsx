@@ -56,7 +56,7 @@ export default function LandingPage() {
                 Pricing
               </a>
               <a
-                href="https://docs.volvox.dev"
+                href="https://docs.volvox.bot"
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
                 Docs

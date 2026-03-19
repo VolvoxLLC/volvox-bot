@@ -32,47 +32,61 @@ export interface BotHealth {
   restarts: RestartRecord[];
 }
 
-export function isBotHealth(value: unknown): value is BotHealth {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
+/** Type-guard helper: checks whether a value is a non-null object. */
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
-  if (typeof v.uptime !== 'number') return false;
+/**
+ * Validate that `value` conforms to the {@link BotHealth} shape.
+ *
+ * Returns `null` when valid, or a diagnostic string describing the first
+ * field that failed validation so the caller can surface it in the UI.
+ *
+ * The bot API returns a minimal payload when the request is unauthenticated
+ * (only `status` + `uptime`), which will fail here with a clear reason.
+ */
+export function validateBotHealth(value: unknown): string | null {
+  if (!isObject(value)) return 'payload is not an object';
 
-  const mem = v.memory;
-  if (typeof mem !== 'object' || mem === null) return false;
-  const m = mem as Record<string, unknown>;
-  if (typeof m.heapUsed !== 'number' || typeof m.heapTotal !== 'number') return false;
-  if (m.rss !== undefined && typeof m.rss !== 'number') return false;
+  if (typeof value.uptime !== 'number') return 'missing uptime';
 
-  const discord = v.discord;
-  if (typeof discord !== 'object' || discord === null) return false;
-  const d = discord as Record<string, unknown>;
-  if (typeof d.ping !== 'number' || typeof d.guilds !== 'number') return false;
+  if (!isObject(value.memory)) return 'missing memory';
+  if (typeof value.memory.heapUsed !== 'number' || typeof value.memory.heapTotal !== 'number')
+    return 'invalid memory fields';
 
-  const errors = v.errors;
-  if (typeof errors !== 'object' || errors === null) return false;
-  const e = errors as Record<string, unknown>;
-  if (e.lastHour !== null && typeof e.lastHour !== 'number') return false;
-  if (e.lastDay !== null && typeof e.lastDay !== 'number') return false;
+  if (!isObject(value.discord)) return 'missing discord';
+  if (typeof value.discord.ping !== 'number' || typeof value.discord.guilds !== 'number')
+    return 'invalid discord fields';
 
-  const system = v.system;
-  if (typeof system !== 'object' || system === null) return false;
-  const s = system as Record<string, unknown>;
-  if (typeof s.nodeVersion !== 'string') return false;
-  const cpu = s.cpuUsage;
-  if (typeof cpu !== 'object' || cpu === null) return false;
-  const c = cpu as Record<string, unknown>;
-  if (typeof c.user !== 'number' || typeof c.system !== 'number') return false;
+  if (!isObject(value.errors)) return 'missing errors';
+  if (value.errors.lastHour !== null && typeof value.errors.lastHour !== 'number')
+    return 'invalid errors.lastHour';
+  if (value.errors.lastDay !== null && typeof value.errors.lastDay !== 'number')
+    return 'invalid errors.lastDay';
 
-  if (!Array.isArray(v.restarts)) return false;
-  for (const item of v.restarts) {
-    if (typeof item !== 'object' || item === null) return false;
-    const r = item as Record<string, unknown>;
-    if (typeof r.timestamp !== 'string') return false;
-    if (typeof r.reason !== 'string') return false;
-    if (r.version !== null && typeof r.version !== 'string') return false;
-    if (r.uptimeBefore !== null && typeof r.uptimeBefore !== 'number') return false;
+  if (!isObject(value.system)) return 'missing system';
+  if (typeof value.system.nodeVersion !== 'string') return 'invalid system.nodeVersion';
+  if (!isObject(value.system.cpuUsage)) return 'missing system.cpuUsage';
+  if (typeof value.system.cpuUsage.user !== 'number' || typeof value.system.cpuUsage.system !== 'number')
+    return 'invalid system.cpuUsage fields';
+
+  if (!Array.isArray(value.restarts)) return 'missing restarts';
+  for (const item of value.restarts) {
+    if (!isObject(item)) return 'invalid restart entry';
+    if (typeof item.timestamp !== 'string') return 'invalid restart.timestamp';
+    if (typeof item.reason !== 'string') return 'invalid restart.reason';
+    if (item.version !== null && typeof item.version !== 'string') return 'invalid restart.version';
+    if (item.uptimeBefore !== null && typeof item.uptimeBefore !== 'number')
+      return 'invalid restart.uptimeBefore';
   }
 
-  return true;
+  return null;
+}
+
+/**
+ * Type guard wrapping {@link validateBotHealth} for boolean checks.
+ */
+export function isBotHealth(value: unknown): value is BotHealth {
+  return validateBotHealth(value) === null;
 }
