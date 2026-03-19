@@ -2,7 +2,7 @@
 
 import { RefreshCw, Search, Shield, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { CaseTable } from '@/components/dashboard/case-table';
 import { ModerationStats } from '@/components/dashboard/moderation-stats';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,8 @@ export default function ModerationPage() {
     fetchCases,
     fetchUserHistory,
   } = useModerationStore();
+
+  const abortRefreshRef = useRef<AbortController | null>(null);
 
   const onGuildChange = useCallback(() => {
     resetOnGuildChange();
@@ -89,15 +91,27 @@ export default function ModerationPage() {
     return () => controller.abort();
   }, [guildId, lookupUserId, userHistoryPage, fetchUserHistory, onUnauthorized]);
 
+  useEffect(() => {
+    return () => {
+      abortRefreshRef.current?.abort();
+    };
+  }, []);
+
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
+    abortRefreshRef.current?.abort();
+    const controller = new AbortController();
+    abortRefreshRef.current = controller;
+    const { signal } = controller;
     void (async () => {
       const [statsResult, casesResult] = await Promise.all([
-        fetchStats(guildId),
-        fetchCases(guildId),
+        fetchStats(guildId, { signal }),
+        fetchCases(guildId, { signal }),
       ]);
       if (lookupUserId) {
-        const historyResult = await fetchUserHistory(guildId, lookupUserId, userHistoryPage);
+        const historyResult = await fetchUserHistory(guildId, lookupUserId, userHistoryPage, {
+          signal,
+        });
         if (historyResult === 'unauthorized') {
           onUnauthorized();
           return;

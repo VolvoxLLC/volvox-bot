@@ -248,9 +248,10 @@ describe('useMembersStore', () => {
     expect(useMembersStore.getState().filteredTotal).toBeNull();
   });
 
-  it('fetchMembers silently handles AbortError', async () => {
+  it('fetchMembers silently handles AbortError and forwards signal', async () => {
     const abortError = new DOMException('Aborted', 'AbortError');
-    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(abortError);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(abortError);
+    const controller = new AbortController();
 
     const result = await useMembersStore.getState().fetchMembers({
       guildId: 'guild1',
@@ -259,11 +260,16 @@ describe('useMembersStore', () => {
       sortOrder: 'desc',
       after: null,
       append: false,
+      signal: controller.signal,
     });
 
     expect(result).toBe('ok');
     expect(useMembersStore.getState().error).toBeNull();
     expect(useMembersStore.getState().loading).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ signal: controller.signal }),
+    );
   });
 
   it('ignores stale errors from superseded requests', async () => {

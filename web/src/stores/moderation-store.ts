@@ -44,14 +44,8 @@ interface ModerationState {
   resetOnGuildChange: () => void;
 
   // Actions — data fetching
-  fetchStats: (
-    guildId: string,
-    opts?: { signal?: AbortSignal },
-  ) => Promise<FetchResult>;
-  fetchCases: (
-    guildId: string,
-    opts?: { signal?: AbortSignal },
-  ) => Promise<FetchResult>;
+  fetchStats: (guildId: string, opts?: { signal?: AbortSignal }) => Promise<FetchResult>;
+  fetchCases: (guildId: string, opts?: { signal?: AbortSignal }) => Promise<FetchResult>;
   fetchUserHistory: (
     guildId: string,
     userId: string,
@@ -81,6 +75,10 @@ const initialData = {
   userHistoryLoading: false,
   userHistoryError: null as string | null,
 };
+
+let latestStatsRequestId = 0;
+let latestCasesRequestId = 0;
+let latestUserHistoryRequestId = 0;
 
 export const useModerationStore = create<ModerationState>((set, get) => ({
   ...initialFilters,
@@ -116,25 +114,29 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
       userHistoryError: null,
     }),
 
-  resetOnGuildChange: () =>
-    set({
-      ...initialFilters,
-      ...initialData,
-    }),
+  resetOnGuildChange: () => {
+    ++latestStatsRequestId;
+    ++latestCasesRequestId;
+    ++latestUserHistoryRequestId;
+    set({ ...initialFilters, ...initialData });
+  },
 
   // ─── Data Fetching ────────────────────────────────────────────────
   fetchStats: async (guildId, opts) => {
+    const requestId = ++latestStatsRequestId;
     set({ statsLoading: true, statsError: null });
     try {
       const res = await fetch(`/api/moderation/stats?guildId=${encodeURIComponent(guildId)}`, {
         cache: 'no-store',
         signal: opts?.signal,
       });
+      if (requestId !== latestStatsRequestId) return 'ok';
       if (res.status === 401) {
         set({ statsLoading: false });
         return 'unauthorized';
       }
       const payload: unknown = await res.json();
+      if (requestId !== latestStatsRequestId) return 'ok';
       if (!res.ok) {
         const msg = extractErrorMessage(payload, 'Failed to fetch stats');
         throw new Error(msg);
@@ -142,6 +144,7 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
       set({ stats: payload as ModStats, statsLoading: false });
       return 'ok';
     } catch (err) {
+      if (requestId !== latestStatsRequestId) return 'ok';
       if (isAbortError(err)) {
         set({ statsLoading: false });
         return 'ok';
@@ -155,6 +158,7 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
   },
 
   fetchCases: async (guildId, opts) => {
+    const requestId = ++latestCasesRequestId;
     const { page, actionFilter, userSearch, sortDesc } = get();
     set({ casesLoading: true, casesError: null });
     try {
@@ -171,12 +175,14 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
         cache: 'no-store',
         signal: opts?.signal,
       });
+      if (requestId !== latestCasesRequestId) return 'ok';
 
       if (res.status === 401) {
         set({ casesLoading: false });
         return 'unauthorized';
       }
       const payload: unknown = await res.json();
+      if (requestId !== latestCasesRequestId) return 'ok';
       if (!res.ok) {
         const msg = extractErrorMessage(payload, 'Failed to fetch cases');
         throw new Error(msg);
@@ -185,6 +191,7 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
       set({ casesData: payload as CaseListResponse, casesLoading: false });
       return 'ok';
     } catch (err) {
+      if (requestId !== latestCasesRequestId) return 'ok';
       if (isAbortError(err)) {
         set({ casesLoading: false });
         return 'ok';
@@ -198,6 +205,7 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
   },
 
   fetchUserHistory: async (guildId, userId, histPage, opts) => {
+    const requestId = ++latestUserHistoryRequestId;
     set({ userHistoryLoading: true, userHistoryError: null });
     try {
       const params = new URLSearchParams({
@@ -209,12 +217,14 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
         `/api/moderation/user/${encodeURIComponent(userId)}/history?${params.toString()}`,
         { cache: 'no-store', signal: opts?.signal },
       );
+      if (requestId !== latestUserHistoryRequestId) return 'ok';
 
       if (res.status === 401) {
         set({ userHistoryLoading: false });
         return 'unauthorized';
       }
       const payload: unknown = await res.json();
+      if (requestId !== latestUserHistoryRequestId) return 'ok';
       if (!res.ok) {
         const msg = extractErrorMessage(payload, 'Failed to fetch user history');
         throw new Error(msg);
@@ -222,6 +232,7 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
       set({ userHistoryData: payload as CaseListResponse, userHistoryLoading: false });
       return 'ok';
     } catch (err) {
+      if (requestId !== latestUserHistoryRequestId) return 'ok';
       if (isAbortError(err)) {
         set({ userHistoryLoading: false });
         return 'ok';

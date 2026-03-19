@@ -273,6 +273,14 @@ export default function TicketDetailPage() {
                 </p>
               </div>
             )}
+
+            {!data.transcript && data.status !== 'open' && (
+              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  No transcript available for this closed ticket.
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>
