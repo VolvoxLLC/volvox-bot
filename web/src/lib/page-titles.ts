@@ -54,6 +54,11 @@ const dashboardTitleMatchers: DashboardTitleMatcher[] = [
     title: 'Tickets',
   },
   {
+    matches: (pathname) =>
+      pathname === '/dashboard/config' || pathname.startsWith('/dashboard/config/'),
+    title: 'Bot Config',
+  },
+  {
     matches: (pathname) => pathname === '/dashboard/settings/ai-automation',
     title: 'Settings - AI & Automation',
   },

@@ -14,17 +14,14 @@ import { APP_TITLE, getDashboardDocumentTitle } from '@/lib/page-titles';
  */
 export function DashboardTitleSync() {
   const pathname = usePathname();
-  const lastSyncedTitleRef = useRef<string | null>(null);
   const lastSyncedPathnameRef = useRef<string | null>(null);
 
   useEffect(() => {
     const computed = getDashboardDocumentTitle(pathname);
     const current = document.title;
-    const lastSyncedTitle = lastSyncedTitleRef.current;
     const lastSyncedPathname = lastSyncedPathnameRef.current;
 
     if (current === computed) {
-      lastSyncedTitleRef.current = current;
       lastSyncedPathnameRef.current = pathname;
       return;
     }
@@ -35,15 +32,13 @@ export function DashboardTitleSync() {
       current.endsWith(APP_TITLE) &&
       current !== computed &&
       current !== APP_TITLE &&
-      (pathname === lastSyncedPathname || current !== lastSyncedTitle)
+      (lastSyncedPathname === null || pathname === lastSyncedPathname)
     ) {
-      lastSyncedTitleRef.current = current;
       lastSyncedPathnameRef.current = pathname;
       return;
     }
 
     document.title = computed;
-    lastSyncedTitleRef.current = computed;
     lastSyncedPathnameRef.current = pathname;
   }, [pathname]);
 

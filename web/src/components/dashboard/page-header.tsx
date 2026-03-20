@@ -1,13 +1,14 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
   icon?: LucideIcon;
   title: string;
   description?: string;
-  actions?: React.ReactNode;
+  actions?: ReactNode;
   className?: string;
 }
 

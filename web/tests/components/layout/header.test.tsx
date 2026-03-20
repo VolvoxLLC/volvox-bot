@@ -43,7 +43,7 @@ describe("Header", () => {
 
   it("renders the brand name", () => {
     render(<Header />);
-    expect(screen.getByText("Volvox.Bot Dashboard")).toBeInTheDocument();
+    expect(screen.getByText('Volvox Control Room')).toBeInTheDocument();
   });
 
   it("renders the mobile sidebar toggle", () => {

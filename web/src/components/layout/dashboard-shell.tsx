@@ -1,10 +1,11 @@
+import type { ReactNode } from 'react';
 import { DashboardTitleSync } from './dashboard-title-sync';
 import { Header } from './header';
 import { ServerSelector } from './server-selector';
 import { Sidebar } from './sidebar';
 
 interface DashboardShellProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 /**

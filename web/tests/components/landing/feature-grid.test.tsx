@@ -39,8 +39,10 @@ describe('FeatureGrid', () => {
     expect(screen.getByText('Moderation')).toBeInTheDocument();
     expect(screen.getByText('Starboard')).toBeInTheDocument();
     expect(screen.getByText('Analytics')).toBeInTheDocument();
-    expect(screen.getByText('$ ai --model claude')).toBeInTheDocument();
-    expect(screen.getByText('$ analytics --export')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Mention @volvox to chat with Claude/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Built by developers who actually use Discord/i)).toBeInTheDocument();
   });
 
   it('still renders correctly when reduced motion is enabled', () => {
@@ -48,7 +50,7 @@ describe('FeatureGrid', () => {
 
     render(<FeatureGrid />);
 
-    expect(screen.getByText(/Everything you need, nothing you don't/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/^\$/)).not.toHaveLength(0);
+    expect(screen.getByText(/Everything you need/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(4);
   });
 });

@@ -64,12 +64,15 @@ describe('Pricing', () => {
 
     render(<Pricing />);
 
-    expect(screen.getByRole('link', { name: 'git clone' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
       'href',
       'https://github.com/VolvoxLLC/volvox-bot',
     );
 
-    const installButtons = [screen.getByText('npm install'), screen.getByText('curl | bash')];
+    const installButtons = [
+      screen.getByText('Start Free Trial'),
+      screen.getByText('Contact Sales'),
+    ];
     for (const buttonLabel of installButtons) {
       const button = buttonLabel.closest('button');
       expect(button).not.toBeNull();
