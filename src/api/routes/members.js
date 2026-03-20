@@ -12,6 +12,7 @@ import { getConfig } from '../../modules/config.js';
 import { computeLevel } from '../../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { parseLimit, parsePage } from '../utils/pagination.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router();
@@ -295,9 +296,7 @@ router.get(
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
-  let limit = Number.parseInt(req.query.limit, 10) || 25;
-  if (limit < 1) limit = 1;
-  if (limit > 100) limit = 100;
+  const limit = parseLimit(req.query.limit);
   const after = req.query.after || undefined;
   const search = req.query.search || undefined;
   const sort = req.query.sort || 'joined';
@@ -770,8 +769,8 @@ router.get(
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;
-    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
+    const page = parsePage(req.query.page);
+    const limit = parseLimit(req.query.limit);
     const offset = (page - 1) * limit;
 
     try {

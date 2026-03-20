@@ -3,8 +3,8 @@
  * Handles Discord button interactions for challenge solve and hint buttons.
  */
 
-import { error as logError, warn } from '../../logger.js';
-import { safeReply } from '../../utils/safeSend.js';
+import { warn } from '../../logger.js';
+import { handleButtonError } from '../../utils/interactionError.js';
 import { handleHintButton, handleSolveButton } from '../challengeScheduler.js';
 import { getConfig } from '../config.js';
 
@@ -41,22 +41,10 @@ export async function handleChallengeButton(interaction) {
       await handleHintButton(interaction, challengeIndex);
     }
   } catch (err) {
-    logError('Challenge button handler failed', {
-      customId: interaction.customId,
-      userId: interaction.user?.id,
-      error: err.message,
+    await handleButtonError(interaction, err, {
+      context: 'Challenge button handler failed',
+      message: '❌ Something went wrong. Please try again.',
     });
-
-    if (!interaction.replied && !interaction.deferred) {
-      try {
-        await safeReply(interaction, {
-          content: '❌ Something went wrong. Please try again.',
-          ephemeral: true,
-        });
-      } catch {
-        // Ignore
-      }
-    }
   }
   return true;
 }

@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { parseLimit } from '../utils/pagination.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router();
@@ -150,7 +151,7 @@ router.get('/:id/audit-log', auditRateLimit, requireGuildAdmin, validateGuild, a
   const pool = getDbPool(req);
   if (!pool) return res.status(503).json({ error: 'Database not available' });
 
-  const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
+  const limit = parseLimit(req.query.limit);
   const offset = Math.max(0, Number.parseInt(req.query.offset, 10) || 0);
 
   try {
@@ -210,7 +211,7 @@ router.get(
     }
 
     // Allow larger exports — up to 10k rows
-    const limit = Math.min(10000, Math.max(1, Number.parseInt(req.query.limit, 10) || 1000));
+    const limit = parseLimit(req.query.limit, 1000, 10000);
 
     try {
       const { conditions, params, paramIndex } = buildFilters(guildId, req.query);

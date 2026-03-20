@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearPromptCache, loadPrompt, promptPath } from '../../src/prompts/index.js';
 
 const targetName = 'triage-classify';
@@ -35,4 +35,3 @@ describe('src/prompts/index', () => {
     expect(disk.length).toBeGreaterThan(0);
   });
 });
-;

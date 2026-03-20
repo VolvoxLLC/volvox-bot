@@ -3,8 +3,7 @@
  * Handles Discord button interactions for reminder snooze and dismiss.
  */
 
-import { error as logError } from '../../logger.js';
-import { safeReply } from '../../utils/safeSend.js';
+import { handleButtonError } from '../../utils/interactionError.js';
 import { getConfig } from '../config.js';
 import { handleReminderDismiss, handleReminderSnooze } from '../reminderHandler.js';
 
@@ -33,22 +32,10 @@ export async function handleReminderButton(interaction) {
       await handleReminderDismiss(interaction);
     }
   } catch (err) {
-    logError('Reminder button handler failed', {
-      customId: interaction.customId,
-      userId: interaction.user?.id,
-      error: err.message,
+    await handleButtonError(interaction, err, {
+      context: 'Reminder button handler failed',
+      message: '❌ Something went wrong processing your request.',
     });
-
-    if (!interaction.replied && !interaction.deferred) {
-      try {
-        await safeReply(interaction, {
-          content: '❌ Something went wrong processing your request.',
-          ephemeral: true,
-        });
-      } catch {
-        // Ignore
-      }
-    }
   }
   return true;
 }

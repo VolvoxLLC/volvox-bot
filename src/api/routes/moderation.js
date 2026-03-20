@@ -6,7 +6,9 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
+import { adaptGuildIdFromQuery } from '../middleware/adaptGuildId.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { parseLimit, parsePage } from '../utils/pagination.js';
 import { requireGuildModerator } from './guilds.js';
 
 const router = Router();
@@ -14,24 +16,13 @@ const router = Router();
 /** Rate limiter for moderation API endpoints — 120 requests / 15 min per IP. */
 const moderationRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
-/**
- * Middleware: adapt query param guildId to path param for requireGuildModerator.
- * Moderation routes use `?guildId=` instead of `/:id`, so we bridge the gap.
- */
-function adaptGuildIdParam(req, _res, next) {
-  if (req.query.guildId) {
-    req.params.id = req.query.guildId;
-  }
-  next();
-}
-
 // Apply a global rate limiter first so static analysis and runtime behavior
 // both see all moderation routes protected before authz and DB access.
 router.use(moderationRateLimit);
 
 // Apply guild-scoped authorization to all moderation routes
 // (requireAuth is already applied at the router mount level in api/index.js)
-router.use(adaptGuildIdParam, requireGuildModerator);
+router.use(adaptGuildIdFromQuery, requireGuildModerator);
 
 // ─── GET /cases ───────────────────────────────────────────────────────────────
 
@@ -155,8 +146,8 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
     return res.status(400).json({ error: 'guildId is required' });
   }
 
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit);
   const order = req.query.order === 'asc' ? 'ASC' : 'DESC';
   const offset = (page - 1) * limit;
 
@@ -616,8 +607,8 @@ router.get('/user/:userId/history', moderationRateLimit, async (req, res) => {
     return res.status(400).json({ error: 'userId is required' });
   }
 
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit);
   const offset = (page - 1) * limit;
 
   try {

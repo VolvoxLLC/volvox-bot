@@ -14,6 +14,7 @@ import {
   SAFE_CONFIG_KEYS,
 } from '../utils/configAllowlist.js';
 import { fetchUserGuilds } from '../utils/discordApi.js';
+import { parseLimit, parsePage } from '../utils/pagination.js';
 import { getSessionToken } from '../utils/sessionStore.js';
 import { validateConfigPatchBody } from '../utils/validateConfigPatch.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
@@ -38,11 +39,8 @@ const MAX_CONTENT_LENGTH = 10000;
  * @returns {{page: number, limit: number, offset: number}} page is at least 1, limit is between 1 and 100, offset equals `(page - 1) * limit`.
  */
 export function parsePagination(query) {
-  let page = Number.parseInt(query.page, 10) || 1;
-  let limit = Number.parseInt(query.limit, 10) || 25;
-  if (page < 1) page = 1;
-  if (limit < 1) limit = 1;
-  if (limit > 100) limit = 100;
+  const page = parsePage(query.page);
+  const limit = parseLimit(query.limit);
   const offset = (page - 1) * limit;
   return { page, limit, offset };
 }
