@@ -16,8 +16,8 @@ importers:
   .:
     dependencies:
       '@anthropic-ai/claude-code':
-        specifier: ^2.1.79
-        version: 2.1.79
+        specifier: ^2.1.80
+        version: 2.1.80
       '@anthropic-ai/sdk':
         specifier: ^0.80.0
         version: 0.80.0(zod@3.25.76)
@@ -210,8 +210,8 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@anthropic-ai/claude-code@2.1.79':
-    resolution: {integrity: sha512-oYBzNpOaqCJGhOvbAR+aiLVVyoLEDOCpKntnIjwzEvDAXmKfKzN+X6EKmvtzYQFSaVUlV42jAHqDZ3WVvoZpqw==}
+  '@anthropic-ai/claude-code@2.1.80':
+    resolution: {integrity: sha512-YAgNNr3fzn3xaTNm+CYgebdEinU9D0HxGUT2C1N2Ej2HCvt5AjrSoU8vTgccxx4oPkj1R4gpuZWi1rTKvxNaPQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -4807,6 +4807,10 @@ packages:
     resolution: {integrity: sha512-BM/JzwwaRXxrLdElV2Uo6cTLEjhSb3WXboncJamZ15NgUURmvlXvxa6xkwIOILIjPNo9i8ku136ZvWV0Uly8+w==}
     engines: {node: '>=20.18.1'}
 
+  undici@7.24.5:
+    resolution: {integrity: sha512-3IWdCpjgxp15CbJnsi/Y9TCDE7HWVN19j1hmzVhoAkY/+CJx449tVxT5wZc1Gwg8J+P0LWvzlBzxYRnHJ+1i7Q==}
+    engines: {node: '>=20.18.1'}
+
   universalify@0.1.2:
     resolution: {integrity: sha512-rBJeI5CXAlmy1pV+617WB9J63U6XcazHHF2f2dbJix4XzpUF0RS3Zbj0FGIOCAva5P/d/GBOYaACQ1w+0azUkg==}
     engines: {node: '>= 4.0.0'}
@@ -5094,7 +5098,7 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@anthropic-ai/claude-code@2.1.79':
+  '@anthropic-ai/claude-code@2.1.80':
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
@@ -6237,7 +6241,7 @@ snapshots:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       '@sevinf/maybe': 0.5.0
       typescript: 5.9.3
-      undici: 7.24.4
+      undici: 7.24.5
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -9864,6 +9868,8 @@ snapshots:
   undici-types@7.18.2: {}
 
   undici@7.24.4: {}
+
+  undici@7.24.5: {}
 
   universalify@0.1.2: {}
 
