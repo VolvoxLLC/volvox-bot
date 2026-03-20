@@ -210,7 +210,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/12 text-primary">
               <Cpu className="h-3.5 w-3.5" />
             </span>
-            CPU
+            CPU (avg since start)
           </CardTitle>
         </CardHeader>
         <CardContent>
