@@ -558,8 +558,11 @@
 .border-gradient-animated::before {
   content: '';
   position: absolute;
+  pointer-events: none;
   inset: -1px;
   border-radius: inherit;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
   padding: 1px;
   background: linear-gradient(
     var(--border-angle, 0deg),
@@ -673,6 +676,21 @@
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  .glow-card,
+  .kpi-card,
+  .settings-card,
+  .feature-card {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .glow-card:hover,
+  .kpi-card:hover,
+  .settings-card:hover,
+  .feature-card:hover {
+    transform: none !important;
   }
 }
 

@@ -10,7 +10,8 @@ export function useGlowCard() {
       if (rafId) return;
       rafId = requestAnimationFrame(() => {
         rafId = 0;
-        const card = (e.target as HTMLElement).closest?.('.glow-card') as HTMLElement | null;
+        if (!(e.target instanceof Element)) return;
+        const card = e.target.closest<HTMLElement>('.glow-card');
         if (!card) return;
         const rect = card.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
