@@ -36,23 +36,23 @@ export function parseCron(cronExpr) {
 
     if (field === '*') {
       const arr = [];
-      for (let v = min; v <= max; v++) arr.push(v);
+      for (let value = min; value <= max; value++) arr.push(value);
       result[names[i]] = arr;
     } else if (field.includes(',')) {
-      result[names[i]] = field.split(',').map((v) => {
-        const n = Number.parseInt(v, 10);
-        if (Number.isNaN(n) || n < min || n > max) {
-          throw new Error(`Invalid cron value "${v}" for ${names[i]}`);
+      result[names[i]] = field.split(',').map((fieldValue) => {
+        const parsedValue = Number.parseInt(fieldValue, 10);
+        if (Number.isNaN(parsedValue) || parsedValue < min || parsedValue > max) {
+          throw new Error(`Invalid cron value "${fieldValue}" for ${names[i]}`);
         }
-        return n;
+        return parsedValue;
       });
     } else if (field.includes('-')) {
-      const [start, end] = field.split('-').map((v) => Number.parseInt(v, 10));
+      const [start, end] = field.split('-').map((fieldValue) => Number.parseInt(fieldValue, 10));
       if (Number.isNaN(start) || Number.isNaN(end) || start < min || end > max || start > end) {
         throw new Error(`Invalid cron range "${field}" for ${names[i]}`);
       }
       const arr = [];
-      for (let v = start; v <= end; v++) arr.push(v);
+      for (let value = start; value <= end; value++) arr.push(value);
       result[names[i]] = arr;
     } else if (field.includes('/')) {
       const [base, step] = field.split('/');
@@ -62,14 +62,14 @@ export function parseCron(cronExpr) {
         throw new Error(`Invalid cron step "${field}" for ${names[i]}`);
       }
       const arr = [];
-      for (let v = startNum; v <= max; v += stepNum) arr.push(v);
+      for (let value = startNum; value <= max; value += stepNum) arr.push(value);
       result[names[i]] = arr;
     } else {
-      const n = Number.parseInt(field, 10);
-      if (Number.isNaN(n) || n < min || n > max) {
+      const parsedValue = Number.parseInt(field, 10);
+      if (Number.isNaN(parsedValue) || parsedValue < min || parsedValue > max) {
         throw new Error(`Invalid cron value "${field}" for ${names[i]}`);
       }
-      result[names[i]] = [n];
+      result[names[i]] = [parsedValue];
     }
   }
 
@@ -87,26 +87,26 @@ export function getNextCronRun(cronExpr, fromDate) {
   const cron = parseCron(cronExpr);
 
   // Start from the next minute after fromDate
-  const d = new Date(fromDate.getTime());
-  d.setSeconds(0, 0);
-  d.setMinutes(d.getMinutes() + 1);
+  const candidateDate = new Date(fromDate.getTime());
+  candidateDate.setSeconds(0, 0);
+  candidateDate.setMinutes(candidateDate.getMinutes() + 1);
 
   // Safety: limit search to 2 years to prevent infinite loops
   const limit = new Date(fromDate.getTime() + 2 * 365 * 24 * 60 * 60 * 1000);
 
-  while (d < limit) {
+  while (candidateDate < limit) {
     if (
-      cron.month.includes(d.getMonth() + 1) &&
-      cron.day.includes(d.getDate()) &&
-      cron.weekday.includes(d.getDay()) &&
-      cron.hour.includes(d.getHours()) &&
-      cron.minute.includes(d.getMinutes())
+      cron.month.includes(candidateDate.getMonth() + 1) &&
+      cron.day.includes(candidateDate.getDate()) &&
+      cron.weekday.includes(candidateDate.getDay()) &&
+      cron.hour.includes(candidateDate.getHours()) &&
+      cron.minute.includes(candidateDate.getMinutes())
     ) {
-      return d;
+      return candidateDate;
     }
 
     // Advance by 1 minute
-    d.setMinutes(d.getMinutes() + 1);
+    candidateDate.setMinutes(candidateDate.getMinutes() + 1);
   }
 
   throw new Error(`No matching cron time found within 2 years for: ${cronExpr}`);
