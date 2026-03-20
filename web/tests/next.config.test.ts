@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import nextConfig from "../next.config";
+import nextConfig from "../next.config.mjs";
+
+type SecurityHeader = {
+  key: string;
+  value: string;
+};
 
 describe("next.config security headers", () => {
   it("should export a headers() function", () => {
@@ -15,28 +20,28 @@ describe("next.config security headers", () => {
 
   it("should include X-Frame-Options: DENY", async () => {
     const headers = (await nextConfig.headers!())[0].headers;
-    const header = headers.find((h) => h.key === "X-Frame-Options");
+    const header = headers.find((h: SecurityHeader) => h.key === "X-Frame-Options");
     expect(header).toBeDefined();
     expect(header!.value).toBe("DENY");
   });
 
   it("should include X-Content-Type-Options: nosniff", async () => {
     const headers = (await nextConfig.headers!())[0].headers;
-    const header = headers.find((h) => h.key === "X-Content-Type-Options");
+    const header = headers.find((h: SecurityHeader) => h.key === "X-Content-Type-Options");
     expect(header).toBeDefined();
     expect(header!.value).toBe("nosniff");
   });
 
   it("should include Referrer-Policy", async () => {
     const headers = (await nextConfig.headers!())[0].headers;
-    const header = headers.find((h) => h.key === "Referrer-Policy");
+    const header = headers.find((h: SecurityHeader) => h.key === "Referrer-Policy");
     expect(header).toBeDefined();
     expect(header!.value).toBe("strict-origin-when-cross-origin");
   });
 
   it("should include Strict-Transport-Security", async () => {
     const headers = (await nextConfig.headers!())[0].headers;
-    const header = headers.find((h) => h.key === "Strict-Transport-Security");
+    const header = headers.find((h: SecurityHeader) => h.key === "Strict-Transport-Security");
     expect(header).toBeDefined();
     expect(header!.value).toContain("max-age=63072000");
     expect(header!.value).toContain("includeSubDomains");
@@ -45,7 +50,7 @@ describe("next.config security headers", () => {
 
   it("should include Content-Security-Policy", async () => {
     const headers = (await nextConfig.headers!())[0].headers;
-    const csp = headers.find((h) => h.key === "Content-Security-Policy");
+    const csp = headers.find((h: SecurityHeader) => h.key === "Content-Security-Policy");
     expect(csp).toBeDefined();
     expect(csp!.value).toContain("default-src 'self'");
   });
@@ -55,7 +60,7 @@ describe("next.config security headers", () => {
 
     beforeEach(async () => {
       const headers = (await nextConfig.headers!())[0].headers;
-      cspValue = headers.find((h) => h.key === "Content-Security-Policy")!.value;
+      cspValue = headers.find((h: SecurityHeader) => h.key === "Content-Security-Policy")!.value;
     });
 
     it("should restrict default-src to self", () => {

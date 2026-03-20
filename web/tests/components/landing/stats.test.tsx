@@ -82,7 +82,9 @@ describe('Stats', () => {
       expect(screen.getByText('5.5K')).toBeInTheDocument();
     });
     expect(screen.getByText(/as of/i)).toBeInTheDocument();
-    expect(screen.getByText('Loved by developers')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Loved by developers/i }),
+    ).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith('/api/stats');
   });
 

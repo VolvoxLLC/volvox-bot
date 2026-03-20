@@ -64,7 +64,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   // ── No guild selected ──────────────────────────────────────────
   if (!guildId) {
     return (
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle>Settings</CardTitle>
           <CardDescription>
@@ -79,7 +79,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <output className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
         <span className="sr-only">Loading configuration...</span>
       </output>
     );
@@ -88,7 +88,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   // ── Error state ────────────────────────────────────────────────
   if (error) {
     return (
-      <Card className="border-destructive/50" role="alert">
+      <Card className="rounded-2xl border-destructive/50" role="alert">
         <CardHeader>
           <CardTitle className="text-destructive">Failed to Load Config</CardTitle>
           <CardDescription>{error}</CardDescription>
@@ -107,14 +107,17 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   // ── Editor UI ──────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage settings by category for faster edits and fewer misses.
+      {/* Top bar with title, search, and save controls */}
+      <div className="dashboard-panel flex flex-col gap-4 rounded-2xl p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight">
+            <span className="text-gradient-vibrant">Settings</span>
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Manage settings by category. Changes are tracked in real-time.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Undo last save — visible only after a successful save with no new changes */}
           {prevSavedConfig && !hasChanges && (
             <Button
@@ -123,9 +126,10 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
               onClick={undoLastSave}
               disabled={saving}
               aria-label="Undo last save"
+              className="rounded-lg"
             >
-              <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-              Undo Last Save
+              <RotateCcw className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+              Undo
             </Button>
           )}
           <DiscardChangesButton
@@ -139,6 +143,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
               onClick={openDiffModal}
               disabled={saving || !hasChanges || hasValidationErrors}
               aria-keyshortcuts="Control+S Meta+S"
+              className="rounded-lg"
             >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -149,7 +154,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
             </Button>
             {hasChanges && !saving && (
               <span
-                className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-yellow-400 ring-2 ring-background"
+                className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-yellow-400 ring-2 ring-background shadow-[0_0_6px_rgba(250,204,21,0.5)]"
                 aria-hidden="true"
                 title={`Unsaved changes in ${changedSections.length} section${changedSections.length === 1 ? '' : 's'}: ${changedSections.join(', ')}`}
               />
@@ -158,45 +163,50 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
-        {/* Unsaved changes banner — spans both columns */}
-        {hasChanges && (
-          <output
-            aria-live="polite"
-            className="col-span-full rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
-          >
-            You have unsaved changes in {changedCategoryCount}{' '}
+      {/* Status banners */}
+      {hasChanges && (
+        <output
+          aria-live="polite"
+          className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/8 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
+        >
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-yellow-500/15">
+            <Save className="h-3 w-3" />
+          </span>
+          <span>
+            Unsaved changes in {changedCategoryCount}{' '}
             {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
-            <kbd className="rounded border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
+            <kbd className="rounded border border-yellow-500/20 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
               Ctrl/⌘+S
             </kbd>{' '}
             to save.
-          </output>
-        )}
+          </span>
+        </output>
+      )}
 
-        {hasValidationErrors && (
-          <output
-            aria-live="polite"
-            className="col-span-full rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            Fix validation errors before changes can be saved.
-          </output>
-        )}
+      {hasValidationErrors && (
+        <output
+          aria-live="polite"
+          className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive"
+        >
+          Fix validation errors before changes can be saved.
+        </output>
+      )}
 
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
         <CategoryNavigation dirtyCounts={dirtyCategoryCounts} />
 
         <div className="space-y-4">
           {/* Category header with label, description, and search — only on category pages */}
           {activeCategory && (
-            <div className="space-y-3 rounded-lg border bg-card p-4">
+            <div className="space-y-3 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-5">
               <Link
                 href="/dashboard/settings"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
               >
                 <ArrowLeft className="h-3 w-3" aria-hidden="true" />
-                Back to overview
+                All categories
               </Link>
-              <p className="text-sm font-medium">{activeCategory.label}</p>
+              <h2 className="text-base font-semibold tracking-tight">{activeCategory.label}</h2>
               <p className="text-xs text-muted-foreground">{activeCategory.description}</p>
               <ConfigSearch
                 value={searchQuery}

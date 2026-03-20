@@ -24,7 +24,7 @@ describe("Sidebar", () => {
     render(<Sidebar />);
     const overviewLink = screen.getByText("Overview").closest("a");
     expect(overviewLink).not.toBeNull();
-    expect(overviewLink?.className).toContain("bg-accent");
+    expect(overviewLink?.className).toContain('sidebar-item-active');
   });
 
   it("calls onNavClick when a link is clicked", async () => {

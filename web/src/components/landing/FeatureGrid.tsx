@@ -61,12 +61,8 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
       </div>
 
       {/* Content */}
-      <h3 className="text-xl font-bold text-foreground mb-3 tracking-tight">
-        {feature.title}
-      </h3>
-      <p className="text-muted-foreground leading-relaxed">
-        {feature.description}
-      </p>
+      <h3 className="text-xl font-bold text-foreground mb-3 tracking-tight">{feature.title}</h3>
+      <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
     </motion.div>
   );
 }

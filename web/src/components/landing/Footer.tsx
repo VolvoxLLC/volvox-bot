@@ -23,7 +23,7 @@ export function Footer() {
           className="mb-16"
         >
           <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground mb-6">
-            Ready to <span className='text-aurora'>upgrade</span>?
+            Ready to <span className="text-aurora">upgrade</span>?
           </h2>
           <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
             Join thousands of developers who&apos;ve switched from MEE6, Dyno, and Carl-bot. Your
@@ -101,7 +101,7 @@ export function Footer() {
           className="pt-8 border-t border-border"
         >
           <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-            Made with <Heart className='w-4 h-4 text-red-500 fill-red-500' /> by developers, for
+            Made with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> by developers, for
             developers
           </p>
           <p className="text-xs text-muted-foreground mt-2">

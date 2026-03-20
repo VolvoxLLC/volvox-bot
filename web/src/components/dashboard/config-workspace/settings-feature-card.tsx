@@ -1,9 +1,8 @@
 'use client';
 
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -60,74 +59,89 @@ export function SettingsFeatureCard({
   }, [forceOpenAdvanced]);
 
   const hasAdvanced = Boolean(advancedContent);
+  const hasExplicitEnabledState = typeof enabled === 'boolean';
+  const isEnabled = enabled === true;
 
   return (
-    <Card
+    <div
       id={`feature-${featureId}`}
+      data-enabled={hasExplicitEnabledState ? isEnabled : undefined}
       className={cn(
-        'scroll-mt-24 min-w-0 transition-shadow duration-200 motion-reduce:transition-none',
+        'feature-card scroll-mt-24 min-w-0 rounded-2xl transition-all duration-200 motion-reduce:transition-none',
         className,
       )}
     >
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 p-5 pb-0">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold tracking-tight">{title}</h3>
+            {hasExplicitEnabledState && isEnabled && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                <Zap className="h-2.5 w-2.5" />
+                Active
+              </span>
+            )}
           </div>
-
-          {onEnabledChange && typeof enabled === 'boolean' && (
-            <div className="flex items-center gap-2 pt-0.5">
-              <Switch
-                id={switchId}
-                checked={enabled}
-                onCheckedChange={onEnabledChange}
-                disabled={disabled}
-                aria-label={`Toggle ${title}`}
-              />
-              <Label htmlFor={switchId} className="sr-only">
-                {title}
-              </Label>
-            </div>
-          )}
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
+        {onEnabledChange && typeof enabled === 'boolean' && (
+          <div className="flex items-center gap-2 pt-0.5">
+            <Switch
+              id={switchId}
+              checked={enabled}
+              onCheckedChange={onEnabledChange}
+              disabled={disabled}
+              aria-label={`Toggle ${title}`}
+            />
+            <Label htmlFor={switchId} className="sr-only">
+              {title}
+            </Label>
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="space-y-4 p-5">
         <section className="space-y-3" aria-label={`${title} basic settings`}>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Basic</p>
+          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="h-px flex-1 bg-border/60" />
+            <span>Basic</span>
+            <span className="h-px flex-1 bg-border/60" />
+          </p>
           {basicContent}
         </section>
 
         {hasAdvanced && (
           <section className="space-y-3" aria-label={`${title} advanced settings`}>
-            <Separator />
+            <Separator className="opacity-50" />
             <Button
               type="button"
               variant="ghost"
-              className="h-auto p-0 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              className="h-auto w-full justify-center gap-1.5 rounded-lg p-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               onClick={() => setIsAdvancedOpen((prev) => !prev)}
               aria-expanded={isAdvancedOpen}
               aria-controls={`feature-${featureId}-advanced`}
             >
               Advanced
               {isAdvancedOpen ? (
-                <ChevronUp className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+                <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
               ) : (
-                <ChevronDown className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
               )}
             </Button>
             {isAdvancedOpen && (
               <div
                 id={`feature-${featureId}-advanced`}
-                className="space-y-3 transition-opacity duration-200 motion-reduce:transition-none"
+                className="space-y-3 rounded-xl border border-border/50 bg-muted/30 p-4 transition-opacity duration-200 motion-reduce:transition-none"
               >
                 {advancedContent}
               </div>
             )}
           </section>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -13,6 +13,7 @@ vi.mock('framer-motion', async () => {
     );
 
   return {
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
     motion: {
       div: createComponent('div'),
       h1: createComponent('h1'),
@@ -39,7 +40,7 @@ describe('Hero', () => {
   it('shows the blinking cursor before the typewriter finishes', () => {
     render(<Hero />);
 
-    expect(screen.getByText('>')).toBeInTheDocument();
+    expect(screen.getByText(/Building the future of Discord communities/i)).toBeInTheDocument();
     expect(document.querySelector('.terminal-cursor')).not.toBeNull();
   });
 
@@ -47,11 +48,15 @@ describe('Hero', () => {
     render(<Hero />);
 
     act(() => {
-      vi.advanceTimersByTime(1_500);
+      vi.advanceTimersByTime(2_000);
     });
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('> volvox-bot');
-    expect(screen.getByText(/The AI-powered Discord bot for modern communities/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /volvox-bot\s*AI-powered Discord\./i,
+    );
+    expect(
+      screen.getByText(/A software-powered bot for modern communities/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open Dashboard/i })).toHaveAttribute(
       'href',
       '/login',

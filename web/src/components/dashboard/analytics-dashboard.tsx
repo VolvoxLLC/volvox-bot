@@ -34,8 +34,8 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { EmptyState } from './empty-state';
 import { useChartTheme } from '@/hooks/use-chart-theme';
+import { useGlowCard } from '@/hooks/use-glow-card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
 import {
@@ -48,6 +48,7 @@ import {
 } from '@/lib/analytics-utils';
 import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
 import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
+import { EmptyState } from './empty-state';
 
 const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Today', value: 'today' },
@@ -69,14 +70,14 @@ type KpiCard = {
 
 function KpiSkeleton() {
   return (
-    <Card>
+    <Card className="kpi-card">
       <CardHeader className="pb-2">
         <div className="h-4 w-24 animate-pulse rounded bg-muted" />
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="h-8 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+          <div className="h-9 w-9 animate-pulse rounded-lg bg-muted" />
         </div>
       </CardContent>
     </Card>
@@ -141,6 +142,8 @@ export function AnalyticsDashboard() {
   const [customRangeError, setCustomRangeError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useGlowCard();
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -421,12 +424,15 @@ export function AnalyticsDashboard() {
     <div className="space-y-6 overflow-x-hidden">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight">
+            <span className="text-gradient-primary">Analytics</span> Dashboard
+          </h1>
+          <p className="mt-1 text-muted-foreground">
             Usage trends, AI performance, and community activity for your server.
           </p>
           {lastUpdatedAt ? (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="status-dot-live" style={{ width: 6, height: 6 }} />
               Last updated {formatLastUpdatedTime(lastUpdatedAt)}
             </p>
           ) : null}
@@ -535,7 +541,7 @@ export function AnalyticsDashboard() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 stagger-fade-in">
         {showKpiSkeleton
           ? (['kpi-0', 'kpi-1', 'kpi-2', 'kpi-3', 'kpi-4'] as const).map((key) => (
               <KpiSkeleton key={key} />
@@ -553,25 +559,31 @@ export function AnalyticsDashboard() {
                 delta === null
                   ? 'text-muted-foreground'
                   : delta > 0
-                    ? 'text-emerald-600'
+                    ? 'text-emerald-600 dark:text-emerald-400'
                     : delta < 0
-                      ? 'text-rose-600'
+                      ? 'text-rose-600 dark:text-rose-400'
                       : 'text-muted-foreground';
 
               return (
-                <Card key={card.label}>
+                <Card key={card.label} className="kpi-card">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {card.label}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold">
+                      <span className="text-2xl font-bold tracking-tight">
                         {analytics ? card.format(value) : '\u2014'}
                       </span>
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <Icon className="h-4 w-4 text-primary" />
+                      </span>
                     </div>
                     {hasComparison ? (
-                      <div className={`mt-2 flex items-center gap-1 text-xs ${deltaColor}`}>
+                      <div
+                        className={`mt-2.5 flex items-center gap-1 text-xs font-medium ${deltaColor}`}
+                      >
                         {delta === null ? (
                           <Minus className="h-3 w-3" />
                         ) : delta > 0 ? (
@@ -591,19 +603,24 @@ export function AnalyticsDashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="glow-card rounded-2xl">
           <CardHeader>
-            <CardTitle>Real-time indicators</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span className="status-dot-live" />
+              Real-time indicators
+            </CardTitle>
             <CardDescription>Live status updates every 30 seconds.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border p-4">
+            <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Activity className="h-4 w-4" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                </span>
                 Online members
               </div>
               <output
-                className="mt-2 block text-2xl font-semibold"
+                className="mt-2 block text-2xl font-bold tracking-tight"
                 aria-label="Online members value"
               >
                 {analytics == null
@@ -613,13 +630,15 @@ export function AnalyticsDashboard() {
                     : formatNumber(analytics.realtime.onlineMembers)}
               </output>
             </div>
-            <div className="rounded-lg border p-4">
+            <div className="rounded-xl border border-secondary/10 bg-secondary/5 p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Bot className="h-4 w-4" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/15">
+                  <Bot className="h-3.5 w-3.5 text-secondary" />
+                </span>
                 Active AI conversations
               </div>
               <output
-                className="mt-2 block text-2xl font-semibold"
+                className="mt-2 block text-2xl font-bold tracking-tight"
                 aria-label="Active AI conversations value"
               >
                 {loading || analytics == null
@@ -632,7 +651,7 @@ export function AnalyticsDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glow-card rounded-2xl">
           <CardHeader>
             <CardTitle>Channel filter</CardTitle>
             <CardDescription>Click a channel in the chart to filter all metrics.</CardDescription>
@@ -642,6 +661,7 @@ export function AnalyticsDashboard() {
               size="sm"
               variant={channelFilter === null ? 'default' : 'outline'}
               onClick={() => setChannelFilter(null)}
+              className="rounded-full"
             >
               All channels
             </Button>
@@ -650,6 +670,7 @@ export function AnalyticsDashboard() {
                 key={channel.channelId}
                 size="sm"
                 variant={channelFilter === channel.channelId ? 'default' : 'outline'}
+                className="rounded-full"
                 onClick={() =>
                   setChannelFilter((current) =>
                     current === channel.channelId ? null : channel.channelId,
@@ -664,7 +685,7 @@ export function AnalyticsDashboard() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="dashboard-panel xl:col-span-6">
+        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
           <CardHeader>
             <CardTitle>Message volume</CardTitle>
             <CardDescription>Messages and AI requests over the selected range.</CardDescription>
@@ -718,7 +739,7 @@ export function AnalyticsDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-panel xl:col-span-6">
+        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
           <CardHeader>
             <CardTitle>AI usage breakdown</CardTitle>
             <CardDescription>Request distribution by model and token usage.</CardDescription>
@@ -797,7 +818,7 @@ export function AnalyticsDashboard() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="dashboard-panel xl:col-span-6">
+        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
           <CardHeader>
             <CardTitle>Top channels breakdown</CardTitle>
             <CardDescription>
@@ -862,7 +883,7 @@ export function AnalyticsDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-panel xl:col-span-6">
+        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
           <CardHeader>
             <CardTitle>Command usage stats</CardTitle>
             <CardDescription>Most used slash commands for the selected range.</CardDescription>
@@ -917,7 +938,7 @@ export function AnalyticsDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
                     Tracked users
@@ -929,7 +950,7 @@ export function AnalyticsDashboard() {
                     {formatNumber(analytics.userEngagement.trackedUsers)}
                   </output>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MessageSquare className="h-4 w-4" />
                     Avg messages / user
@@ -941,7 +962,7 @@ export function AnalyticsDashboard() {
                     {analytics.userEngagement.avgMessagesPerUser.toFixed(1)}
                   </output>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Heart className="h-4 w-4" />
                     Reactions given
@@ -953,7 +974,7 @@ export function AnalyticsDashboard() {
                     {formatNumber(analytics.userEngagement.totalReactionsGiven)}
                   </output>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Activity className="h-4 w-4" />
                     Reactions received
@@ -976,7 +997,7 @@ export function AnalyticsDashboard() {
                 <CardDescription>Reputation and level distribution across members.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
                     Users with XP
@@ -988,7 +1009,7 @@ export function AnalyticsDashboard() {
                     {formatNumber(analytics.xpEconomy.totalUsers)}
                   </output>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Star className="h-4 w-4" />
                     Total XP distributed
@@ -1000,7 +1021,7 @@ export function AnalyticsDashboard() {
                     {formatNumber(analytics.xpEconomy.totalXp)}
                   </output>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Activity className="h-4 w-4" />
                     Average level
@@ -1012,7 +1033,7 @@ export function AnalyticsDashboard() {
                     {analytics.xpEconomy.avgLevel.toFixed(1)}
                   </output>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border border-border/60 p-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Star className="h-4 w-4" />
                     Highest level
@@ -1030,7 +1051,7 @@ export function AnalyticsDashboard() {
         </div>
       ) : null}
 
-      <Card className="dashboard-panel">
+      <Card className="dashboard-panel rounded-2xl">
         <CardHeader>
           <CardTitle>Activity heatmap</CardTitle>
           <CardDescription>Message density by day of week and hour of day.</CardDescription>
