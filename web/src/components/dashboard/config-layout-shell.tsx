@@ -206,7 +206,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
                 <ArrowLeft className="h-3 w-3" aria-hidden="true" />
                 All categories
               </Link>
-              <p className="text-base font-semibold tracking-tight">{activeCategory.label}</p>
+              <h2 className="text-base font-semibold tracking-tight">{activeCategory.label}</h2>
               <p className="text-xs text-muted-foreground">{activeCategory.description}</p>
               <ConfigSearch
                 value={searchQuery}
