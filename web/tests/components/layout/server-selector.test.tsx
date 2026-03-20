@@ -74,7 +74,7 @@ describe("ServerSelector", () => {
     render(<ServerSelector />);
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /Invite Bill Bot/i })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /Invite Volvox\.Bot/i })).toHaveAttribute(
         "href",
         expect.stringContaining("client_id=discord-client-id"),
       );

@@ -67,7 +67,7 @@
     "@changesets/cli": "^2.30.0",
     "@vitest/coverage-v8": "^4.1.0",
     "supertest": "^7.2.2",
-    "turbo": "^2.8.20",
+    "turbo": "^2.8.19",
     "vitest": "^4.1.0"
   }
 }

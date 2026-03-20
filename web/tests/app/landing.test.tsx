@@ -11,6 +11,7 @@ vi.mock('framer-motion', async () => {
       React.createElement(tag, { ...props, ref }, props.children)
     );
   return {
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
     motion: {
       div: createComponent('div'),
       h1: createComponent('h1'),
@@ -37,9 +38,7 @@ describe('LandingPage', () => {
 
   it('renders the hero heading with volvox-bot', () => {
     render(<LandingPage />);
-    // The typewriter effect renders "volvox-bot" after the ">" prompt
-    // Check that the brand name appears somewhere in the document
-    const volvoxElements = screen.getAllByText(/volvox-bot/);
+    const volvoxElements = screen.getAllByText(/Volvox/i);
     expect(volvoxElements.length).toBeGreaterThan(0);
   });
 
@@ -77,7 +76,7 @@ describe('LandingPage', () => {
 
   it('has CTA section', () => {
     render(<LandingPage />);
-    expect(screen.getByText(/Ready to upgrade your server/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ready to upgrade/i })).toBeInTheDocument();
   });
 
   it('renders theme toggle', () => {
