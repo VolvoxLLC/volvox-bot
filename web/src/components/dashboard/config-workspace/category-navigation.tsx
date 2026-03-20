@@ -104,7 +104,12 @@ export function CategoryNavigation({ dirtyCounts }: CategoryNavigationProps) {
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="flex items-center gap-2.5">
-                  <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg transition-colors', iconBg)}>
+                  <span
+                    className={cn(
+                      'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                      iconBg,
+                    )}
+                  >
                     <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>
                   <span className="truncate">{category.label}</span>

@@ -5,7 +5,10 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_CATEGORIES } from '@/components/dashboard/config-workspace/config-categories';
-import type { ConfigCategoryIcon, ConfigCategoryId } from '@/components/dashboard/config-workspace/types';
+import type {
+  ConfigCategoryIcon,
+  ConfigCategoryId,
+} from '@/components/dashboard/config-workspace/types';
 import { Badge } from '@/components/ui/badge';
 
 const CATEGORY_ICONS: Record<ConfigCategoryIcon, typeof Sparkles> = {

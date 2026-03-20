@@ -34,7 +34,6 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { EmptyState } from './empty-state';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGlowCard } from '@/hooks/use-glow-card';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
@@ -49,6 +48,7 @@ import {
 } from '@/lib/analytics-utils';
 import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
 import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
+import { EmptyState } from './empty-state';
 
 const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Today', value: 'today' },
@@ -567,7 +567,9 @@ export function AnalyticsDashboard() {
               return (
                 <Card key={card.label} className="kpi-card">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{card.label}</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {card.label}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
@@ -579,7 +581,9 @@ export function AnalyticsDashboard() {
                       </span>
                     </div>
                     {hasComparison ? (
-                      <div className={`mt-2.5 flex items-center gap-1 text-xs font-medium ${deltaColor}`}>
+                      <div
+                        className={`mt-2.5 flex items-center gap-1 text-xs font-medium ${deltaColor}`}
+                      >
                         {delta === null ? (
                           <Minus className="h-3 w-3" />
                         ) : delta > 0 ? (

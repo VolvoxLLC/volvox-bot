@@ -150,162 +150,160 @@ export default function ModerationClient() {
 
   return (
     <div className="space-y-6">
-        <PageHeader
+      <PageHeader
+        icon={Shield}
+        title="Moderation"
+        description="Review cases, track activity, and audit your moderation team."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || statsLoading || casesLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${statsLoading || casesLoading ? 'animate-spin' : ''}`}
+            />
+            Refresh
+          </Button>
+        }
+      />
+
+      {/* No guild selected */}
+      {!guildId && (
+        <EmptyState
           icon={Shield}
-          title="Moderation"
-          description="Review cases, track activity, and audit your moderation team."
-          actions={
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleRefresh}
-              disabled={!guildId || statsLoading || casesLoading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${statsLoading || casesLoading ? 'animate-spin' : ''}`}
-              />
-              Refresh
-            </Button>
-          }
+          title="Select a server"
+          description="Choose a server from the sidebar to view moderation data."
         />
+      )}
 
-        {/* No guild selected */}
-        {!guildId && (
-          <EmptyState
-            icon={Shield}
-            title="Select a server"
-            description="Choose a server from the sidebar to view moderation data."
-          />
-        )}
+      {/* Content */}
+      {guildId && (
+        <>
+          {/* Stats */}
+          <ErrorBoundary title="Stats failed to load">
+            <ModerationStats stats={stats} loading={statsLoading} error={statsError} />
+          </ErrorBoundary>
 
-        {/* Content */}
-        {guildId && (
-          <>
-            {/* Stats */}
-            <ErrorBoundary title="Stats failed to load">
-              <ModerationStats stats={stats} loading={statsLoading} error={statsError} />
-            </ErrorBoundary>
+          <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
+            {/* Cases */}
+            <section className="dashboard-panel space-y-3 rounded-2xl p-4 md:p-5">
+              <div>
+                <h3 className="text-lg font-semibold tracking-tight">Cases</h3>
+                <p className="text-sm text-muted-foreground">
+                  Review, filter, and audit moderator actions in one place.
+                </p>
+              </div>
+              <CaseTable
+                data={casesData}
+                loading={casesLoading}
+                error={casesError}
+                page={page}
+                sortDesc={sortDesc}
+                actionFilter={actionFilter}
+                userSearch={userSearch}
+                guildId={guildId}
+                onPageChange={setPage}
+                onSortToggle={toggleSortDesc}
+                onActionFilterChange={setActionFilter}
+                onUserSearchChange={setUserSearch}
+                onClearFilters={clearFilters}
+              />
+            </section>
 
-            <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
-              {/* Cases */}
-              <section className="dashboard-panel space-y-3 rounded-2xl p-4 md:p-5">
-                <div>
-                  <h3 className="text-lg font-semibold tracking-tight">Cases</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Review, filter, and audit moderator actions in one place.
-                  </p>
-                </div>
-                <CaseTable
-                  data={casesData}
-                  loading={casesLoading}
-                  error={casesError}
-                  page={page}
-                  sortDesc={sortDesc}
-                  actionFilter={actionFilter}
-                  userSearch={userSearch}
-                  guildId={guildId}
-                  onPageChange={setPage}
-                  onSortToggle={toggleSortDesc}
-                  onActionFilterChange={setActionFilter}
-                  onUserSearchChange={setUserSearch}
-                  onClearFilters={clearFilters}
-                />
-              </section>
+            {/* User History Lookup */}
+            <section className="dashboard-panel space-y-3 rounded-2xl p-4 md:p-5">
+              <div>
+                <h3 className="text-lg font-semibold tracking-tight">User History Lookup</h3>
+                <p className="text-sm text-muted-foreground">
+                  Look up a single user&apos;s full moderation timeline.
+                </p>
+              </div>
 
-              {/* User History Lookup */}
-              <section className="dashboard-panel space-y-3 rounded-2xl p-4 md:p-5">
-                <div>
-                  <h3 className="text-lg font-semibold tracking-tight">User History Lookup</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Look up a single user&apos;s full moderation timeline.
-                  </p>
-                </div>
-
-                <form
-                  onSubmit={handleUserHistorySearch}
-                  className="flex flex-wrap items-center gap-2"
-                >
-                  <div className="relative min-w-[15rem] flex-1">
-                    <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      className="h-10 rounded-xl border-border/70 bg-background/70 pl-9"
-                      placeholder="Discord user ID (e.g. 123456789012345678)"
-                      value={userHistoryInput}
-                      onChange={(e) => setUserHistoryInput(e.target.value)}
-                      aria-label="User ID for history lookup"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!userHistoryInput.trim() || userHistoryLoading}
-                  >
-                    {userHistoryLoading ? (
-                      <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="mr-1.5 h-4 w-4" />
-                    )}
-                    Look up
-                  </Button>
-                  {lookupUserId && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearUserHistory}
-                      title="Clear user history"
-                      aria-label="Clear user history"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </form>
-
-                {lookupUserId ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      History for{' '}
-                      <span className="font-mono font-semibold text-foreground">
-                        {lookupUserId}
-                      </span>
-                      {userHistoryData && (
-                        <>
-                          {' '}
-                          &mdash; <span className="font-semibold">{userHistoryData.total}</span>{' '}
-                          {userHistoryData.total === 1 ? 'case' : 'cases'} total
-                        </>
-                      )}
-                    </p>
-
-                    <CaseTable
-                      data={userHistoryData}
-                      loading={userHistoryLoading}
-                      error={userHistoryError}
-                      page={userHistoryPage}
-                      sortDesc
-                      actionFilter="all"
-                      userSearch=""
-                      guildId={guildId}
-                      onPageChange={(pg) => setUserHistoryPage(pg)}
-                      onSortToggle={() => {}}
-                      onActionFilterChange={() => {}}
-                      onUserSearchChange={() => {}}
-                      onClearFilters={() => {}}
-                    />
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon={Search}
-                    title="Search a user"
-                    description="Enter a Discord user ID to inspect their moderation case history."
-                    className="min-h-0"
+              <form
+                onSubmit={handleUserHistorySearch}
+                className="flex flex-wrap items-center gap-2"
+              >
+                <div className="relative min-w-[15rem] flex-1">
+                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="h-10 rounded-xl border-border/70 bg-background/70 pl-9"
+                    placeholder="Discord user ID (e.g. 123456789012345678)"
+                    value={userHistoryInput}
+                    onChange={(e) => setUserHistoryInput(e.target.value)}
+                    aria-label="User ID for history lookup"
                   />
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!userHistoryInput.trim() || userHistoryLoading}
+                >
+                  {userHistoryLoading ? (
+                    <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="mr-1.5 h-4 w-4" />
+                  )}
+                  Look up
+                </Button>
+                {lookupUserId && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearUserHistory}
+                    title="Clear user history"
+                    aria-label="Clear user history"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 )}
-              </section>
-            </div>
-          </>
-        )}
+              </form>
+
+              {lookupUserId ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    History for{' '}
+                    <span className="font-mono font-semibold text-foreground">{lookupUserId}</span>
+                    {userHistoryData && (
+                      <>
+                        {' '}
+                        &mdash; <span className="font-semibold">{userHistoryData.total}</span>{' '}
+                        {userHistoryData.total === 1 ? 'case' : 'cases'} total
+                      </>
+                    )}
+                  </p>
+
+                  <CaseTable
+                    data={userHistoryData}
+                    loading={userHistoryLoading}
+                    error={userHistoryError}
+                    page={userHistoryPage}
+                    sortDesc
+                    actionFilter="all"
+                    userSearch=""
+                    guildId={guildId}
+                    onPageChange={(pg) => setUserHistoryPage(pg)}
+                    onSortToggle={() => {}}
+                    onActionFilterChange={() => {}}
+                    onUserSearchChange={() => {}}
+                    onClearFilters={() => {}}
+                  />
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Search}
+                  title="Search a user"
+                  description="Enter a Discord user ID to inspect their moderation case history."
+                  className="min-h-0"
+                />
+              )}
+            </section>
+          </div>
+        </>
+      )}
     </div>
   );
 }
