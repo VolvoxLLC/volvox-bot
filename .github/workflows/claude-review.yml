@@ -1,6 +1,8 @@
 name: Claude Code Review
 
-on:
+'on':
+  issue_comment:
+    types: [created, edited]
   pull_request_review_comment:
     types: [created, edited]
   pull_request_review:
@@ -18,8 +20,19 @@ jobs:
       github.actor != 'coderabbitai[bot]' &&
       github.actor != 'greptile-apps[bot]' &&
       (
-        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body || '', '@claude')) ||
-        (github.event_name == 'pull_request_review' && contains(github.event.review.body || '', '@claude'))
+        (
+          github.event_name == 'issue_comment' &&
+          github.event.issue.pull_request &&
+          contains(github.event.comment.body || '', '@claude')
+        ) ||
+        (
+          github.event_name == 'pull_request_review_comment' &&
+          contains(github.event.comment.body || '', '@claude')
+        ) ||
+        (
+          github.event_name == 'pull_request_review' &&
+          contains(github.event.review.body || '', '@claude')
+        )
       )
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -37,6 +50,8 @@ jobs:
 
       - name: Claude Code Review
         uses: anthropics/claude-code-action@v1.0.75
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number && github.event.pull_request.number || github.event.issue.number }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
@@ -44,7 +59,7 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: |
-            Run /code-review --comment on PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Run /code-review --comment on PR #${{ env.PR_NUMBER }} in ${{ github.repository }}.
 
             In addition to CLAUDE.md and AGENTS.md (which the plugin reads automatically),
             enforce these project-specific rules that the plugin cannot infer:
@@ -73,5 +88,5 @@ jobs:
             • ONLY report issues — zero praise, positives, or compliments
             • If zero issues found, do NOT post a comment — just approve silently
             • After the review comment, submit a verdict:
-              - Issues found → `gh pr review ${{ github.event.pull_request.number }} --request-changes -b "See review comment for details."`
-              - Zero issues → `gh pr review ${{ github.event.pull_request.number }} --approve`
+              - Issues found → `gh pr review ${{ env.PR_NUMBER }} --request-changes -b "See review comment for details."`
+              - Zero issues → `gh pr review ${{ env.PR_NUMBER }} --approve`
