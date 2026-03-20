@@ -191,6 +191,10 @@ describe('pollHandler', () => {
       const longLabel = 'X'.repeat(200);
       const rows = buildPollButtons(1, [longLabel], false);
       expect(rows).toHaveLength(1);
+      // Assert label was truncated to <= 80 characters
+      const firstButton = rows[0].components[0];
+      const labelArg = firstButton.setLabel.mock.calls[0][0];
+      expect(labelArg.length).toBeLessThanOrEqual(80);
     });
 
     it('should set disabled state on buttons', () => {
@@ -249,14 +253,14 @@ describe('pollHandler', () => {
         interaction,
         expect.objectContaining({ content: expect.stringContaining('closed') }),
       );
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.release).toHaveBeenCalled();
     });
 
     it('should reply error when poll has expired', async () => {
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
-        .mockResolvedValueOnce({
-          rows: [makePoll({ closes_at: '2020-01-01T00:00:00Z' })],
-        });
+        .mockResolvedValueOnce({ rows: [makePoll({ closes_at: '2020-01-01T00:00:00Z' })] });
 
       const interaction = makeInteraction();
       await handlePollVote(interaction);
@@ -265,6 +269,8 @@ describe('pollHandler', () => {
         interaction,
         expect.objectContaining({ content: expect.stringContaining('expired') }),
       );
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.release).toHaveBeenCalled();
     });
 
     it('should reply error for invalid option index', async () => {
@@ -279,6 +285,8 @@ describe('pollHandler', () => {
         interaction,
         expect.objectContaining({ content: expect.stringContaining('Invalid option') }),
       );
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.release).toHaveBeenCalled();
     });
 
     it('should record a new vote (single-vote mode)', async () => {

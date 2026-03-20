@@ -189,7 +189,7 @@ describe('reviewHandler', () => {
       const embed = buildReviewEmbed(review);
       const allFields = embed.addFields.mock.calls.flatMap((c) => c);
       const urlField = allFields.find((f) => f.name?.includes('URL'));
-      expect(urlField.value.length).toBeLessThanOrEqual(201);
+      expect(urlField.value.length).toBeLessThanOrEqual(198);
     });
 
     it('should truncate long descriptions', () => {
@@ -197,7 +197,7 @@ describe('reviewHandler', () => {
       const embed = buildReviewEmbed(review);
       const allFields = embed.addFields.mock.calls.flatMap((c) => c);
       const descField = allFields.find((f) => f.name?.includes('Description'));
-      expect(descField.value.length).toBeLessThanOrEqual(501);
+      expect(descField.value.length).toBeLessThanOrEqual(498);
     });
 
     it('should truncate long feedback', () => {
@@ -205,7 +205,7 @@ describe('reviewHandler', () => {
       const embed = buildReviewEmbed(review);
       const allFields = embed.addFields.mock.calls.flatMap((c) => c);
       const fbField = allFields.find((f) => f.name?.includes('Feedback'));
-      expect(fbField.value.length).toBeLessThanOrEqual(501);
+      expect(fbField.value.length).toBeLessThanOrEqual(498);
     });
 
     it('should use default color for unknown status', () => {

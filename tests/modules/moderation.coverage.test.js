@@ -129,7 +129,7 @@ describe('moderation — DB failure coverage', () => {
       expect(mockConnection.release).toHaveBeenCalled();
     });
 
-    it('should release connection when pool.connect() fails', async () => {
+    it('should rethrow when pool.connect() fails', async () => {
       mockPool.connect.mockRejectedValue(new Error('no connections'));
 
       await expect(

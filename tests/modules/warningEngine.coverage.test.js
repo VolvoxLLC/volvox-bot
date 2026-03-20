@@ -14,13 +14,6 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
 }));
 
-vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn().mockReturnValue({
-    moderation: {
-      warnings: { expiryDays: 30, severityPoints: { low: 1, medium: 2, high: 3 } },
-    },
-  }),
-}));
 
 import { getPool } from '../../src/db.js';
 import { error as logError } from '../../src/logger.js';
