@@ -50,10 +50,10 @@ vi.mock('../../src/utils/permissions.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
-import { error as logError, warn as logWarn } from '../../src/logger.js';
+import { error as logError } from '../../src/logger.js';
 import {
-  createCase,
   checkEscalation,
+  createCase,
   startTempbanScheduler,
   stopTempbanScheduler,
 } from '../../src/modules/moderation.js';
@@ -125,6 +125,7 @@ describe('moderation — DB failure coverage', () => {
         }),
       ).rejects.toThrow('lock timeout');
 
+      expect(mockConnection.query).toHaveBeenCalledWith('ROLLBACK');
       expect(mockConnection.release).toHaveBeenCalled();
     });
 
@@ -210,18 +211,16 @@ describe('moderation — DB failure coverage', () => {
 
   describe('tempban scheduler DB failure', () => {
     it('should handle query failure during initial poll', async () => {
+      vi.useFakeTimers();
       mockPool.query.mockRejectedValue(new Error('pool exhausted'));
 
       // startTempbanScheduler takes only client
       startTempbanScheduler({});
 
-      // Give the initial poll time to settle
-      await new Promise((r) => setTimeout(r, 50));
+      await Promise.resolve();
+      await Promise.resolve();
 
-      expect(logError).toHaveBeenCalledWith(
-        expect.stringContaining('Tempban'),
-        expect.any(Object),
-      );
+      expect(logError).toHaveBeenCalledWith(expect.stringContaining('Tempban'), expect.any(Object));
 
       stopTempbanScheduler();
     });

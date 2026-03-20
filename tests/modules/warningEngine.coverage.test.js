@@ -23,8 +23,7 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
-import { error as logError, warn as logWarn } from '../../src/logger.js';
-import { getConfig } from '../../src/modules/config.js';
+import { error as logError } from '../../src/logger.js';
 import {
   calculateExpiry,
   clearWarnings,
@@ -60,8 +59,7 @@ describe('warningEngine — DB failure coverage', () => {
 
       await expect(
         createWarning('g1', {
-          targetId: 't1',
-          targetTag: 'target#0001',
+          userId: 't1',
           moderatorId: 'm1',
           moderatorTag: 'mod#0001',
           reason: 'test',
@@ -119,7 +117,9 @@ describe('warningEngine — DB failure coverage', () => {
     it('should throw when deactivation query fails', async () => {
       mockPool.query.mockRejectedValue(new Error('deactivation failed'));
 
-      await expect(removeWarning(1, 'm1', 'test reason')).rejects.toThrow('deactivation failed');
+      await expect(removeWarning('g1', 1, 'm1', 'test reason')).rejects.toThrow(
+        'deactivation failed',
+      );
     });
   });
 
@@ -182,12 +182,13 @@ describe('warningEngine — DB failure coverage', () => {
 
   describe('warning expiry scheduler DB failure', () => {
     it('should handle scheduler query failure gracefully', async () => {
+      vi.useFakeTimers();
       mockPool.query.mockRejectedValue(new Error('scheduler query failed'));
 
       startWarningExpiryScheduler();
 
-      // Give the initial poll time to settle
-      await new Promise((r) => setTimeout(r, 50));
+      await Promise.resolve();
+      await Promise.resolve();
 
       // processExpiredWarnings catches errors and logs them
       expect(logError).toHaveBeenCalledWith(

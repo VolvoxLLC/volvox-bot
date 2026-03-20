@@ -1,32 +1,33 @@
 # Test Coverage Analysis
 
 **Date:** 2026-03-19
-**Test suite:** 190 test files, 3,895 test cases (3,892 passing, 2 failing, 2 skipped)
+**Test files:** 242 total (`tests/`: 196 bot tests, `web/tests/`: 46 dashboard tests)
+**Scope of this PR:** 14 changed files focused on coverage gaps, test reliability, and Vitest warning cleanup
 
 ## Current State
 
-The project has **164 test files** covering **~45 commands, ~46 modules, 19 API routes, 8 middleware, 9 API utilities, and 25 utils**. The Vitest config enforces an **85% coverage threshold** across statements, branches, functions, and lines.
+The repository currently has **242 test files** covering bot runtime code, API routes, middleware, utilities, and the Next.js dashboard. The Vitest config enforces an **85% coverage threshold** across statements, branches, functions, and lines.
 
-### Existing Test Failures
+### Recently Resolved Test Failures
 
-| Test File | Failure | Root Cause |
+| Test File | Previous Failure | Root Cause | Status in This PR |
 |-----------|---------|------------|
-| `tests/logger.test.js` | `addPostgresTransport` — "not a constructor" | `vi.mock` returns a plain function instead of a class; needs `vi.fn(() => ({ on, log, close }))` wrapped with proper constructor semantics |
-| `tests/api/utils/ssrfProtection.test.js` | `validateUrlForSsrf` — 10s timeout | DNS resolution against `example.com` in CI/sandboxed environments; needs mocked `dns.resolve` |
+| `tests/logger.test.js` | `addPostgresTransport` — "not a constructor" | `vi.mock` returned a plain function instead of a constructible transport mock | Fixed by switching the transport mocks to constructor-safe implementations |
+| `tests/api/utils/ssrfProtection.test.js` | `validateUrlForSsrf` — 10s timeout | Async URL validation attempted real DNS behavior in CI-like environments | Fixed by forcing the async-path tests to avoid live DNS resolution |
 
-### Vitest Deprecation Warnings
+### Vitest Deprecation Warnings Addressed
 
-Multiple test files use **nested `vi.mock()` calls** that will become errors in a future Vitest version. Affected files:
+This PR removes the nested `vi.mock()` pattern that would become an error in a future Vitest release. Affected files:
 - `tests/logger.test.js`
 - `tests/config-listeners.test.js`
 - `tests/modules/config.test.js`
 - `tests/modules/config-events.test.js`
 
-These `vi.mock()` calls must be moved to the top level of the module.
+All four files now use top-level mocks.
 
 ---
 
-## Source Files With No Test Coverage
+## Coverage Work Added in This PR
 
 | File | Complexity | Priority |
 |------|-----------|----------|
@@ -35,26 +36,26 @@ These `vi.mock()` calls must be moved to the top level of the module.
 | `src/modules/reputationDefaults.js` (~13 lines) | Static config object | Low |
 | `src/api/middleware/requireGlobalAdmin.js` (~49 lines) | Auth middleware, permission checks | **Medium** |
 
-### Recommended: `pollHandler.js`
+### `pollHandler.js`
 
-This module has significant logic:
+New tests now cover:
 - `buildPollEmbed()` — vote counting, bar rendering, footer formatting
 - `buildPollButtons()` — button row splitting (max 5 per row)
 - `handlePollVote()` — DB transactions with `FOR UPDATE` locking, multi-vote vs single-vote toggle, expired poll rejection
 - `closePoll()` — state transition and embed update
 - `closeExpiredPolls()` — batch query and per-poll error isolation
 
-### Recommended: `reviewHandler.js`
+### `reviewHandler.js`
 
-Complex interaction handling:
+New tests now cover:
 - `buildReviewEmbed()` — status colors, field truncation, conditional fields
 - `handleReviewClaim()` — self-claim prevention, atomic UPDATE with race condition protection, thread creation
 - `expireStaleReviews()` — per-guild config, batch expiry, nudge messages
 - `updateReviewMessage()` — channel/message fetch with error recovery
 
-### Recommended: `requireGlobalAdmin.js`
+### `requireGlobalAdmin.js`
 
-Security-critical middleware with 3 auth method branches (api-secret, oauth + bot owner, unknown).
+New tests now cover the 3 security-relevant auth method branches: `api-secret`, `oauth`, and `unknown`.
 
 ---
 

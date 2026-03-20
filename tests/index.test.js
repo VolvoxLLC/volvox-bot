@@ -830,15 +830,28 @@ describe('index.js', () => {
     });
 
     it('should handle mem0 health check timeout gracefully', async () => {
-      // Simulate a slow health check that resolves to false
-      mocks.memory.checkMem0Health.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve(false), 50)),
-      );
+      vi.useFakeTimers();
 
-      await importIndex({ token: 'abc', databaseUrl: null });
+      try {
+        const importPromise = importIndex({
+          token: 'abc',
+          databaseUrl: null,
+          checkMem0HealthImpl: () => new Promise(() => {}),
+        });
 
-      // Bot should still login
-      expect(mocks.client.login).toHaveBeenCalled();
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(10_000);
+        await importPromise;
+
+        expect(mocks.memory.markUnavailable).toHaveBeenCalled();
+        expect(mocks.logger.warn).toHaveBeenCalledWith(
+          'mem0 health check timed out or failed — continuing without memory features',
+          { error: 'mem0 health check timed out' },
+        );
+        expect(mocks.client.login).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should exit when registerEventHandlers fails', async () => {

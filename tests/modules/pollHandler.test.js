@@ -51,9 +51,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
-import { error as logError, info } from '../../src/logger.js';
-import { fetchChannelCached } from '../../src/utils/discordCache.js';
-import { safeReply } from '../../src/utils/safeSend.js';
+import { info, error as logError } from '../../src/logger.js';
 import {
   buildPollButtons,
   buildPollEmbed,
@@ -61,6 +59,8 @@ import {
   closePoll,
   handlePollVote,
 } from '../../src/modules/pollHandler.js';
+import { fetchChannelCached } from '../../src/utils/discordCache.js';
+import { safeReply } from '../../src/utils/safeSend.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -128,12 +128,18 @@ describe('pollHandler', () => {
 
     it('should show closed footer when poll is closed', () => {
       const poll = makePoll({ closed: true });
-      buildPollEmbed(poll);
+      const embed = buildPollEmbed(poll);
+      expect(embed.setFooter).toHaveBeenCalledWith(
+        expect.objectContaining({ text: expect.stringContaining('Closed') }),
+      );
     });
 
     it('should show closes_at timestamp when set', () => {
       const poll = makePoll({ closes_at: '2026-12-31T00:00:00Z' });
-      buildPollEmbed(poll);
+      const embed = buildPollEmbed(poll);
+      expect(embed.setFooter).toHaveBeenCalledWith(
+        expect.objectContaining({ text: expect.stringContaining('Closes') }),
+      );
     });
 
     it('should show multi_vote note in description', () => {
@@ -410,10 +416,16 @@ describe('pollHandler', () => {
       const pool = { query: vi.fn().mockResolvedValue({ rows: [poll] }) };
       getPool.mockReturnValue(pool);
 
-      fetchChannelCached.mockResolvedValue(null);
+      const mockMessage = { edit: vi.fn().mockRejectedValue(new Error('edit failed')) };
+      const mockChannel = { messages: { fetch: vi.fn().mockResolvedValue(mockMessage) } };
+      fetchChannelCached.mockResolvedValue(mockChannel);
 
       const result = await closePoll(1, {});
       expect(result).toBe(true);
+      expect(logError).toHaveBeenCalledWith('Failed to edit closed poll message', {
+        pollId: 1,
+        error: 'edit failed',
+      });
     });
   });
 
