@@ -91,7 +91,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold tracking-tight">{health ? formatUptime(health.uptime) : '—'}</span>
+          <span className="text-2xl font-bold tracking-tight">
+            {health ? formatUptime(health.uptime) : '—'}
+          </span>
         </CardContent>
       </Card>
 
@@ -129,14 +131,18 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
       <Card className="kpi-card rounded-2xl">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${health ? pingBg(health.discord.ping) : 'bg-muted text-muted-foreground'}`}>
+            <span
+              className={`flex h-7 w-7 items-center justify-center rounded-lg ${health ? pingBg(health.discord.ping) : 'bg-muted text-muted-foreground'}`}
+            >
               <Wifi className="h-3.5 w-3.5" />
             </span>
             Discord Ping
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}>
+          <span
+            className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}
+          >
             {health ? `${health.discord.ping}ms` : '—'}
           </span>
         </CardContent>
@@ -236,7 +242,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-2xl font-bold tracking-tight">{health ? health.system.nodeVersion : '—'}</span>
+          <span className="text-2xl font-bold tracking-tight">
+            {health ? health.system.nodeVersion : '—'}
+          </span>
         </CardContent>
       </Card>
     </div>

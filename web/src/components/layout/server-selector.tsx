@@ -230,9 +230,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         {/* ── Manageable servers (mod / admin / owner) ── */}
         {manageable.length > 0 ? (
           <>
-            <DropdownMenuLabel
-              className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-            >
+            <DropdownMenuLabel className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Manage
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

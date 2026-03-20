@@ -2,7 +2,6 @@
 
 import { Activity, AlertTriangle, Clock, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import {
   Area,
   AreaChart,
@@ -14,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

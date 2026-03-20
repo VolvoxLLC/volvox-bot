@@ -65,10 +65,7 @@ export async function POST(
       );
     }
     if (payload.amount === 0) {
-      return NextResponse.json(
-        { error: 'Field "amount" must not be zero' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Field "amount" must not be zero' }, { status: 400 });
     }
     if (Math.abs(payload.amount) > MAX_XP_AMOUNT) {
       return NextResponse.json(

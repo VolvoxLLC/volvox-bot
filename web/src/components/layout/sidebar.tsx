@@ -155,9 +155,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
               Workflow
             </p>
           </div>
-          <p className="mt-2 text-sm font-medium leading-snug">
-            Tickets → Moderation → Review
-          </p>
+          <p className="mt-2 text-sm font-medium leading-snug">Tickets → Moderation → Review</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Clear urgent issues first, then moderate, then review conversations.
           </p>
@@ -166,7 +164,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
 
       <div className="border-t border-border/40 p-3">
         <Link
-          href='https://joinvolvox.com/'
+          href="https://joinvolvox.com/"
           target="_blank"
           rel="noopener noreferrer"
           onClick={onNavClick}

@@ -424,5 +424,5 @@ export function ChannelSelector({
   );
 }
 
-export { CHANNEL_TYPES, getChannelIcon, getChannelTypeLabel };
 export type { ChannelTypeFilter };
+export { CHANNEL_TYPES, getChannelIcon, getChannelTypeLabel };

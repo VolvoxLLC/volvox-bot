@@ -176,7 +176,10 @@ export function CommunitySettingsSection({
                   </p>
                 </div>
                 <Switch
-                  checked={draftConfig.botStatus?.rotation?.enabled ?? (draftConfig.botStatus?.rotateIntervalMs != null ? true : false)}
+                  checked={
+                    draftConfig.botStatus?.rotation?.enabled ??
+                    (draftConfig.botStatus?.rotateIntervalMs != null ? true : false)
+                  }
                   onCheckedChange={(value) => {
                     updateDraftConfig((prev) => {
                       const legacyMs = prev.botStatus?.rotateIntervalMs;
@@ -209,7 +212,12 @@ export function CommunitySettingsSection({
                 id="bot-status-interval-minutes"
                 type="number"
                 min={0.5}
-                value={draftConfig.botStatus?.rotation?.intervalMinutes ?? (draftConfig.botStatus?.rotateIntervalMs != null ? draftConfig.botStatus.rotateIntervalMs / 60000 : 5)}
+                value={
+                  draftConfig.botStatus?.rotation?.intervalMinutes ??
+                  (draftConfig.botStatus?.rotateIntervalMs != null
+                    ? draftConfig.botStatus.rotateIntervalMs / 60000
+                    : 5)
+                }
                 onChange={(event) => {
                   const num = parseNumberInput(event.target.value, 1);
                   if (num === undefined) return;
