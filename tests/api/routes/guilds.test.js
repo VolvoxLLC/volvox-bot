@@ -8,6 +8,32 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+// Mock cache utilities — always simulate a cache miss so tests exercise DB paths
+vi.mock('../../../src/utils/cache.js', () => ({
+  cacheGet: vi.fn().mockResolvedValue(null),
+  cacheSet: vi.fn().mockResolvedValue(undefined),
+  cacheGetOrSet: vi.fn().mockImplementation((_key, factory) => factory()),
+  cacheDel: vi.fn().mockResolvedValue(undefined),
+  cacheDelPattern: vi.fn().mockResolvedValue(0),
+  TTL: {
+    CHANNELS: 300,
+    ROLES: 300,
+    MEMBERS: 60,
+    CONFIG: 60,
+    REPUTATION: 60,
+    LEADERBOARD: 300,
+    ANALYTICS: 3600,
+    SESSION: 86400,
+    CHANNEL_DETAIL: 600,
+  },
+}));
+
+vi.mock('../../../src/logger.js', () => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
 vi.mock('../../../src/api/utils/validateWebhookUrl.js', async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, validateDnsResolution: vi.fn().mockResolvedValue(true) };

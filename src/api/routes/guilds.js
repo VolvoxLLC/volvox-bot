@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
+import { cacheGetOrSet, TTL } from '../../utils/cache.js';
 import { getBotOwnerIds } from '../../utils/permissions.js';
 import { safeSend } from '../../utils/safeSend.js';
 import {
@@ -828,24 +829,37 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
   }
 
   try {
+    const cacheKey = `guild:stats:${req.params.id}`;
+
     /**
+     * Cache the DB-backed counts for TTL.CONFIG seconds.
      * Note: Pre-existing conversation rows (from before guild tracking was added)
      * may have NULL guild_id and won't be counted here. These will self-correct
      * as new conversations are created with the guild_id populated.
      */
-    const [conversationResult, caseResult] = await Promise.all([
-      dbPool.query('SELECT COUNT(*)::int AS count FROM conversations WHERE guild_id = $1', [
-        req.params.id,
-      ]),
-      dbPool.query('SELECT COUNT(*)::int AS count FROM mod_cases WHERE guild_id = $1', [
-        req.params.id,
-      ]),
-    ]);
+    const { aiConversations, moderationCases } = await cacheGetOrSet(
+      cacheKey,
+      async () => {
+        const [conversationResult, caseResult] = await Promise.all([
+          dbPool.query('SELECT COUNT(*)::int AS count FROM conversations WHERE guild_id = $1', [
+            req.params.id,
+          ]),
+          dbPool.query('SELECT COUNT(*)::int AS count FROM mod_cases WHERE guild_id = $1', [
+            req.params.id,
+          ]),
+        ]);
+        return {
+          aiConversations: conversationResult.rows[0].count,
+          moderationCases: caseResult.rows[0].count,
+        };
+      },
+      TTL.CONFIG,
+    );
 
     res.json({
       guildId: req.params.id,
-      aiConversations: conversationResult.rows[0].count,
-      moderationCases: caseResult.rows[0].count,
+      aiConversations,
+      moderationCases,
       memberCount: req.guild.memberCount,
       uptime: process.uptime(),
     });
@@ -965,117 +979,146 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   const channelId = typeof req.query.channelId === 'string' ? req.query.channelId.trim() : '';
   const activeChannelFilter = channelId.length > 0 ? channelId : null;
 
-  const conversationWhereParts = ['guild_id = $1', 'created_at >= $2', 'created_at <= $3'];
-  const conversationValues = [req.params.id, from.toISOString(), to.toISOString()];
-
-  if (activeChannelFilter) {
-    conversationValues.push(activeChannelFilter);
-    conversationWhereParts.push(`channel_id = $${conversationValues.length}`);
-  }
-
-  const conversationWhere = conversationWhereParts.join(' AND ');
-
-  const comparisonConversationValues =
-    comparisonFrom && comparisonTo
-      ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
-      : null;
-  const comparisonConversationWhereParts = comparisonConversationValues
-    ? ['guild_id = $1', 'created_at >= $2', 'created_at <= $3']
-    : [];
-
-  if (activeChannelFilter && comparisonConversationValues && comparisonConversationWhereParts) {
-    comparisonConversationValues.push(activeChannelFilter);
-    comparisonConversationWhereParts.push(`channel_id = $${comparisonConversationValues.length}`);
-  }
-
-  const comparisonConversationWhere = comparisonConversationWhereParts.join(' AND ');
-
   const ALLOWED_INTERVALS = new Set(['hour', 'day']);
   if (!ALLOWED_INTERVALS.has(interval)) {
     return res.status(400).json({ error: 'Invalid interval parameter' });
   }
-  const bucketExpr =
-    interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
 
-  const logsWhereParts = [
-    "message = 'AI usage'",
-    "metadata->>'guildId' = $1",
-    'timestamp >= $2',
-    'timestamp <= $3',
-  ];
-  const logsValues = [req.params.id, from.toISOString(), to.toISOString()];
-
-  if (activeChannelFilter) {
-    logsValues.push(activeChannelFilter);
-    logsWhereParts.push(`metadata->>'channelId' = $${logsValues.length}`);
-  }
-
-  const logsWhere = logsWhereParts.join(' AND ');
-
-  const comparisonLogsValues =
-    comparisonFrom && comparisonTo
-      ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
-      : null;
-  const comparisonLogsWhereParts = comparisonLogsValues
-    ? ["message = 'AI usage'", "metadata->>'guildId' = $1", 'timestamp >= $2', 'timestamp <= $3']
-    : [];
-
-  if (activeChannelFilter && comparisonLogsValues && comparisonLogsWhereParts) {
-    comparisonLogsValues.push(activeChannelFilter);
-    comparisonLogsWhereParts.push(`metadata->>'channelId' = $${comparisonLogsValues.length}`);
-  }
-
-  const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
-
-  // Build command usage query dynamically to avoid SQL injection
-  const commandUsageConditions = ['guild_id = $1', 'used_at >= $2', 'used_at <= $3'];
-  const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
-  let commandUsageParamIndex = 4;
-
-  if (activeChannelFilter) {
-    commandUsageConditions.push(`channel_id = $${commandUsageParamIndex}`);
-    commandUsageValues.push(activeChannelFilter);
-    commandUsageParamIndex++;
-  }
-
-  const commandUsageWhereClause = commandUsageConditions.join(' AND ');
+  /**
+   * Build a stable cache key from normalized query params.
+   * For preset ranges (today/week/month) we bucket by hour so requests within
+   * the same clock hour reuse the cache.  For custom ranges we use ISO minute
+   * precision so identical custom windows share the cache entry.
+   * TTL is shorter for "today" (actively changing data) vs weekly/monthly snapshots.
+   */
+  const hourBucket =
+    range === 'custom'
+      ? `${from.toISOString().slice(0, 16)}_${to.toISOString().slice(0, 16)}`
+      : new Date().toISOString().slice(0, 13);
+  const analyticsCacheKey = `analytics:${req.params.id}:${range}:${interval}:${compareMode ? '1' : '0'}:${activeChannelFilter || ''}:${hourBucket}`;
+  const analyticsTtl = range === 'today' ? TTL.LEADERBOARD : TTL.ANALYTICS;
 
   try {
-    const [
-      kpiResult,
-      comparisonKpiResult,
-      volumeResult,
-      channelResult,
-      heatmapResult,
-      activeResult,
-      modelUsageResult,
-      comparisonCostResult,
-      commandUsageResult,
-      userEngagementResult,
-      xpEconomyResult,
-    ] = await Promise.all([
-      dbPool.query(
-        `SELECT
+    const analyticsData = await cacheGetOrSet(
+      analyticsCacheKey,
+      async () => {
+        const conversationWhereParts = ['guild_id = $1', 'created_at >= $2', 'created_at <= $3'];
+        const conversationValues = [req.params.id, from.toISOString(), to.toISOString()];
+
+        if (activeChannelFilter) {
+          conversationValues.push(activeChannelFilter);
+          conversationWhereParts.push(`channel_id = $${conversationValues.length}`);
+        }
+
+        const conversationWhere = conversationWhereParts.join(' AND ');
+
+        const comparisonConversationValues =
+          comparisonFrom && comparisonTo
+            ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
+            : null;
+        const comparisonConversationWhereParts = comparisonConversationValues
+          ? ['guild_id = $1', 'created_at >= $2', 'created_at <= $3']
+          : [];
+
+        if (
+          activeChannelFilter &&
+          comparisonConversationValues &&
+          comparisonConversationWhereParts
+        ) {
+          comparisonConversationValues.push(activeChannelFilter);
+          comparisonConversationWhereParts.push(
+            `channel_id = $${comparisonConversationValues.length}`,
+          );
+        }
+
+        const comparisonConversationWhere = comparisonConversationWhereParts.join(' AND ');
+
+        const bucketExpr =
+          interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
+
+        const logsWhereParts = [
+          "message = 'AI usage'",
+          "metadata->>'guildId' = $1",
+          'timestamp >= $2',
+          'timestamp <= $3',
+        ];
+        const logsValues = [req.params.id, from.toISOString(), to.toISOString()];
+
+        if (activeChannelFilter) {
+          logsValues.push(activeChannelFilter);
+          logsWhereParts.push(`metadata->>'channelId' = $${logsValues.length}`);
+        }
+
+        const logsWhere = logsWhereParts.join(' AND ');
+
+        const comparisonLogsValues =
+          comparisonFrom && comparisonTo
+            ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
+            : null;
+        const comparisonLogsWhereParts = comparisonLogsValues
+          ? [
+              "message = 'AI usage'",
+              "metadata->>'guildId' = $1",
+              'timestamp >= $2',
+              'timestamp <= $3',
+            ]
+          : [];
+
+        if (activeChannelFilter && comparisonLogsValues && comparisonLogsWhereParts) {
+          comparisonLogsValues.push(activeChannelFilter);
+          comparisonLogsWhereParts.push(`metadata->>'channelId' = $${comparisonLogsValues.length}`);
+        }
+
+        const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
+
+        // Build command usage query dynamically to avoid SQL injection
+        const commandUsageConditions = ['guild_id = $1', 'used_at >= $2', 'used_at <= $3'];
+        const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
+        let commandUsageParamIndex = 4;
+
+        if (activeChannelFilter) {
+          commandUsageConditions.push(`channel_id = $${commandUsageParamIndex}`);
+          commandUsageValues.push(activeChannelFilter);
+          commandUsageParamIndex++;
+        }
+
+        const commandUsageWhereClause = commandUsageConditions.join(' AND ');
+
+        const [
+          kpiResult,
+          comparisonKpiResult,
+          volumeResult,
+          channelResult,
+          heatmapResult,
+          activeResult,
+          modelUsageResult,
+          comparisonCostResult,
+          commandUsageResult,
+          userEngagementResult,
+          xpEconomyResult,
+        ] = await Promise.all([
+          dbPool.query(
+            `SELECT
              COUNT(*)::int AS total_messages,
              COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests,
              COUNT(DISTINCT CASE WHEN role = 'user' THEN username END)::int AS active_users
            FROM conversations
            WHERE ${conversationWhere}`,
-        conversationValues,
-      ),
-      comparisonConversationValues
-        ? dbPool.query(
-            `SELECT
+            conversationValues,
+          ),
+          comparisonConversationValues
+            ? dbPool.query(
+                `SELECT
                  COUNT(*)::int AS total_messages,
                  COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests,
                  COUNT(DISTINCT CASE WHEN role = 'user' THEN username END)::int AS active_users
                FROM conversations
                WHERE ${comparisonConversationWhere}`,
-            comparisonConversationValues,
-          )
-        : Promise.resolve({ rows: [] }),
-      dbPool.query(
-        `SELECT
+                comparisonConversationValues,
+              )
+            : Promise.resolve({ rows: [] }),
+          dbPool.query(
+            `SELECT
              ${bucketExpr} AS bucket,
              COUNT(*)::int AS messages,
              COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests
@@ -1083,19 +1126,19 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
            WHERE ${conversationWhere}
            GROUP BY 1
            ORDER BY 1 ASC`,
-        conversationValues,
-      ),
-      dbPool.query(
-        `SELECT channel_id, COUNT(*)::int AS messages
+            conversationValues,
+          ),
+          dbPool.query(
+            `SELECT channel_id, COUNT(*)::int AS messages
            FROM conversations
            WHERE ${conversationWhere}
            GROUP BY channel_id
            ORDER BY messages DESC
            LIMIT 10`,
-        conversationValues,
-      ),
-      dbPool.query(
-        `SELECT
+            conversationValues,
+          ),
+          dbPool.query(
+            `SELECT
              EXTRACT(DOW FROM created_at)::int AS day_of_week,
              EXTRACT(HOUR FROM created_at)::int AS hour_of_day,
              COUNT(*)::int AS messages
@@ -1103,30 +1146,30 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
            WHERE ${conversationWhere}
            GROUP BY 1, 2
            ORDER BY 1 ASC, 2 ASC`,
-        conversationValues,
-      ),
-      // Active AI conversations - filter by channel if specified
-      activeChannelFilter
-        ? dbPool.query(
-            `SELECT COUNT(DISTINCT channel_id)::int AS count
+            conversationValues,
+          ),
+          // Active AI conversations - filter by channel if specified
+          activeChannelFilter
+            ? dbPool.query(
+                `SELECT COUNT(DISTINCT channel_id)::int AS count
                FROM conversations
                WHERE guild_id = $1
                  AND channel_id = $2
                  AND role = 'assistant'
                  AND created_at >= NOW() - make_interval(mins => $3)`,
-            [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-          )
-        : dbPool.query(
-            `SELECT COUNT(DISTINCT channel_id)::int AS count
+                [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+              )
+            : dbPool.query(
+                `SELECT COUNT(DISTINCT channel_id)::int AS count
                FROM conversations
                WHERE guild_id = $1
                  AND role = 'assistant'
                  AND created_at >= NOW() - make_interval(mins => $2)`,
-            [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-          ),
-      dbPool
-        .query(
-          `SELECT
+                [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+              ),
+          dbPool
+            .query(
+              `SELECT
                COALESCE(NULLIF(metadata->>'model', ''), 'unknown') AS model,
                COUNT(*)::bigint AS requests,
                SUM(
@@ -1154,19 +1197,19 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
              WHERE ${logsWhere}
              GROUP BY 1
              ORDER BY requests DESC`,
-          logsValues,
-        )
-        .catch((err) => {
-          warn('Analytics logs query failed; returning empty AI usage dataset', {
-            guild: req.params.id,
-            error: err.message,
-          });
-          return { rows: [] };
-        }),
-      comparisonLogsValues
-        ? dbPool
-            .query(
-              `SELECT
+              logsValues,
+            )
+            .catch((err) => {
+              warn('Analytics logs query failed; returning empty AI usage dataset', {
+                guild: req.params.id,
+                error: err.message,
+              });
+              return { rows: [] };
+            }),
+          comparisonLogsValues
+            ? dbPool
+                .query(
+                  `SELECT
                    SUM(
                      CASE
                        WHEN (metadata->>'estimatedCostUsd') ~ '^[0-9]+(\\.[0-9]+)?$'
@@ -1176,19 +1219,19 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
                    ) AS cost_usd
                  FROM logs
                  WHERE ${comparisonLogsWhere}`,
-              comparisonLogsValues,
-            )
-            .catch((err) => {
-              warn('Comparison AI usage query failed; defaulting previous AI cost to 0', {
-                guild: req.params.id,
-                error: err.message,
-              });
-              return { rows: [] };
-            })
-        : Promise.resolve({ rows: [] }),
-      dbPool
-        .query(
-          `SELECT
+                  comparisonLogsValues,
+                )
+                .catch((err) => {
+                  warn('Comparison AI usage query failed; defaulting previous AI cost to 0', {
+                    guild: req.params.id,
+                    error: err.message,
+                  });
+                  return { rows: [] };
+                })
+            : Promise.resolve({ rows: [] }),
+          dbPool
+            .query(
+              `SELECT
                command_name,
                COUNT(*)::int AS uses
              FROM command_usage
@@ -1196,24 +1239,24 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
              GROUP BY command_name
              ORDER BY uses DESC, command_name ASC
              LIMIT 15`,
-          commandUsageValues,
-        )
-        .then((result) => ({ rows: result.rows, available: true }))
-        .catch((err) => {
-          warn('Command usage query failed; returning empty command usage dataset', {
-            guild: req.params.id,
-            error: err.message,
-          });
-          return { rows: [], available: false };
-        }),
-      dbPool
-        .query(
-          // NOTE: totalMessagesSent (and related stats) reflect cumulative all-time counts
-          // from user_stats, which has no time-series granularity. The user_stats table
-          // stores running totals per user with no timestamp column for filtering.
-          // TODO: For time-bounded accuracy (e.g. "last 30 days"), add a
-          // message_events log table and aggregate from that instead.
-          `SELECT
+              commandUsageValues,
+            )
+            .then((result) => ({ rows: result.rows, available: true }))
+            .catch((err) => {
+              warn('Command usage query failed; returning empty command usage dataset', {
+                guild: req.params.id,
+                error: err.message,
+              });
+              return { rows: [], available: false };
+            }),
+          dbPool
+            .query(
+              // NOTE: totalMessagesSent (and related stats) reflect cumulative all-time counts
+              // from user_stats, which has no time-series granularity. The user_stats table
+              // stores running totals per user with no timestamp column for filtering.
+              // TODO: For time-bounded accuracy (e.g. "last 30 days"), add a
+              // message_events log table and aggregate from that instead.
+              `SELECT
                COUNT(DISTINCT user_id)::int AS tracked_users,
                COALESCE(SUM(messages_sent), 0)::bigint AS total_messages_sent,
                COALESCE(SUM(reactions_given), 0)::bigint AS total_reactions_given,
@@ -1221,204 +1264,213 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
                COALESCE(AVG(messages_sent), 0)::float AS avg_messages_per_user
              FROM user_stats
              WHERE guild_id = $1`,
-          [req.params.id],
-        )
-        .catch((err) => {
-          warn('User engagement query failed; returning empty engagement dataset', {
-            guild: req.params.id,
-            error: err.message,
-          });
-          return { rows: [] };
-        }),
-      dbPool
-        .query(
-          `SELECT
+              [req.params.id],
+            )
+            .catch((err) => {
+              warn('User engagement query failed; returning empty engagement dataset', {
+                guild: req.params.id,
+                error: err.message,
+              });
+              return { rows: [] };
+            }),
+          dbPool
+            .query(
+              `SELECT
                COUNT(*)::int AS total_users,
                COALESCE(SUM(xp), 0)::bigint AS total_xp,
                COALESCE(AVG(level), 0)::float AS avg_level,
                COALESCE(MAX(level), 0)::int AS max_level
              FROM reputation
              WHERE guild_id = $1`,
-          [req.params.id],
-        )
-        .catch((err) => {
-          warn('XP economy query failed; returning empty XP dataset', {
-            guild: req.params.id,
-            error: err.message,
-          });
-          return { rows: [] };
-        }),
-    ]);
+              [req.params.id],
+            )
+            .catch((err) => {
+              warn('XP economy query failed; returning empty XP dataset', {
+                guild: req.params.id,
+                error: err.message,
+              });
+              return { rows: [] };
+            }),
+        ]);
 
-    const kpiRow = kpiResult.rows[0] || {
-      total_messages: 0,
-      ai_requests: 0,
-      active_users: 0,
-    };
+        const kpiRow = kpiResult.rows[0] || {
+          total_messages: 0,
+          ai_requests: 0,
+          active_users: 0,
+        };
 
-    const comparisonKpiRow = comparisonKpiResult.rows[0] || {
-      total_messages: 0,
-      ai_requests: 0,
-      active_users: 0,
-    };
+        const comparisonKpiRow = comparisonKpiResult.rows[0] || {
+          total_messages: 0,
+          ai_requests: 0,
+          active_users: 0,
+        };
 
-    const volume = volumeResult.rows.map((row) => {
-      const bucketDate = new Date(row.bucket);
-      return {
-        bucket: bucketDate.toISOString(),
-        label: formatBucketLabel(bucketDate, interval),
-        messages: Number(row.messages || 0),
-        aiRequests: Number(row.ai_requests || 0),
-      };
-    });
+        const volume = volumeResult.rows.map((row) => {
+          const bucketDate = new Date(row.bucket);
+          return {
+            bucket: bucketDate.toISOString(),
+            label: formatBucketLabel(bucketDate, interval),
+            messages: Number(row.messages || 0),
+            aiRequests: Number(row.ai_requests || 0),
+          };
+        });
 
-    const channelActivity = channelResult.rows.map((row) => {
-      const channelName = req.guild.channels.cache.get(row.channel_id)?.name || row.channel_id;
-      return {
-        channelId: row.channel_id,
-        name: channelName,
-        messages: Number(row.messages || 0),
-      };
-    });
+        const channelActivity = channelResult.rows.map((row) => {
+          const channelName = req.guild.channels.cache.get(row.channel_id)?.name || row.channel_id;
+          return {
+            channelId: row.channel_id,
+            name: channelName,
+            messages: Number(row.messages || 0),
+          };
+        });
 
-    const heatmap = heatmapResult.rows.map((row) => ({
-      dayOfWeek: Number(row.day_of_week || 0),
-      hour: Number(row.hour_of_day || 0),
-      messages: Number(row.messages || 0),
-    }));
+        const heatmap = heatmapResult.rows.map((row) => ({
+          dayOfWeek: Number(row.day_of_week || 0),
+          hour: Number(row.hour_of_day || 0),
+          messages: Number(row.messages || 0),
+        }));
 
-    const usageByModel = modelUsageResult.rows.map((row) => ({
-      model: row.model,
-      requests: Number(row.requests || 0),
-      promptTokens: Number(row.prompt_tokens || 0),
-      completionTokens: Number(row.completion_tokens || 0),
-      costUsd: Number(row.cost_usd || 0),
-    }));
+        const usageByModel = modelUsageResult.rows.map((row) => ({
+          model: row.model,
+          requests: Number(row.requests || 0),
+          promptTokens: Number(row.prompt_tokens || 0),
+          completionTokens: Number(row.completion_tokens || 0),
+          costUsd: Number(row.cost_usd || 0),
+        }));
 
-    const promptTokenTotal = usageByModel.reduce((sum, model) => sum + model.promptTokens, 0);
-    const completionTokenTotal = usageByModel.reduce(
-      (sum, model) => sum + model.completionTokens,
-      0,
+        const promptTokenTotal = usageByModel.reduce((sum, model) => sum + model.promptTokens, 0);
+        const completionTokenTotal = usageByModel.reduce(
+          (sum, model) => sum + model.completionTokens,
+          0,
+        );
+        const aiCostUsd = usageByModel.reduce((sum, model) => sum + model.costUsd, 0);
+        const comparisonAiCostUsd = Number(comparisonCostResult.rows[0]?.cost_usd || 0);
+
+        const commandUsage = commandUsageResult.rows.map((row) => ({
+          command: row.command_name,
+          uses: Number(row.uses || 0),
+        }));
+
+        const fromMs = from.getTime();
+        const toMs = to.getTime();
+        /**
+         * NOTE: guild.members.cache only contains members Discord has sent to the
+         * bot (typically those with recent activity/presence). Both newMembers and
+         * onlineMemberCount will undercount relative to the true guild population.
+         * This is a known Discord gateway limitation — a complete count would
+         * require guild.members.fetch(), which is expensive and rate-limited.
+         */
+        const newMembers = Array.from(req.guild.members.cache.values()).reduce((count, member) => {
+          if (member.user?.bot) return count;
+          const joinedAt = member.joinedTimestamp;
+          if (!joinedAt) return count;
+          return joinedAt >= fromMs && joinedAt <= toMs ? count + 1 : count;
+        }, 0);
+
+        const comparisonFromMs = comparisonFrom?.getTime() ?? null;
+        const comparisonToMs = comparisonTo?.getTime() ?? null;
+        const comparisonNewMembers =
+          comparisonFromMs !== null && comparisonToMs !== null
+            ? Array.from(req.guild.members.cache.values()).reduce((count, member) => {
+                if (member.user?.bot) return count;
+                const joinedAt = member.joinedTimestamp;
+                if (!joinedAt) return count;
+                return joinedAt >= comparisonFromMs && joinedAt <= comparisonToMs
+                  ? count + 1
+                  : count;
+              }, 0)
+            : 0;
+
+        let onlineMemberCount = 0;
+        let membersWithPresence = 0;
+        // Same cache limitation as above — only evaluates cached members with known presence.
+        for (const member of req.guild.members.cache.values()) {
+          const status = member.presence?.status;
+          if (!status) continue;
+          membersWithPresence++;
+          if (status !== 'offline') onlineMemberCount++;
+        }
+
+        return {
+          guildId: req.params.id,
+          range: {
+            type: range,
+            from: from.toISOString(),
+            to: to.toISOString(),
+            interval,
+            channelId: activeChannelFilter,
+            compare: compareMode,
+          },
+          kpis: {
+            totalMessages: Number(kpiRow.total_messages || 0),
+            aiRequests: Number(kpiRow.ai_requests || 0),
+            aiCostUsd: Number(aiCostUsd.toFixed(6)),
+            activeUsers: Number(kpiRow.active_users || 0),
+            newMembers,
+          },
+          realtime: {
+            onlineMembers: membersWithPresence > 0 ? onlineMemberCount : null,
+            activeAiConversations: Number(activeResult.rows[0]?.count || 0),
+          },
+          messageVolume: volume,
+          aiUsage: {
+            byModel: usageByModel,
+            tokens: {
+              prompt: promptTokenTotal,
+              completion: completionTokenTotal,
+            },
+          },
+          channelActivity,
+          topChannels: channelActivity,
+          commandUsage: {
+            source: commandUsageResult.available ? 'command_usage' : 'unavailable',
+            items: commandUsage,
+          },
+          comparison: compareMode
+            ? {
+                previousRange: {
+                  from: comparisonFrom.toISOString(),
+                  to: comparisonTo.toISOString(),
+                },
+                kpis: {
+                  totalMessages: Number(comparisonKpiRow.total_messages || 0),
+                  aiRequests: Number(comparisonKpiRow.ai_requests || 0),
+                  aiCostUsd: Number(comparisonAiCostUsd.toFixed(6)),
+                  activeUsers: Number(comparisonKpiRow.active_users || 0),
+                  newMembers: comparisonNewMembers,
+                },
+              }
+            : null,
+          heatmap,
+          userEngagement: userEngagementResult.rows[0]
+            ? {
+                trackedUsers: Number(userEngagementResult.rows[0].tracked_users || 0),
+                totalMessagesSent: Number(userEngagementResult.rows[0].total_messages_sent || 0),
+                totalReactionsGiven: Number(
+                  userEngagementResult.rows[0].total_reactions_given || 0,
+                ),
+                totalReactionsReceived: Number(
+                  userEngagementResult.rows[0].total_reactions_received || 0,
+                ),
+                avgMessagesPerUser: Number(
+                  Number(userEngagementResult.rows[0].avg_messages_per_user || 0).toFixed(1),
+                ),
+              }
+            : null,
+          xpEconomy: xpEconomyResult.rows[0]
+            ? {
+                totalUsers: Number(xpEconomyResult.rows[0].total_users || 0),
+                totalXp: Number(xpEconomyResult.rows[0].total_xp || 0),
+                avgLevel: Number(Number(xpEconomyResult.rows[0].avg_level || 0).toFixed(1)),
+                maxLevel: Number(xpEconomyResult.rows[0].max_level || 0),
+              }
+            : null,
+        };
+      },
+      analyticsTtl,
     );
-    const aiCostUsd = usageByModel.reduce((sum, model) => sum + model.costUsd, 0);
-    const comparisonAiCostUsd = Number(comparisonCostResult.rows[0]?.cost_usd || 0);
 
-    const commandUsage = commandUsageResult.rows.map((row) => ({
-      command: row.command_name,
-      uses: Number(row.uses || 0),
-    }));
-
-    const fromMs = from.getTime();
-    const toMs = to.getTime();
-    /**
-     * NOTE: guild.members.cache only contains members Discord has sent to the
-     * bot (typically those with recent activity/presence). Both newMembers and
-     * onlineMemberCount will undercount relative to the true guild population.
-     * This is a known Discord gateway limitation — a complete count would
-     * require guild.members.fetch(), which is expensive and rate-limited.
-     */
-    const newMembers = Array.from(req.guild.members.cache.values()).reduce((count, member) => {
-      if (member.user?.bot) return count;
-      const joinedAt = member.joinedTimestamp;
-      if (!joinedAt) return count;
-      return joinedAt >= fromMs && joinedAt <= toMs ? count + 1 : count;
-    }, 0);
-
-    const comparisonFromMs = comparisonFrom?.getTime() ?? null;
-    const comparisonToMs = comparisonTo?.getTime() ?? null;
-    const comparisonNewMembers =
-      comparisonFromMs !== null && comparisonToMs !== null
-        ? Array.from(req.guild.members.cache.values()).reduce((count, member) => {
-            if (member.user?.bot) return count;
-            const joinedAt = member.joinedTimestamp;
-            if (!joinedAt) return count;
-            return joinedAt >= comparisonFromMs && joinedAt <= comparisonToMs ? count + 1 : count;
-          }, 0)
-        : 0;
-
-    let onlineMemberCount = 0;
-    let membersWithPresence = 0;
-    // Same cache limitation as above — only evaluates cached members with known presence.
-    for (const member of req.guild.members.cache.values()) {
-      const status = member.presence?.status;
-      if (!status) continue;
-      membersWithPresence++;
-      if (status !== 'offline') onlineMemberCount++;
-    }
-
-    return res.json({
-      guildId: req.params.id,
-      range: {
-        type: range,
-        from: from.toISOString(),
-        to: to.toISOString(),
-        interval,
-        channelId: activeChannelFilter,
-        compare: compareMode,
-      },
-      kpis: {
-        totalMessages: Number(kpiRow.total_messages || 0),
-        aiRequests: Number(kpiRow.ai_requests || 0),
-        aiCostUsd: Number(aiCostUsd.toFixed(6)),
-        activeUsers: Number(kpiRow.active_users || 0),
-        newMembers,
-      },
-      realtime: {
-        onlineMembers: membersWithPresence > 0 ? onlineMemberCount : null,
-        activeAiConversations: Number(activeResult.rows[0]?.count || 0),
-      },
-      messageVolume: volume,
-      aiUsage: {
-        byModel: usageByModel,
-        tokens: {
-          prompt: promptTokenTotal,
-          completion: completionTokenTotal,
-        },
-      },
-      channelActivity,
-      topChannels: channelActivity,
-      commandUsage: {
-        source: commandUsageResult.available ? 'command_usage' : 'unavailable',
-        items: commandUsage,
-      },
-      comparison: compareMode
-        ? {
-            previousRange: {
-              from: comparisonFrom.toISOString(),
-              to: comparisonTo.toISOString(),
-            },
-            kpis: {
-              totalMessages: Number(comparisonKpiRow.total_messages || 0),
-              aiRequests: Number(comparisonKpiRow.ai_requests || 0),
-              aiCostUsd: Number(comparisonAiCostUsd.toFixed(6)),
-              activeUsers: Number(comparisonKpiRow.active_users || 0),
-              newMembers: comparisonNewMembers,
-            },
-          }
-        : null,
-      heatmap,
-      userEngagement: userEngagementResult.rows[0]
-        ? {
-            trackedUsers: Number(userEngagementResult.rows[0].tracked_users || 0),
-            totalMessagesSent: Number(userEngagementResult.rows[0].total_messages_sent || 0),
-            totalReactionsGiven: Number(userEngagementResult.rows[0].total_reactions_given || 0),
-            totalReactionsReceived: Number(
-              userEngagementResult.rows[0].total_reactions_received || 0,
-            ),
-            avgMessagesPerUser: Number(
-              Number(userEngagementResult.rows[0].avg_messages_per_user || 0).toFixed(1),
-            ),
-          }
-        : null,
-      xpEconomy: xpEconomyResult.rows[0]
-        ? {
-            totalUsers: Number(xpEconomyResult.rows[0].total_users || 0),
-            totalXp: Number(xpEconomyResult.rows[0].total_xp || 0),
-            avgLevel: Number(Number(xpEconomyResult.rows[0].avg_level || 0).toFixed(1)),
-            maxLevel: Number(xpEconomyResult.rows[0].max_level || 0),
-          }
-        : null,
-    });
+    return res.json(analyticsData);
   } catch (err) {
     error('Failed to fetch analytics', {
       error: err.message,

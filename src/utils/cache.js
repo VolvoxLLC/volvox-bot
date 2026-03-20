@@ -249,6 +249,10 @@ export async function cacheClear() {
         'discord:*',
         'config:*',
         'session:*',
+        'analytics:*',
+        'guild:stats:*',
+        'mod:stats:*',
+        'member:enrichment:*',
       ];
       for (const pattern of prefixes) {
         let cursor = '0';
