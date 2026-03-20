@@ -87,9 +87,7 @@ export function CategoryNavigation({ dirtyCounts }: CategoryNavigationProps) {
             const Icon = CATEGORY_ICONS[category.icon];
             const isActive = activeSlug === category.id;
             const dirtyCount = dirtyCounts[category.id];
-            const iconBg = isActive
-              ? (CATEGORY_ICON_ACTIVE[category.id] ?? 'bg-primary/15 text-primary')
-              : 'text-muted-foreground';
+            const iconBg = isActive ? CATEGORY_ICON_ACTIVE[category.id] : 'text-muted-foreground';
 
             return (
               <Link
