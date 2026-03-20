@@ -60,17 +60,17 @@ vi.mock('../../src/modules/config.js', () => ({
 import { getPool } from '../../src/db.js';
 import { info, warn } from '../../src/logger.js';
 import { getConfig } from '../../src/modules/config.js';
-import { fetchChannelCached } from '../../src/utils/discordCache.js';
-import { safeReply, safeSend } from '../../src/utils/safeSend.js';
 import {
-  STATUS_COLORS,
-  STATUS_LABELS,
   buildClaimButton,
   buildReviewEmbed,
   expireStaleReviews,
   handleReviewClaim,
+  STATUS_COLORS,
+  STATUS_LABELS,
   updateReviewMessage,
 } from '../../src/modules/reviewHandler.js';
+import { fetchChannelCached } from '../../src/utils/discordCache.js';
+import { safeReply, safeSend } from '../../src/utils/safeSend.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

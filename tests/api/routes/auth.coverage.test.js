@@ -419,9 +419,7 @@ describe('auth routes coverage', () => {
       const state = 'state-http-evil';
       _seedOAuthState(state);
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       // Invalid URL falls back to /
       expect(res.status).toBe(302);
       expect(res.headers.location).toBe('/');
@@ -436,9 +434,7 @@ describe('auth routes coverage', () => {
       const state = 'state-http-localhost';
       _seedOAuthState(state);
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(302);
       expect(res.headers.location).toBe('http://localhost:3000');
     });
@@ -451,9 +447,7 @@ describe('auth routes coverage', () => {
       const state = 'state-empty-dashboard';
       _seedOAuthState(state);
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(302);
       expect(res.headers.location).toBe('/');
     });
@@ -466,9 +460,7 @@ describe('auth routes coverage', () => {
       const state = 'state-fragment';
       _seedOAuthState(state);
 
-      const res = await request(app).get(
-        `/api/v1/auth/discord/callback?code=code&state=${state}`,
-      );
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
       expect(res.status).toBe(302);
       expect(res.headers.location).toBe('https://dash.example.com');
     });

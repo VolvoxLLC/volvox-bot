@@ -14,8 +14,8 @@ vi.mock('../../../src/utils/permissions.js', () => ({
   getBotOwnerIds: vi.fn().mockReturnValue(['owner1', 'owner2']),
 }));
 
-import { warn } from '../../../src/logger.js';
 import { requireGlobalAdmin } from '../../../src/api/middleware/requireGlobalAdmin.js';
+import { warn } from '../../../src/logger.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
