@@ -34,8 +34,8 @@ importers:
         specifier: ^5.2.1
         version: 5.2.1
       ioredis:
-        specifier: ^5.10.0
-        version: 5.10.0
+        specifier: ^5.10.1
+        version: 5.10.1
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
@@ -3486,8 +3486,8 @@ packages:
     resolution: {integrity: sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==}
     engines: {node: '>=12'}
 
-  ioredis@5.10.0:
-    resolution: {integrity: sha512-HVBe9OFuqs+Z6n64q09PQvP1/R4Bm+30PAyyD4wIEqssh3v9L21QjCVk4kRLucMBcDokJTcLjsGeVRlq/nH6DA==}
+  ioredis@5.10.1:
+    resolution: {integrity: sha512-HuEDBTI70aYdx1v6U97SbNx9F1+svQKBDo30o0b9fw055LMepzpOOd0Ccg9Q6tbqmBSJaMuY0fB7yw9/vjBYCA==}
     engines: {node: '>=12.22.0'}
 
   ipaddr.js@1.9.1:
@@ -4805,6 +4805,10 @@ packages:
 
   undici@7.24.4:
     resolution: {integrity: sha512-BM/JzwwaRXxrLdElV2Uo6cTLEjhSb3WXboncJamZ15NgUURmvlXvxa6xkwIOILIjPNo9i8ku136ZvWV0Uly8+w==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.24.5:
+    resolution: {integrity: sha512-3IWdCpjgxp15CbJnsi/Y9TCDE7HWVN19j1hmzVhoAkY/+CJx449tVxT5wZc1Gwg8J+P0LWvzlBzxYRnHJ+1i7Q==}
     engines: {node: '>=20.18.1'}
 
   universalify@0.1.2:
@@ -6237,7 +6241,7 @@ snapshots:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       '@sevinf/maybe': 0.5.0
       typescript: 5.9.3
-      undici: 7.24.4
+      undici: 7.24.5
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -8481,7 +8485,7 @@ snapshots:
 
   internmap@2.0.3: {}
 
-  ioredis@5.10.0:
+  ioredis@5.10.1:
     dependencies:
       '@ioredis/commands': 1.5.1
       cluster-key-slot: 1.1.2
@@ -9864,6 +9868,8 @@ snapshots:
   undici-types@7.18.2: {}
 
   undici@7.24.4: {}
+
+  undici@7.24.5: {}
 
   universalify@0.1.2: {}
 
