@@ -160,4 +160,23 @@ describe('warn command', () => {
     );
     expect(createCase).not.toHaveBeenCalled();
   });
+
+  it('should default severity to low when the option is omitted', async () => {
+    const interaction = createInteraction();
+    interaction.options.getString.mockImplementation((name) => {
+      if (name === 'reason') return 'test reason';
+      if (name === 'severity') return null;
+      return null;
+    });
+
+    await execute(interaction);
+
+    expect(createWarning).toHaveBeenCalledWith(
+      'guild1',
+      expect.objectContaining({
+        severity: 'low',
+      }),
+      expect.any(Object),
+    );
+  });
 });

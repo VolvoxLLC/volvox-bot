@@ -135,6 +135,20 @@ describe('events module', () => {
       expect(getConfig).toHaveBeenCalledWith('guild-123');
       expect(sendWelcomeMessage).toHaveBeenCalledWith(member, client, guildConfig);
     });
+
+    it('should skip welcome handling when the feature is disabled', async () => {
+      const on = vi.fn();
+      const client = { on };
+      const config = {};
+      getConfig.mockReturnValue({ welcome: { enabled: false } });
+
+      registerGuildMemberAddHandler(client, config);
+      const callback = on.mock.calls[0][1];
+      const member = { user: { id: 'user-1' }, guild: { id: 'guild-123' } };
+      await callback(member);
+
+      expect(sendWelcomeMessage).not.toHaveBeenCalled();
+    });
   });
 
   // ── registerMessageCreateHandler ──────────────────────────────────────
