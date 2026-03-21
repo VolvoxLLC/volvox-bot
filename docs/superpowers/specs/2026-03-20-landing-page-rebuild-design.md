@@ -36,7 +36,10 @@ Previous order was: Hero → Features → Pricing → Stats → Testimonials →
 
 ### Design
 
-**Entrance timeline:**
+**Entrance choreography:**
+
+The current Hero uses individual `isInView`-gated `initial/animate` pairs with independent `delay` props on each element. The new Hero replaces this with a single choreographed sequence driven by a shared `isInView` trigger. Each element still uses Framer Motion's `initial/animate` pattern but with coordinated delays from a single timeline:
+
 | Time | Event |
 |------|-------|
 | 0ms | Background glow fades in (radial gradient, parallax-linked to scroll) |
@@ -49,6 +52,8 @@ Previous order was: Hero → Features → Pricing → Stats → Testimonials →
 | 2200ms | Chat script begins playing |
 
 **Total time to value: ~700ms** (down from ~3.5s).
+
+**Verification:** The typewriter speed (40ms/char) and start delay (150ms) are testable constants. A unit test should assert these parameter values to prevent regression. The bot typing speed (18ms/char) is similarly a testable constant.
 
 **Chat Console V2:**
 - Richer terminal chrome inspired by VS Code/Linear: traffic light dots, command icon, `volvox-bot — #general` in header
@@ -64,7 +69,7 @@ Previous order was: Hero → Features → Pricing → Stats → Testimonials →
 - Background glow parallaxes slower than copy (existing glowY)
 - Bottom gradient fade to bg-primary maintained
 
-**Components affected:** `Hero.tsx` (full rewrite of ChatConsole, updated useTypewriter params, updated entrance animations)
+**Components affected:** `Hero.tsx` (full rewrite of ChatConsole, updated useTypewriter params, replaced per-element isInView animations with coordinated entrance sequence). This is the most invasive rewrite — existing Hero tests will need significant rework to account for new timing constants, rebuilt ChatConsole markup, and the coordinated animation approach.
 
 ---
 
@@ -88,34 +93,44 @@ Immediately after the hero, show the actual product. Visitors can click tabs to 
 
 **Tab contents:**
 
+All tab content is **static/decorative** — hardcoded mock data rendered as JSX. Nothing fetches from the API or toggles real state. The only interactive element is tab switching itself (clicking a tab swaps the visible content panel). This keeps the component simple and avoids coupling the landing page to backend state.
+
 1. **Overview** (default)
    - 3 KPI cards in a row (Members, Messages Today, AI Responses) with kpi-card styling
    - Each KPI has colored top accent line, animated counter, percentage change indicator
-   - Bar chart showing 7-day activity (stylized, not a charting library)
+   - Bar chart showing 7-day activity (stylized CSS bars, not a charting library)
    - Recent activity feed with color-coded dot indicators (green=AI, purple=moderation, orange=welcomes)
 
 2. **Moderation**
    - Auto-mod stats (threats blocked today, accuracy rate)
    - Recent actions feed (spam detected, user warned, raid prevented)
-   - Rule toggle previews (on/off switches)
+   - Rule toggle previews (visual-only, non-functional styled switches)
 
 3. **AI Chat**
    - Conversation count, average response time
-   - Sample conversation snippet
-   - Token usage meter
+   - Sample conversation snippet (static text)
+   - Token usage meter (static progress bar)
 
 4. **Settings**
-   - Feature toggle cards (AI Chat: ON, Starboard: ON, Welcome Messages: OFF)
-   - Channel selector preview
-   - Role permission matrix preview
+   - Feature toggle cards (visual-only, shows AI Chat: ON, Starboard: ON, Welcome Messages: OFF)
+   - Channel selector preview (static)
+   - Role permission matrix preview (static)
 
 **Animation:**
 - Section enters via ScrollStage (fade + slide up)
 - Dashboard container enters with scale(0.96→1) + shadow expansion
-- KPI counters reuse existing AnimatedCounter component
+- KPI counters use AnimatedCounter (extracted — see Shared Infrastructure below)
 - Activity feed items stagger in at 50ms intervals
+- Tab switching uses crossfade (AnimatePresence + opacity/y transition, 200ms)
 
-**Components:** New `DashboardPreview.tsx` component
+**Component decomposition:** `DashboardPreview.tsx` is the parent component managing tab state. Each tab view should be a separate sub-component to keep file size manageable:
+- `DashboardPreview.tsx` — tab bar + AnimatePresence wrapper (~80 lines)
+- `DashboardOverviewTab.tsx` — KPIs, chart, activity feed (~120 lines)
+- `DashboardModerationTab.tsx` — mod stats, actions feed, toggles (~80 lines)
+- `DashboardAIChatTab.tsx` — conversation preview, stats (~80 lines)
+- `DashboardSettingsTab.tsx` — feature toggles, config preview (~80 lines)
+
+**Test strategy:** Tests should verify: (a) all 4 tabs render without error, (b) clicking a tab switches the visible content, (c) default tab is Overview, (d) AnimatedCounter renders with correct target values.
 
 ---
 
@@ -158,7 +173,9 @@ Feature matrix showing Volvox vs MEE6 vs Dyno vs Carl-bot. Lets Volvox's differe
 - Rows stagger in from top to bottom (40ms apart)
 - Volvox column checkmarks animate with subtle scale pop on entrance
 
-**Mobile behavior:** Horizontal scroll with sticky first column, or stacked cards per competitor
+**Mobile behavior:** Horizontal scroll with sticky first column (Feature column stays pinned on left, competitor columns scroll horizontally). This is simpler to implement than stacked cards and preserves the table mental model.
+
+**Competitor data note:** The feature claims in this table (e.g., "MEE6: Very limited free tier") must be verified against each competitor's current public documentation before shipping. Mark data as draft during implementation and verify before merge.
 
 **Optional:** "See full comparison →" link to docs
 
@@ -198,7 +215,7 @@ Each card now includes a **mini-preview** showing the feature in action:
    - Description: "Best posts become a running highlight reel. Community votes, bot curates."
    - Mini-preview: "5 reactions → promoted to #starboard"
 
-4. **Analytics** (teal accent)
+4. **Analytics** (neon-cyan accent — uses existing `--neon-cyan` CSS variable, HSL 185)
    - Icon: BarChart3 (Lucide)
    - Description: "Track server health from the dashboard. Activity, trends, and AI usage in one place."
    - Mini-preview: tiny 5-bar chart
@@ -269,7 +286,7 @@ Each card now includes a **mini-preview** showing the feature in action:
   - Real quote text (italic)
   - Divider line
   - Avatar circle (initial letter, colored background matching accent) + name + role
-- **Content:** Real quotes from real users (to be provided by the user)
+- **Content:** Ship with clearly-marked placeholder quotes (e.g., "[Quote from a real user — coming soon]") using the same card layout. Real quotes will be swapped in as a separate follow-up when the user provides them. The placeholder state should look intentional, not broken.
 
 **Stats (below testimonials):**
 - 3 compact inline stat cards (down from 6)
@@ -287,8 +304,8 @@ Each card now includes a **mini-preview** showing the feature in action:
 
 - Title: "Ready to upgrade?" with aurora gradient on "upgrade"
 - Tighter subtitle copy
-- CTA: "Add to Discord — Free" in **Discord blue** (#5865F2) with glow shadow
-  - Discord blue is the action color for "Add to Server" — not accent orange
+- CTA: "Add to Discord — Free" using the existing `variant="discord"` Button variant (which maps to `--color-discord: #5865F2`) with glow shadow
+  - Reuses the same variant that `InviteButton` uses for consistency
   - Disabled state with "Coming Soon" if no invite URL
 - Tagline: "Open source. Self-hostable. Free forever." in mono font
 - Footer links: Documentation, GitHub, Support Server (Lucide icons)
@@ -306,12 +323,13 @@ Existing `ScrollStage.tsx` component is kept. All sections wrap content in Scrol
 ### Page Architecture
 - Each section targets full-viewport height on desktop (min-h-screen or generous padding)
 - Cinematic section transitions via ScrollStage (sections fade/scale/translate as user scrolls)
-- Alternating background colors: bg-primary ↔ bg-secondary for visual rhythm
+- Alternating background colors: `bg-[var(--bg-primary)]` ↔ `bg-[var(--bg-secondary)]` for visual rhythm (note: these are the semantic CSS variables, not Tailwind's `bg-primary` which maps to the green color)
 - Scroll progress bar at top preserved (existing implementation)
 
 ### Navbar
 - Floating island navbar preserved (existing implementation)
-- No changes needed — already polished
+- **Updated anchors:** Desktop nav links change from `#features` / `#pricing` to the new section order. Keep only `#features` and `#pricing` as nav anchors (Dashboard Preview and Comparison are part of the narrative flow but don't need direct nav links — they're above the fold or close to it).
+- **Mobile nav:** Update `scrollIntoView` targets in the mobile menu to match. The mobile menu items stay as Features and Pricing (no new items needed for Dashboard Preview / Comparison).
 
 ### Mobile
 - Purpose-built responsive layouts, not just "make it narrower"
@@ -328,20 +346,39 @@ Existing `ScrollStage.tsx` component is kept. All sections wrap content in Scrol
 - Duration budget: 150-300ms for micro, ≤400ms for section transitions
 - No decorative-only animation
 
+### Shared Components
+
+**SectionHeader:** The spec introduces a repeated pattern across all sections: uppercase label (colored) + title + subtitle. This should be extracted into a shared `SectionHeader` component to avoid 6 different implementations of the same layout:
+```
+<SectionHeader label="THE PRODUCT" labelColor="primary" title="Your server, at a glance" subtitle="..." />
+```
+
+**AnimatedCounter:** Currently a private function inside `Stats.tsx`. Must be extracted into a shared utility (e.g., `web/src/components/landing/AnimatedCounter.tsx`) so both `Stats.tsx` and `DashboardPreview.tsx` can import it.
+
 ### Design System Compliance
 - All colors use existing CSS custom properties from globals.css
-- Volvox palette: primary green, secondary purple, accent orange
+- Volvox palette: primary green (`--primary`), secondary purple (`--secondary`), accent orange (`--accent`), neon-cyan (`--neon-cyan`)
 - Both light and dark mode supported (existing theme system)
 - Lucide icons throughout (no emojis in production)
 - JetBrains Mono for display/code, Manrope for body (existing fonts)
+
+### Performance
+- Below-the-fold sections (DashboardPreview, ComparisonTable, Stats) should use `next/dynamic` with `ssr: false` or React.lazy + Suspense to code-split them out of the initial bundle. This protects the Lighthouse score (target ≥ 90) given the heavy Framer Motion usage.
+- Hero and navbar remain in the main bundle (above the fold).
 
 ---
 
 ## Files Affected
 
 ### New Files
-- `web/src/components/landing/DashboardPreview.tsx`
+- `web/src/components/landing/DashboardPreview.tsx` (parent + tab bar)
+- `web/src/components/landing/DashboardOverviewTab.tsx`
+- `web/src/components/landing/DashboardModerationTab.tsx`
+- `web/src/components/landing/DashboardAIChatTab.tsx`
+- `web/src/components/landing/DashboardSettingsTab.tsx`
 - `web/src/components/landing/ComparisonTable.tsx`
+- `web/src/components/landing/SectionHeader.tsx`
+- `web/src/components/landing/AnimatedCounter.tsx` (extracted from Stats.tsx)
 
 ### Rewritten Files
 - `web/src/components/landing/Hero.tsx` — faster typewriter, rebuilt ChatConsole
@@ -373,7 +410,7 @@ Existing `ScrollStage.tsx` component is kept. All sections wrap content in Scrol
 - Authentication / login flow changes
 - Dashboard app changes
 - SEO metadata changes (can be a follow-up)
-- Real testimonial content (user will provide separately)
+- Real testimonial content (ships with intentional placeholders; real quotes swapped in as a follow-up)
 - Actual payment integration (pricing is aspirational)
 
 ---
@@ -382,7 +419,7 @@ Existing `ScrollStage.tsx` component is kept. All sections wrap content in Scrol
 
 1. Value prop visible within 1 second of page load
 2. Every section earns its place — no filler
-3. Real testimonials replace fake ones
+3. Testimonial section ships with intentional placeholders ready for real quotes
 4. Dashboard preview demonstrates the actual product
 5. Competitor comparison makes differentiation obvious
 6. Both light and dark mode look polished
