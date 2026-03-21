@@ -44,6 +44,7 @@ import {
 } from './modules/ai.js';
 import { startBotStatus, stopBotStatus } from './modules/botStatus.js';
 import { loadConfig } from './modules/config.js';
+import { startEngagementFlushInterval, stopEngagementFlushInterval } from './modules/engagement.js';
 
 import { registerEventHandlers } from './modules/events.js';
 import { startGithubFeed, stopGithubFeed } from './modules/githubFeed.js';
@@ -214,7 +215,14 @@ async function gracefulShutdown(signal) {
     error('Failed to close PostgreSQL logging transport', { error: err.message });
   }
 
-  // 3.5. Record uptime before closing the pool
+  // 3.5. Flush any buffered engagement writes (messages_sent / reactions) before closing DB
+  try {
+    await stopEngagementFlushInterval();
+  } catch (err) {
+    warn('Failed to flush engagement buffer on shutdown', { error: err.message });
+  }
+
+  // 3.6. Record uptime before closing the pool
   try {
     const pool = getPool();
     await updateUptimeOnShutdown(pool);
@@ -375,6 +383,7 @@ async function startup() {
     startWarningExpiryScheduler();
     startScheduler(client);
     startGithubFeed(client);
+    startEngagementFlushInterval();
   }
 
   // Load commands and login
