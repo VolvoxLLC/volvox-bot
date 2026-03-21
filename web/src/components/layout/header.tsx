@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, LogOut } from 'lucide-react';
+import { BookOpen, Github, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
@@ -47,24 +47,27 @@ export function Header() {
   }, [session?.error]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/40 bg-background/70 backdrop-blur-2xl">
-      <div className="mx-auto flex h-[4.35rem] w-full max-w-[1920px] items-center gap-3 px-3 md:px-6">
+    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/85 backdrop-blur-xl">
+      <div className="mx-auto flex min-h-[4.35rem] w-full max-w-[1920px] items-center gap-3 px-3 py-3 md:px-6">
         <MobileSidebar />
 
-        <div className="flex items-center gap-3">
-          {/* Logo mark with animated gradient */}
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary to-secondary text-sm font-extrabold text-primary-foreground shadow-lg shadow-primary/20">
-            <span className="absolute inset-0 rounded-xl border border-white/20" />
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-sm font-extrabold text-primary-foreground shadow-sm ring-1 ring-primary/15">
+            <span className="absolute inset-0 rounded-xl border border-white/10" />
             <span className="relative z-10">V</span>
           </div>
-          <div className="hidden min-w-0 sm:block">
-            <p className="truncate text-sm font-semibold tracking-tight">Volvox Control Room</p>
-            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 font-medium text-primary">
+
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold tracking-tight">
+              <span className="sm:hidden">Volvox</span>
+              <span className="hidden sm:inline">Volvox Control Room</span>
+            </p>
+            <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 font-medium text-primary">
                 <span className="status-dot-live" />
                 Live
               </span>
-              <span className="truncate text-muted-foreground/70">
+              <span className="truncate text-muted-foreground/80">
                 {currentPageTitle && currentPageTitle !== 'Overview'
                   ? currentPageTitle
                   : 'Overview'}
@@ -88,6 +91,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
+                  aria-label="Open user menu"
                   className="relative h-9 w-9 rounded-full ring-1 ring-border/50 transition-all hover:ring-primary/30"
                 >
                   <Avatar className="h-8 w-8">
@@ -114,13 +118,24 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <a
+                    href="https://docs.volvox.bot"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center"
+                  >
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Documentation
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a
                     href="https://github.com/VolvoxLLC/volvox-bot"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center"
                   >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Documentation
+                    <Github className="mr-2 h-4 w-4" />
+                    GitHub repository
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
