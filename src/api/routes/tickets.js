@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { parseLimit, parsePage } from '../utils/pagination.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router();
@@ -336,8 +337,8 @@ router.get(
 router.get('/:id/tickets', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
   const { id: guildId } = req.params;
   const { status, user } = req.query;
-  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit);
   const offset = (page - 1) * limit;
   const pool = getDbPool(req);
   if (!pool) return res.status(503).json({ error: 'Database not available' });

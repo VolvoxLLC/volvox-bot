@@ -3,8 +3,7 @@
  * Handles Discord button interactions for review claiming.
  */
 
-import { error as logError } from '../../logger.js';
-import { safeReply } from '../../utils/safeSend.js';
+import { handleButtonError } from '../../utils/interactionError.js';
 import { getConfig } from '../config.js';
 import { handleReviewClaim } from '../reviewHandler.js';
 
@@ -25,22 +24,10 @@ export async function handleReviewButton(interaction) {
   try {
     await handleReviewClaim(interaction);
   } catch (err) {
-    logError('Review claim handler failed', {
-      customId: interaction.customId,
-      userId: interaction.user?.id,
-      error: err.message,
+    await handleButtonError(interaction, err, {
+      context: 'Review claim handler failed',
+      message: '❌ Something went wrong processing your claim.',
     });
-
-    if (!interaction.replied && !interaction.deferred) {
-      try {
-        await safeReply(interaction, {
-          content: '❌ Something went wrong processing your claim.',
-          ephemeral: true,
-        });
-      } catch {
-        // Ignore — we tried
-      }
-    }
   }
   return true;
 }

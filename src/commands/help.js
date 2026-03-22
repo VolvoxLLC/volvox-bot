@@ -10,13 +10,14 @@ import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
+import { BLURPLE } from '../utils/colors.js';
 import { isModerator } from '../utils/permissions.js';
 import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Discord blurple colour used for help embeds. */
-const EMBED_COLOR = 0x5865f2;
+const EMBED_COLOR = BLURPLE;
 
 /** Valid topic slug: lowercase alphanumeric + hyphens, 2–50 chars. */
 const TOPIC_REGEX = /^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$/;

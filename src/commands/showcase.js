@@ -18,10 +18,11 @@ import {
 import { getPool } from '../db.js';
 import { info, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
+import { BLURPLE } from '../utils/colors.js';
 import { safeEditReply, safeReply, safeSend } from '../utils/safeSend.js';
 
 /** Embed colour for showcase responses. */
-const EMBED_COLOR = 0x5865f2;
+const EMBED_COLOR = BLURPLE;
 
 // ── Validation helpers ─────────────────────────────────────────────
 

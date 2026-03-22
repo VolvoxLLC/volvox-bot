@@ -8,7 +8,9 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
+import { adaptGuildIdFromQuery } from '../middleware/adaptGuildId.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { parseLimit, parsePage } from '../utils/pagination.js';
 import { requireGuildModerator } from './guilds.js';
 
 const router = Router();
@@ -16,23 +18,9 @@ const router = Router();
 /** Rate limiter for warning API endpoints — 120 requests / 15 min per IP. */
 const warningsRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
-/**
- * Make a guild-scoped route parameter available to downstream middleware by copying `req.query.guildId` to `req.params.id` when present.
- *
- * @param {import('express').Request} req - Express request object.
- * @param {import('express').Response} _res - Express response object (unused).
- * @param {import('express').NextFunction} next - Callback to pass control to the next middleware.
- */
-function adaptGuildIdParam(req, _res, next) {
-  if (req.query.guildId) {
-    req.params.id = req.query.guildId;
-  }
-  next();
-}
-
 // Apply rate limiter and guild-scoped authorization
 router.use(warningsRateLimit);
-router.use(adaptGuildIdParam, requireGuildModerator);
+router.use(adaptGuildIdFromQuery, requireGuildModerator);
 
 // ─── GET / ────────────────────────────────────────────────────────────────────
 
@@ -96,8 +84,8 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ error: 'guildId is required' });
   }
 
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit);
   const offset = (page - 1) * limit;
 
   try {
