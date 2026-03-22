@@ -170,7 +170,7 @@ export function interpolateActivity(text, client) {
 /**
  * Resolve the configured global online status with safe fallback.
  *
- * @param {Object} cfg
+ * @param {Object} statusConfig
  * @returns {string}
  */
 export function resolvePresenceStatus(statusConfig) {
@@ -199,7 +199,7 @@ export function resolveActivityType(typeStr) {
 /**
  * Legacy helper kept for backward compatibility with existing call sites/tests.
  *
- * @param {Object} cfg
+ * @param {Object} statusConfig
  * @returns {{ status: string, activityType: ActivityType }}
  */
 export function resolvePresenceConfig(statusConfig) {
