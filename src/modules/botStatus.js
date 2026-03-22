@@ -150,7 +150,8 @@ function resolveFallbackType(typeStr, source) {
 export function interpolateActivity(text, client) {
   if (!client || typeof text !== 'string') return text;
 
-  const memberCount = client.guilds?.cache?.reduce((sum, g) => sum + (g.memberCount ?? 0), 0) ?? 0;
+  const memberCount =
+    client.guilds?.cache?.reduce((sum, guild) => sum + (guild.memberCount ?? 0), 0) ?? 0;
   const guildCount = client.guilds?.cache?.size ?? 0;
   const botName = client.user?.username ?? 'Bot';
   const commandCount = client.commands?.size ?? 0;
@@ -169,11 +170,11 @@ export function interpolateActivity(text, client) {
 /**
  * Resolve the configured global online status with safe fallback.
  *
- * @param {Object} cfg
+ * @param {Object} statusConfig
  * @returns {string}
  */
-export function resolvePresenceStatus(cfg) {
-  return VALID_STATUSES.has(cfg?.status) ? cfg.status : 'online';
+export function resolvePresenceStatus(statusConfig) {
+  return VALID_STATUSES.has(statusConfig?.status) ? statusConfig.status : 'online';
 }
 
 /**
@@ -198,13 +199,13 @@ export function resolveActivityType(typeStr) {
 /**
  * Legacy helper kept for backward compatibility with existing call sites/tests.
  *
- * @param {Object} cfg
+ * @param {Object} statusConfig
  * @returns {{ status: string, activityType: ActivityType }}
  */
-export function resolvePresenceConfig(cfg) {
+export function resolvePresenceConfig(statusConfig) {
   return {
-    status: resolvePresenceStatus(cfg),
-    activityType: resolveActivityType(cfg?.activityType),
+    status: resolvePresenceStatus(statusConfig),
+    activityType: resolveActivityType(statusConfig?.activityType),
   };
 }
 
@@ -272,15 +273,19 @@ function normalizeMessage(entry, fallbackType, source) {
 /**
  * Return normalized rotation messages from new or legacy config fields.
  *
- * @param {Object} cfg - botStatus config section
+ * @param {Object} botStatusConfig - botStatus config section
  * @returns {{type: string, text: string}[]}
  */
-export function getRotationMessages(cfg) {
-  const rotationMessages = cfg?.rotation?.messages;
+export function getRotationMessages(botStatusConfig) {
+  const rotationMessages = botStatusConfig?.rotation?.messages;
   if (Array.isArray(rotationMessages)) {
     const normalized = rotationMessages
       .map((entry, index) =>
-        normalizeMessage(entry, cfg?.activityType, `botStatus.rotation.messages[${index}]`),
+        normalizeMessage(
+          entry,
+          botStatusConfig?.activityType,
+          `botStatus.rotation.messages[${index}]`,
+        ),
       )
       .filter((entry) => entry !== null);
     if (normalized.length > 0) {
@@ -290,18 +295,18 @@ export function getRotationMessages(cfg) {
     if (rotationMessages.length > 0) {
       warn('Configured botStatus.rotation.messages had no usable entries; falling back', {
         fallback:
-          Array.isArray(cfg?.activities) && cfg.activities.length > 0
+          Array.isArray(botStatusConfig?.activities) && botStatusConfig.activities.length > 0
             ? 'botStatus.activities'
             : 'default',
       });
     }
   }
 
-  const legacyActivities = cfg?.activities;
+  const legacyActivities = botStatusConfig?.activities;
   if (Array.isArray(legacyActivities)) {
     const normalized = legacyActivities
       .map((entry, index) =>
-        normalizeMessage(entry, cfg?.activityType, `botStatus.activities[${index}]`),
+        normalizeMessage(entry, botStatusConfig?.activityType, `botStatus.activities[${index}]`),
       )
       .filter((entry) => entry !== null);
     if (normalized.length > 0) {
@@ -319,32 +324,41 @@ export function getRotationMessages(cfg) {
 /**
  * Legacy helper kept for backward compatibility with existing call sites/tests.
  *
- * @param {Object} cfg
+ * @param {Object} botStatusConfig
  * @returns {string[]}
  */
-export function getActivities(cfg) {
-  return getRotationMessages(cfg).map((entry) => entry.text);
+export function getActivities(botStatusConfig) {
+  return getRotationMessages(botStatusConfig).map((entry) => entry.text);
 }
 
 /**
  * Resolve rotation interval in milliseconds with Discord-safe minimum.
  *
- * @param {Object} cfg - botStatus config section
+ * @param {Object} botStatusConfig - botStatus config section
  * @returns {number}
  */
-export function resolveRotationIntervalMs(cfg) {
-  if (typeof cfg?.rotation?.intervalMinutes === 'number' && cfg.rotation.intervalMinutes > 0) {
-    return Math.max(Math.round(cfg.rotation.intervalMinutes * 60_000), MIN_PRESENCE_INTERVAL_MS);
+export function resolveRotationIntervalMs(botStatusConfig) {
+  if (
+    typeof botStatusConfig?.rotation?.intervalMinutes === 'number' &&
+    botStatusConfig.rotation.intervalMinutes > 0
+  ) {
+    return Math.max(
+      Math.round(botStatusConfig.rotation.intervalMinutes * 60_000),
+      MIN_PRESENCE_INTERVAL_MS,
+    );
   }
 
   // New-format fallback must come before legacy — prevents cross-format leakage
   // when intervalMinutes is 0 or negative but rotation key exists.
-  if (cfg?.rotation) {
+  if (botStatusConfig?.rotation) {
     return DEFAULT_ROTATE_INTERVAL_MINUTES * 60_000;
   }
 
-  if (typeof cfg?.rotateIntervalMs === 'number' && cfg.rotateIntervalMs > 0) {
-    return Math.max(cfg.rotateIntervalMs, MIN_PRESENCE_INTERVAL_MS);
+  if (
+    typeof botStatusConfig?.rotateIntervalMs === 'number' &&
+    botStatusConfig.rotateIntervalMs > 0
+  ) {
+    return Math.max(botStatusConfig.rotateIntervalMs, MIN_PRESENCE_INTERVAL_MS);
   }
 
   return DEFAULT_LEGACY_ROTATE_INTERVAL_MS;
@@ -354,13 +368,13 @@ export function resolveRotationIntervalMs(cfg) {
  * Determine whether rotation should be active.
  * New format obeys rotation.enabled. Legacy format rotates when multiple activities exist.
  *
- * @param {Object} cfg - botStatus config section
+ * @param {Object} botStatusConfig - botStatus config section
  * @param {number} messageCount
  * @returns {boolean}
  */
-export function isRotationEnabled(cfg, messageCount) {
-  if (cfg?.rotation && typeof cfg.rotation.enabled === 'boolean') {
-    return cfg.rotation.enabled && messageCount > 1;
+export function isRotationEnabled(botStatusConfig, messageCount) {
+  if (botStatusConfig?.rotation && typeof botStatusConfig.rotation.enabled === 'boolean') {
+    return botStatusConfig.rotation.enabled && messageCount > 1;
   }
   return messageCount > 1;
 }
@@ -385,12 +399,12 @@ function buildActivityPayload(text, type) {
  * @param {import('discord.js').Client} client - Discord client
  */
 export function applyPresence(client) {
-  const cfg = getConfig()?.botStatus;
+  const botStatusConfig = getConfig()?.botStatus;
 
-  if (!cfg?.enabled || !client?.user) return;
+  if (!botStatusConfig?.enabled || !client?.user) return;
 
-  const status = resolvePresenceStatus(cfg);
-  const messages = getRotationMessages(cfg);
+  const status = resolvePresenceStatus(botStatusConfig);
+  const messages = getRotationMessages(botStatusConfig);
   if (messages.length === 0) return;
 
   currentActivityIndex = currentActivityIndex % messages.length;
@@ -439,8 +453,8 @@ export function startBotStatus(client) {
   }
   _client = client;
 
-  const cfg = getConfig()?.botStatus;
-  if (!cfg?.enabled) {
+  const botStatusConfig = getConfig()?.botStatus;
+  if (!botStatusConfig?.enabled) {
     info('Bot status module disabled - skipping');
     return;
   }
@@ -448,15 +462,15 @@ export function startBotStatus(client) {
   currentActivityIndex = 0;
   applyPresence(client);
 
-  const messages = getRotationMessages(cfg);
-  if (!isRotationEnabled(cfg, messages.length)) {
+  const messages = getRotationMessages(botStatusConfig);
+  if (!isRotationEnabled(botStatusConfig, messages.length)) {
     info('Bot status set (rotation disabled or single message)', {
       activity: messages[0]?.text ?? '',
     });
     return;
   }
 
-  const intervalMs = resolveRotationIntervalMs(cfg);
+  const intervalMs = resolveRotationIntervalMs(botStatusConfig);
   rotateInterval = setInterval(() => rotate(client), intervalMs);
   info('Bot status rotation started', {
     messagesCount: messages.length,
@@ -488,8 +502,8 @@ export function reloadBotStatus(client) {
   const target = client ?? _client;
   stopBotStatus();
   if (target) {
-    const cfg = getConfig()?.botStatus;
-    if (!cfg?.enabled) {
+    const botStatusConfig = getConfig()?.botStatus;
+    if (!botStatusConfig?.enabled) {
       // Clear Discord presence so the last activity doesn't remain displayed
       try {
         target.user?.setPresence({ activities: [], status: 'online' });

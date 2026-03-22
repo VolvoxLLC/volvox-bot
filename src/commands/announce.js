@@ -93,10 +93,10 @@ export function parseTime(timeStr) {
     const hours = Number.parseInt(relativeMatch[1] || '0', 10);
     const minutes = Number.parseInt(relativeMatch[2] || '0', 10);
     if (hours === 0 && minutes === 0) return null;
-    const d = new Date();
-    d.setHours(d.getHours() + hours);
-    d.setMinutes(d.getMinutes() + minutes);
-    return d;
+    const scheduledDate = new Date();
+    scheduledDate.setHours(scheduledDate.getHours() + hours);
+    scheduledDate.setMinutes(scheduledDate.getMinutes() + minutes);
+    return scheduledDate;
   }
 
   // "tomorrow HH:MM" or "tomorrow HH"
@@ -105,12 +105,12 @@ export function parseTime(timeStr) {
     const hours = Number.parseInt(tomorrowMatch[1], 10);
     const minutes = Number.parseInt(tomorrowMatch[2] || '0', 10);
     if (hours > 23 || minutes > 59) return null;
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(hours);
-    d.setMinutes(minutes);
-    d.setSeconds(0, 0);
-    return d;
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() + 1);
+    scheduledDate.setHours(hours);
+    scheduledDate.setMinutes(minutes);
+    scheduledDate.setSeconds(0, 0);
+    return scheduledDate;
   }
 
   // "YYYY-MM-DD HH:MM"
@@ -124,9 +124,9 @@ export function parseTime(timeStr) {
     const daysInMonth = new Date(year, month, 0).getDate();
     if (month < 1 || month > 12 || day < 1 || day > daysInMonth || hours > 23 || minutes > 59)
       return null;
-    const d = new Date(year, month - 1, day, hours, minutes);
-    if (Number.isNaN(d.getTime())) return null;
-    return d;
+    const scheduledDate = new Date(year, month - 1, day, hours, minutes);
+    if (Number.isNaN(scheduledDate.getTime())) return null;
+    return scheduledDate;
   }
 
   return null;
