@@ -24,20 +24,6 @@ describe('modules/config', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    // Re-mock all deps after resetModules
-    vi.mock('../../src/logger.js', () => ({
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-    }));
-    vi.mock('../../src/db.js', () => ({
-      getPool: vi.fn(),
-    }));
-    vi.mock('node:fs', () => ({
-      existsSync: vi.fn(),
-      readFileSync: vi.fn(),
-    }));
 
     // Default mock: config.json exists with test data
     const { existsSync: mockExists, readFileSync: mockRead } = await import('node:fs');
