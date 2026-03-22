@@ -12,6 +12,17 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+// Bypass rate limiting so callback tests don't hit the 10-request cap
+vi.mock('../../../src/api/middleware/rateLimit.js', () => ({
+  rateLimit: () => {
+    const mw = (_req, _res, next) => next();
+    mw.destroy = () => {};
+    mw.sweep = () => 0;
+    mw.size = () => 0;
+    return mw;
+  },
+}));
+
 import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { _seedOAuthState } from '../../../src/api/routes/auth.js';
 import { createApp } from '../../../src/api/server.js';
@@ -342,6 +353,116 @@ describe('auth routes coverage', () => {
       const res = await request(app).get('/api/v1/auth/discord');
       expect(res.status).toBe(302);
       expect(res.headers.location).toContain('discord.com');
+    });
+  });
+
+  describe('CSRF state reuse prevention', () => {
+    it('should reject reuse of a consumed state token', async () => {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'cid');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', 'csecret');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'sess-secret');
+
+      const state = 'state-reuse-test';
+      _seedOAuthState(state);
+
+      // First use — consume the state
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'tok' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id: 'u-reuse', username: 'user', avatar: null }),
+        });
+
+      const res1 = await request(app).get(
+        `/api/v1/auth/discord/callback?code=code1&state=${state}`,
+      );
+      expect(res1.status).toBe(302);
+
+      // Second use of same state — should be rejected
+      const res2 = await request(app).get(
+        `/api/v1/auth/discord/callback?code=code2&state=${state}`,
+      );
+      expect(res2.status).toBe(403);
+      expect(res2.body.error).toContain('Invalid or expired OAuth state');
+    });
+  });
+
+  describe('DASHBOARD_URL validation edge cases', () => {
+    function setupOAuthEnv() {
+      vi.stubEnv('DISCORD_CLIENT_ID', 'cid');
+      vi.stubEnv('DISCORD_CLIENT_SECRET', 'csecret');
+      vi.stubEnv('DISCORD_REDIRECT_URI', 'http://localhost:3001/callback');
+      vi.stubEnv('SESSION_SECRET', 'sess-secret');
+    }
+
+    function mockSuccessfulOAuth() {
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'tok' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id: 'u-dash', username: 'user', avatar: null }),
+        });
+    }
+
+    it('should reject HTTP URLs pointing to non-localhost hosts', async () => {
+      setupOAuthEnv();
+      vi.stubEnv('DASHBOARD_URL', 'http://evil.com');
+      mockSuccessfulOAuth();
+
+      const state = 'state-http-evil';
+      _seedOAuthState(state);
+
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
+      // Invalid URL falls back to /
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toBe('/');
+    });
+
+    it('should accept HTTP localhost for non-production', async () => {
+      setupOAuthEnv();
+      vi.stubEnv('DASHBOARD_URL', 'http://localhost:3000');
+      vi.stubEnv('NODE_ENV', 'development');
+      mockSuccessfulOAuth();
+
+      const state = 'state-http-localhost';
+      _seedOAuthState(state);
+
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toBe('http://localhost:3000');
+    });
+
+    it('should fall back to / for empty DASHBOARD_URL', async () => {
+      setupOAuthEnv();
+      vi.stubEnv('DASHBOARD_URL', '');
+      mockSuccessfulOAuth();
+
+      const state = 'state-empty-dashboard';
+      _seedOAuthState(state);
+
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toBe('/');
+    });
+
+    it('should strip fragment from DASHBOARD_URL before redirect', async () => {
+      setupOAuthEnv();
+      vi.stubEnv('DASHBOARD_URL', 'https://dash.example.com#old-fragment');
+      mockSuccessfulOAuth();
+
+      const state = 'state-fragment';
+      _seedOAuthState(state);
+
+      const res = await request(app).get(`/api/v1/auth/discord/callback?code=code&state=${state}`);
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toBe('https://dash.example.com');
     });
   });
 

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 // Mock next-auth/react
 const mockSignIn = vi.fn();
@@ -20,88 +20,105 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
-import LoginPage from "@/app/login/page";
+import LoginPage from '@/app/login/page';
 
-describe("LoginPage", () => {
+describe('LoginPage', () => {
   beforeEach(() => {
     mockSearchParams = new URLSearchParams();
     mockSignIn.mockClear();
     mockSignOut.mockClear();
     mockPush.mockClear();
-    mockSession = { data: null, status: "unauthenticated" };
+    mockSession = { data: null, status: 'unauthenticated' };
   });
 
-  it("renders the sign-in card", async () => {
+  it('renders the control-room hero copy', async () => {
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Welcome to Volvox.Bot")).toBeInTheDocument();
+      expect(
+        screen.getByText('Control moderation, AI, tickets, and config from one control room.'),
+      ).toBeInTheDocument();
     });
-    expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
+    expect(screen.getByText('Sign in with Discord')).toBeInTheDocument();
   });
 
-  it("calls signIn with /dashboard when no callbackUrl param", async () => {
+  it('links to the docs from the login screen', async () => {
+    render(<LoginPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'View docs' })).toHaveAttribute(
+        'href',
+        'https://docs.volvox.bot',
+      );
+    });
+  });
+
+  it('calls signIn with /dashboard when no callbackUrl param', async () => {
     const user = userEvent.setup();
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
+      expect(screen.getByText('Sign in with Discord')).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Sign in with Discord"));
-    expect(mockSignIn).toHaveBeenCalledWith("discord", {
-      callbackUrl: "/dashboard",
+    await user.click(screen.getByText('Sign in with Discord'));
+    expect(mockSignIn).toHaveBeenCalledWith('discord', {
+      callbackUrl: '/dashboard',
     });
   });
 
-  it("calls signIn with callbackUrl from search params", async () => {
+  it('calls signIn with callbackUrl from search params', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams("callbackUrl=/servers/123");
+    mockSearchParams = new URLSearchParams('callbackUrl=/servers/123');
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
+      expect(screen.getByText('Sign in with Discord')).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Sign in with Discord"));
-    expect(mockSignIn).toHaveBeenCalledWith("discord", {
-      callbackUrl: "/servers/123",
+    await user.click(screen.getByText('Sign in with Discord'));
+    expect(mockSignIn).toHaveBeenCalledWith('discord', {
+      callbackUrl: '/servers/123',
     });
   });
 
-  it("shows privacy note", async () => {
+  it('shows privacy note', async () => {
     render(<LoginPage />);
     await waitFor(() => {
       expect(
         screen.getByText(
-          "We'll only access your Discord profile and server list.",
+          "We'll only access your Discord profile and server list to connect your workspace.",
         ),
       ).toBeInTheDocument();
     });
   });
 
-  it("shows login form without calling signOut on RefreshTokenError", async () => {
+  it('shows login form without calling signOut on RefreshTokenError', async () => {
     mockSession = {
-      data: { user: { name: "Test" }, error: "RefreshTokenError" },
-      status: "authenticated",
+      data: { user: { name: 'Test' }, error: 'RefreshTokenError' },
+      status: 'authenticated',
     };
     render(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText("Sign in with Discord")).toBeInTheDocument();
+      expect(screen.getByText('Sign in with Discord')).toBeInTheDocument();
     });
     // Should NOT redirect to dashboard
     expect(mockPush).not.toHaveBeenCalled();
     // LoginForm no longer calls signOut — Header handles it centrally
     expect(mockSignOut).not.toHaveBeenCalled();
     // Should show the login form (not the loading spinner)
-    expect(screen.getByText("Welcome to Volvox.Bot")).toBeInTheDocument();
+    expect(
+      screen.getByText('Control moderation, AI, tickets, and config from one control room.'),
+    ).toBeInTheDocument();
   });
 
-  it("redirects authenticated users instead of showing login form", async () => {
+  it('redirects authenticated users instead of showing login form', async () => {
     mockSession = {
-      data: { user: { name: "Test", email: "test@test.com" } },
-      status: "authenticated",
+      data: { user: { name: 'Test', email: 'test@test.com' } },
+      status: 'authenticated',
     };
     render(<LoginPage />);
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+      expect(mockPush).toHaveBeenCalledWith('/dashboard');
     });
     // Should show loading state, not the login form
-    expect(screen.queryByText("Welcome to Volvox.Bot")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Control moderation, AI, tickets, and config from one control room.'),
+    ).not.toBeInTheDocument();
   });
 });

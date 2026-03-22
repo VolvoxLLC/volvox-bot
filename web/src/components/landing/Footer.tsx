@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { BookOpen, Github, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getBotInviteUrl } from '@/lib/discord';
+import { ScrollStage } from './ScrollStage';
 
 export function Footer() {
   const botInviteUrl = getBotInviteUrl();
@@ -13,7 +14,7 @@ export function Footer() {
       {/* Decorative blue glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] h-[300px] hero-glow pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto text-center relative">
+      <ScrollStage className="max-w-4xl mx-auto text-center relative" enterOffset={30}>
         {/* CTA Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -32,7 +33,7 @@ export function Footer() {
           {botInviteUrl ? (
             <Button
               size="lg"
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform shadow-lg shadow-accent/20 bg-accent text-accent-foreground hover:bg-accent/90"
               asChild
             >
               <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
@@ -43,7 +44,7 @@ export function Footer() {
             <Button
               size="lg"
               disabled
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase opacity-50"
+              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase opacity-50 bg-accent text-accent-foreground"
             >
               Add to Discord — Coming Soon
             </Button>
@@ -71,14 +72,14 @@ export function Footer() {
         >
           <a
             href="https://docs.volvox.bot"
-            className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm font-medium"
+            className="flex items-center gap-2 text-muted-foreground hover:text-accent transition-colors text-sm font-medium"
           >
             <BookOpen className="w-4 h-4" />
             Documentation
           </a>
           <a
             href="https://github.com/VolvoxLLC/volvox-bot"
-            className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm font-medium"
+            className="flex items-center gap-2 text-muted-foreground hover:text-secondary transition-colors text-sm font-medium"
           >
             <Github className="w-4 h-4" />
             GitHub
@@ -108,7 +109,7 @@ export function Footer() {
             © {new Date().getFullYear()} Volvox. Not affiliated with Discord.
           </p>
         </motion.div>
-      </div>
+      </ScrollStage>
     </footer>
   );
 }

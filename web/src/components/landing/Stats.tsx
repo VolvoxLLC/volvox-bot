@@ -3,6 +3,7 @@
 import { motion, useInView } from 'framer-motion';
 import { Activity, Clock, Globe, MessageSquare, Terminal, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { ScrollStage } from './ScrollStage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,7 +90,9 @@ function SkeletonCard() {
             'linear-gradient(',
             '90deg, ',
             'transparent 0%, ',
-            'hsl(var(--primary) / 0.04) 50%, ',
+            'hsl(var(--primary) / 0.04) 35%, ',
+            'hsl(var(--secondary) / 0.05) 50%, ',
+            'hsl(var(--primary) / 0.04) 65%, ',
             'transparent 100%',
             ')',
           ].join(''),
@@ -159,18 +162,24 @@ const testimonials = [
     quote: "Finally, a Discord bot that doesn't suck. The AI actually understands context.",
     author: 'Sarah Chen',
     role: 'DevOps Engineer @ TechFlow',
+    lineClassName: 'bg-primary/55',
+    quoteClassName: 'text-primary/20',
   },
   {
     id: 'testimonial-2',
     quote: "We migrated from MEE6 and never looked back. The dashboard is chef's kiss.",
     author: 'Marcus Johnson',
     role: 'Community Manager @ Streamline',
+    lineClassName: 'bg-secondary/60',
+    quoteClassName: 'text-secondary/20',
   },
   {
     id: 'testimonial-3',
     quote: 'Self-hosted in 10 minutes. The docs are actually readable. Revolutionary.',
     author: 'Alex Rivera',
     role: 'Founder @ OpenSaaS',
+    lineClassName: 'bg-accent/65',
+    quoteClassName: 'text-accent/25',
   },
 ];
 
@@ -240,14 +249,14 @@ export function Stats() {
     },
     {
       icon: <Users className="w-6 h-6" />,
-      color: '#22c55e',
+      color: '#8c42d7',
       value: s.members,
       label: 'Members',
       formatter: formatNumber,
     },
     {
       icon: <Terminal className="w-6 h-6" />,
-      color: '#ff9500',
+      color: '#ff8c00',
       value: s.commandsServed,
       label: 'Commands Served',
       formatter: formatNumber,
@@ -278,110 +287,117 @@ export function Stats() {
   return (
     <section className="py-28 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)]">
       <div className="max-w-6xl mx-auto" ref={containerRef}>
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-14"
-        >
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
-            Live bot stats
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Real-time data, refreshed every minute
-            {stats?.cachedAt && (
-              <span className="ml-2 opacity-50">
-                · as of {new Date(stats.cachedAt).toLocaleTimeString()}
-              </span>
-            )}
-          </p>
-        </motion.div>
+        <ScrollStage>
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-14"
+          >
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
+              Live bot stats
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Real-time data, refreshed every minute
+              {stats?.cachedAt && (
+                <span className="ml-2 opacity-50">
+                  · as of {new Date(stats.cachedAt).toLocaleTimeString()}
+                </span>
+              )}
+            </p>
+          </motion.div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-24">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-            : error && !stats
-              ? statCards.map((card, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={isInView ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.5, delay: i * 0.07 }}
-                    className="p-6 rounded-2xl border border-border bg-card text-center"
-                  >
-                    <div
-                      className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-                      style={{
-                        backgroundColor: `${card.color}15`,
-                        color: card.color,
-                      }}
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-24">
+            {loading
+              ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+              : error && !stats
+                ? statCards.map((card, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 24 }}
+                      animate={isInView ? { opacity: 1, y: 0 } : {}}
+                      transition={{ duration: 0.5, delay: i * 0.07 }}
+                      className="p-6 rounded-2xl border border-border bg-card text-center"
                     >
-                      {card.icon}
-                    </div>
-                    <div className="text-3xl font-bold text-muted-foreground mb-2">—</div>
-                    <div className="text-sm text-muted-foreground">{card.label}</div>
-                  </motion.div>
-                ))
-              : statCards.map((card, i) => (
-                  <StatCard
-                    key={i}
-                    icon={card.icon}
-                    color={card.color}
-                    value={card.value}
-                    label={card.label}
-                    formatter={card.formatter}
-                    delay={i * 0.07}
-                    isInView={isInView}
-                  />
-                ))}
-        </div>
-
-        {/* Testimonials */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mb-14"
-        >
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center text-foreground mb-14">
-            Loved by <span className="text-aurora">developers</span>
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <motion.div
-                key={t.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.5, delay: 0.4 + i * 0.1 }}
-                className="p-8 rounded-2xl border border-border bg-card relative hover:-translate-y-1 transition-transform duration-300"
-              >
-                <div className="text-5xl text-primary/20 absolute top-5 left-6 font-serif leading-none">
-                  &ldquo;
-                </div>
-                <p className="text-foreground mb-5 pt-8 relative z-10 leading-relaxed">{t.quote}</p>
-                <div className="border-t border-border pt-4">
-                  <div className="font-semibold text-foreground">{t.author}</div>
-                  <div className="text-sm text-muted-foreground">{t.role}</div>
-                </div>
-              </motion.div>
-            ))}
+                      <div
+                        className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
+                        style={{
+                          backgroundColor: `${card.color}15`,
+                          color: card.color,
+                        }}
+                      >
+                        {card.icon}
+                      </div>
+                      <div className="text-3xl font-bold text-muted-foreground mb-2">—</div>
+                      <div className="text-sm text-muted-foreground">{card.label}</div>
+                    </motion.div>
+                  ))
+                : statCards.map((card, i) => (
+                    <StatCard
+                      key={i}
+                      icon={card.icon}
+                      color={card.color}
+                      value={card.value}
+                      label={card.label}
+                      formatter={card.formatter}
+                      delay={i * 0.07}
+                      isInView={isInView}
+                    />
+                  ))}
           </div>
-        </motion.div>
 
-        {/* Trust Badge */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="text-center"
-        >
-          <p className="text-muted-foreground text-sm">
-            Trusted by teams at leading tech companies and thousands of open-source communities
-          </p>
-        </motion.div>
+          {/* Testimonials */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mb-14"
+          >
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center text-foreground mb-14">
+              Loved by <span className="text-aurora">developers</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {testimonials.map((t, i) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.5, delay: 0.4 + i * 0.1 }}
+                  className="p-8 rounded-2xl border border-border bg-card relative hover:-translate-y-1 transition-transform duration-300"
+                >
+                  <div className={`absolute inset-x-0 top-0 h-px ${t.lineClassName}`} />
+                  <div
+                    className={`absolute top-5 left-6 text-5xl font-serif leading-none ${t.quoteClassName}`}
+                  >
+                    &ldquo;
+                  </div>
+                  <p className="text-foreground mb-5 pt-8 relative z-10 leading-relaxed">
+                    {t.quote}
+                  </p>
+                  <div className="border-t border-border pt-4">
+                    <div className="font-semibold text-foreground">{t.author}</div>
+                    <div className="text-sm text-muted-foreground">{t.role}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Trust Badge */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 1 } : {}}
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="text-center"
+          >
+            <p className="text-muted-foreground text-sm">
+              Trusted by teams at leading tech companies and thousands of open-source communities
+            </p>
+          </motion.div>
+        </ScrollStage>
       </div>
     </section>
   );
