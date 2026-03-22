@@ -11,7 +11,6 @@ export function Footer() {
 
   return (
     <footer className="relative py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)] overflow-hidden">
-      {/* Decorative blue glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] h-[300px] hero-glow pointer-events-none" />
 
       <ScrollStage className="max-w-4xl mx-auto text-center relative" enterOffset={30}>
@@ -27,13 +26,14 @@ export function Footer() {
             Ready to <span className="text-aurora">upgrade</span>?
           </h2>
           <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Join thousands of developers who&apos;ve switched from MEE6, Dyno, and Carl-bot. Your
-            community deserves better.
+            Your community deserves smarter moderation, AI-powered chat, and a dashboard that
+            actually works.
           </p>
           {botInviteUrl ? (
             <Button
+              variant="discord"
               size="lg"
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform shadow-lg shadow-accent/20 bg-accent text-accent-foreground hover:bg-accent/90"
+              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform shadow-lg shadow-[var(--color-discord)]/20"
               asChild
             >
               <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
@@ -42,11 +42,12 @@ export function Footer() {
             </Button>
           ) : (
             <Button
+              variant="discord"
               size="lg"
               disabled
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase opacity-50 bg-accent text-accent-foreground"
+              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase opacity-50"
             >
-              Add to Discord — Coming Soon
+              Coming Soon
             </Button>
           )}
         </motion.div>
