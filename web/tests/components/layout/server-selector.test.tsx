@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 // Mock next/image
 vi.mock("next/image", () => ({
@@ -21,10 +21,10 @@ vi.mock("@/lib/guild-selection", async () => {
   };
 });
 
-import { ServerSelector } from "@/components/layout/server-selector";
-import { SELECTED_GUILD_KEY } from "@/lib/guild-selection";
+import { ServerSelector } from '@/components/layout/server-selector';
+import { SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 
-describe("ServerSelector", () => {
+describe('ServerSelector', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
   const originalClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
@@ -43,13 +43,13 @@ describe("ServerSelector", () => {
     }
   });
 
-  it("shows loading state initially", () => {
+  it('shows loading state initially', () => {
     fetchSpy.mockReturnValue(new Promise(() => {})); // never resolves
     render(<ServerSelector />);
-    expect(screen.getByText("Loading servers...")).toBeInTheDocument();
+    expect(screen.getByText('Loading workspaces...')).toBeInTheDocument();
   });
 
-  it("shows no mutual servers message when empty", async () => {
+  it('shows no mutual servers message when empty', async () => {
     delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
     fetchSpy.mockResolvedValue({
       ok: true,
@@ -57,14 +57,14 @@ describe("ServerSelector", () => {
     } as Response);
     render(<ServerSelector />);
     await waitFor(() => {
-      expect(screen.getByText("No mutual servers")).toBeInTheDocument();
+      expect(screen.getByText('No shared servers yet')).toBeInTheDocument();
       expect(
         screen.getByText(/Volvox.Bot isn't in any of your Discord servers/),
       ).toBeInTheDocument();
     });
   });
 
-  it("shows the invite button when no mutual servers and a client id exists", async () => {
+  it('shows the invite button when no mutual servers and a client id exists', async () => {
     process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = "discord-client-id";
     fetchSpy.mockResolvedValue({
       ok: true,
@@ -81,7 +81,7 @@ describe("ServerSelector", () => {
     });
   });
 
-  it("renders guild name when guilds are returned", async () => {
+  it('renders guild name when guilds are returned', async () => {
     const guilds = [
       {
         id: "1",
@@ -103,7 +103,7 @@ describe("ServerSelector", () => {
     });
   });
 
-  it("does not rebroadcast restored guild selection from localStorage", async () => {
+  it('does not rebroadcast restored guild selection from localStorage', async () => {
     localStorage.setItem(SELECTED_GUILD_KEY, "1");
 
     const guilds = [
@@ -132,7 +132,7 @@ describe("ServerSelector", () => {
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
   });
 
-  it("broadcasts selected guild when defaulting to first guild", async () => {
+  it('broadcasts selected guild when defaulting to first guild', async () => {
     const guilds = [
       {
         id: "1",
@@ -159,7 +159,7 @@ describe("ServerSelector", () => {
     expect(mockBroadcastSelectedGuild).toHaveBeenCalledWith("1");
   });
 
-  it("does nothing when clicking the currently selected guild", async () => {
+  it('does nothing when clicking the currently selected guild', async () => {
     const user = userEvent.setup();
     const guilds = [
       {
@@ -198,27 +198,27 @@ describe("ServerSelector", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("shows error state with retry button on fetch failure", async () => {
+  it('shows error state with retry button on fetch failure', async () => {
     fetchSpy.mockRejectedValue(new Error("Network error"));
     render(<ServerSelector />);
     await waitFor(() => {
-      expect(screen.getByText("Failed to load servers")).toBeInTheDocument();
-      expect(screen.getByText("Retry")).toBeInTheDocument();
+      expect(screen.getByText("Couldn't load workspaces")).toBeInTheDocument();
+      expect(screen.getByText('Retry')).toBeInTheDocument();
     });
   });
 
-  it("shows error state on non-OK response", async () => {
+  it('shows error state on non-OK response', async () => {
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 500,
     } as Response);
     render(<ServerSelector />);
     await waitFor(() => {
-      expect(screen.getByText("Failed to load servers")).toBeInTheDocument();
+      expect(screen.getByText("Couldn't load workspaces")).toBeInTheDocument();
     });
   });
 
-  it("re-fetches guilds when retry button is clicked", async () => {
+  it('re-fetches guilds when retry button is clicked', async () => {
     const user = userEvent.setup();
 
     // First call fails
@@ -255,7 +255,7 @@ describe("ServerSelector", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
-  it("shows member-only servers when the user cannot manage any guilds", async () => {
+  it('shows member-only servers when the user cannot manage any guilds', async () => {
     const guilds = [
       {
         id: "viewer-1",
@@ -293,7 +293,7 @@ describe("ServerSelector", () => {
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
   });
 
-  it("ignores invalid guild records from the api response", async () => {
+  it('ignores invalid guild records from the api response', async () => {
     const guilds = [
       {
         id: "valid-1",

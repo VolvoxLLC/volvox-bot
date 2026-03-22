@@ -1,5 +1,6 @@
 'use client';
 
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FeatureGrid, Footer, Hero, InviteButton, Pricing, Stats } from '@/components/landing';
@@ -9,6 +10,14 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const shouldReduceMotion = useReducedMotion() ?? false;
+  const { scrollY, scrollYProgress } = useScroll();
+  const progressScaleX = useSpring(scrollYProgress, {
+    damping: 32,
+    mass: 0.22,
+    stiffness: 180,
+  });
+  const progressOpacity = useTransform(scrollY, [0, 120], [0, 1]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -18,6 +27,18 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {!shouldReduceMotion && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2px] bg-foreground/10"
+        >
+          <motion.div
+            className="h-full origin-left bg-gradient-to-r from-primary via-secondary to-primary shadow-[0_0_12px_hsl(var(--secondary)/0.35)]"
+            style={{ opacity: progressOpacity, scaleX: progressScaleX }}
+          />
+        </div>
+      )}
+
       {/* Noise overlay */}
       <div className="noise" />
 
@@ -75,7 +96,7 @@ export default function LandingPage() {
           {/* Right actions */}
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" className="rounded-full" asChild>
+            <Button variant="ghost" size="sm" className="rounded-full text-secondary hover:bg-secondary/8 hover:text-secondary" asChild>
               <Link href="/login">Sign In</Link>
             </Button>
             <InviteButton size="sm" />
@@ -157,7 +178,7 @@ export default function LandingPage() {
               </a>
               <div className="flex items-center gap-3 pt-3 mt-2 border-t border-[var(--border-default)]">
                 <ThemeToggle />
-                <Button variant="outline" size="sm" className="rounded-full" asChild>
+                <Button variant="outline" size="sm" className="rounded-full border-secondary/20 text-secondary hover:bg-secondary/8 hover:text-secondary" asChild>
                   <Link href="/login">Sign In</Link>
                 </Button>
                 <InviteButton size="sm" />

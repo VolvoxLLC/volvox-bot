@@ -61,6 +61,7 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
       key={item.name}
       href={item.href}
       onClick={onNavClick}
+      aria-current={isActive ? 'page' : undefined}
       className={cn(
         'group relative flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm font-medium transition-all duration-200',
         isActive
@@ -146,18 +147,18 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
         </details>
 
         {/* Workflow tip card */}
-        <div className="mt-5 overflow-hidden rounded-xl border border-primary/15 bg-gradient-to-br from-primary/8 via-background to-secondary/8 p-4">
+        <div className="mt-5 overflow-hidden rounded-xl border border-border/60 bg-card/75 p-4 shadow-none">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15">
               <Zap className="h-3 w-3 text-primary" />
             </div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary/80">
-              Workflow
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Common runbook
             </p>
           </div>
           <p className="mt-2 text-sm font-medium leading-snug">Tickets → Moderation → Review</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Clear urgent issues first, then moderate, then review conversations.
+            Work the urgent queue first, then moderation, then conversation review.
           </p>
         </div>
       </div>
