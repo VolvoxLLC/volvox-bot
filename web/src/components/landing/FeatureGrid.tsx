@@ -4,64 +4,96 @@ import { motion, useInView, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import { useRef } from 'react';
+import { SectionHeader } from './SectionHeader';
 import { ScrollStage } from './ScrollStage';
 
 interface Feature {
-  readonly accentClassName: string;
-  readonly description: string;
-  readonly details: readonly string[];
   readonly icon: LucideIcon;
   readonly title: string;
+  readonly description: string;
+  readonly accentColor: string;
+  readonly iconBg: string;
+  readonly preview: React.ReactNode;
 }
 
 const features: readonly Feature[] = [
   {
-    accentClassName: 'border-primary/15 bg-primary/8 text-primary',
     icon: MessageSquare,
     title: 'AI Chat',
-    description:
-      'Reply in-channel with Claude instead of pushing members through canned slash command flows.',
-    details: [
-      'Mention @volvox directly in channel and keep the conversation moving.',
-      'Carry context across follow-ups so answers stay useful instead of repetitive.',
-    ],
+    description: 'Reply in-channel with Claude. Context-aware, multi-turn conversations that actually help.',
+    accentColor: 'bg-primary',
+    iconBg: 'bg-primary/10 text-primary',
+    preview: (
+      <div className="space-y-2 text-xs">
+        <div className="flex gap-2">
+          <span className="text-muted-foreground">user:</span>
+          <span className="text-foreground">How do I set up auto-roles?</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="text-primary font-medium">bot:</span>
+          <span className="text-foreground">Head to Dashboard → Settings → Auto Roles. Pick the role and trigger.</span>
+        </div>
+      </div>
+    ),
   },
   {
-    accentClassName: 'border-secondary/20 bg-secondary/10 text-secondary',
     icon: Shield,
     title: 'Moderation',
-    description:
-      'Let Claude-backed moderation step in early, before your team is cleaning up a pile of nonsense.',
-    details: [
-      'Catch spam, raids, and toxicity before they spread through the server.',
-      'Tune the rules from the dashboard instead of babysitting raw logs.',
-    ],
+    description: 'Claude-backed detection for spam, toxicity, and raids. Steps in before your team has to.',
+    accentColor: 'bg-secondary',
+    iconBg: 'bg-secondary/10 text-secondary',
+    preview: (
+      <div className="space-y-1.5 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+          <span className="text-foreground">Spam detected → Message removed</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="text-foreground">User warned — toxicity</span>
+          <span className="text-muted-foreground ml-auto">0.3s</span>
+        </div>
+      </div>
+    ),
   },
   {
-    accentClassName: 'border-accent/20 bg-accent/10 text-accent',
     icon: Star,
     title: 'Starboard',
-    description:
-      'Turn the best posts into a running highlight reel without making moderators curate it by hand.',
-    details: [
-      'Promote standout posts automatically once the community votes with reactions.',
-      'Keep the good stuff visible after the channel moves on to the next hundred messages.',
-    ],
+    description: 'Best posts become a running highlight reel. Community votes, bot curates.',
+    accentColor: 'bg-accent',
+    iconBg: 'bg-accent/10 text-accent',
+    preview: (
+      <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <span className="text-accent">⭐</span>
+          <span className="text-foreground font-medium">5 reactions</span>
+        </div>
+        <span className="text-muted-foreground">→</span>
+        <span className="text-foreground">promoted to #starboard</span>
+      </div>
+    ),
   },
   {
-    accentClassName: 'border-primary/12 bg-primary/6 text-primary',
     icon: BarChart3,
     title: 'Analytics',
-    description:
-      'See what changed in your server before it turns into guesswork or another moderation fire drill.',
-    details: [
-      'Track the health of your server from the dashboard instead of piecing it together manually.',
-      'Watch activity, member trends, and AI usage in one place.',
-    ],
+    description: 'Track server health from the dashboard. Activity, trends, and AI usage in one place.',
+    accentColor: 'bg-[hsl(var(--neon-cyan))]',
+    iconBg: 'bg-[hsl(var(--neon-cyan))]/10 text-[hsl(var(--neon-cyan))]',
+    preview: (
+      <div className="flex items-end gap-1 h-8">
+        {[40, 65, 45, 80, 55].map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-sm bg-[hsl(var(--neon-cyan))]/30"
+            style={{ height: `${h}%` }}
+          />
+        ))}
+      </div>
+    ),
   },
 ];
 
-function FeatureItem({
+function FeatureCard({
   feature,
   index,
   isInView,
@@ -72,16 +104,8 @@ function FeatureItem({
   readonly isInView: boolean;
   readonly shouldReduceMotion: boolean;
 }) {
-  const cellClassName = [
-    'px-6 py-6 sm:px-7 sm:py-7',
-    index >= 2 ? 'border-t border-border/70' : '',
-    index % 2 === 1 ? 'sm:border-l sm:border-border/70' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
   return (
-    <motion.li
+    <motion.div
       initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{
@@ -89,32 +113,25 @@ function FeatureItem({
         delay: shouldReduceMotion ? 0 : index * 0.08,
         ease: [0.16, 1, 0.3, 1],
       }}
-      className={cellClassName}
+      className="group relative p-6 rounded-2xl border border-border bg-card glow-card overflow-hidden"
     >
-      <article className="flex items-start gap-4">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${feature.accentClassName}`}
-        >
-          <feature.icon className="h-5 w-5" aria-hidden="true" />
-        </div>
+      {/* Colored top accent line */}
+      <div className={`absolute inset-x-0 top-0 h-0.5 ${feature.accentColor} opacity-60`} />
 
-        <div className="min-w-0">
-          <h3 className="text-lg font-semibold tracking-tight text-foreground">{feature.title}</h3>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">{feature.description}</p>
+      {/* Icon */}
+      <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg mb-4 ${feature.iconBg}`}>
+        <feature.icon className="w-[18px] h-[18px]" aria-hidden="true" />
+      </div>
 
-          <div className="mt-4 border-t border-border/60 pt-4">
-            {feature.details.map((detail, detailIndex) => (
-              <p
-                key={detail}
-                className={`text-sm leading-6 text-foreground/88 ${detailIndex > 0 ? 'mt-2' : ''}`}
-              >
-                {detail}
-              </p>
-            ))}
-          </div>
-        </div>
-      </article>
-    </motion.li>
+      {/* Title + Description */}
+      <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2">{feature.title}</h3>
+      <p className="text-sm leading-6 text-muted-foreground mb-4">{feature.description}</p>
+
+      {/* Mini-preview inset */}
+      <div className="p-3 rounded-lg bg-muted/50 border border-border/60">
+        {feature.preview}
+      </div>
+    </motion.div>
   );
 }
 
@@ -124,45 +141,27 @@ export function FeatureGrid() {
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   return (
-    <section className="border-y border-border/60 bg-[var(--bg-primary)] px-4 pb-24 pt-32 sm:px-6 lg:px-8 lg:pt-36">
+    <section className="py-28 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)]">
       <div className="mx-auto max-w-6xl" ref={containerRef}>
-        <ScrollStage className="grid gap-10 lg:grid-cols-[minmax(0,18rem)_1fr] lg:gap-14">
-          <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
-            className="max-w-md lg:self-center"
-          >
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-              Everything you need
-            </h2>
-            <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
-              Run chat, moderation, highlights, and reporting without stitching together a stack of
-              single-purpose bots.
-            </p>
-            <div className="mt-8 border-t border-border/60 pt-5">
-              <p className="text-sm font-medium text-foreground">
-                One bot in Discord. One dashboard in the browser.
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                The core workflows ship together, so setup stays short and your moderators stop
-                bouncing between tools.
-              </p>
-            </div>
-          </motion.div>
+        <ScrollStage>
+          <SectionHeader
+            label="FEATURES"
+            labelColor="accent"
+            title="Everything you need"
+            subtitle="One bot. One dashboard. No stitching together single-purpose tools."
+            className="mb-14"
+          />
 
-          <div className="overflow-hidden rounded-xl border border-border/70 bg-card/50">
-            <ul className="grid sm:grid-cols-2" aria-label="Volvox feature set">
-              {features.map((feature, index) => (
-                <FeatureItem
-                  key={feature.title}
-                  feature={feature}
-                  index={index}
-                  isInView={isInView}
-                  shouldReduceMotion={shouldReduceMotion}
-                />
-              ))}
-            </ul>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {features.map((feature, index) => (
+              <FeatureCard
+                key={feature.title}
+                feature={feature}
+                index={index}
+                isInView={isInView}
+                shouldReduceMotion={shouldReduceMotion}
+              />
+            ))}
           </div>
         </ScrollStage>
       </div>
