@@ -299,24 +299,27 @@ describe('seedBuiltinTemplates', () => {
     vi.clearAllMocks();
   });
 
-  it('calls INSERT for each built-in template', async () => {
+  it('calls a single batch INSERT for all built-in templates', async () => {
     mockQuery.mockResolvedValue({ rows: [] });
 
     await seedBuiltinTemplates();
 
-    expect(mockQuery).toHaveBeenCalledTimes(BUILTIN_TEMPLATES.length);
-    for (const call of mockQuery.mock.calls) {
-      expect(call[0]).toMatch(/INSERT/i);
-      expect(call[0]).toMatch(/ON CONFLICT/i);
-    }
+    // Single round-trip instead of N sequential queries
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toMatch(/INSERT/i);
+    expect(sql).toMatch(/ON CONFLICT/i);
+    // Each template should have 4 params: name, description, category, options JSON
+    expect(params).toHaveLength(BUILTIN_TEMPLATES.length * 4);
   });
 
-  it('passes is_builtin=true for all built-in templates', async () => {
+  it('passes all template names in the batch params', async () => {
     mockQuery.mockResolvedValue({ rows: [] });
     await seedBuiltinTemplates();
-    // Each call should mark is_builtin via SQL — verify options serialise correctly
+    const [, params] = mockQuery.mock.calls[0];
+    // Template names are at positions 0, 4, 8, ... (every 4th param starting at 0)
     for (const [i, tpl] of BUILTIN_TEMPLATES.entries()) {
-      expect(mockQuery.mock.calls[i][1][0]).toBe(tpl.name);
+      expect(params[i * 4]).toBe(tpl.name);
     }
   });
 });

@@ -145,28 +145,19 @@ export async function handleXpGain(message) {
       xp: newXp,
     });
 
-    // Auto-assign role reward if configured
+    // Resolve side-effect operations that are independent of each other:
+    // role reward and level-up announcement can run in parallel.
     const roleId = repCfg.roleRewards?.[String(newLevel)];
-    if (roleId) {
-      try {
-        await message.member.roles.add(roleId);
-        info('Role reward assigned', { userId: message.author.id, roleId, level: newLevel });
-      } catch (err) {
-        logError('Failed to assign role reward', {
-          userId: message.author.id,
-          roleId,
-          level: newLevel,
-          error: err.message,
-        });
-      }
-    }
-
-    // Send level-up announcement
     const announceChannelId = repCfg.announceChannelId;
-    if (announceChannelId) {
-      const announceChannel = message.guild.channels.cache.get(announceChannelId);
-      if (announceChannel) {
-        const embed = new EmbedBuilder()
+    const announceChannel = announceChannelId
+      ? message.guild.channels.cache.get(announceChannelId)
+      : null;
+
+    // Build the announcement embed before launching parallel tasks so that
+    // the "🏅 Role reward assigned!" suffix in the description reflects the
+    // configured roleId (not the result of the Discord API call).
+    const embed = announceChannel
+      ? new EmbedBuilder()
           .setColor(0x57f287)
           .setTitle('🎉 Level Up!')
           .setDescription(
@@ -176,19 +167,46 @@ export async function handleXpGain(message) {
           )
           .setThumbnail(message.author.displayAvatarURL())
           .addFields({ name: 'Total XP', value: String(newXp), inline: true })
-          .setTimestamp();
+          .setTimestamp()
+      : null;
 
-        try {
-          await safeSend(announceChannel, { embeds: [embed] });
-        } catch (err) {
-          logError('Failed to send level-up announcement', {
-            userId: message.author.id,
-            channelId: announceChannelId,
-            error: err.message,
-          });
-        }
-      }
-    }
+    // Run role assignment and announcement in parallel; each is fire-and-forget
+    // relative to the other — a failure in one does not block the other.
+    await Promise.all([
+      roleId
+        ? (async () => {
+            try {
+              await message.member.roles.add(roleId);
+              info('Role reward assigned', {
+                userId: message.author.id,
+                roleId,
+                level: newLevel,
+              });
+            } catch (err) {
+              logError('Failed to assign role reward', {
+                userId: message.author.id,
+                roleId,
+                level: newLevel,
+                error: err.message,
+              });
+            }
+          })()
+        : Promise.resolve(),
+
+      embed
+        ? (async () => {
+            try {
+              await safeSend(announceChannel, { embeds: [embed] });
+            } catch (err) {
+              logError('Failed to send level-up announcement', {
+                userId: message.author.id,
+                channelId: announceChannelId,
+                error: err.message,
+              });
+            }
+          })()
+        : Promise.resolve(),
+    ]);
   }
 
   // Invalidate cached reputation/leaderboard data AFTER all DB writes complete

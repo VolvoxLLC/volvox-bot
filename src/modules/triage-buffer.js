@@ -55,14 +55,14 @@ export function evictInactiveChannels() {
     }
   }
 
-  // If still over limit, evict oldest
+  // If still over limit, evict oldest by lastActivity until at capacity.
   if (channelBuffers.size > MAX_TRACKED_CHANNELS) {
-    const entries = [...channelBuffers.entries()].sort(
+    const excess = channelBuffers.size - MAX_TRACKED_CHANNELS;
+    const sorted = [...channelBuffers.entries()].sort(
       (a, b) => a[1].lastActivity - b[1].lastActivity,
     );
-    const toEvict = entries.slice(0, channelBuffers.size - MAX_TRACKED_CHANNELS);
-    for (const [channelId] of toEvict) {
-      clearChannelState(channelId);
+    for (let i = 0; i < excess; i++) {
+      clearChannelState(sorted[i][0]);
     }
   }
 }

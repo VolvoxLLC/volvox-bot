@@ -151,25 +151,29 @@ export async function checkLinks(message, config) {
   const rawBlockedDomains = lfConfig.blockedDomains ?? [];
   if (rawBlockedDomains.length === 0) return { blocked: false };
 
-  const blockedDomains = rawBlockedDomains.map(normalizeBlockedDomain);
+  // Normalize once; use a Set for O(1) exact matches and a deduplicated array for
+  // subdomain-suffix checks (both operations in one pass over blockedDomains).
+  const normalizedDomains = rawBlockedDomains.map(normalizeBlockedDomain);
+  const blockedSet = new Set(normalizedDomains);
 
   const urls = extractUrls(content);
   for (const { hostname, fullUrl } of urls) {
-    // Exact match or subdomain match (e.g. "evil.com" also catches "sub.evil.com")
-    const matched = blockedDomains.find(
-      (blocked) => hostname === blocked || hostname.endsWith(`.${blocked}`),
-    );
+    // Fast O(1) exact match first; fall back to O(n) suffix scan for subdomains
+    // (e.g. "evil.com" also catches "sub.evil.com").
+    const matchedRule = blockedSet.has(hostname)
+      ? hostname
+      : normalizedDomains.find((blocked) => hostname.endsWith(`.${blocked}`));
 
-    if (matched) {
+    if (matchedRule) {
       warn('Link filter: blocked domain detected', {
         userId: message.author.id,
         channelId: message.channel.id,
         hostname,
-        blockedRule: matched,
+        blockedRule: matchedRule,
       });
       await message.delete().catch(() => {});
       await alertModChannel(message, config, hostname || fullUrl, 'blocklist');
-      return { blocked: true, domain: matched };
+      return { blocked: true, domain: matchedRule };
     }
   }
 

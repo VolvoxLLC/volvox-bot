@@ -6,6 +6,34 @@
  * truth without creating an inverted dependency (utils → routes).
  */
 
+/** Module-level cache for compiled regex patterns used during validation. */
+const _compiledPatterns = new Map();
+
+/** Maximum number of distinct patterns to keep in the cache. */
+const _MAX_PATTERN_CACHE = 100;
+
+/**
+ * Return a cached compiled RegExp for the given pattern string.
+ * Avoids re-compiling the same pattern on every config validation call.
+ * The cache is capped at _MAX_PATTERN_CACHE entries to prevent unbounded growth
+ * in environments with dynamic schema patterns.
+ *
+ * @param {string} pattern
+ * @returns {RegExp}
+ */
+function getCompiledPattern(pattern) {
+  let re = _compiledPatterns.get(pattern);
+  if (!re) {
+    if (_compiledPatterns.size >= _MAX_PATTERN_CACHE) {
+      // Evict the oldest entry (Map preserves insertion order).
+      _compiledPatterns.delete(_compiledPatterns.keys().next().value);
+    }
+    re = new RegExp(pattern);
+    _compiledPatterns.set(pattern, re);
+  }
+  return re;
+}
+
 /**
  * Schema definitions for writable config sections.
  * Used to validate types before persisting changes.
@@ -294,7 +322,7 @@ export function validateValue(value, schema, path) {
         if (schema.maxLength != null && value.length > schema.maxLength) {
           errors.push(`${path}: exceeds max length of ${schema.maxLength}`);
         }
-        if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
+        if (schema.pattern && !getCompiledPattern(schema.pattern).test(value)) {
           errors.push(`${path}: does not match required pattern`);
         }
       }
