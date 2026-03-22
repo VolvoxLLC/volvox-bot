@@ -1,3 +1,4 @@
+export { AnimatedCounter } from './AnimatedCounter';
 export { FeatureGrid } from './FeatureGrid';
 export { Footer } from './Footer';
 export { Hero } from './Hero';

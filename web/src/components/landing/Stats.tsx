@@ -3,6 +3,7 @@
 import { motion, useInView } from 'framer-motion';
 import { Activity, Clock, Globe, MessageSquare, Terminal, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { AnimatedCounter, formatNumber } from './AnimatedCounter';
 import { ScrollStage } from './ScrollStage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,12 +20,6 @@ interface BotStats {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
-
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -32,50 +27,6 @@ function formatUptime(seconds: number): string {
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
-}
-
-// ─── AnimatedCounter ─────────────────────────────────────────────────────────
-
-function AnimatedCounter({
-  target,
-  duration = 2,
-  formatter = formatNumber,
-}: {
-  target: number;
-  duration?: number;
-  formatter?: (n: number) => string;
-}) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
-  const rafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!isInView) return;
-
-    let startTime: number | null = null;
-    const animate = (timestamp: number) => {
-      if (startTime === null) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
-      const eased = 1 - (1 - progress) ** 3;
-      setCount(Math.floor(eased * target));
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        setCount(target);
-      }
-    };
-    rafRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [isInView, target, duration]);
-
-  return <span ref={ref}>{formatter(count)}</span>;
 }
 
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
