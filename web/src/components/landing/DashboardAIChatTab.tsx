@@ -58,7 +58,9 @@ export function DashboardAIChatTab() {
         <div className="h-2 rounded-full bg-muted">
           <div className="h-2 rounded-full bg-primary" style={{ width: '67%' }} />
         </div>
-        <div className="text-[10px] text-muted-foreground mt-1">670k / 1M tokens used this month</div>
+        <div className="text-[10px] text-muted-foreground mt-1">
+          670k / 1M tokens used this month
+        </div>
       </div>
     </div>
   );

@@ -4,8 +4,8 @@ import { motion, useInView, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
 import { useRef } from 'react';
-import { SectionHeader } from './SectionHeader';
 import { ScrollStage } from './ScrollStage';
+import { SectionHeader } from './SectionHeader';
 
 interface Feature {
   readonly icon: LucideIcon;
@@ -20,7 +20,8 @@ const features: readonly Feature[] = [
   {
     icon: MessageSquare,
     title: 'AI Chat',
-    description: 'Reply in-channel with Claude. Context-aware, multi-turn conversations that actually help.',
+    description:
+      'Reply in-channel with Claude. Context-aware, multi-turn conversations that actually help.',
     accentColor: 'bg-primary',
     iconBg: 'bg-primary/10 text-primary',
     preview: (
@@ -31,7 +32,9 @@ const features: readonly Feature[] = [
         </div>
         <div className="flex gap-2">
           <span className="text-primary font-medium">bot:</span>
-          <span className="text-foreground">Head to Dashboard → Settings → Auto Roles. Pick the role and trigger.</span>
+          <span className="text-foreground">
+            Head to Dashboard → Settings → Auto Roles. Pick the role and trigger.
+          </span>
         </div>
       </div>
     ),
@@ -39,7 +42,8 @@ const features: readonly Feature[] = [
   {
     icon: Shield,
     title: 'Moderation',
-    description: 'Claude-backed detection for spam, toxicity, and raids. Steps in before your team has to.',
+    description:
+      'Claude-backed detection for spam, toxicity, and raids. Steps in before your team has to.',
     accentColor: 'bg-secondary',
     iconBg: 'bg-secondary/10 text-secondary',
     preview: (
@@ -76,7 +80,8 @@ const features: readonly Feature[] = [
   {
     icon: BarChart3,
     title: 'Analytics',
-    description: 'Track server health from the dashboard. Activity, trends, and AI usage in one place.',
+    description:
+      'Track server health from the dashboard. Activity, trends, and AI usage in one place.',
     accentColor: 'bg-[hsl(var(--neon-cyan))]',
     iconBg: 'bg-[hsl(var(--neon-cyan))]/10 text-[hsl(var(--neon-cyan))]',
     preview: (
@@ -119,7 +124,9 @@ function FeatureCard({
       <div className={`absolute inset-x-0 top-0 h-0.5 ${feature.accentColor} opacity-60`} />
 
       {/* Icon */}
-      <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg mb-4 ${feature.iconBg}`}>
+      <div
+        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg mb-4 ${feature.iconBg}`}
+      >
         <feature.icon className="w-[18px] h-[18px]" aria-hidden="true" />
       </div>
 
@@ -128,9 +135,7 @@ function FeatureCard({
       <p className="text-sm leading-6 text-muted-foreground mb-4">{feature.description}</p>
 
       {/* Mini-preview inset */}
-      <div className="p-3 rounded-lg bg-muted/50 border border-border/60">
-        {feature.preview}
-      </div>
+      <div className="p-3 rounded-lg bg-muted/50 border border-border/60">{feature.preview}</div>
     </motion.div>
   );
 }

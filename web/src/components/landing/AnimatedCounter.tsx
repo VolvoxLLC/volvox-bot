@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { useInView } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Formats a number into a human-readable abbreviated string.
@@ -27,7 +27,11 @@ interface AnimatedCounterProps {
  * @param duration - Animation duration in seconds (default: 2)
  * @param formatter - Custom number formatter (default: formatNumber)
  */
-export function AnimatedCounter({ target, duration = 2, formatter = formatNumber }: AnimatedCounterProps) {
+export function AnimatedCounter({
+  target,
+  duration = 2,
+  formatter = formatNumber,
+}: AnimatedCounterProps) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true });

@@ -5,8 +5,8 @@ import { Check, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getBotInviteUrl } from '@/lib/discord';
-import { SectionHeader } from './SectionHeader';
 import { ScrollStage } from './ScrollStage';
+import { SectionHeader } from './SectionHeader';
 
 const GITHUB_REPO_URL = 'https://github.com/VolvoxLLC/volvox-bot';
 

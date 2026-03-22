@@ -23,6 +23,8 @@ vi.mock('framer-motion', async () => {
       p: createComponent('p'),
       span: createComponent('span'),
       section: createComponent('section'),
+      tr: createComponent('tr'),
+      td: createComponent('td'),
     },
     useInView: (...args: unknown[]) => mockUseInView(...args),
     useScroll: () => ({ scrollY: 0, scrollYProgress: 0 }),

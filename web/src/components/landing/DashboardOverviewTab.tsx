@@ -39,10 +39,7 @@ export function DashboardOverviewTab() {
         <div className="flex items-end gap-2 h-20">
           {barHeights.map((h, i) => (
             <div key={weekdays[i]} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className="w-full rounded-sm bg-primary/60"
-                style={{ height: `${h}%` }}
-              />
+              <div className="w-full rounded-sm bg-primary/60" style={{ height: `${h}%` }} />
               <span className="text-[10px] text-muted-foreground">{weekdays[i]}</span>
             </div>
           ))}

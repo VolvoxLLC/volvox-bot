@@ -1,11 +1,28 @@
 'use client';
 
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FeatureGrid, Footer, Hero, InviteButton, Pricing, Stats } from '@/components/landing';
+import { FeatureGrid, Footer, Hero, InviteButton, Pricing } from '@/components/landing';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+
+// Below-fold sections lazy-loaded for performance
+const DashboardPreview = dynamic(
+  () =>
+    import('@/components/landing/DashboardPreview').then((m) => ({ default: m.DashboardPreview })),
+  { ssr: false },
+);
+const ComparisonTable = dynamic(
+  () =>
+    import('@/components/landing/ComparisonTable').then((m) => ({ default: m.ComparisonTable })),
+  { ssr: false },
+);
+const Stats = dynamic(
+  () => import('@/components/landing/Stats').then((m) => ({ default: m.Stats })),
+  { ssr: false },
+);
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -96,7 +113,12 @@ export default function LandingPage() {
           {/* Right actions */}
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" className="rounded-full text-secondary hover:bg-secondary/8 hover:text-secondary" asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full text-secondary hover:bg-secondary/8 hover:text-secondary"
+              asChild
+            >
               <Link href="/login">Sign In</Link>
             </Button>
             <InviteButton size="sm" />
@@ -178,7 +200,12 @@ export default function LandingPage() {
               </a>
               <div className="flex items-center gap-3 pt-3 mt-2 border-t border-[var(--border-default)]">
                 <ThemeToggle />
-                <Button variant="outline" size="sm" className="rounded-full border-secondary/20 text-secondary hover:bg-secondary/8 hover:text-secondary" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-secondary/20 text-secondary hover:bg-secondary/8 hover:text-secondary"
+                  asChild
+                >
                   <Link href="/login">Sign In</Link>
                 </Button>
                 <InviteButton size="sm" />
@@ -188,8 +215,16 @@ export default function LandingPage() {
         )}
       </header>
 
+      {/* Page Flow: Hero → Dashboard Preview → Comparison → Features → Pricing → Stats → Footer */}
+
       {/* Hero Section */}
       <Hero />
+
+      {/* Dashboard Preview (NEW) */}
+      <DashboardPreview />
+
+      {/* Competitor Comparison (NEW) */}
+      <ComparisonTable />
 
       {/* Features Section */}
       <div id="features">

@@ -181,7 +181,9 @@ export function Stats() {
                     {t.quote}
                   </p>
                   <div className="border-t border-border pt-4 flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${t.avatarBg}`}>
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${t.avatarBg}`}
+                    >
                       {t.initial}
                     </div>
                     <div>
@@ -211,7 +213,9 @@ export function Stats() {
                 : error && !stats
                   ? condensedStats.map((stat, i) => (
                       <div key={i} className="text-center p-4">
-                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}>
+                        <div
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}
+                        >
                           {stat.icon}
                         </div>
                         <div className="text-2xl font-bold text-muted-foreground mb-1">—</div>
@@ -220,7 +224,9 @@ export function Stats() {
                     ))
                   : condensedStats.map((stat, i) => (
                       <div key={i} className="text-center p-4">
-                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}>
+                        <div
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}
+                        >
                           {stat.icon}
                         </div>
                         <div className="text-2xl font-bold text-foreground mb-1 tabular-nums">
