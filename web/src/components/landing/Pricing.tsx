@@ -5,6 +5,7 @@ import { Check, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getBotInviteUrl } from '@/lib/discord';
+import { SectionHeader } from './SectionHeader';
 import { ScrollStage } from './ScrollStage';
 
 const GITHUB_REPO_URL = 'https://github.com/VolvoxLLC/volvox-bot';
@@ -58,22 +59,21 @@ export function Pricing() {
     <section className="py-28 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)]">
       <div className="max-w-6xl mx-auto" ref={containerRef}>
         <ScrollStage>
-          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6 }}
-            className="text-center mb-14"
+            className="mb-14"
           >
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
-              Choose your plan
-            </h2>
-            <p className="text-lg text-muted-foreground mb-10">
-              From hobby projects to growing communities.
-            </p>
+            <SectionHeader
+              label="PRICING"
+              labelColor="primary"
+              title="Simple, transparent pricing"
+              subtitle="Start free. Upgrade when your community grows."
+            />
 
             {/* Toggle */}
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-4 mt-10">
               <span
                 className={`text-sm font-medium transition-colors ${
                   isAnnual ? 'text-muted-foreground' : 'text-foreground'
