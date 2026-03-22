@@ -17,7 +17,7 @@ import { InviteButton } from './InviteButton';
 
 // ─── Typewriter hook (headline) ──────────────────────────────────────────────
 
-function useTypewriter(text: string, speed = 100, delay = 500) {
+function useTypewriter(text: string, speed = 40, delay = 150) {
   const [displayText, setDisplayText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -82,7 +82,7 @@ const iconToneClasses: Record<
   }
 > = {
   bot: {
-    avatar: 'bg-primary shadow-primary/20',
+    avatar: 'bg-primary shadow-[0_0_12px] shadow-primary/30',
     bubble: 'border-primary/18 bg-primary/8',
     chromeDot: 'bg-primary',
     chromeText: 'text-primary',
@@ -90,7 +90,7 @@ const iconToneClasses: Record<
     slashText: 'text-primary/75',
   },
   sparkles: {
-    avatar: 'bg-secondary shadow-secondary/20',
+    avatar: 'bg-secondary shadow-[0_0_12px] shadow-secondary/30',
     bubble: 'border-primary/18 bg-primary/8',
     chromeDot: 'bg-secondary',
     chromeText: 'text-secondary',
@@ -98,7 +98,7 @@ const iconToneClasses: Record<
     slashText: 'text-secondary/80',
   },
   shield: {
-    avatar: 'bg-secondary shadow-secondary/20',
+    avatar: 'bg-secondary shadow-[0_0_12px] shadow-secondary/30',
     bubble: 'border-primary/18 bg-primary/8',
     chromeDot: 'bg-secondary',
     chromeText: 'text-secondary',
@@ -106,7 +106,7 @@ const iconToneClasses: Record<
     slashText: 'text-secondary/80',
   },
   zap: {
-    avatar: 'bg-accent shadow-accent/20',
+    avatar: 'bg-accent shadow-[0_0_12px] shadow-accent/30',
     bubble: 'border-primary/18 bg-primary/8',
     chromeDot: 'bg-accent',
     chromeText: 'text-accent',
@@ -173,14 +173,14 @@ function BotAvatar({ icon = 'bot' }: { icon?: IconType }) {
   };
   return (
     <div
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-md ${tone.avatar}`}
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tone.avatar}`}
     >
       {icons[icon]}
     </div>
   );
 }
 
-/** Bot message that types out character by character, then calls onDone */
+/** Bot message that types out character by character at 18ms/char, then calls onDone */
 function BotBubble({ text, onDone }: { text: string; onDone: () => void }) {
   const [charIndex, setCharIndex] = useState(0);
   const doneRef = useRef(false);
@@ -196,7 +196,7 @@ function BotBubble({ text, onDone }: { text: string; onDone: () => void }) {
         }
         return Math.min(next, text.length);
       });
-    }, 22);
+    }, 18);
     return () => clearInterval(interval);
   }, [text, onDone]);
 
@@ -213,13 +213,6 @@ function BotBubble({ text, onDone }: { text: string; onDone: () => void }) {
 }
 
 // ─── State machine ───────────────────────────────────────────────────────────
-//
-// For each script line we go through these phases:
-//   USER line:  show-user → pause → (next line)
-//   BOT line:   show-typing → pause → show-bot-typewriter → (waits for typewriter onDone) → pause → (next line)
-//
-// This eliminates race conditions — one timeout at a time, and bot typewriter
-// explicitly signals completion before the next step fires.
 
 type Phase =
   | { kind: 'idle' }
@@ -227,7 +220,7 @@ type Phase =
   | { kind: 'after-user'; index: number }
   | { kind: 'show-typing'; index: number }
   | { kind: 'show-bot'; index: number }
-  | { kind: 'typing-bot'; index: number } // typewriter is running
+  | { kind: 'typing-bot'; index: number }
   | { kind: 'after-bot'; index: number }
   | { kind: 'done' };
 
@@ -236,7 +229,7 @@ interface VisibleMessage {
   role: 'user' | 'bot';
   content: string;
   icon?: IconType;
-  isTyping: boolean; // true = bot bubble should typewrite
+  isTyping: boolean;
 }
 
 function ChatConsole() {
@@ -273,7 +266,6 @@ function ChatConsole() {
 
     switch (phase.kind) {
       case 'idle':
-        // Start after a beat once visible
         if (isInView) {
           timerRef.current = setTimeout(() => setPhase({ kind: 'show-user', index: 0 }), 800);
         }
@@ -298,7 +290,6 @@ function ChatConsole() {
           setPhase({ kind: 'done' });
           break;
         }
-        // Next must be a bot line — show typing dots
         setDotsIcon(script[nextIdx].icon ?? 'bot');
         setShowDots(true);
         timerRef.current = setTimeout(
@@ -321,13 +312,11 @@ function ChatConsole() {
             isTyping: true,
           },
         ]);
-        // Now we wait — BotBubble's onDone will advance us
         setPhase({ kind: 'typing-bot', index: phase.index });
         break;
       }
 
       case 'typing-bot':
-        // Just waiting for the typewriter callback — do nothing
         break;
 
       case 'after-bot': {
@@ -336,7 +325,6 @@ function ChatConsole() {
           setPhase({ kind: 'done' });
           break;
         }
-        // Pause, then show next user message
         timerRef.current = setTimeout(() => setPhase({ kind: 'show-user', index: nextIdx }), 500);
         break;
       }
@@ -348,9 +336,7 @@ function ChatConsole() {
     return clearTimer;
   }, [phase, isInView, clearTimer]);
 
-  // Called by the bot bubble when typewriter finishes
   const handleBotDone = useCallback((index: number) => {
-    // Mark the message as no longer typing (so it stops showing cursor)
     setMessages((prev) =>
       prev.map((m) => (m.key === `msg-${index}` ? { ...m, isTyping: false } : m)),
     );
@@ -360,13 +346,13 @@ function ChatConsole() {
   return (
     <motion.div
       ref={containerRef}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      initial={{ opacity: 0, scale: 0.96, y: 30 }}
+      animate={isInView ? { opacity: 1, scale: 1, y: 0 } : {}}
+      transition={{ type: 'spring', damping: 25, stiffness: 180, delay: 1.4 }}
       className="w-full max-w-lg mx-auto"
     >
       <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5 overflow-hidden">
-        {/* Window chrome */}
+        {/* VS Code-style window chrome with channel context */}
         <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="flex gap-1.5">
@@ -377,6 +363,8 @@ function ChatConsole() {
             <div className="flex items-center gap-2 ml-3 text-xs text-muted-foreground">
               <Terminal className="w-3.5 h-3.5 text-secondary" />
               <span className="font-medium">volvox-bot</span>
+              <span className="text-muted-foreground/50">—</span>
+              <span className="text-muted-foreground/70">#general</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -407,7 +395,7 @@ function ChatConsole() {
                 <div
                   className={`px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] ${
                     msg.role === 'user'
-                      ? 'bg-primary text-white rounded-2xl rounded-br-md'
+                      ? 'bg-primary text-white rounded-[16px] rounded-br-[4px]'
                       : `rounded-2xl rounded-bl-md border text-foreground ${iconToneClasses[msg.icon ?? 'bot'].bubble}`
                   }`}
                 >
@@ -469,7 +457,7 @@ export function Hero() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   const shouldReduceMotion = useReducedMotion() ?? false;
-  const { displayText, isComplete } = useTypewriter('volvox-bot', 80, 300);
+  const { displayText, isComplete } = useTypewriter('volvox-bot', 40, 150);
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ['start start', 'end start'],
@@ -503,28 +491,32 @@ export function Hero() {
       ref={ref}
       className="relative min-h-screen pt-32 md:pt-[180px] flex flex-col items-center overflow-hidden"
     >
+      {/* Background glow */}
       <motion.div
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : {}}
+        transition={{ duration: 0.6 }}
         className="hero-glow absolute -top-[20%] left-1/2 -translate-x-1/2 w-[80vw] h-[80vw] -z-[1] pointer-events-none"
         style={shouldReduceMotion ? undefined : { y: glowY }}
       />
 
       <div className="text-center max-w-[1100px] px-4 z-[2] pb-16 md:pb-24">
         <motion.div style={shouldReduceMotion ? undefined : { opacity: copyOpacity, y: copyY }}>
-          {/* Badge */}
+          {/* Badge — enters at 100ms */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             className="inline-flex items-center py-2 px-4 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-8 border border-secondary/20"
           >
             Building the future of Discord communities
           </motion.div>
 
-          {/* Headline */}
+          {/* Headline — enters at 200ms, typewriter starts at 150ms delay */}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
             className="font-[family-name:var(--font-mono)] text-[clamp(2.5rem,6vw,5rem)] leading-[1.1] font-extrabold tracking-[-0.03em] mb-6 text-foreground"
           >
             {displayText}
@@ -537,7 +529,7 @@ export function Hero() {
             )}
           </motion.h1>
 
-          {/* Subheadline */}
+          {/* Subheadline — fades in after typewriter completes */}
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={isComplete ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
@@ -548,7 +540,7 @@ export function Hero() {
             and a fully configurable dashboard — all in one place.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons — stagger in after subtitle */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={isComplete ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
@@ -588,7 +580,7 @@ export function Hero() {
           </motion.div>
         </motion.div>
 
-        {/* Interactive chat console */}
+        {/* Interactive chat console — enters at 1400ms with spring physics */}
         <motion.div
           className="origin-top"
           style={
