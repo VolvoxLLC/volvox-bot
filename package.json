@@ -35,7 +35,7 @@
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.80",
     "@anthropic-ai/sdk": "^0.80.0",
-    "@sentry/node": "^10.44.0",
+    "@sentry/node": "^10.45.0",
     "discord.js": "^14.25.1",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
