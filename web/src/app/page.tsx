@@ -105,7 +105,7 @@ export default function LandingPage() {
                 rel="noopener noreferrer"
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
-                GitHub
+                Github
               </a>
             </div>
           </nav>
@@ -196,7 +196,7 @@ export default function LandingPage() {
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
               >
-                GitHub
+                Github
               </a>
               <div className="flex items-center gap-3 pt-3 mt-2 border-t border-[var(--border-default)]">
                 <ThemeToggle />

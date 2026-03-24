@@ -573,7 +573,7 @@ export function Hero() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                View on GitHub
+                View on Github
                 <ArrowRight className="ml-2 h-4 w-4" />
               </a>
             </Button>

@@ -5,7 +5,7 @@ const conversation = [
     name: 'Volvox',
     text: 'Go to Server Settings > Integrations > Webhooks. Click "New Webhook", name it, pick a channel, and copy the URL.',
   },
-  { sender: 'user', name: 'Alex', text: 'Thanks! Can I use it with GitHub?' },
+  { sender: 'user', name: 'Alex', text: 'Thanks! Can I use it with Github?' },
 ];
 
 /**
