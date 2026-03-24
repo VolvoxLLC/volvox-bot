@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, Github, LogOut } from 'lucide-react';
+import { BookOpen, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GithubIcon } from '@/components/ui/github-icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { getDashboardPageTitle } from '@/lib/page-titles';
@@ -134,7 +135,7 @@ export function Header() {
                     rel="noopener noreferrer"
                     className="flex items-center"
                   >
-                    <Github className="mr-2 h-4 w-4" />
+                    <GithubIcon className="mr-2 h-4 w-4" />
                     GitHub repository
                   </a>
                 </DropdownMenuItem>

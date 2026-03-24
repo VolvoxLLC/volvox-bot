@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { BookOpen, Github, Heart, MessageCircle } from 'lucide-react';
+import { BookOpen, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { GithubIcon } from '@/components/ui/github-icon';
 import { getBotInviteUrl } from '@/lib/discord';
 import { ScrollStage } from './ScrollStage';
 
@@ -82,7 +83,7 @@ export function Footer() {
             href="https://github.com/VolvoxLLC/volvox-bot"
             className="flex items-center gap-2 text-muted-foreground hover:text-secondary transition-colors text-sm font-medium"
           >
-            <Github className="w-4 h-4" />
+            <GithubIcon className="w-4 h-4" />
             GitHub
           </a>
           <a

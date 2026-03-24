@@ -35,7 +35,7 @@ interface CommunitySettingsSectionProps {
  * Renders the Community settings UI as a set of feature-specific settings cards.
  *
  * Renders SettingsFeatureCard sections (Community Tools, Activity Badges, Reputation/XP, TL;DR & AFK,
- * Daily Coding Challenges, GitHub Activity Feed, Tickets) when a feature is visible and its category is active.
+ * Daily Coding Challenges, Github Activity Feed, Tickets) when a feature is visible and its category is active.
  * Controls are bound to `draftConfig` and updates are applied via `updateDraftConfig`; inputs are disabled while `saving` is true.
  *
  * @param draftConfig - Partial guild configuration used to populate control values
@@ -715,7 +715,7 @@ export function CommunitySettingsSection({
       {showFeature('github-feed') && activeCategoryId === 'support-integrations' && (
         <SettingsFeatureCard
           featureId="github-feed"
-          title="GitHub Activity Feed"
+          title="Github Activity Feed"
           description="Post repository updates into a Discord channel."
           enabled={draftConfig.github?.feed?.enabled ?? false}
           onEnabledChange={(value) =>
@@ -744,7 +744,7 @@ export function CommunitySettingsSection({
                   }))
                 }
                 disabled={saving}
-                placeholder="Select GitHub feed channel"
+                placeholder="Select Github feed channel"
                 maxSelections={1}
                 filter="text"
               />

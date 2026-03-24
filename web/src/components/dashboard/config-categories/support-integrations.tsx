@@ -4,7 +4,7 @@ import { useConfigContext } from '@/components/dashboard/config-context';
 import { CommunitySettingsSection } from '@/components/dashboard/config-sections/CommunitySettingsSection';
 
 /**
- * Support & Integrations category — renders GitHub feed, Tickets, and other
+ * Support & Integrations category — renders Github feed, Tickets, and other
  * integration feature cards.
  */
 export function SupportIntegrationsCategory() {

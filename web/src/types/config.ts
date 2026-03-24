@@ -296,7 +296,7 @@ export interface EngagementConfig extends ToggleSectionConfig {
   activityBadges: ActivityBadge[];
 }
 
-/** GitHub feed settings. */
+/** Github feed settings. */
 export interface GithubFeedConfig extends ToggleSectionConfig {
   channelId: string | null;
   repos: string[];
@@ -304,7 +304,7 @@ export interface GithubFeedConfig extends ToggleSectionConfig {
   pollIntervalMinutes?: number;
 }
 
-/** GitHub integration settings. */
+/** Github integration settings. */
 export interface GithubConfig {
   feed: GithubFeedConfig;
 }
