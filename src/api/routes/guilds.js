@@ -1446,30 +1446,40 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       if (status !== 'offline') onlineMemberCount++;
     }
 
-    const activeAiConversationsResult = await (activeChannelFilter
-      ? dbPool.query(
-          `SELECT COUNT(DISTINCT channel_id)::int AS count
-           FROM conversations
-           WHERE guild_id = $1
-             AND channel_id = $2
-             AND role = 'assistant'
-             AND created_at >= NOW() - make_interval(mins => $3)`,
-          [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-        )
-      : dbPool.query(
-          `SELECT COUNT(DISTINCT channel_id)::int AS count
-           FROM conversations
-           WHERE guild_id = $1
-             AND role = 'assistant'
-             AND created_at >= NOW() - make_interval(mins => $2)`,
-          [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-        ));
+    let activeAiConversations;
+    try {
+      const activeAiConversationsResult = await (activeChannelFilter
+        ? dbPool.query(
+            `SELECT COUNT(DISTINCT channel_id)::int AS count
+             FROM conversations
+             WHERE guild_id = $1
+               AND channel_id = $2
+               AND role = 'assistant'
+               AND created_at >= NOW() - make_interval(mins => $3)`,
+            [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+          )
+        : dbPool.query(
+            `SELECT COUNT(DISTINCT channel_id)::int AS count
+             FROM conversations
+             WHERE guild_id = $1
+               AND role = 'assistant'
+               AND created_at >= NOW() - make_interval(mins => $2)`,
+            [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+          ));
+      activeAiConversations = Number(activeAiConversationsResult.rows[0]?.count || 0);
+    } catch (err) {
+      warn('Failed to fetch active AI conversations', {
+        error: err.message,
+        guild: req.params.id,
+      });
+      activeAiConversations = null;
+    }
 
     return res.json({
       ...analyticsData,
       realtime: {
         onlineMembers: membersWithPresence > 0 ? onlineMemberCount : null,
-        activeAiConversations: Number(activeAiConversationsResult.rows[0]?.count || 0),
+        activeAiConversations,
       },
     });
   } catch (err) {

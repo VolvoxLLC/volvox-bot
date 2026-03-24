@@ -289,7 +289,7 @@ describe('flushEngagementBuffer', () => {
     const failPool = { query: vi.fn().mockRejectedValue(new Error('db error')) };
     getPool.mockReturnValue(failPool);
     await trackMessage(makeMessage({ guildId: 'g1', userId: 'u1' }));
-    await flushEngagementBuffer();
+    await expect(flushEngagementBuffer()).rejects.toThrow('db error');
     expect(logError).toHaveBeenCalledWith(
       'Failed to flush engagement buffer',
       expect.objectContaining({ error: 'db error' }),
@@ -307,7 +307,7 @@ describe('flushEngagementBuffer', () => {
     await trackMessage(makeMessage({ guildId: 'g1', userId: 'u1' }));
     // Fail the first flush — re-merge happens inside flushEngagementBuffer
     pool.query.mockRejectedValueOnce(new Error('transient error'));
-    await flushEngagementBuffer();
+    await expect(flushEngagementBuffer()).rejects.toThrow('transient error');
     // Accumulate another message while pool is failing
     await trackMessage(makeMessage({ guildId: 'g1', userId: 'u1' }));
     // Now let the second flush succeed

@@ -3,7 +3,7 @@
  * Tracks user activity stats (messages, reactions, days active) for the /profile command.
  *
  * Performance design: writes are buffered in memory and flushed as a single
- * batch upsert every FLUSH_INTERVAL_MS (default 10 s) rather than issuing one
+ * batch upsert every DEFAULT_FLUSH_INTERVAL_MS (default 10 s) rather than issuing one
  * INSERT per message/reaction. This reduces DB round-trips by an order of
  * magnitude on active guilds while preserving all per-user stat accuracy.
  *
@@ -189,6 +189,7 @@ export async function flushEngagementBuffer() {
         statsBuffer.set(key, entry);
       }
     }
+    throw err;
   }
 }
 
@@ -222,5 +223,14 @@ export async function stopEngagementFlushInterval() {
     clearInterval(flushIntervalHandle);
     flushIntervalHandle = null;
   }
-  await flushEngagementBuffer();
+  try {
+    await flushEngagementBuffer();
+  } catch (err) {
+    if (statsBuffer.size > 0) {
+      logError('Engagement buffer still has entries after failed flush — potential data loss', {
+        remaining: statsBuffer.size,
+        error: err.message,
+      });
+    }
+  }
 }
