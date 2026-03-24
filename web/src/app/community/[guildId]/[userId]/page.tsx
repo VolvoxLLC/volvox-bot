@@ -12,8 +12,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { GithubIcon } from '@/components/ui/github-icon';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { GithubIcon } from '@/components/ui/github-icon';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
