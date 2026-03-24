@@ -19,10 +19,10 @@ const tabs: { readonly id: TabId; readonly label: string }[] = [
 ];
 
 const tabContent: Record<TabId, React.ReactNode> = {
-  'overview': <DashboardOverviewTab />,
-  'moderation': <DashboardModerationTab />,
+  overview: <DashboardOverviewTab />,
+  moderation: <DashboardModerationTab />,
   'ai-chat': <DashboardAIChatTab />,
-  'settings': <DashboardSettingsTab />,
+  settings: <DashboardSettingsTab />,
 };
 
 /**

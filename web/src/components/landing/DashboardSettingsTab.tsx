@@ -34,7 +34,9 @@ export function DashboardSettingsTab() {
                 className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${feature.enabled ? 'translate-x-3.5' : 'translate-x-0.5'}`}
               />
             </div>
-            <span className={`text-[10px] ${feature.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
+            <span
+              className={`text-[10px] ${feature.enabled ? 'text-primary' : 'text-muted-foreground'}`}
+            >
               {feature.enabled ? 'ON' : 'OFF'}
             </span>
           </div>
