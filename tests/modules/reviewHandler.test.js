@@ -153,7 +153,7 @@ describe('reviewHandler', () => {
     it('should include language field when present', () => {
       const review = makeReview({ language: 'Python' });
       const embed = buildReviewEmbed(review);
-      const allFields = embed.addFields.mock.calls.flatMap((c) => c);
+      const allFields = embed.addFields.mock.calls.flat();
       const langField = allFields.find((f) => f.name?.includes('Language'));
       expect(langField).toBeDefined();
       expect(langField.value).toBe('Python');
@@ -162,7 +162,7 @@ describe('reviewHandler', () => {
     it('should omit language field when null', () => {
       const review = makeReview({ language: null });
       const embed = buildReviewEmbed(review);
-      const allFields = embed.addFields.mock.calls.flatMap((c) => c);
+      const allFields = embed.addFields.mock.calls.flat();
       const langField = allFields.find((f) => f.name?.includes('Language'));
       expect(langField).toBeUndefined();
     });
@@ -170,7 +170,7 @@ describe('reviewHandler', () => {
     it('should include reviewer field when reviewer_id is set', () => {
       const review = makeReview({ reviewer_id: 'u3', status: 'claimed' });
       const embed = buildReviewEmbed(review, 'requester#0001', 'reviewer#0002');
-      const allFields = embed.addFields.mock.calls.flatMap((c) => c);
+      const allFields = embed.addFields.mock.calls.flat();
       const reviewerField = allFields.find((f) => f.name?.includes('Reviewer'));
       expect(reviewerField).toBeDefined();
     });
@@ -178,16 +178,16 @@ describe('reviewHandler', () => {
     it('should include feedback field when feedback is present', () => {
       const review = makeReview({ feedback: 'Looks good!' });
       const embed = buildReviewEmbed(review);
-      const allFields = embed.addFields.mock.calls.flatMap((c) => c);
+      const allFields = embed.addFields.mock.calls.flat();
       const fbField = allFields.find((f) => f.name?.includes('Feedback'));
       expect(fbField).toBeDefined();
       expect(fbField.value).toBe('Looks good!');
     });
 
     it('should truncate long URLs', () => {
-      const review = makeReview({ url: 'https://github.com/' + 'a'.repeat(300) });
+      const review = makeReview({ url: `https://github.com/${'a'.repeat(300)}` });
       const embed = buildReviewEmbed(review);
-      const allFields = embed.addFields.mock.calls.flatMap((c) => c);
+      const allFields = embed.addFields.mock.calls.flat();
       const urlField = allFields.find((f) => f.name?.includes('URL'));
       expect(urlField.value.length).toBeLessThanOrEqual(198);
     });
@@ -195,7 +195,7 @@ describe('reviewHandler', () => {
     it('should truncate long descriptions', () => {
       const review = makeReview({ description: 'D'.repeat(600) });
       const embed = buildReviewEmbed(review);
-      const allFields = embed.addFields.mock.calls.flatMap((c) => c);
+      const allFields = embed.addFields.mock.calls.flat();
       const descField = allFields.find((f) => f.name?.includes('Description'));
       expect(descField.value.length).toBeLessThanOrEqual(498);
     });
@@ -203,7 +203,7 @@ describe('reviewHandler', () => {
     it('should truncate long feedback', () => {
       const review = makeReview({ feedback: 'F'.repeat(600) });
       const embed = buildReviewEmbed(review);
-      const allFields = embed.addFields.mock.calls.flatMap((c) => c);
+      const allFields = embed.addFields.mock.calls.flat();
       const fbField = allFields.find((f) => f.name?.includes('Feedback'));
       expect(fbField.value.length).toBeLessThanOrEqual(498);
     });

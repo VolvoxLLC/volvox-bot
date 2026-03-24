@@ -116,6 +116,12 @@ export interface ProxyOptions {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
+  /**
+   * When set, the upstream fetch uses `next: { revalidate }` for ISR-style
+   * caching in Next.js instead of the default `cache: 'no-store'`.
+   * Pass `false` to opt out of revalidation explicitly (same as the default).
+   */
+  revalidate?: number | false;
 }
 
 /**
@@ -146,13 +152,27 @@ export async function proxyToBotApi(
       ...options?.headers,
       'x-api-secret': secret,
     };
-    const response = await fetch(upstreamUrl.toString(), {
-      method: options?.method ?? 'GET',
-      headers: mergedHeaders,
-      body: options?.body,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      cache: 'no-store',
-    });
+
+    // Use ISR-style caching when a revalidation window is provided; otherwise
+    // bypass the Next.js data cache entirely to ensure fresh data.
+    const fetchInit: RequestInit =
+      typeof options?.revalidate === 'number'
+        ? {
+            method: options?.method ?? 'GET',
+            headers: mergedHeaders,
+            body: options?.body,
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            next: { revalidate: options.revalidate },
+          }
+        : {
+            method: options?.method ?? 'GET',
+            headers: mergedHeaders,
+            body: options?.body,
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            cache: 'no-store',
+          };
+
+    const response = await fetch(upstreamUrl.toString(), fetchInit);
 
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {

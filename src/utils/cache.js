@@ -24,6 +24,7 @@ export const TTL = {
   REPUTATION: Number(process.env.REDIS_TTL_REPUTATION) || 60, // 1 min
   LEADERBOARD: Number(process.env.REDIS_TTL_LEADERBOARD) || 300, // 5 min
   ANALYTICS: Number(process.env.REDIS_TTL_ANALYTICS) || 3600, // 1 hour
+  MOD_STATS: Number(process.env.REDIS_TTL_MOD_STATS) || 300, // 5 min
   SESSION: Number(process.env.REDIS_TTL_SESSION) || 86400, // 24 hours
   CHANNEL_DETAIL: Number(process.env.REDIS_TTL_CHANNEL_DETAIL) || 600, // 10 min
 };
@@ -249,6 +250,11 @@ export async function cacheClear() {
         'discord:*',
         'config:*',
         'session:*',
+        'analytics:*',
+        'guild:stats:*',
+        'mod:stats:*',
+        'bot:stats:*',
+        'member:enrichment:*',
       ];
       for (const pattern of prefixes) {
         let cursor = '0';

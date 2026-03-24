@@ -8,6 +8,32 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+// Mock cache utilities — always simulate a cache miss so tests exercise DB paths
+vi.mock('../../../src/utils/cache.js', () => ({
+  cacheGet: vi.fn().mockResolvedValue(null),
+  cacheSet: vi.fn().mockResolvedValue(undefined),
+  cacheGetOrSet: vi.fn().mockImplementation((_key, factory) => factory()),
+  cacheDel: vi.fn().mockResolvedValue(undefined),
+  cacheDelPattern: vi.fn().mockResolvedValue(0),
+  TTL: {
+    CHANNELS: 300,
+    ROLES: 300,
+    MEMBERS: 60,
+    CONFIG: 60,
+    REPUTATION: 60,
+    LEADERBOARD: 300,
+    ANALYTICS: 3600,
+    SESSION: 86400,
+    CHANNEL_DETAIL: 600,
+  },
+}));
+
+vi.mock('../../../src/logger.js', () => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
 vi.mock('../../../src/api/utils/validateWebhookUrl.js', async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, validateDnsResolution: vi.fn().mockResolvedValue(true) };
@@ -795,7 +821,6 @@ describe('guilds routes', () => {
             },
           ],
         })
-        .mockResolvedValueOnce({ rows: [{ count: 3 }] })
         .mockResolvedValueOnce({
           rows: [
             {
@@ -828,7 +853,8 @@ describe('guilds routes', () => {
               max_level: 12,
             },
           ],
-        });
+        })
+        .mockResolvedValueOnce({ rows: [{ count: 3 }] }); // activeAiConversations
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -887,11 +913,11 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=today')
@@ -911,16 +937,17 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
-        .get('/api/v1/guilds/guild1/analytics?range=week&channelId=ch1')
+        .get('/api/v1/guilds/guild1/analytics?range=week&channelId=123456789012345678')
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
       expect(
         mockPool.query.mock.calls.some(([, params]) =>
-          Array.isArray(params) ? params.includes('ch1') : false,
+          Array.isArray(params) ? params.includes('123456789012345678') : false,
         ),
       ).toBe(true);
     });
@@ -936,7 +963,6 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ count: 1 }] })
         .mockResolvedValueOnce({
           rows: [
             {
@@ -951,10 +977,11 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [{ cost_usd: '0.0200' }] })
         .mockResolvedValueOnce({ rows: [{ command_name: 'help', uses: 5 }] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 1 }] }); // activeAiConversations
 
       const res = await request(app)
-        .get('/api/v1/guilds/guild1/analytics?range=week&compare=1&channelId=ch1')
+        .get('/api/v1/guilds/guild1/analytics?range=week&compare=1&channelId=123456789012345678')
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
@@ -979,11 +1006,11 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
         .mockResolvedValueOnce({ rows: [] })
         .mockRejectedValueOnce(new Error('command logs missing'))
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -999,11 +1026,11 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
         .mockRejectedValueOnce(new Error('logs relation missing'))
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -1025,7 +1052,8 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockRejectedValueOnce(new Error('user_stats table missing'))
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -1045,7 +1073,8 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockRejectedValueOnce(new Error('reputation table missing'));
+        .mockRejectedValueOnce(new Error('reputation table missing'))
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')
@@ -1065,7 +1094,8 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] }) // userEngagementResult: empty
-        .mockResolvedValueOnce({ rows: [] }); // xpEconomyResult: empty
+        .mockResolvedValueOnce({ rows: [] }) // xpEconomyResult: empty
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=week')

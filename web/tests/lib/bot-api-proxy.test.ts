@@ -50,4 +50,34 @@ describe("proxyToBotApi", () => {
     const headers = fetchCall[1].headers;
     expect(headers["x-api-secret"]).toBe(serverSecret);
   });
+
+  it("should use cache: no-store by default (no revalidate option)", async () => {
+    const url = new URL("http://localhost:3001/api/v1/guilds/123/config");
+    await proxyToBotApi(url, "secret", "[test]", "error");
+
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const fetchInit = fetchCall[1];
+    expect(fetchInit.cache).toBe("no-store");
+    expect(fetchInit.next).toBeUndefined();
+  });
+
+  it("should use next.revalidate when revalidate option is a number", async () => {
+    const url = new URL("http://localhost:3001/api/v1/guilds/123/channels");
+    await proxyToBotApi(url, "secret", "[test]", "error", { revalidate: 300 });
+
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const fetchInit = fetchCall[1];
+    expect(fetchInit.next).toEqual({ revalidate: 300 });
+    expect(fetchInit.cache).toBeUndefined();
+  });
+
+  it("should use cache: no-store when revalidate is false", async () => {
+    const url = new URL("http://localhost:3001/api/v1/guilds/123/channels");
+    await proxyToBotApi(url, "secret", "[test]", "error", { revalidate: false });
+
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const fetchInit = fetchCall[1];
+    expect(fetchInit.cache).toBe("no-store");
+    expect(fetchInit.next).toBeUndefined();
+  });
 });
