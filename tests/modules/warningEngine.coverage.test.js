@@ -14,7 +14,6 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
 }));
 
-
 import { getPool } from '../../src/db.js';
 import { error as logError } from '../../src/logger.js';
 import {
