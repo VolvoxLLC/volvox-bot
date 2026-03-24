@@ -1090,7 +1090,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           volumeResult,
           channelResult,
           heatmapResult,
-          activeResult,
           modelUsageResult,
           comparisonCostResult,
           commandUsageResult,
