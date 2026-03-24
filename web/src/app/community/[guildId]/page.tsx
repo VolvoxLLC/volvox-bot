@@ -1,4 +1,4 @@
-import { ExternalLink, Github, MessageSquare, Rocket, ThumbsUp, Trophy, Users } from 'lucide-react';
+import { ExternalLink, GitHub, MessageSquare, Rocket, ThumbsUp, Trophy, Users } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -469,7 +469,7 @@ export default async function CommunityPage({ params }: PageProps) {
                             className="text-muted-foreground hover:text-foreground transition-colors"
                             aria-label="View repository"
                           >
-                            <Github className="h-4 w-4" />
+                            <GitHub className="h-4 w-4" />
                           </a>
                         )}
                         {project.liveUrl && (

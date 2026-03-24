@@ -2,7 +2,7 @@ import {
   ArrowLeft,
   Calendar,
   ExternalLink,
-  Github,
+  GitHub,
   Heart,
   MessageSquare,
   ThumbsUp,
@@ -354,7 +354,7 @@ export default async function ProfilePage({ params }: PageProps) {
                           className="text-muted-foreground hover:text-foreground transition-colors"
                           aria-label="View repository"
                         >
-                          <Github className="h-4 w-4" />
+                          <GitHub className="h-4 w-4" />
                         </a>
                       )}
                       {project.liveUrl && (
