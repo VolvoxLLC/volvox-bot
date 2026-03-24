@@ -1,7 +1,8 @@
 'use client';
 
-import { BookOpen, Github, LogOut } from 'lucide-react';
+import { BookOpen, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { GithubIcon } from '@/components/ui/github-icon';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
@@ -134,7 +135,7 @@ export function Header() {
                     rel="noopener noreferrer"
                     className="flex items-center"
                   >
-                    <Github className="mr-2 h-4 w-4" />
+                    <GithubIcon className="mr-2 h-4 w-4" />
                     Github repository
                   </a>
                 </DropdownMenuItem>

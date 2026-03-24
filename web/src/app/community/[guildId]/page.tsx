@@ -1,8 +1,9 @@
-import { ExternalLink, Github, MessageSquare, Rocket, ThumbsUp, Trophy, Users } from 'lucide-react';
+import { ExternalLink, MessageSquare, Rocket, ThumbsUp, Trophy, Users } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { GithubIcon } from '@/components/ui/github-icon';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -469,7 +470,7 @@ export default async function CommunityPage({ params }: PageProps) {
                             className="text-muted-foreground hover:text-foreground transition-colors"
                             aria-label="View repository"
                           >
-                            <Github className="h-4 w-4" />
+                            <GithubIcon className="h-4 w-4" />
                           </a>
                         )}
                         {project.liveUrl && (
