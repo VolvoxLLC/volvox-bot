@@ -6,8 +6,8 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
-import { adaptGuildIdFromQuery } from '../middleware/adaptGuildId.js';
 import { cacheGetOrSet, TTL } from '../../utils/cache.js';
+import { adaptGuildIdFromQuery } from '../middleware/adaptGuildId.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parseLimit, parsePage } from '../utils/pagination.js';
 import { requireGuildModerator } from './guilds.js';
