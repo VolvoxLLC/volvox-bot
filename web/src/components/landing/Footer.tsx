@@ -84,7 +84,7 @@ export function Footer() {
             className="flex items-center gap-2 text-muted-foreground hover:text-secondary transition-colors text-sm font-medium"
           >
             <GithubIcon className="w-4 h-4" />
-            Github
+            GitHub
           </a>
           <a
             href="https://discord.gg/volvox"

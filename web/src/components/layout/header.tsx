@@ -136,7 +136,7 @@ export function Header() {
                     className="flex items-center"
                   >
                     <GithubIcon className="mr-2 h-4 w-4" />
-                    Github repository
+                    GitHub repository
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
