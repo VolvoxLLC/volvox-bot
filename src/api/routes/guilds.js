@@ -1147,25 +1147,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
            ORDER BY 1 ASC, 2 ASC`,
             conversationValues,
           ),
-          // Active AI conversations - filter by channel if specified
-          activeChannelFilter
-            ? dbPool.query(
-                `SELECT COUNT(DISTINCT channel_id)::int AS count
-               FROM conversations
-               WHERE guild_id = $1
-                 AND channel_id = $2
-                 AND role = 'assistant'
-                 AND created_at >= NOW() - make_interval(mins => $3)`,
-                [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-              )
-            : dbPool.query(
-                `SELECT COUNT(DISTINCT channel_id)::int AS count
-               FROM conversations
-               WHERE guild_id = $1
-                 AND role = 'assistant'
-                 AND created_at >= NOW() - make_interval(mins => $2)`,
-                [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
-              ),
           dbPool
             .query(
               `SELECT
@@ -1380,16 +1361,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
               }, 0)
             : 0;
 
-        let onlineMemberCount = 0;
-        let membersWithPresence = 0;
-        // Same cache limitation as above — only evaluates cached members with known presence.
-        for (const member of req.guild.members.cache.values()) {
-          const status = member.presence?.status;
-          if (!status) continue;
-          membersWithPresence++;
-          if (status !== 'offline') onlineMemberCount++;
-        }
-
         return {
           guildId: req.params.id,
           range: {
@@ -1406,10 +1377,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
             aiCostUsd: Number(aiCostUsd.toFixed(6)),
             activeUsers: Number(kpiRow.active_users || 0),
             newMembers,
-          },
-          realtime: {
-            onlineMembers: membersWithPresence > 0 ? onlineMemberCount : null,
-            activeAiConversations: Number(activeResult.rows[0]?.count || 0),
           },
           messageVolume: volume,
           aiUsage: {
@@ -1469,7 +1436,42 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       analyticsTtl,
     );
 
-    return res.json(analyticsData);
+    // Realtime fields — computed fresh on every request (not cached)
+    let onlineMemberCount = 0;
+    let membersWithPresence = 0;
+    for (const member of req.guild.members.cache.values()) {
+      const status = member.presence?.status;
+      if (!status) continue;
+      membersWithPresence++;
+      if (status !== 'offline') onlineMemberCount++;
+    }
+
+    const activeAiConversationsResult = await (activeChannelFilter
+      ? dbPool.query(
+          `SELECT COUNT(DISTINCT channel_id)::int AS count
+           FROM conversations
+           WHERE guild_id = $1
+             AND channel_id = $2
+             AND role = 'assistant'
+             AND created_at >= NOW() - make_interval(mins => $3)`,
+          [req.params.id, activeChannelFilter, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+        )
+      : dbPool.query(
+          `SELECT COUNT(DISTINCT channel_id)::int AS count
+           FROM conversations
+           WHERE guild_id = $1
+             AND role = 'assistant'
+             AND created_at >= NOW() - make_interval(mins => $2)`,
+          [req.params.id, ACTIVE_CONVERSATION_WINDOW_MINUTES],
+        ));
+
+    return res.json({
+      ...analyticsData,
+      realtime: {
+        onlineMembers: membersWithPresence > 0 ? onlineMemberCount : null,
+        activeAiConversations: Number(activeAiConversationsResult.rows[0]?.count || 0),
+      },
+    });
   } catch (err) {
     error('Failed to fetch analytics', {
       error: err.message,
