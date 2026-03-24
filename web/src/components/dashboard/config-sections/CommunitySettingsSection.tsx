@@ -563,64 +563,90 @@ export function CommunitySettingsSection({
             </div>
           }
           advancedContent={
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <label htmlFor="tldr-default-messages" className="space-y-2">
-                <span className="text-sm font-medium">Default Messages</span>
-                <input
-                  id="tldr-default-messages"
-                  type="number"
-                  min={1}
-                  value={tldrDefaultMessages}
-                  onChange={(event) => {
-                    const value = parseNumberInput(event.target.value, 1);
-                    if (value === undefined) return;
+            <div className="space-y-4">
+              <label htmlFor="tldr-system-prompt" className="space-y-2">
+                <span className="text-sm font-medium">System Prompt</span>
+                <textarea
+                  id="tldr-system-prompt"
+                  value={draftConfig.tldr?.systemPrompt ?? ''}
+                  onChange={(event) =>
                     updateDraftConfig((prev) => ({
                       ...prev,
-                      tldr: { ...prev.tldr, defaultMessages: value },
-                    }));
-                  }}
+                      tldr: { ...prev.tldr, systemPrompt: event.target.value },
+                    }))
+                  }
                   disabled={saving}
-                  className={inputClasses}
+                  rows={4}
+                  maxLength={4000}
+                  className={`${inputClasses} min-h-[5rem] resize-y`}
+                  placeholder="Summarize this Discord conversation. Extract: 1) Key topics discussed, 2) Decisions made, 3) Action items, 4) Notable links shared. Be concise."
                 />
+                <p className="text-xs text-muted-foreground">
+                  Instructions sent to the AI when summarizing. Leave blank for the default prompt.
+                </p>
               </label>
-              <label htmlFor="tldr-max-messages" className="space-y-2">
-                <span className="text-sm font-medium">Max Messages</span>
-                <input
-                  id="tldr-max-messages"
-                  type="number"
-                  min={1}
-                  value={tldrMaxMessages}
-                  onChange={(event) => {
-                    const value = parseNumberInput(event.target.value, 1);
-                    if (value === undefined) return;
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      tldr: { ...prev.tldr, maxMessages: value },
-                    }));
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-              <label htmlFor="tldr-cooldown" className="space-y-2">
-                <span className="text-sm font-medium">Cooldown (seconds)</span>
-                <input
-                  id="tldr-cooldown"
-                  type="number"
-                  min={0}
-                  value={tldrCooldownSeconds}
-                  onChange={(event) => {
-                    const value = parseNumberInput(event.target.value, 0);
-                    if (value === undefined) return;
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      tldr: { ...prev.tldr, cooldownSeconds: value },
-                    }));
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <label htmlFor="tldr-default-messages" className="space-y-2">
+                  <span className="text-sm font-medium">Default Messages</span>
+                  <input
+                    id="tldr-default-messages"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={tldrDefaultMessages}
+                    onChange={(event) => {
+                      const value = parseNumberInput(event.target.value, 1, 200);
+                      if (value === undefined) return;
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        tldr: { ...prev.tldr, defaultMessages: value },
+                      }));
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  />
+                </label>
+                <label htmlFor="tldr-max-messages" className="space-y-2">
+                  <span className="text-sm font-medium">Max Messages</span>
+                  <input
+                    id="tldr-max-messages"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={tldrMaxMessages}
+                    onChange={(event) => {
+                      const value = parseNumberInput(event.target.value, 1, 200);
+                      if (value === undefined) return;
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        tldr: { ...prev.tldr, maxMessages: value },
+                      }));
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  />
+                </label>
+                <label htmlFor="tldr-cooldown" className="space-y-2">
+                  <span className="text-sm font-medium">Cooldown (seconds)</span>
+                  <input
+                    id="tldr-cooldown"
+                    type="number"
+                    min={0}
+                    max={3600}
+                    value={tldrCooldownSeconds}
+                    onChange={(event) => {
+                      const value = parseNumberInput(event.target.value, 0, 3600);
+                      if (value === undefined) return;
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        tldr: { ...prev.tldr, cooldownSeconds: value },
+                      }));
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  />
+                </label>
+              </div>
             </div>
           }
           forceOpenAdvanced={forceOpenAdvancedFeatureId === 'tldr-afk'}

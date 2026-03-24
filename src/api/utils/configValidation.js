@@ -279,6 +279,16 @@ export const CONFIG_SCHEMA = {
       allowedCommands: { type: 'object', openProperties: true },
     },
   },
+  tldr: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      systemPrompt: { type: 'string', maxLength: 4000 },
+      defaultMessages: { type: 'number', min: 1, max: 200 },
+      maxMessages: { type: 'number', min: 1, max: 200 },
+      cooldownSeconds: { type: 'number', min: 0, max: 3600 },
+    },
+  },
 };
 
 /**

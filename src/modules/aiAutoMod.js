@@ -5,9 +5,9 @@
  * warn, timeout, kick, ban, or flag for review.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
+import { getAnthropicClient, _setAnthropicClient } from '../utils/anthropicClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
@@ -33,25 +33,19 @@ const DEFAULTS = {
   exemptRoleIds: [],
 };
 
-/** Anthropic client (lazy initialized) */
-let _client = null;
-
 /**
- * Get or create the Anthropic client.
- * @returns {Anthropic}
+ * Get the shared Anthropic client.
+ * @returns {import('@anthropic-ai/sdk').default}
  */
 function getClient() {
-  if (!_client) {
-    _client = new Anthropic();
-  }
-  return _client;
+  return getAnthropicClient();
 }
 
 /**
  * Reset the Anthropic client (for testing).
  */
 export function resetClient() {
-  _client = null;
+  _setAnthropicClient(null);
 }
 
 /**

@@ -269,6 +269,7 @@ export interface BotStatusConfig {
 
 /** TL;DR summary feature settings. */
 export interface TldrConfig extends ToggleSectionConfig {
+  systemPrompt: string;
   defaultMessages: number;
   maxMessages: number;
   cooldownSeconds: number;
