@@ -504,7 +504,7 @@ router.get('/stats', moderationRateLimit, async (req, res) => {
           topTargets: topTargetsResult.rows,
         };
       },
-      TTL.LEADERBOARD,
+      TTL.MOD_STATS,
     );
 
     return res.json(statsData);

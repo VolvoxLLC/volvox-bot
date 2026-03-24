@@ -977,7 +977,10 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   const comparisonTo = compareMode ? new Date(to.getTime() - rangeDurationMs) : null;
 
   const channelId = typeof req.query.channelId === 'string' ? req.query.channelId.trim() : '';
-  const activeChannelFilter = channelId.length > 0 ? channelId : null;
+  // Validate channelId as a Discord snowflake (digits only, max 20 chars) to prevent
+  // cache key abuse with arbitrary strings.
+  const activeChannelFilter =
+    channelId.length > 0 && /^\d{1,20}$/.test(channelId) ? channelId : null;
 
   const ALLOWED_INTERVALS = new Set(['hour', 'day']);
   if (!ALLOWED_INTERVALS.has(interval)) {

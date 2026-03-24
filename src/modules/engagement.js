@@ -11,7 +11,7 @@
  */
 
 import { getPool } from '../db.js';
-import { error as logError } from '../logger.js';
+import { error as logError, warn } from '../logger.js';
 import { getConfig } from './config.js';
 
 /**
@@ -19,6 +19,18 @@ import { getConfig } from './config.js';
  * All buffered writes are flushed to the DB in a single batch upsert.
  */
 const DEFAULT_FLUSH_INTERVAL_MS = 10_000;
+
+/**
+ * Maximum number of entries the in-memory buffer can hold.
+ * When the buffer reaches this limit, new events are dropped with a warning.
+ * Prevents unbounded memory growth during prolonged DB outages.
+ */
+const MAX_BUFFER_SIZE = 50_000;
+
+/**
+ * Maximum entries per INSERT batch (6 params each → 60,000 params, under PostgreSQL's 65,535 limit).
+ */
+const BATCH_SIZE = 10_000;
 
 /**
  * @typedef {Object} StatsEntry
@@ -36,6 +48,12 @@ const statsBuffer = new Map();
 /** @type {ReturnType<typeof setInterval> | null} */
 let flushIntervalHandle = null;
 
+/** @type {boolean} True when a flush is currently in-flight. */
+let flushInProgress = false;
+
+/** @type {number} Consecutive flush failures — used for log rate-limiting. */
+let consecutiveFlushFailures = 0;
+
 /**
  * Return the existing buffer entry for a guild/user pair, or create a zeroed one.
  *
@@ -47,6 +65,13 @@ function getOrCreateEntry(guildId, userId) {
   const key = `${guildId}:${userId}`;
   let entry = statsBuffer.get(key);
   if (!entry) {
+    if (statsBuffer.size >= MAX_BUFFER_SIZE) {
+      warn('Engagement buffer at capacity — dropping new entry', {
+        maxSize: MAX_BUFFER_SIZE,
+        guildId,
+      });
+      return null;
+    }
     entry = {
       guildId,
       userId,
@@ -78,6 +103,7 @@ export async function trackMessage(message) {
   if (!config.engagement.trackMessages) return;
 
   const entry = getOrCreateEntry(message.guild.id, message.author.id);
+  if (!entry) return;
   entry.messages += 1;
   entry.bumpDays = true;
 }
@@ -103,6 +129,7 @@ export async function trackReaction(reaction, user) {
 
   // reactions_given for the reactor (counts as active — bumps days_active).
   const reactorEntry = getOrCreateEntry(guildId, user.id);
+  if (!reactorEntry) return;
   reactorEntry.reactionsGiven += 1;
   reactorEntry.bumpDays = true;
 
@@ -136,46 +163,58 @@ export async function flushEngagementBuffer() {
   const entries = [...statsBuffer.values()];
   statsBuffer.clear();
 
-  // Build a multi-row parameterized VALUES list.
-  // Each row provides: guildId, userId, messages, reactionsGiven, reactionsReceived, daysActiveFlag.
-  const params = [];
-  const rows = entries.map((entry) => {
-    const offset = params.length + 1;
-    params.push(
-      entry.guildId,
-      entry.userId,
-      entry.messages,
-      entry.reactionsGiven,
-      entry.reactionsReceived,
-      entry.bumpDays ? 1 : 0,
-    );
-    return `($${offset}, $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, NOW(), NOW())`;
-  });
-
   try {
     const pool = getPool();
-    await pool.query(
-      `INSERT INTO user_stats
-         (guild_id, user_id, messages_sent, reactions_given, reactions_received, days_active, first_seen, last_active)
-       VALUES ${rows.join(', ')}
-       ON CONFLICT (guild_id, user_id) DO UPDATE
-         SET messages_sent      = user_stats.messages_sent      + EXCLUDED.messages_sent,
-             reactions_given    = user_stats.reactions_given    + EXCLUDED.reactions_given,
-             reactions_received = user_stats.reactions_received + EXCLUDED.reactions_received,
-             days_active        = CASE
-               WHEN EXCLUDED.days_active = 1
-                 AND (user_stats.days_active = 0 OR user_stats.last_active::date < EXCLUDED.last_active::date)
-               THEN user_stats.days_active + 1
-               ELSE user_stats.days_active
-             END,
-             last_active        = CASE
-               WHEN EXCLUDED.days_active = 1 THEN NOW()
-               ELSE user_stats.last_active
-             END`,
-      params,
-    );
+
+    // Chunk entries into batches to stay under PostgreSQL's 65,535 bind-parameter limit.
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE);
+      const params = [];
+      const rows = batch.map((entry) => {
+        const offset = params.length + 1;
+        params.push(
+          entry.guildId,
+          entry.userId,
+          entry.messages,
+          entry.reactionsGiven,
+          entry.reactionsReceived,
+          entry.bumpDays ? 1 : 0,
+        );
+        return `($${offset}, $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, NOW(), NOW())`;
+      });
+
+      await pool.query(
+        `INSERT INTO user_stats
+           (guild_id, user_id, messages_sent, reactions_given, reactions_received, days_active, first_seen, last_active)
+         VALUES ${rows.join(', ')}
+         ON CONFLICT (guild_id, user_id) DO UPDATE
+           SET messages_sent      = user_stats.messages_sent      + EXCLUDED.messages_sent,
+               reactions_given    = user_stats.reactions_given    + EXCLUDED.reactions_given,
+               reactions_received = user_stats.reactions_received + EXCLUDED.reactions_received,
+               days_active        = CASE
+                 WHEN EXCLUDED.days_active = 1
+                   AND (user_stats.days_active = 0 OR user_stats.last_active::date < EXCLUDED.last_active::date)
+                 THEN user_stats.days_active + 1
+                 ELSE user_stats.days_active
+               END,
+               last_active        = CASE
+                 WHEN EXCLUDED.days_active = 1 THEN NOW()
+                 ELSE user_stats.last_active
+               END`,
+        params,
+      );
+    }
+    consecutiveFlushFailures = 0;
   } catch (err) {
-    logError('Failed to flush engagement buffer', { count: entries.length, error: err.message });
+    consecutiveFlushFailures += 1;
+    // Rate-limit error logs: log first failure, then every 30th (~5 min at 10s interval).
+    if (consecutiveFlushFailures === 1 || consecutiveFlushFailures % 30 === 0) {
+      logError('Failed to flush engagement buffer', {
+        count: entries.length,
+        consecutive: consecutiveFlushFailures,
+        error: err.message,
+      });
+    }
     // Merge drained entries back into the buffer so counts are not permanently lost.
     for (const entry of entries) {
       const key = `${entry.guildId}:${entry.userId}`;
@@ -204,9 +243,13 @@ export async function flushEngagementBuffer() {
 export function startEngagementFlushInterval(intervalMs = DEFAULT_FLUSH_INTERVAL_MS) {
   if (flushIntervalHandle !== null) return;
   flushIntervalHandle = setInterval(() => {
-    flushEngagementBuffer().catch((err) =>
-      logError('Engagement flush interval error', { error: err.message }),
-    );
+    if (flushInProgress) return; // skip if previous flush still in-flight
+    flushInProgress = true;
+    flushEngagementBuffer()
+      .catch(() => {}) // errors already logged inside flushEngagementBuffer
+      .finally(() => {
+        flushInProgress = false;
+      });
   }, intervalMs);
   // Allow the Node.js event loop to exit cleanly even if a flush is pending.
   flushIntervalHandle.unref?.();

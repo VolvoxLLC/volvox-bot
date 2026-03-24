@@ -941,13 +941,13 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
 
       const res = await request(app)
-        .get('/api/v1/guilds/guild1/analytics?range=week&channelId=ch1')
+        .get('/api/v1/guilds/guild1/analytics?range=week&channelId=123456789012345678')
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
       expect(
         mockPool.query.mock.calls.some(([, params]) =>
-          Array.isArray(params) ? params.includes('ch1') : false,
+          Array.isArray(params) ? params.includes('123456789012345678') : false,
         ),
       ).toBe(true);
     });
@@ -981,7 +981,7 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [{ count: 1 }] }); // activeAiConversations
 
       const res = await request(app)
-        .get('/api/v1/guilds/guild1/analytics?range=week&compare=1&channelId=ch1')
+        .get('/api/v1/guilds/guild1/analytics?range=week&compare=1&channelId=123456789012345678')
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
