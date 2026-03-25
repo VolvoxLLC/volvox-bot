@@ -26,6 +26,7 @@ const router = Router();
 const ADMINISTRATOR_FLAG = 0x8;
 /** Discord MANAGE_GUILD permission flag */
 const MANAGE_GUILD_FLAG = 0x20;
+const ACCESS_LOOKUP_CONCURRENCY = 10;
 
 /**
  * Upper bound on content length for abuse prevention.
@@ -241,6 +242,41 @@ function accessSatisfiesRequirement(access, requiredAccess) {
   return access === 'admin' || access === 'moderator';
 }
 
+function hasPermissionFlag(permissions, flag) {
+  try {
+    return (BigInt(permissions) & BigInt(flag)) === BigInt(flag);
+  } catch {
+    return false;
+  }
+}
+
+function getOAuthDerivedAccessLevel(owner, permissions) {
+  if (owner) return 'admin';
+  if (hasPermissionFlag(permissions, ADMINISTRATOR_FLAG)) return 'admin';
+  if (hasPermissionFlag(permissions, MANAGE_GUILD_FLAG)) return 'moderator';
+  return null;
+}
+
+function isUnknownMemberError(err) {
+  return err?.code === 10007 || err?.message?.includes('Unknown Member');
+}
+
+async function mapWithConcurrency(items, concurrency, iteratee) {
+  const results = new Array(items.length);
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const currentIndex = index++;
+      results[currentIndex] = await iteratee(items[currentIndex], currentIndex);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
 /**
  * Resolve dashboard access for a guild member using the bot's configured role rules.
  *
@@ -259,8 +295,12 @@ async function getGuildAccessLevel(guild, userId) {
   if (!member && typeof guild.members?.fetch === 'function') {
     try {
       member = await guild.members.fetch(userId);
-    } catch {
-      member = null;
+    } catch (err) {
+      if (isUnknownMemberError(err)) {
+        member = null;
+      } else {
+        throw err;
+      }
     }
   }
 
@@ -450,7 +490,9 @@ router.get('/', async (req, res) => {
         const botGuild = botGuilds.get(ug.id);
         if (!botGuild) continue;
 
-        const access = await getGuildAccessLevel(botGuild, req.user.userId);
+        const access =
+          getOAuthDerivedAccessLevel(ug.owner, ug.permissions) ??
+          (await getGuildAccessLevel(botGuild, req.user.userId));
         if (access === 'viewer') continue;
 
         filtered.push({
@@ -489,7 +531,9 @@ router.get('/', async (req, res) => {
 
 router.get('/access', async (req, res) => {
   if (req.authMethod !== 'api-secret') {
-    return res.status(403).json({ error: 'Guild access endpoint requires API secret authentication' });
+    return res
+      .status(403)
+      .json({ error: 'Guild access endpoint requires API secret authentication' });
   }
 
   const userId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
@@ -499,24 +543,42 @@ router.get('/access', async (req, res) => {
     return res.status(400).json({ error: 'Missing userId query parameter' });
   }
 
-  const guildIds = [...new Set(guildIdsRaw.split(',').map((id) => id.trim()).filter(Boolean))];
+  const guildIds = [
+    ...new Set(
+      guildIdsRaw
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ];
   if (guildIds.length === 0) {
     return res.json([]);
   }
 
   const { client } = req.app.locals;
 
-  const accessEntries = await Promise.all(
-    guildIds.map(async (guildId) => {
-      const guild = client.guilds.cache.get(guildId);
-      if (!guild) return null;
+  try {
+    const accessEntries = await mapWithConcurrency(
+      guildIds,
+      ACCESS_LOOKUP_CONCURRENCY,
+      async (guildId) => {
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return null;
 
-      const access = await getGuildAccessLevel(guild, userId);
-      return { id: guildId, access };
-    }),
-  );
+        const access = await getGuildAccessLevel(guild, userId);
+        return { id: guildId, access };
+      },
+    );
 
-  return res.json(accessEntries.filter(Boolean));
+    return res.json(accessEntries.filter(Boolean));
+  } catch (err) {
+    error('Failed to resolve guild access entries', {
+      error: err.message,
+      userId,
+      guildCount: guildIds.length,
+    });
+    return res.status(502).json({ error: 'Failed to verify guild permissions with Discord' });
+  }
 });
 
 /** Maximum number of channels to return to avoid oversized payloads. */
