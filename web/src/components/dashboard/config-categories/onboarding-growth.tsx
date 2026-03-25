@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { Info } from 'lucide-react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { generateId, inputClasses } from '@/components/dashboard/config-editor-utils';
 import { CommunitySettingsSection } from '@/components/dashboard/config-sections/CommunitySettingsSection';
@@ -9,6 +10,17 @@ import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { ToggleSwitch } from '../toggle-switch';
+
+/**
+ * Inline info icon with a native tooltip.
+ */
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span title={text} className="ml-1 inline-flex cursor-help align-middle text-muted-foreground/60 hover:text-muted-foreground">
+      <Info className="h-3.5 w-3.5" />
+    </span>
+  );
+}
 
 /**
  * Onboarding & Growth category — renders the Welcome feature card directly,
@@ -117,7 +129,7 @@ export function OnboardingGrowthCategory() {
           /{vibeLine}/g,
           'Things are moving at a healthy pace in #general, so you\'ll fit right in.',
         )
-        .replace(/{ctaLine}/g, "Say hey in #general and let us know what you're building.")
+        .replace(/{ctaLine}/g, 'Start in #general, check out #introductions, and browse #announcements.')
         .replace(/{milestoneLine}/g, 'You just rolled in as member #142.')
         .replace(/{timeOfDay}/g, 'morning')
         .replace(/{activityLevel}/g, 'steady')
@@ -213,7 +225,7 @@ export function OnboardingGrowthCategory() {
                     <div>
                       <code>{'{ctaLine}'}</code> — Channel suggestions CTA{' '}
                       <span className="italic text-muted-foreground/70">
-                        Say hey in #general and let us know what you're building.
+                        Start in #general, check out #introductions, and browse #announcements.
                       </span>
                     </div>
                     <div>
@@ -290,11 +302,12 @@ export function OnboardingGrowthCategory() {
           }
           advancedContent={
             <div className="space-y-4">
-              <fieldset className="space-y-2 rounded-md border p-3">
+              <fieldset className="space-y-4 rounded-md border p-3">
                 <legend className="text-sm font-medium">Dynamic Welcome</legend>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
                     Enable dynamic context-aware variables
+                    <InfoTip text="When enabled, your welcome template can use variables like {greeting}, {vibeLine}, {ctaLine}, {milestoneLine}, {timeOfDay}, {activityLevel}, and {topChannels} that change based on time of day, server activity, and channel popularity." />
                   </span>
                   <ToggleSwitch
                     checked={draftConfig.welcome?.dynamic?.enabled ?? false}
@@ -303,11 +316,87 @@ export function OnboardingGrowthCategory() {
                     label="Dynamic Welcome"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Adds {'{greeting}'}, {'{vibeLine}'}, {'{ctaLine}'}, {'{milestoneLine}'},
-                  {' {timeOfDay}'}, {'{activityLevel}'}, and {'{topChannels}'} variables to
-                  your welcome message template.
-                </p>
+
+                <label className="space-y-1 block">
+                  <span className="text-sm font-medium">
+                    Highlight Channels
+                    <InfoTip text="Channels suggested to new members in the {ctaLine} and {topChannels} variables. If no channels have recent activity, these are used as fallbacks." />
+                  </span>
+                  <ChannelSelector
+                    guildId={guildId}
+                    selected={draftConfig.welcome?.dynamic?.highlightChannels ?? []}
+                    onChange={(selected) => updateWelcomeDynamic('highlightChannels', selected)}
+                    disabled={saving}
+                    placeholder="Select channels to highlight"
+                    filter="text"
+                  />
+                </label>
+
+                <label className="space-y-1 block">
+                  <span className="text-sm font-medium">
+                    Exclude Channels
+                    <InfoTip text="Channels to ignore when measuring server activity. Messages in these channels won't count toward the activity level." />
+                  </span>
+                  <ChannelSelector
+                    guildId={guildId}
+                    selected={draftConfig.welcome?.dynamic?.excludeChannels ?? []}
+                    onChange={(selected) => updateWelcomeDynamic('excludeChannels', selected)}
+                    disabled={saving}
+                    placeholder="Select channels to exclude"
+                    filter="text"
+                  />
+                </label>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <label className="space-y-1 block">
+                    <span className="text-sm font-medium">
+                      Timezone
+                      <InfoTip text="Used to determine time of day for the {greeting} and {timeOfDay} variables (e.g. morning vs evening greetings)." />
+                    </span>
+                    <input
+                      type="text"
+                      value={draftConfig.welcome?.dynamic?.timezone ?? 'America/New_York'}
+                      onChange={(e) => updateWelcomeDynamic('timezone', e.target.value)}
+                      disabled={saving}
+                      className={inputClasses}
+                      placeholder="America/New_York"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="text-sm font-medium">
+                      Activity Window
+                      <InfoTip text="How many minutes of recent message history to consider when calculating the {activityLevel} (quiet/light/steady/busy/hype)." />
+                    </span>
+                    <input
+                      type="number"
+                      min={5}
+                      max={10080}
+                      value={draftConfig.welcome?.dynamic?.activityWindowMinutes ?? 45}
+                      onChange={(e) =>
+                        updateWelcomeDynamic('activityWindowMinutes', Number(e.target.value) || 45)
+                      }
+                      disabled={saving}
+                      className={inputClasses}
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="text-sm font-medium">
+                      Milestone Interval
+                      <InfoTip text="Every Nth member gets a special milestone message in {milestoneLine} (e.g. every 25th member). Notable counts like 100, 500, 1000 always trigger." />
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10000}
+                      value={draftConfig.welcome?.dynamic?.milestoneInterval ?? 25}
+                      onChange={(e) =>
+                        updateWelcomeDynamic('milestoneInterval', Number(e.target.value) || 25)
+                      }
+                      disabled={saving}
+                      className={inputClasses}
+                    />
+                  </label>
+                </div>
               </fieldset>
 
               <fieldset className="space-y-2 rounded-md border p-3">

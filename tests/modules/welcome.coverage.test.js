@@ -533,7 +533,9 @@ describe('welcome module coverage', () => {
       await sendWelcomeMessage(member, client, config);
       expect(mockSend).toHaveBeenCalled();
       const msg = mockSend.mock.calls[0][0].content;
-      expect(msg).toContain('Start in');
+      expect(msg).toContain('<#ch1>');
+      expect(msg).toContain('<#ch2>');
+      expect(msg).toContain('<#ch3>');
     });
   });
 

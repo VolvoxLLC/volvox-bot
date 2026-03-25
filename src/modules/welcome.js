@@ -447,16 +447,16 @@ function buildCtaLine(channels) {
   const [first, second, third] = channels;
 
   if (first && second && third) {
-    return `Start in ${first}, share what you're building in ${second}, and lurk project updates in ${third}.`;
+    return `Start in ${first}, check out ${second}, and browse ${third}.`;
   }
   if (first && second) {
-    return `Drop a quick intro in ${first} and show off what you're building in ${second}.`;
+    return `Start in ${first} or check out ${second}.`;
   }
   if (first) {
-    return `Say hey in ${first} and let us know what you're building.`;
+    return `Head over to ${first} to get started.`;
   }
 
-  return "Say hey and tell us what you're building — we're glad you're here.";
+  return "Say hey and introduce yourself — we're glad you're here.";
 }
 
 /**

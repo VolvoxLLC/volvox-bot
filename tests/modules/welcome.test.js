@@ -980,7 +980,7 @@ describe('sendWelcomeMessage – dynamic template variables', () => {
     // Vibe line should be the quiet default (no activity recorded)
     expect(msg).toContain('quiet window');
     // CTA line should have a fallback
-    expect(msg).toContain('building');
+    expect(msg).toContain('introduce yourself');
   });
 
   it('should leave dynamic placeholders as-is when dynamic is disabled', async () => {
