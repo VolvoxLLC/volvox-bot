@@ -10,7 +10,7 @@ import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
 import { computeLevel } from '../../modules/reputation.js';
-import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
+import { XP_DEFAULTS } from '../../modules/xpDefaults.js';
 import { cacheGet, cacheSet, TTL } from '../../utils/cache.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parseLimit, parsePage } from '../utils/pagination.js';
@@ -22,13 +22,13 @@ const router = Router();
 const membersRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
 /**
- * Resolve the reputation configuration for a guild by returning the defaults overridden by the guild's configured reputation values.
+ * Resolve the XP config for a guild, merging defaults.
  * @param {string} guildId - Guild identifier used to load the guild's configuration.
- * @returns {object} The resolved reputation configuration containing level thresholds and related reputation settings.
+ * @returns {object} The XP configuration with guild-specific values overriding defaults.
  */
-function getRepConfig(guildId) {
+function getXpConfig(guildId) {
   const cfg = getConfig(guildId);
-  return { ...REPUTATION_DEFAULTS, ...cfg.reputation };
+  return { ...XP_DEFAULTS, ...cfg.xp };
 }
 
 /**
@@ -660,10 +660,10 @@ router.get(
       const warningCount = warningCountResult.rows[0]?.count ?? 0;
 
       // Compute badge/level info
-      const repConfig = getRepConfig(guild.id);
+      const xpConfig = getXpConfig(guild.id);
       const xp = rep?.xp ?? 0;
-      const level = rep?.level ?? computeLevel(xp, repConfig.levelThresholds);
-      const nextThreshold = repConfig.levelThresholds[level] ?? null;
+      const level = rep?.level ?? computeLevel(xp, xpConfig.levelThresholds);
+      const nextThreshold = xpConfig.levelThresholds[level] ?? null;
 
       res.json({
         id: member.id,
@@ -962,7 +962,7 @@ router.post(
 
       // Wrap XP upsert + level update in a transaction for consistency
       const client = await pool.connect();
-      let newXp, newLevel;
+      let newXp, newLevel, oldLevel;
       try {
         await client.query('BEGIN');
 
@@ -977,10 +977,11 @@ router.post(
         );
 
         newXp = rows[0].xp;
+        oldLevel = rows[0].level;
 
         // Recompute level from thresholds
-        const repConfig = getRepConfig(guildId);
-        newLevel = computeLevel(newXp, repConfig.levelThresholds);
+        const xpConfig = getXpConfig(guildId);
+        newLevel = computeLevel(newXp, xpConfig.levelThresholds);
 
         // Update level if changed
         if (newLevel !== rows[0].level) {
@@ -996,6 +997,22 @@ router.post(
         throw txErr;
       } finally {
         client.release();
+      }
+
+      // If level dropped and removeOnLevelDown is enabled, revoke roles
+      if (amount < 0 && newLevel < oldLevel) {
+        const xpConfig = getXpConfig(guildId);
+        if (xpConfig.enabled && xpConfig.roleRewards.removeOnLevelDown) {
+          try {
+            const member = await req.guild.members.fetch(userId);
+            const { enforceRoleLevelDown } = await import('../../modules/actions/roleUtils.js');
+            await enforceRoleLevelDown(member, newLevel, xpConfig);
+          } catch (err) {
+            logError('Failed to enforce role level-down', {
+              guildId, userId, newLevel, error: err.message,
+            });
+          }
+        }
       }
 
       info('XP adjusted via API', {

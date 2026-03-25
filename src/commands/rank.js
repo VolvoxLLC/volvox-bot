@@ -11,6 +11,7 @@ import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { buildProgressBar, computeLevel } from '../modules/reputation.js';
 import { REPUTATION_DEFAULTS } from '../modules/reputationDefaults.js';
+import { XP_DEFAULTS } from '../modules/xpDefaults.js';
 import {
   getRankCached,
   getReputationCached,
@@ -46,7 +47,8 @@ export async function execute(interaction) {
     const pool = getPool();
     const target = interaction.options.getUser('user') ?? interaction.user;
     const repCfg = { ...REPUTATION_DEFAULTS, ...cfg.reputation };
-    const thresholds = repCfg.levelThresholds;
+    const xpCfg = { ...XP_DEFAULTS, ...cfg.xp };
+    const thresholds = xpCfg.levelThresholds;
 
     // Fetch reputation row (cached)
     const cachedRep = await getReputationCached(interaction.guildId, target.id);

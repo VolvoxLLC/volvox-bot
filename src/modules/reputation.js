@@ -5,14 +5,13 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/45
  */
 
-import { EmbedBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { invalidateReputationCache } from '../utils/reputationCache.js';
-import { safeSend } from '../utils/safeSend.js';
-import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 import { getConfig } from './config.js';
+import { executeLevelUpPipeline } from './levelUpActions.js';
 import { REPUTATION_DEFAULTS } from './reputationDefaults.js';
+import { XP_DEFAULTS } from './xpDefaults.js';
 
 /** In-memory cooldown map: `${guildId}:${userId}` → Date of last XP gain */
 const cooldowns = new Map();
@@ -37,6 +36,17 @@ setInterval(sweepCooldowns, 5 * 60 * 1000).unref();
 function getRepConfig(guildId) {
   const cfg = getConfig(guildId);
   return { ...REPUTATION_DEFAULTS, ...cfg.reputation };
+}
+
+/**
+ * Resolve the XP config for a guild, merging defaults.
+ *
+ * @param {string} guildId
+ * @returns {object}
+ */
+function getXpConfig(guildId) {
+  const cfg = getConfig(guildId);
+  return { ...XP_DEFAULTS, ...cfg.xp };
 }
 
 /**
@@ -118,11 +128,11 @@ export async function handleXpGain(message) {
   cooldowns.set(key, now);
 
   const { xp: newXp, level: currentLevel } = rows[0];
-  const thresholds = repCfg.levelThresholds;
+  const xpCfg = getXpConfig(message.guild.id);
+  const thresholds = xpCfg.levelThresholds;
   const newLevel = computeLevel(newXp, thresholds);
 
   if (newLevel > currentLevel) {
-    // Update stored level
     try {
       await pool.query('UPDATE reputation SET level = $1 WHERE guild_id = $2 AND user_id = $3', [
         newLevel,
@@ -135,7 +145,7 @@ export async function handleXpGain(message) {
         guildId: message.guild.id,
         error: err.message,
       });
-      return; // Don't proceed with role/announcement if level update failed
+      return;
     }
 
     info('User leveled up', {
@@ -145,68 +155,17 @@ export async function handleXpGain(message) {
       xp: newXp,
     });
 
-    // Resolve side-effect operations that are independent of each other:
-    // role reward and level-up announcement can run in parallel.
-    const roleId = repCfg.roleRewards?.[String(newLevel)];
-    const announceChannelId = repCfg.announceChannelId;
-    const announceChannel = announceChannelId
-      ? message.guild.channels.cache.get(announceChannelId)
-      : null;
-
-    // Build the announcement embed before launching parallel tasks so that
-    // the "🏅 Role reward assigned!" suffix in the description reflects the
-    // configured roleId (not the result of the Discord API call).
-    const embed = announceChannel
-      ? new EmbedBuilder()
-          .setColor(0x57f287)
-          .setTitle('🎉 Level Up!')
-          .setDescription(
-            sanitizeMentions(
-              `${message.author} reached **Level ${newLevel}**!${roleId ? ' 🏅 Role reward assigned!' : ''}`,
-            ),
-          )
-          .setThumbnail(message.author.displayAvatarURL())
-          .addFields({ name: 'Total XP', value: String(newXp), inline: true })
-          .setTimestamp()
-      : null;
-
-    // Run role assignment and announcement in parallel; each is fire-and-forget
-    // relative to the other — a failure in one does not block the other.
-    await Promise.all([
-      roleId
-        ? (async () => {
-            try {
-              await message.member.roles.add(roleId);
-              info('Role reward assigned', {
-                userId: message.author.id,
-                roleId,
-                level: newLevel,
-              });
-            } catch (err) {
-              logError('Failed to assign role reward', {
-                userId: message.author.id,
-                roleId,
-                level: newLevel,
-                error: err.message,
-              });
-            }
-          })()
-        : Promise.resolve(),
-
-      embed
-        ? (async () => {
-            try {
-              await safeSend(announceChannel, { embeds: [embed] });
-            } catch (err) {
-              logError('Failed to send level-up announcement', {
-                userId: message.author.id,
-                channelId: announceChannelId,
-                error: err.message,
-              });
-            }
-          })()
-        : Promise.resolve(),
-    ]);
+    if (xpCfg.enabled) {
+      executeLevelUpPipeline({
+        member: message.member,
+        message,
+        guild: message.guild,
+        previousLevel: currentLevel,
+        newLevel,
+        xp: newXp,
+        config: xpCfg,
+      }).catch(() => {}); // fire-and-forget, errors logged internally
+    }
   }
 
   // Invalidate cached reputation/leaderboard data AFTER all DB writes complete

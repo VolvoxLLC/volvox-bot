@@ -118,6 +118,32 @@ export function sweepRoleLimits() {
   }
 }
 
+/**
+ * Remove roles granted at levels above the new level.
+ * Called when XP is manually reduced and removeOnLevelDown is enabled.
+ *
+ * @param {import('discord.js').GuildMember} member
+ * @param {number} newLevel
+ * @param {Object} xpConfig - The resolved `config.xp` section.
+ */
+export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
+  const guild = member.guild;
+
+  for (const entry of xpConfig.levelActions ?? []) {
+    if (entry.level <= newLevel) continue;
+
+    for (const action of entry.actions ?? []) {
+      if (action.type !== 'grantRole' || !action.roleId) continue;
+      if (!member.roles.cache.has(action.roleId)) continue;
+      if (!canManageRole(guild, action.roleId)) continue;
+      if (!checkRoleRateLimit(guild.id, member.user.id)) continue;
+
+      await member.roles.remove(action.roleId);
+      recordRoleChange(guild.id, member.user.id);
+    }
+  }
+}
+
 // Periodic sweep — same pattern as reputation.js cooldowns.
 setInterval(sweepRoleLimits, 5 * 60 * 1000).unref();
 
