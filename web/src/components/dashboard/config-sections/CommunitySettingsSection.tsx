@@ -252,10 +252,7 @@ export function CommunitySettingsSection({
             <div className="space-y-3">
               {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
                 (badge: Badge, index: number) => (
-                  <div
-                    key={`badge-${badge.days ?? index}-${badge.label ?? index}`}
-                    className="flex items-center gap-2"
-                  >
+                  <div key={`badge-${index}`} className="flex items-center gap-2">
                     <Input
                       className="w-20"
                       type="number"
