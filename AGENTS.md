@@ -20,9 +20,9 @@ Keep this file for repo-specific rules, gotchas, and conventions. If something b
 - New dashboard routes need title wiring in `web/src/lib/page-titles.ts`: use `createPageMetadata()` for SSR and keep `DashboardTitleSync` aligned for client navigation.
 - If a feature is configurable, ship the whole path: runtime logic, API/dashboard wiring, and tests.
 
-## Visual Verification
+## Visual Verification - IMPORTANT
 
-- Any visual dashboard change must be verified with Chrome DevTools MCP before you call it done.
+- Any visual dashboard or landing page change must be verified with Chrome DevTools MCP before you call it done.
 - Take a screenshot after the change.
 - Check both themes (light and dark) if colors or theming changed.
 - Check responsive behavior if layout changed. Verify on mobile, tablet, and desktop.
