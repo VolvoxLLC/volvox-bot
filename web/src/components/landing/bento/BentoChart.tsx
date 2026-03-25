@@ -3,7 +3,7 @@
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import type { MouseEvent } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { DailyActivityPoint } from '../DashboardShowcase';
+import type { DailyActivityPoint } from './bento-data';
 import { generateChartHeights } from './bento-data';
 
 interface BentoChartProps {
@@ -77,11 +77,12 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   const tooltipData = useMemo(() => {
     if (hoveredIndex === null) return null;
     // Clamp hoveredIndex to valid range
-    const clampedIndex = Math.min(hoveredIndex, dailyActivity.length - 1);
+    const maxIndex = hasRealData && dailyActivity ? dailyActivity.length - 1 : points.length - 1;
+    const clampedIndex = Math.min(hoveredIndex, maxIndex);
     const point = points[clampedIndex];
     if (!point) return null;
 
-    if (hasRealData) {
+    if (hasRealData && dailyActivity) {
       const d = dailyActivity[clampedIndex];
       const date = new Date(d.date + 'T00:00:00Z');
       const label = date.toLocaleDateString('en-US', {

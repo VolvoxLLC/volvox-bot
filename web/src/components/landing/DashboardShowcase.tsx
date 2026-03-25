@@ -39,11 +39,8 @@ function AnimatedCell({
   );
 }
 
-export interface DailyActivityPoint {
-  date: string;
-  messages: number;
-  aiRequests: number;
-}
+import type { DailyActivityPoint } from './bento/bento-data';
+export type { DailyActivityPoint };
 
 // Re-use the same shape as Stats.tsx. TODO(#363): extract BotStats to shared types
 interface BotStats {
@@ -72,27 +69,31 @@ export function DashboardShowcase() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     const fetchStats = async () => {
       try {
-        const res = await fetch('/api/stats', { signal: AbortSignal.timeout(10_000) });
+        const res = await fetch('/api/stats', { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: BotStats = await res.json();
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setStats(data);
           setLoading(false);
           setError(false);
         }
       } catch {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setLoading(false);
           setError(true);
         }
+      } finally {
+        clearTimeout(timeout);
       }
     };
     fetchStats();
     return () => {
-      cancelled = true;
+      controller.abort();
+      clearTimeout(timeout);
     };
   }, []);
 

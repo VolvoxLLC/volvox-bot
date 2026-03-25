@@ -103,3 +103,9 @@ export const TIMESTAMP_POOL: readonly string[] = [
   '45m',
   '1h',
 ];
+
+export interface DailyActivityPoint {
+  readonly date: string;
+  readonly messages: number;
+  readonly aiRequests: number;
+}
