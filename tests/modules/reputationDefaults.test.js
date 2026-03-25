@@ -21,20 +21,9 @@ describe('reputationDefaults', () => {
     expect(REPUTATION_DEFAULTS.xpCooldownSeconds).toBeGreaterThan(0);
   });
 
-  it('should have null announceChannelId', () => {
-    expect(REPUTATION_DEFAULTS.announceChannelId).toBeNull();
-  });
-
-  it('should have levelThresholds as a sorted ascending array', () => {
-    const thresholds = REPUTATION_DEFAULTS.levelThresholds;
-    expect(Array.isArray(thresholds)).toBe(true);
-    expect(thresholds.length).toBeGreaterThan(0);
-    for (let i = 1; i < thresholds.length; i++) {
-      expect(thresholds[i]).toBeGreaterThan(thresholds[i - 1]);
-    }
-  });
-
-  it('should have roleRewards as an empty object', () => {
-    expect(REPUTATION_DEFAULTS.roleRewards).toEqual({});
+  it('should not contain XP-specific fields moved to xpDefaults', () => {
+    expect(REPUTATION_DEFAULTS).not.toHaveProperty('announceChannelId');
+    expect(REPUTATION_DEFAULTS).not.toHaveProperty('levelThresholds');
+    expect(REPUTATION_DEFAULTS).not.toHaveProperty('roleRewards');
   });
 });
