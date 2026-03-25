@@ -29,7 +29,7 @@ describe('use-guild-role', () => {
   });
 
   it('returns admin for manage guild permissions', () => {
-    expect(getGuildDashboardRole(createGuild({ permissions: '32' }))).toBe('admin');
+    expect(getGuildDashboardRole(createGuild({ permissions: '32' }))).toBe('moderator');
   });
 
   it('prefers explicit access from the api when provided', () => {
@@ -69,5 +69,9 @@ describe('use-guild-role', () => {
     expect(isGuildManageable(createGuild({ owner: true }))).toBe(true);
     expect(isGuildManageable(createGuild({ permissions: '8' }))).toBe(true);
     expect(isGuildManageable(createGuild({ permissions: '2' }))).toBe(true);
+  });
+
+  it('prefers ownership over a downgraded access field', () => {
+    expect(getGuildDashboardRole(createGuild({ owner: true, access: 'viewer' }))).toBe('owner');
   });
 });
