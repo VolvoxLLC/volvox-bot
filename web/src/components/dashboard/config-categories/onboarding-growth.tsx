@@ -8,29 +8,23 @@ import { CommunitySettingsSection } from '@/components/dashboard/config-sections
 import { SettingsFeatureCard } from '@/components/dashboard/config-workspace/settings-feature-card';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RoleSelector } from '@/components/ui/role-selector';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ToggleSwitch } from '../toggle-switch';
 
 /**
- * Inline info icon that shows help text in a popover on click.
+ * Inline info icon that shows help text on hover.
  */
 function InfoTip({ text }: { text: string }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="ml-1 inline-flex cursor-help align-middle text-muted-foreground/60 hover:text-muted-foreground"
-          aria-label="More info"
-        >
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="ml-1 inline-flex cursor-help align-middle text-muted-foreground/60 hover:text-muted-foreground">
           <Info className="h-3.5 w-3.5" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side="top" className="max-w-xs text-xs text-muted-foreground">
-        {text}
-      </PopoverContent>
-    </Popover>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">{text}</TooltipContent>
+    </Tooltip>
   );
 }
 
