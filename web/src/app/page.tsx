@@ -3,7 +3,7 @@
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FeatureGrid, Footer, Hero, InviteButton, Pricing } from '@/components/landing';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -41,6 +41,18 @@ export default function LandingPage() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  /** Smooth-scroll to a section with offset for the fixed navbar. */
+  const scrollToSection = useCallback(
+    (id: string) => {
+      const element = document.getElementById(id);
+      if (!element) return;
+      const navbarHeight = 100;
+      const top = element.getBoundingClientRect().top + window.scrollY - navbarHeight;
+      window.scrollTo({ top, behavior: shouldReduceMotion ? 'auto' : 'smooth' });
+    },
+    [shouldReduceMotion],
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -81,32 +93,34 @@ export default function LandingPage() {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center">
             <div className={`flex items-center ${scrolled ? 'nav-links-pill' : 'gap-1'}`}>
-              <a
-                href="#features"
+              <button
+                type="button"
+                onClick={() => scrollToSection('features')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
                 Features
-              </a>
-              <a
-                href="#pricing"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('pricing')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
                 Pricing
-              </a>
-              <a
-                href="https://docs.volvox.bot"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('dashboard')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
-                Docs
-              </a>
-              <a
-                href="https://github.com/VolvoxLLC/volvox-bot"
-                target="_blank"
-                rel="noopener noreferrer"
+                Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('compare')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
-                Github
-              </a>
+                Compare
+              </button>
             </div>
           </nav>
 
@@ -169,7 +183,7 @@ export default function LandingPage() {
                 className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  scrollToSection('features');
                 }}
               >
                 Features
@@ -179,25 +193,31 @@ export default function LandingPage() {
                 className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                  scrollToSection('pricing');
                 }}
               >
                 Pricing
               </button>
-              <a
-                href="https://docs.volvox.bot"
-                className="text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+              <button
+                type="button"
+                className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('dashboard');
+                }}
               >
-                Docs
-              </a>
-              <a
-                href="https://github.com/VolvoxLLC/volvox-bot"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+                Dashboard
+              </button>
+              <button
+                type="button"
+                className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('compare');
+                }}
               >
-                Github
-              </a>
+                Compare
+              </button>
               <div className="flex items-center gap-3 pt-3 mt-2 border-t border-[var(--border-default)]">
                 <ThemeToggle />
                 <Button
@@ -220,11 +240,15 @@ export default function LandingPage() {
       {/* Hero Section */}
       <Hero />
 
-      {/* Dashboard Preview (NEW) */}
-      <DashboardPreview />
+      {/* Dashboard Preview */}
+      <div id="dashboard">
+        <DashboardPreview />
+      </div>
 
-      {/* Competitor Comparison (NEW) */}
-      <ComparisonTable />
+      {/* Competitor Comparison */}
+      <div id="compare">
+        <ComparisonTable />
+      </div>
 
       {/* Features Section */}
       <div id="features">
