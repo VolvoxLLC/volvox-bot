@@ -2,7 +2,7 @@
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useMemo, useRef } from 'react';
-import { CONVERSATION_POOL, TIMESTAMP_POOL, shuffleAndPick } from './bento-data';
+import { CONVERSATION_POOL, shuffleAndPick, TIMESTAMP_POOL } from './bento-data';
 
 const avatarColorMap = {
   purple: 'bg-secondary/30 text-secondary',

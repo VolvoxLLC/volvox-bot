@@ -2,7 +2,7 @@
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useMemo, useRef } from 'react';
-import { MODERATION_POOL, TIMESTAMP_POOL, shuffleAndPick } from './bento-data';
+import { MODERATION_POOL, shuffleAndPick, TIMESTAMP_POOL } from './bento-data';
 
 const severityColors = {
   red: 'bg-red-500',
@@ -47,15 +47,13 @@ export function BentoModeration() {
             {i === 0 ? (
               <motion.div
                 className={`w-1.5 h-1.5 rounded-full ${severityColors[item.severity]} shrink-0`}
-                animate={
-                  shouldReduceMotion
-                    ? {}
-                    : { scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }
-                }
+                animate={shouldReduceMotion ? {} : { scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
               />
             ) : (
-              <div className={`w-1.5 h-1.5 rounded-full ${severityColors[item.severity]} shrink-0`} />
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${severityColors[item.severity]} shrink-0`}
+              />
             )}
             <span className="text-xs text-foreground flex-1 truncate">{item.text}</span>
             <span className="text-[10px] text-muted-foreground shrink-0">{item.timestamp}</span>

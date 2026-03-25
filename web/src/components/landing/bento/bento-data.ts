@@ -53,12 +53,32 @@ export const MODERATION_POOL: readonly ModerationItem[] = [
 ];
 
 export const AI_CHAT_POOL: readonly AIChatItem[] = [
-  { question: 'How do I set up auto-roles?', answer: 'Head to Dashboard → Settings → Auto Roles. Pick the role and trigger condition.' },
-  { question: 'What are the moderation commands?', answer: 'Use /warn, /mute, /ban, or /kick. Each logs to the audit trail automatically.' },
-  { question: 'How do I set up webhooks?', answer: 'Go to Server Settings → Integrations → Webhooks. Click "New Webhook" and copy the URL.' },
-  { question: 'Can I customize the AI personality?', answer: 'Yes! Dashboard → AI Settings → System Prompt. Write your own or pick a preset.' },
-  { question: 'How does the XP system work?', answer: 'Members earn XP per message with a cooldown. Configure rates in Dashboard → Features → XP.' },
-  { question: 'How do I enable starboard?', answer: 'Dashboard → Features → Starboard. Set the emoji, threshold, and target channel.' },
+  {
+    question: 'How do I set up auto-roles?',
+    answer: 'Head to Dashboard → Settings → Auto Roles. Pick the role and trigger condition.',
+  },
+  {
+    question: 'What are the moderation commands?',
+    answer: 'Use /warn, /mute, /ban, or /kick. Each logs to the audit trail automatically.',
+  },
+  {
+    question: 'How do I set up webhooks?',
+    answer:
+      'Go to Server Settings → Integrations → Webhooks. Click "New Webhook" and copy the URL.',
+  },
+  {
+    question: 'Can I customize the AI personality?',
+    answer: 'Yes! Dashboard → AI Settings → System Prompt. Write your own or pick a preset.',
+  },
+  {
+    question: 'How does the XP system work?',
+    answer:
+      'Members earn XP per message with a cooldown. Configure rates in Dashboard → Features → XP.',
+  },
+  {
+    question: 'How do I enable starboard?',
+    answer: 'Dashboard → Features → Starboard. Set the emoji, threshold, and target channel.',
+  },
 ];
 
 export const CONVERSATION_POOL: readonly ConversationItem[] = [
@@ -73,5 +93,12 @@ export const CONVERSATION_POOL: readonly ConversationItem[] = [
 ];
 
 export const TIMESTAMP_POOL: readonly string[] = [
-  'just now', '2m', '5m', '8m', '12m', '23m', '45m', '1h',
+  'just now',
+  '2m',
+  '5m',
+  '8m',
+  '12m',
+  '23m',
+  '45m',
+  '1h',
 ];

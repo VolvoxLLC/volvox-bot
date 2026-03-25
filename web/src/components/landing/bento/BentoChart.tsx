@@ -45,11 +45,7 @@ export function BentoChart() {
         <div className="flex items-center gap-1.5">
           <motion.div
             className="w-1.5 h-1.5 rounded-full bg-primary"
-            animate={
-              shouldReduceMotion
-                ? {}
-                : { scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }
-            }
+            animate={shouldReduceMotion ? {} : { scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           />
           <span className="text-[10px] font-medium text-primary">LIVE</span>

@@ -2,13 +2,13 @@
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollStage } from './ScrollStage';
-import { SectionHeader } from './SectionHeader';
 import { BentoAIChat } from './bento/BentoAIChat';
 import { BentoChart } from './bento/BentoChart';
 import { BentoConversations } from './bento/BentoConversations';
 import { BentoKpi } from './bento/BentoKpi';
 import { BentoModeration } from './bento/BentoModeration';
+import { ScrollStage } from './ScrollStage';
+import { SectionHeader } from './SectionHeader';
 
 // Re-use the same shape as Stats.tsx. TODO: extract to shared type if more consumers appear.
 interface BotStats {
@@ -55,7 +55,9 @@ export function DashboardShowcase() {
       }
     };
     fetchStats();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const kpiValue = (field: keyof BotStats): number | null => {

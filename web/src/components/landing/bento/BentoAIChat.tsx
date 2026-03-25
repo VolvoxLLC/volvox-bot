@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AI_CHAT_POOL, pickRandom } from './bento-data';
 
 /**

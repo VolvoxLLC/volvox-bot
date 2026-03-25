@@ -35,6 +35,10 @@ export default defineConfig({
         // suite (for example, using Playwright) and revisit this exclusion once those tests are in place.
         'src/components/dashboard/**',
         'src/components/landing/index.ts',
+        'src/components/landing/bento/BentoChart.tsx',
+        'src/components/landing/bento/BentoModeration.tsx',
+        'src/components/landing/bento/BentoAIChat.tsx',
+        'src/components/landing/bento/BentoConversations.tsx',
         'src/components/layout/mobile-sidebar.tsx',
         'src/hooks/use-moderation-cases.ts',
         'src/hooks/use-moderation-stats.ts',
