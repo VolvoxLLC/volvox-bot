@@ -2,19 +2,35 @@
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useMemo, useRef } from 'react';
+import type { DailyActivityPoint } from '../DashboardShowcase';
 import { generateChartHeights } from './bento-data';
+
+interface BentoChartProps {
+  readonly dailyActivity?: DailyActivityPoint[];
+}
 
 /**
  * SVG area chart cell for the bento grid.
- * Generates random heights on mount, draws path left-to-right on scroll-in,
- * and displays a pulsing "LIVE" indicator.
+ * Uses real daily activity data when available, falls back to random heights.
+ * Draws path left-to-right on scroll-in and displays a pulsing "LIVE" indicator.
  */
-export function BentoChart() {
+export function BentoChart({ dailyActivity }: BentoChartProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true });
   const shouldReduceMotion = useReducedMotion() ?? false;
 
-  const heights = useMemo(() => generateChartHeights(), []);
+  const fallbackHeights = useMemo(() => generateChartHeights(), []);
+
+  // Convert real data or fallback to normalized heights (30-95 range)
+  const heights = useMemo(() => {
+    if (!dailyActivity || dailyActivity.length === 0) return fallbackHeights;
+
+    const values = dailyActivity.map((d) => d.messages);
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values);
+    const range = max - min || 1;
+    return values.map((v) => 30 + ((v - min) / range) * 65);
+  }, [dailyActivity, fallbackHeights]);
 
   const points = useMemo(() => {
     const width = 220;
@@ -34,6 +50,17 @@ export function BentoChart() {
   const areaPath = useMemo(() => {
     return `${linePath} L220,80 L0,80 Z`;
   }, [linePath]);
+
+  // Day labels from real data or default weekdays
+  const dayLabels = useMemo(() => {
+    if (!dailyActivity || dailyActivity.length === 0) return null;
+    return dailyActivity.map((d) => {
+      const date = new Date(d.date);
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    });
+  }, [dailyActivity]);
+
+  const hasRealData = dailyActivity && dailyActivity.length > 0;
 
   return (
     <div
@@ -86,14 +113,23 @@ export function BentoChart() {
         )}
       </svg>
 
+      {/* Day labels when real data is available */}
+      {dayLabels && (
+        <div className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5">
+          {dayLabels.map((label, i) => (
+            <span key={`${label}-${i}`}>{label}</span>
+          ))}
+        </div>
+      )}
+
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-          Messages
+          Messages{hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
-          AI Responses
+          AI Responses{hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.aiRequests, 0).toLocaleString()})`}
         </span>
       </div>
     </div>

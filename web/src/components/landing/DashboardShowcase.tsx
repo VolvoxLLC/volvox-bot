@@ -10,6 +10,12 @@ import { BentoModeration } from './bento/BentoModeration';
 import { ScrollStage } from './ScrollStage';
 import { SectionHeader } from './SectionHeader';
 
+export interface DailyActivityPoint {
+  date: string;
+  messages: number;
+  aiRequests: number;
+}
+
 // Re-use the same shape as Stats.tsx. TODO: extract to shared type if more consumers appear.
 interface BotStats {
   servers: number;
@@ -18,6 +24,7 @@ interface BotStats {
   activeConversations: number;
   uptime: number;
   messagesProcessed: number;
+  dailyActivity?: DailyActivityPoint[];
   cachedAt: string;
 }
 
@@ -86,7 +93,7 @@ export function DashboardShowcase() {
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0 }}
             >
-              <BentoChart />
+              <BentoChart dailyActivity={stats?.dailyActivity} />
             </motion.div>
 
             {/* Row 1: Members KPI */}
