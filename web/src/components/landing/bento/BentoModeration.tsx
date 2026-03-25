@@ -32,7 +32,7 @@ export function BentoModeration() {
   return (
     <div
       ref={ref}
-      className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5"
+      className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5 h-full"
     >
       <div className="text-sm font-semibold text-foreground mb-3">Moderation</div>
       <div className="flex flex-col gap-2.5">

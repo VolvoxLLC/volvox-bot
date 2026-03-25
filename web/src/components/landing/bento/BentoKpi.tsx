@@ -27,7 +27,7 @@ export function BentoKpi({ value, label, loading, color }: BentoKpiProps) {
   const badgeClass = colorMap[color];
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5">
+    <div className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5 h-full">
       {loading ? (
         <>
           <div className="h-8 w-20 animate-pulse rounded bg-muted mb-2" />

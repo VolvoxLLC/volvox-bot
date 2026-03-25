@@ -98,6 +98,7 @@ export function DashboardShowcase() {
 
             {/* Row 1: Members KPI */}
             <motion.div
+              className="h-full"
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.08 }}
@@ -112,6 +113,7 @@ export function DashboardShowcase() {
 
             {/* Row 1: Commands Served KPI */}
             <motion.div
+              className="h-full"
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.16 }}
@@ -126,6 +128,7 @@ export function DashboardShowcase() {
 
             {/* Row 2: Servers KPI */}
             <motion.div
+              className="h-full"
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.24 }}
@@ -140,6 +143,7 @@ export function DashboardShowcase() {
 
             {/* Row 2: Moderation */}
             <motion.div
+              className="h-full"
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.32 }}
@@ -149,7 +153,7 @@ export function DashboardShowcase() {
 
             {/* Row 3: AI Chat (spans 2 cols) */}
             <motion.div
-              className="sm:col-span-2"
+              className="sm:col-span-2 h-full"
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.4 }}
@@ -159,6 +163,7 @@ export function DashboardShowcase() {
 
             {/* Row 3: Conversations */}
             <motion.div
+              className="h-full"
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.48 }}

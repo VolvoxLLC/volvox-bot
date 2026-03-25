@@ -31,7 +31,7 @@ export function BentoAIChat() {
   return (
     <div
       ref={ref}
-      className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5 col-span-1 sm:col-span-2"
+      className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5 col-span-1 sm:col-span-2 h-full"
     >
       <div className="text-sm font-semibold text-foreground mb-3">AI Chat</div>
       <div className="flex flex-col gap-2.5">
