@@ -81,7 +81,11 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
     if (hasRealData) {
       const d = dailyActivity[hoveredIndex];
       const date = new Date(d.date);
-      const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const label = date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
       return { x: point.x, y: point.y, label, messages: d.messages, aiRequests: d.aiRequests };
     }
     return null;
@@ -246,11 +250,15 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-          Messages{hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
+          Messages
+          {hasRealData &&
+            ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
-          AI Responses{hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.aiRequests, 0).toLocaleString()})`}
+          AI Responses
+          {hasRealData &&
+            ` (${dailyActivity.reduce((sum, d) => sum + d.aiRequests, 0).toLocaleString()})`}
         </span>
       </div>
     </div>
