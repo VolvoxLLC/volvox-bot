@@ -48,7 +48,7 @@ async function pollScheduledMessages(client) {
 
     for (const msg of rows) {
       try {
-        const channel = await fetchChannelCached(client, msg.channel_id);
+        const channel = await fetchChannelCached(client, msg.channel_id, msg.guild_id);
         if (!channel) {
           logWarn('Scheduled message channel not found', {
             id: msg.id,

@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { BookOpen, Heart, MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { GetStartedButton } from '@/components/ui/get-started-button';
 import { GithubIcon } from '@/components/ui/github-icon';
 import { getBotInviteUrl } from '@/lib/discord';
 import { ScrollStage } from './ScrollStage';
@@ -31,25 +31,18 @@ export function Footer() {
             actually works.
           </p>
           {botInviteUrl ? (
-            <Button
+            <GetStartedButton
               variant="discord"
-              size="lg"
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform shadow-lg shadow-[var(--color-discord)]/20"
-              asChild
-            >
-              <a href={botInviteUrl} target="_blank" rel="noopener noreferrer">
-                Add to Discord — Free
-              </a>
-            </Button>
+              href={botInviteUrl}
+              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase shadow-lg shadow-[var(--color-discord)]/20"
+            />
           ) : (
-            <Button
+            <GetStartedButton
               variant="discord"
-              size="lg"
+              label="Coming Soon"
               disabled
               className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase opacity-50"
-            >
-              Coming Soon
-            </Button>
+            />
           )}
         </motion.div>
 
@@ -87,7 +80,7 @@ export function Footer() {
             GitHub
           </a>
           <a
-            href="https://discord.gg/volvox"
+            href="https://discord.gg/8ahXACdamN"
             className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm font-medium"
           >
             <MessageCircle className="w-4 h-4" />

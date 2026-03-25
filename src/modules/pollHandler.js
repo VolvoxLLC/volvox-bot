@@ -258,7 +258,7 @@ export async function closePoll(pollId, client) {
   const poll = rows[0];
 
   try {
-    const channel = await fetchChannelCached(client, poll.channel_id);
+    const channel = await fetchChannelCached(client, poll.channel_id, poll.guild_id);
     if (channel && poll.message_id) {
       const message = await channel.messages.fetch(poll.message_id).catch(() => null);
       if (message) {

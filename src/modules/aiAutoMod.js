@@ -174,7 +174,7 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
   const channelId = autoModConfig.flagChannelId;
   if (!channelId) return;
 
-  const flagChannel = await fetchChannelCached(client, channelId).catch(() => null);
+  const flagChannel = await fetchChannelCached(client, channelId, message.guild?.id).catch(() => null);
   if (!flagChannel) return;
 
   const scoreBar = (score) => {

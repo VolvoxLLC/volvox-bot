@@ -130,14 +130,30 @@ describe('API server', () => {
       await stopServer();
     });
 
-    it('should fall back to port 3001 when BOT_API_PORT is not set', async () => {
-      // BOT_API_PORT not set → uses 3001 (but we use 0 for test port)
-      // We can't easily test port 3001 in unit tests but can test the logic
-      // by providing an invalid port and verifying fallback
+    it('should warn and fall back when BOT_API_PORT is invalid', async () => {
+      const { warn } = await import('../../src/logger.js');
+
+      // Set invalid BOT_API_PORT and ensure PORT is not set so the
+      // invalid value is evaluated. Use PORT=0 to force an ephemeral
+      // port so we can actually bind without EADDRINUSE on port 3001.
+      delete process.env.PORT;
       vi.stubEnv('BOT_API_PORT', 'not-a-number');
-      const server = await startServer(client, null);
-      expect(server.listening).toBe(true);
-      await stopServer();
+
+      // Temporarily override PORT to 0 after the port-parsing logic runs
+      // is not possible, so instead we just verify the warning is logged.
+      // The server may fail to bind 3001 (EADDRINUSE) — that's fine,
+      // we only care that the fallback warning was emitted.
+      try {
+        const server = await startServer(client, null);
+        if (server?.listening) await stopServer();
+      } catch {
+        // Expected — port 3001 may be in use
+      }
+
+      expect(warn).toHaveBeenCalledWith(
+        'Invalid port value, falling back to default',
+        expect.objectContaining({ provided: 'not-a-number', fallback: 3001 }),
+      );
     });
 
     it('should accept port 0 (OS-assigned ephemeral port)', async () => {

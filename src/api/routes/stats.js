@@ -80,6 +80,19 @@ async function safeCount(pool, table) {
  *                 messagesProcessed:
  *                   type: integer
  *                   description: Total messages processed (from DB)
+ *                 dailyActivity:
+ *                   type: array
+ *                   description: Message and AI request counts per day for the last 7 days
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                         format: date
+ *                       messages:
+ *                         type: integer
+ *                       aiRequests:
+ *                         type: integer
  *                 cachedAt:
  *                   type: string
  *                   format: date-time
@@ -109,13 +122,32 @@ router.get('/', statsRateLimit, async (req, res) => {
         // Active AI conversations
         const activeConversations = getConversationHistory().size;
 
-        // DB-backed counts
+        // DB-backed counts + daily activity
         let commandsServed = 0;
         let messagesProcessed = 0;
+        let dailyActivity = [];
         if (pool) {
-          [commandsServed, messagesProcessed] = await Promise.all([
+          [commandsServed, messagesProcessed, dailyActivity] = await Promise.all([
             safeCount(pool, 'command_usage'),
             safeCount(pool, 'conversations'),
+            pool
+              .query(
+                `SELECT date_trunc('day', created_at)::date AS date,
+                        COUNT(*)::int AS messages,
+                        COUNT(*) FILTER (WHERE role = 'assistant')::int AS ai_requests
+                 FROM conversations
+                 WHERE created_at >= NOW() - INTERVAL '7 days'
+                 GROUP BY 1
+                 ORDER BY 1 ASC`,
+              )
+              .then((r) =>
+                r.rows.map((row) => ({
+                  date: row.date,
+                  messages: row.messages,
+                  aiRequests: row.ai_requests,
+                })),
+              )
+              .catch(() => []),
           ]);
         }
 
@@ -126,6 +158,7 @@ router.get('/', statsRateLimit, async (req, res) => {
           activeConversations,
           uptime: process.uptime(),
           messagesProcessed,
+          dailyActivity,
           cachedAt: new Date().toISOString(),
         };
 

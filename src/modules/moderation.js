@@ -235,7 +235,7 @@ export async function sendModLogEmbed(client, config, caseData) {
   const channelId = channels[actionKey] || channels.default;
   if (!channelId) return null;
 
-  const channel = await fetchChannelCached(client, channelId);
+  const channel = await fetchChannelCached(client, channelId, caseData.guild_id);
   if (!channel) return null;
 
   const embed = new EmbedBuilder()

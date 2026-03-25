@@ -279,7 +279,7 @@ async function pollGuildFeed(client, guildId, feedConfig) {
     return;
   }
 
-  const channel = await fetchChannelCached(client, channelId);
+  const channel = await fetchChannelCached(client, channelId, guildId);
   if (!channel) {
     logWarn('GitHub feed: channel not found', { guildId, channelId });
     return;

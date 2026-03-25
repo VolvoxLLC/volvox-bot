@@ -189,7 +189,7 @@ export async function postDailyChallenge(client, guildId) {
     return false;
   }
 
-  const channel = await fetchChannelCached(client, channelId);
+  const channel = await fetchChannelCached(client, channelId, guildId);
   if (!channel) {
     logWarn('Challenge channel not found', { guildId, channelId });
     return false;
