@@ -12,13 +12,12 @@ vi.mock('../../../src/modules/actions/roleUtils.js', () => ({
   recordRoleChange: vi.fn(),
 }));
 
-import { info } from '../../../src/logger.js';
+import { handleGrantRole } from '../../../src/modules/actions/grantRole.js';
 import {
   canManageRole,
   checkRoleRateLimit,
   recordRoleChange,
 } from '../../../src/modules/actions/roleUtils.js';
-import { handleGrantRole } from '../../../src/modules/actions/grantRole.js';
 
 function makeContext({
   memberRoles = new Map(),

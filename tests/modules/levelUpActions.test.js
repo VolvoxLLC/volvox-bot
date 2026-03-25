@@ -36,16 +36,12 @@ import {
 describe('resolveActions', () => {
   it('should return level-specific actions for an exact match', () => {
     const config = {
-      levelActions: [
-        { level: 5, actions: [{ type: 'grantRole', roleId: 'r1' }] },
-      ],
+      levelActions: [{ level: 5, actions: [{ type: 'grantRole', roleId: 'r1' }] }],
       defaultActions: [{ type: 'addReaction', emoji: '⬆️' }],
     };
 
     const result = resolveActions(4, 5, config);
-    expect(result).toEqual([
-      { level: 5, action: { type: 'grantRole', roleId: 'r1' } },
-    ]);
+    expect(result).toEqual([{ level: 5, action: { type: 'grantRole', roleId: 'r1' } }]);
   });
 
   it('should return default actions when no level-specific entry exists', () => {
@@ -55,9 +51,7 @@ describe('resolveActions', () => {
     };
 
     const result = resolveActions(2, 3, config);
-    expect(result).toEqual([
-      { level: 3, action: { type: 'addReaction', emoji: '⬆️' } },
-    ]);
+    expect(result).toEqual([{ level: 3, action: { type: 'addReaction', emoji: '⬆️' } }]);
   });
 
   it('should handle level skip: 4→12 fires actions for 5, 10, 12', () => {
@@ -75,9 +69,11 @@ describe('resolveActions', () => {
     expect(result[0]).toEqual({ level: 5, action: { type: 'grantRole', roleId: 'r1' } });
     // Level 6-9: default actions each
     expect(result.filter((r) => r.level >= 6 && r.level <= 9)).toHaveLength(4);
-    expect(result.filter((r) => r.level >= 6 && r.level <= 9).every(
-      (r) => r.action.type === 'addReaction'
-    )).toBe(true);
+    expect(
+      result
+        .filter((r) => r.level >= 6 && r.level <= 9)
+        .every((r) => r.action.type === 'addReaction'),
+    ).toBe(true);
     // Level 10: specific actions
     expect(result.find((r) => r.level === 10)).toEqual({
       level: 10,
@@ -112,7 +108,7 @@ describe('executeLevelUpPipeline', () => {
 
   it('should execute registered actions sequentially', async () => {
     const calls = [];
-    registerAction('testAction', async (action, ctx) => {
+    registerAction('testAction', async (action) => {
       calls.push({ type: action.type, data: action.data });
     });
 
@@ -125,10 +121,13 @@ describe('executeLevelUpPipeline', () => {
       xp: 100,
       config: {
         levelActions: [
-          { level: 1, actions: [
-            { type: 'testAction', data: 'first' },
-            { type: 'testAction', data: 'second' },
-          ]},
+          {
+            level: 1,
+            actions: [
+              { type: 'testAction', data: 'first' },
+              { type: 'testAction', data: 'second' },
+            ],
+          },
         ],
         defaultActions: [],
         roleRewards: { stackRoles: true },
@@ -147,7 +146,7 @@ describe('executeLevelUpPipeline', () => {
     registerAction('failAction', async () => {
       throw new Error('boom');
     });
-    registerAction('successAction', async (action) => {
+    registerAction('successAction', async () => {
       calls.push('success');
     });
 
@@ -159,12 +158,7 @@ describe('executeLevelUpPipeline', () => {
       newLevel: 1,
       xp: 100,
       config: {
-        levelActions: [
-          { level: 1, actions: [
-            { type: 'failAction' },
-            { type: 'successAction' },
-          ]},
-        ],
+        levelActions: [{ level: 1, actions: [{ type: 'failAction' }, { type: 'successAction' }] }],
         defaultActions: [],
         roleRewards: { stackRoles: true },
         levelThresholds: [100],
@@ -187,9 +181,7 @@ describe('executeLevelUpPipeline', () => {
       newLevel: 1,
       xp: 100,
       config: {
-        levelActions: [
-          { level: 1, actions: [{ type: 'nonexistentAction' }] },
-        ],
+        levelActions: [{ level: 1, actions: [{ type: 'nonexistentAction' }] }],
         defaultActions: [],
         roleRewards: { stackRoles: true },
         levelThresholds: [100],
