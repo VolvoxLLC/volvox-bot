@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { generateId, inputClasses } from '@/components/dashboard/config-editor-utils';
 import { CommunitySettingsSection } from '@/components/dashboard/config-sections/CommunitySettingsSection';
@@ -98,6 +98,37 @@ export function OnboardingGrowthCategory() {
     [updateDraftConfig],
   );
 
+  const welcomePreview = useMemo(() => {
+    let text = draftConfig?.welcome?.message ?? '';
+    if (!text) return '';
+
+    // Static variables — sample values
+    text = text
+      .replace(/{user}/g, '@johndoe')
+      .replace(/{username}/g, 'johndoe')
+      .replace(/{server}/g, 'Volvox')
+      .replace(/{guild}/g, 'Volvox')
+      .replace(/{memberCount}/g, '142')
+      .replace(/{count}/g, '142');
+
+    // Dynamic variables — sample values (only if dynamic is enabled)
+    if (draftConfig?.welcome?.dynamic?.enabled) {
+      text = text
+        .replace(/{greeting}/g, 'Good morning @johndoe! You just joined Volvox.')
+        .replace(
+          /{vibeLine}/g,
+          'Things are moving at a healthy pace in #general, so you\'ll fit right in.',
+        )
+        .replace(/{ctaLine}/g, "Say hey in #general and let us know what you're building.")
+        .replace(/{milestoneLine}/g, 'You just rolled in as member #142.')
+        .replace(/{timeOfDay}/g, 'morning')
+        .replace(/{activityLevel}/g, 'steady')
+        .replace(/{topChannels}/g, '#general, #projects, #showcase');
+    }
+
+    return text;
+  }, [draftConfig?.welcome?.message, draftConfig?.welcome?.dynamic?.enabled]);
+
   if (!draftConfig) return null;
 
   return (
@@ -112,19 +143,32 @@ export function OnboardingGrowthCategory() {
           disabled={saving}
           basicContent={
             <div className="space-y-4">
-              <label htmlFor="welcome-message" className="space-y-2 block">
-                <span className="text-sm font-medium">Welcome Message</span>
-                <textarea
-                  id="welcome-message"
-                  value={draftConfig.welcome?.message ?? ''}
-                  onChange={(e) => updateWelcomeMessage(e.target.value)}
-                  rows={4}
-                  disabled={saving}
-                  className={inputClasses}
-                  placeholder="Welcome message template..."
-                  aria-describedby="welcome-message-hint"
-                />
-              </label>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <label htmlFor="welcome-message" className="space-y-2 block">
+                  <span className="text-sm font-medium">Welcome Message</span>
+                  <textarea
+                    id="welcome-message"
+                    value={draftConfig.welcome?.message ?? ''}
+                    onChange={(e) => updateWelcomeMessage(e.target.value)}
+                    rows={6}
+                    disabled={saving}
+                    className={inputClasses}
+                    placeholder="Welcome message template..."
+                    aria-describedby="welcome-message-hint"
+                  />
+                </label>
+                <div className="space-y-2">
+                  <span className="text-sm font-medium text-muted-foreground">Preview</span>
+                  <textarea
+                    value={welcomePreview}
+                    rows={6}
+                    disabled
+                    readOnly
+                    className={`${inputClasses} cursor-default opacity-70`}
+                    aria-label="Welcome message preview"
+                  />
+                </div>
+              </div>
               <details className="group">
                 <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
                   Template Variables
