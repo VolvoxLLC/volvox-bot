@@ -31,31 +31,31 @@ export function BentoAIChat() {
   return (
     <div
       ref={ref}
-      className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5 col-span-1 sm:col-span-2 h-full"
+      className="rounded-2xl border border-border bg-card p-5 transition-transform duration-200 hover:-translate-y-0.5 col-span-1 sm:col-span-2 h-full flex flex-col"
     >
       <div className="text-sm font-semibold text-foreground mb-3">AI Chat</div>
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-3 flex-1 justify-center">
         <motion.div
-          className="flex gap-2 items-start"
+          className="flex gap-3 items-start"
           initial={shouldReduceMotion ? {} : { opacity: 0, y: 8 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.4 }}
         >
-          <div className="w-5 h-5 rounded-full bg-secondary shrink-0 flex items-center justify-center text-[9px] font-bold text-white">
+          <div className="w-7 h-7 rounded-full bg-secondary shrink-0 flex items-center justify-center text-[11px] font-bold text-white">
             A
           </div>
-          <div className="bg-muted/50 rounded-lg px-3 py-1.5 text-xs text-foreground">
+          <div className="bg-muted/50 rounded-lg px-4 py-2 text-sm text-foreground">
             {chat.question}
           </div>
         </motion.div>
 
         <motion.div
-          className="flex gap-2 items-start justify-end"
+          className="flex gap-3 items-start justify-end"
           initial={shouldReduceMotion ? {} : { opacity: 0, y: 8 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.4, delay: shouldReduceMotion ? 0 : 0.3 }}
         >
-          <div className="bg-primary/10 rounded-lg px-3 py-1.5 text-xs text-primary">
+          <div className="bg-primary/10 rounded-lg px-4 py-2 text-sm text-primary">
             <AnimatePresence mode="wait">
               {showResponse ? (
                 <motion.span
@@ -90,7 +90,7 @@ export function BentoAIChat() {
               )}
             </AnimatePresence>
           </div>
-          <div className="w-5 h-5 rounded-full bg-primary shrink-0 flex items-center justify-center text-[9px] font-bold text-white">
+          <div className="w-7 h-7 rounded-full bg-primary shrink-0 flex items-center justify-center text-[11px] font-bold text-white">
             V
           </div>
         </motion.div>
