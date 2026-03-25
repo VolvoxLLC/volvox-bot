@@ -30,12 +30,18 @@ vi.mock('../../../src/modules/config.js', () => ({
 vi.mock('../../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue({ id: 'msg1', content: 'Hello!' }),
 }));
+vi.mock('../../../src/utils/permissions.js', () => ({
+  getBotOwnerIds: vi.fn().mockReturnValue([]),
+  isAdmin: vi.fn().mockReturnValue(false),
+  isModerator: vi.fn().mockReturnValue(false),
+}));
 
 import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 import { safeSend } from '../../../src/utils/safeSend.js';
+import { isAdmin, isModerator } from '../../../src/utils/permissions.js';
 
 const SECRET = 'test-secret';
 
@@ -96,6 +102,27 @@ describe('guilds routes coverage', () => {
       user: { tag: 'Bot#1234' },
     };
     app = createApp(client, mockPool);
+  });
+
+  describe('GET /access', () => {
+    it('returns access levels based on configured moderator/admin role checks', async () => {
+      isAdmin.mockReset().mockReturnValue(false);
+      isModerator.mockReset().mockReturnValue(true);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/access?userId=user1&guildIds=guild1')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([{ id: 'guild1', access: 'moderator' }]);
+      expect(isModerator).toHaveBeenCalled();
+    });
+
+    it('rejects non-api-secret callers', async () => {
+      const res = await request(app).get('/api/v1/guilds/access?userId=user1&guildIds=guild1');
+
+      expect(res.status).toBe(401);
+    });
   });
 
   afterEach(() => {
@@ -190,7 +217,7 @@ describe('guilds routes coverage', () => {
         .send({ action: 'sendMessage', channelId: 'ch1', content: 'hello' });
 
       expect(res.status).toBe(403);
-      expect(res.body.error).toContain('API secret');
+      expect(res.body.error).toContain('admin access');
     });
 
     it('returns 400 when body is missing', async () => {

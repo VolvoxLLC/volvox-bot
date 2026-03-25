@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock logger
 vi.mock('../../../src/logger.js', () => ({
@@ -40,8 +40,13 @@ describe('redisRateLimit', () => {
     redisRateLimit = mod.redisRateLimit;
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
   function makeReq(ip = '127.0.0.1') {
-    return { ip };
+    return { ip, get: vi.fn().mockReturnValue(undefined) };
   }
 
   function makeRes() {
@@ -139,5 +144,21 @@ describe('redisRateLimit', () => {
   it('destroy() cleans up fallback timer', () => {
     const middleware = redisRateLimit();
     expect(() => middleware.destroy()).not.toThrow();
+  });
+
+  it('skips rate limiting for trusted internal requests before touching Redis', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    const req = makeReq();
+    req.get.mockReturnValue('test-secret');
+    const res = makeRes();
+    const next = vi.fn();
+
+    const middleware = redisRateLimit({ max: 1 });
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(getRedis).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

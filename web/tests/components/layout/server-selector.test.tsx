@@ -281,7 +281,7 @@ describe('ServerSelector', () => {
 
     await userEvent.setup().click(screen.getByRole("button", { name: /No manageable servers/i }));
 
-    expect(screen.getByText(/You need mod or admin permissions/i)).toBeInTheDocument();
+    expect(screen.getByText(/You need admin permissions/i)).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /Viewer Server/i })).toHaveAttribute(
       "href",
       "/community/viewer-1",
@@ -291,6 +291,35 @@ describe('ServerSelector', () => {
       expect.stringContaining("/icons/viewer-1/a_hash.gif"),
     );
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
+  });
+
+  it('treats explicit moderator access as manageable without discord permission bits', async () => {
+    const guilds = [
+      {
+        id: "mod-1",
+        name: "Moderator Server",
+        icon: null,
+        owner: false,
+        permissions: "0",
+        access: "moderator",
+        features: [],
+        botPresent: true,
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    render(<ServerSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Moderator Server")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("No manageable servers")).not.toBeInTheDocument();
+    expect(mockBroadcastSelectedGuild).toHaveBeenCalledWith("mod-1");
   });
 
   it('ignores invalid guild records from the api response', async () => {

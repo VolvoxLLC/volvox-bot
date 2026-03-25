@@ -269,7 +269,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         ) : (
           <div className="px-2 py-3 text-center text-xs text-muted-foreground">
             <Server className="mx-auto mb-1 h-4 w-4" />
-            You need mod or admin permissions to manage a server.
+            You need admin permissions to manage a server.
           </div>
         )}
 

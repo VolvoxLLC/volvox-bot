@@ -9,16 +9,47 @@ const DISCORD_API_BASE = 'https://discord.com/api/v10';
 /** Maximum number of retry attempts for rate-limited requests. */
 const MAX_RETRIES = 3;
 
+/** Default maximum delay we'll honor from a single retry-after header. */
+const DEFAULT_MAX_RETRY_DELAY_MS = 5_000;
+
+/** Default total time budget to spend sleeping across all retries. */
+const DEFAULT_TOTAL_RETRY_BUDGET_MS = 8_000;
+
 /** Discord returns at most 200 guilds per page. */
 const GUILDS_PER_PAGE = 200;
+
+interface FetchWithRateLimitOptions extends RequestInit {
+  rateLimit?: {
+    maxRetries?: number;
+    maxRetryDelayMs?: number;
+    totalRetryBudgetMs?: number;
+  };
+}
+
+function parseRetryAfterMs(response: Response): number {
+  const retryAfter = response.headers.get('retry-after');
+  const resetAfter = response.headers.get('x-ratelimit-reset-after');
+  const rawValue = retryAfter ?? resetAfter;
+  const parsed = rawValue ? Number.parseFloat(rawValue) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : 1000;
+}
 
 /**
  * Fetch wrapper with basic rate limit retry logic.
  * When Discord returns 429 Too Many Requests, waits for the indicated
  * retry-after duration and retries up to MAX_RETRIES times.
  */
-export async function fetchWithRateLimit(url: string, init?: RequestInit): Promise<Response> {
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+export async function fetchWithRateLimit(
+  url: string,
+  init?: FetchWithRateLimitOptions,
+): Promise<Response> {
+  const maxRetries = init?.rateLimit?.maxRetries ?? MAX_RETRIES;
+  const maxRetryDelayMs = init?.rateLimit?.maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS;
+  const totalRetryBudgetMs =
+    init?.rateLimit?.totalRetryBudgetMs ?? DEFAULT_TOTAL_RETRY_BUDGET_MS;
+  let totalWaitMs = 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, init);
 
     if (response.status !== 429) {
@@ -26,16 +57,20 @@ export async function fetchWithRateLimit(url: string, init?: RequestInit): Promi
     }
 
     // Rate limited — parse retry-after header (seconds)
-    const retryAfter = response.headers.get('retry-after');
-    const parsed = retryAfter ? Number.parseFloat(retryAfter) : NaN;
-    const waitMs = Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : 1000;
+    const waitMs = parseRetryAfterMs(response);
+    const remainingBudgetMs = totalRetryBudgetMs - totalWaitMs;
 
-    if (attempt === MAX_RETRIES) {
-      return response; // Out of retries, return the 429 as-is
+    if (attempt === maxRetries || waitMs > maxRetryDelayMs || waitMs > remainingBudgetMs) {
+      logger.warn(
+        `[discord] Rate limited on ${url}, not retrying after ${waitMs}ms ` +
+          `(attempt ${attempt + 1}/${maxRetries}, remaining budget ${Math.max(remainingBudgetMs, 0)}ms)`,
+      );
+      return response;
     }
 
     logger.warn(
-      `[discord] Rate limited on ${url}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
+      `[discord] Rate limited on ${url}, retrying in ${waitMs}ms ` +
+        `(attempt ${attempt + 1}/${maxRetries}, remaining budget ${remainingBudgetMs}ms)`,
     );
     // Abort-aware sleep: if the caller's signal fires while we're waiting,
     // cancel the delay immediately instead of blocking for the full duration.
@@ -54,6 +89,7 @@ export async function fetchWithRateLimit(url: string, init?: RequestInit): Promi
       }, waitMs);
       signal?.addEventListener('abort', onAbort, { once: true });
     });
+    totalWaitMs += waitMs;
   }
 
   // Should never reach here, but satisfies TypeScript
@@ -90,6 +126,10 @@ export async function fetchUserGuilds(
       },
       signal,
       cache: 'no-store',
+      rateLimit: {
+        maxRetryDelayMs: 2_000,
+        totalRetryBudgetMs: 4_000,
+      },
     });
 
     if (!response.ok) {
@@ -161,6 +201,11 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
       },
       signal,
       cache: 'no-store',
+      rateLimit: {
+        maxRetries: 1,
+        maxRetryDelayMs: 250,
+        totalRetryBudgetMs: 500,
+      },
     });
 
     if (!response.ok) {

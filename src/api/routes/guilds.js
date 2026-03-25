@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
 import { getConfig, setConfigValue } from '../../modules/config.js';
 import { cacheGetOrSet, TTL } from '../../utils/cache.js';
-import { getBotOwnerIds } from '../../utils/permissions.js';
+import { getBotOwnerIds, isAdmin, isModerator } from '../../utils/permissions.js';
 import { safeSend } from '../../utils/safeSend.js';
 import {
   maskSensitiveFields,
@@ -235,6 +235,50 @@ function isOAuthGuildModerator(user, guildId) {
   return hasOAuthGuildPermission(user, guildId, ADMINISTRATOR_FLAG | MANAGE_GUILD_FLAG);
 }
 
+function accessSatisfiesRequirement(access, requiredAccess) {
+  if (access === 'bot-owner') return true;
+  if (requiredAccess === 'admin') return access === 'admin';
+  return access === 'admin' || access === 'moderator';
+}
+
+/**
+ * Resolve dashboard access for a guild member using the bot's configured role rules.
+ *
+ * @param {import('discord.js').Guild} guild
+ * @param {string} userId
+ * @returns {Promise<'bot-owner'|'admin'|'moderator'|'viewer'>}
+ */
+async function getGuildAccessLevel(guild, userId) {
+  const config = getConfig(guild.id);
+
+  if (getBotOwnerIds(config).includes(userId)) {
+    return 'bot-owner';
+  }
+
+  let member = guild.members.cache.get(userId) || null;
+  if (!member && typeof guild.members?.fetch === 'function') {
+    try {
+      member = await guild.members.fetch(userId);
+    } catch {
+      member = null;
+    }
+  }
+
+  if (!member) {
+    return 'viewer';
+  }
+
+  if (isAdmin(member, config)) {
+    return 'admin';
+  }
+
+  if (isModerator(member, config)) {
+    return 'moderator';
+  }
+
+  return 'viewer';
+}
+
 /**
  * Return Express middleware that enforces a guild-level permission for OAuth users.
  *
@@ -249,7 +293,7 @@ function isOAuthGuildModerator(user, guildId) {
  * @param {string} errorMessage - Message to include in the 403 response when permission is denied.
  * @returns {import('express').RequestHandler} Express middleware enforcing the permission.
  */
-function requireGuildPermission(permissionCheck, errorMessage) {
+function requireGuildPermission(permissionCheck, errorMessage, requiredAccess) {
   return async (req, res, next) => {
     if (req.authMethod === 'api-secret') return next();
 
@@ -257,6 +301,15 @@ function requireGuildPermission(permissionCheck, errorMessage) {
       if (isOAuthBotOwner(req.user)) return next();
 
       try {
+        const guild = req.app.locals.client?.guilds?.cache?.get(req.params.id);
+        if (guild) {
+          const access = await getGuildAccessLevel(guild, req.user.userId);
+          if (!accessSatisfiesRequirement(access, requiredAccess)) {
+            return res.status(403).json({ error: errorMessage });
+          }
+          return next();
+        }
+
         if (!(await permissionCheck(req.user, req.params.id))) {
           return res.status(403).json({ error: errorMessage });
         }
@@ -283,12 +336,14 @@ function requireGuildPermission(permissionCheck, errorMessage) {
 export const requireGuildAdmin = requireGuildPermission(
   isOAuthGuildAdmin,
   'You do not have admin access to this guild',
+  'admin',
 );
 
 /** Middleware: verify OAuth2 users are guild moderators. API-secret users pass through. */
 export const requireGuildModerator = requireGuildPermission(
   isOAuthGuildModerator,
   'You do not have moderator access to this guild',
+  'moderator',
 );
 
 /**
@@ -390,25 +445,22 @@ router.get('/', async (req, res) => {
 
     try {
       const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
-      const filtered = userGuilds.reduce((acc, ug) => {
-        const permissions = Number(ug.permissions);
-        const hasAdmin = (permissions & ADMINISTRATOR_FLAG) !== 0;
-        const hasManageGuild = (permissions & MANAGE_GUILD_FLAG) !== 0;
-        const access = hasAdmin ? 'admin' : hasManageGuild ? 'moderator' : null;
-        if (!access) return acc;
-
-        // Single lookup avoids has/get TOCTOU.
+      const filtered = [];
+      for (const ug of userGuilds) {
         const botGuild = botGuilds.get(ug.id);
-        if (!botGuild) return acc;
-        acc.push({
+        if (!botGuild) continue;
+
+        const access = await getGuildAccessLevel(botGuild, req.user.userId);
+        if (access === 'viewer') continue;
+
+        filtered.push({
           id: ug.id,
           name: botGuild.name,
           icon: botGuild.iconURL(),
           memberCount: botGuild.memberCount,
           access,
         });
-        return acc;
-      }, []);
+      }
 
       return res.json(filtered);
     } catch (err) {
@@ -433,6 +485,38 @@ router.get('/', async (req, res) => {
   // Unknown auth method — reject
   warn('Unknown authMethod in guild list', { authMethod: req.authMethod, path: req.path });
   return res.status(401).json({ error: 'Unauthorized' });
+});
+
+router.get('/access', async (req, res) => {
+  if (req.authMethod !== 'api-secret') {
+    return res.status(403).json({ error: 'Guild access endpoint requires API secret authentication' });
+  }
+
+  const userId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
+  const guildIdsRaw = typeof req.query.guildIds === 'string' ? req.query.guildIds : '';
+
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId query parameter' });
+  }
+
+  const guildIds = [...new Set(guildIdsRaw.split(',').map((id) => id.trim()).filter(Boolean))];
+  if (guildIds.length === 0) {
+    return res.json([]);
+  }
+
+  const { client } = req.app.locals;
+
+  const accessEntries = await Promise.all(
+    guildIds.map(async (guildId) => {
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return null;
+
+      const access = await getGuildAccessLevel(guild, userId);
+      return { id: guildId, access };
+    }),
+  );
+
+  return res.json(accessEntries.filter(Boolean));
 });
 
 /** Maximum number of channels to return to avoid oversized payloads. */

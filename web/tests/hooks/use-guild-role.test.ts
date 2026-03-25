@@ -32,6 +32,12 @@ describe('use-guild-role', () => {
     expect(getGuildDashboardRole(createGuild({ permissions: '32' }))).toBe('admin');
   });
 
+  it('prefers explicit access from the api when provided', () => {
+    expect(getGuildDashboardRole(createGuild({ permissions: '0', access: 'moderator' }))).toBe(
+      'moderator',
+    );
+  });
+
   it('returns moderator for kick members permissions', () => {
     expect(getGuildDashboardRole(createGuild({ permissions: '2' }))).toBe('moderator');
   });

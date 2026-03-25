@@ -22,6 +22,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ComponentType, useEffect, useState } from 'react';
 import { Separator } from '@/components/ui/separator';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
+import type { MutualGuild } from '@/types/discord';
 import { cn } from '@/lib/utils';
 
 /** Shared shape for sidebar navigation entries */
@@ -48,6 +50,10 @@ const secondaryNav: NavItem[] = [
   { name: 'Logs', href: '/dashboard/logs', icon: ScrollText },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
+
+const moderatorPrimaryNav: NavItem[] = primaryNav.filter((item) =>
+  ['/dashboard/moderation', '/dashboard/members', '/dashboard/tickets'].includes(item.href),
+);
 
 interface SidebarProps {
   className?: string;
@@ -98,10 +104,16 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
 
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
+  const guildId = useGuildSelection();
+  const [guilds, setGuilds] = useState<MutualGuild[]>([]);
   const isNavItemActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
-  const hasActiveSecondaryItem = secondaryNav.some((item) => isNavItemActive(item.href));
-  const activeSecondaryHref = secondaryNav.find((item) => isNavItemActive(item.href))?.href ?? null;
+  const activeGuildAccess = guilds.find((guild) => guild.id === guildId)?.access ?? null;
+  const visiblePrimaryNav = activeGuildAccess === 'moderator' ? moderatorPrimaryNav : primaryNav;
+  const visibleSecondaryNav = activeGuildAccess === 'moderator' ? [] : secondaryNav;
+  const hasActiveSecondaryItem = visibleSecondaryNav.some((item) => isNavItemActive(item.href));
+  const activeSecondaryHref =
+    visibleSecondaryNav.find((item) => isNavItemActive(item.href))?.href ?? null;
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(hasActiveSecondaryItem);
 
   useEffect(() => {
@@ -109,6 +121,34 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
       setIsSecondaryOpen(true);
     }
   }, [activeSecondaryHref]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const response = await fetch('/api/guilds', { signal: controller.signal });
+        if (!response.ok) return;
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) return;
+        setGuilds(
+          data.filter(
+            (guild): guild is MutualGuild =>
+              typeof guild === 'object' &&
+              guild !== null &&
+              typeof (guild as { id?: unknown }).id === 'string' &&
+              typeof (guild as { name?: unknown }).name === 'string' &&
+              typeof (guild as { permissions?: unknown }).permissions === 'string' &&
+              typeof (guild as { owner?: unknown }).owner === 'boolean',
+          ),
+        );
+      } catch {
+        // Keep full nav if the guild list cannot be loaded.
+      }
+    })();
+
+    return () => controller.abort();
+  }, []);
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
@@ -122,29 +162,35 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
         </div>
 
         <nav className="space-y-0.5">
-          {primaryNav.map((item) => renderNavItem(item, isNavItemActive(item.href), onNavClick))}
+          {visiblePrimaryNav.map((item) =>
+            renderNavItem(item, isNavItemActive(item.href), onNavClick),
+          )}
         </nav>
 
-        <Separator className="my-4 opacity-50" />
+        {visibleSecondaryNav.length > 0 && <Separator className="my-4 opacity-50" />}
 
-        <details
-          className="group"
-          open={isSecondaryOpen}
-          onToggle={(event) => setIsSecondaryOpen((event.currentTarget as HTMLDetailsElement).open)}
-        >
-          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
-            <span className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5" />
-              Extensions
-            </span>
-            <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" />
-          </summary>
-          <nav className="mt-2 space-y-0.5">
-            {secondaryNav.map((item) =>
-              renderNavItem(item, isNavItemActive(item.href), onNavClick),
-            )}
-          </nav>
-        </details>
+        {visibleSecondaryNav.length > 0 && (
+          <details
+            className="group"
+            open={isSecondaryOpen}
+            onToggle={(event) =>
+              setIsSecondaryOpen((event.currentTarget as HTMLDetailsElement).open)
+            }
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+              <span className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5" />
+                Extensions
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" />
+            </summary>
+            <nav className="mt-2 space-y-0.5">
+              {visibleSecondaryNav.map((item) =>
+                renderNavItem(item, isNavItemActive(item.href), onNavClick),
+              )}
+            </nav>
+          </details>
+        )}
 
         {/* Workflow tip card */}
         <div className="mt-5 overflow-hidden rounded-xl border border-border/60 bg-card/75 p-4 shadow-none">

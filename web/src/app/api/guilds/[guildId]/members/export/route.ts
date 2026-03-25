@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { authorizeGuildAdmin, buildUpstreamUrl, getBotApiConfig } from '@/lib/bot-api-proxy';
+import { authorizeGuildModerator, buildUpstreamUrl, getBotApiConfig } from '@/lib/bot-api-proxy';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export async function GET(
     return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
+  const authError = await authorizeGuildModerator(request, guildId, LOG_PREFIX);
   if (authError) return authError;
 
   const apiConfig = getBotApiConfig(LOG_PREFIX);

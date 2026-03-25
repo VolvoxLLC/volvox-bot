@@ -26,6 +26,10 @@ export type GuildDashboardRole = 'owner' | 'admin' | 'moderator' | 'viewer';
  * @returns The user's dashboard role in that guild
  */
 export function getGuildDashboardRole(guild: MutualGuild): GuildDashboardRole {
+  if (guild.access === 'bot-owner') return 'admin';
+  if (guild.access === 'admin') return 'admin';
+  if (guild.access === 'moderator') return 'moderator';
+  if (guild.access === 'viewer') return 'viewer';
   if (guild.owner) return 'owner';
 
   let perms: bigint;
@@ -56,5 +60,6 @@ export function getGuildDashboardRole(guild: MutualGuild): GuildDashboardRole {
  * Non-manageable roles: viewer (member-only).
  */
 export function isGuildManageable(guild: MutualGuild): boolean {
-  return getGuildDashboardRole(guild) !== 'viewer';
+  const role = getGuildDashboardRole(guild);
+  return role === 'owner' || role === 'admin' || role === 'moderator';
 }

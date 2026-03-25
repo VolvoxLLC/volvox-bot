@@ -15,6 +15,7 @@ export interface BotGuild {
 
 export interface MutualGuild extends DiscordGuild {
   botPresent: boolean;
+  access?: 'owner' | 'admin' | 'moderator' | 'viewer' | 'bot-owner';
 }
 
 export interface DiscordChannel {
