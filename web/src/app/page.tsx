@@ -114,9 +114,9 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="rounded-full text-secondary hover:bg-secondary/8 hover:text-secondary"
+              className="rounded-full border-secondary/25 text-secondary font-semibold hover:bg-secondary hover:text-secondary-foreground hover:border-secondary hover:shadow-[0_0_12px_-3px] hover:shadow-secondary/25 transition-all"
               asChild
             >
               <Link href="/login">Sign In</Link>
@@ -203,7 +203,7 @@ export default function LandingPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full border-secondary/20 text-secondary hover:bg-secondary/8 hover:text-secondary"
+                  className="rounded-full border-secondary/25 text-secondary font-semibold hover:bg-secondary hover:text-secondary-foreground hover:border-secondary hover:shadow-[0_0_12px_-3px] hover:shadow-secondary/25 transition-all"
                   asChild
                 >
                   <Link href="/login">Sign In</Link>

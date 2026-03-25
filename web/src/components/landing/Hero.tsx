@@ -9,11 +9,10 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import { ArrowRight, Bot, MessageSquare, Shield, Sparkles, Terminal, Zap } from 'lucide-react';
-import Link from 'next/link';
+import { Bot, MessageSquare, Shield, Sparkles, Terminal, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { InviteButton } from './InviteButton';
+import { GetStartedButton } from '@/components/ui/get-started-button';
+import { getBotInviteUrl } from '@/lib/discord';
 
 // ─── Typewriter hook (headline) ──────────────────────────────────────────────
 
@@ -393,11 +392,10 @@ function ChatConsole() {
               >
                 {msg.role === 'bot' && <BotAvatar icon={msg.icon} />}
                 <div
-                  className={`px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] ${
-                    msg.role === 'user'
+                  className={`px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] ${msg.role === 'user'
                       ? 'bg-primary text-white rounded-[16px] rounded-br-[4px]'
                       : `rounded-2xl rounded-bl-md border text-foreground ${iconToneClasses[msg.icon ?? 'bot'].bubble}`
-                  }`}
+                    }`}
                 >
                   {msg.role === 'bot' && msg.isTyping ? (
                     <BotBubble
@@ -457,6 +455,7 @@ export function Hero() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const botInviteUrl = getBotInviteUrl();
   const { displayText, isComplete } = useTypewriter('volvox-bot', 40, 150);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -547,36 +546,22 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="flex flex-col gap-4 sm:flex-row justify-center mb-16"
           >
-            <InviteButton
-              size="lg"
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform"
-            />
-            <Button
+            {botInviteUrl && (
+              <GetStartedButton
+                variant="discord"
+                label="Add to Server"
+                href={botInviteUrl}
+                className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase shadow-lg shadow-[var(--color-discord)]/20"
+              />
+            )}
+            <GetStartedButton
               variant="outline"
-              size="lg"
-              className="rounded-full h-14 px-8 font-bold text-sm tracking-widest uppercase text-accent border-accent/25 hover:scale-105 hover:bg-accent/8 hover:border-accent/35 transition-transform"
-              asChild
-            >
-              <Link href="/login">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Open Dashboard
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="lg"
-              className="rounded-full text-secondary hover:bg-muted hover:text-secondary"
-              asChild
-            >
-              <a
-                href="https://github.com/VolvoxLLC/volvox-bot"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View on Github
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
+              icon={MessageSquare}
+              label="Open Dashboard"
+              href="/login"
+              internal
+              className="rounded-full h-14 px-8 font-bold text-sm tracking-widest uppercase text-accent border-accent/25 hover:bg-accent/8 hover:border-accent/35"
+            />
           </motion.div>
         </motion.div>
 
@@ -587,10 +572,10 @@ export function Hero() {
             shouldReduceMotion
               ? undefined
               : {
-                  opacity: consoleOpacity,
-                  scale: consoleScale,
-                  y: consoleY,
-                }
+                opacity: consoleOpacity,
+                scale: consoleScale,
+                y: consoleY,
+              }
           }
         >
           <ChatConsole />

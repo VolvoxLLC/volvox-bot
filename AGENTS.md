@@ -24,7 +24,7 @@ Keep this file for repo-specific rules, gotchas, and conventions. If something b
 
 - Any visual dashboard or landing page change must be verified with Chrome DevTools MCP before you call it done.
 - Take a screenshot after the change.
-- Check both themes (light and dark) if colors or theming changed.
+- Check both themes, light and dark, if colors or theming changed. Always check both themes this is important.
 - Check responsive behavior if layout changed. Verify on mobile, tablet, and desktop.
 - If the dashboard is not running or MCP is unavailable, say so plainly. Do not pretend it was verified.
 
