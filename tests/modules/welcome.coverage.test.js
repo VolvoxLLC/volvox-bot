@@ -78,8 +78,12 @@ function makeMember({
   };
 }
 
-function makeClient(channelSend = vi.fn().mockResolvedValue({ id: 'msg1' }), fetchError = null) {
-  const channel = { id: 'ch1', send: channelSend };
+function makeClient(
+  channelSend = vi.fn().mockResolvedValue({ id: 'msg1' }),
+  fetchError = null,
+  guildId = 'guild1',
+) {
+  const channel = { id: 'ch1', send: channelSend, guildId };
   return {
     channels: {
       fetch: fetchError
@@ -204,6 +208,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
+          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
           dynamic: { enabled: true },
         },
       };
@@ -222,6 +227,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
+          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
           dynamic: { enabled: true },
         },
       };
@@ -357,12 +363,13 @@ describe('welcome module coverage', () => {
       }
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
-      const client = makeClient(mockSend);
+      const client = makeClient(mockSend, null, 'g-hype');
       const member = makeMember({ guildId: 'g-hype', channelIds: ['ch-hype'] });
       const config = {
         welcome: {
           enabled: true,
           channelId: 'ch-hype',
+          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
           dynamic: { enabled: true, activityWindowMinutes: 60 },
         },
       };
@@ -375,7 +382,7 @@ describe('welcome module coverage', () => {
 
     it('generates quiet level message when no activity', async () => {
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
-      const client = makeClient(mockSend);
+      const client = makeClient(mockSend, null, 'g-quiet-x');
       // No activity recorded, no voice channels
       const member = makeMember({ guildId: 'g-quiet-x', channelIds: [] });
       member.guild.channels.cache = makeChannelCache([], []);
@@ -383,11 +390,10 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch-quiet',
+          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
           dynamic: { enabled: true },
         },
       };
-      // fetch will return a channel even though it's not in guild cache
-      // that's fine - the welcome channel is separate
 
       await sendWelcomeMessage(member, client, config);
       expect(mockSend).toHaveBeenCalled();
@@ -408,7 +414,7 @@ describe('welcome module coverage', () => {
       }
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
-      const client = makeClient(mockSend);
+      const client = makeClient(mockSend, null, 'g-steady');
       const member = makeMember({ guildId: 'g-steady', channelIds: ['ch-steady'] });
       const config = {
         welcome: {
@@ -437,7 +443,7 @@ describe('welcome module coverage', () => {
       }
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
-      const client = makeClient(mockSend);
+      const client = makeClient(mockSend, null, 'g-busy');
       const member = makeMember({ guildId: 'g-busy', channelIds: ['ch-busy'] });
       const config = {
         welcome: {
@@ -462,6 +468,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
+          message: '{ctaLine}',
           dynamic: { enabled: true },
         },
       };
@@ -480,6 +487,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
+          message: '{ctaLine} {topChannels}',
           dynamic: { enabled: true, highlightChannels: ['ch1'] },
         },
       };
@@ -498,6 +506,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
+          message: '{ctaLine} {topChannels}',
           dynamic: { enabled: true, highlightChannels: ['ch1', 'ch2'] },
         },
       };
@@ -516,6 +525,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
+          message: '{ctaLine}',
           dynamic: { enabled: true, highlightChannels: ['ch1', 'ch2', 'ch3'] },
         },
       };
@@ -540,7 +550,7 @@ describe('welcome module coverage', () => {
       );
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
-      const client = makeClient(mockSend);
+      const client = makeClient(mockSend, null, 'g-voice');
       // Guild has voice channels with members but no text channel suggestions
       const member = makeMember({
         guildId: 'g-voice',
@@ -551,6 +561,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch-voice',
+          message: '{vibeLine}',
           dynamic: { enabled: true, activityWindowMinutes: 60 },
         },
       };
@@ -574,7 +585,7 @@ describe('welcome module coverage', () => {
       );
 
       const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
-      const client = makeClient(mockSend);
+      const client = makeClient(mockSend, null, 'g-voice2');
       // Guild has a text channel suggestion AND voice channels with members
       const member = makeMember({
         guildId: 'g-voice2',

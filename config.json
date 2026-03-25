@@ -48,7 +48,7 @@
   "welcome": {
     "enabled": true,
     "channelId": "1438631182379253814",
-    "message": "Welcome to Volvox, {user}! \ud83c\udf31 You're member #{memberCount}!\n\nWe're a community of developers building cool stuff together. Feel free to introduce yourself!\n\nCheck out <#1446317676988465242> to see what we're working on, share your projects in <#1444154471704957069>, or just say hi in <#1438631182379253814>.\n\nHave questions? Just ask \u2014 we're here to help. \ud83d\udc9a",
+    "message": "{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}",
     "dynamic": {
       "enabled": true,
       "timezone": "America/New_York",

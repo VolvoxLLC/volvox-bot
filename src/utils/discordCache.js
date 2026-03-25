@@ -15,16 +15,31 @@ import { cacheDelPattern, cacheGet, cacheSet, TTL } from './cache.js';
  * Fetch a channel with caching.
  * Falls through to Discord API on cache miss, caches the serialized result.
  *
+ * When `expectedGuildId` is provided the function returns `null` if the
+ * resolved channel belongs to a different guild — preventing cross-guild
+ * message leaks from misconfigured channel IDs.
+ *
  * @param {import('discord.js').Client} client - Discord client
  * @param {string} channelId - Channel ID to fetch
- * @returns {Promise<import('discord.js').Channel|null>} The channel, or null if not found
+ * @param {string} [expectedGuildId] - If set, reject channels not belonging to this guild
+ * @returns {Promise<import('discord.js').Channel|null>} The channel, or null if not found / wrong guild
  */
-export async function fetchChannelCached(client, channelId) {
+export async function fetchChannelCached(client, channelId, expectedGuildId) {
   if (!channelId) return null;
 
   // Try Discord.js internal cache first (always fastest)
   const djsCached = client.channels.cache.get(channelId);
-  if (djsCached) return djsCached;
+  if (djsCached) {
+    if (expectedGuildId && djsCached.guildId !== expectedGuildId) {
+      warn('Channel belongs to a different guild — blocked', {
+        channelId,
+        channelGuildId: djsCached.guildId,
+        expectedGuildId,
+      });
+      return null;
+    }
+    return djsCached;
+  }
 
   // Try Redis/memory cache to detect a known-valid channel ID before hitting the API.
   // We cannot return cached metadata directly because callers expect a real
@@ -34,9 +49,29 @@ export async function fetchChannelCached(client, channelId) {
   const cacheKey = `discord:channel:${channelId}`;
   const cached = await cacheGet(cacheKey);
   if (cached) {
+    // Fast-reject via cached metadata before making an API call
+    if (expectedGuildId && cached.guildId && cached.guildId !== expectedGuildId) {
+      warn('Channel belongs to a different guild (cached) — blocked', {
+        channelId,
+        channelGuildId: cached.guildId,
+        expectedGuildId,
+      });
+      return null;
+    }
+
     // Re-check DJS cache in case it was populated during the async gap
     const recheckDjs = client.channels.cache.get(channelId);
-    if (recheckDjs) return recheckDjs;
+    if (recheckDjs) {
+      if (expectedGuildId && recheckDjs.guildId !== expectedGuildId) {
+        warn('Channel belongs to a different guild — blocked', {
+          channelId,
+          channelGuildId: recheckDjs.guildId,
+          expectedGuildId,
+        });
+        return null;
+      }
+      return recheckDjs;
+    }
 
     debug('Redis cache hit for channel — fetching real Channel object', { channelId });
     // Fall through to Discord API fetch below
@@ -58,6 +93,15 @@ export async function fetchChannelCached(client, channelId) {
         TTL.CHANNEL_DETAIL,
       );
       debug('Fetched and cached channel', { channelId, name: channel.name });
+
+      if (expectedGuildId && channel.guildId !== expectedGuildId) {
+        warn('Channel belongs to a different guild — blocked', {
+          channelId,
+          channelGuildId: channel.guildId,
+          expectedGuildId,
+        });
+        return null;
+      }
     }
     return channel;
   } catch (err) {

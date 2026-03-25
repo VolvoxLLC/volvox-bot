@@ -85,6 +85,19 @@ export function OnboardingGrowthCategory() {
     [updateDraftConfig],
   );
 
+  const updateWelcomeDynamic = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => ({
+        ...prev,
+        welcome: {
+          ...(prev.welcome ?? {}),
+          dynamic: { ...(prev.welcome?.dynamic ?? {}), [field]: value },
+        },
+      }));
+    },
+    [updateDraftConfig],
+  );
+
   if (!draftConfig) return null;
 
   return (
@@ -112,10 +125,63 @@ export function OnboardingGrowthCategory() {
                   aria-describedby="welcome-message-hint"
                 />
               </label>
-              <p id="welcome-message-hint" className="text-xs text-muted-foreground">
-                Use {'{user}'} for the member mention and {'{memberCount}'} for the server member
-                count.
-              </p>
+              <details className="group">
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+                  Template Variables
+                </summary>
+                <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">Always available</p>
+                  <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    <li>
+                      <code>{'{user}'}</code> — Member mention
+                    </li>
+                    <li>
+                      <code>{'{username}'}</code> — Plain username
+                    </li>
+                    <li>
+                      <code>{'{server}'}</code> — Server name
+                    </li>
+                    <li>
+                      <code>{'{guild}'}</code> — Server name (alias)
+                    </li>
+                    <li>
+                      <code>{'{memberCount}'}</code> — Member count
+                    </li>
+                    <li>
+                      <code>{'{count}'}</code> — Member count (alias)
+                    </li>
+                  </ul>
+                  <p className="font-medium text-foreground">
+                    Dynamic Welcome{' '}
+                    <span className="font-normal text-muted-foreground">
+                      (requires Dynamic Welcome enabled)
+                    </span>
+                  </p>
+                  <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    <li>
+                      <code>{'{greeting}'}</code> — Time-of-day greeting
+                    </li>
+                    <li>
+                      <code>{'{vibeLine}'}</code> — Activity description
+                    </li>
+                    <li>
+                      <code>{'{ctaLine}'}</code> — Channel suggestions CTA
+                    </li>
+                    <li>
+                      <code>{'{milestoneLine}'}</code> — Member milestone
+                    </li>
+                    <li>
+                      <code>{'{timeOfDay}'}</code> — morning / afternoon / evening / night
+                    </li>
+                    <li>
+                      <code>{'{activityLevel}'}</code> — quiet / light / steady / busy / hype
+                    </li>
+                    <li>
+                      <code>{'{topChannels}'}</code> — Most active channels
+                    </li>
+                  </ul>
+                </div>
+              </details>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <label htmlFor="rules-channel-id" className="space-y-2">
@@ -167,6 +233,26 @@ export function OnboardingGrowthCategory() {
           }
           advancedContent={
             <div className="space-y-4">
+              <fieldset className="space-y-2 rounded-md border p-3">
+                <legend className="text-sm font-medium">Dynamic Welcome</legend>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Enable dynamic context-aware variables
+                  </span>
+                  <ToggleSwitch
+                    checked={draftConfig.welcome?.dynamic?.enabled ?? false}
+                    onChange={(v) => updateWelcomeDynamic('enabled', v)}
+                    disabled={saving}
+                    label="Dynamic Welcome"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Adds {'{greeting}'}, {'{vibeLine}'}, {'{ctaLine}'}, {'{milestoneLine}'},
+                  {' {timeOfDay}'}, {'{activityLevel}'}, and {'{topChannels}'} variables to
+                  your welcome message template.
+                </p>
+              </fieldset>
+
               <fieldset className="space-y-2 rounded-md border p-3">
                 <legend className="text-sm font-medium">Role Menu</legend>
                 <div className="flex items-center justify-between">

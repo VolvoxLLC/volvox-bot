@@ -124,7 +124,7 @@ export async function updateReviewMessage(review, client) {
   if (!review.message_id || !review.channel_id) return;
 
   try {
-    const channel = await fetchChannelCached(client, review.channel_id);
+    const channel = await fetchChannelCached(client, review.channel_id, review.guild_id);
     if (!channel) return;
 
     const message = await channel.messages.fetch(review.message_id).catch(() => null);
@@ -304,7 +304,7 @@ export async function expireStaleReviews(client) {
       if (!reviewChannelId) continue;
 
       try {
-        const channel = await fetchChannelCached(client, reviewChannelId);
+        const channel = await fetchChannelCached(client, reviewChannelId, guildId);
         if (!channel) continue;
 
         const ids = reviews.map((r) => `#${r.id}`).join(', ');

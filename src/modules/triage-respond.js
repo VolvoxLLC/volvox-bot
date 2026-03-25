@@ -96,12 +96,12 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
  * @param {string} channelId - ID of the source channel where the violation occurred (used in the embed's Channel field).
  * @param {Object} config - Guild configuration containing `triage.moderationLogChannel`.
  */
-export async function sendModerationLog(client, classification, snapshot, channelId, config) {
+export async function sendModerationLog(client, classification, snapshot, channelId, config, guildId) {
   const logChannelId = config.triage?.moderationLogChannel;
   if (!logChannelId) return;
 
   try {
-    const logChannel = await fetchChannelCached(client, logChannelId);
+    const logChannel = await fetchChannelCached(client, logChannelId, guildId);
     if (!logChannel) return;
 
     // Find target messages from the snapshot

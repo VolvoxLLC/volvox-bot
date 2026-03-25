@@ -3,13 +3,19 @@ import { describe, expect, it, vi } from 'vitest';
 // Mock logger
 
 // Mock discordCache to pass through to the underlying client.channels.fetch
+// with cross-guild isolation: rejects channels whose guildId doesn't match expectedGuildId
 vi.mock('../../src/utils/discordCache.js', () => ({
-  fetchChannelCached: vi.fn().mockImplementation(async (client, channelId) => {
+  fetchChannelCached: vi.fn().mockImplementation(async (client, channelId, expectedGuildId) => {
     if (!channelId) return null;
     const cached = client.channels?.cache?.get?.(channelId);
-    if (cached) return cached;
+    if (cached) {
+      if (expectedGuildId && cached.guildId !== expectedGuildId) return null;
+      return cached;
+    }
     if (client.channels?.fetch) {
-      return client.channels.fetch(channelId).catch(() => null);
+      const ch = await client.channels.fetch(channelId).catch(() => null);
+      if (ch && expectedGuildId && ch.guildId !== expectedGuildId) return null;
+      return ch;
     }
     return null;
   }),
@@ -419,6 +425,7 @@ describe('sendWelcomeMessage', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
+        message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
         dynamic: {
           enabled: true,
           timezone: 'UTC',
@@ -678,6 +685,7 @@ describe('sendWelcomeMessage', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
+        message: '{milestoneLine}',
         dynamic: { enabled: true, timezone: 'UTC', milestoneInterval: 25 },
       },
     };
@@ -834,5 +842,212 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
 
     await sendWelcomeMessage(member, client, config);
     expect(mockSend.mock.calls[0][0].content).toBe('<@321> joined Alias Guild as member #88');
+  });
+});
+
+describe('sendWelcomeMessage – cross-guild isolation', () => {
+  it('should not send when primary channel belongs to a different guild', async () => {
+    const mockSend = vi.fn();
+    const foreignChannel = { send: mockSend, guildId: 'other-guild' };
+    const member = {
+      id: '123',
+      user: { tag: 'user#1234', username: 'testuser' },
+      guild: { id: 'my-guild', name: 'My Guild', memberCount: 10 },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue(foreignChannel) } };
+    const config = {
+      welcome: { enabled: true, channelId: 'foreign-ch', message: 'Hello {user}!' },
+    };
+    await sendWelcomeMessage(member, client, config);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('should not send to per-channel target in a different guild', async () => {
+    const primarySend = vi.fn();
+    const foreignSend = vi.fn();
+    const member = {
+      id: '123',
+      user: { tag: 'user#1234', username: 'testuser' },
+      guild: { id: 'my-guild', name: 'My Guild', memberCount: 10 },
+    };
+    const channelMap = {
+      'local-ch': { send: primarySend, guildId: 'my-guild' },
+      'foreign-ch': { send: foreignSend, guildId: 'other-guild' },
+    };
+    const client = {
+      channels: {
+        cache: { get: (id) => channelMap[id] || null },
+        fetch: vi.fn().mockImplementation((id) => Promise.resolve(channelMap[id] || null)),
+      },
+    };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'local-ch',
+        message: 'Hello {user}!',
+        channels: [{ channelId: 'foreign-ch', message: 'Sneaky {user}!' }],
+      },
+    };
+    await sendWelcomeMessage(member, client, config);
+    expect(primarySend).toHaveBeenCalledOnce();
+    expect(foreignSend).not.toHaveBeenCalled();
+  });
+
+  it('should send when channel belongs to the correct guild', async () => {
+    const mockSend = vi.fn();
+    const localChannel = { send: mockSend, guildId: 'my-guild' };
+    const member = {
+      id: '123',
+      user: { tag: 'user#1234', username: 'testuser' },
+      guild: { id: 'my-guild', name: 'My Guild', memberCount: 10 },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue(localChannel) } };
+    const config = {
+      welcome: { enabled: true, channelId: 'local-ch', message: 'Hello {user}!' },
+    };
+    await sendWelcomeMessage(member, client, config);
+    expect(mockSend).toHaveBeenCalledOnce();
+  });
+});
+
+describe('renderWelcomeMessage – dynamic context variables', () => {
+  const member = { id: '123', username: 'testuser' };
+  const guild = { name: 'Test Server', memberCount: 50 };
+
+  it('should replace dynamic variables when context is provided', () => {
+    const dynamicCtx = {
+      greeting: 'Good morning, <@123>!',
+      vibeLine: 'Things are quiet right now.',
+      ctaLine: 'Say hey in #general.',
+      milestoneLine: 'You are member #50.',
+      timeOfDay: 'morning',
+      activityLevel: 'quiet',
+      topChannels: '<#111>, <#222>',
+    };
+    const result = renderWelcomeMessage(
+      '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+      member,
+      guild,
+      dynamicCtx,
+    );
+    expect(result).toBe(
+      'Good morning, <@123>!\n\nYou are member #50.\n\nThings are quiet right now.\n\nSay hey in #general.',
+    );
+  });
+
+  it('should not replace dynamic placeholders when context is null', () => {
+    const result = renderWelcomeMessage('{greeting} {vibeLine}', member, guild, null);
+    expect(result).toBe('{greeting} {vibeLine}');
+  });
+
+  it('should not replace dynamic placeholders when context is omitted', () => {
+    const result = renderWelcomeMessage('{greeting} {vibeLine}', member, guild);
+    expect(result).toBe('{greeting} {vibeLine}');
+  });
+
+  it('should allow mixing static and dynamic variables', () => {
+    const dynamicCtx = {
+      greeting: 'Hey there!',
+      vibeLine: 'It is quiet.',
+      ctaLine: '',
+      milestoneLine: '',
+      timeOfDay: 'evening',
+      activityLevel: 'quiet',
+      topChannels: '',
+    };
+    const result = renderWelcomeMessage(
+      '{greeting} Welcome {user} to {server}! Activity: {activityLevel}',
+      member,
+      guild,
+      dynamicCtx,
+    );
+    expect(result).toBe('Hey there! Welcome <@123> to Test Server! Activity: quiet');
+  });
+});
+
+describe('sendWelcomeMessage – dynamic template variables', () => {
+  it('should replace {greeting} and {vibeLine} in template when dynamic is enabled', async () => {
+    const mockSend = vi.fn();
+    const member = {
+      id: '123',
+      user: { tag: 'user#1234', username: 'testuser' },
+      guild: {
+        name: 'Test Server',
+        memberCount: 50,
+        channels: {
+          cache: {
+            filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
+            has: vi.fn().mockReturnValue(false),
+          },
+        },
+      },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+        dynamic: { enabled: true, timezone: 'UTC' },
+      },
+    };
+    await sendWelcomeMessage(member, client, config);
+    const msg = mockSend.mock.calls[0][0].content;
+    // Greeting should contain the user mention
+    expect(msg).toContain('<@123>');
+    // Vibe line should be the quiet default (no activity recorded)
+    expect(msg).toContain('quiet window');
+    // CTA line should have a fallback
+    expect(msg).toContain('building');
+  });
+
+  it('should leave dynamic placeholders as-is when dynamic is disabled', async () => {
+    const mockSend = vi.fn();
+    const member = {
+      id: '123',
+      user: { tag: 'user#1234', username: 'testuser' },
+      guild: { name: 'Test Server', memberCount: 50 },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        message: '{user} joined! {greeting} {vibeLine}',
+      },
+    };
+    await sendWelcomeMessage(member, client, config);
+    const msg = mockSend.mock.calls[0][0].content;
+    expect(msg).toBe('<@123> joined! {greeting} {vibeLine}');
+  });
+
+  it('should replace {activityLevel} and {timeOfDay} in template', async () => {
+    const mockSend = vi.fn();
+    const member = {
+      id: '123',
+      user: { tag: 'user#1234', username: 'testuser' },
+      guild: {
+        name: 'Test Server',
+        memberCount: 50,
+        channels: {
+          cache: {
+            filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
+            has: vi.fn().mockReturnValue(false),
+          },
+        },
+      },
+    };
+    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+    const config = {
+      welcome: {
+        enabled: true,
+        channelId: 'ch1',
+        message: 'Hi {user}! Activity: {activityLevel}',
+        dynamic: { enabled: true, timezone: 'UTC' },
+      },
+    };
+    await sendWelcomeMessage(member, client, config);
+    const msg = mockSend.mock.calls[0][0].content;
+    expect(msg).toBe('Hi <@123>! Activity: quiet');
   });
 });
