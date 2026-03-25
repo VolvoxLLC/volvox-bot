@@ -37,7 +37,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
     const range = max - min || 1;
     const normalized = values.map((v) => 30 + ((v - min) / range) * 65);
 
-    // If fewer than 2 points, pad to 2 with the same height so the line is visible
+    // If fewer than 2 points, pad to 2 with the same height so the line is visible (not 7, we only need 2)
     if (normalized.length === 1) {
       return [normalized[0], normalized[0]];
     }

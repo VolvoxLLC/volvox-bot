@@ -12,11 +12,11 @@ import { ScrollStage } from './ScrollStage';
 import { SectionHeader } from './SectionHeader';
 
 interface AnimatedCellProps {
-  children: ReactNode;
-  isInView: boolean;
-  shouldReduceMotion: boolean;
-  delay?: number;
-  className?: string;
+  readonly children: ReactNode;
+  readonly isInView: boolean;
+  readonly shouldReduceMotion: boolean;
+  readonly delay?: number;
+  readonly className?: string;
 }
 
 /** Reusable animated wrapper for bento grid cells */
@@ -40,7 +40,7 @@ function AnimatedCell({
 }
 
 import type { DailyActivityPoint } from './bento/bento-data';
-export type { DailyActivityPoint };
+export type { DailyActivityPoint } from './bento/bento-data';
 
 // Re-use the same shape as Stats.tsx. TODO(#363): extract BotStats to shared types
 interface BotStats {
@@ -81,8 +81,11 @@ export function DashboardShowcase() {
           setLoading(false);
           setError(false);
         }
-      } catch {
-        if (!controller.signal.aborted) {
+      } catch (err) {
+        // Only skip state updates if this was an unmount abort, not a timeout
+        const isAbortError = err instanceof Error && err.name === 'AbortError';
+        const isTimeoutAbort = isAbortError && controller.signal.aborted;
+        if (!isTimeoutAbort) {
           setLoading(false);
           setError(true);
         }

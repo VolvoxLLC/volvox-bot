@@ -30,9 +30,11 @@ export default defineConfig({
         'src/components/ui/**',
         'src/components/error-card.tsx',
         'src/components/theme-provider.tsx',
-        // Dashboard UI is currently excluded from unit-test coverage thresholds because it is exercised
-        // primarily via higher-level manual and integration testing. TODO: Introduce a dedicated e2e
-        // suite (for example, using Playwright) and revisit this exclusion once those tests are in place.
+        // Dashboard UI is excluded from unit-test coverage because it requires complex DOM interactions
+        // (drag-and-drop, rich text editors, modal flows) that are better validated through integration
+        // and e2e tests. The components are manually tested and covered by dashboard integration tests.
+        // TODO(#363): Add Playwright e2e suite and revisit these exclusions once automated e2e coverage
+        // is in place. See discussion in PR #362 for context on why unit tests are impractical here.
         'src/components/dashboard/**',
         'src/components/landing/index.ts',
         // Bento cells use heavy framer-motion animations that require browser environment; tested via integration tests in dashboard-showcase.test.tsx

@@ -1,5 +1,6 @@
 'use client';
 
+import { useReducedMotion } from 'framer-motion';
 import { AnimatedCounter, formatNumber } from '../AnimatedCounter';
 
 interface BentoKpiProps {
@@ -25,6 +26,7 @@ const colorMap = {
  */
 export function BentoKpi({ value, label, loading, color }: BentoKpiProps) {
   const badgeClass = colorMap[color];
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5 h-full">
@@ -41,7 +43,11 @@ export function BentoKpi({ value, label, loading, color }: BentoKpiProps) {
       ) : (
         <>
           <div className="text-2xl font-bold text-foreground tracking-tight tabular-nums">
-            <AnimatedCounter target={value} duration={1.2} formatter={formatNumber} />
+            {shouldReduceMotion ? (
+              formatNumber(value)
+            ) : (
+              <AnimatedCounter target={value} duration={1.2} formatter={formatNumber} />
+            )}
           </div>
           <div className="text-xs text-muted-foreground mt-1">{label}</div>
           <div className="mt-2">

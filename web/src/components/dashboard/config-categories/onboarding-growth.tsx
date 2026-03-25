@@ -133,7 +133,7 @@ export function OnboardingGrowthCategory() {
         .replace(/{greeting}/g, 'Good morning @johndoe! You just joined Volvox.')
         .replace(
           /{vibeLine}/g,
-          "Things are moving at a healthy pace in #general, so you'll fit right in.",
+          'Things are moving at a healthy pace in #general, so you\'ll fit right in.',
         )
         .replace(
           /{ctaLine}/g,
@@ -228,9 +228,7 @@ export function OnboardingGrowthCategory() {
                     <div>
                       <code>{'{vibeLine}'}</code> — Activity description{' '}
                       <span className="italic text-muted-foreground/70">
-                        {
-                          "You're catching us in a quiet window - perfect time to introduce yourself."
-                        }
+                        {'You\'re catching us in a quiet window - perfect time to introduce yourself.'}
                       </span>
                     </div>
                     <div>
