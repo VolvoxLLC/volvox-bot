@@ -458,9 +458,14 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
 
     // Fire-and-forget: send audit embed to moderation log channel
     if (classification.classification === 'moderate') {
-      sendModerationLog(evalClient, classification, snapshot, channelId, evalConfig, channel?.guildId).catch((err) =>
-        debug('Moderation log fire-and-forget failed', { error: err.message }),
-      );
+      sendModerationLog(
+        evalClient,
+        classification,
+        snapshot,
+        channelId,
+        evalConfig,
+        channel?.guildId,
+      ).catch((err) => debug('Moderation log fire-and-forget failed', { error: err.message }));
     }
 
     await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
