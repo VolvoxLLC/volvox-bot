@@ -31,7 +31,7 @@ export function BentoKpi({ value, label, loading, color }: BentoKpiProps) {
       {loading ? (
         <>
           <div className="h-8 w-20 animate-pulse rounded bg-muted mb-2" />
-          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+          <div className="text-xs text-muted-foreground mt-1">{label}</div>
         </>
       ) : value === null ? (
         <>
