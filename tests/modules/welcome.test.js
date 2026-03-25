@@ -97,31 +97,13 @@ describe('renderWelcomeMessage', () => {
     expect(result).toBe('Unknown');
   });
 
-  it('should replace {guild} with guild name (alias)', () => {
-    const result = renderWelcomeMessage(
-      'Welcome to {guild}!',
-      { id: '123' },
-      { name: 'My Server', memberCount: 10 },
-    );
-    expect(result).toBe('Welcome to My Server!');
-  });
-
-  it('should replace {count} with member count (alias)', () => {
-    const result = renderWelcomeMessage(
-      'You are member #{count}!',
-      { id: '123' },
-      { name: 'Test', memberCount: 99 },
-    );
-    expect(result).toBe('You are member #99!');
-  });
-
   it('should support all variables together', () => {
     const result = renderWelcomeMessage(
-      '{user} ({username}) joined {guild} aka {server} as member #{count} / #{memberCount}',
+      '{user} ({username}) joined {server} as member #{memberCount}',
       { id: '42', username: 'alice' },
       { name: 'Cool Guild', memberCount: 7 },
     );
-    expect(result).toBe('<@42> (alice) joined Cool Guild aka Cool Guild as member #7 / #7');
+    expect(result).toBe('<@42> (alice) joined Cool Guild as member #7');
   });
 });
 
@@ -749,7 +731,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
         channels: [
           {
             channelId: 'ch-extra',
-            message: 'Extra: welcome {user} to {guild}!',
+            message: 'Extra: welcome {user} to {server}!',
           },
         ],
       },
@@ -824,7 +806,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
     expect(mockSend).toHaveBeenCalledOnce();
   });
 
-  it('should render {guild} and {count} variables correctly', async () => {
+  it('should render {server} and {memberCount} variables correctly', async () => {
     const mockSend = vi.fn();
     const member = {
       id: '321',
@@ -836,7 +818,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: '{user} joined {guild} as member #{count}',
+        message: '{user} joined {server} as member #{memberCount}',
       },
     };
 

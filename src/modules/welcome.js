@@ -51,10 +51,8 @@ export function __resetCommunityActivityState() {
  * Static variables (always available):
  *   {user}          – Discord mention (<@id>)
  *   {username}      – Plain username
- *   {server}        – Guild name (alias: {guild})
- *   {guild}         – Guild name (alias: {server})
- *   {memberCount}   – Current member count (alias: {count})
- *   {count}         – Current member count (alias: {memberCount})
+ *   {server}        – Guild name
+ *   {memberCount}   – Current member count
  *
  * Dynamic variables (available when dynamic welcome is enabled):
  *   {greeting}      – Time-of-day greeting line
@@ -78,9 +76,7 @@ export function renderWelcomeMessage(messageTemplate, member, guild, dynamicCont
     .replace(/{user}/g, `<@${member.id}>`)
     .replace(/{username}/g, member.username || 'Unknown')
     .replace(/{server}/g, guildName)
-    .replace(/{guild}/g, guildName)
-    .replace(/{memberCount}/g, count)
-    .replace(/{count}/g, count);
+    .replace(/{memberCount}/g, count);
 
   if (dynamicContext) {
     result = result

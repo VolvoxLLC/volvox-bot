@@ -107,9 +107,7 @@ export function OnboardingGrowthCategory() {
       .replace(/{user}/g, '@johndoe')
       .replace(/{username}/g, 'johndoe')
       .replace(/{server}/g, 'Volvox')
-      .replace(/{guild}/g, 'Volvox')
-      .replace(/{memberCount}/g, '142')
-      .replace(/{count}/g, '142');
+      .replace(/{memberCount}/g, '142');
 
     // Dynamic variables — sample values (only if dynamic is enabled)
     if (draftConfig?.welcome?.dynamic?.enabled) {
@@ -189,15 +187,7 @@ export function OnboardingGrowthCategory() {
                       <span className="italic text-muted-foreground/70">Volvox</span>
                     </div>
                     <div>
-                      <code>{'{guild}'}</code> — Server name (alias){' '}
-                      <span className="italic text-muted-foreground/70">Volvox</span>
-                    </div>
-                    <div>
                       <code>{'{memberCount}'}</code> — Member count{' '}
-                      <span className="italic text-muted-foreground/70">142</span>
-                    </div>
-                    <div>
-                      <code>{'{count}'}</code> — Member count (alias){' '}
                       <span className="italic text-muted-foreground/70">142</span>
                     </div>
                   </div>

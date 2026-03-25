@@ -72,10 +72,15 @@ router.get('/variables', (_req, res) => {
     variables: [
       { variable: '{user}', description: 'Discord mention of the new member (e.g. <@123>)' },
       { variable: '{username}', description: 'Plain username of the new member' },
-      { variable: '{guild}', description: 'Name of the server (alias for {server})' },
-      { variable: '{server}', description: 'Name of the server (alias for {guild})' },
-      { variable: '{count}', description: 'Current member count (alias for {memberCount})' },
-      { variable: '{memberCount}', description: 'Current member count (alias for {count})' },
+      { variable: '{server}', description: 'Name of the server' },
+      { variable: '{memberCount}', description: 'Current member count' },
+      { variable: '{greeting}', description: 'Time-of-day greeting line (dynamic)' },
+      { variable: '{vibeLine}', description: 'Community activity description (dynamic)' },
+      { variable: '{ctaLine}', description: 'Suggested channels call-to-action (dynamic)' },
+      { variable: '{milestoneLine}', description: 'Member milestone or count line (dynamic)' },
+      { variable: '{timeOfDay}', description: 'morning, afternoon, evening, or night (dynamic)' },
+      { variable: '{activityLevel}', description: 'quiet, light, steady, busy, or hype (dynamic)' },
+      { variable: '{topChannels}', description: 'Most active channel mentions (dynamic)' },
     ],
   });
 });
