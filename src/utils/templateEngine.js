@@ -94,10 +94,10 @@ export async function buildTemplateContext({
     const userId = member.user.id;
 
     const [rankResult, statsResult] = await Promise.all([
-      pool.query(
-        'SELECT COUNT(*) + 1 AS rank FROM reputation WHERE guild_id = $1 AND xp > $2',
-        [guildId, xp],
-      ),
+      pool.query('SELECT COUNT(*) + 1 AS rank FROM reputation WHERE guild_id = $1 AND xp > $2', [
+        guildId,
+        xp,
+      ]),
       pool.query(
         `SELECT
            r.messages_count,
@@ -117,7 +117,7 @@ export async function buildTemplateContext({
       const row = statsResult.rows[0];
       messages = formatNumber(row.messages_count ?? 0);
       daysActive = String(row.days_active ?? 0);
-      voiceHours = String(Math.round((row.voice_seconds ?? 0) / 3600 * 10) / 10);
+      voiceHours = String(Math.round(((row.voice_seconds ?? 0) / 3600) * 10) / 10);
     }
   } catch {
     // DB unavailable — use fallback values
@@ -143,7 +143,11 @@ export async function buildTemplateContext({
     voiceHours,
     daysActive,
     joinDate: member.joinedAt
-      ? member.joinedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      ? member.joinedAt.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
       : '',
   };
 }

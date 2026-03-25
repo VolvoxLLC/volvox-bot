@@ -1009,7 +1009,10 @@ router.post(
             await enforceRoleLevelDown(member, newLevel, xpConfig);
           } catch (err) {
             logError('Failed to enforce role level-down', {
-              guildId, userId, newLevel, error: err.message,
+              guildId,
+              userId,
+              newLevel,
+              error: err.message,
             });
           }
         }

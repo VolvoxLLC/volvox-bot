@@ -8,7 +8,11 @@ vi.mock('../../src/db.js', () => ({
 
 import { describe, expect, it } from 'vitest';
 
-import { buildTemplateContext, renderTemplate, validateLength } from '../../src/utils/templateEngine.js';
+import {
+  buildTemplateContext,
+  renderTemplate,
+  validateLength,
+} from '../../src/utils/templateEngine.js';
 
 describe('renderTemplate', () => {
   it('should replace known variables with their values', () => {
