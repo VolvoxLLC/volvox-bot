@@ -48,7 +48,7 @@
   "welcome": {
     "enabled": true,
     "channelId": "1438631182379253814",
-    "message": "{greeting}\n\n{milestoneLine}\n\nWe're a community of developers building cool stuff together.\n\n{vibeLine}\n\n{ctaLine}",
+    "message": "{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}",
     "dynamic": {
       "enabled": true,
       "timezone": "America/New_York",
