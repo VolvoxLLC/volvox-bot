@@ -26,6 +26,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   const hasRealData = dailyActivity && dailyActivity.length > 0;
 
   // Convert real data or fallback to normalized heights (30-95 range)
+  // Pad single data points to 7 so the chart always renders a full line
   const heights = useMemo(() => {
     if (!hasRealData) return fallbackHeights;
 
@@ -33,16 +34,23 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
     const max = Math.max(...values, 1);
     const min = Math.min(...values);
     const range = max - min || 1;
-    return values.map((v) => 30 + ((v - min) / range) * 65);
+    const normalized = values.map((v) => 30 + ((v - min) / range) * 65);
+
+    // If fewer than 2 points, pad with the same height so the line is visible
+    if (normalized.length === 1) {
+      return [normalized[0], normalized[0]];
+    }
+    return normalized;
   }, [dailyActivity, hasRealData, fallbackHeights]);
 
   const points = useMemo(() => {
     const width = 220;
-    const height = 80;
+    const height = 140;
     const padding = 5;
     const usableHeight = height - padding * 2;
+    const divisor = heights.length > 1 ? heights.length - 1 : 1;
     return heights.map((h, i) => ({
-      x: (i / (heights.length - 1)) * width,
+      x: (i / divisor) * width,
       y: padding + usableHeight * (1 - (h - 30) / 65),
     }));
   }, [heights]);
@@ -52,7 +60,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   }, [points]);
 
   const areaPath = useMemo(() => {
-    return `${linePath} L220,80 L0,80 Z`;
+    return `${linePath} L220,140 L0,140 Z`;
   }, [linePath]);
 
   // Day labels from real data
@@ -124,7 +132,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
 
       <div className="relative">
         <svg
-          viewBox="0 0 220 80"
+          viewBox="0 0 220 140"
           className="w-full h-auto mb-3"
           aria-label="Server activity chart"
           onMouseMove={handleMouseMove}
@@ -169,7 +177,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
                 x1={points[hoveredIndex].x}
                 y1={0}
                 x2={points[hoveredIndex].x}
-                y2={80}
+                y2={140}
                 stroke="hsl(var(--primary))"
                 strokeOpacity="0.2"
                 strokeWidth="1"
@@ -193,7 +201,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
                 x={p.x - 220 / points.length / 2}
                 y={0}
                 width={220 / points.length}
-                height={80}
+                height={140}
                 fill="transparent"
                 onMouseEnter={() => setHoveredIndex(i)}
                 style={{ cursor: 'pointer' }}
@@ -207,7 +215,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
             className="absolute pointer-events-none z-10 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-lg text-[10px]"
             style={{
               left: `${(tooltipData.x / 220) * 100}%`,
-              top: `${(tooltipData.y / 80) * 100}%`,
+              top: `${(tooltipData.y / 140) * 100}%`,
               transform: `translate(${tooltipData.x > 160 ? '-100%' : tooltipData.x < 60 ? '0%' : '-50%'}, -120%)`,
             }}
           >
