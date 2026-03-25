@@ -29,9 +29,16 @@ interface FetchWithRateLimitOptions extends RequestInit {
 function parseRetryAfterMs(response: Response): number {
   const retryAfter = response.headers.get('retry-after');
   const resetAfter = response.headers.get('x-ratelimit-reset-after');
-  const rawValue = retryAfter ?? resetAfter;
-  const parsed = rawValue ? Number.parseFloat(rawValue) : Number.NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : 1000;
+
+  const parseSeconds = (value: string | null): number | null => {
+    if (!value) {
+      return null;
+    }
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : null;
+  };
+
+  return parseSeconds(retryAfter) ?? parseSeconds(resetAfter) ?? 1000;
 }
 
 /**
@@ -45,8 +52,7 @@ export async function fetchWithRateLimit(
 ): Promise<Response> {
   const maxRetries = init?.rateLimit?.maxRetries ?? MAX_RETRIES;
   const maxRetryDelayMs = init?.rateLimit?.maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS;
-  const totalRetryBudgetMs =
-    init?.rateLimit?.totalRetryBudgetMs ?? DEFAULT_TOTAL_RETRY_BUDGET_MS;
+  const totalRetryBudgetMs = init?.rateLimit?.totalRetryBudgetMs ?? DEFAULT_TOTAL_RETRY_BUDGET_MS;
   let totalWaitMs = 0;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

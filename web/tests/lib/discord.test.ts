@@ -264,6 +264,30 @@ describe("fetchWithRateLimit", () => {
     const response = await promise;
     expect(response.status).toBe(200);
   });
+
+  it("falls back to x-ratelimit-reset-after when retry-after is malformed", async () => {
+    const headers = new Map([
+      ["retry-after", "nope"],
+      ["x-ratelimit-reset-after", "0.001"],
+    ]);
+    let callCount = 0;
+    fetchSpy.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          status: 429,
+          headers: { get: (key: string) => headers.get(key) ?? null },
+        } as unknown as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200 } as Response);
+    });
+
+    const promise = fetchWithRateLimit("https://example.com/api");
+    await vi.advanceTimersByTimeAsync(100);
+    const response = await promise;
+    expect(response.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("fetchUserGuilds", () => {
@@ -476,7 +500,7 @@ describe("fetchBotGuilds", () => {
       process.env.BOT_API_URL = "http://localhost:3001";
       process.env.BOT_API_SECRET = "test-secret";
 
-      const headers = new Map([["retry-after", "728"]]);
+      const headers = new Map([["retry-after", "1"]]);
       fetchSpy.mockResolvedValue({
         status: 429,
         ok: false,
