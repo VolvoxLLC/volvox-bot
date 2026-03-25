@@ -377,7 +377,7 @@ export function CommunitySettingsSection({
         <SettingsFeatureCard
           featureId="reputation"
           title="Reputation / XP"
-          description="Tune XP ranges, cooldowns, and progression thresholds."
+          description="Tune XP gain per message and cooldown between awards."
           enabled={draftConfig.reputation?.enabled ?? false}
           onEnabledChange={(value) =>
             updateDraftConfig((prev) => ({
@@ -454,68 +454,115 @@ export function CommunitySettingsSection({
                     className={inputClasses}
                   />
                 </label>
-                <label htmlFor="announce-channel-id" className="space-y-2">
-                  <span className="text-sm font-medium">Announce Channel ID</span>
-                  <ChannelSelector
-                    id="announce-channel-id"
-                    guildId={guildId}
-                    selected={
-                      draftConfig.reputation?.announceChannelId
-                        ? [draftConfig.reputation.announceChannelId]
-                        : []
-                    }
-                    onChange={(selected) =>
-                      updateDraftConfig((prev) => ({
-                        ...prev,
-                        reputation: {
-                          ...prev.reputation,
-                          announceChannelId: selected[0] ?? null,
-                        },
-                      }))
-                    }
-                    disabled={saving}
-                    placeholder="Select announcement channel"
-                    maxSelections={1}
-                    filter="text"
-                  />
-                </label>
+              </div>
+            </div>
+          }
+        />
+      )}
+
+      {showFeature('xp-level-actions') && activeCategoryId === 'onboarding-growth' && (
+        <SettingsFeatureCard
+          featureId="xp-level-actions"
+          title="Level-Up Actions"
+          description="Configure what happens when users reach specific XP levels — role rewards, stacking, and thresholds."
+          enabled={draftConfig.xp?.enabled ?? false}
+          onEnabledChange={(value) =>
+            updateDraftConfig((prev) => ({
+              ...prev,
+              xp: { ...prev.xp, enabled: value },
+            }))
+          }
+          disabled={saving}
+          basicContent={
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Stack Roles</p>
+                  <p className="text-xs text-muted-foreground">
+                    When enabled, users keep all earned roles. When disabled, only the highest
+                    earned role is kept.
+                  </p>
+                </div>
+                <Switch
+                  checked={draftConfig.xp?.roleRewards?.stackRoles ?? true}
+                  onCheckedChange={(value) =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: {
+                        ...prev.xp,
+                        roleRewards: { ...prev.xp?.roleRewards, stackRoles: value },
+                      },
+                    }))
+                  }
+                  disabled={saving}
+                  aria-label="Toggle role stacking"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Remove on Level Down</p>
+                  <p className="text-xs text-muted-foreground">
+                    Remove earned roles when a user's XP is manually reduced below the required
+                    level.
+                  </p>
+                </div>
+                <Switch
+                  checked={draftConfig.xp?.roleRewards?.removeOnLevelDown ?? false}
+                  onCheckedChange={(value) =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: {
+                        ...prev.xp,
+                        roleRewards: { ...prev.xp?.roleRewards, removeOnLevelDown: value },
+                      },
+                    }))
+                  }
+                  disabled={saving}
+                  aria-label="Toggle remove on level down"
+                />
               </div>
             </div>
           }
           advancedContent={
-            <label htmlFor="level-thresholds-comma-separated" className="space-y-2 block">
-              <span className="text-sm font-medium">Level Thresholds (comma-separated)</span>
-              <input
-                id="level-thresholds-comma-separated"
-                type="text"
-                value={(
-                  draftConfig.reputation?.levelThresholds ?? [
-                    100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000,
-                  ]
-                ).join(', ')}
-                onChange={(event) => {
-                  const nums = event.target.value
-                    .split(',')
-                    .map((value) => Number(value.trim()))
-                    .filter((value) => Number.isFinite(value) && value > 0);
-                  if (nums.length > 0) {
-                    const sorted = [...nums].sort((a, b) => a - b);
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      reputation: { ...prev.reputation, levelThresholds: sorted },
-                    }));
-                  }
-                }}
-                disabled={saving}
-                className={inputClasses}
-                placeholder="100, 300, 600, 1000"
-              />
-              <p className="text-xs text-muted-foreground">
-                XP required for each level (L1, L2, L3...).
+            <div className="space-y-4">
+              <label htmlFor="xp-level-thresholds" className="space-y-2 block">
+                <span className="text-sm font-medium">Level Thresholds (comma-separated)</span>
+                <input
+                  id="xp-level-thresholds"
+                  type="text"
+                  value={(
+                    draftConfig.xp?.levelThresholds ?? [
+                      100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000,
+                    ]
+                  ).join(', ')}
+                  onChange={(event) => {
+                    const nums = event.target.value
+                      .split(',')
+                      .map((value) => Number(value.trim()))
+                      .filter((value) => Number.isFinite(value) && value > 0);
+                    if (nums.length > 0) {
+                      const sorted = [...nums].sort((a, b) => a - b);
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        xp: { ...prev.xp, levelThresholds: sorted },
+                      }));
+                    }
+                  }}
+                  disabled={saving}
+                  className={inputClasses}
+                  placeholder="100, 300, 600, 1000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  XP required for each level (L1, L2, L3...).
+                </p>
+              </label>
+              <p className="text-xs text-muted-foreground italic">
+                Per-level actions and the full action builder are coming in a future update.
+                Configure actions directly in config.json for now.
               </p>
-            </label>
+            </div>
           }
-          forceOpenAdvanced={forceOpenAdvancedFeatureId === 'reputation'}
+          forceOpenAdvanced={forceOpenAdvancedFeatureId === 'xp-level-actions'}
         />
       )}
 
