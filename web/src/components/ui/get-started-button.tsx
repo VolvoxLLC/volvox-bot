@@ -42,10 +42,7 @@ export function GetStartedButton({
         asChild
         {...props}
       >
-        <a
-          href={href}
-          {...(internal ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
-        >
+        <a href={href} {...(internal ? {} : { target: '_blank', rel: 'noopener noreferrer' })}>
           {inner}
         </a>
       </Button>

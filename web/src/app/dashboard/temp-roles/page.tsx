@@ -229,6 +229,7 @@ export default function TempRolesPage() {
             {loading && rows.length === 0 ? (
               <div className="divide-y">
                 {Array.from({ length: 5 }).map((_, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
                   <div key={`skeleton-${i}`} className="flex items-center gap-4 px-4 py-3">
                     <Skeleton className="h-4 w-28" />
                     <Skeleton className="h-4 w-24" />

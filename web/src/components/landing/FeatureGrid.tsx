@@ -86,9 +86,9 @@ const features: readonly Feature[] = [
     iconBg: 'bg-[hsl(var(--neon-cyan))]/10 text-[hsl(var(--neon-cyan))]',
     preview: (
       <div className="flex items-end gap-1 h-8">
-        {[40, 65, 45, 80, 55].map((h, i) => (
+        {[40, 65, 45, 80, 55].map((h) => (
           <div
-            key={i}
+            key={h}
             className="flex-1 rounded-sm bg-[hsl(var(--neon-cyan))]/30"
             style={{ height: `${h}%` }}
           />

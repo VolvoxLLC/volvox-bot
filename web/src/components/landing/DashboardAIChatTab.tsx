@@ -1,11 +1,12 @@
 const conversation = [
-  { sender: 'user', name: 'Alex', text: 'Hey @volvox, how do I set up webhooks?' },
+  { id: 'msg-1', sender: 'user', name: 'Alex', text: 'Hey @volvox, how do I set up webhooks?' },
   {
+    id: 'msg-2',
     sender: 'bot',
     name: 'Volvox',
     text: 'Go to Server Settings > Integrations > Webhooks. Click "New Webhook", name it, pick a channel, and copy the URL.',
   },
-  { sender: 'user', name: 'Alex', text: 'Thanks! Can I use it with Github?' },
+  { id: 'msg-3', sender: 'user', name: 'Alex', text: 'Thanks! Can I use it with GitHub?' },
 ];
 
 /**
@@ -31,8 +32,8 @@ export function DashboardAIChatTab() {
       <div className="rounded-lg border border-border bg-background/50 p-4">
         <div className="text-sm font-medium text-foreground mb-3">Sample Conversation</div>
         <div className="space-y-3">
-          {conversation.map((msg, i) => (
-            <div key={i} className="flex items-start gap-2">
+          {conversation.map((msg) => (
+            <div key={msg.id} className="flex items-start gap-2">
               <div
                 className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
                   msg.sender === 'bot' ? 'bg-primary' : 'bg-secondary'

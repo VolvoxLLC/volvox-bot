@@ -392,10 +392,11 @@ function ChatConsole() {
               >
                 {msg.role === 'bot' && <BotAvatar icon={msg.icon} />}
                 <div
-                  className={`px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] ${msg.role === 'user'
+                  className={`px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] ${
+                    msg.role === 'user'
                       ? 'bg-primary text-white rounded-[16px] rounded-br-[4px]'
                       : `rounded-2xl rounded-bl-md border text-foreground ${iconToneClasses[msg.icon ?? 'bot'].bubble}`
-                    }`}
+                  }`}
                 >
                   {msg.role === 'bot' && msg.isTyping ? (
                     <BotBubble
@@ -572,10 +573,10 @@ export function Hero() {
             shouldReduceMotion
               ? undefined
               : {
-                opacity: consoleOpacity,
-                scale: consoleScale,
-                y: consoleY,
-              }
+                  opacity: consoleOpacity,
+                  scale: consoleScale,
+                  y: consoleY,
+                }
           }
         >
           <ChatConsole />

@@ -278,7 +278,11 @@ export async function handleReactionAdd(reaction, user, client, config) {
   const existing = await findStarboardPost(message.id);
 
   try {
-    const starboardChannel = await fetchChannelCached(client, sbConfig.channelId, message.guild?.id);
+    const starboardChannel = await fetchChannelCached(
+      client,
+      sbConfig.channelId,
+      message.guild?.id,
+    );
     if (!starboardChannel) {
       warn('Starboard channel not found', { channelId: sbConfig.channelId });
       return;
@@ -374,7 +378,11 @@ export async function handleReactionRemove(reaction, _user, client, config) {
   );
 
   try {
-    const starboardChannel = await fetchChannelCached(client, sbConfig.channelId, message.guild?.id);
+    const starboardChannel = await fetchChannelCached(
+      client,
+      sbConfig.channelId,
+      message.guild?.id,
+    );
     if (!starboardChannel) {
       warn('Starboard channel not found on reaction remove', { channelId: sbConfig.channelId });
       return;
