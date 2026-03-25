@@ -129,57 +129,80 @@ export function OnboardingGrowthCategory() {
                 <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
                   Template Variables
                 </summary>
-                <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                <div className="mt-2 space-y-3 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground">Always available</p>
-                  <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                    <li>
-                      <code>{'{user}'}</code> — Member mention
-                    </li>
-                    <li>
-                      <code>{'{username}'}</code> — Plain username
-                    </li>
-                    <li>
-                      <code>{'{server}'}</code> — Server name
-                    </li>
-                    <li>
-                      <code>{'{guild}'}</code> — Server name (alias)
-                    </li>
-                    <li>
-                      <code>{'{memberCount}'}</code> — Member count
-                    </li>
-                    <li>
-                      <code>{'{count}'}</code> — Member count (alias)
-                    </li>
-                  </ul>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    <div>
+                      <code>{'{user}'}</code> — Member mention{' '}
+                      <span className="italic text-muted-foreground/70">@johndoe</span>
+                    </div>
+                    <div>
+                      <code>{'{username}'}</code> — Plain username{' '}
+                      <span className="italic text-muted-foreground/70">johndoe</span>
+                    </div>
+                    <div>
+                      <code>{'{server}'}</code> — Server name{' '}
+                      <span className="italic text-muted-foreground/70">Volvox</span>
+                    </div>
+                    <div>
+                      <code>{'{guild}'}</code> — Server name (alias){' '}
+                      <span className="italic text-muted-foreground/70">Volvox</span>
+                    </div>
+                    <div>
+                      <code>{'{memberCount}'}</code> — Member count{' '}
+                      <span className="italic text-muted-foreground/70">142</span>
+                    </div>
+                    <div>
+                      <code>{'{count}'}</code> — Member count (alias){' '}
+                      <span className="italic text-muted-foreground/70">142</span>
+                    </div>
+                  </div>
                   <p className="font-medium text-foreground">
                     Dynamic Welcome{' '}
                     <span className="font-normal text-muted-foreground">
                       (requires Dynamic Welcome enabled)
                     </span>
                   </p>
-                  <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                    <li>
-                      <code>{'{greeting}'}</code> — Time-of-day greeting
-                    </li>
-                    <li>
-                      <code>{'{vibeLine}'}</code> — Activity description
-                    </li>
-                    <li>
-                      <code>{'{ctaLine}'}</code> — Channel suggestions CTA
-                    </li>
-                    <li>
-                      <code>{'{milestoneLine}'}</code> — Member milestone
-                    </li>
-                    <li>
-                      <code>{'{timeOfDay}'}</code> — morning / afternoon / evening / night
-                    </li>
-                    <li>
-                      <code>{'{activityLevel}'}</code> — quiet / light / steady / busy / hype
-                    </li>
-                    <li>
-                      <code>{'{topChannels}'}</code> — Most active channels
-                    </li>
-                  </ul>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    <div>
+                      <code>{'{greeting}'}</code> — Time-of-day greeting{' '}
+                      <span className="italic text-muted-foreground/70">
+                        Good morning @johndoe! You just joined Volvox.
+                      </span>
+                    </div>
+                    <div>
+                      <code>{'{vibeLine}'}</code> — Activity description{' '}
+                      <span className="italic text-muted-foreground/70">
+                        {"You're catching us in a quiet window - perfect time to introduce yourself."}
+                      </span>
+                    </div>
+                    <div>
+                      <code>{'{ctaLine}'}</code> — Channel suggestions CTA{' '}
+                      <span className="italic text-muted-foreground/70">
+                        Say hey in #general and let us know what you're building.
+                      </span>
+                    </div>
+                    <div>
+                      <code>{'{milestoneLine}'}</code> — Member milestone{' '}
+                      <span className="italic text-muted-foreground/70">
+                        You just rolled in as member #142.
+                      </span>
+                    </div>
+                    <div>
+                      <code>{'{timeOfDay}'}</code> — Time period{' '}
+                      <span className="italic text-muted-foreground/70">morning</span>
+                    </div>
+                    <div>
+                      <code>{'{activityLevel}'}</code> — Activity level{' '}
+                      <span className="italic text-muted-foreground/70">steady</span>
+                    </div>
+                    <div>
+                      <code>{'{topChannels}'}</code> — Most active channels{' '}
+                      <span className="italic text-muted-foreground/70">
+                        #general, #projects, #showcase
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </details>
 
