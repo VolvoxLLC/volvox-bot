@@ -14,6 +14,17 @@ const MODERATE_MEMBERS_PERMISSION = 0x10000000000n;
 
 export type GuildAccessLevel = 'viewer' | 'moderator' | 'admin' | 'bot-owner';
 type RequiredGuildAccess = 'moderator' | 'admin';
+type AuthToken = {
+  accessToken: string;
+  id?: string;
+  sub?: string;
+};
+const GUILD_ACCESS_LEVELS = new Set<GuildAccessLevel>([
+  'viewer',
+  'moderator',
+  'admin',
+  'bot-owner',
+]);
 
 /**
  * Determines whether a Discord permission bitfield includes the administrator permission.
@@ -43,7 +54,10 @@ export function hasModeratorPermission(permissions: string): boolean {
   }
 }
 
-function accessSatisfiesRequirement(access: GuildAccessLevel, required: RequiredGuildAccess): boolean {
+function accessSatisfiesRequirement(
+  access: GuildAccessLevel,
+  required: RequiredGuildAccess,
+): boolean {
   if (access === 'bot-owner' || access === 'admin') return true;
   return required === 'moderator' && access === 'moderator';
 }
@@ -56,11 +70,12 @@ function getFallbackGuildAccess(guild: { owner?: boolean; permissions: string })
 }
 
 async function resolveGuildAccess(
-  token: NonNullable<Awaited<ReturnType<typeof getToken>>>,
+  token: AuthToken,
   guildId: string,
   logPrefix: string,
+  signal: AbortSignal,
 ): Promise<{ access: GuildAccessLevel; present: boolean }> {
-  const mutualGuilds = await getMutualGuilds(token.accessToken as string, AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  const mutualGuilds = await getMutualGuilds(token.accessToken, signal);
   const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
 
   if (!targetGuild) {
@@ -86,7 +101,7 @@ async function resolveGuildAccess(
       headers: {
         'x-api-secret': botApiSecret,
       },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal,
       cache: 'no-store',
     });
 
@@ -104,7 +119,8 @@ async function resolveGuildAccess(
         typeof item === 'object' &&
         item !== null &&
         (item as { id?: unknown }).id === guildId &&
-        typeof (item as { access?: unknown }).access === 'string',
+        typeof (item as { access?: unknown }).access === 'string' &&
+        GUILD_ACCESS_LEVELS.has((item as { access: GuildAccessLevel }).access),
     );
 
     return { access: entry?.access ?? fallbackAccess, present: true };
@@ -130,12 +146,24 @@ async function authorizeGuildAccess(
     return NextResponse.json({ error: 'Token expired. Please sign in again.' }, { status: 401 });
   }
 
-  let resolved;
+  const authToken: AuthToken = {
+    accessToken: token.accessToken,
+    id: typeof token.id === 'string' ? token.id : undefined,
+    sub: typeof token.sub === 'string' ? token.sub : undefined,
+  };
+
+  let resolved: Awaited<ReturnType<typeof resolveGuildAccess>>;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort(new DOMException('Timed out', 'TimeoutError'));
+  }, REQUEST_TIMEOUT_MS);
   try {
-    resolved = await resolveGuildAccess(token, guildId, logPrefix);
+    resolved = await resolveGuildAccess(authToken, guildId, logPrefix, controller.signal);
   } catch (error) {
     logger.error(`${logPrefix} Failed to verify guild permissions:`, error);
     return NextResponse.json({ error: 'Failed to verify guild permissions' }, { status: 502 });
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!resolved.present || !accessSatisfiesRequirement(resolved.access, requiredAccess)) {

@@ -35,6 +35,9 @@ function createMockRequest(url = "http://localhost:3000/api/guilds"): NextReques
 
 describe("GET /api/guilds", () => {
   const originalSecret = process.env.NEXTAUTH_SECRET;
+  const originalBotApiUrl = process.env.BOT_API_URL;
+  const originalBotApiSecret = process.env.BOT_API_SECRET;
+  const realFetch = globalThis.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -45,6 +48,17 @@ describe("GET /api/guilds", () => {
   });
 
   afterEach(() => {
+    globalThis.fetch = realFetch;
+    if (originalBotApiUrl === undefined) {
+      delete process.env.BOT_API_URL;
+    } else {
+      process.env.BOT_API_URL = originalBotApiUrl;
+    }
+    if (originalBotApiSecret === undefined) {
+      delete process.env.BOT_API_SECRET;
+    } else {
+      process.env.BOT_API_SECRET = originalBotApiSecret;
+    }
     if (originalSecret === undefined) {
       delete process.env.NEXTAUTH_SECRET;
     } else {
@@ -136,7 +150,6 @@ describe("GET /api/guilds", () => {
     process.env.BOT_API_SECRET = "bot-secret";
     mockGetBotApiBaseUrl.mockReturnValue("http://bot.internal/api/v1");
 
-    const realFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => [{ id: "1", access: "moderator" }],
@@ -177,7 +190,46 @@ describe("GET /api/guilds", () => {
         headers: { "x-api-secret": "bot-secret" },
       }),
     );
+  });
 
-    globalThis.fetch = realFetch;
+  it("ignores unknown access values from the bot api", async () => {
+    process.env.BOT_API_SECRET = "bot-secret";
+    mockGetBotApiBaseUrl.mockReturnValue("http://bot.internal/api/v1");
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ id: "1", access: "super-admin" }],
+      status: 200,
+      statusText: "OK",
+    } as Response);
+
+    mockGetToken.mockResolvedValue({
+      sub: "123",
+      id: "discord-user-123",
+      accessToken: "valid-discord-token",
+    });
+    mockGetMutualGuilds.mockResolvedValue([
+      {
+        id: "1",
+        name: "Server 1",
+        icon: null,
+        owner: false,
+        permissions: "0",
+        features: [],
+        botPresent: true,
+        access: "viewer",
+      },
+    ]);
+
+    const response = await GET(createMockRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual([
+      expect.objectContaining({
+        id: "1",
+        access: "viewer",
+      }),
+    ]);
   });
 });

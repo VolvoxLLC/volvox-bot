@@ -145,15 +145,31 @@ describe('bot-api-proxy branch coverage', () => {
   it('allows moderator access for moderator-authorized routes', async () => {
     mockGetToken.mockResolvedValue({ accessToken: 'token', id: 'user-1' });
     mockGetMutualGuilds.mockResolvedValue([{ id: 'guild-1', owner: false, permissions: '0' }]);
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: async () => [{ id: 'guild-1', access: 'moderator' }],
-    });
+    (globalThis.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 'guild-1', access: 'moderator' }],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 'guild-1', access: 'moderator' }],
+      });
 
     await expect(authorizeGuildModerator(createRequest(), 'guild-1', '[test]')).resolves.toBeNull();
     await expect(authorizeGuildAdmin(createRequest(), 'guild-1', '[test]')).resolves.toMatchObject({
       status: 403,
     });
+  });
+
+  it('falls back to oauth-derived access when the bot api returns an unknown access string', async () => {
+    mockGetToken.mockResolvedValue({ accessToken: 'token', id: 'user-1' });
+    mockGetMutualGuilds.mockResolvedValue([{ id: 'guild-1', owner: false, permissions: '8' }]);
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => [{ id: 'guild-1', access: 'super-admin' }],
+    });
+
+    await expect(authorizeGuildAdmin(createRequest(), 'guild-1', '[test]')).resolves.toBeNull();
   });
 
   it('returns config when the bot api base url and secret are present', () => {

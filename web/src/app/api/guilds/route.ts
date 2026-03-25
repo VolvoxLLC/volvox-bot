@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 /** Request timeout for the guilds endpoint (10 seconds). */
 const REQUEST_TIMEOUT_MS = 10_000;
+const VALID_ACCESS_LEVELS = new Set(['admin', 'moderator', 'viewer', 'bot-owner']);
 
 async function applyAccessLevels(
   guilds: Awaited<ReturnType<typeof getMutualGuilds>>,
@@ -22,16 +23,15 @@ async function applyAccessLevels(
     return guilds;
   }
 
+  const botGuildIds = guilds.filter((guild) => guild.botPresent).map((guild) => guild.id);
+  if (botGuildIds.length === 0) {
+    return guilds;
+  }
+
   try {
     const url = new URL(`${botApiBaseUrl}/guilds/access`);
     url.searchParams.set('userId', userId);
-    url.searchParams.set(
-      'guildIds',
-      guilds
-        .filter((guild) => guild.botPresent)
-        .map((guild) => guild.id)
-        .join(','),
-    );
+    url.searchParams.set('guildIds', botGuildIds.join(','));
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -57,11 +57,14 @@ async function applyAccessLevels(
     const accessMap = new Map(
       accessEntries
         .filter(
-          (entry): entry is { id: string; access: 'admin' | 'moderator' | 'viewer' | 'bot-owner' } =>
+          (
+            entry,
+          ): entry is { id: string; access: 'admin' | 'moderator' | 'viewer' | 'bot-owner' } =>
             typeof entry === 'object' &&
             entry !== null &&
             typeof (entry as { id?: unknown }).id === 'string' &&
-            typeof (entry as { access?: unknown }).access === 'string',
+            typeof (entry as { access?: unknown }).access === 'string' &&
+            VALID_ACCESS_LEVELS.has((entry as { access: string }).access),
         )
         .map((entry) => [entry.id, entry.access]),
     );
@@ -92,11 +95,7 @@ export async function GET(request: NextRequest) {
     const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
     const guilds = await getMutualGuilds(token.accessToken as string, signal);
     const userId =
-      typeof token.id === 'string'
-        ? token.id
-        : typeof token.sub === 'string'
-          ? token.sub
-          : '';
+      typeof token.id === 'string' ? token.id : typeof token.sub === 'string' ? token.sub : '';
     const guildsWithAccess = userId ? await applyAccessLevels(guilds, userId, signal) : guilds;
     return NextResponse.json(guildsWithAccess);
   } catch (error) {
