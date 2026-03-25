@@ -10,7 +10,6 @@ import { getPool } from '../db.js';
 import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { buildProgressBar, computeLevel } from '../modules/reputation.js';
-import { REPUTATION_DEFAULTS } from '../modules/reputationDefaults.js';
 import { XP_DEFAULTS } from '../modules/xpDefaults.js';
 import {
   getRankCached,
@@ -46,7 +45,6 @@ export async function execute(interaction) {
   try {
     const pool = getPool();
     const target = interaction.options.getUser('user') ?? interaction.user;
-    const repCfg = { ...REPUTATION_DEFAULTS, ...cfg.reputation };
     const xpCfg = { ...XP_DEFAULTS, ...cfg.xp };
     const thresholds = xpCfg.levelThresholds;
 
