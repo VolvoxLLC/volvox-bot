@@ -1,6 +1,14 @@
+import { vi } from 'vitest';
+
+vi.mock('../../src/db.js', () => ({
+  getPool: vi.fn(() => ({
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+  })),
+}));
+
 import { describe, expect, it } from 'vitest';
 
-import { renderTemplate, validateLength } from '../../src/utils/templateEngine.js';
+import { buildTemplateContext, renderTemplate, validateLength } from '../../src/utils/templateEngine.js';
 
 describe('renderTemplate', () => {
   it('should replace known variables with their values', () => {
@@ -81,5 +89,112 @@ describe('validateLength', () => {
   it('should return valid for empty string', () => {
     const result = validateLength('', 100);
     expect(result).toEqual({ valid: true, length: 0, limit: 100 });
+  });
+});
+
+describe('buildTemplateContext', () => {
+  it('should populate all Discord-derived variables from member/guild/message', async () => {
+    const member = {
+      user: {
+        id: '123456789',
+        displayName: 'TestUser',
+        displayAvatarURL: () => 'https://cdn.example.com/avatar.png',
+      },
+      joinedAt: new Date('2025-01-15T12:00:00Z'),
+    };
+    const message = {
+      channel: { name: 'general' },
+    };
+    const guild = {
+      id: 'guild1',
+      name: 'Test Server',
+      iconURL: () => 'https://cdn.example.com/icon.png',
+      memberCount: 1234,
+    };
+
+    const ctx = await buildTemplateContext({
+      member,
+      message,
+      guild,
+      level: 5,
+      previousLevel: 4,
+      xp: 1500,
+      levelThresholds: [100, 300, 600, 1000, 1500, 2500],
+      roleName: null,
+      roleId: null,
+    });
+
+    expect(ctx.username).toBe('TestUser');
+    expect(ctx.mention).toBe('<@123456789>');
+    expect(ctx.avatar).toBe('https://cdn.example.com/avatar.png');
+    expect(ctx.level).toBe('5');
+    expect(ctx.previousLevel).toBe('4');
+    expect(ctx.xp).toBe('1,500');
+    expect(ctx.xpToNext).toBe('1,000');
+    expect(ctx.nextLevel).toBe('2,500');
+    expect(ctx.server).toBe('Test Server');
+    expect(ctx.serverIcon).toBe('https://cdn.example.com/icon.png');
+    expect(ctx.memberCount).toBe('1,234');
+    expect(ctx.channel).toBe('#general');
+    expect(ctx.joinDate).toMatch(/Jan/);
+    expect(ctx.roleName).toBe('');
+    expect(ctx.roleMention).toBe('');
+  });
+
+  it('should populate roleName and roleMention when roleId is provided', async () => {
+    const member = {
+      user: {
+        id: '123',
+        displayName: 'User',
+        displayAvatarURL: () => '',
+      },
+      joinedAt: new Date(),
+    };
+    const message = { channel: { name: 'ch' } };
+    const guild = {
+      id: 'guild1',
+      name: 'S',
+      iconURL: () => '',
+      memberCount: 1,
+    };
+
+    const ctx = await buildTemplateContext({
+      member,
+      message,
+      guild,
+      level: 1,
+      previousLevel: 0,
+      xp: 100,
+      levelThresholds: [100],
+      roleName: 'Regular',
+      roleId: '999888777',
+    });
+
+    expect(ctx.roleName).toBe('Regular');
+    expect(ctx.roleMention).toBe('<@&999888777>');
+  });
+
+  it('should return "0" for xpToNext when at max level', async () => {
+    const member = {
+      user: { id: '1', displayName: 'U', displayAvatarURL: () => '' },
+      joinedAt: new Date(),
+    };
+    const message = { channel: { name: 'ch' } };
+    const guild = { id: 'guild1', name: 'S', iconURL: () => '', memberCount: 1 };
+
+    const ctx = await buildTemplateContext({
+      member,
+      message,
+      guild,
+      level: 3,
+      previousLevel: 2,
+      xp: 700,
+      levelThresholds: [100, 300, 600],
+      roleName: null,
+      roleId: null,
+    });
+
+    expect(ctx.xpToNext).toBe('0');
+    expect(ctx.nextLevel).toBe('0');
   });
 });

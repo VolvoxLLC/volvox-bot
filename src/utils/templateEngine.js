@@ -6,6 +6,8 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/367
  */
 
+import { getPool } from '../db.js';
+
 /** Matches `{{variableName}}` tokens. Only word characters allowed inside braces. */
 const TEMPLATE_REGEX = /\{\{(\w+)\}\}/g;
 
@@ -37,4 +39,111 @@ export function renderTemplate(template, context) {
 export function validateLength(text, limit) {
   const length = text.length;
   return { valid: length <= limit, length, limit };
+}
+
+/**
+ * Format a number with comma separators.
+ *
+ * @param {number} n
+ * @returns {string}
+ */
+function formatNumber(n) {
+  return Number(n).toLocaleString('en-US');
+}
+
+/**
+ * Collect all template variables from Discord objects and DB data.
+ * DB queries (rank, messages, voiceHours, daysActive) fail gracefully — missing data
+ * returns the documented fallback value.
+ *
+ * @param {Object} params
+ * @param {import('discord.js').GuildMember} params.member
+ * @param {import('discord.js').Message} params.message
+ * @param {import('discord.js').Guild} params.guild
+ * @param {number} params.level
+ * @param {number} params.previousLevel
+ * @param {number} params.xp
+ * @param {number[]} params.levelThresholds
+ * @param {string|null} params.roleName
+ * @param {string|null} params.roleId
+ * @returns {Promise<Record<string, string>>}
+ */
+export async function buildTemplateContext({
+  member,
+  message,
+  guild,
+  level,
+  previousLevel,
+  xp,
+  levelThresholds,
+  roleName,
+  roleId,
+}) {
+  const nextThreshold = levelThresholds[level] ?? null;
+  const xpToNext = nextThreshold !== null ? nextThreshold - xp : 0;
+
+  // DB queries for rank, messages, voiceHours, daysActive — all best-effort
+  let rank = '?';
+  let messages = '0';
+  let voiceHours = '0';
+  let daysActive = '0';
+
+  try {
+    const pool = getPool();
+    const guildId = guild.id ?? member.guild?.id;
+    const userId = member.user.id;
+
+    const [rankResult, statsResult] = await Promise.all([
+      pool.query(
+        'SELECT COUNT(*) + 1 AS rank FROM reputation WHERE guild_id = $1 AND xp > $2',
+        [guildId, xp],
+      ),
+      pool.query(
+        `SELECT
+           r.messages_count,
+           us.days_active,
+           COALESCE(vs.total_seconds, 0) AS voice_seconds
+         FROM reputation r
+         LEFT JOIN user_stats us ON us.guild_id = r.guild_id AND us.user_id = r.user_id
+         LEFT JOIN voice_stats vs ON vs.guild_id = r.guild_id AND vs.user_id = r.user_id
+         WHERE r.guild_id = $1 AND r.user_id = $2`,
+        [guildId, userId],
+      ),
+    ]);
+
+    rank = `#${rankResult.rows[0]?.rank ?? 1}`;
+
+    if (statsResult.rows[0]) {
+      const row = statsResult.rows[0];
+      messages = formatNumber(row.messages_count ?? 0);
+      daysActive = String(row.days_active ?? 0);
+      voiceHours = String(Math.round((row.voice_seconds ?? 0) / 3600 * 10) / 10);
+    }
+  } catch {
+    // DB unavailable — use fallback values
+  }
+
+  return {
+    username: member.user.displayName ?? '',
+    mention: `<@${member.user.id}>`,
+    avatar: member.user.displayAvatarURL?.() ?? '',
+    level: String(level),
+    previousLevel: String(previousLevel),
+    xp: formatNumber(xp),
+    xpToNext: formatNumber(Math.max(0, xpToNext)),
+    nextLevel: nextThreshold !== null ? formatNumber(nextThreshold) : '0',
+    server: guild.name ?? '',
+    serverIcon: guild.iconURL?.() ?? '',
+    memberCount: formatNumber(guild.memberCount ?? 0),
+    channel: message.channel?.name ? `#${message.channel.name}` : '',
+    rank,
+    messages,
+    roleName: roleName ?? '',
+    roleMention: roleId ? `<@&${roleId}>` : '',
+    voiceHours,
+    daysActive,
+    joinDate: member.joinedAt
+      ? member.joinedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '',
+  };
 }
