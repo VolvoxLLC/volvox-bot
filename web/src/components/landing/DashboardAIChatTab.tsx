@@ -31,8 +31,8 @@ export function DashboardAIChatTab() {
       <div className="rounded-lg border border-border bg-background/50 p-4">
         <div className="text-sm font-medium text-foreground mb-3">Sample Conversation</div>
         <div className="space-y-3">
-          {conversation.map((msg, i) => (
-            <div key={i} className="flex items-start gap-2">
+          {conversation.map((msg) => (
+            <div key={`${msg.sender}-${msg.name}`} className="flex items-start gap-2">
               <div
                 className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
                   msg.sender === 'bot' ? 'bg-primary' : 'bg-secondary'

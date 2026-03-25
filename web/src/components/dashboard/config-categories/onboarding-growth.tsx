@@ -328,7 +328,7 @@ export function OnboardingGrowthCategory() {
                   />
                 </div>
 
-                <label className="space-y-1 block">
+                <div className="space-y-1 block">
                   <span className="text-sm font-medium">
                     Highlight Channels
                     <InfoTip text="Channels suggested to new members in the {ctaLine} and {topChannels} variables. If no channels have recent activity, these are used as fallbacks." />
@@ -341,9 +341,9 @@ export function OnboardingGrowthCategory() {
                     placeholder="Select channels to highlight"
                     filter="text"
                   />
-                </label>
+                </div>
 
-                <label className="space-y-1 block">
+                <div className="space-y-1 block">
                   <span className="text-sm font-medium">
                     Exclude Channels
                     <InfoTip text="Channels to ignore when measuring server activity. Messages in these channels won't count toward the activity level." />
@@ -356,7 +356,7 @@ export function OnboardingGrowthCategory() {
                     placeholder="Select channels to exclude"
                     filter="text"
                   />
-                </label>
+                </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <label className="space-y-1 block">

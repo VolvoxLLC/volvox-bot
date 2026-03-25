@@ -232,9 +232,9 @@ export default function TicketDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {data.transcript.map((msg, i) => (
+                    {data.transcript.map((msg) => (
                       <div
-                        key={`${i}-${msg.timestamp}`}
+                        key={`${msg.author}-${msg.timestamp}`}
                         className="flex gap-3 rounded-lg border p-3"
                       >
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
