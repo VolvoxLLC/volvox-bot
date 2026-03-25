@@ -164,7 +164,13 @@ export async function handleXpGain(message) {
         newLevel,
         xp: newXp,
         config: xpCfg,
-      }).catch(() => {}); // fire-and-forget, errors logged internally
+      }).catch((err) =>
+        warn('Level-up pipeline failed', {
+          error: err.message,
+          guildId: message.guild.id,
+          userId: message.author.id,
+        }),
+      );
     }
   }
 

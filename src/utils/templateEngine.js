@@ -24,13 +24,15 @@ const TEMPLATE_REGEX = /\{\{(\w+)\}\}/g;
 export function renderTemplate(template, context) {
   if (!template) return '';
   return template.replace(TEMPLATE_REGEX, (match, varName) => {
-    if (!(varName in context)) return match;
+    if (!Object.hasOwn(context, varName)) return match;
     return context[varName] ?? '';
   });
 }
 
 /**
  * Check whether a string is within a character limit.
+ * NOTE: renderTemplate and validateLength are currently used by tests and will be
+ * used when messaging actions are implemented (Phase 2). They are not dead code.
  *
  * @param {string} text - The text to validate.
  * @param {number} limit - Maximum allowed character count.

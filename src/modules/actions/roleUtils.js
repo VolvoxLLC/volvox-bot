@@ -29,6 +29,7 @@ const roleLimits = new Map();
  */
 export function canManageRole(guild, roleId) {
   const me = guild.members.me;
+  if (!me) return false;
   if (!me.permissions.has('ManageRoles')) {
     warn('Cannot manage role — bot lacks MANAGE_ROLES permission', {
       guildId: guild.id,
@@ -161,6 +162,12 @@ export function collectXpManagedRoles(config) {
       if ((action.type === 'grantRole' || action.type === 'removeRole') && action.roleId) {
         roleIds.add(action.roleId);
       }
+    }
+  }
+  // Also collect roles from defaultActions
+  for (const action of config.defaultActions ?? []) {
+    if ((action.type === 'grantRole' || action.type === 'removeRole') && action.roleId) {
+      roleIds.add(action.roleId);
     }
   }
   return roleIds;

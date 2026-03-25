@@ -96,23 +96,11 @@ export async function executeLevelUpPipeline({
     actionCount: actions.length,
   });
 
-  // Build template context once for all actions
-  const templateContext = await buildTemplateContext({
-    member,
-    message,
-    guild,
-    level: newLevel,
-    previousLevel,
-    xp,
-    levelThresholds: config.levelThresholds ?? [],
-    roleName: null,
-    roleId: null,
-  });
-
   // Compute XP-managed roles once for stack/replace logic
   const xpManagedRoles = collectXpManagedRoles(config);
 
-  const pipelineContext = {
+  // Build base pipeline context (templateContext rebuilt per level below)
+  const basePipelineContext = {
     member,
     message,
     guild,
@@ -120,11 +108,25 @@ export async function executeLevelUpPipeline({
     newLevel,
     xp,
     config,
-    templateContext,
     xpManagedRoles,
   };
 
   for (const { level, action } of actions) {
+    // Rebuild template context for each intermediate level during level-skip
+    const templateContext = await buildTemplateContext({
+      member,
+      message,
+      guild,
+      level,
+      previousLevel,
+      xp,
+      levelThresholds: config.levelThresholds ?? [],
+      roleName: null,
+      roleId: null,
+    });
+
+    const pipelineContext = { ...basePipelineContext, templateContext, currentLevel: level };
+
     const handler = actionRegistry.get(action.type);
     if (!handler) {
       warn('Unknown action type — skipping', {
@@ -136,7 +138,7 @@ export async function executeLevelUpPipeline({
     }
 
     try {
-      await handler(action, { ...pipelineContext, currentLevel: level });
+      await handler(action, pipelineContext);
     } catch (err) {
       warn('Action failed in level-up pipeline — continuing', {
         actionType: action.type,

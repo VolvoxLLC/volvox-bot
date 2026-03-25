@@ -5,7 +5,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/366
  */
 
-import { info } from '../../logger.js';
+import { info, warn } from '../../logger.js';
 import { canManageRole, checkRoleRateLimit, recordRoleChange } from './roleUtils.js';
 
 /**
@@ -26,7 +26,20 @@ export async function handleGrantRole(action, context) {
   if (!config.roleRewards.stackRoles) {
     for (const [id] of member.roles.cache) {
       if (xpManagedRoles.has(id) && id !== roleId) {
-        await member.roles.remove(id);
+        if (!canManageRole(guild, id)) continue;
+        if (!checkRoleRateLimit(guild.id, member.user?.id)) continue;
+        try {
+          await member.roles.remove(id);
+          recordRoleChange(guild.id, member.user?.id);
+        } catch (err) {
+          // Log and continue — don't block granting the new role
+          warn('Failed to remove role in replace mode', {
+            guildId: guild.id,
+            userId: member.user?.id,
+            roleId: id,
+            error: err.message,
+          });
+        }
       }
     }
   }
