@@ -46,7 +46,7 @@ export function BentoConversations() {
             transition={{ duration: 0.4, delay: shouldReduceMotion ? 0 : i * 0.08 }}
           >
             <div
-              className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[9px] font-semibold ${avatarColorMap[item.avatarColor as keyof typeof avatarColorMap]}`}
+              className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[9px] font-semibold ${avatarColorMap[item.avatarColor]}`}
             >
               {item.initial}
             </div>

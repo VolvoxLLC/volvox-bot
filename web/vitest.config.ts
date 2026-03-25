@@ -35,6 +35,7 @@ export default defineConfig({
         // suite (for example, using Playwright) and revisit this exclusion once those tests are in place.
         'src/components/dashboard/**',
         'src/components/landing/index.ts',
+        // Bento cells use heavy framer-motion animations that require browser environment; tested via integration tests in dashboard-showcase.test.tsx
         'src/components/landing/bento/BentoChart.tsx',
         'src/components/landing/bento/BentoModeration.tsx',
         'src/components/landing/bento/BentoAIChat.tsx',

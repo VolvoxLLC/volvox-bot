@@ -243,7 +243,9 @@ export default function LandingPage() {
       <Hero />
 
       {/* Dashboard Showcase */}
-      <DashboardShowcase />
+      <div id="dashboard">
+        <DashboardShowcase />
+      </div>
 
       {/* Competitor Comparison */}
       <div id="compare">

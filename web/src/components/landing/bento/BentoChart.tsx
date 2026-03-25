@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
+import type { MouseEvent } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { DailyActivityPoint } from '../DashboardShowcase';
 import { generateChartHeights } from './bento-data';
@@ -36,7 +37,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
     const range = max - min || 1;
     const normalized = values.map((v) => 30 + ((v - min) / range) * 65);
 
-    // If fewer than 2 points, pad with the same height so the line is visible
+    // If fewer than 2 points, pad to 2 with the same height so the line is visible
     if (normalized.length === 1) {
       return [normalized[0], normalized[0]];
     }
@@ -67,24 +68,27 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   const dayLabels = useMemo(() => {
     if (!hasRealData) return null;
     return dailyActivity.map((d) => {
-      const date = new Date(d.date);
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
+      const date = new Date(d.date + 'T00:00:00Z');
+      return date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
     });
   }, [dailyActivity, hasRealData]);
 
   // Tooltip content for hovered point
   const tooltipData = useMemo(() => {
     if (hoveredIndex === null) return null;
-    const point = points[hoveredIndex];
+    // Clamp hoveredIndex to valid range
+    const clampedIndex = Math.min(hoveredIndex, dailyActivity.length - 1);
+    const point = points[clampedIndex];
     if (!point) return null;
 
     if (hasRealData) {
-      const d = dailyActivity[hoveredIndex];
-      const date = new Date(d.date);
+      const d = dailyActivity[clampedIndex];
+      const date = new Date(d.date + 'T00:00:00Z');
       const label = date.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
+        timeZone: 'UTC',
       });
       return { x: point.x, y: point.y, label, messages: d.messages, aiRequests: d.aiRequests };
     }
@@ -92,7 +96,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   }, [hoveredIndex, points, dailyActivity, hasRealData]);
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent<SVGSVGElement>) => {
+    (e: MouseEvent<SVGSVGElement>) => {
       if (!hasRealData) return;
       const svg = e.currentTarget;
       const rect = svg.getBoundingClientRect();
@@ -116,6 +120,13 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   const handleMouseLeave = useCallback(() => {
     setHoveredIndex(null);
   }, []);
+
+  /** Calculate tooltip translateX based on position to avoid edge clipping */
+  const getTooltipTranslateX = (x: number): string => {
+    if (x > 160) return '-100%';
+    if (x < 60) return '0%';
+    return '-50%';
+  };
 
   return (
     <div
@@ -220,7 +231,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
             style={{
               left: `${(tooltipData.x / 220) * 100}%`,
               top: `${(tooltipData.y / 140) * 100}%`,
-              transform: `translate(${tooltipData.x > 160 ? '-100%' : tooltipData.x < 60 ? '0%' : '-50%'}, -120%)`,
+              transform: `translate(${getTooltipTranslateX(tooltipData.x)}, -120%)`,
             }}
           >
             <div className="font-medium text-foreground mb-0.5">{tooltipData.label}</div>
@@ -254,6 +265,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
           {hasRealData &&
             ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
         </span>
+        {/* Legend shows "AI Responses" for mock preview consistency; only messages data is rendered in the chart */}
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
           AI Responses

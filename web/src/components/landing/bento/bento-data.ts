@@ -11,11 +11,12 @@ export interface AIChatItem {
 export interface ConversationItem {
   readonly initial: string;
   readonly question: string;
-  readonly avatarColor: string;
+  readonly avatarColor: 'purple' | 'green' | 'orange';
 }
 
 /** Pick a single random item from an array. */
 export function pickRandom<T>(items: readonly T[]): T {
+  if (items.length === 0) throw new Error('pickRandom called with empty array');
   return items[Math.floor(Math.random() * items.length)];
 }
 

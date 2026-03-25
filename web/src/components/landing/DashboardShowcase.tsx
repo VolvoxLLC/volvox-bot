@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
+import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { BentoAIChat } from './bento/BentoAIChat';
 import { BentoChart } from './bento/BentoChart';
@@ -10,13 +11,41 @@ import { BentoModeration } from './bento/BentoModeration';
 import { ScrollStage } from './ScrollStage';
 import { SectionHeader } from './SectionHeader';
 
+interface AnimatedCellProps {
+  children: ReactNode;
+  isInView: boolean;
+  shouldReduceMotion: boolean;
+  delay?: number;
+  className?: string;
+}
+
+/** Reusable animated wrapper for bento grid cells */
+function AnimatedCell({
+  children,
+  isInView,
+  shouldReduceMotion,
+  delay = 0,
+  className = '',
+}: AnimatedCellProps) {
+  return (
+    <motion.div
+      className={className}
+      initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : delay }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export interface DailyActivityPoint {
   date: string;
   messages: number;
   aiRequests: number;
 }
 
-// Re-use the same shape as Stats.tsx. TODO: extract to shared type if more consumers appear.
+// Re-use the same shape as Stats.tsx. TODO(#363): extract BotStats to shared types
 interface BotStats {
   servers: number;
   members: number;
@@ -46,7 +75,7 @@ export function DashboardShowcase() {
     let cancelled = false;
     const fetchStats = async () => {
       try {
-        const res = await fetch('/api/stats');
+        const res = await fetch('/api/stats', { signal: AbortSignal.timeout(10_000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: BotStats = await res.json();
         if (!cancelled) {
@@ -67,7 +96,16 @@ export function DashboardShowcase() {
     };
   }, []);
 
-  const kpiValue = (field: keyof BotStats): number | null => {
+  type NumericBotStats = Pick<
+    BotStats,
+    | 'servers'
+    | 'members'
+    | 'commandsServed'
+    | 'activeConversations'
+    | 'uptime'
+    | 'messagesProcessed'
+  >;
+  const kpiValue = (field: keyof NumericBotStats): number | null => {
     if (error && !stats) return null;
     return (stats?.[field] as number) ?? null;
   };
@@ -87,21 +125,21 @@ export function DashboardShowcase() {
           {/* Bento grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Row 1-2: Chart (spans 2 rows on lg) */}
-            <motion.div
+            <AnimatedCell
               className="sm:col-span-2 lg:col-span-1 lg:row-span-2"
-              initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0 }}
+              isInView={isInView}
+              shouldReduceMotion={shouldReduceMotion}
+              delay={0}
             >
               <BentoChart dailyActivity={stats?.dailyActivity} />
-            </motion.div>
+            </AnimatedCell>
 
             {/* Row 1: Members KPI */}
-            <motion.div
+            <AnimatedCell
               className="h-full"
-              initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.08 }}
+              isInView={isInView}
+              shouldReduceMotion={shouldReduceMotion}
+              delay={0.08}
             >
               <BentoKpi
                 value={kpiValue('members')}
@@ -109,14 +147,14 @@ export function DashboardShowcase() {
                 loading={loading}
                 color="primary"
               />
-            </motion.div>
+            </AnimatedCell>
 
             {/* Row 1: Commands Served KPI */}
-            <motion.div
+            <AnimatedCell
               className="h-full"
-              initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.16 }}
+              isInView={isInView}
+              shouldReduceMotion={shouldReduceMotion}
+              delay={0.16}
             >
               <BentoKpi
                 value={kpiValue('commandsServed')}
@@ -124,14 +162,14 @@ export function DashboardShowcase() {
                 loading={loading}
                 color="secondary"
               />
-            </motion.div>
+            </AnimatedCell>
 
             {/* Row 2: Servers KPI */}
-            <motion.div
+            <AnimatedCell
               className="h-full"
-              initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.24 }}
+              isInView={isInView}
+              shouldReduceMotion={shouldReduceMotion}
+              delay={0.24}
             >
               <BentoKpi
                 value={kpiValue('servers')}
@@ -139,37 +177,37 @@ export function DashboardShowcase() {
                 loading={loading}
                 color="accent"
               />
-            </motion.div>
+            </AnimatedCell>
 
             {/* Row 2: Moderation */}
-            <motion.div
+            <AnimatedCell
               className="h-full"
-              initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.32 }}
+              isInView={isInView}
+              shouldReduceMotion={shouldReduceMotion}
+              delay={0.32}
             >
               <BentoModeration />
-            </motion.div>
+            </AnimatedCell>
 
             {/* Row 3: AI Chat (spans 2 cols) */}
-            <motion.div
+            <AnimatedCell
               className="sm:col-span-2 h-full"
-              initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.4 }}
+              isInView={isInView}
+              shouldReduceMotion={shouldReduceMotion}
+              delay={0.4}
             >
               <BentoAIChat />
-            </motion.div>
+            </AnimatedCell>
 
             {/* Row 3: Conversations */}
-            <motion.div
+            <AnimatedCell
               className="h-full"
-              initial={shouldReduceMotion ? {} : { opacity: 0, y: 18 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.45, delay: shouldReduceMotion ? 0 : 0.48 }}
+              isInView={isInView}
+              shouldReduceMotion={shouldReduceMotion}
+              delay={0.48}
             >
               <BentoConversations />
-            </motion.div>
+            </AnimatedCell>
           </div>
         </ScrollStage>
       </div>
