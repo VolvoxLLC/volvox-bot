@@ -87,7 +87,7 @@ export default function TicketDetailPage() {
   }, [guildId, ticketId, router]);
 
   useEffect(() => {
-    void fetchDetail();
+    fetchDetail();
   }, [fetchDetail]);
 
   return (

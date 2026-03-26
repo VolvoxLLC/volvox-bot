@@ -238,7 +238,7 @@ export default function ConversationsClient() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetchConversations({
+    fetchConversations({
       guildId,
       search: debouncedSearch,
       channel: channelFilter,
@@ -248,7 +248,7 @@ export default function ConversationsClient() {
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
-    void fetchConversations({
+    fetchConversations({
       guildId,
       search: debouncedSearch,
       channel: channelFilter,

@@ -96,14 +96,14 @@ export function HealthSection() {
 
   // Initial fetch
   useEffect(() => {
-    void fetchHealth();
+    fetchHealth();
     return () => abortControllerRef.current?.abort();
   }, [fetchHealth]);
 
   // Auto-refresh every 60s
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      void fetchHealth(true);
+      fetchHealth(true);
     }, AUTO_REFRESH_MS);
     return () => window.clearInterval(intervalId);
   }, [fetchHealth]);
@@ -127,7 +127,7 @@ export function HealthSection() {
           variant="outline"
           size="sm"
           className="gap-2 self-start sm:self-auto"
-          onClick={() => void fetchHealth()}
+          onClick={() => fetchHealth()}
           disabled={loading}
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -141,7 +141,7 @@ export function HealthSection() {
           className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
         >
           <strong>Failed to load health data:</strong> {error}
-          <Button variant="outline" size="sm" className="ml-4" onClick={() => void fetchHealth()}>
+          <Button variant="outline" size="sm" className="ml-4" onClick={() => fetchHealth()}>
             Try again
           </Button>
         </div>

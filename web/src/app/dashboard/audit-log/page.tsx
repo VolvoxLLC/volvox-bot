@@ -225,7 +225,7 @@ export default function AuditLogPage() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetchAuditLog({
+    fetchAuditLog({
       guildId,
       action: actionFilter,
       userId: debouncedUserSearch,
@@ -237,7 +237,7 @@ export default function AuditLogPage() {
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
-    void fetchAuditLog({
+    fetchAuditLog({
       guildId,
       action: actionFilter,
       userId: debouncedUserSearch,

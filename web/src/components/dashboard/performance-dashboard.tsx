@@ -171,13 +171,13 @@ export function PerformanceDashboard() {
 
   // Initial fetch
   useEffect(() => {
-    void fetchData();
+    fetchData();
     return () => abortRef.current?.abort();
   }, [fetchData]);
 
   // Auto-refresh every 30s
   useEffect(() => {
-    const id = window.setInterval(() => void fetchData(true), AUTO_REFRESH_MS);
+    const id = window.setInterval(() => fetchData(true), AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
   }, [fetchData]);
 
@@ -209,7 +209,7 @@ export function PerformanceDashboard() {
       }
       setThresholdMsg('Thresholds saved.');
       toast.success('Thresholds saved', { description: 'Alert thresholds updated successfully.' });
-      void fetchData(true);
+      fetchData(true);
     } catch {
       setThresholdMsg('Error: Network failure');
       toast.error('Failed to save thresholds', { description: 'A network error occurred.' });
@@ -271,7 +271,7 @@ export function PerformanceDashboard() {
           variant="outline"
           size="sm"
           className="gap-2"
-          onClick={() => void fetchData()}
+          onClick={() => fetchData()}
           disabled={loading}
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -286,7 +286,7 @@ export function PerformanceDashboard() {
           className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
         >
           <strong>Failed to load performance data:</strong> {error}
-          <Button variant="outline" size="sm" className="ml-4" onClick={() => void fetchData()}>
+          <Button variant="outline" size="sm" className="ml-4" onClick={() => fetchData()}>
             Try again
           </Button>
         </div>

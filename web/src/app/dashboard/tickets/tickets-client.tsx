@@ -186,7 +186,7 @@ export default function TicketsClient() {
   useEffect(() => {
     if (!guildId) return;
     const controller = new AbortController();
-    void fetchStats(guildId, controller.signal);
+    fetchStats(guildId, controller.signal);
     return () => controller.abort();
   }, [guildId, fetchStats]);
 
@@ -241,7 +241,7 @@ export default function TicketsClient() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetchTickets({
+    fetchTickets({
       guildId,
       status: statusFilter,
       user: debouncedSearch,
@@ -251,8 +251,8 @@ export default function TicketsClient() {
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
-    void fetchStats(guildId);
-    void fetchTickets({
+    fetchStats(guildId);
+    fetchTickets({
       guildId,
       status: statusFilter,
       user: debouncedSearch,
