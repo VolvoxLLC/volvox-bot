@@ -278,4 +278,86 @@ describe('enforceRoleLevelDown', () => {
     await enforceRoleLevelDown(member, 3, xpConfig);
     expect(rolesRemove).toHaveBeenCalledWith(['role-a', 'role-b']);
   });
+
+  it('should fall back to individual removal when batch remove fails', async () => {
+    const guild = makeGuild();
+    const rolesRemove = vi.fn().mockRejectedValue(new Error('Batch failed'));
+    const member = {
+      user: { id: 'user-fallback' },
+      guild,
+      roles: {
+        cache: new Map([['role-low', { id: 'role-low' }]]),
+        remove: rolesRemove,
+        add: vi.fn(),
+      },
+    };
+
+    const xpConfig = {
+      levelActions: [{ level: 5, actions: [{ type: 'grantRole', roleId: 'role-low' }] }],
+    };
+
+    await enforceRoleLevelDown(member, 3, xpConfig);
+    // batch call + individual fallback call
+    expect(rolesRemove).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Batch role removal failed'),
+      expect.any(Object),
+    );
+  });
+
+  it('should restore highest role in replace mode (stackRoles: false)', async () => {
+    const guild = makeGuild({ botHighestPosition: 20 });
+    const rolesRemove = vi.fn().mockResolvedValue(undefined);
+    const rolesAdd = vi.fn().mockResolvedValue(undefined);
+    const member = {
+      user: { id: 'user-replace' },
+      guild,
+      roles: {
+        cache: new Map([['role-high', { id: 'role-high' }]]),
+        remove: rolesRemove,
+        add: rolesAdd,
+      },
+    };
+
+    const xpConfig = {
+      roleRewards: { stackRoles: false },
+      levelActions: [
+        { level: 3, actions: [{ type: 'grantRole', roleId: 'role-low' }] },
+        { level: 7, actions: [{ type: 'grantRole', roleId: 'role-high' }] },
+      ],
+    };
+
+    // Drop to level 5: role-high (level 7) removed, role-low (level 3) restored
+    await enforceRoleLevelDown(member, 5, xpConfig);
+    expect(rolesRemove).toHaveBeenCalled();
+    expect(rolesAdd).toHaveBeenCalledWith('role-low');
+  });
+
+  it('should skip when rate-limited', async () => {
+    const guild = makeGuild();
+    const rolesRemove = vi.fn();
+    const member = {
+      user: { id: 'user-rl-down' },
+      guild,
+      roles: {
+        cache: new Map([['role-low', { id: 'role-low' }]]),
+        remove: rolesRemove,
+      },
+    };
+
+    // Exhaust rate limit
+    recordRoleChange(guild.id, 'user-rl-down');
+    recordRoleChange(guild.id, 'user-rl-down');
+
+    const xpConfig = {
+      levelActions: [{ level: 5, actions: [{ type: 'grantRole', roleId: 'role-low' }] }],
+    };
+
+    await enforceRoleLevelDown(member, 3, xpConfig);
+    expect(rolesRemove).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Rate limit exceeded'),
+      expect.any(Object),
+    );
+  });
 });
