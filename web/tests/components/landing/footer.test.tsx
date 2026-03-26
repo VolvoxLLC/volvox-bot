@@ -69,4 +69,30 @@ describe('Footer', () => {
     expect(screen.getByText(/Open source. Self-hostable. Free forever./i)).toBeInTheDocument();
     expect(screen.getByText(/Volvox/i)).toBeInTheDocument();
   });
+
+  it('should render newsletter email input and disabled subscribe button', () => {
+    render(<Footer />);
+    const emailInput = screen.getByLabelText('Email address for newsletter');
+    expect(emailInput).toBeInTheDocument();
+    expect(emailInput).toHaveAttribute('type', 'email');
+
+    const subscribeButton = screen.getByLabelText('Subscribe to newsletter (coming soon)');
+    expect(subscribeButton).toBeInTheDocument();
+    expect(subscribeButton).toBeDisabled();
+  });
+
+  it('should render social links with correct hrefs', () => {
+    render(<Footer />);
+    const githubLink = screen.getByLabelText('GitHub');
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/VolvoxLLC/volvox-bot');
+
+    const discordLink = screen.getByLabelText('Discord');
+    expect(discordLink).toHaveAttribute('href', 'https://discord.gg/8ahXACdamN');
+
+    const xLink = screen.getByLabelText('X (Twitter)');
+    expect(xLink).toHaveAttribute('href', 'https://x.com/volvoxbot');
+
+    const statusLink = screen.getByRole('link', { name: /Status/i });
+    expect(statusLink).toHaveAttribute('href', 'https://status.volvox.bot');
+  });
 });
