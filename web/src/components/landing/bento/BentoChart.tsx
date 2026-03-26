@@ -254,8 +254,8 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
       {/* Day labels when real data is available */}
       {dayLabels && (
         <div className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5">
-          {dayLabels.map((label) => (
-            <span key={label}>{label}</span>
+          {dayLabels.map((label, i) => (
+            <span key={`day-${label}-${i}`}>{label}</span>
           ))}
         </div>
       )}
