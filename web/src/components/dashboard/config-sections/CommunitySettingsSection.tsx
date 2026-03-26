@@ -541,10 +541,10 @@ export function CommunitySettingsSection({
                       .map((value) => Number(value.trim()))
                       .filter((value) => Number.isFinite(value) && value > 0);
                     if (nums.length > 0) {
-                      // Don't sort while user is typing - let them control the order
+                      const sorted = [...nums].sort((a, b) => a - b);
                       updateDraftConfig((prev) => ({
                         ...prev,
-                        xp: { ...prev.xp, levelThresholds: nums },
+                        xp: { ...prev.xp, levelThresholds: sorted },
                       }));
                     }
                   }}

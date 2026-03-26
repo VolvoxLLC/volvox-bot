@@ -189,9 +189,9 @@ router.get('/:guildId/leaderboard', async (req, res) => {
       }
 
       const currentLevelXp = xpConfig.levelThresholds[level - 1] ?? 0;
-      // Don't mirror last threshold into nextLevelXp for max-level users — set to null
+      // For max-level users, set nextLevelXp to 0 to maintain API compatibility
       const isMaxLevel = level >= xpConfig.levelThresholds.length;
-      const nextLevelXp = isMaxLevel ? null : (xpConfig.levelThresholds[level] ?? null);
+      const nextLevelXp = isMaxLevel ? 0 : (xpConfig.levelThresholds[level] ?? 0);
 
       return {
         userId: row.user_id,
@@ -682,9 +682,9 @@ router.get('/:guildId/profile/:userId', async (req, res) => {
     const rep = repResult.rows[0] || { xp: 0, level: 0 };
     const level = computeLevel(rep.xp, xpConfig.levelThresholds);
     const currentLevelXp = xpConfig.levelThresholds[level - 1] ?? 0;
-    // Consistent with leaderboard: null for max-level users
+    // For max-level users, set nextLevelXp to 0 to maintain API compatibility
     const isMaxLevel = level >= xpConfig.levelThresholds.length;
-    const nextLevelXp = isMaxLevel ? null : (xpConfig.levelThresholds[level] ?? null);
+    const nextLevelXp = isMaxLevel ? 0 : (xpConfig.levelThresholds[level] ?? 0);
 
     // Resolve Discord user info
     const { client } = req.app.locals;
