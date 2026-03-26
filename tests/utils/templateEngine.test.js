@@ -135,7 +135,7 @@ describe('buildTemplateContext', () => {
     expect(ctx.previousLevel).toBe('4');
     expect(ctx.xp).toBe('1,500');
     expect(ctx.xpToNext).toBe('1,000');
-    expect(ctx.nextLevel).toBe('2,500');
+    expect(ctx.nextLevel).toBe('6');
     expect(ctx.server).toBe('Test Server');
     expect(ctx.serverIcon).toBe('https://cdn.example.com/icon.png');
     expect(ctx.memberCount).toBe('1,234');

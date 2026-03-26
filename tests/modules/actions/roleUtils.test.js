@@ -36,6 +36,10 @@ function makeGuild({ hasManageRoles = true, botHighestPosition = 10 } = {}) {
 }
 
 describe('canManageRole', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('should return true when bot has MANAGE_ROLES and role is below bot highest', () => {
     const guild = makeGuild();
     expect(canManageRole(guild, 'role-low')).toBe(true);
@@ -68,6 +72,9 @@ describe('canManageRole', () => {
 describe('checkRoleRateLimit / recordRoleChange', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.clearAllMocks();
+    // Clear rate limit state between tests
+    sweepRoleLimits();
   });
 
   afterEach(() => {
@@ -99,6 +106,9 @@ describe('checkRoleRateLimit / recordRoleChange', () => {
 describe('sweepRoleLimits', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.clearAllMocks();
+    // Clear rate limit state between tests
+    sweepRoleLimits();
   });
 
   afterEach(() => {
@@ -114,6 +124,10 @@ describe('sweepRoleLimits', () => {
 });
 
 describe('collectXpManagedRoles', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('should return all roleIds from grantRole and removeRole actions in levelActions', () => {
     const config = {
       levelActions: [
@@ -138,11 +152,26 @@ describe('collectXpManagedRoles', () => {
     const config = { levelActions: [], defaultActions: [] };
     expect(collectXpManagedRoles(config)).toEqual(new Set());
   });
+
+  it('should include roles from defaultActions', () => {
+    const config = {
+      levelActions: [],
+      defaultActions: [
+        { type: 'grantRole', roleId: 'default-role' },
+        { type: 'removeRole', roleId: 'remove-default' },
+      ],
+    };
+
+    const roles = collectXpManagedRoles(config);
+    expect(roles).toEqual(new Set(['default-role', 'remove-default']));
+  });
 });
 
 describe('enforceRoleLevelDown', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear rate limit state between tests
+    sweepRoleLimits();
   });
 
   it('should remove roles granted at levels above newLevel', async () => {
@@ -163,7 +192,7 @@ describe('enforceRoleLevelDown', () => {
 
     // User dropped to level 3 — role-low is at level 5 (>3), member has it → remove
     await enforceRoleLevelDown(member, 3, xpConfig);
-    expect(rolesRemove).toHaveBeenCalledWith('role-low');
+    expect(rolesRemove).toHaveBeenCalledWith(['role-low']);
   });
 
   it('should not remove roles at or below newLevel', async () => {
@@ -205,5 +234,48 @@ describe('enforceRoleLevelDown', () => {
 
     await enforceRoleLevelDown(member, 3, xpConfig);
     expect(rolesRemove).not.toHaveBeenCalled();
+  });
+
+  it('should check rate limit once for level-down event', async () => {
+    const rolesRemove = vi.fn().mockResolvedValue(undefined);
+    // Create guild with role-a and role-b in the cache (position 5 is below bot's highest at 10)
+    const guild = {
+      id: 'guild1',
+      members: {
+        me: {
+          permissions: { has: vi.fn(() => true) },
+          roles: { highest: { position: 10 } },
+        },
+      },
+      roles: {
+        cache: new Map([
+          ['role-a', { id: 'role-a', position: 5, name: 'Role A' }],
+          ['role-b', { id: 'role-b', position: 5, name: 'Role B' }],
+        ]),
+      },
+    };
+    const member = {
+      user: { id: 'user1' },
+      guild,
+      roles: {
+        cache: new Map([
+          ['role-a', { id: 'role-a' }],
+          ['role-b', { id: 'role-b' }],
+        ]),
+        remove: rolesRemove,
+      },
+    };
+
+    const xpConfig = {
+      levelActions: [
+        { level: 5, actions: [{ type: 'grantRole', roleId: 'role-a' }] },
+        { level: 10, actions: [{ type: 'grantRole', roleId: 'role-b' }] },
+      ],
+    };
+
+    // User has both roles, drops to level 3
+    // Rate limit should be checked once before any removals
+    await enforceRoleLevelDown(member, 3, xpConfig);
+    expect(rolesRemove).toHaveBeenCalledWith(['role-a', 'role-b']);
   });
 });

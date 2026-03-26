@@ -9,7 +9,7 @@ import { info, warn } from '../logger.js';
 import { buildTemplateContext } from '../utils/templateEngine.js';
 import { handleGrantRole } from './actions/grantRole.js';
 import { handleRemoveRole } from './actions/removeRole.js';
-import { collectXpManagedRoles } from './actions/roleUtils.js';
+import { checkRoleRateLimit, collectXpManagedRoles } from './actions/roleUtils.js';
 
 /**
  * Action handler registry: action type → async handler function.
@@ -96,10 +96,19 @@ export async function executeLevelUpPipeline({
     actionCount: actions.length,
   });
 
+  // Check rate limit ONCE before the pipeline (not per-action)
+  if (!checkRoleRateLimit(guild.id, member.user?.id)) {
+    warn('Level-up pipeline rate limit exceeded — skipping all actions', {
+      guildId: guild.id,
+      userId: member.user?.id,
+    });
+    return;
+  }
+
   // Compute XP-managed roles once for stack/replace logic
   const xpManagedRoles = collectXpManagedRoles(config);
 
-  // Build base pipeline context (templateContext rebuilt per level below)
+  // Build base pipeline context
   const basePipelineContext = {
     member,
     message,
@@ -111,19 +120,30 @@ export async function executeLevelUpPipeline({
     xpManagedRoles,
   };
 
+  // Cache template contexts per level to avoid duplicate DB queries
+  const templateContextCache = new Map();
+
   for (const { level, action } of actions) {
+    // Track previousLevel incrementally for correct intermediate level context
+    const levelPreviousLevel = level - 1;
+
     // Rebuild template context for each intermediate level during level-skip
-    const templateContext = await buildTemplateContext({
-      member,
-      message,
-      guild,
-      level,
-      previousLevel,
-      xp,
-      levelThresholds: config.levelThresholds ?? [],
-      roleName: null,
-      roleId: null,
-    });
+    // Cache per level to avoid duplicate DB queries
+    let templateContext = templateContextCache.get(level);
+    if (!templateContext) {
+      templateContext = await buildTemplateContext({
+        member,
+        message,
+        guild,
+        level,
+        previousLevel: levelPreviousLevel,
+        xp,
+        levelThresholds: config.levelThresholds ?? [],
+        roleName: null,
+        roleId: null,
+      });
+      templateContextCache.set(level, templateContext);
+    }
 
     const pipelineContext = { ...basePipelineContext, templateContext, currentLevel: level };
 

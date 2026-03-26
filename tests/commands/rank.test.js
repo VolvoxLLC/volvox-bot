@@ -11,7 +11,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn().mockReturnValue({ reputation: { enabled: true } }),
+  getConfig: vi.fn().mockReturnValue({ reputation: { enabled: true }, xp: { enabled: true } }),
 }));
 
 vi.mock('../../src/modules/reputation.js', async (importOriginal) => {

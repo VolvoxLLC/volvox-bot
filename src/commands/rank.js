@@ -42,10 +42,14 @@ export async function execute(interaction) {
     return safeEditReply(interaction, { content: 'Reputation system is not enabled.' });
   }
 
+  const xpCfg = { ...XP_DEFAULTS, ...cfg.xp };
+  if (!xpCfg.enabled) {
+    return safeEditReply(interaction, { content: 'XP leveling system is not enabled.' });
+  }
+
   try {
     const pool = getPool();
     const target = interaction.options.getUser('user') ?? interaction.user;
-    const xpCfg = { ...XP_DEFAULTS, ...cfg.xp };
     const thresholds = xpCfg.levelThresholds;
 
     // Fetch reputation row (cached)

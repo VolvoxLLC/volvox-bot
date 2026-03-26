@@ -6,7 +6,7 @@
  */
 
 import { info } from '../../logger.js';
-import { canManageRole, checkRoleRateLimit, recordRoleChange } from './roleUtils.js';
+import { canManageRole, recordRoleChange } from './roleUtils.js';
 
 /**
  * Remove a role from the member.
@@ -19,7 +19,7 @@ export async function handleRemoveRole(action, context) {
   const { roleId } = action;
 
   if (!canManageRole(guild, roleId)) return;
-  if (!checkRoleRateLimit(guild.id, member.user?.id)) return;
+  // Note: Rate limit is checked ONCE per level-down event, not per individual removal
 
   await member.roles.remove(roleId);
   recordRoleChange(guild.id, member.user?.id);

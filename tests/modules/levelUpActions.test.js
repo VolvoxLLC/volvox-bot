@@ -16,6 +16,7 @@ vi.mock('../../src/utils/templateEngine.js', () => ({
 
 vi.mock('../../src/modules/actions/roleUtils.js', () => ({
   collectXpManagedRoles: vi.fn(() => new Set()),
+  checkRoleRateLimit: vi.fn(() => true),
 }));
 
 vi.mock('../../src/modules/actions/grantRole.js', () => ({

@@ -104,10 +104,13 @@ export async function buildTemplateContext({
         `SELECT
            r.messages_count,
            us.days_active,
-           COALESCE(vs.total_seconds, 0) AS voice_seconds
+           COALESCE((
+             SELECT SUM(duration_seconds)
+             FROM voice_sessions
+             WHERE guild_id = $1 AND user_id = $2 AND left_at IS NOT NULL
+           ), 0) AS voice_seconds
          FROM reputation r
          LEFT JOIN user_stats us ON us.guild_id = r.guild_id AND us.user_id = r.user_id
-         LEFT JOIN voice_stats vs ON vs.guild_id = r.guild_id AND vs.user_id = r.user_id
          WHERE r.guild_id = $1 AND r.user_id = $2`,
         [guildId, userId],
       ),
@@ -126,18 +129,21 @@ export async function buildTemplateContext({
   }
 
   return {
-    username: member.user.displayName ?? '',
+    // Use member.displayName (guild nickname) not member.user.displayName
+    username: member.displayName ?? member.user?.displayName ?? '',
     mention: `<@${member.user.id}>`,
     avatar: member.user.displayAvatarURL?.() ?? '',
     level: String(level),
     previousLevel: String(previousLevel),
     xp: formatNumber(xp),
     xpToNext: formatNumber(Math.max(0, xpToNext)),
-    nextLevel: nextThreshold !== null ? formatNumber(nextThreshold) : '0',
+    // nextLevel should be level + 1, not the XP threshold
+    nextLevel: nextThreshold !== null ? String(level + 1) : '0',
     server: guild.name ?? '',
     serverIcon: guild.iconURL?.() ?? '',
     memberCount: formatNumber(guild.memberCount ?? 0),
-    channel: message.channel?.name ? `#${message.channel.name}` : '',
+    // Guard message before reading channel
+    channel: message?.channel?.name ? `#${message.channel.name}` : '',
     rank,
     messages,
     roleName: roleName ?? '',

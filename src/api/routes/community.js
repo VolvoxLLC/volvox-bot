@@ -201,9 +201,9 @@ router.get('/:guildId/leaderboard', async (req, res) => {
       }
 
       const currentLevelXp = xpConfig.levelThresholds[level - 1] ?? 0;
-      const nextLevelXp =
-        xpConfig.levelThresholds[level] ??
-        xpConfig.levelThresholds[xpConfig.levelThresholds.length - 1];
+      // Don't mirror last threshold into nextLevelXp for max-level users — set to null
+      const isMaxLevel = level >= xpConfig.levelThresholds.length;
+      const nextLevelXp = isMaxLevel ? null : (xpConfig.levelThresholds[level] ?? null);
 
       return {
         userId: row.user_id,

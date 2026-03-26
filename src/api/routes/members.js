@@ -662,7 +662,8 @@ router.get(
       // Compute badge/level info
       const xpConfig = getXpConfig(guild.id);
       const xp = rep?.xp ?? 0;
-      const level = rep?.level ?? computeLevel(xp, xpConfig.levelThresholds);
+      // Recompute level from XP instead of trusting reputation.level (stale after threshold changes)
+      const level = computeLevel(xp, xpConfig.levelThresholds);
       const nextThreshold = xpConfig.levelThresholds[level] ?? null;
 
       res.json({

@@ -51,8 +51,10 @@ describe('handleRemoveRole', () => {
     expect(ctx._mocks.rolesRemove).not.toHaveBeenCalled();
   });
 
-  it('should skip when rate limited', async () => {
-    checkRoleRateLimit.mockReturnValueOnce(false);
+  it('should skip when canManageRole returns false due to rate limit', async () => {
+    // Rate limit check is now done at pipeline level, not in handleRemoveRole
+    // The handler only checks canManageRole now
+    canManageRole.mockReturnValueOnce(false);
     const ctx = makeContext();
     await handleRemoveRole({ type: 'removeRole', roleId: 'role-a' }, ctx);
 

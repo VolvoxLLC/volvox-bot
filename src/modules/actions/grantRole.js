@@ -6,7 +6,7 @@
  */
 
 import { info, warn } from '../../logger.js';
-import { canManageRole, checkRoleRateLimit, recordRoleChange } from './roleUtils.js';
+import { canManageRole, recordRoleChange } from './roleUtils.js';
 
 /**
  * Grant a role to the member.
@@ -20,14 +20,14 @@ export async function handleGrantRole(action, context) {
   const { roleId } = action;
 
   if (!canManageRole(guild, roleId)) return;
-  if (!checkRoleRateLimit(guild.id, member.user?.id)) return;
+  // Note: Rate limit is checked ONCE before the pipeline, not per-action
 
   // Replace mode: remove other XP-managed roles before granting
   if (!config.roleRewards.stackRoles) {
     for (const [id] of member.roles.cache) {
       if (xpManagedRoles.has(id) && id !== roleId) {
         if (!canManageRole(guild, id)) continue;
-        if (!checkRoleRateLimit(guild.id, member.user?.id)) continue;
+        // Skip rate limit check for removals in replace mode - already checked at pipeline start
         try {
           await member.roles.remove(id);
           recordRoleChange(guild.id, member.user?.id);

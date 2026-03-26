@@ -5,6 +5,7 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/366
  */
 
+import { PermissionFlagsBits } from 'discord.js';
 import { warn } from '../../logger.js';
 
 /** Max role changes per user per window. */
@@ -30,7 +31,8 @@ const roleLimits = new Map();
 export function canManageRole(guild, roleId) {
   const me = guild.members.me;
   if (!me) return false;
-  if (!me.permissions.has('ManageRoles')) {
+  // Use PermissionFlagsBits.ManageRoles instead of string 'ManageRoles'
+  if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
     warn('Cannot manage role — bot lacks MANAGE_ROLES permission', {
       guildId: guild.id,
       roleId,
@@ -120,15 +122,14 @@ export function sweepRoleLimits() {
 }
 
 /**
- * Remove roles granted at levels above the new level.
- * Called when XP is manually reduced and removeOnLevelDown is enabled.
- *
+ * Collect roles to remove during level-down.
  * @param {import('discord.js').GuildMember} member
  * @param {number} newLevel
- * @param {Object} xpConfig - The resolved `config.xp` section.
+ * @param {Object} xpConfig
+ * @returns {Array<{roleId: string, entry: Object}>}
  */
-export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
-  const guild = member.guild;
+function collectRolesToRemove(member, newLevel, xpConfig) {
+  const rolesToRemove = [];
 
   for (const entry of xpConfig.levelActions ?? []) {
     if (entry.level <= newLevel) continue;
@@ -136,11 +137,94 @@ export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
     for (const action of entry.actions ?? []) {
       if (action.type !== 'grantRole' || !action.roleId) continue;
       if (!member.roles.cache.has(action.roleId)) continue;
-      if (!canManageRole(guild, action.roleId)) continue;
-      if (!checkRoleRateLimit(guild.id, member.user.id)) continue;
 
-      await member.roles.remove(action.roleId);
-      recordRoleChange(guild.id, member.user.id);
+      rolesToRemove.push({ roleId: action.roleId, entry });
+    }
+  }
+
+  return rolesToRemove;
+}
+
+/**
+ * Remove a single role with error handling.
+ * @param {import('discord.js').GuildMember} member
+ * @param {string} roleId
+ * @param {Object} entry
+ * @returns {Promise<boolean>} true if removed successfully
+ */
+async function removeSingleRole(member, roleId, entry) {
+  const guild = member.guild;
+
+  if (!canManageRole(guild, roleId)) {
+    return false;
+  }
+
+  try {
+    await member.roles.remove(roleId);
+    recordRoleChange(guild.id, member.user.id);
+    return true;
+  } catch (err) {
+    warn('Failed to remove role during level-down', {
+      guildId: guild.id,
+      userId: member.user.id,
+      roleId,
+      level: entry.level,
+      error: err.message,
+    });
+    return false;
+  }
+}
+
+/**
+ * Remove roles granted at levels above the new level.
+ * Called when XP is manually reduced and removeOnLevelDown is enabled.
+ * Uses batch removal with error handling per role.
+ *
+ * @param {import('discord.js').GuildMember} member
+ * @param {number} newLevel
+ * @param {Object} xpConfig - The resolved `config.xp` section.
+ */
+export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
+  // Check rate limit ONCE for the level-down event
+  if (!checkRoleRateLimit(member.guild.id, member.user.id)) {
+    warn('Rate limit exceeded for level-down — skipping role removal', {
+      guildId: member.guild.id,
+      userId: member.user.id,
+    });
+    return;
+  }
+
+  const rolesToRemove = collectRolesToRemove(member, newLevel, xpConfig);
+  if (rolesToRemove.length === 0) return;
+
+  // Batch remove roles using member.roles.remove(roleArray)
+  const roleIds = [];
+  for (const { roleId, entry } of rolesToRemove) {
+    if (canManageRole(member.guild, roleId)) {
+      roleIds.push(roleId);
+    }
+  }
+
+  if (roleIds.length === 0) return;
+
+  try {
+    // Use batch removal for efficiency
+    await member.roles.remove(roleIds);
+    // Record role changes for each removed role
+    for (const roleId of roleIds) {
+      recordRoleChange(member.guild.id, member.user.id);
+    }
+  } catch (err) {
+    // If batch fails, try individual removal with error handling
+    warn('Batch role removal failed — falling back to individual removal', {
+      guildId: member.guild.id,
+      userId: member.user.id,
+      roleIds,
+      error: err.message,
+    });
+
+    for (const { roleId, entry } of rolesToRemove) {
+      await removeSingleRole(member, roleId, entry);
     }
   }
 }

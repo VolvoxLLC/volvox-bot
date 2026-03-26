@@ -6,7 +6,7 @@
  */
 
 import { getPool } from '../db.js';
-import { info, error as logError } from '../logger.js';
+import { info, warn, error as logError } from '../logger.js';
 import { invalidateReputationCache } from '../utils/reputationCache.js';
 import { getConfig } from './config.js';
 import { executeLevelUpPipeline } from './levelUpActions.js';
@@ -40,13 +40,19 @@ function getRepConfig(guildId) {
 
 /**
  * Resolve the XP config for a guild, merging defaults.
+ * Uses deep merge for nested objects like roleRewards.
  *
  * @param {string} guildId
  * @returns {object}
  */
 function getXpConfig(guildId) {
   const cfg = getConfig(guildId);
-  return { ...XP_DEFAULTS, ...cfg.xp };
+  const merged = { ...XP_DEFAULTS, ...cfg.xp };
+  // Deep merge roleRewards to preserve defaults for missing nested properties
+  if (cfg.xp?.roleRewards) {
+    merged.roleRewards = { ...XP_DEFAULTS.roleRewards, ...cfg.xp.roleRewards };
+  }
+  return merged;
 }
 
 /**
