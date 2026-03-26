@@ -5,11 +5,17 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/368
  */
 
-import { EmbedBuilder } from 'discord.js';
 import { debug, info, warn } from '../../logger.js';
-import { renderTemplate } from '../../utils/templateEngine.js';
+import { safeSend } from '../../utils/safeSend.js';
+import { buildPayload } from './buildPayload.js';
 
-/** Rate limit: 1 DM per user per 60 seconds. */
+/**
+ * Rate limit: 1 DM per user per 60 seconds.
+ *
+ * NOTE: This rate limiter is process-local (in-memory Map). It resets on
+ * every bot restart and shard deploy. It is intended only as a best-effort
+ * guard against rapid duplicate DMs — not a distributed or persistent limit.
+ */
 const DM_RATE_WINDOW_MS = 60_000;
 
 /**
@@ -65,40 +71,9 @@ export function resetDmLimits() {
 }
 
 /**
- * Build message payload from action config and template context.
- *
- * @param {Object} action - { format: 'text'|'embed'|'both', template, embed }
- * @param {Object} templateContext
- * @returns {Object} Discord message options
- */
-function buildDmPayload(action, templateContext) {
-  const payload = {};
-
-  const format = action.format ?? 'text';
-
-  if (format === 'text' || format === 'both') {
-    payload.content = renderTemplate(action.template ?? '', templateContext);
-  }
-
-  if (format === 'embed' || format === 'both') {
-    const embedConfig = action.embed ?? {};
-    const embed = new EmbedBuilder();
-    if (embedConfig.title) embed.setTitle(renderTemplate(embedConfig.title, templateContext));
-    if (embedConfig.description)
-      embed.setDescription(renderTemplate(embedConfig.description, templateContext));
-    if (embedConfig.color) embed.setColor(embedConfig.color);
-    if (embedConfig.thumbnail) embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
-    if (embedConfig.footer)
-      embed.setFooter({ text: renderTemplate(embedConfig.footer, templateContext) });
-    payload.embeds = [embed];
-  }
-
-  return payload;
-}
-
-/**
  * Send a DM to the member who leveled up.
- * Fails silently when the user has DMs disabled.
+ * Uses safeSend to handle messages >2000 chars (splits automatically) and
+ * sanitizes mentions. Fails silently when the user has DMs disabled.
  *
  * @param {Object} action - { type: "sendDm", format, template, embed }
  * @param {Object} context - Pipeline context
@@ -112,10 +87,10 @@ export async function handleSendDm(action, context) {
     return;
   }
 
-  const payload = buildDmPayload(action, templateContext);
+  const payload = buildPayload(action, templateContext);
 
   try {
-    await member.user.send(payload);
+    await safeSend(member.user, payload);
     recordDmSend(guild.id, userId);
     info('Level-up DM sent', { guildId: guild.id, userId });
   } catch (err) {

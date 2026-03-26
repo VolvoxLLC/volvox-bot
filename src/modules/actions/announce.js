@@ -5,42 +5,9 @@
  * @see https://github.com/VolvoxLLC/volvox-bot/issues/368
  */
 
-import { EmbedBuilder } from 'discord.js';
 import { info, warn } from '../../logger.js';
 import { safeSend } from '../../utils/safeSend.js';
-import { renderTemplate } from '../../utils/templateEngine.js';
-
-/**
- * Build message payload from action config and template context.
- *
- * @param {Object} action - { format: 'text'|'embed'|'both', template, embed }
- * @param {Object} templateContext
- * @returns {Object} Discord message options
- */
-function buildAnnouncePayload(action, templateContext) {
-  const payload = {};
-
-  const format = action.format ?? 'text';
-
-  if (format === 'text' || format === 'both') {
-    payload.content = renderTemplate(action.template ?? '', templateContext);
-  }
-
-  if (format === 'embed' || format === 'both') {
-    const embedConfig = action.embed ?? {};
-    const embed = new EmbedBuilder();
-    if (embedConfig.title) embed.setTitle(renderTemplate(embedConfig.title, templateContext));
-    if (embedConfig.description)
-      embed.setDescription(renderTemplate(embedConfig.description, templateContext));
-    if (embedConfig.color) embed.setColor(embedConfig.color);
-    if (embedConfig.thumbnail) embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
-    if (embedConfig.footer)
-      embed.setFooter({ text: renderTemplate(embedConfig.footer, templateContext) });
-    payload.embeds = [embed];
-  }
-
-  return payload;
-}
+import { buildPayload } from './buildPayload.js';
 
 /**
  * Resolve the target channel for the announcement.
@@ -91,7 +58,7 @@ export async function handleAnnounce(action, context) {
   const channel = resolveChannel(action, context);
   if (!channel) return;
 
-  const payload = buildAnnouncePayload(action, context.templateContext);
+  const payload = buildPayload(action, context.templateContext);
 
   try {
     await safeSend(channel, payload);
