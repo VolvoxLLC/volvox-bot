@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { extractApiError, isAbortError, safeParseJson, toErrorMessage } from '@/lib/api-utils';
 import { HealthCards } from './health-cards';
 import { RestartHistory } from './restart-history';
 import { type BotHealth, validateBotHealth } from './types';
@@ -56,22 +57,10 @@ export function HealthSection() {
           return;
         }
 
-        let payload: unknown = null;
-        try {
-          payload = await response.json();
-        } catch {
-          payload = null;
-        }
+        const payload = await safeParseJson(response);
 
         if (!response.ok) {
-          const message =
-            typeof payload === 'object' &&
-            payload !== null &&
-            'error' in payload &&
-            typeof payload.error === 'string'
-              ? payload.error
-              : 'Failed to fetch health data';
-          throw new Error(message);
+          throw new Error(extractApiError(payload, 'Failed to fetch health data'));
         }
 
         const validationError = validateBotHealth(payload);
@@ -83,8 +72,8 @@ export function HealthSection() {
         setError(null);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {
-        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
-        setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch health data');
+        if (isAbortError(fetchError)) return;
+        setError(toErrorMessage(fetchError, 'Failed to fetch health data'));
       } finally {
         if (didSetLoading) {
           setLoading(false);

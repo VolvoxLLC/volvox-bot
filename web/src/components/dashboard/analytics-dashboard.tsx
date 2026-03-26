@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { extractApiError, isAbortError, safeParseJson, toErrorMessage } from '@/lib/api-utils';
 import {
   Bar,
   BarChart,
@@ -194,22 +195,10 @@ export function AnalyticsDashboard() {
           return;
         }
 
-        let payload: unknown = null;
-        try {
-          payload = await response.json();
-        } catch {
-          payload = null;
-        }
+        const payload = await safeParseJson(response);
 
         if (!response.ok) {
-          const message =
-            typeof payload === 'object' &&
-            payload !== null &&
-            'error' in payload &&
-            typeof payload.error === 'string'
-              ? payload.error
-              : 'Failed to fetch analytics';
-          throw new Error(message);
+          throw new Error(extractApiError(payload, 'Failed to fetch analytics'));
         }
 
         if (!isDashboardAnalyticsPayload(payload)) {
@@ -219,8 +208,8 @@ export function AnalyticsDashboard() {
         setAnalytics(payload);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {
-        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
-        setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch analytics');
+        if (isAbortError(fetchError)) return;
+        setError(toErrorMessage(fetchError, 'Failed to fetch analytics'));
       } finally {
         if (abortControllerRef.current === controller) {
           setLoading(false);
