@@ -947,13 +947,14 @@ router.post(
       return res.status(400).json({ error: 'amount must be between -1000000 and 1000000' });
     }
 
+    let xpConfig;
     try {
       const pool = safeGetPool();
       if (!pool) {
         return res.status(503).json({ error: 'Database unavailable' });
       }
       const guildId = req.guild.id;
-      const xpConfig = getXpConfig(guildId);
+      xpConfig = getXpConfig(guildId);
 
       // Wrap XP upsert + level update in a transaction for consistency
       const client = await pool.connect();
