@@ -68,7 +68,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   const dayLabels = useMemo(() => {
     if (!hasRealData) return null;
     return dailyActivity.map((d) => {
-      const date = new Date(d.date + 'T00:00:00Z');
+      const date = new Date(`${d.date}T00:00:00Z`);
       return date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
     });
   }, [dailyActivity, hasRealData]);
@@ -84,7 +84,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
 
     if (hasRealData && dailyActivity) {
       const d = dailyActivity[clampedIndex];
-      const date = new Date(d.date + 'T00:00:00Z');
+      const date = new Date(`${d.date}T00:00:00Z`);
       const label = date.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
@@ -212,8 +212,9 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
           {/* Invisible hit areas for each data point */}
           {hasRealData &&
             points.map((p, i) => (
+              // biome-ignore lint/a11y/noStaticElementInteractions: SVG hit zone
               <rect
-                key={`hit-${i}`}
+                key={`hit-${p.x}-${p.y}`}
                 x={p.x - 220 / points.length / 2}
                 y={0}
                 width={220 / points.length}
@@ -254,7 +255,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
       {dayLabels && (
         <div className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5">
           {dayLabels.map((label, i) => (
-            <span key={`${label}-${i}`}>{label}</span>
+            <span key={`day-${label}-${i}`}>{label}</span>
           ))}
         </div>
       )}
