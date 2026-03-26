@@ -206,7 +206,7 @@ jobs:
       - name: Build bot Docker image
         uses: docker/build-push-action@v7.0.0
         with:
-          context: web
+          context: .
           file: Dockerfile
           push: false
           tags: volvox-bot-ci:${{ github.sha }}
