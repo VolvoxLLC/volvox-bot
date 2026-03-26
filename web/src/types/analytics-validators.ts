@@ -16,57 +16,63 @@ function isAnalyticsRangePreset(value: unknown): value is AnalyticsRangePreset {
   return value === 'today' || value === 'week' || value === 'month' || value === 'custom';
 }
 
-export function isDashboardAnalyticsPayload(value: unknown): value is DashboardAnalytics {
-  if (!isRecord(value)) return false;
+// --- Section validators extracted from isDashboardAnalyticsPayload ---
 
-  const range = value.range;
-  const kpis = value.kpis;
-  const realtime = value.realtime;
-  const aiUsage = value.aiUsage;
-
-  if (!isString(value.guildId)) return false;
+function isValidRange(range: unknown): boolean {
   if (!isRecord(range)) return false;
-  if (!isRecord(kpis)) return false;
-  if (!isRecord(realtime)) return false;
-  if (!isRecord(aiUsage)) return false;
-
   if (!isAnalyticsRangePreset(range.type)) return false;
   if (!isString(range.from) || !isString(range.to)) return false;
   if (range.interval !== 'hour' && range.interval !== 'day') return false;
   if (range.channelId !== null && !isString(range.channelId)) return false;
   if (range.compare !== undefined && typeof range.compare !== 'boolean') return false;
+  return true;
+}
 
-  if (
-    !isFiniteNumber(kpis.totalMessages) ||
-    !isFiniteNumber(kpis.aiRequests) ||
-    !isFiniteNumber(kpis.aiCostUsd) ||
-    !isFiniteNumber(kpis.activeUsers) ||
-    !isFiniteNumber(kpis.newMembers)
-  ) {
-    return false;
-  }
+function isValidKpis(kpis: unknown): boolean {
+  if (!isRecord(kpis)) return false;
+  return (
+    isFiniteNumber(kpis.totalMessages) &&
+    isFiniteNumber(kpis.aiRequests) &&
+    isFiniteNumber(kpis.aiCostUsd) &&
+    isFiniteNumber(kpis.activeUsers) &&
+    isFiniteNumber(kpis.newMembers)
+  );
+}
 
-  if (
-    (realtime.onlineMembers !== null && !isFiniteNumber(realtime.onlineMembers)) ||
-    !isFiniteNumber(realtime.activeAiConversations)
-  ) {
-    return false;
-  }
+function isValidRealtime(realtime: unknown): boolean {
+  if (!isRecord(realtime)) return false;
+  if (realtime.onlineMembers !== null && !isFiniteNumber(realtime.onlineMembers)) return false;
+  if (!isFiniteNumber(realtime.activeAiConversations)) return false;
+  return true;
+}
 
-  if (
-    !Array.isArray(value.messageVolume) ||
-    !value.messageVolume.every(
-      (point) =>
-        isRecord(point) &&
-        isString(point.bucket) &&
-        isString(point.label) &&
-        isFiniteNumber(point.messages) &&
-        isFiniteNumber(point.aiRequests),
-    )
-  ) {
-    return false;
-  }
+function isValidMessageVolumePoint(point: unknown): boolean {
+  return (
+    isRecord(point) &&
+    isString(point.bucket) &&
+    isString(point.label) &&
+    isFiniteNumber(point.messages) &&
+    isFiniteNumber(point.aiRequests)
+  );
+}
 
+function isValidMessageVolume(messageVolume: unknown): boolean {
+  return Array.isArray(messageVolume) && messageVolume.every(isValidMessageVolumePoint);
+}
+
+function isValidAiUsageEntry(entry: unknown): boolean {
+  return (
+    isRecord(entry) &&
+    isString(entry.model) &&
+    isFiniteNumber(entry.requests) &&
+    isFiniteNumber(entry.promptTokens) &&
+    isFiniteNumber(entry.completionTokens) &&
+    isFiniteNumber(entry.costUsd)
+  );
+}
+
+function isValidAiUsage(aiUsage: unknown): boolean {
+  if (!isRecord(aiUsage)) return false;
   if (
     !isRecord(aiUsage.tokens) ||
     !isFiniteNumber(aiUsage.tokens.prompt) ||
@@ -74,127 +80,98 @@ export function isDashboardAnalyticsPayload(value: unknown): value is DashboardA
   ) {
     return false;
   }
+  return Array.isArray(aiUsage.byModel) && aiUsage.byModel.every(isValidAiUsageEntry);
+}
 
-  if (
-    !Array.isArray(aiUsage.byModel) ||
-    !aiUsage.byModel.every(
-      (entry) =>
-        isRecord(entry) &&
-        isString(entry.model) &&
-        isFiniteNumber(entry.requests) &&
-        isFiniteNumber(entry.promptTokens) &&
-        isFiniteNumber(entry.completionTokens) &&
-        isFiniteNumber(entry.costUsd),
-    )
-  ) {
+function isValidChannelActivityEntry(entry: unknown): boolean {
+  return (
+    isRecord(entry) &&
+    isString(entry.channelId) &&
+    isString(entry.name) &&
+    isFiniteNumber(entry.messages)
+  );
+}
+
+function isValidChannelActivityArray(arr: unknown): boolean {
+  return Array.isArray(arr) && arr.every(isValidChannelActivityEntry);
+}
+
+function isValidCommandUsageEntry(entry: unknown): boolean {
+  return isRecord(entry) && isString(entry.command) && isFiniteNumber(entry.uses);
+}
+
+function isValidCommandUsage(commandUsage: unknown): boolean {
+  if (commandUsage === undefined) return true;
+  if (!isRecord(commandUsage)) return false;
+  if (!isString(commandUsage.source)) return false;
+  return Array.isArray(commandUsage.items) && commandUsage.items.every(isValidCommandUsageEntry);
+}
+
+function isValidComparison(comparison: unknown): boolean {
+  if (comparison === undefined || comparison === null) return true;
+  if (!isRecord(comparison)) return false;
+  if (!isRecord(comparison.previousRange) || !isRecord(comparison.kpis)) return false;
+  if (!isString(comparison.previousRange.from) || !isString(comparison.previousRange.to)) {
+    return false;
+  }
+  return isValidKpis(comparison.kpis);
+}
+
+function isValidHeatmapEntry(entry: unknown): boolean {
+  return (
+    isRecord(entry) &&
+    isFiniteNumber(entry.dayOfWeek) &&
+    isFiniteNumber(entry.hour) &&
+    isFiniteNumber(entry.messages)
+  );
+}
+
+function isValidHeatmap(heatmap: unknown): boolean {
+  return Array.isArray(heatmap) && heatmap.every(isValidHeatmapEntry);
+}
+
+function isValidUserEngagement(ue: unknown): boolean {
+  if (ue === undefined || ue === null) return true;
+  return (
+    isRecord(ue) &&
+    isFiniteNumber(ue.trackedUsers) &&
+    isFiniteNumber(ue.totalMessagesSent) &&
+    isFiniteNumber(ue.totalReactionsGiven) &&
+    isFiniteNumber(ue.totalReactionsReceived) &&
+    isFiniteNumber(ue.avgMessagesPerUser)
+  );
+}
+
+function isValidXpEconomy(xp: unknown): boolean {
+  if (xp === undefined || xp === null) return true;
+  return (
+    isRecord(xp) &&
+    isFiniteNumber(xp.totalUsers) &&
+    isFiniteNumber(xp.totalXp) &&
+    isFiniteNumber(xp.avgLevel) &&
+    isFiniteNumber(xp.maxLevel)
+  );
+}
+
+export function isDashboardAnalyticsPayload(value: unknown): value is DashboardAnalytics {
+  if (!isRecord(value)) return false;
+  if (!isString(value.guildId)) return false;
+  if (!isValidRange(value.range)) return false;
+  if (!isValidKpis(value.kpis)) return false;
+  if (!isValidRealtime(value.realtime)) return false;
+  if (!isValidMessageVolume(value.messageVolume)) return false;
+  if (!isValidAiUsage(value.aiUsage)) return false;
+  if (!isValidChannelActivityArray(value.channelActivity)) return false;
+
+  if (value.topChannels !== undefined && !isValidChannelActivityArray(value.topChannels)) {
     return false;
   }
 
-  if (
-    !Array.isArray(value.channelActivity) ||
-    !value.channelActivity.every(
-      (entry) =>
-        isRecord(entry) &&
-        isString(entry.channelId) &&
-        isString(entry.name) &&
-        isFiniteNumber(entry.messages),
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    value.topChannels !== undefined &&
-    (!Array.isArray(value.topChannels) ||
-      !value.topChannels.every(
-        (entry) =>
-          isRecord(entry) &&
-          isString(entry.channelId) &&
-          isString(entry.name) &&
-          isFiniteNumber(entry.messages),
-      ))
-  ) {
-    return false;
-  }
-
-  if (value.commandUsage !== undefined) {
-    if (!isRecord(value.commandUsage)) return false;
-    if (!isString(value.commandUsage.source)) {
-      return false;
-    }
-    if (
-      !Array.isArray(value.commandUsage.items) ||
-      !value.commandUsage.items.every(
-        (entry) => isRecord(entry) && isString(entry.command) && isFiniteNumber(entry.uses),
-      )
-    ) {
-      return false;
-    }
-  }
-
-  if (value.comparison !== undefined && value.comparison !== null) {
-    if (!isRecord(value.comparison)) return false;
-    if (!isRecord(value.comparison.previousRange) || !isRecord(value.comparison.kpis)) return false;
-    if (
-      !isString(value.comparison.previousRange.from) ||
-      !isString(value.comparison.previousRange.to)
-    ) {
-      return false;
-    }
-
-    const comparisonKpis = value.comparison.kpis;
-    if (
-      !isFiniteNumber(comparisonKpis.totalMessages) ||
-      !isFiniteNumber(comparisonKpis.aiRequests) ||
-      !isFiniteNumber(comparisonKpis.aiCostUsd) ||
-      !isFiniteNumber(comparisonKpis.activeUsers) ||
-      !isFiniteNumber(comparisonKpis.newMembers)
-    ) {
-      return false;
-    }
-  }
-
-  if (
-    !Array.isArray(value.heatmap) ||
-    !value.heatmap.every(
-      (entry) =>
-        isRecord(entry) &&
-        isFiniteNumber(entry.dayOfWeek) &&
-        isFiniteNumber(entry.hour) &&
-        isFiniteNumber(entry.messages),
-    )
-  ) {
-    return false;
-  }
-
-  // userEngagement is optional (null when user_stats table is empty or query fails)
-  if (value.userEngagement !== undefined && value.userEngagement !== null) {
-    const ue = value.userEngagement;
-    if (
-      !isRecord(ue) ||
-      !isFiniteNumber(ue.trackedUsers) ||
-      !isFiniteNumber(ue.totalMessagesSent) ||
-      !isFiniteNumber(ue.totalReactionsGiven) ||
-      !isFiniteNumber(ue.totalReactionsReceived) ||
-      !isFiniteNumber(ue.avgMessagesPerUser)
-    ) {
-      return false;
-    }
-  }
-
-  // xpEconomy is optional (null when reputation table is empty or query fails)
-  if (value.xpEconomy !== undefined && value.xpEconomy !== null) {
-    const xp = value.xpEconomy;
-    if (
-      !isRecord(xp) ||
-      !isFiniteNumber(xp.totalUsers) ||
-      !isFiniteNumber(xp.totalXp) ||
-      !isFiniteNumber(xp.avgLevel) ||
-      !isFiniteNumber(xp.maxLevel)
-    ) {
-      return false;
-    }
-  }
+  if (!isValidCommandUsage(value.commandUsage)) return false;
+  if (!isValidComparison(value.comparison)) return false;
+  if (!isValidHeatmap(value.heatmap)) return false;
+  if (!isValidUserEngagement(value.userEngagement)) return false;
+  if (!isValidXpEconomy(value.xpEconomy)) return false;
 
   return true;
 }
