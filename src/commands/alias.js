@@ -146,7 +146,7 @@ async function handleAdd(interaction, pool) {
   const target = interaction.client.commands.get(targetCommand);
   if (!target) {
     const availableCommands = Array.from(interaction.client.commands.keys())
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .map((c) => `\`/${c}\``)
       .join(', ');
     await safeReply(interaction, {
