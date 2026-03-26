@@ -7,6 +7,92 @@
  */
 
 /**
+ * Generate an inclusive integer range.
+ * @param {number} min
+ * @param {number} max
+ * @returns {number[]}
+ */
+function rangeArray(min, max) {
+  const arr = [];
+  for (let value = min; value <= max; value++) arr.push(value);
+  return arr;
+}
+
+/**
+ * Parse a wildcard field (*) into all values in [min, max].
+ */
+function parseWildcard(min, max) {
+  return rangeArray(min, max);
+}
+
+/**
+ * Parse a comma-separated list of values (e.g. "1,5,10").
+ */
+function parseCommaList(field, name, min, max) {
+  return field.split(',').map((fieldValue) => {
+    const parsedValue = Number.parseInt(fieldValue, 10);
+    if (Number.isNaN(parsedValue) || parsedValue < min || parsedValue > max) {
+      throw new Error(`Invalid cron value "${fieldValue}" for ${name}`);
+    }
+    return parsedValue;
+  });
+}
+
+/**
+ * Parse a range field (e.g. "1-5").
+ */
+function parseRange(field, name, min, max) {
+  const [start, end] = field.split('-').map((fieldValue) => Number.parseInt(fieldValue, 10));
+  if (Number.isNaN(start) || Number.isNaN(end) || start < min || end > max || start > end) {
+    throw new Error(`Invalid cron range "${field}" for ${name}`);
+  }
+  return rangeArray(start, end);
+}
+
+/**
+ * Parse a step field like "2/3" or a wildcard step.
+ */
+function parseStep(field, name, min, max) {
+  const [base, step] = field.split('/');
+  const stepNum = Number.parseInt(step, 10);
+  const startNum = base === '*' ? min : Number.parseInt(base, 10);
+  if (Number.isNaN(stepNum) || stepNum <= 0 || Number.isNaN(startNum)) {
+    throw new Error(`Invalid cron step "${field}" for ${name}`);
+  }
+  const arr = [];
+  for (let value = startNum; value <= max; value += stepNum) arr.push(value);
+  return arr;
+}
+
+/**
+ * Parse a single numeric value (e.g. "5").
+ */
+function parseSingleValue(field, name, min, max) {
+  const parsedValue = Number.parseInt(field, 10);
+  if (Number.isNaN(parsedValue) || parsedValue < min || parsedValue > max) {
+    throw new Error(`Invalid cron value "${field}" for ${name}`);
+  }
+  return [parsedValue];
+}
+
+/**
+ * Parse a single cron field into an array of matching integer values.
+ *
+ * @param {string} field - Raw cron field string
+ * @param {string} name - Human-readable field name for error messages
+ * @param {number} min - Minimum valid value
+ * @param {number} max - Maximum valid value
+ * @returns {number[]}
+ */
+function parseCronField(field, name, min, max) {
+  if (field === '*') return parseWildcard(min, max);
+  if (field.includes(',')) return parseCommaList(field, name, min, max);
+  if (field.includes('-')) return parseRange(field, name, min, max);
+  if (field.includes('/')) return parseStep(field, name, min, max);
+  return parseSingleValue(field, name, min, max);
+}
+
+/**
  * Parse a 5-field cron expression into its component arrays.
  * Supports: numbers, wildcards (*), and single values.
  *
@@ -31,46 +117,7 @@ export function parseCron(cronExpr) {
   const result = {};
 
   for (let i = 0; i < 5; i++) {
-    const field = fields[i];
-    const { min, max } = ranges[i];
-
-    if (field === '*') {
-      const arr = [];
-      for (let value = min; value <= max; value++) arr.push(value);
-      result[names[i]] = arr;
-    } else if (field.includes(',')) {
-      result[names[i]] = field.split(',').map((fieldValue) => {
-        const parsedValue = Number.parseInt(fieldValue, 10);
-        if (Number.isNaN(parsedValue) || parsedValue < min || parsedValue > max) {
-          throw new Error(`Invalid cron value "${fieldValue}" for ${names[i]}`);
-        }
-        return parsedValue;
-      });
-    } else if (field.includes('-')) {
-      const [start, end] = field.split('-').map((fieldValue) => Number.parseInt(fieldValue, 10));
-      if (Number.isNaN(start) || Number.isNaN(end) || start < min || end > max || start > end) {
-        throw new Error(`Invalid cron range "${field}" for ${names[i]}`);
-      }
-      const arr = [];
-      for (let value = start; value <= end; value++) arr.push(value);
-      result[names[i]] = arr;
-    } else if (field.includes('/')) {
-      const [base, step] = field.split('/');
-      const stepNum = Number.parseInt(step, 10);
-      const startNum = base === '*' ? min : Number.parseInt(base, 10);
-      if (Number.isNaN(stepNum) || stepNum <= 0 || Number.isNaN(startNum)) {
-        throw new Error(`Invalid cron step "${field}" for ${names[i]}`);
-      }
-      const arr = [];
-      for (let value = startNum; value <= max; value += stepNum) arr.push(value);
-      result[names[i]] = arr;
-    } else {
-      const parsedValue = Number.parseInt(field, 10);
-      if (Number.isNaN(parsedValue) || parsedValue < min || parsedValue > max) {
-        throw new Error(`Invalid cron value "${field}" for ${names[i]}`);
-      }
-      result[names[i]] = [parsedValue];
-    }
+    result[names[i]] = parseCronField(fields[i], names[i], ranges[i].min, ranges[i].max);
   }
 
   return result;
