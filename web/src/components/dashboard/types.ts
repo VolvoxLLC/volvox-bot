@@ -66,10 +66,7 @@ function validateSystem(system: unknown): string | null {
   if (!isObject(system)) return 'missing system';
   if (typeof system.nodeVersion !== 'string') return 'invalid system.nodeVersion';
   if (!isObject(system.cpuUsage)) return 'missing system.cpuUsage';
-  if (
-    typeof system.cpuUsage.user !== 'number' ||
-    typeof system.cpuUsage.system !== 'number'
-  )
+  if (typeof system.cpuUsage.user !== 'number' || typeof system.cpuUsage.system !== 'number')
     return 'invalid system.cpuUsage fields';
   return null;
 }

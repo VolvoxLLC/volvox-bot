@@ -104,9 +104,7 @@ function isValidCommandUsage(commandUsage: unknown): boolean {
   if (commandUsage === undefined) return true;
   if (!isRecord(commandUsage)) return false;
   if (!isString(commandUsage.source)) return false;
-  return (
-    Array.isArray(commandUsage.items) && commandUsage.items.every(isValidCommandUsageEntry)
-  );
+  return Array.isArray(commandUsage.items) && commandUsage.items.every(isValidCommandUsageEntry);
 }
 
 function isValidComparison(comparison: unknown): boolean {

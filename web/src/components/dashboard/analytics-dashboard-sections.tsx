@@ -27,8 +27,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ChartTheme } from '@/hooks/use-chart-theme';
 import { formatNumber } from '@/lib/analytics-utils';
 import type {
@@ -515,9 +515,7 @@ export function TopChannelsCard({
     <Card className="dashboard-panel rounded-2xl xl:col-span-6">
       <CardHeader>
         <CardTitle>Top channels breakdown</CardTitle>
-        <CardDescription>
-          Channels ranked by message volume in the selected period.
-        </CardDescription>
+        <CardDescription>Channels ranked by message volume in the selected period.</CardDescription>
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -649,11 +647,7 @@ function CommandUsageEmpty({ source }: { source?: string }) {
 
 // ---- User engagement ----
 
-export function UserEngagementCard({
-  analytics,
-}: {
-  analytics: DashboardAnalytics;
-}) {
+export function UserEngagementCard({ analytics }: { analytics: DashboardAnalytics }) {
   if (!analytics.userEngagement) return null;
   const ue = analytics.userEngagement;
 
@@ -661,21 +655,35 @@ export function UserEngagementCard({
     <Card>
       <CardHeader>
         <CardTitle>User engagement metrics</CardTitle>
-        <CardDescription>
-          Aggregate engagement from message and reaction activity.
-        </CardDescription>
+        <CardDescription>Aggregate engagement from message and reaction activity.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
-        <StatTile icon={<Users className="h-4 w-4" />} label="Tracked users" ariaLabel="Tracked users value">
+        <StatTile
+          icon={<Users className="h-4 w-4" />}
+          label="Tracked users"
+          ariaLabel="Tracked users value"
+        >
           {formatNumber(ue.trackedUsers)}
         </StatTile>
-        <StatTile icon={<MessageSquare className="h-4 w-4" />} label="Avg messages / user" ariaLabel="Average messages per user value">
+        <StatTile
+          icon={<MessageSquare className="h-4 w-4" />}
+          label="Avg messages / user"
+          ariaLabel="Average messages per user value"
+        >
           {ue.avgMessagesPerUser.toFixed(1)}
         </StatTile>
-        <StatTile icon={<Heart className="h-4 w-4" />} label="Reactions given" ariaLabel="Total reactions given value">
+        <StatTile
+          icon={<Heart className="h-4 w-4" />}
+          label="Reactions given"
+          ariaLabel="Total reactions given value"
+        >
           {formatNumber(ue.totalReactionsGiven)}
         </StatTile>
-        <StatTile icon={<Activity className="h-4 w-4" />} label="Reactions received" ariaLabel="Total reactions received value">
+        <StatTile
+          icon={<Activity className="h-4 w-4" />}
+          label="Reactions received"
+          ariaLabel="Total reactions received value"
+        >
           {formatNumber(ue.totalReactionsReceived)}
         </StatTile>
       </CardContent>
@@ -685,11 +693,7 @@ export function UserEngagementCard({
 
 // ---- XP economy ----
 
-export function XpEconomyCard({
-  analytics,
-}: {
-  analytics: DashboardAnalytics;
-}) {
+export function XpEconomyCard({ analytics }: { analytics: DashboardAnalytics }) {
   if (!analytics.xpEconomy) return null;
   const xp = analytics.xpEconomy;
 
@@ -700,16 +704,32 @@ export function XpEconomyCard({
         <CardDescription>Reputation and level distribution across members.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
-        <StatTile icon={<Users className="h-4 w-4" />} label="Users with XP" ariaLabel="Users with XP value">
+        <StatTile
+          icon={<Users className="h-4 w-4" />}
+          label="Users with XP"
+          ariaLabel="Users with XP value"
+        >
           {formatNumber(xp.totalUsers)}
         </StatTile>
-        <StatTile icon={<Star className="h-4 w-4" />} label="Total XP distributed" ariaLabel="Total XP distributed value">
+        <StatTile
+          icon={<Star className="h-4 w-4" />}
+          label="Total XP distributed"
+          ariaLabel="Total XP distributed value"
+        >
           {formatNumber(xp.totalXp)}
         </StatTile>
-        <StatTile icon={<Activity className="h-4 w-4" />} label="Average level" ariaLabel="Average level value">
+        <StatTile
+          icon={<Activity className="h-4 w-4" />}
+          label="Average level"
+          ariaLabel="Average level value"
+        >
           {xp.avgLevel.toFixed(1)}
         </StatTile>
-        <StatTile icon={<Star className="h-4 w-4" />} label="Highest level" ariaLabel="Highest level value">
+        <StatTile
+          icon={<Star className="h-4 w-4" />}
+          label="Highest level"
+          ariaLabel="Highest level value"
+        >
           {formatNumber(xp.maxLevel)}
         </StatTile>
       </CardContent>
@@ -789,9 +809,7 @@ function HeatmapRow({
       {HOURS.map((hour) => {
         const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
         const alpha =
-          value === 0 || heatmapLookup.max === 0
-            ? 0
-            : 0.2 + (value / heatmapLookup.max) * 0.8;
+          value === 0 || heatmapLookup.max === 0 ? 0 : 0.2 + (value / heatmapLookup.max) * 0.8;
 
         return (
           <td key={`${day}-${hour}`}>
@@ -800,9 +818,7 @@ function HeatmapRow({
               className="h-4 rounded-sm border"
               style={{
                 backgroundColor:
-                  value === 0
-                    ? 'transparent'
-                    : hexToRgba(chartPrimary, Number(alpha.toFixed(3))),
+                  value === 0 ? 'transparent' : hexToRgba(chartPrimary, Number(alpha.toFixed(3))),
               }}
             />
           </td>
