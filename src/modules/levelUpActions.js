@@ -8,8 +8,11 @@
 import { info, warn } from '../logger.js';
 import { buildTemplateContext } from '../utils/templateEngine.js';
 import { handleGrantRole } from './actions/grantRole.js';
+import { handleNickPrefix, handleNickSuffix } from './actions/nickPrefix.js';
 import { handleRemoveRole } from './actions/removeRole.js';
 import { checkRoleRateLimit, collectXpManagedRoles } from './actions/roleUtils.js';
+import { handleWebhook } from './actions/webhook.js';
+import { handleXpBonus } from './actions/xpBonus.js';
 
 /**
  * Action handler registry: action type → async handler function.
@@ -31,6 +34,12 @@ export function registerAction(type, handler) {
 // Register Phase 1 action handlers
 registerAction('grantRole', handleGrantRole);
 registerAction('removeRole', handleRemoveRole);
+
+// Register Phase 2 action handlers
+registerAction('xpBonus', handleXpBonus);
+registerAction('nickPrefix', handleNickPrefix);
+registerAction('nickSuffix', handleNickSuffix);
+registerAction('webhook', handleWebhook);
 
 /**
  * Resolve the ordered list of actions to execute for a level-up.
