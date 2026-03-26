@@ -120,6 +120,47 @@ function StatCard({ title, value, subtitle, icon: Icon, alert, loading }: StatCa
 
 const AUTO_REFRESH_MS = 30_000;
 
+/** Extract an error message from a JSON response body, or return the fallback. */
+function extractErrorMessage(json: unknown, fallback: string): string {
+  if (typeof json === 'object' && json !== null && 'error' in json) {
+    return String((json as Record<string, unknown>).error);
+  }
+  return fallback;
+}
+
+/** Build memory chart data from a performance snapshot. */
+function buildMemChartData(data: PerformanceSnapshot | null) {
+  return (
+    data?.timeSeries.memoryHeapMb.map((pt, i) => ({
+      time: formatTs(pt.timestamp),
+      heap: pt.value,
+      rss: data.timeSeries.memoryRssMb[i]?.value ?? 0,
+    })) ?? []
+  );
+}
+
+/** Build CPU chart data from a performance snapshot. */
+function buildCpuChartData(data: PerformanceSnapshot | null) {
+  return (
+    data?.timeSeries.cpuPercent.map((pt) => ({
+      time: formatTs(pt.timestamp),
+      cpu: pt.value,
+    })) ?? []
+  );
+}
+
+/** Build response-time histogram buckets (500ms granularity). */
+function buildRtHistogram(data: PerformanceSnapshot | null) {
+  const rtBuckets: Record<string, number> = {};
+  for (const sample of data?.responseTimes ?? []) {
+    const bucket = `${Math.floor(sample.durationMs / 500) * 500}ms`;
+    rtBuckets[bucket] = (rtBuckets[bucket] ?? 0) + 1;
+  }
+  return Object.entries(rtBuckets)
+    .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+    .map(([bucket, count]) => ({ bucket, count }));
+}
+
 /**
  * Render the performance dashboard UI showing memory, CPU, and response-time metrics,
  * including time-series charts, a response-time histogram, recent samples, and editable alert thresholds.
@@ -151,11 +192,7 @@ export function PerformanceDashboard() {
       const res = await fetch('/api/performance', { cache: 'no-store', signal: ctl.signal });
       if (!res.ok) {
         const json: unknown = await res.json().catch(() => ({}));
-        const msg =
-          typeof json === 'object' && json !== null && 'error' in json
-            ? String((json as Record<string, unknown>).error)
-            : 'Failed to fetch performance data';
-        throw new Error(msg);
+        throw new Error(extractErrorMessage(json, 'Failed to fetch performance data'));
       }
       const json: PerformanceSnapshot = (await res.json()) as PerformanceSnapshot;
       setData(json);
@@ -199,10 +236,7 @@ export function PerformanceDashboard() {
       });
       if (!res.ok) {
         const json: unknown = await res.json().catch(() => ({}));
-        const msg =
-          typeof json === 'object' && json !== null && 'error' in json
-            ? String((json as Record<string, unknown>).error)
-            : 'Failed to save thresholds';
+        const msg = extractErrorMessage(json, 'Failed to save thresholds');
         setThresholdMsg(`Error: ${msg}`);
         toast.error('Failed to save thresholds', { description: msg });
         return;
@@ -220,28 +254,9 @@ export function PerformanceDashboard() {
 
   // ── Derived chart data ─────────────────────────────────────
 
-  const memChartData =
-    data?.timeSeries.memoryHeapMb.map((pt, i) => ({
-      time: formatTs(pt.timestamp),
-      heap: pt.value,
-      rss: data.timeSeries.memoryRssMb[i]?.value ?? 0,
-    })) ?? [];
-
-  const cpuChartData =
-    data?.timeSeries.cpuPercent.map((pt) => ({
-      time: formatTs(pt.timestamp),
-      cpu: pt.value,
-    })) ?? [];
-
-  // Group response times into a histogram (bucket by 500ms)
-  const rtBuckets: Record<string, number> = {};
-  for (const sample of data?.responseTimes ?? []) {
-    const bucket = `${Math.floor(sample.durationMs / 500) * 500}ms`;
-    rtBuckets[bucket] = (rtBuckets[bucket] ?? 0) + 1;
-  }
-  const rtHistogram = Object.entries(rtBuckets)
-    .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
-    .map(([bucket, count]) => ({ bucket, count }));
+  const memChartData = buildMemChartData(data);
+  const cpuChartData = buildCpuChartData(data);
+  const rtHistogram = buildRtHistogram(data);
 
   const cur = data?.current;
   const thresh = data?.thresholds;
