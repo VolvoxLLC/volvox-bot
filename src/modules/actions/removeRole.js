@@ -19,7 +19,7 @@ export async function handleRemoveRole(action, context) {
   const { roleId } = action;
 
   if (!canManageRole(guild, roleId)) return;
-  // Note: Rate limit is checked ONCE per level-down event, not per individual removal
+  // Note: Rate limit is checked ONCE per level-up pipeline, not per individual removal
 
   await member.roles.remove(roleId);
   recordRoleChange(guild.id, member.user?.id);

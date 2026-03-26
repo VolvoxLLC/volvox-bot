@@ -130,6 +130,7 @@ export function sweepRoleLimits() {
  */
 function collectRolesToRemove(member, newLevel, xpConfig) {
   const rolesToRemove = [];
+  const seenRoleIds = new Set();
 
   // Collect roles from levelActions (above newLevel)
   for (const entry of xpConfig.levelActions ?? []) {
@@ -138,7 +139,9 @@ function collectRolesToRemove(member, newLevel, xpConfig) {
     for (const action of entry.actions ?? []) {
       if (action.type !== 'grantRole' || !action.roleId) continue;
       if (!member.roles.cache.has(action.roleId)) continue;
+      if (seenRoleIds.has(action.roleId)) continue;
 
+      seenRoleIds.add(action.roleId);
       rolesToRemove.push({ roleId: action.roleId, entry });
     }
   }

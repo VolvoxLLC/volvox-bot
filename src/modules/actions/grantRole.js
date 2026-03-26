@@ -6,7 +6,7 @@
  */
 
 import { info, warn } from '../../logger.js';
-import { canManageRole, recordRoleChange } from './roleUtils.js';
+import { canManageRole, checkRoleRateLimit, recordRoleChange } from './roleUtils.js';
 
 /**
  * Grant a role to the member.
@@ -27,7 +27,8 @@ export async function handleGrantRole(action, context) {
     for (const [id] of member.roles.cache) {
       if (xpManagedRoles.has(id) && id !== roleId) {
         if (!canManageRole(guild, id)) continue;
-        // Skip rate limit check for removals in replace mode - already checked at pipeline start
+        // Check rate limit before each removal in replace mode
+        if (!checkRoleRateLimit(guild.id, member.user?.id)) continue;
         try {
           await member.roles.remove(id);
           recordRoleChange(guild.id, member.user?.id);

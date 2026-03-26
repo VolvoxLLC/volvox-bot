@@ -15,7 +15,6 @@ vi.mock('../../../src/modules/actions/roleUtils.js', () => ({
 import { handleRemoveRole } from '../../../src/modules/actions/removeRole.js';
 import {
   canManageRole,
-  checkRoleRateLimit,
   recordRoleChange,
 } from '../../../src/modules/actions/roleUtils.js';
 
