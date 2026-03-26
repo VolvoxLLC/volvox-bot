@@ -81,7 +81,9 @@ export function getChannelMode(channelId, parentId = null, guildId) {
     const rawDefault = config?.ai?.defaultChannelMode ?? 'mention';
     const defaultMode = VALID_MODES.has(rawDefault) ? rawDefault : 'mention';
 
-    return lookupChannelMode(config?.ai?.channelModes, channelId, parentId, defaultMode) ?? defaultMode;
+    return (
+      lookupChannelMode(config?.ai?.channelModes, channelId, parentId, defaultMode) ?? defaultMode
+    );
   } catch {
     return 'mention';
   }

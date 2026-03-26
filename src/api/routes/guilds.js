@@ -1366,11 +1366,19 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
          * This is a known Discord gateway limitation — a complete count would
          * require guild.members.fetch(), which is expensive and rate-limited.
          */
-        const newMembers = countNewMembersInRange(req.guild.members.cache, from.getTime(), to.getTime());
+        const newMembers = countNewMembersInRange(
+          req.guild.members.cache,
+          from.getTime(),
+          to.getTime(),
+        );
 
         const comparisonNewMembers =
           comparisonFrom && comparisonTo
-            ? countNewMembersInRange(req.guild.members.cache, comparisonFrom.getTime(), comparisonTo.getTime())
+            ? countNewMembersInRange(
+                req.guild.members.cache,
+                comparisonFrom.getTime(),
+                comparisonTo.getTime(),
+              )
             : 0;
 
         return {
