@@ -17,7 +17,6 @@ import {
   Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { extractApiError, isAbortError, safeParseJson, toErrorMessage } from '@/lib/api-utils';
 import {
   Bar,
   BarChart,
@@ -47,6 +46,7 @@ import {
   formatUsd,
   startOfDayIso,
 } from '@/lib/analytics-utils';
+import { extractApiError, isAbortError, safeParseJson, toErrorMessage } from '@/lib/api-utils';
 import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
 import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
 import { EmptyState } from './empty-state';
