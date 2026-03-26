@@ -8,9 +8,7 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
-import { getConfig } from '../../modules/config.js';
-import { computeLevel } from '../../modules/reputation.js';
-import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
+import { computeLevel, getXpConfig } from '../../modules/reputation.js';
 import { cacheGet, cacheSet, TTL } from '../../utils/cache.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parseLimit, parsePage } from '../utils/pagination.js';
@@ -20,16 +18,6 @@ const router = Router();
 
 /** Rate limiter for member endpoints — 120 requests / 15 min per IP. */
 const membersRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
-
-/**
- * Resolve the reputation configuration for a guild by returning the defaults overridden by the guild's configured reputation values.
- * @param {string} guildId - Guild identifier used to load the guild's configuration.
- * @returns {object} The resolved reputation configuration containing level thresholds and related reputation settings.
- */
-function getRepConfig(guildId) {
-  const cfg = getConfig(guildId);
-  return { ...REPUTATION_DEFAULTS, ...cfg.reputation };
-}
 
 /**
  * Obtain the PostgreSQL connection pool instance for the application.
@@ -95,6 +83,7 @@ router.get(
       if (!pool) {
         return res.status(503).json({ error: 'Database unavailable' });
       }
+      const xpConfig = getXpConfig(guild.id);
 
       // Stream CSV in batches of 1000 to avoid holding all guild members in
       // memory at once.  Each batch is fetched from Discord, enriched from the
@@ -146,6 +135,7 @@ router.get(
           const stats = statsMap.get(member.id) || {};
           const rep = repMap.get(member.id) || {};
           const warnings = warningsMap.get(member.id) || 0;
+          const xp = rep.xp ?? 0;
 
           const row = [
             member.id,
@@ -153,8 +143,8 @@ router.get(
             escapeCsv(member.displayName),
             member.joinedAt ? member.joinedAt.toISOString() : '',
             stats.messages_sent ?? 0,
-            rep.xp ?? 0,
-            rep.level ?? 0,
+            xp,
+            computeLevel(xp, xpConfig.levelThresholds),
             stats.days_active ?? 0,
             warnings,
           ].join(',');
@@ -309,6 +299,7 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
     if (!pool) {
       return res.status(503).json({ error: 'Database unavailable' });
     }
+    const xpConfig = getXpConfig(guild.id);
 
     // Fetch members — use Discord server-side search when a query is provided
     // (searches all guild members by username/nickname prefix), otherwise use
@@ -389,12 +380,13 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
       const stats = statsMap.get(userId) || {};
       const rep = repMap.get(userId) || {};
       const warnings = warningsMap.get(userId) || 0;
+      const xp = rep.xp ?? 0;
       const enrichment = {
         messages_sent: stats.messages_sent ?? 0,
         days_active: stats.days_active ?? 0,
         last_active: stats.last_active ?? null,
-        xp: rep.xp ?? 0,
-        level: rep.level ?? 0,
+        xp,
+        level: computeLevel(xp, xpConfig.levelThresholds),
         warning_count: warnings,
       };
       cacheWrites.push(cacheSet(enrichmentCacheKeys[i], enrichment, TTL.MEMBERS).catch(() => {}));
@@ -404,12 +396,13 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 
     // Build enriched member objects by merging Discord data with enrichment (cache or DB)
     const enriched = memberList.map((m, i) => {
+      const repXp = repMap.get(m.id)?.xp ?? 0;
       const enrichment = cachedEnrichments[i] ?? {
         messages_sent: statsMap.get(m.id)?.messages_sent ?? 0,
         days_active: statsMap.get(m.id)?.days_active ?? 0,
         last_active: statsMap.get(m.id)?.last_active ?? null,
-        xp: repMap.get(m.id)?.xp ?? 0,
-        level: repMap.get(m.id)?.level ?? 0,
+        xp: repXp,
+        level: computeLevel(repXp, xpConfig.levelThresholds),
         warning_count: warningsMap.get(m.id) ?? 0,
       };
 
@@ -660,10 +653,11 @@ router.get(
       const warningCount = warningCountResult.rows[0]?.count ?? 0;
 
       // Compute badge/level info
-      const repConfig = getRepConfig(guild.id);
+      const xpConfig = getXpConfig(guild.id);
       const xp = rep?.xp ?? 0;
-      const level = rep?.level ?? computeLevel(xp, repConfig.levelThresholds);
-      const nextThreshold = repConfig.levelThresholds[level] ?? null;
+      // Recompute level from XP instead of trusting reputation.level (stale after threshold changes)
+      const level = computeLevel(xp, xpConfig.levelThresholds);
+      const nextThreshold = xpConfig.levelThresholds[level] ?? null;
 
       res.json({
         id: member.id,
@@ -953,16 +947,18 @@ router.post(
       return res.status(400).json({ error: 'amount must be between -1000000 and 1000000' });
     }
 
+    let xpConfig;
     try {
       const pool = safeGetPool();
       if (!pool) {
         return res.status(503).json({ error: 'Database unavailable' });
       }
       const guildId = req.guild.id;
+      xpConfig = getXpConfig(guildId);
 
       // Wrap XP upsert + level update in a transaction for consistency
       const client = await pool.connect();
-      let newXp, newLevel;
+      let newXp, newLevel, oldLevel;
       try {
         await client.query('BEGIN');
 
@@ -977,10 +973,12 @@ router.post(
         );
 
         newXp = rows[0].xp;
+        // Calculate oldLevel from pre-update XP (newXp - amount)
+        const oldXp = newXp - amount;
+        oldLevel = computeLevel(oldXp, xpConfig.levelThresholds);
 
         // Recompute level from thresholds
-        const repConfig = getRepConfig(guildId);
-        newLevel = computeLevel(newXp, repConfig.levelThresholds);
+        newLevel = computeLevel(newXp, xpConfig.levelThresholds);
 
         // Update level if changed
         if (newLevel !== rows[0].level) {
@@ -996,6 +994,24 @@ router.post(
         throw txErr;
       } finally {
         client.release();
+      }
+
+      // If level dropped and removeOnLevelDown is enabled, revoke roles
+      if (amount < 0 && newLevel < oldLevel) {
+        if (xpConfig.enabled && xpConfig.roleRewards.removeOnLevelDown) {
+          try {
+            const member = await req.guild.members.fetch(userId);
+            const { enforceRoleLevelDown } = await import('../../modules/actions/roleUtils.js');
+            await enforceRoleLevelDown(member, newLevel, xpConfig);
+          } catch (err) {
+            logError('Failed to enforce role level-down', {
+              guildId,
+              userId,
+              newLevel,
+              error: err.message,
+            });
+          }
+        }
       }
 
       info('XP adjusted via API', {
