@@ -253,7 +253,7 @@ export function CommunitySettingsSection({
               {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
                 (badge: Badge, index: number) => (
                   <div
-                    key={`badge-${badge.days}-${badge.emoji}`}
+                    key={`badge-${badge.days}-${badge.label}`}
                     className="flex items-center gap-2"
                   >
                     <Input
