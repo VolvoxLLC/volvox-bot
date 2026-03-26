@@ -75,9 +75,8 @@ export function Pricing() {
             {/* Toggle */}
             <div className="flex items-center justify-center gap-4 mt-10">
               <span
-                className={`text-sm font-medium transition-colors ${
-                  isAnnual ? 'text-muted-foreground' : 'text-foreground'
-                }`}
+                className={`text-sm font-medium transition-colors ${isAnnual ? 'text-muted-foreground' : 'text-foreground'
+                  }`}
               >
                 Monthly
               </span>
@@ -87,9 +86,8 @@ export function Pricing() {
                 role="switch"
                 aria-checked={isAnnual}
                 aria-label="Toggle annual billing"
-                className={`relative h-7 w-14 rounded-full border transition-colors ${
-                  isAnnual ? 'border-accent/25 bg-accent/10' : 'border-secondary/20 bg-secondary/10'
-                }`}
+                className={`relative h-7 w-14 rounded-full border transition-colors ${isAnnual ? 'border-accent/25 bg-accent/10' : 'border-secondary/20 bg-secondary/10'
+                  }`}
               >
                 <motion.div
                   animate={{ x: isAnnual ? 28 : 2 }}
@@ -98,9 +96,8 @@ export function Pricing() {
                 />
               </button>
               <span
-                className={`text-sm font-medium transition-colors ${
-                  isAnnual ? 'text-foreground' : 'text-muted-foreground'
-                }`}
+                className={`text-sm font-medium transition-colors ${isAnnual ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
               >
                 Annual <span className="text-accent font-bold">Save 36%</span>
               </span>

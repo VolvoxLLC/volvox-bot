@@ -1,15 +1,8 @@
 'use client';
 
-/**
- * Temp Roles Dashboard Page
- * View and manage active temporary role assignments.
- *
- * @see https://github.com/VolvoxLLC/volvox-bot/issues/128
- */
-
-import { Clock, RefreshCw, Shield, Trash2 } from 'lucide-react';
+import { Clock, Shield, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +16,7 @@ import {
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { useTempRolesStore } from '@/stores/temp-roles-store';
 
 interface TempRole {
   id: number;
@@ -39,119 +33,52 @@ interface TempRole {
   created_at: string;
 }
 
-interface TempRolesResponse {
-  data: TempRole[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
-}
-
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
-  const now = Date.now();
-  const diff = date.getTime() - now;
-
+  const diff = date.getTime() - Date.now();
   if (diff <= 0) return 'Expired';
-
   const s = Math.floor(diff / 1000);
   if (s < 60) return `in ${s}s`;
   const m = Math.floor(s / 60);
   if (m < 60) return `in ${m}m`;
   const h = Math.floor(m / 60);
   if (h < 24) return `in ${h}h`;
-  const d = Math.floor(h / 24);
-  return `in ${d}d`;
+  return `in ${Math.floor(h / 24)}d`;
 }
 
 export default function TempRolesPage() {
   const router = useRouter();
-  const [data, setData] = useState<TempRolesResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const { data, loading, error, page, setPage, fetch } = useTempRolesStore();
   const [revoking, setRevoking] = useState<number | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<TempRole | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const onGuildChange = useCallback(() => {
     setPage(1);
-    setData(null);
-  }, []);
+    useTempRolesStore.getState().reset();
+  }, [setPage]);
+
   const guildId = useGuildSelection({ onGuildChange });
-
-  const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
-
-  const fetchTempRoles = useCallback(
-    async (id: string, currentPage: number) => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const params = new URLSearchParams({
-          guildId: id,
-          page: String(currentPage),
-          limit: '25',
-        });
-
-        const res = await fetch(`/api/temp-roles?${params.toString()}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        if (res.status === 401) {
-          onUnauthorized();
-          return;
-        }
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          setError(body.error || 'Failed to load temp roles');
-          return;
-        }
-
-        const json: TempRolesResponse = await res.json();
-        setData(json);
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          setError('Failed to load temp roles');
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [onUnauthorized],
-  );
 
   useEffect(() => {
     if (!guildId) return;
-    fetchTempRoles(guildId, page);
-  }, [guildId, page, fetchTempRoles]);
+    void fetch(guildId, page).then((res) => {
+      if (res === 'unauthorized') router.replace('/login');
+    });
+  }, [guildId, page, fetch, router]);
 
   const handleRevoke = useCallback(
     async (record: TempRole) => {
       if (!guildId) return;
-
       setRevoking(record.id);
       try {
-        const res = await fetch(
+        const res = await window.fetch(
           `/api/temp-roles/${record.id}?guildId=${encodeURIComponent(guildId)}`,
-          {
-            method: 'DELETE',
-          },
+          { method: 'DELETE' },
         );
-
         if (res.status === 401) {
-          onUnauthorized();
+          router.replace('/login');
           return;
         }
-
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           toast.error('Failed to revoke temp role', {
@@ -159,12 +86,12 @@ export default function TempRolesPage() {
           });
           return;
         }
-
         toast.success('Temp role revoked', {
           description: `Removed ${record.role_name} from ${record.user_tag}.`,
         });
-        // Refresh list
-        fetchTempRoles(guildId, page);
+        void fetch(guildId, page).then((r) => {
+          if (r === 'unauthorized') router.replace('/login');
+        });
       } catch {
         toast.error('Failed to revoke temp role', {
           description: 'A network error occurred. Please try again.',
@@ -174,12 +101,9 @@ export default function TempRolesPage() {
         setConfirmRevoke(null);
       }
     },
-    [guildId, page, fetchTempRoles, onUnauthorized],
+    [guildId, page, router],
   );
 
-  const handleRefresh = useCallback(() => {
-    if (guildId) fetchTempRoles(guildId, page);
-  }, [guildId, page, fetchTempRoles]);
 
   const rows = data?.data ?? [];
   const pagination = data?.pagination;
@@ -187,50 +111,61 @@ export default function TempRolesPage() {
   return (
     <ErrorBoundary title="Temp roles failed to load">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-              <Clock className="h-6 w-6" />
-              Temporary Roles
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Active role assignments that expire automatically.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading || !guildId}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-
-        {/* No guild selected */}
+        {/* No guild */}
         {!guildId && (
-          <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
-            Select a server from the top bar to view temp roles.
+          <div className="flex h-48 items-center justify-center rounded-[24px] border border-border/40 bg-card/30 backdrop-blur-xl">
+            <p className="text-sm text-muted-foreground/60">
+              Select a server from the top bar to view temp roles.
+            </p>
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          <div
+            role="alert"
+            className="rounded-[20px] border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive backdrop-blur-xl"
+          >
             {error}
+          </div>
+        )}
+
+        {/* Stats */}
+        {guildId && !error && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg bg-gradient-to-br from-primary/12 to-transparent">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Active Roles
+              </p>
+              <p className="mt-3 text-3xl font-bold tabular-nums md:text-4xl">
+                {pagination?.total ?? 0}
+              </p>
+            </div>
+            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg bg-gradient-to-br from-amber-500/8 to-transparent">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                This Page
+              </p>
+              <p className="mt-3 text-3xl font-bold tabular-nums md:text-4xl">{rows.length}</p>
+            </div>
+            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Page
+              </p>
+              <p className="mt-3 text-lg font-bold md:text-xl">
+                {page} of {pagination?.pages ?? 1}
+              </p>
+            </div>
           </div>
         )}
 
         {/* Table */}
         {guildId && !error && (
-          <div className="rounded-lg border overflow-x-auto">
+          <div className="overflow-x-auto rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg">
             {loading && rows.length === 0 ? (
-              <div className="divide-y">
+              <div className="divide-y divide-border/10">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
-                  <div key={`skeleton-${i}`} className="flex items-center gap-4 px-4 py-3">
+                  // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
+                  <div key={`sk-${i}`} className="flex items-center gap-4 px-6 py-4">
                     <Skeleton className="h-4 w-28" />
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-4 w-20" />
@@ -240,66 +175,80 @@ export default function TempRolesPage() {
                 ))}
               </div>
             ) : rows.length === 0 ? (
-              <div className="text-muted-foreground p-8 text-center text-sm">
-                No active temporary roles.
+              <div className="flex h-40 items-center justify-center">
+                <p className="text-sm text-muted-foreground/50 italic">
+                  No active temporary roles.
+                </p>
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="bg-muted/50 border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">User</th>
-                    <th className="px-4 py-3 text-left font-medium">Role</th>
-                    <th className="hidden sm:table-cell px-4 py-3 text-left font-medium">
+                <thead>
+                  <tr className="border-b border-border/20">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                      User
+                    </th>
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                      Role
+                    </th>
+                    <th className="hidden sm:table-cell px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
                       Duration
                     </th>
-                    <th className="px-4 py-3 text-left font-medium">Expires</th>
-                    <th className="hidden md:table-cell px-4 py-3 text-left font-medium">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                      Expires
+                    </th>
+                    <th className="hidden md:table-cell px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
                       Moderator
                     </th>
-                    <th className="hidden lg:table-cell px-4 py-3 text-left font-medium">Reason</th>
-                    <th className="px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="hidden lg:table-cell px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                      Reason
+                    </th>
+                    <th className="px-6 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-border/10">
                   {rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-muted/25 transition-colors">
-                      <td className="px-4 py-3">
-                        <span className="font-medium">{row.user_tag}</span>
-                        <span className="text-muted-foreground ml-1 text-xs">({row.user_id})</span>
+                    <tr key={row.id} className="transition-colors hover:bg-white/[0.02]">
+                      <td className="px-6 py-3">
+                        <span className="font-medium text-foreground/80">{row.user_tag}</span>
+                        <span className="ml-1.5 font-mono text-xs text-muted-foreground/40">
+                          ({row.user_id})
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium">
+                      <td className="px-6 py-3">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                           <Shield className="h-3 w-3" />
                           {row.role_name}
                         </span>
                       </td>
-                      <td className="hidden sm:table-cell px-4 py-3 text-muted-foreground">
+                      <td className="hidden sm:table-cell px-6 py-3 text-sm text-muted-foreground/60">
                         {row.duration}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-3">
                         <span
-                          className="text-amber-600 dark:text-amber-400"
+                          className="text-sm font-medium text-amber-500"
                           title={new Date(row.expires_at).toLocaleString()}
                         >
                           {formatRelativeTime(row.expires_at)}
                         </span>
                       </td>
-                      <td className="hidden md:table-cell px-4 py-3 text-muted-foreground text-xs">
+                      <td className="hidden md:table-cell px-6 py-3 text-xs text-muted-foreground/50">
                         {row.moderator_tag}
                       </td>
-                      <td className="hidden lg:table-cell px-4 py-3 text-muted-foreground max-w-[200px] truncate text-xs">
+                      <td className="hidden lg:table-cell px-6 py-3 max-w-[200px] truncate text-xs text-muted-foreground/50">
                         {row.reason ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-6 py-3 text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                          className="h-8 w-8 rounded-xl p-0 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => setConfirmRevoke(row)}
                           disabled={revoking === row.id}
                           title="Revoke this temp role"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                           <span className="sr-only">Revoke</span>
                         </Button>
                       </td>
@@ -314,47 +263,52 @@ export default function TempRolesPage() {
         {/* Pagination */}
         {pagination && pagination.pages > 1 && (
           <div className="flex items-center justify-between">
-            <p className="text-muted-foreground text-sm">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50">
               Page {pagination.page} of {pagination.pages} — {pagination.total} total
-            </p>
+            </span>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
                 disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => p - 1)}
+                onClick={() => setPage(page - 1)}
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
+              </button>
+              <button
+                type="button"
                 disabled={page >= pagination.pages || loading}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => setPage(page + 1)}
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 Next
-              </Button>
+              </button>
             </div>
           </div>
         )}
 
-        {/* Revoke confirmation dialog */}
+        {/* Revoke confirmation */}
         <Dialog open={!!confirmRevoke} onOpenChange={(open) => !open && setConfirmRevoke(null)}>
-          <DialogContent>
+          <DialogContent className="rounded-[24px] border-border/40 bg-card/95 backdrop-blur-2xl shadow-2xl">
             <DialogHeader>
               <DialogTitle>Revoke Temporary Role</DialogTitle>
               <DialogDescription>
                 Remove <span className="font-semibold">{confirmRevoke?.role_name}</span> from{' '}
-                <span className="font-semibold">{confirmRevoke?.user_tag}</span>? This action cannot
-                be undone.
+                <span className="font-semibold">{confirmRevoke?.user_tag}</span>? This cannot be
+                undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setConfirmRevoke(null)}>
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setConfirmRevoke(null)}
+              >
                 Cancel
               </Button>
               <Button
                 variant="destructive"
+                className="rounded-xl"
                 disabled={revoking !== null}
                 onClick={() => confirmRevoke && handleRevoke(confirmRevoke)}
               >

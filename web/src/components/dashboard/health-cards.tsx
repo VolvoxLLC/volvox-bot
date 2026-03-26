@@ -10,10 +10,9 @@ import {
   Server,
   Wifi,
 } from 'lucide-react';
-import type React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatUptime } from '@/lib/format-time';
+import { cn } from '@/lib/utils';
 import type { BotHealth } from './types';
 
 interface HealthCardsProps {
@@ -25,32 +24,73 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
 
-function pingColor(ping: number): string {
-  if (ping < 100) return 'text-emerald-500';
-  if (ping <= 300) return 'text-yellow-500';
-  return 'text-red-500';
-}
-
-function pingBg(ping: number): string {
-  if (ping < 100) return 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400';
-  if (ping <= 300) return 'bg-yellow-500/12 text-yellow-600 dark:text-yellow-400';
-  return 'bg-red-500/12 text-red-600 dark:text-red-400';
-}
-
-function errorColor(count: number): string {
-  return count > 0 ? 'text-red-500' : 'text-foreground';
-}
-
-function SkeletonCard() {
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconColor,
+  progress,
+  loading,
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: any;
+  iconColor: string;
+  progress?: { value: number; label: string };
+  loading?: boolean;
+}) {
   return (
-    <Card className="kpi-card rounded-2xl">
-      <CardHeader className="pb-2">
-        <Skeleton className="h-4 w-28" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-8 w-20" />
-      </CardContent>
-    </Card>
+    <div className="group relative flex flex-col overflow-hidden rounded-[28px] border border-white/5 bg-card/40 p-6 shadow-xl transition-all hover:-translate-y-1 hover:bg-card/60 active:scale-[0.98] active:translate-y-0 backdrop-blur-2xl">
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+
+      <div className="relative z-10 flex items-start justify-between">
+        <div className="space-y-3">
+          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">
+            {title}
+          </span>
+          <div className="space-y-1">
+            {loading ? (
+              <Skeleton className="h-8 w-24 rounded-lg bg-white/5" />
+            ) : (
+              <h3 className="text-2xl font-black tracking-tight text-foreground">{value}</h3>
+            )}
+            {subtitle && (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/30">
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+        <div
+          className={cn(
+            'flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-background/40 shadow-xl backdrop-blur-xl transition-transform group-hover:scale-110',
+            iconColor,
+          )}
+        >
+          <Icon className="h-6 w-6" />
+        </div>
+      </div>
+
+      {progress && !loading && (
+        <div className="relative z-10 mt-6 space-y-2">
+          <div className="flex items-center justify-between gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">
+            <span>Metric Intensity</span>
+            <span>{progress.label}</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/40 p-[1px] shadow-inner">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-1000',
+                iconColor.replace('text-', 'bg-'),
+              )}
+              style={{ width: `${Math.min(progress.value, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -113,120 +153,98 @@ function errorValueColor(value: number | null | undefined): string {
 }
 
 export function HealthCards({ health, loading }: HealthCardsProps) {
-  if (loading && !health) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-fade-in">
-        {(['hc-0', 'hc-1', 'hc-2', 'hc-3', 'hc-4', 'hc-5', 'hc-6', 'hc-7'] as const).map((key) => (
-          <SkeletonCard key={key} />
-        ))}
-      </div>
-    );
-  }
+  const heapUsedMb = health?.memory?.heapUsed ? health.memory.heapUsed / 1_048_576 : 0;
+  const heapTotalMb = health?.memory?.heapTotal ? health.memory.heapTotal / 1_048_576 : 0;
+  const heapPct = heapTotalMb > 0 ? (heapUsedMb / heapTotalMb) * 100 : 0;
 
-  const heap = health ? computeHeapMetrics(health) : null;
-  const cpu = health ? computeCpuMetrics(health) : null;
+  const cpuUserSec = health?.system?.cpuUsage?.user ? health.system.cpuUsage.user / 1_000_000 : 0;
+  const cpuSystemSec = health?.system?.cpuUsage?.system
+    ? health.system.cpuUsage.system / 1_000_000
+    : 0;
+  const cpuTotalSec = cpuUserSec + cpuSystemSec;
+  const rawPct = health && health.uptime > 0 ? (cpuTotalSec / health.uptime) * 100 : 0;
+  const cpuPct = Math.min(Math.max(rawPct, 0), 100);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-fade-in">
-      <MetricCard
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-fade-in">
+      <StatCard
+        loading={loading && !health}
         title="Uptime"
-        icon={<Clock className="h-3.5 w-3.5" />}
-        iconBg="bg-primary/12 text-primary"
-      >
-        <span className="text-2xl font-bold tracking-tight">
-          {health ? formatUptime(health.uptime) : '—'}
-        </span>
-      </MetricCard>
-
-      <MetricCard
+        value={health ? formatUptime(health.uptime) : '—'}
+        subtitle="Core operation time"
+        icon={Clock}
+        iconColor="text-primary"
+      />
+      <StatCard
+        loading={loading && !health}
         title="Memory"
-        icon={<MemoryStick className="h-3.5 w-3.5" />}
-        iconBg="bg-secondary/12 text-secondary"
-      >
-        <span className="text-2xl font-bold tracking-tight">
-          {health ? formatBytes(health.memory.heapUsed) : '—'}
-        </span>
-        {health && heap ? (
-          <>
-            <p className="mt-1 text-xs text-muted-foreground">
-              of {formatBytes(health.memory.heapTotal)} ({heap.heapPct.toFixed(0)}%)
-            </p>
-            <ProgressBar percent={heap.heapPct} />
-          </>
-        ) : null}
-      </MetricCard>
-
-      <MetricCard
-        title="Discord Ping"
-        icon={<Wifi className="h-3.5 w-3.5" />}
-        iconBg={health ? pingBg(health.discord.ping) : 'bg-muted text-muted-foreground'}
-      >
-        <span
-          className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}
-        >
-          {health ? `${health.discord.ping}ms` : '—'}
-        </span>
-      </MetricCard>
-
-      <MetricCard
-        title="Guilds"
-        icon={<Globe className="h-3.5 w-3.5" />}
-        iconBg="bg-cyan-500/12 text-cyan-600 dark:text-cyan-400"
-      >
-        <span className="text-2xl font-bold tracking-tight">
-          {health ? health.discord.guilds.toLocaleString() : '—'}
-        </span>
-      </MetricCard>
-
-      <MetricCard
+        value={health?.memory ? formatBytes(health.memory.heapUsed) : '—'}
+        subtitle={
+          health?.memory ? `Total ${formatBytes(health.memory.heapTotal)}` : 'Memory configuration'
+        }
+        icon={MemoryStick}
+        iconColor="text-secondary"
+        progress={{ value: heapPct, label: `${heapPct.toFixed(0)}%` }}
+      />
+      <StatCard
+        loading={loading && !health}
+        title="Ping"
+        value={health?.discord ? `${health.discord.ping}ms` : '—'}
+        subtitle="Gateway latency"
+        icon={Wifi}
+        iconColor={
+          health && health.discord?.ping < 100
+            ? 'text-emerald-500'
+            : (health?.discord?.ping ?? 0) < 300
+              ? 'text-amber-500'
+              : 'text-red-500'
+        }
+      />
+      <StatCard
+        loading={loading && !health}
+        title="Scale"
+        value={health?.discord ? health.discord.guilds.toLocaleString() : '—'}
+        subtitle="Active guilds"
+        icon={Globe}
+        iconColor="text-cyan-500"
+      />
+      <StatCard
+        loading={loading && !health}
         title="Errors (1h)"
-        icon={<AlertTriangle className="h-3.5 w-3.5" />}
-        iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400"
-      >
-        <span
-          className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastHour)}`}
-        >
-          {health ? formatErrorValue(health.errors.lastHour) : '—'}
-        </span>
-      </MetricCard>
-
-      <MetricCard
+        value={health?.errors ? (health.errors.lastHour?.toLocaleString() ?? '0') : '—'}
+        subtitle="Recent stability"
+        icon={AlertTriangle}
+        iconColor={
+          health && (health.errors?.lastHour || 0) > 0 ? 'text-red-500' : 'text-emerald-500/40'
+        }
+      />
+      <StatCard
+        loading={loading && !health}
         title="Errors (24h)"
-        icon={<Activity className="h-3.5 w-3.5" />}
-        iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400"
-      >
-        <span
-          className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastDay)}`}
-        >
-          {health ? formatErrorValue(health.errors.lastDay) : '—'}
-        </span>
-      </MetricCard>
-
-      <MetricCard
-        title="CPU (avg since start)"
-        icon={<Cpu className="h-3.5 w-3.5" />}
-        iconBg="bg-primary/12 text-primary"
-      >
-        <span className="text-2xl font-bold tracking-tight">{cpu ? `${cpu.cpuPct}%` : '—'}</span>
-        {cpu ? (
-          <>
-            <p className="mt-1 text-xs text-muted-foreground">
-              user {cpu.cpuUserSec.toFixed(1)}s / sys {cpu.cpuSystemSec.toFixed(1)}s
-            </p>
-            <ProgressBar percent={Number(cpu.cpuPct)} />
-          </>
-        ) : null}
-      </MetricCard>
-
-      <MetricCard
-        title="Node"
-        icon={<Server className="h-3.5 w-3.5" />}
-        iconBg="bg-muted text-muted-foreground"
-      >
-        <span className="text-2xl font-bold tracking-tight">
-          {health ? health.system.nodeVersion : '—'}
-        </span>
-      </MetricCard>
+        value={health?.errors ? (health.errors.lastDay?.toLocaleString() ?? '0') : '—'}
+        subtitle="Long-term health"
+        icon={Activity}
+        iconColor={
+          health && (health.errors?.lastDay || 0) > 0 ? 'text-red-500' : 'text-emerald-500/40'
+        }
+      />
+      <StatCard
+        loading={loading && !health}
+        title="Processor"
+        value={health ? `${cpuPct.toFixed(1)}%` : '—'}
+        subtitle={`User ${cpuUserSec.toFixed(1)}s`}
+        icon={Cpu}
+        iconColor="text-primary/60"
+        progress={{ value: cpuPct, label: `${cpuPct.toFixed(1)}%` }}
+      />
+      <StatCard
+        loading={loading && !health}
+        title="Environment"
+        value={health ? health.system.nodeVersion : '—'}
+        subtitle="Engine version"
+        icon={Server}
+        iconColor="text-muted-foreground/40"
+      />
     </div>
   );
 }

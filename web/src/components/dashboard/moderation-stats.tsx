@@ -9,27 +9,42 @@ import { ACTION_META } from './moderation-types';
 interface StatCardProps {
   title: string;
   value: number | string;
-  icon: React.ReactNode;
+  icon: React.ComponentType<{ className?: string }>;
   description?: string;
   loading?: boolean;
 }
 
-function StatCard({ title, value, icon, description, loading }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, description, loading }: StatCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className="text-muted-foreground">{icon}</div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <Skeleton className="h-8 w-20" />
-        ) : (
-          <div className="text-2xl font-bold">{value}</div>
-        )}
-        {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
-      </CardContent>
-    </Card>
+    <div className="group relative overflow-hidden rounded-[20px] border border-border/40 bg-card/30 p-5 backdrop-blur-xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-card/40 hover:shadow-xl dark:bg-card/20">
+      <div className="absolute -right-4 -top-4 text-primary/10 transition-transform duration-500 group-hover:scale-110 group-hover:text-primary/20 pointer-events-none">
+        <Icon className="h-24 w-24" />
+      </div>
+      <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/70">
+            {title}
+          </h3>
+          <div className="rounded-full bg-primary/10 p-2 text-primary ring-1 ring-primary/20 shadow-[inset_0_1px_1px_hsl(var(--primary)/0.5)]">
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+        <div>
+          {loading ? (
+            <Skeleton className="h-8 w-20 bg-primary/10" />
+          ) : (
+            <div className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-3xl font-black tracking-tight text-transparent">
+              {value}
+            </div>
+          )}
+          {description && (
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -64,28 +79,28 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
         <StatCard
           title="Total Cases"
           value={stats?.totalCases ?? 0}
-          icon={<Shield className="h-4 w-4" />}
+          icon={Shield}
           description="All time"
           loading={loading}
         />
         <StatCard
           title="Last 24 Hours"
           value={stats?.last24h ?? 0}
-          icon={<Clock className="h-4 w-4" />}
+          icon={Clock}
           description="Recent activity"
           loading={loading}
         />
         <StatCard
           title="Last 7 Days"
           value={stats?.last7d ?? 0}
-          icon={<TrendingUp className="h-4 w-4" />}
+          icon={TrendingUp}
           description="This week"
           loading={loading}
         />
         <StatCard
           title="Unique Actions"
           value={stats ? Object.keys(stats.byAction).length : 0}
-          icon={<AlertTriangle className="h-4 w-4" />}
+          icon={AlertTriangle}
           description="Action types used"
           loading={loading}
         />
@@ -93,15 +108,15 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* By action breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">By Action Type</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <section className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50">
+          <h3 className="mb-4 text-sm font-semibold tracking-wide text-foreground/90">
+            By Action Type
+          </h3>
+          <div>
             {loading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-5 w-full" />
+                  <Skeleton key={i} className="h-5 w-full bg-white/5" />
                 ))}
               </div>
             ) : topActions.length === 0 ? (
@@ -115,33 +130,33 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                   return (
                     <li key={action} className="flex items-center justify-between text-sm">
                       <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${badgeCls}`}
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeCls}`}
                       >
                         {label}
                       </span>
-                      <span className="font-semibold tabular-nums">{count}</span>
+                      <span className="font-semibold tabular-nums text-foreground/90">{count}</span>
                     </li>
                   );
                 })}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {/* Top targets */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <UserX className="h-4 w-4" />
-              Top Targets
-              <span className="text-xs font-normal text-muted-foreground">(last 30 days)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <section className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50">
+          <h3 className="mb-4 text-sm font-semibold tracking-wide flex items-center gap-2 text-foreground/90">
+            <UserX className="h-4 w-4 text-muted-foreground/60" />
+            Top Targets
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40 mt-0.5">
+              (30 Days)
+            </span>
+          </h3>
+          <div>
             {loading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-5 w-full" />
+                  <Skeleton key={i} className="h-5 w-full bg-white/5" />
                 ))}
               </div>
             ) : !stats?.topTargets?.length ? (
@@ -151,7 +166,7 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                 {stats.topTargets.map(({ userId, tag, count }) => (
                   <li key={userId} className="flex items-center justify-between text-sm">
                     <span className="truncate text-muted-foreground font-mono text-xs">{tag}</span>
-                    <span className="ml-2 flex shrink-0 items-center gap-1 text-destructive font-semibold tabular-nums">
+                    <span className="ml-2 flex shrink-0 items-center gap-1 text-destructive font-semibold tabular-nums bg-destructive/10 px-2 py-0.5 rounded-full ring-1 ring-destructive/20">
                       <Ban className="h-3 w-3" />
                       {count}
                     </span>
@@ -159,8 +174,8 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </div>
   );

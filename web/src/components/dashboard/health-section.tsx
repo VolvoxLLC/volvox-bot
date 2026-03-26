@@ -2,13 +2,11 @@
 
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useRef } from 'react';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-import { extractApiError, isAbortError, safeParseJson, toErrorMessage } from '@/lib/api-utils';
+import { useHealthStore } from '@/stores/health-store';
 import { HealthCards } from './health-cards';
 import { RestartHistory } from './restart-history';
-import { type BotHealth, validateBotHealth } from './types';
 
 const AUTO_REFRESH_MS = 60_000;
 
@@ -23,121 +21,79 @@ function formatLastUpdated(date: Date): string {
 export function HealthSection() {
   const router = useRouter();
   const guildId = useGuildSelection();
-  const [health, setHealth] = useState<BotHealth | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const { health, loading, error, lastUpdatedAt, refresh } = useHealthStore();
+  const autoRefreshTimerRef = useRef<number | null>(null);
 
-  const fetchHealth = useCallback(
-    async (backgroundRefresh = false) => {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      const didSetLoading = !backgroundRefresh;
-
-      if (!backgroundRefresh) {
-        setLoading(true);
-        setError(null);
-      }
-
-      try {
-        if (!guildId) {
-          return;
-        }
-
-        const params = new URLSearchParams({ guildId });
-        const response = await fetch(`/api/bot-health?${params.toString()}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        if (response.status === 401) {
-          router.replace('/login');
-          return;
-        }
-
-        const payload = await safeParseJson(response);
-
-        if (!response.ok) {
-          throw new Error(extractApiError(payload, 'Failed to fetch health data'));
-        }
-
-        const validationError = validateBotHealth(payload);
-        if (validationError) {
-          throw new Error(`Invalid health payload: ${validationError}`);
-        }
-
-        setHealth(payload as BotHealth);
-        setError(null);
-        setLastUpdatedAt(new Date());
-      } catch (fetchError) {
-        if (isAbortError(fetchError)) return;
-        setError(toErrorMessage(fetchError, 'Failed to fetch health data'));
-      } finally {
-        if (didSetLoading) {
-          setLoading(false);
-        }
-      }
-    },
-    [guildId, router],
-  );
-
-  // Initial fetch
   useEffect(() => {
-    fetchHealth();
-    return () => abortControllerRef.current?.abort();
-  }, [fetchHealth]);
+    if (guildId) {
+      void refresh(guildId).then((res) => {
+        if (res === 'unauthorized') router.replace('/login');
+      });
+    }
+  }, [guildId, refresh, router]);
 
-  // Auto-refresh every 60s
+  // Auto-refresh logic
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      fetchHealth(true);
+    if (!guildId) return;
+    autoRefreshTimerRef.current = window.setInterval(() => {
+      void refresh(guildId);
     }, AUTO_REFRESH_MS);
-    return () => window.clearInterval(intervalId);
-  }, [fetchHealth]);
+    return () => {
+      if (autoRefreshTimerRef.current) window.clearInterval(autoRefreshTimerRef.current);
+    };
+  }, [guildId, refresh]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Bot Health</h2>
-          <p className="text-muted-foreground">
-            Live metrics and restart history. Auto-refreshes every 60s.
-          </p>
-          {lastUpdatedAt ? (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Last updated {formatLastUpdated(lastUpdatedAt)}
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-black tracking-tight text-foreground">
+            Bot <span className="text-primary/60">Health</span>
+          </h2>
+          <div className="flex items-center gap-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+              Live monitoring • System core
             </p>
-          ) : null}
+            {lastUpdatedAt && <div className="h-1 w-1 rounded-full bg-border/40" />}
+            {lastUpdatedAt && (
+              <p className="text-[10px] font-medium text-muted-foreground/30">
+                Synced at {formatLastUpdated(lastUpdatedAt)}
+              </p>
+            )}
+          </div>
         </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-          onClick={() => fetchHealth()}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
       </div>
 
-      {error ? (
+      {error && (
         <div
           role="alert"
-          className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+          className="group relative overflow-hidden rounded-[24px] border border-destructive/30 bg-destructive/10 p-6 backdrop-blur-xl transition-all hover:bg-destructive/15"
         >
-          <strong>Failed to load health data:</strong> {error}
-          <Button variant="outline" size="sm" className="ml-4" onClick={() => fetchHealth()}>
-            Try again
-          </Button>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-black uppercase tracking-widest text-destructive">
+                Core System Failure
+              </h4>
+              <p className="mt-1 text-sm text-destructive/80 leading-relaxed font-medium">
+                {error}
+              </p>
+            </div>
+            <button
+              onClick={() => guildId && void refresh(guildId)}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl bg-destructive px-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-destructive/80 active:scale-95 shadow-lg shadow-destructive/20"
+            >
+              <RefreshCw className={loading ? 'h-3 w-3 animate-spin' : 'h-3 w-3'} />
+              Restart Fetch
+            </button>
+          </div>
         </div>
-      ) : null}
+      )}
 
       <HealthCards health={health} loading={loading} />
-      <RestartHistory health={health} loading={loading} />
+
+      <div className="stagger-fade-in" style={{ animationDelay: '200ms' }}>
+        <RestartHistory health={health} loading={loading} />
+      </div>
     </div>
   );
 }

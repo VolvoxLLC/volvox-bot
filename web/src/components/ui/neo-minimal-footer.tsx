@@ -56,10 +56,14 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
           {/* Brand column */}
           <div className="col-span-1 md:col-span-5 flex flex-col gap-6">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold text-sm font-[family-name:var(--font-mono)]">
-                V
+              <div className="relative h-8 w-8 overflow-hidden rounded-lg border border-white/10 shadow-md">
+                <img 
+                  src="/icon-192.png" 
+                  alt="Volvox Logo" 
+                  className="h-full w-full object-cover"
+                />
               </div>
-              <span className="text-2xl font-bold tracking-tighter text-foreground font-[family-name:var(--font-mono)]">
+              <span className="text-2xl font-black tracking-tighter text-foreground font-[family-name:var(--font-mono)]">
                 Volvox
               </span>
             </div>

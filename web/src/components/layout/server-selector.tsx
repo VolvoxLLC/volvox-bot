@@ -12,7 +12,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/components/ui/material-dropdown-menu';
 import { isGuildManageable } from '@/hooks/use-guild-role';
 import { getBotInviteUrl, getGuildIconUrl } from '@/lib/discord';
 import { broadcastSelectedGuild, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
@@ -156,102 +156,147 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
+    <div className="flex flex-col gap-4">
+      <DropdownMenu>
+        <DropdownMenuTrigger
           className={cn(
-            'h-auto min-h-[3.85rem] w-full justify-between py-2.5',
-            'rounded-xl border-border/70',
-            'bg-card/80',
-            'px-3 shadow-sm',
+            'group relative flex h-16 w-full items-center justify-start overflow-hidden px-2.5 transition-all text-left shadow-2xl',
+            'rounded-[22px] border border-border/40 bg-card',
+            'shadow-[inset_0_1px_1px_hsl(var(--background)/0.08),0_12px_24px_-8px_hsl(var(--background)/0.2)]',
+            'before:absolute before:inset-0 before:bg-primary/5 before:opacity-0 before:transition-opacity hover:before:opacity-100',
             className,
           )}
         >
-          <div className="flex min-w-0 items-center gap-2 truncate">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background">
-              {selectedGuild?.icon ? (
-                <Image
-                  src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 64) ?? ''}
-                  alt={selectedGuild.name}
-                  width={20}
-                  height={20}
-                  className="rounded-full"
-                />
-              ) : (
-                <Server className="h-4 w-4 shrink-0" />
-              )}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-                Active server
+          <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2.5 pr-10">
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-foreground/15 to-foreground/5 shadow-sm p-[1px] transition-transform group-hover:scale-105 active:scale-95">
+              <div className="flex h-full w-full items-center justify-center rounded-[13px] bg-background/50 backdrop-blur-md">
+                {selectedGuild?.icon ? (
+                  <Image
+                    src={getGuildIconUrl(selectedGuild.id, selectedGuild.icon, 128) ?? ''}
+                    alt={selectedGuild.name}
+                    width={28}
+                    height={28}
+                    className="rounded-full shadow-inner"
+                  />
+                ) : (
+                  <Server className="h-4 w-4 shrink-0 opacity-40" />
+                )}
+              </div>
+            </div>
+            <div className="flex min-w-0 flex-col py-0.5 text-left">
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">
+                Workspace
               </span>
-              <span className="block truncate text-sm font-medium leading-tight">
-                {manageable.length === 0
-                  ? 'No manageable servers'
-                  : (selectedGuild?.name ?? 'Select server')}
+              <span className="truncate text-[13px] font-black tracking-tight text-foreground/90">
+                {manageable.length === 0 ? 'No Access' : (selectedGuild?.name ?? 'Select Hub')}
               </span>
-              <span className="block truncate text-xs text-muted-foreground">{accessSummary}</span>
-            </span>
+            </div>
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-80 rounded-xl border-border/70 bg-popover p-1.5"
-        align="start"
-      >
-        {/* ── Manageable servers (mod / admin / owner) ── */}
-        {manageable.length > 0 ? (
-          <>
-            <DropdownMenuLabel className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Workspace access
-              <span className="mt-1 block normal-case tracking-normal text-xs font-normal text-muted-foreground/80">
-                {accessSummary}
-              </span>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {manageable.map((guild) => (
-              <DropdownMenuItem
-                key={guild.id}
-                onClick={() => {
-                  if (selectedGuild?.id === guild.id) return;
-                  selectGuild(guild);
-                }}
-                className="flex items-center gap-2 rounded-lg py-2"
-              >
-                <GuildRow guild={guild} />
-              </DropdownMenuItem>
-            ))}
-          </>
-        ) : (
-          <div className="px-2 py-3 text-center text-xs text-muted-foreground">
-            <Server className="mx-auto mb-1 h-4 w-4" />
-            You need moderator, admin, or owner permissions to manage a server.
+          <div className="absolute right-1 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 shrink-0 items-center justify-center rounded-lg bg-muted/30 border border-border/40 transition-colors group-hover:bg-muted/50">
+            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-20 transition-opacity group-hover:opacity-60" />
           </div>
-        )}
+        </DropdownMenuTrigger>
 
-        {/* ── Member-only servers ── */}
-        {memberOnly.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="flex items-center gap-1 px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              View only
-            </DropdownMenuLabel>
+        <DropdownMenuContent
+          className={cn(
+            'w-80 rounded-[28px] p-2.5 backdrop-blur-3xl transition-all',
+            'border-t border-border/40 bg-gradient-to-b from-popover/95 to-popover/60',
+            'shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.1),0_32px_64px_-16px_hsl(var(--foreground)/0.6)]',
+          )}
+          align="start"
+          sideOffset={12}
+        >
+          {manageable.length > 0 ? (
+            <>
+              <DropdownMenuLabel className="px-4 pt-4 pb-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
+                    Infrastructure hubs
+                  </span>
+                  <span className="text-[11px] font-bold text-muted-foreground/30">
+                    {accessSummary}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="mx-2 mb-2 bg-border/20" />
+              <div className="space-y-1.5">
+                {manageable.map((guild) => (
+                  <DropdownMenuItem
+                    key={guild.id}
+                    onClick={() => {
+                      if (selectedGuild?.id === guild.id) return;
+                      selectGuild(guild);
+                    }}
+                    className={cn(
+                      'rounded-[20px] transition-all active:scale-[0.98]',
+                      'border border-transparent select-none',
+                      selectedGuild?.id === guild.id
+                        ? 'bg-primary/10 border-primary/20 text-primary shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]'
+                        : 'hover:bg-muted/40 hover:border-border/40 hover:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
+                    )}
+                  >
+                    <GuildRow guild={guild} />
+                    {selectedGuild?.id === guild.id && (
+                      <div className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 p-1 shadow-[0_0_16px_hsl(var(--primary)/0.4)]">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+                      </div>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center px-6 py-12 text-center text-xs text-muted-foreground">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/30 shadow-inner ring-1 ring-border/40">
+                <Server className="h-6 w-6 opacity-10" />
+              </div>
+              <span className="font-bold tracking-tight opacity-40">
+                Administrative clearance required.
+              </span>
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ── Communities Section (Skeumorphic Card) ── */}
+      {memberOnly.length > 0 && (
+        <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-border/30 bg-muted/10 p-1.5 shadow-inner">
+          <div className="px-3 py-1.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/20">
+              Community Hubs
+            </p>
+          </div>
+          <div className="space-y-1">
             {memberOnly.map((guild) => (
-              <DropdownMenuItem key={guild.id} asChild>
-                <Link
-                  href={`/community/${guild.id}`}
-                  className="flex items-center gap-2 rounded-lg py-2 text-muted-foreground"
-                >
-                  <GuildRow guild={guild} />
-                  <ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-50" />
-                </Link>
-              </DropdownMenuItem>
+              <Link
+                key={guild.id}
+                href={`/community/${guild.id}`}
+                className="group flex items-center gap-3 rounded-[14px] border border-transparent px-3 py-2.5 text-sm transition-all hover:bg-muted/40 hover:border-border/20 hover:shadow-lg active:scale-[0.98]"
+              >
+                <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-muted to-transparent p-[1px] shadow-sm transition-transform group-hover:scale-110">
+                  <div className="flex h-full w-full items-center justify-center rounded-[7px] bg-background/60">
+                    {guild.icon ? (
+                      <Image
+                        src={getGuildIconUrl(guild.id, guild.icon, 64) ?? ''}
+                        alt={guild.name}
+                        width={18}
+                        height={18}
+                        className="rounded-full opacity-50 grayscale transition-all group-hover:opacity-100 group-hover:grayscale-0"
+                      />
+                    ) : (
+                      <Server className="h-3.5 w-3.5 shrink-0 opacity-20 group-hover:opacity-100" />
+                    )}
+                  </div>
+                </div>
+                <span className="truncate text-xs font-bold tracking-tight text-muted-foreground/40 transition-colors group-hover:text-foreground/90">
+                  {guild.name}
+                </span>
+                <ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-0 transition-all group-hover:opacity-20" />
+              </Link>
             ))}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

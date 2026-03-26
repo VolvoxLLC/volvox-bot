@@ -1,10 +1,9 @@
 'use client';
 
-import { RefreshCw, Search, Ticket, X } from 'lucide-react';
+import { Search, Ticket, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
-import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { useTicketsStore } from '@/stores/tickets-store';
 
 function TicketsSkeleton() {
   return (
@@ -70,33 +70,6 @@ function TicketsSkeleton() {
   );
 }
 
-interface TicketSummary {
-  id: number;
-  guild_id: string;
-  user_id: string;
-  topic: string | null;
-  status: string;
-  thread_id: string;
-  channel_id: string | null;
-  closed_by: string | null;
-  close_reason: string | null;
-  created_at: string;
-  closed_at: string | null;
-}
-
-interface TicketsApiResponse {
-  tickets: TicketSummary[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface TicketStats {
-  openCount: number;
-  avgResolutionSeconds: number;
-  ticketsThisWeek: number;
-}
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
     month: 'short',
@@ -123,64 +96,42 @@ const PAGE_SIZE = 25;
 export default function TicketsClient() {
   const router = useRouter();
 
-  const [tickets, setTickets] = useState<TicketSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    tickets,
+    total,
+    stats,
+    loading,
+    error,
+    page,
+    statusFilter,
+    search,
+    debouncedSearch,
+    setPage,
+    setStatusFilter,
+    setSearch,
+    setDebouncedSearch,
+    resetAll,
+    fetchStats,
+    fetchTickets,
+  } = useTicketsStore();
 
-  const [statusFilter, setStatusFilter] = useState('');
-  const [search, setSearch] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  const [stats, setStats] = useState<TicketStats | null>(null);
-
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const requestIdRef = useRef(0);
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1);
     }, 300);
     return () => clearTimeout(searchTimerRef.current);
-  }, [search]);
-
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
+  }, [search, setDebouncedSearch]);
 
   const onGuildChange = useCallback(() => {
-    setTickets([]);
-    setTotal(0);
-    setPage(1);
-    setError(null);
-    setStats(null);
-  }, []);
+    resetAll();
+  }, [resetAll]);
 
   const guildId = useGuildSelection({ onGuildChange });
 
   const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
-
-  // Fetch stats — extracted as a reusable callback
-  const fetchStats = useCallback(async (targetGuildId: string, signal?: AbortSignal) => {
-    try {
-      const res = await fetch(
-        `/api/guilds/${encodeURIComponent(targetGuildId)}/tickets/stats`,
-        signal ? { signal } : undefined,
-      );
-      if (res.ok) {
-        const data = (await res.json()) as TicketStats;
-        setStats(data);
-      }
-    } catch {
-      // Non-critical (includes AbortError)
-    }
-  }, []);
 
   // Fetch stats on guild change
   useEffect(() => {
@@ -191,74 +142,20 @@ export default function TicketsClient() {
   }, [guildId, fetchStats]);
 
   // Fetch tickets
-  const fetchTickets = useCallback(
-    async (opts: { guildId: string; status: string; user: string; page: number }) => {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      const requestId = ++requestIdRef.current;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const params = new URLSearchParams();
-        params.set('page', String(opts.page));
-        params.set('limit', String(PAGE_SIZE));
-        if (opts.status) params.set('status', opts.status);
-        if (opts.user) params.set('user', opts.user);
-
-        const res = await fetch(
-          `/api/guilds/${encodeURIComponent(opts.guildId)}/tickets?${params.toString()}`,
-          { signal: controller.signal },
-        );
-
-        if (requestId !== requestIdRef.current) return;
-
-        if (res.status === 401) {
-          onUnauthorized();
-          return;
-        }
-        if (!res.ok) {
-          throw new Error(`Failed to fetch tickets (${res.status})`);
-        }
-
-        const data = (await res.json()) as TicketsApiResponse;
-        setTickets(data.tickets);
-        setTotal(data.total);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        if (requestId !== requestIdRef.current) return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch tickets');
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [onUnauthorized],
-  );
-
   useEffect(() => {
     if (!guildId) return;
-    fetchTickets({
+    const controller = new AbortController();
+    void fetchTickets({
       guildId,
       status: statusFilter,
       user: debouncedSearch,
       page,
+      signal: controller.signal,
+    }).then((res) => {
+      if (res === 'unauthorized') router.replace('/login');
     });
-  }, [guildId, statusFilter, debouncedSearch, page, fetchTickets]);
-
-  const handleRefresh = useCallback(() => {
-    if (!guildId) return;
-    fetchStats(guildId);
-    fetchTickets({
-      guildId,
-      status: statusFilter,
-      user: debouncedSearch,
-      page,
-    });
-  }, [guildId, fetchStats, fetchTickets, statusFilter, debouncedSearch, page]);
+    return () => controller.abort();
+  }, [guildId, statusFilter, debouncedSearch, page, fetchTickets, router]);
 
   const handleRowClick = useCallback(
     (ticketId: number) => {
@@ -272,54 +169,36 @@ export default function TicketsClient() {
     setSearch('');
     setDebouncedSearch('');
     setPage(1);
-  }, []);
+  }, [setSearch, setDebouncedSearch, setPage]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={Ticket}
-        title="Tickets"
-        description="Manage support tickets and view transcripts."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleRefresh}
-            disabled={!guildId || loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        }
-      />
-
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-primary/12 to-background p-4 md:p-5">
+          <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50 px-5 pt-5 pb-6 bg-gradient-to-br from-primary/12 to-background">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Open Tickets
             </div>
-            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl text-foreground/90">
               {stats.openCount}
             </div>
           </div>
-          <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-secondary/10 to-background p-4 md:p-5">
+          <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50 px-5 pt-5 pb-6 bg-gradient-to-br from-secondary/10 to-background">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Avg Resolution
             </div>
-            <div className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+            <div className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl text-foreground/90">
               {formatDuration(stats.avgResolutionSeconds)}
             </div>
           </div>
-          <div className="dashboard-panel rounded-2xl p-4 md:p-5">
+          <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50 px-5 pt-5 pb-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               This Week
             </div>
-            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+            <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl text-foreground/90">
               {stats.ticketsThisWeek}
             </div>
           </div>
@@ -338,12 +217,12 @@ export default function TicketsClient() {
       {/* Content */}
       {guildId && (
         <>
-          {/* Filters */}
-          <div className="dashboard-panel flex flex-wrap items-center gap-3 rounded-2xl p-4 md:p-5">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          {/* Filters — compact inline strip */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
               <Input
-                className="h-10 rounded-xl border-border/70 bg-background/70 pl-9 pr-8"
+                className="h-9 rounded-xl border-border/40 bg-card/40 pl-8 pr-8 text-sm backdrop-blur-sm w-full"
                 placeholder="Search by user ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -352,11 +231,11 @@ export default function TicketsClient() {
               {search && (
                 <button
                   type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
                   onClick={handleClearSearch}
                   aria-label="Clear search"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
@@ -365,21 +244,26 @@ export default function TicketsClient() {
               value={statusFilter}
               onValueChange={(val) => {
                 setStatusFilter(val === 'all' ? '' : val);
-                setPage(1);
               }}
             >
-              <SelectTrigger className="h-10 w-[170px] rounded-xl border-border/70 bg-background/70">
+              <SelectTrigger className="h-9 w-[150px] rounded-xl border-border/40 bg-card/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70 backdrop-blur-sm">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
+              <SelectContent className="rounded-xl border-white/10 bg-popover/95 backdrop-blur-xl shadow-xl">
+                <SelectItem value="all" className="text-xs font-semibold">
+                  All statuses
+                </SelectItem>
+                <SelectItem value="open" className="text-xs font-semibold">
+                  Open
+                </SelectItem>
+                <SelectItem value="closed" className="text-xs font-semibold">
+                  Closed
+                </SelectItem>
               </SelectContent>
             </Select>
 
             {total > 0 && (
-              <span className="text-sm text-muted-foreground tabular-nums">
+              <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">
                 {total.toLocaleString()} {total === 1 ? 'ticket' : 'tickets'}
               </span>
             )}
@@ -397,9 +281,11 @@ export default function TicketsClient() {
 
           {/* Table */}
           {loading && tickets.length === 0 ? (
-            <TicketsSkeleton />
+            <div className="overflow-hidden rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg">
+              <TicketsSkeleton />
+            </div>
           ) : tickets.length > 0 ? (
-            <div className="dashboard-panel overflow-x-auto rounded-2xl">
+            <div className="overflow-x-auto rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -415,7 +301,7 @@ export default function TicketsClient() {
                   {tickets.map((ticket) => (
                     <TableRow
                       key={ticket.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer hover:bg-white/[0.02] border-white/5"
                       tabIndex={0}
                       onClick={() => handleRowClick(ticket.id)}
                       onKeyDown={(e) => {
@@ -428,19 +314,28 @@ export default function TicketsClient() {
                       <TableCell className="font-mono text-sm">#{ticket.id}</TableCell>
                       <TableCell className="max-w-xs truncate">
                         {ticket.topic || (
-                          <span className="text-muted-foreground italic">No topic</span>
+                          <span className="text-muted-foreground/60 italic">No topic</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{ticket.user_id}</TableCell>
+                      <TableCell className="font-mono text-sm text-foreground/80">
+                        {ticket.user_id}
+                      </TableCell>
                       <TableCell>
-                        <Badge variant={ticket.status === 'open' ? 'default' : 'secondary'}>
+                        <Badge
+                          variant={ticket.status === 'open' ? 'default' : 'secondary'}
+                          className={
+                            ticket.status === 'open'
+                              ? 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/20 rounded-full'
+                              : 'bg-white/5 text-muted-foreground rounded-full'
+                          }
+                        >
                           {ticket.status === 'open' ? 'Open' : 'Closed'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground/80">
                         {formatDate(ticket.created_at)}
                       </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                      <TableCell className="hidden text-sm text-muted-foreground/80 md:table-cell">
                         {ticket.closed_at ? formatDate(ticket.closed_at) : '—'}
                       </TableCell>
                     </TableRow>
@@ -462,27 +357,27 @@ export default function TicketsClient() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="dashboard-chip flex items-center justify-between rounded-xl px-3 py-2">
-              <span className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50">
                 Page {page} of {totalPages}
               </span>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  type="button"
                   disabled={page <= 1 || loading}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
+                </button>
+                <button
+                  type="button"
                   disabled={page >= totalPages || loading}
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={() => setPage(page + 1)}
+                  className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   Next
-                </Button>
+                </button>
               </div>
             </div>
           )}

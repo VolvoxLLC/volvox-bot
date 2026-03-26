@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
+import { SettingsTabs } from '@/components/dashboard/settings-tabs';
+import { AnalyticsProvider } from '@/contexts/analytics-context';
 import { DashboardTitleSync } from './dashboard-title-sync';
-import { GuildDirectoryProvider } from './guild-directory-context';
 import { Header } from './header';
-import { ServerSelector } from './server-selector';
 import { Sidebar } from './sidebar';
 
 interface DashboardShellProps {
@@ -16,30 +16,29 @@ interface DashboardShellProps {
  */
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <GuildDirectoryProvider>
-      <div className="dashboard-canvas dashboard-grid flex min-h-screen flex-col bg-background">
+    <AnalyticsProvider>
+      <div className="dashboard-canvas relative flex h-[100dvh] w-full max-h-screen overflow-hidden bg-background">
         <DashboardTitleSync />
-        <Header />
 
-        <div className="flex min-h-0 flex-1">
-          {/* Desktop sidebar */}
-          <aside className="hidden min-h-0 w-72 shrink-0 border-r border-border/40 bg-gradient-to-b from-card/90 via-card/60 to-background/80 md:flex md:flex-col">
-            <div className="px-3 pt-4 pb-3">
-              <ServerSelector />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin pb-3">
-              <Sidebar />
-            </div>
-          </aside>
+        {/* Desktop sidebar */}
+        <aside className="hidden h-full w-[260px] min-h-0 shrink-0 flex-col border-r border-border/40 bg-background md:flex">
+          <div className="min-h-0 flex-1 overflow-y-auto scrollbar-none relative">
+            <Sidebar />
+          </div>
+        </aside>
 
-          {/* Main content */}
+        {/* Right side: Header + Content */}
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <Header />
+
           <main className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-            <div className="mx-auto w-full max-w-[1560px] p-3 md:p-6 lg:p-8">
-              <div className="dashboard-fade-in min-h-[calc(100vh-7.9rem)]">{children}</div>
+            <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-8 lg:px-10">
+              <SettingsTabs />
+              <div className="dashboard-fade-in pb-12">{children}</div>
             </div>
           </main>
         </div>
       </div>
-    </GuildDirectoryProvider>
+    </AnalyticsProvider>
   );
 }

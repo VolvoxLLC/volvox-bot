@@ -1,11 +1,9 @@
 'use client';
 
-import { ArrowLeft, Clock, Ticket, User } from 'lucide-react';
+import { ArrowLeft, Clock, Hash, Ticket, User } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -40,6 +38,34 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+/** Returns a consistent pastel hue from a string, for avatar coloring. */
+function stringToHue(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % 360;
+}
+
+function MetaItem({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+        {label}
+      </p>
+      <p className={`text-sm font-medium text-foreground/80 ${mono ? 'font-mono' : ''}`}>{value}</p>
+    </div>
+  );
+}
+
 export default function TicketDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -56,15 +82,12 @@ export default function TicketDetailPage() {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
       const res = await fetch(
         `/api/guilds/${encodeURIComponent(guildId)}/tickets/${encodeURIComponent(ticketId)}`,
       );
-
       if (res.status === 401) {
         router.replace('/login');
         return;
@@ -73,10 +96,7 @@ export default function TicketDetailPage() {
         setError('Ticket not found');
         return;
       }
-      if (!res.ok) {
-        throw new Error(`Failed to fetch ticket (${res.status})`);
-      }
-
+      if (!res.ok) throw new Error(`Failed to fetch ticket (${res.status})`);
       const result = (await res.json()) as TicketDetail;
       setData(result);
     } catch (err) {
@@ -93,63 +113,55 @@ export default function TicketDetailPage() {
   return (
     <ErrorBoundary title="Ticket detail failed to load">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-              <Ticket className="h-6 w-6" />
-              Ticket Detail
-            </h2>
-          </div>
-        </div>
+        {/* Back button */}
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+          Back
+        </button>
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-5 w-20" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
-                    <div key={i} className="space-y-1">
-                      <Skeleton className="h-3 w-20" />
-                      <Skeleton className="h-5 w-32" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-5 w-24" />
-              </CardHeader>
-              <CardContent className="space-y-3">
+          <div className="space-y-4">
+            <div className="relative overflow-hidden rounded-[28px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <Skeleton className="h-7 w-36 rounded-xl" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders have no stable identity
-                  <div key={i} className="space-y-1">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-4 w-full" />
+                  // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
+                  <div key={i} className="space-y-1.5">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-5 w-28" />
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg space-y-3">
+              <Skeleton className="h-4 w-32" />
+              {Array.from({ length: 3 }).map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
+                <div key={i} className="flex gap-3">
+                  <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {/* No guild */}
         {!guildId && !loading && (
-          <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex h-48 items-center justify-center rounded-[24px] border border-border/40 bg-card/30 backdrop-blur-xl">
+            <p className="text-sm text-muted-foreground/60">
               No guild selected. Please navigate from the tickets list.
             </p>
           </div>
@@ -159,7 +171,7 @@ export default function TicketDetailPage() {
         {error && (
           <div
             role="alert"
-            className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+            className="rounded-[20px] border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive backdrop-blur-xl"
           >
             <strong>Error:</strong> {error}
           </div>
@@ -168,119 +180,168 @@ export default function TicketDetailPage() {
         {/* Ticket Info */}
         {data && !loading && !error && guildId && (
           <>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Ticket #{data.id}</span>
-                  <Badge variant={data.status === 'open' ? 'default' : 'secondary'}>
-                    {data.status === 'open' ? '🟢 Open' : '🔒 Closed'}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <span className="text-sm font-medium text-muted-foreground">Topic</span>
-                    <p>{data.topic || 'No topic provided'}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-muted-foreground">Opened by</span>
-                    <p className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      <span className="font-mono text-sm">{data.user_id}</span>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-muted-foreground">Created</span>
-                    <p className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatTimestamp(data.created_at)}
-                    </p>
-                  </div>
-                  {data.closed_at && (
+            {/* Hero info panel */}
+            <div className="group relative overflow-hidden rounded-[28px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-xl transition-all hover:bg-card/50 md:p-8">
+              {/* Ambient glow */}
+              <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
+
+              <div className="relative">
+                {/* Ticket ID + Status */}
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-border/40 bg-background/30">
+                      <Ticket className="h-5 w-5 text-muted-foreground/60" />
+                    </div>
                     <div>
-                      <span className="text-sm font-medium text-muted-foreground">Closed</span>
-                      <p className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatTimestamp(data.closed_at)}
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                        Ticket
                       </p>
+                      <h2 className="text-xl font-bold tracking-tight">#{data.id}</h2>
                     </div>
-                  )}
-                  {data.closed_by && (
-                    <div>
-                      <span className="text-sm font-medium text-muted-foreground">Closed by</span>
-                      <p className="font-mono text-sm">{data.closed_by}</p>
-                    </div>
-                  )}
-                  {data.close_reason && (
-                    <div>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Close reason
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${
+                      data.status === 'open'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+                        : 'border-border/40 bg-white/5 text-muted-foreground/60'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${data.status === 'open' ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
+                    />
+                    {data.status === 'open' ? 'Open' : 'Closed'}
+                  </span>
+                </div>
+
+                {/* Topic (full width) */}
+                {data.topic && (
+                  <div className="mb-5 rounded-[16px] border border-border/30 bg-background/20 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">
+                      Topic
+                    </p>
+                    <p className="text-sm font-medium text-foreground/80">{data.topic}</p>
+                  </div>
+                )}
+
+                {/* Meta grid */}
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  <MetaItem
+                    label="Opened by"
+                    mono
+                    value={
+                      <span className="flex items-center gap-1.5">
+                        <User className="h-3 w-3 text-muted-foreground/40" />
+                        {data.user_id}
                       </span>
-                      <p>{data.close_reason}</p>
-                    </div>
+                    }
+                  />
+                  <MetaItem
+                    label="Created"
+                    value={
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-3 w-3 text-muted-foreground/40" />
+                        {formatTimestamp(data.created_at)}
+                      </span>
+                    }
+                  />
+                  {data.closed_at && (
+                    <MetaItem
+                      label="Closed"
+                      value={
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="h-3 w-3 text-muted-foreground/40" />
+                          {formatTimestamp(data.closed_at)}
+                        </span>
+                      }
+                    />
+                  )}
+                  {data.closed_by && <MetaItem label="Closed by" value={data.closed_by} mono />}
+                  {data.close_reason && <MetaItem label="Close reason" value={data.close_reason} />}
+                  {data.thread_id && (
+                    <MetaItem
+                      label="Thread"
+                      mono
+                      value={
+                        <span className="flex items-center gap-1.5">
+                          <Hash className="h-3 w-3 text-muted-foreground/40" />
+                          {data.thread_id}
+                        </span>
+                      }
+                    />
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Transcript */}
-            {data.transcript && data.transcript.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Transcript ({data.transcript.length} messages)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {data.transcript.map((msg) => (
+            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg transition-all">
+              <div className="border-b border-border/30 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/60">
+                  Transcript
+                </h3>
+                {data.transcript && data.transcript.length > 0 && (
+                  <span className="rounded-full border border-border/30 bg-background/30 px-2.5 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground/50">
+                    {data.transcript.length} messages
+                  </span>
+                )}
+              </div>
+
+              {data.transcript && data.transcript.length > 0 ? (
+                <div className="max-h-[600px] overflow-y-auto p-4 space-y-1">
+                  {data.transcript.map((msg) => {
+                    const hue = stringToHue(msg.author);
+                    return (
                       <div
                         key={`${msg.author}-${msg.timestamp}`}
-                        className="flex gap-3 rounded-lg border p-3"
+                        className="group/msg flex gap-3 rounded-[16px] px-4 py-3 transition-colors hover:bg-white/[0.03]"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
+                        {/* Avatar */}
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white/90 shadow-sm"
+                          style={{ background: `hsl(${hue}, 50%, 35%)` }}
+                        >
                           {msg.author.slice(0, 2).toUpperCase()}
                         </div>
+                        {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{msg.author}</span>
-                            <span className="text-xs text-muted-foreground">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm font-semibold text-foreground/90">
+                              {msg.author}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/40 tabular-nums">
                               {formatTimestamp(msg.timestamp)}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                          <p className="mt-0.5 text-sm leading-relaxed text-foreground/70 whitespace-pre-wrap break-words">
                             {msg.content || (
-                              <span className="italic text-muted-foreground">[no content]</span>
+                              <span className="italic text-muted-foreground/30">[no content]</span>
                             )}
                           </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {data.transcript && data.transcript.length === 0 && (
-              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">No transcript available.</p>
-              </div>
-            )}
-
-            {!data.transcript && data.status === 'open' && (
-              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">
-                  Transcript will be saved when the ticket is closed.
-                </p>
-              </div>
-            )}
-
-            {!data.transcript && data.status !== 'open' && (
-              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">
-                  No transcript available for this closed ticket.
-                </p>
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              ) : data.transcript && data.transcript.length === 0 ? (
+                <div className="flex h-36 items-center justify-center">
+                  <p className="text-sm text-muted-foreground/40 italic">
+                    No transcript available.
+                  </p>
+                </div>
+              ) : data.status === 'open' ? (
+                <div className="flex h-36 items-center justify-center">
+                  <p className="text-sm text-muted-foreground/40 italic">
+                    Transcript will be saved when the ticket is closed.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex h-36 items-center justify-center">
+                  <p className="text-sm text-muted-foreground/40 italic">
+                    No transcript available for this closed ticket.
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

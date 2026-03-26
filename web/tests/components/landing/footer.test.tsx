@@ -46,7 +46,7 @@ describe('Footer', () => {
 
   it('should render the CTA with Discord invite link', () => {
     render(<Footer />);
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/Ready to upgrade/i);
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/Elevate your community/i);
     const cta = screen.getByRole('link', { name: /Add to Discord/i });
     expect(cta).toHaveAttribute('href', 'https://discord.com/invite/bot');
   });
@@ -66,8 +66,8 @@ describe('Footer', () => {
 
   it('should render the tagline and copyright', () => {
     render(<Footer />);
-    expect(screen.getByText(/Open source. Self-hostable. Free forever./i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Volvox/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Experience the synthesis of AI intelligence/i)).toBeInTheDocument();
+    expect(screen.getByAltText(/Volvox Logo/i)).toBeInTheDocument();
   });
 
   it('should render newsletter email input and disabled subscribe button', () => {

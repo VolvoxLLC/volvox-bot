@@ -1,21 +1,17 @@
 'use client';
 
-import { ArrowLeft, Loader2, RotateCcw, Save } from 'lucide-react';
-import Link from 'next/link';
-import { type ReactNode, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { ConfigProvider, useConfigContext } from '@/components/dashboard/config-context';
-import { CategoryNavigation } from '@/components/dashboard/config-workspace/category-navigation';
 import { CONFIG_CATEGORIES } from '@/components/dashboard/config-workspace/config-categories';
 import { ConfigSearch } from '@/components/dashboard/config-workspace/config-search';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ConfigDiff } from './config-diff';
 import { ConfigDiffModal } from './config-diff-modal';
-import { DiscardChangesButton } from './reset-defaults-button';
+import { FloatingSaveIsland } from './floating-save-island';
 
 /**
  * Client-side layout shell for the config editor.
- * Wraps children in ConfigProvider and renders persistent navigation and save chrome.
+ * Wraps children in ConfigProvider and renders persistent save chrome.
  */
 export function ConfigLayoutShell({ children }: { children: ReactNode }) {
   return (
@@ -35,18 +31,12 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     saving,
     error,
     hasChanges,
-    hasValidationErrors,
     changedSections,
     showDiffModal,
     setShowDiffModal,
     prevSavedConfig,
-    openDiffModal,
-    discardChanges,
-    undoLastSave,
     executeSave,
     revertSection,
-    dirtyCategoryCounts,
-    changedCategoryCount,
     searchQuery,
     searchResults,
     handleSearchChange,
@@ -61,17 +51,59 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     [activeCategoryId],
   );
 
+  // ── Route guard: warn user about unsaved changes ────────────────
+  const hasChangesRef = useRef(hasChanges);
+  hasChangesRef.current = hasChanges;
+
+  useEffect(() => {
+    // Handle browser back/forward/close
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasChangesRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
+  // Intercept in-app link clicks when there are unsaved changes
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (!hasChangesRef.current) return;
+
+      const target = (e.target as HTMLElement).closest('a');
+      if (!target) return;
+
+      const href = target.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('http')) return;
+
+      // Allow navigation within settings subpages
+      if (href.startsWith('/dashboard/settings/')) return;
+
+      const confirmed = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+      if (!confirmed) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, []);
+
   // ── No guild selected ──────────────────────────────────────────
   if (!guildId) {
     return (
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle>Settings</CardTitle>
-          <CardDescription>
+      <div className="group relative overflow-hidden rounded-[32px] border border-border bg-card/40 p-8 backdrop-blur-3xl shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
+        <div className="relative z-10 text-center py-12">
+          <h2 className="text-xl font-black tracking-tight text-foreground">Settings</h2>
+          <p className="mt-2 text-sm text-muted-foreground/60">
             Select a server from the sidebar to manage its configuration.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -88,17 +120,21 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   // ── Error state ────────────────────────────────────────────────
   if (error) {
     return (
-      <Card className="rounded-2xl border-destructive/50" role="alert">
-        <CardHeader>
-          <CardTitle className="text-destructive">Failed to Load Config</CardTitle>
-          <CardDescription>{error}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" onClick={() => fetchConfig(guildId)}>
+      <div
+        className="group relative overflow-hidden rounded-[32px] border border-destructive/30 bg-destructive/10 p-8 backdrop-blur-3xl shadow-2xl"
+        role="alert"
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-destructive/5 to-transparent pointer-events-none" />
+        <div className="relative z-10 space-y-4">
+          <h2 className="text-lg font-black uppercase tracking-wider text-destructive">
+            Failed to Load Config
+          </h2>
+          <p className="text-sm text-destructive/80">{error}</p>
+          <Button variant="outline" onClick={() => fetchConfig(guildId)} className="rounded-xl">
             Retry
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -107,107 +143,26 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   // ── Editor UI ──────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* Top bar with title, search, and save controls */}
-      <div className="dashboard-panel flex flex-col gap-4 rounded-2xl p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight">
-            <span className="text-gradient-vibrant">Settings</span>
-          </h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Manage settings by category. Changes are tracked in real-time.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Undo last save — visible only after a successful save with no new changes */}
-          {prevSavedConfig && !hasChanges && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={undoLastSave}
-              disabled={saving}
-              aria-label="Undo last save"
-              className="rounded-lg"
-            >
-              <RotateCcw className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-              Undo
-            </Button>
-          )}
-          <DiscardChangesButton
-            onReset={discardChanges}
-            disabled={saving || !hasChanges}
-            sectionLabel="all unsaved changes"
-          />
-          {/* Save button with unsaved-changes indicator dot */}
-          <div className="relative">
-            <Button
-              onClick={openDiffModal}
-              disabled={saving || !hasChanges || hasValidationErrors}
-              aria-keyshortcuts="Control+S Meta+S"
-              className="rounded-lg"
-            >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" aria-hidden="true" />
-              )}
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-            {hasChanges && !saving && (
-              <span
-                className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-yellow-400 ring-2 ring-background shadow-[0_0_6px_rgba(250,204,21,0.5)]"
-                aria-hidden="true"
-                title={`Unsaved changes in ${changedSections.length} section${changedSections.length === 1 ? '' : 's'}: ${changedSections.join(', ')}`}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Status banners */}
-      {hasChanges && (
-        <output
-          aria-live="polite"
-          className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/8 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
-        >
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-yellow-500/15">
-            <Save className="h-3 w-3" />
-          </span>
-          <span>
-            Unsaved changes in {changedCategoryCount}{' '}
-            {changedCategoryCount === 1 ? 'category' : 'categories'}.{' '}
-            <kbd className="rounded border border-yellow-500/20 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-xs">
-              Ctrl/⌘+S
-            </kbd>{' '}
-            to save.
-          </span>
-        </output>
-      )}
-
-      {hasValidationErrors && (
-        <output
-          aria-live="polite"
-          className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive"
-        >
-          Fix validation errors before changes can be saved.
-        </output>
-      )}
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
-        <CategoryNavigation dirtyCounts={dirtyCategoryCounts} />
-
-        <div className="space-y-4">
-          {/* Category header with label, description, and search — only on category pages */}
-          {activeCategory && (
-            <div className="space-y-3 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-5">
-              <Link
-                href="/dashboard/settings"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                <ArrowLeft className="h-3 w-3" aria-hidden="true" />
-                All categories
-              </Link>
-              <h2 className="text-base font-semibold tracking-tight">{activeCategory.label}</h2>
-              <p className="text-xs text-muted-foreground">{activeCategory.description}</p>
+      {/* Category header with search — only on category pages */}
+      {activeCategory && (
+        <div className="relative overflow-hidden rounded-[32px] border border-border bg-muted/10 dark:bg-white/[0.02] p-8 shadow-2xl backdrop-blur-md">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="h-px w-8 bg-primary/40" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
+                  Settings Category
+                </span>
+              </div>
+              <h2 className="text-3xl font-black tracking-tight text-foreground/90">
+                {activeCategory.label}
+              </h2>
+              <p className="text-sm font-medium text-muted-foreground max-w-md leading-relaxed">
+                {activeCategory.description}
+              </p>
+            </div>
+            <div className="w-full md:w-80 lg:w-96">
               <ConfigSearch
                 value={searchQuery}
                 onChange={handleSearchChange}
@@ -215,21 +170,15 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
                 onSelect={handleSearchSelect}
               />
             </div>
-          )}
-
-          {/* Route content */}
-          {children}
+          </div>
         </div>
-      </div>
-
-      {hasChanges && savedConfig && (
-        <ConfigDiff
-          original={savedConfig}
-          modified={draftConfig}
-          changedSections={changedSections}
-          onRevertSection={revertSection}
-        />
       )}
+
+      {/* Route content — full-width, no sidebar grid */}
+      <div className="space-y-4">{children}</div>
+
+      {/* Floating save island */}
+      <FloatingSaveIsland />
 
       {savedConfig && (
         <ConfigDiffModal

@@ -1,24 +1,53 @@
 'use client';
 
-import { BookOpen, LogOut } from 'lucide-react';
+import {
+  BookOpen,
+  Calendar,
+  ChevronRight,
+  Download,
+  FileText,
+  LayoutGrid,
+  LogOut,
+  Moon,
+  MoreVertical,
+  RefreshCw,
+  Sun,
+} from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { useEffect, useRef } from 'react';
+import { useTheme } from 'next-themes';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { GithubIcon } from '@/components/ui/github-icon';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPage,
+  DropdownMenuPageTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { GithubIcon } from '@/components/ui/github-icon';
+} from '@/components/ui/material-dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useAnalytics } from '@/contexts/analytics-context';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { formatDateInput } from '@/lib/analytics-utils';
 import { getDashboardPageTitle } from '@/lib/page-titles';
+import { cn } from '@/lib/utils';
+import { useAuditLogStore } from '@/stores/audit-log-store';
+import { useConversationsStore } from '@/stores/conversations-store';
+import { useHealthStore } from '@/stores/health-store';
+import { useMembersStore } from '@/stores/members-store';
+import { useModerationStore } from '@/stores/moderation-store';
+import { useTempRolesStore } from '@/stores/temp-roles-store';
+import { useTicketsStore } from '@/stores/tickets-store';
 import { MobileSidebar } from './mobile-sidebar';
 
 /**
@@ -30,7 +59,9 @@ import { MobileSidebar } from './mobile-sidebar';
  */
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session, status } = useSession();
+  const { theme, setTheme } = useTheme();
   const signingOut = useRef(false);
   const currentPageTitle = getDashboardPageTitle(pathname);
 
@@ -40,6 +71,137 @@ export function Header() {
   // delegates to this component to avoid race conditions).
   // The signingOut guard prevents duplicate sign-out attempts when the session
   // refetches and re-triggers this effect.
+  const {
+    rangePreset,
+    setRangePreset,
+    compareMode,
+    setCompareMode,
+    refresh,
+    exportCsv,
+    exportPdf,
+    loading,
+    customFromApplied,
+    customToApplied,
+    setCustomRange,
+  } = useAnalytics();
+
+  const isDashboard = pathname === '/dashboard';
+  const isModerationDashboard = pathname === '/dashboard/moderation';
+  const isMembersDashboard = pathname === '/dashboard/members';
+  const isTicketsDashboard = pathname === '/dashboard/tickets';
+  const isConversationsDashboard = pathname === '/dashboard/conversations';
+  const isAuditLogDashboard = pathname === '/dashboard/audit-log';
+  const isTempRolesDashboard = pathname === '/dashboard/temp-roles';
+  const isPerformanceDashboard = pathname === '/dashboard/performance';
+  const isLogsDashboard = pathname === '/dashboard/logs';
+
+  // Global Guild State for Refresh Actions
+  const guildId = useGuildSelection();
+
+  // Moderation Refresh State
+  const {
+    fetchStats,
+    fetchCases,
+    fetchUserHistory,
+    lookupUserId,
+    userHistoryPage,
+    statsLoading,
+    casesLoading,
+  } = useModerationStore();
+
+  const handleModerationRefresh = React.useCallback(() => {
+    if (!guildId) return;
+    const controller = new AbortController();
+    const signal = controller.signal;
+    void (async () => {
+      const [statsResult, casesResult] = await Promise.all([
+        fetchStats(guildId, { signal }),
+        fetchCases(guildId, { signal }),
+      ]);
+      if (lookupUserId) {
+        const historyResult = await fetchUserHistory(guildId, lookupUserId, userHistoryPage, {
+          signal,
+        });
+        if (historyResult === 'unauthorized') router.replace('/login');
+      }
+      if (statsResult === 'unauthorized' || casesResult === 'unauthorized') {
+        router.replace('/login');
+      }
+    })();
+  }, [guildId, lookupUserId, userHistoryPage, fetchStats, fetchCases, fetchUserHistory, router]);
+
+  // Members Refresh State
+  const { refresh: refreshMembers, loading: membersLoading } = useMembersStore();
+
+  const handleMembersRefresh = React.useCallback(() => {
+    if (!guildId) return;
+    void (async () => {
+      const result = await refreshMembers(guildId);
+      if (result === 'unauthorized') router.replace('/login');
+    })();
+  }, [guildId, refreshMembers, router]);
+
+  // Tickets Refresh State
+  const { refresh: refreshTickets, loading: ticketsLoading } = useTicketsStore();
+
+  const handleTicketsRefresh = React.useCallback(() => {
+    if (!guildId) return;
+    void (async () => {
+      const result = await refreshTickets(guildId);
+      if (result === 'unauthorized') router.replace('/login');
+    })();
+  }, [guildId, refreshTickets, router]);
+
+  // Conversations Refresh State
+  const { refresh: refreshConversations, loading: conversationsLoading } = useConversationsStore();
+  const handleConversationsRefresh = React.useCallback(() => {
+    if (guildId) void refreshConversations(guildId);
+  }, [guildId, refreshConversations]);
+
+  // Audit Log Refresh State
+  const { refresh: refreshAuditLog, loading: auditLogLoading } = useAuditLogStore();
+  const handleAuditLogRefresh = useCallback(() => {
+    if (guildId) void refreshAuditLog(guildId);
+  }, [guildId, refreshAuditLog]);
+
+  // Temp Roles Refresh State
+  const { refresh: refreshTempRoles, loading: tempRolesLoading } = useTempRolesStore();
+  const handleTempRolesRefresh = useCallback(() => {
+    if (guildId) void refreshTempRoles(guildId);
+  }, [guildId, refreshTempRoles]);
+
+  // Health Refresh State
+  const { refresh: refreshHealth, loading: healthLoading } = useHealthStore();
+  const handleHealthRefresh = useCallback(() => {
+    if (guildId) void refreshHealth(guildId);
+  }, [guildId, refreshHealth]);
+
+  // Performance Refresh State
+  const [performanceLoading, setPerformanceLoading] = useState(false);
+  const handlePerformanceRefresh = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('refresh-performance'));
+  }, []);
+
+  useEffect(() => {
+    const handleStart = () => setPerformanceLoading(true);
+    const handleEnd = () => setPerformanceLoading(false);
+    window.addEventListener('performance-loading-start', handleStart);
+    window.addEventListener('performance-loading-end', handleEnd);
+    return () => {
+      window.removeEventListener('performance-loading-start', handleStart);
+      window.removeEventListener('performance-loading-end', handleEnd);
+    };
+  }, []);
+
+  const [fromDraft, setFromDraft] = useState(customFromApplied);
+  const [toDraft, setToDraft] = useState(customToApplied);
+
+  useEffect(() => {
+    setFromDraft(customFromApplied);
+    setToDraft(customToApplied);
+  }, [customFromApplied, customToApplied]);
+
+  // Single handler for RefreshTokenError — sign out and redirect to login.
   useEffect(() => {
     if (session?.error === 'RefreshTokenError' && !signingOut.current) {
       signingOut.current = true;
@@ -48,105 +210,464 @@ export function Header() {
   }, [session?.error]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto flex min-h-[4.35rem] w-full max-w-[1920px] items-center gap-3 px-3 py-3 md:px-6">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-background/20 transition-all duration-300 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.2)]">
+      <div className="mx-auto flex h-14 w-full items-center gap-4 px-2 md:px-4">
         <MobileSidebar />
-
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-sm font-extrabold text-primary-foreground shadow-sm ring-1 ring-primary/15">
-            <span className="absolute inset-0 rounded-xl border border-white/10" />
-            <span className="relative z-10">V</span>
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="group relative flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/80 to-secondary/80 p-[1px] shadow-lg shadow-primary/5 transition-all hover:scale-105 active:scale-95">
+            <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-background/20 backdrop-blur-sm overflow-hidden">
+              <Image
+                src="/icon-192.png"
+                alt="Volvox Logo"
+                width={192}
+                height={192}
+                className="h-full w-full drop-shadow-sm"
+              />
+            </div>
           </div>
 
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight">
-              <span className="sm:hidden">Volvox</span>
-              <span className="hidden sm:inline">Volvox Control Room</span>
-            </p>
-            <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 font-medium text-primary">
-                <span className="status-dot-live" />
-                Live
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-black tracking-tight text-foreground/90">
+                <span className="sm:hidden">Volvox</span>
+                <span className="hidden sm:inline italic">VOLVOX</span>
+              </h2>
+              <div className="hidden h-1 w-1 rounded-full bg-border/40 sm:block" />
+              <span className="hidden text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 sm:block">
+                Control Room
               </span>
-              <span className="truncate text-muted-foreground/80">
+            </div>
+            <div className="flex items-center gap-2 text-[10px]">
+              <div className="flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-bold uppercase tracking-widest text-primary ring-1 ring-primary/20">
+                <span className="status-dot-live h-1 w-1" />
+                Live
+              </div>
+              <span className="truncate font-medium text-muted-foreground/60 border-l border-border/40 pl-2">
                 {currentPageTitle && currentPageTitle !== 'Overview'
                   ? currentPageTitle
-                  : 'Overview'}
+                  : 'System Hub'}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-2 md:gap-3">
-          <ThemeToggle />
+        {isDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+
+            {/* Time Range Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
+                  'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                  rangePreset === 'custom' && 'text-primary border-primary/20',
+                )}
+              >
+                <Calendar className="h-3.5 w-3.5 opacity-60" />
+                <span>{rangePreset === 'custom' ? 'Custom Range' : rangePreset}</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-56 p-2 rounded-[28px] backdrop-blur-3xl border-t border-border/20 bg-gradient-to-b from-popover/95 to-popover/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_32px_64px_-16px_rgba(0,0,0,0.6)]"
+              >
+                <DropdownMenuPage id="main">
+                  <DropdownMenuRadioGroup
+                    value={rangePreset}
+                    onValueChange={(v) => v !== 'custom' && setRangePreset(v as any)}
+                  >
+                    <DropdownMenuRadioItem value="today">Today</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="week">This Week</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="month">This Month</DropdownMenuRadioItem>
+                    <DropdownMenuPageTrigger targetId="custom-range">
+                      <span className={cn(rangePreset === 'custom' && 'text-primary')}>
+                        Custom Range
+                      </span>
+                    </DropdownMenuPageTrigger>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuPage>
+
+                <DropdownMenuPage id="custom-range">
+                  <DropdownMenuLabel>Custom Range</DropdownMenuLabel>
+                  <div className="p-3 space-y-3">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">
+                        From
+                      </span>
+                      <input
+                        type="date"
+                        value={fromDraft}
+                        onChange={(e) => setFromDraft(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-white/10 bg-black/20 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">
+                        To
+                      </span>
+                      <input
+                        type="date"
+                        value={toDraft}
+                        onChange={(e) => setToDraft(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-white/10 bg-black/20 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full rounded-xl text-[10px] font-black uppercase tracking-widest"
+                      onClick={() => {
+                        setCustomRange(fromDraft, toDraft);
+                      }}
+                    >
+                      Apply Range
+                    </Button>
+                  </div>
+                </DropdownMenuPage>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Actions Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  'group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-white/10 transition-all hover:bg-white/[0.05] text-muted-foreground/60 hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
+                  'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                )}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-56 p-2 rounded-[28px] backdrop-blur-3xl border-t border-border/20 bg-gradient-to-b from-popover/95 to-popover/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_32px_64px_-16px_rgba(0,0,0,0.6)]"
+              >
+                <DropdownMenuPage id="main">
+                  <DropdownMenuItem onClick={() => refresh()} disabled={loading}>
+                    <RefreshCw
+                      className={cn('h-3.5 w-3.5 opacity-60', loading && 'animate-spin')}
+                    />
+                    <span className="text-xs font-bold">Refresh Data</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuCheckboxItem
+                    checked={compareMode}
+                    onCheckedChange={(c) => setCompareMode(!!c)}
+                  >
+                    <span className="text-xs font-bold">Compare Mode</span>
+                  </DropdownMenuCheckboxItem>
+
+                  <DropdownMenuSeparator className="mx-1 my-1 opacity-50" />
+
+                  <DropdownMenuPageTrigger targetId="export">
+                    <Download className="h-3.5 w-3.5 opacity-60" />
+                    <span className="text-xs font-bold">Export Data</span>
+                  </DropdownMenuPageTrigger>
+                </DropdownMenuPage>
+
+                <DropdownMenuPage id="export">
+                  <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => exportCsv()}>
+                    <FileText className="h-3.5 w-3.5 opacity-60" />
+                    <span className="text-xs font-bold">Export to CSV</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportPdf()}>
+                    <Download className="h-3.5 w-3.5 opacity-60" />
+                    <span className="text-xs font-bold">Export to PDF</span>
+                  </DropdownMenuItem>
+                </DropdownMenuPage>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
+        {isModerationDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handleModerationRefresh}
+              disabled={!guildId || statsLoading || casesLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                (!guildId || statsLoading || casesLoading) &&
+                  'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn(
+                  'h-3.5 w-3.5 opacity-60',
+                  (statsLoading || casesLoading) && 'animate-spin',
+                )}
+              />
+              <span>Refresh Mod Data</span>
+            </button>
+          </div>
+        )}
+
+        {isMembersDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handleMembersRefresh}
+              disabled={!guildId || membersLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                (!guildId || membersLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 opacity-60', membersLoading && 'animate-spin')}
+              />
+              <span>Refresh Members</span>
+            </button>
+          </div>
+        )}
+
+        {isTicketsDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handleTicketsRefresh}
+              disabled={!guildId || ticketsLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                (!guildId || ticketsLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 opacity-60', ticketsLoading && 'animate-spin')}
+              />
+              <span>Refresh Tickets</span>
+            </button>
+          </div>
+        )}
+
+        {isConversationsDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handleConversationsRefresh}
+              disabled={!guildId || conversationsLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                (!guildId || conversationsLoading) &&
+                  'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 opacity-60', conversationsLoading && 'animate-spin')}
+              />
+              <span>Refresh Conversations</span>
+            </button>
+          </div>
+        )}
+
+        {isAuditLogDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handleAuditLogRefresh}
+              disabled={!guildId || auditLogLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                (!guildId || auditLogLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 opacity-60', auditLogLoading && 'animate-spin')}
+              />
+              <span>Refresh Audit Log</span>
+            </button>
+          </div>
+        )}
+
+        {isTempRolesDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handleTempRolesRefresh}
+              disabled={!guildId || tempRolesLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                (!guildId || tempRolesLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 opacity-60', tempRolesLoading && 'animate-spin')}
+              />
+              <span>Refresh Temp Roles</span>
+            </button>
+          </div>
+        )}
+
+        {isPerformanceDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handlePerformanceRefresh}
+              disabled={performanceLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                performanceLoading && 'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 opacity-60', performanceLoading && 'animate-spin')}
+              />
+              <span>Refresh Metrics</span>
+            </button>
+          </div>
+        )}
+
+        {isLogsDashboard && (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <button
+              onClick={handleHealthRefresh}
+              disabled={!guildId || healthLoading}
+              className={cn(
+                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                (!guildId || healthLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+              )}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 opacity-60', healthLoading && 'animate-spin')}
+              />
+              <span>Refresh Health</span>
+            </button>
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-1.5 md:gap-2">
           {status === 'loading' && (
-            <Skeleton className="h-8 w-8 rounded-full" data-testid="header-skeleton" />
+            <Skeleton className="h-8 w-8 rounded-full bg-white/5" data-testid="header-skeleton" />
           )}
           {status === 'unauthenticated' && (
-            <Button variant="outline" size="sm" asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="rounded-xl px-4 text-[11px] font-bold uppercase tracking-wider hover:bg-primary/10 hover:text-primary"
+            >
               <Link href="/login">Sign in</Link>
             </Button>
           )}
-          {session?.user && (
+
+          {status === 'authenticated' && session?.user && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  aria-label="Open user menu"
-                  className="relative h-9 w-9 rounded-full ring-1 ring-border/50 transition-all hover:ring-primary/30"
-                >
-                  <Avatar className="h-8 w-8">
+              <DropdownMenuTrigger
+                className="group relative flex h-10 w-10 overflow-hidden outline-none items-center justify-center rounded-2xl transition-all shadow-[0_2px_8px_-2px_rgba(0,0,0,0.5)] border border-white/10 hover:border-primary/30"
+                data-testid="header-user-menu"
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] to-transparent pointer-events-none" />
+                <div className="relative z-10 w-full h-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                  <Avatar className="h-[34px] w-[34px] rounded-[14px]">
                     <AvatarImage
-                      src={session.user.image ?? undefined}
-                      alt={session.user.name ?? 'User'}
+                      src={session.user.image!}
+                      alt={session.user.name!}
+                      className="shadow-inner"
                     />
-                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                      {session.user.name?.charAt(0)?.toUpperCase() ?? 'U'}
+                    <AvatarFallback className="rounded-[14px] bg-background/50 font-black tracking-widest text-[10px] text-muted-foreground/60 shadow-inner">
+                      {session.user.name!.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                </Button>
+                </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-56 rounded-xl border-border/60"
                 align="end"
-                forceMount
+                sideOffset={12}
+                className="w-64 rounded-[28px] p-0 backdrop-blur-3xl border-t border-border/20 bg-gradient-to-b from-popover/95 to-popover/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_32px_64px_-16px_rgba(0,0,0,0.6)]"
               >
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{session.user.name}</p>
+                <DropdownMenuPage id="main">
+                  <DropdownMenuLabel className="px-5 pt-4 pb-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
+                        Operator
+                      </span>
+                      <span className="truncate text-sm font-black tracking-tight text-foreground/90">
+                        {session.user.name}
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="mx-2 mb-2 bg-white/5" />
+
+                  <div className="space-y-1">
+                    <DropdownMenuPageTrigger targetId="appearance">
+                      <Sun className="h-4 w-4 opacity-60" />
+                      <span className="text-xs font-bold tracking-tight">Appearance</span>
+                    </DropdownMenuPageTrigger>
+
+                    <DropdownMenuItem asChild>
+                      <a
+                        href="https://docs.volvox.bot"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2"
+                      >
+                        <BookOpen className="h-4 w-4 opacity-60" />
+                        <span className="text-xs font-bold tracking-tight">Documentation</span>
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <a
+                        href="https://github.com/VolvoxLLC/volvox-bot"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2"
+                      >
+                        <GithubIcon className="h-4 w-4 opacity-60" />
+                        <span className="text-xs font-bold tracking-tight">Repository</span>
+                      </a>
+                    </DropdownMenuItem>
                   </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <a
-                    href="https://docs.volvox.bot"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center"
+                  <DropdownMenuSeparator className="mx-2 my-2 bg-white/5" />
+                  <DropdownMenuItem
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                    onClick={() => signOut({ callbackUrl: '/' })}
                   >
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Documentation
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a
-                    href="https://github.com/VolvoxLLC/volvox-bot"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center"
-                  >
-                    <GithubIcon className="mr-2 h-4 w-4" />
-                    GitHub repository
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span className="text-xs font-black tracking-widest uppercase">
+                      Terminate Session
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuPage>
+
+                <DropdownMenuPage id="appearance">
+                  <DropdownMenuLabel className="px-5 pt-4 pb-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
+                        Preferences
+                      </span>
+                      <span className="truncate text-sm font-black tracking-tight text-foreground/90">
+                        Appearance
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="mx-2 mb-2 bg-white/5" />
+
+                  <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+                    <DropdownMenuRadioItem value="light">
+                      <Sun className="h-3.5 w-3.5 opacity-60" />
+                      <span className="text-xs font-bold tracking-tight">Light Aspect</span>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="dark">
+                      <Moon className="h-3.5 w-3.5 opacity-60" />
+                      <span className="text-xs font-bold tracking-tight">Dark Protocol</span>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="system">
+                      <div className="flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-muted-foreground/20">
+                        <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                      </div>
+                      <span className="text-xs font-bold tracking-tight">System Default</span>
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuPage>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
