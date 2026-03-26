@@ -1,8 +1,8 @@
 'use client';
 
 import { ArrowRight } from 'lucide-react';
-import { GithubIcon } from '@/components/ui/github-icon';
 import { siDiscord, siX } from 'simple-icons';
+import { GithubIcon } from '@/components/ui/github-icon';
 
 /** Inline SVG helper for simple-icons. */
 function SimpleIcon({ path, className }: { path: string; className?: string }) {
@@ -50,17 +50,11 @@ const defaultSections: FooterSection[] = [
       { label: 'Documentation', href: 'https://docs.volvox.bot' },
       { label: 'GitHub', href: 'https://github.com/VolvoxLLC/volvox-bot' },
       { label: 'Support Server', href: 'https://discord.gg/8ahXACdamN' },
-      { label: 'Blog', href: '#' },
     ],
   },
   {
     title: 'Company',
-    links: [
-      { label: 'About', href: '#' },
-      { label: 'Open Source', href: 'https://github.com/VolvoxLLC' },
-      { label: 'Careers', href: '#' },
-      { label: 'Legal', href: '#' },
-    ],
+    links: [{ label: 'Open Source', href: 'https://github.com/VolvoxLLC' }],
   },
 ];
 
@@ -70,7 +64,7 @@ const defaultSections: FooterSection[] = [
  */
 export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFooterProps) {
   return (
-    <footer className="max-w-7xl mx-auto bg-card/10 border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden">
+    <div className="max-w-7xl mx-auto bg-card/10 border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden">
       {/* Background grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--foreground)/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--foreground)/0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(circle_at_center,black,transparent_80%)]" />
 
@@ -82,13 +76,13 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold text-sm font-[family-name:var(--font-mono)]">
                 V
               </div>
-              <h2 className="text-2xl font-bold tracking-tighter text-foreground font-[family-name:var(--font-mono)]">
+              <span className="text-2xl font-bold tracking-tighter text-foreground font-[family-name:var(--font-mono)]">
                 Volvox
-              </h2>
+              </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-              Open-source Discord bot with AI chat, moderation, and a dashboard
-              that actually works. Built for speed. Free forever.
+              Open-source Discord bot with AI chat, moderation, and a dashboard that actually works.
+              Built for speed. Free forever.
             </p>
 
             {/* Newsletter input */}
@@ -97,12 +91,15 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
                 <input
                   type="email"
                   placeholder="Enter your email..."
+                  aria-label="Email address for newsletter"
                   className="w-full bg-foreground/5 border border-border/40 rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50 transition-colors"
                 />
               </div>
               <button
                 type="button"
-                className="p-2.5 bg-primary rounded-lg text-primary-foreground hover:bg-primary/90 transition-colors"
+                disabled
+                aria-label="Subscribe to newsletter (coming soon)"
+                className="p-2.5 bg-primary rounded-lg text-primary-foreground opacity-50 cursor-not-allowed transition-colors"
               >
                 <ArrowRight size={18} />
               </button>
@@ -111,7 +108,7 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
 
           {/* Link columns */}
           {sections.map((section) => (
-            <div key={section.title} className="col-span-6 md:col-span-2 flex flex-col gap-4">
+            <div key={section.title} className="col-span-1 md:col-span-2 flex flex-col gap-4">
               <h4 className="text-xs font-[family-name:var(--font-mono)] font-semibold text-foreground/70 uppercase tracking-widest">
                 {section.title}
               </h4>
@@ -160,24 +157,31 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
                 <SimpleIcon path={siDiscord.path} className="w-[18px] h-[18px]" />
               </a>
               <a
-                href="#"
+                href="https://x.com/volvoxbot"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-muted-foreground/60 hover:text-foreground transition-colors"
-                aria-label="X"
+                aria-label="X (Twitter)"
               >
                 <SimpleIcon path={siX.path} className="w-[18px] h-[18px]" />
               </a>
             </div>
 
             {/* Status */}
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10">
+            <a
+              href="https://status.volvox.bot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors"
+            >
               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               <span className="text-[10px] uppercase font-medium text-primary/80 tracking-wider">
-                All Systems Normal
+                Status
               </span>
-            </div>
+            </a>
           </div>
         </div>
       </div>
-    </footer>
+    </div>
   );
 }
