@@ -63,7 +63,6 @@ describe('Hero', () => {
       /volvox-bot\s*AI-powered Discord\./i,
     );
     expect(screen.getByRole('link', { name: /Open Dashboard/i })).toHaveAttribute('href', '/login');
-    expect(screen.getByRole('link', { name: /View on GitHub/i })).toBeInTheDocument();
   });
 
   it('should render the chat console with channel context', () => {

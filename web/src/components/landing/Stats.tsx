@@ -205,14 +205,15 @@ export function Stats() {
             <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
               {loading
                 ? Array.from({ length: 3 }).map((_, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
                     <div key={i} className="text-center p-4">
                       <div className="w-16 h-8 rounded-lg bg-muted animate-pulse mx-auto mb-2" />
                       <div className="w-20 h-4 rounded bg-muted animate-pulse mx-auto" />
                     </div>
                   ))
                 : error && !stats
-                  ? condensedStats.map((stat, i) => (
-                      <div key={i} className="text-center p-4">
+                  ? condensedStats.map((stat) => (
+                      <div key={stat.label} className="text-center p-4">
                         <div
                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}
                         >
@@ -222,8 +223,8 @@ export function Stats() {
                         <div className="text-xs text-muted-foreground">{stat.label}</div>
                       </div>
                     ))
-                  : condensedStats.map((stat, i) => (
-                      <div key={i} className="text-center p-4">
+                  : condensedStats.map((stat) => (
+                      <div key={stat.label} className="text-center p-4">
                         <div
                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}
                         >

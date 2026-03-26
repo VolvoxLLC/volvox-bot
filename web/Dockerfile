@@ -2,11 +2,14 @@
 
 # --- Dependencies ---
 FROM node:22-alpine AS deps
+RUN apk add --no-cache libc6-compat
 RUN corepack enable
 WORKDIR /app
 
-# Build context is web/ (Railway root directory).
-COPY package.json pnpm-lock.yaml ./
+# Railway context is web/ — only package.json is available
+COPY package.json ./
+# Generate lockfile from package.json (eliminates lockfile drift entirely)
+RUN pnpm install --lockfile-only
 RUN pnpm install --frozen-lockfile
 
 # --- Builder ---
@@ -17,14 +20,14 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build args for env vars needed at build time
 ARG NEXT_PUBLIC_DISCORD_CLIENT_ID
 ENV NEXT_PUBLIC_DISCORD_CLIENT_ID=$NEXT_PUBLIC_DISCORD_CLIENT_ID
-
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
 RUN pnpm build
-# Flatten standalone output if nested (monorepo turbopack.root creates subdirs)
+
+# Flatten standalone output if nested
 RUN if [ -f .next/standalone/server.js ]; then \
       echo "server.js at root"; \
     elif [ -f .next/standalone/web/server.js ]; then \
@@ -47,7 +50,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Standalone output places server.js at the root (turbopack.root disabled in production).
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
@@ -55,7 +57,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 USER nextjs
 
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 

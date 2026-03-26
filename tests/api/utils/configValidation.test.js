@@ -137,6 +137,7 @@ describe('configValidation', () => {
           'triage',
           'auditLog',
           'botStatus',
+          'xp',
         ]),
       );
     });
@@ -331,6 +332,109 @@ describe('configValidation', () => {
         retentionDays: 90,
         badKey: 'nope',
       });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('unknown config key');
+    });
+  });
+
+  describe('xp schema validation', () => {
+    it('should accept valid xp.enabled boolean', () => {
+      expect(validateSingleValue('xp.enabled', true)).toEqual([]);
+      expect(validateSingleValue('xp.enabled', false)).toEqual([]);
+    });
+
+    it('should reject non-boolean xp.enabled', () => {
+      const errors = validateSingleValue('xp.enabled', 'yes');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected boolean');
+    });
+
+    it('should accept valid xp.levelThresholds array', () => {
+      expect(validateSingleValue('xp.levelThresholds', [100, 300, 600])).toEqual([]);
+    });
+
+    it('should reject non-array xp.levelThresholds', () => {
+      const errors = validateSingleValue('xp.levelThresholds', 'bad');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected array');
+    });
+
+    it('should reject negative numbers in xp.levelThresholds', () => {
+      const errors = validateSingleValue('xp.levelThresholds', [-1, 100]);
+      expect(errors.some((e) => e.includes('>= 0'))).toBe(true);
+    });
+
+    it('should accept valid xp.levelActions array', () => {
+      const actions = [
+        { level: 5, actions: [{ type: 'grantRole', roleId: '123' }] },
+        { level: 10, actions: [{ type: 'removeRole', roleId: '456' }] },
+      ];
+      expect(validateSingleValue('xp.levelActions', actions)).toEqual([]);
+    });
+
+    it('should reject levelActions missing required keys', () => {
+      const errors = validateSingleValue('xp.levelActions', [{ actions: [] }]);
+      expect(errors.some((e) => e.includes('missing required key "level"'))).toBe(true);
+    });
+
+    it('should reject levelActions with missing actions key', () => {
+      const errors = validateSingleValue('xp.levelActions', [{ level: 5 }]);
+      expect(errors.some((e) => e.includes('missing required key "actions"'))).toBe(true);
+    });
+
+    it('should reject levelActions with level out of range', () => {
+      const errors = validateSingleValue('xp.levelActions', [
+        { level: 0, actions: [{ type: 'grantRole' }] },
+      ]);
+      expect(errors.some((e) => e.includes('>= 1'))).toBe(true);
+    });
+
+    it('should reject levelActions with level above max', () => {
+      const errors = validateSingleValue('xp.levelActions', [
+        { level: 1001, actions: [{ type: 'grantRole' }] },
+      ]);
+      expect(errors.some((e) => e.includes('<= 1000'))).toBe(true);
+    });
+
+    it('should reject actions missing type', () => {
+      const errors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ roleId: '123' }] },
+      ]);
+      expect(errors.some((e) => e.includes('missing required key "type"'))).toBe(true);
+    });
+
+    it('should accept actions with extra properties (openProperties)', () => {
+      const actions = [
+        { level: 5, actions: [{ type: 'grantRole', roleId: '123', extraField: 'ok' }] },
+      ];
+      expect(validateSingleValue('xp.levelActions', actions)).toEqual([]);
+    });
+
+    it('should accept valid xp.defaultActions array', () => {
+      expect(validateSingleValue('xp.defaultActions', [{ type: 'grantRole', roleId: '123' }])).toEqual([]);
+    });
+
+    it('should reject defaultActions missing type', () => {
+      const errors = validateSingleValue('xp.defaultActions', [{ roleId: '123' }]);
+      expect(errors.some((e) => e.includes('missing required key "type"'))).toBe(true);
+    });
+
+    it('should accept valid xp.roleRewards object', () => {
+      expect(validateSingleValue('xp.roleRewards', { stackRoles: true, removeOnLevelDown: false })).toEqual([]);
+    });
+
+    it('should reject non-boolean roleRewards.stackRoles', () => {
+      const errors = validateSingleValue('xp.roleRewards', { stackRoles: 'yes' });
+      expect(errors.some((e) => e.includes('expected boolean'))).toBe(true);
+    });
+
+    it('should reject non-boolean roleRewards.removeOnLevelDown', () => {
+      const errors = validateSingleValue('xp.roleRewards', { removeOnLevelDown: 1 });
+      expect(errors.some((e) => e.includes('expected boolean'))).toBe(true);
+    });
+
+    it('should reject unknown keys in xp object', () => {
+      const errors = validateSingleValue('xp', { enabled: true, badKey: 'nope' });
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('unknown config key');
     });

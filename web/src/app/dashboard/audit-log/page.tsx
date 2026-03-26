@@ -26,6 +26,26 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { isAbortError, toErrorMessage } from '@/lib/api-utils';
+
+const PAGE_SIZE = 25;
+
+function buildAuditLogParams(opts: {
+  action: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  offset: number;
+}): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set('limit', String(PAGE_SIZE));
+  params.set('offset', String(opts.offset));
+  if (opts.action) params.set('action', opts.action);
+  if (opts.userId) params.set('userId', opts.userId);
+  if (opts.startDate) params.set('startDate', opts.startDate);
+  if (opts.endDate) params.set('endDate', opts.endDate);
+  return params;
+}
 
 interface AuditEntry {
   id: number;
@@ -63,8 +83,6 @@ function actionVariant(action: string): 'default' | 'secondary' | 'destructive' 
   return 'outline';
 }
 
-const PAGE_SIZE = 25;
-
 /** Common action types for the filter dropdown */
 function AuditLogSkeleton() {
   return (
@@ -82,6 +100,7 @@ function AuditLogSkeleton() {
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
             <TableRow key={`skeleton-${i}`}>
               <TableCell className="w-10 px-2">
                 <Skeleton className="h-4 w-4" />
@@ -183,13 +202,7 @@ export default function AuditLogPage() {
       setError(null);
 
       try {
-        const params = new URLSearchParams();
-        params.set('limit', String(PAGE_SIZE));
-        params.set('offset', String(opts.offset));
-        if (opts.action) params.set('action', opts.action);
-        if (opts.userId) params.set('userId', opts.userId);
-        if (opts.startDate) params.set('startDate', opts.startDate);
-        if (opts.endDate) params.set('endDate', opts.endDate);
+        const params = buildAuditLogParams(opts);
 
         const res = await fetch(
           `/api/guilds/${encodeURIComponent(opts.guildId)}/audit-log?${params.toString()}`,
@@ -210,9 +223,9 @@ export default function AuditLogPage() {
         setEntries(data.entries);
         setTotal(data.total);
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (isAbortError(err)) return;
         if (requestId !== requestIdRef.current) return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch audit log');
+        setError(toErrorMessage(err, 'Failed to fetch audit log'));
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false);
@@ -224,7 +237,7 @@ export default function AuditLogPage() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetchAuditLog({
+    fetchAuditLog({
       guildId,
       action: actionFilter,
       userId: debouncedUserSearch,
@@ -236,7 +249,7 @@ export default function AuditLogPage() {
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
-    void fetchAuditLog({
+    fetchAuditLog({
       guildId,
       action: actionFilter,
       userId: debouncedUserSearch,

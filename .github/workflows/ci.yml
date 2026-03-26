@@ -105,10 +105,69 @@ jobs:
       - name: Build
         run: pnpm mono:build
 
+  e2e:
+    name: E2E Tests (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install web dependencies
+        run: pnpm --prefix web install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --prefix web exec playwright install chromium --with-deps
+
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --prefix web exec playwright install-deps chromium
+
+      - name: Run E2E tests (shard ${{ matrix.shard }})
+        run: pnpm --prefix web test:e2e --shard=${{ matrix.shard }}
+        env:
+          NEXT_FONT_GOOGLE_MOCKED: "1"
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.0
+        with:
+          name: playwright-report-${{ github.run_id }}-${{ strategy.job-index }}
+          path: |
+            web/playwright-report/
+            web/blob-report/
+          retention-days: 7
+
   ci:
     name: CI
     runs-on: ubuntu-latest
-    needs: [lint, test, build, docker-build-validation]
+    needs: [lint, test, build, e2e, docker-build-validation]
     if: ${{ always() }}
 
     steps:
@@ -117,11 +176,13 @@ jobs:
           echo "lint result: ${{ needs.lint.result }}"
           echo "test result: ${{ needs.test.result }}"
           echo "build result: ${{ needs.build.result }}"
+          echo "e2e result: ${{ needs.e2e.result }}"
           echo "docker result: ${{ needs.docker-build-validation.result }}"
 
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ]; then
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.e2e.result }}" != "success" ]; then
             echo "One or more checks failed."
             exit 1
           fi

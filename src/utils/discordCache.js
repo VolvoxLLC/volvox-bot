@@ -24,32 +24,58 @@ import { cacheDelPattern, cacheGet, cacheSet, TTL } from './cache.js';
  * @param {string} [expectedGuildId] - If set, reject channels not belonging to this guild
  * @returns {Promise<import('discord.js').Channel|null>} The channel, or null if not found / wrong guild
  */
+/**
+ * Check whether a channel belongs to the expected guild; log and return false if not.
+ */
+function isChannelGuildValid(channel, channelId, expectedGuildId, source) {
+  if (!expectedGuildId) return true;
+  const guildId = channel.guildId ?? channel.guildId;
+  if (guildId === expectedGuildId) return true;
+  warn(`Channel belongs to a different guild${source ? ` (${source})` : ''} — blocked`, {
+    channelId,
+    channelGuildId: guildId,
+    expectedGuildId,
+  });
+  return false;
+}
+
+/**
+ * Fetch a channel from the Discord API, cache its metadata, and validate guild ownership.
+ */
+async function fetchChannelFromApi(client, channelId, expectedGuildId) {
+  const channel = await client.channels.fetch(channelId);
+  if (!channel) return null;
+
+  const cacheKey = `discord:channel:${channelId}`;
+  await cacheSet(
+    cacheKey,
+    {
+      id: channel.id,
+      name: channel.name ?? null,
+      type: channel.type,
+      guildId: channel.guildId ?? null,
+    },
+    TTL.CHANNEL_DETAIL,
+  );
+  debug('Fetched and cached channel', { channelId, name: channel.name });
+
+  if (!isChannelGuildValid(channel, channelId, expectedGuildId)) return null;
+  return channel;
+}
+
 export async function fetchChannelCached(client, channelId, expectedGuildId) {
   if (!channelId) return null;
 
   // Try Discord.js internal cache first (always fastest)
   const djsCached = client.channels.cache.get(channelId);
   if (djsCached) {
-    if (expectedGuildId && djsCached.guildId !== expectedGuildId) {
-      warn('Channel belongs to a different guild — blocked', {
-        channelId,
-        channelGuildId: djsCached.guildId,
-        expectedGuildId,
-      });
-      return null;
-    }
-    return djsCached;
+    return isChannelGuildValid(djsCached, channelId, expectedGuildId) ? djsCached : null;
   }
 
-  // Try Redis/memory cache to detect a known-valid channel ID before hitting the API.
-  // We cannot return cached metadata directly because callers expect a real
-  // Discord.js Channel object (with .messages, .send, etc.).  Instead we use
-  // the cache hit as a hint that the channel is likely valid, then fetch the
-  // real object from the Discord API (which will repopulate the DJS cache).
+  // Try Redis/memory cache for fast-reject before hitting the API
   const cacheKey = `discord:channel:${channelId}`;
   const cached = await cacheGet(cacheKey);
   if (cached) {
-    // Fast-reject via cached metadata before making an API call
     if (expectedGuildId && cached.guildId && cached.guildId !== expectedGuildId) {
       warn('Channel belongs to a different guild (cached) — blocked', {
         channelId,
@@ -62,48 +88,15 @@ export async function fetchChannelCached(client, channelId, expectedGuildId) {
     // Re-check DJS cache in case it was populated during the async gap
     const recheckDjs = client.channels.cache.get(channelId);
     if (recheckDjs) {
-      if (expectedGuildId && recheckDjs.guildId !== expectedGuildId) {
-        warn('Channel belongs to a different guild — blocked', {
-          channelId,
-          channelGuildId: recheckDjs.guildId,
-          expectedGuildId,
-        });
-        return null;
-      }
-      return recheckDjs;
+      return isChannelGuildValid(recheckDjs, channelId, expectedGuildId) ? recheckDjs : null;
     }
 
     debug('Redis cache hit for channel — fetching real Channel object', { channelId });
-    // Fall through to Discord API fetch below
   }
 
   // Fetch from Discord API
   try {
-    const channel = await client.channels.fetch(channelId);
-    if (channel) {
-      // Cache minimal metadata for future health checks
-      await cacheSet(
-        cacheKey,
-        {
-          id: channel.id,
-          name: channel.name ?? null,
-          type: channel.type,
-          guildId: channel.guildId ?? null,
-        },
-        TTL.CHANNEL_DETAIL,
-      );
-      debug('Fetched and cached channel', { channelId, name: channel.name });
-
-      if (expectedGuildId && channel.guildId !== expectedGuildId) {
-        warn('Channel belongs to a different guild — blocked', {
-          channelId,
-          channelGuildId: channel.guildId,
-          expectedGuildId,
-        });
-        return null;
-      }
-    }
-    return channel;
+    return await fetchChannelFromApi(client, channelId, expectedGuildId);
   } catch (err) {
     warn('Failed to fetch channel', { channelId, error: err.message });
     return null;

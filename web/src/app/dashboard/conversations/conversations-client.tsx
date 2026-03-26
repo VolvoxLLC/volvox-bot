@@ -42,6 +42,7 @@ function ConversationsSkeleton() {
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
             <TableRow key={`skeleton-${i}`}>
               <TableCell>
                 <Skeleton className="h-4 w-24" />
@@ -237,7 +238,7 @@ export default function ConversationsClient() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetchConversations({
+    fetchConversations({
       guildId,
       search: debouncedSearch,
       channel: channelFilter,
@@ -247,7 +248,7 @@ export default function ConversationsClient() {
 
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
-    void fetchConversations({
+    fetchConversations({
       guildId,
       search: debouncedSearch,
       channel: channelFilter,

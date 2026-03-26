@@ -16,6 +16,7 @@ export type ConfigFeatureId =
   | 'memory'
   | 'welcome'
   | 'reputation'
+  | 'xp-level-actions'
   | 'engagement'
   | 'tldr-afk'
   | 'challenges'

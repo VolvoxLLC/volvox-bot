@@ -131,7 +131,7 @@ export default function TempRolesPage() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetchTempRoles(guildId, page);
+    fetchTempRoles(guildId, page);
   }, [guildId, page, fetchTempRoles]);
 
   const handleRevoke = useCallback(
@@ -164,7 +164,7 @@ export default function TempRolesPage() {
           description: `Removed ${record.role_name} from ${record.user_tag}.`,
         });
         // Refresh list
-        void fetchTempRoles(guildId, page);
+        fetchTempRoles(guildId, page);
       } catch {
         toast.error('Failed to revoke temp role', {
           description: 'A network error occurred. Please try again.',
@@ -178,7 +178,7 @@ export default function TempRolesPage() {
   );
 
   const handleRefresh = useCallback(() => {
-    if (guildId) void fetchTempRoles(guildId, page);
+    if (guildId) fetchTempRoles(guildId, page);
   }, [guildId, page, fetchTempRoles]);
 
   const rows = data?.data ?? [];
@@ -229,6 +229,7 @@ export default function TempRolesPage() {
             {loading && rows.length === 0 ? (
               <div className="divide-y">
                 {Array.from({ length: 5 }).map((_, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
                   <div key={`skeleton-${i}`} className="flex items-center gap-4 px-4 py-3">
                     <Skeleton className="h-4 w-28" />
                     <Skeleton className="h-4 w-24" />

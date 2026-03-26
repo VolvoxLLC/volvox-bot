@@ -7,7 +7,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
-import { getAnthropicClient, _setAnthropicClient } from '../utils/anthropicClient.js';
+import { _setAnthropicClient, getAnthropicClient } from '../utils/anthropicClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
@@ -174,7 +174,9 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
   const channelId = autoModConfig.flagChannelId;
   if (!channelId) return;
 
-  const flagChannel = await fetchChannelCached(client, channelId, message.guild?.id).catch(() => null);
+  const flagChannel = await fetchChannelCached(client, channelId, message.guild?.id).catch(
+    () => null,
+  );
   if (!flagChannel) return;
 
   const scoreBar = (score) => {

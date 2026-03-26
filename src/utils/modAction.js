@@ -18,6 +18,80 @@ import {
 import { safeEditReply } from './safeSend.js';
 
 /**
+ * Extract and validate command options, filtering private keys.
+ * @returns {{ options: Object, reason: string, extraCaseData: Object } | { earlyReturn: string }}
+ */
+function resolveOptions(interaction, extractOptions) {
+  const options = extractOptions
+    ? extractOptions(interaction)
+    : { reason: interaction.options.getString('reason') };
+
+  if (options.earlyReturn) return { earlyReturn: options.earlyReturn };
+
+  const { reason, ...rawExtraCaseData } = options;
+  const extraCaseData = Object.fromEntries(
+    Object.entries(rawExtraCaseData).filter(([k]) => !k.startsWith('_')),
+  );
+
+  return { options, reason, extraCaseData };
+}
+
+/**
+ * Resolve and validate the moderation target.
+ * @returns {{ target, targetId, targetTag } | { earlyReturn: string }}
+ */
+async function resolveTarget(interaction, config, getTarget) {
+  const targetResult = getTarget(interaction, config);
+
+  if (targetResult.earlyReturn) return { earlyReturn: targetResult.earlyReturn };
+
+  const resolved = targetResult.then ? await targetResult : targetResult;
+  if (resolved.earlyReturn) return { earlyReturn: resolved.earlyReturn };
+
+  return resolved;
+}
+
+/**
+ * Run pre-action checks: self-moderation, protected target, hierarchy.
+ * @returns {string|null} Error message string if blocked, null if checks pass.
+ */
+function runPreActionChecks(interaction, target, targetTag, action, opts) {
+  const { skipProtection, skipHierarchy } = opts;
+
+  if (target && target.id === interaction.user.id) {
+    return '\u274C You cannot moderate yourself.';
+  }
+
+  if (!skipProtection && target && isProtectedTarget(target, interaction.guild)) {
+    warn('Moderation blocked: target is a protected role', {
+      action,
+      targetId: target.id,
+      targetTag,
+      moderatorId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
+    return '\u274C Cannot moderate a protected user.';
+  }
+
+  if (!skipHierarchy && target) {
+    const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
+    if (hierarchyError) return hierarchyError;
+  }
+
+  return null;
+}
+
+/**
+ * Send DM notification if configured.
+ */
+async function maybeSendDm(config, target, action, dmAction, reason, guildName, skipDm) {
+  if (skipDm || !target) return;
+  if (shouldSendDm(config, dmAction || action)) {
+    await sendDmNotification(target, dmAction || action, reason, guildName);
+  }
+}
+
+/**
  * Execute a member-targeted moderation action with shared boilerplate.
  *
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
@@ -64,73 +138,30 @@ export async function executeModAction(interaction, opts) {
     const config = getConfig(interaction.guildId);
 
     // Extract options (reason + any extras like duration, deleteMessageDays)
-    const options = extractOptions
-      ? extractOptions(interaction)
-      : { reason: interaction.options.getString('reason') };
-
-    // Allow extractOptions to short-circuit (e.g. invalid duration)
-    if (options.earlyReturn) {
-      return await safeEditReply(interaction, options.earlyReturn);
+    const optionsResult = resolveOptions(interaction, extractOptions);
+    if (optionsResult.earlyReturn) {
+      return await safeEditReply(interaction, optionsResult.earlyReturn);
     }
-
-    const { reason, ...rawExtraCaseData } = options;
-    const extraCaseData = Object.fromEntries(
-      Object.entries(rawExtraCaseData).filter(([k]) => !k.startsWith('_')),
-    );
+    const { options, reason, extraCaseData } = optionsResult;
 
     // Resolve target
-    const targetResult = getTarget(interaction, config);
-
-    // Allow getTarget to short-circuit (e.g. user not in server)
+    const targetResult = await resolveTarget(interaction, config, getTarget);
     if (targetResult.earlyReturn) {
       return await safeEditReply(interaction, targetResult.earlyReturn);
     }
+    const { target, targetId, targetTag } = targetResult;
 
-    // Await if getTarget returns a promise
-    const resolved = targetResult.then ? await targetResult : targetResult;
-    if (resolved.earlyReturn) {
-      return await safeEditReply(interaction, resolved.earlyReturn);
-    }
-
-    const { target, targetId, targetTag } = resolved;
-
-    // Self-moderation is always blocked, even when skipProtection is true
-    if (target && target.id === interaction.user.id) {
-      return await safeEditReply(interaction, '\u274C You cannot moderate yourself.');
-    }
-
-    // Protected-role check (skipped when skipProtection is true)
-    if (!skipProtection && target) {
-      if (isProtectedTarget(target, interaction.guild)) {
-        warn('Moderation blocked: target is a protected role', {
-          action,
-          targetId: target.id,
-          targetTag,
-          moderatorId: interaction.user.id,
-          guildId: interaction.guildId,
-        });
-        return await safeEditReply(interaction, '\u274C Cannot moderate a protected user.');
-      }
-    }
-
-    // Hierarchy check
-    if (!skipHierarchy && target) {
-      const hierarchyError = checkHierarchy(
-        interaction.member,
-        target,
-        interaction.guild.members.me,
-      );
-      if (hierarchyError) {
-        return await safeEditReply(interaction, hierarchyError);
-      }
+    // Pre-action checks (self-mod, protected, hierarchy)
+    const checkError = runPreActionChecks(interaction, target, targetTag, action, {
+      skipProtection,
+      skipHierarchy,
+    });
+    if (checkError) {
+      return await safeEditReply(interaction, checkError);
     }
 
     // DM notification
-    if (!skipDm && target) {
-      if (shouldSendDm(config, dmAction || action)) {
-        await sendDmNotification(target, dmAction || action, reason, interaction.guild.name);
-      }
-    }
+    await maybeSendDm(config, target, action, dmAction, reason, interaction.guild.name, skipDm);
 
     // Execute the unique action
     if (actionFn) {

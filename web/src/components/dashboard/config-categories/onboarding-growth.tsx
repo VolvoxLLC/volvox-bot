@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
 import { Info } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { generateId, inputClasses } from '@/components/dashboard/config-editor-utils';
 import { CommunitySettingsSection } from '@/components/dashboard/config-sections/CommunitySettingsSection';
@@ -133,9 +133,12 @@ export function OnboardingGrowthCategory() {
         .replace(/{greeting}/g, 'Good morning @johndoe! You just joined Volvox.')
         .replace(
           /{vibeLine}/g,
-          'Things are moving at a healthy pace in #general, so you\'ll fit right in.',
+          "Things are moving at a healthy pace in #general, so you'll fit right in.",
         )
-        .replace(/{ctaLine}/g, 'Start in #general, check out #introductions, and browse #announcements.')
+        .replace(
+          /{ctaLine}/g,
+          'Start in #general, check out #introductions, and browse #announcements.',
+        )
         .replace(/{milestoneLine}/g, 'You just rolled in as member #142.')
         .replace(/{timeOfDay}/g, 'morning')
         .replace(/{activityLevel}/g, 'steady')
@@ -225,7 +228,9 @@ export function OnboardingGrowthCategory() {
                     <div>
                       <code>{'{vibeLine}'}</code> — Activity description{' '}
                       <span className="italic text-muted-foreground/70">
-                        {"You're catching us in a quiet window - perfect time to introduce yourself."}
+                        {
+                          "You're catching us in a quiet window - perfect time to introduce yourself."
+                        }
                       </span>
                     </div>
                     <div>
@@ -323,6 +328,7 @@ export function OnboardingGrowthCategory() {
                   />
                 </div>
 
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: ChannelSelector renders its own input */}
                 <label className="space-y-1 block">
                   <span className="text-sm font-medium">
                     Highlight Channels
@@ -338,6 +344,7 @@ export function OnboardingGrowthCategory() {
                   />
                 </label>
 
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: ChannelSelector renders its own input */}
                 <label className="space-y-1 block">
                   <span className="text-sm font-medium">
                     Exclude Channels

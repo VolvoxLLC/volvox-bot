@@ -8,9 +8,7 @@
 
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
-import { getConfig } from '../../modules/config.js';
-import { computeLevel } from '../../modules/reputation.js';
-import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
+import { computeLevel, getXpConfig } from '../../modules/reputation.js';
 import { cacheGetOrSet, TTL } from '../../utils/cache.js';
 import { redisRateLimit } from '../middleware/redisRateLimit.js';
 
@@ -23,16 +21,6 @@ const communityRateLimit = redisRateLimit({
   keyPrefix: 'rl:community',
 });
 router.use(communityRateLimit);
-
-/**
- * Obtain the reputation configuration for a guild by merging guild-specific settings with defaults.
- * @param {string} guildId - The guild identifier to load configuration for.
- * @returns {object} The reputation configuration with guild-specific values overriding defaults.
- */
-function getRepConfig(guildId) {
-  const cfg = getConfig(guildId);
-  return { ...REPUTATION_DEFAULTS, ...cfg.reputation };
-}
 
 /**
  * Map a numeric reputation level to its corresponding badge label.
@@ -145,7 +133,7 @@ router.get('/:guildId/leaderboard', async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    const repConfig = getRepConfig(guildId);
+    const xpConfig = getXpConfig(guildId);
 
     // Cache leaderboard DB results per guild+page (most expensive query)
     const cacheKey = `leaderboard:${guildId}:${page}:${limit}`;
@@ -188,7 +176,7 @@ router.get('/:guildId/leaderboard', async (req, res) => {
       : new Map();
 
     const members = memberRows.map((row, idx) => {
-      const level = computeLevel(row.xp, repConfig.levelThresholds);
+      const level = computeLevel(row.xp, xpConfig.levelThresholds);
       let username = row.user_id;
       let displayName = row.user_id;
       let avatar = null;
@@ -200,10 +188,10 @@ router.get('/:guildId/leaderboard', async (req, res) => {
         avatar = member.user.displayAvatarURL();
       }
 
-      const currentLevelXp = repConfig.levelThresholds[level - 1] ?? 0;
-      const nextLevelXp =
-        repConfig.levelThresholds[level] ??
-        repConfig.levelThresholds[repConfig.levelThresholds.length - 1];
+      const currentLevelXp = xpConfig.levelThresholds[level - 1] ?? 0;
+      // For max-level users, set nextLevelXp to 0 to maintain API compatibility
+      const isMaxLevel = level >= xpConfig.levelThresholds.length;
+      const nextLevelXp = isMaxLevel ? 0 : (xpConfig.levelThresholds[level] ?? 0);
 
       return {
         userId: row.user_id,
@@ -458,7 +446,7 @@ router.get('/:guildId/stats', async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'Database not available' });
 
   try {
-    const repConfig = getRepConfig(guildId);
+    const xpConfig = getXpConfig(guildId);
 
     const [memberCount, messagesResult, projectsResult, challengesResult, topContributors] =
       await Promise.all([
@@ -504,7 +492,7 @@ router.get('/:guildId/stats', async (req, res) => {
       : new Map();
 
     const top3 = topContributors.rows.map((row) => {
-      const level = computeLevel(row.xp, repConfig.levelThresholds);
+      const level = computeLevel(row.xp, xpConfig.levelThresholds);
       let username = row.user_id;
       let displayName = row.user_id;
       let avatar = null;
@@ -671,7 +659,7 @@ router.get('/:guildId/profile/:userId', async (req, res) => {
     }
 
     const stats = statsResult.rows[0];
-    const repConfig = getRepConfig(guildId);
+    const xpConfig = getXpConfig(guildId);
 
     // Fetch reputation and showcase data in parallel
     const [repResult, showcasesResult] = await Promise.all([
@@ -692,11 +680,11 @@ router.get('/:guildId/profile/:userId', async (req, res) => {
     ]);
 
     const rep = repResult.rows[0] || { xp: 0, level: 0 };
-    const level = computeLevel(rep.xp, repConfig.levelThresholds);
-    const currentLevelXp = repConfig.levelThresholds[level - 1] ?? 0;
-    const nextLevelXp =
-      repConfig.levelThresholds[level] ??
-      repConfig.levelThresholds[repConfig.levelThresholds.length - 1];
+    const level = computeLevel(rep.xp, xpConfig.levelThresholds);
+    const currentLevelXp = xpConfig.levelThresholds[level - 1] ?? 0;
+    // For max-level users, set nextLevelXp to 0 to maintain API compatibility
+    const isMaxLevel = level >= xpConfig.levelThresholds.length;
+    const nextLevelXp = isMaxLevel ? 0 : (xpConfig.levelThresholds[level] ?? 0);
 
     // Resolve Discord user info
     const { client } = req.app.locals;
