@@ -8,6 +8,7 @@ vi.mock('../../../src/logger.js', () => ({
 
 vi.mock('../../../src/modules/actions/roleUtils.js', () => ({
   canManageRole: vi.fn(() => true),
+  checkRoleRateLimit: vi.fn(() => true),
   recordRoleChange: vi.fn(),
 }));
 
