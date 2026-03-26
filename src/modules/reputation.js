@@ -52,6 +52,13 @@ export function getXpConfig(guildId) {
   if (cfg.xp?.roleRewards) {
     merged.roleRewards = { ...XP_DEFAULTS.roleRewards, ...cfg.xp.roleRewards };
   }
+  if (cfg.xp?.levelUpDm) {
+    merged.levelUpDm = {
+      ...XP_DEFAULTS.levelUpDm,
+      ...cfg.xp.levelUpDm,
+      messages: cfg.xp.levelUpDm.messages ?? XP_DEFAULTS.levelUpDm.messages,
+    };
+  }
   return merged;
 }
 

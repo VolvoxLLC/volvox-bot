@@ -13,9 +13,9 @@ import { handleGrantRole } from './actions/grantRole.js';
 import { handleNickPrefix, handleNickSuffix } from './actions/nickPrefix.js';
 import { handleRemoveRole } from './actions/removeRole.js';
 import { checkRoleRateLimit, collectXpManagedRoles } from './actions/roleUtils.js';
+import { handleSendDm } from './actions/sendDm.js';
 import { handleWebhook } from './actions/webhook.js';
 import { handleXpBonus } from './actions/xpBonus.js';
-import { handleSendDm } from './actions/sendDm.js';
 
 /**
  * Action handler registry: action type → async handler function.
@@ -47,6 +47,22 @@ registerAction('nickPrefix', handleNickPrefix);
 registerAction('nickSuffix', handleNickSuffix);
 registerAction('webhook', handleWebhook);
 
+function getLevelUpDmAction(level, config) {
+  const levelUpDm = config.levelUpDm;
+  if (!levelUpDm?.enabled) return null;
+
+  const override = levelUpDm.messages?.find((entry) => entry.level === level);
+  if (override?.message) {
+    return { type: 'sendDm', format: 'text', template: override.message };
+  }
+
+  if (levelUpDm.sendOnEveryLevel && levelUpDm.defaultMessage) {
+    return { type: 'sendDm', format: 'text', template: levelUpDm.defaultMessage };
+  }
+
+  return null;
+}
+
 /**
  * Resolve the ordered list of actions to execute for a level-up.
  * Handles level skips by collecting actions for every crossed level.
@@ -72,6 +88,11 @@ export function resolveActions(previousLevel, newLevel, config) {
 
     for (const action of actions) {
       result.push({ level, action });
+    }
+
+    const dmAction = getLevelUpDmAction(level, config);
+    if (dmAction) {
+      result.push({ level, action: dmAction });
     }
   }
 

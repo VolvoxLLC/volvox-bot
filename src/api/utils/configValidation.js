@@ -331,6 +331,26 @@ export const CONFIG_SCHEMA = {
           openProperties: true,
         },
       },
+      levelUpDm: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          sendOnEveryLevel: { type: 'boolean' },
+          defaultMessage: { type: 'string', maxLength: 2000 },
+          messages: {
+            type: 'array',
+            uniqueBy: 'level',
+            items: {
+              type: 'object',
+              required: ['level', 'message'],
+              properties: {
+                level: { type: 'number', min: 1, max: 1000 },
+                message: { type: 'string', minLength: 1, maxLength: 2000 },
+              },
+            },
+          },
+        },
+      },
       roleRewards: {
         type: 'object',
         properties: {
@@ -406,6 +426,25 @@ export function validateValue(value, schema, path) {
       } else if (schema.items) {
         for (let i = 0; i < value.length; i++) {
           errors.push(...validateValue(value[i], schema.items, `${path}[${i}]`));
+        }
+
+        if (schema.uniqueBy) {
+          const seen = new Map();
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            const uniqueValue =
+              item && typeof item === 'object' && !Array.isArray(item)
+                ? item[schema.uniqueBy]
+                : undefined;
+            if (uniqueValue === undefined) continue;
+            if (seen.has(uniqueValue)) {
+              errors.push(
+                `${path}[${i}].${schema.uniqueBy}: duplicate value "${uniqueValue}" also used at index ${seen.get(uniqueValue)}`,
+              );
+            } else {
+              seen.set(uniqueValue, i);
+            }
+          }
         }
       }
       break;

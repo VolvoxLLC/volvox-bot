@@ -20,6 +20,40 @@ import type { BotConfig, DeepPartial } from '@/types/config';
 
 type GuildConfig = DeepPartial<BotConfig>;
 type Badge = { days?: number; label?: string };
+type LevelUpDmOverride = { level?: number; message?: string };
+type LevelUpDmOverrideRow = LevelUpDmOverride & { originalIndex: number };
+
+const LEVEL_UP_DM_TEMPLATE_VARS = [
+  '{{username}}',
+  '{{mention}}',
+  '{{level}}',
+  '{{previousLevel}}',
+  '{{xp}}',
+  '{{server}}',
+  '{{messages}}',
+  '{{rank}}',
+  '{{nextLevel}}',
+  '{{xpToNext}}',
+];
+
+const LEVEL_UP_DM_PREVIEW_CONTEXT: Record<string, string> = {
+  username: 'Ada',
+  mention: '<@1234567890>',
+  level: '5',
+  previousLevel: '4',
+  xp: '1,250',
+  server: 'Volvox',
+  messages: '87',
+  rank: '#3',
+  nextLevel: '6',
+  xpToNext: '250',
+};
+
+function renderLevelUpDmPreview(template: string) {
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
+    return key in LEVEL_UP_DM_PREVIEW_CONTEXT ? LEVEL_UP_DM_PREVIEW_CONTEXT[key] : match;
+  });
+}
 
 interface CommunitySettingsSectionProps {
   draftConfig: GuildConfig;
@@ -61,6 +95,18 @@ export function CommunitySettingsSection({
   const tldrDefaultMessages = draftConfig.tldr?.defaultMessages ?? 25;
   const tldrMaxMessages = draftConfig.tldr?.maxMessages ?? 100;
   const tldrCooldownSeconds = draftConfig.tldr?.cooldownSeconds ?? 30;
+  const levelUpDm = draftConfig.xp?.levelUpDm;
+  const levelUpDmMessages: LevelUpDmOverrideRow[] = (levelUpDm?.messages ?? [])
+    .map((entry: LevelUpDmOverride, originalIndex: number) => ({
+      ...entry,
+      originalIndex,
+    }))
+    .sort(
+      (a: LevelUpDmOverrideRow, b: LevelUpDmOverrideRow) => (a.level ?? 0) - (b.level ?? 0),
+  );
+  const levelUpDmDefaultMessage =
+    levelUpDm?.defaultMessage ??
+    '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!';
 
   return (
     <>
@@ -559,10 +605,293 @@ export function CommunitySettingsSection({
                   XP required for each level (L1, L2, L3...).
                 </p>
               </label>
-              <p className="text-xs text-muted-foreground italic">
-                Per-level actions and the full action builder are coming in a future update.
-                Configure actions directly in config.json for now.
-              </p>
+              <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Level-Up DMs</p>
+                    <p className="text-xs text-muted-foreground">
+                      Send milestone DMs using the shared level-up template variables.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={levelUpDm?.enabled ?? false}
+                    onCheckedChange={(value) =>
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        xp: {
+                          ...prev.xp,
+                          levelUpDm: {
+                            enabled: value,
+                            sendOnEveryLevel: prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
+                            defaultMessage:
+                              prev.xp?.levelUpDm?.defaultMessage ??
+                              '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                            messages: prev.xp?.levelUpDm?.messages ?? [],
+                          },
+                        },
+                      }))
+                    }
+                    disabled={saving}
+                    aria-label="Toggle level-up DMs"
+                  />
+                </div>
+
+                {levelUpDm?.enabled && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium">Send On Every Level</p>
+                        <p className="text-xs text-muted-foreground">
+                          Use the default template on all level-ups, with per-level overrides when
+                          present.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={levelUpDm?.sendOnEveryLevel ?? false}
+                        onCheckedChange={(value) =>
+                          updateDraftConfig((prev) => ({
+                            ...prev,
+                            xp: {
+                              ...prev.xp,
+                              levelUpDm: {
+                                enabled: prev.xp?.levelUpDm?.enabled ?? true,
+                                sendOnEveryLevel: value,
+                                defaultMessage:
+                                  prev.xp?.levelUpDm?.defaultMessage ??
+                                  '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                messages: prev.xp?.levelUpDm?.messages ?? [],
+                              },
+                            },
+                          }))
+                        }
+                        disabled={saving}
+                        aria-label="Toggle send on every level"
+                      />
+                    </div>
+
+                    <label htmlFor="xp-level-dm-default" className="space-y-2 block">
+                      <span className="text-sm font-medium">Default DM Template</span>
+                      <textarea
+                        id="xp-level-dm-default"
+                        value={levelUpDmDefaultMessage}
+                        onChange={(event) =>
+                          updateDraftConfig((prev) => ({
+                            ...prev,
+                            xp: {
+                              ...prev.xp,
+                              levelUpDm: {
+                                enabled: prev.xp?.levelUpDm?.enabled ?? true,
+                                sendOnEveryLevel: prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
+                                defaultMessage: event.target.value,
+                                messages: prev.xp?.levelUpDm?.messages ?? [],
+                              },
+                            },
+                          }))
+                        }
+                        disabled={saving}
+                        rows={3}
+                        maxLength={2000}
+                        className={`${inputClasses} min-h-[6rem] resize-y`}
+                      />
+                    </label>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        Template Variables
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {LEVEL_UP_DM_TEMPLATE_VARS.join(', ')}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        `nextLevel` is the next level number. `xpToNext` is the XP remaining to
+                        reach it. Keep rendered DMs under 2000 characters.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 rounded-lg border border-border/50 bg-background/80 p-3">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        Preview
+                      </p>
+                      <p className="whitespace-pre-wrap text-sm">
+                        {renderLevelUpDmPreview(levelUpDmDefaultMessage)}
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium">Per-Level Overrides</p>
+                          <p className="text-xs text-muted-foreground">
+                            Specific levels override the default message for that level.
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateDraftConfig((prev) => ({
+                              ...prev,
+                              xp: {
+                                ...prev.xp,
+                                levelUpDm: {
+                                  enabled: prev.xp?.levelUpDm?.enabled ?? true,
+                                  sendOnEveryLevel: prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
+                                  defaultMessage:
+                                    prev.xp?.levelUpDm?.defaultMessage ??
+                                    '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                  messages: [
+                                    ...(prev.xp?.levelUpDm?.messages ?? []),
+                                    { level: 1, message: '' },
+                                  ],
+                                },
+                              },
+                            }))
+                          }
+                          disabled={saving}
+                        >
+                          Add Override
+                        </Button>
+                      </div>
+
+                      {levelUpDmMessages.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No level-specific DM overrides yet.
+                        </p>
+                      )}
+
+                      {levelUpDmMessages.map((entry: LevelUpDmOverrideRow) => (
+                        <div
+                          key={`xp-level-dm-${entry.originalIndex}`}
+                          className="space-y-3 rounded-lg border border-border/50 p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <label
+                              htmlFor={`xp-level-dm-level-${entry.originalIndex}`}
+                              className="space-y-2"
+                            >
+                              <span className="text-sm font-medium">Level</span>
+                              <Input
+                                id={`xp-level-dm-level-${entry.originalIndex}`}
+                                type="number"
+                                min={1}
+                                max={1000}
+                                value={entry.level ?? 1}
+                                onChange={(event) => {
+                                  const value = parseNumberInput(event.target.value, 1, 1000);
+                                  if (value === undefined) return;
+                                  updateDraftConfig((prev) => {
+                                    const messages = [...(prev.xp?.levelUpDm?.messages ?? [])];
+                                    const targetIndex = entry.originalIndex;
+                                    if (targetIndex !== -1) {
+                                      messages[targetIndex] = {
+                                        ...messages[targetIndex],
+                                        level: value,
+                                      };
+                                    }
+                                    return {
+                                      ...prev,
+                                      xp: {
+                                        ...prev.xp,
+                                        levelUpDm: {
+                                          enabled: prev.xp?.levelUpDm?.enabled ?? true,
+                                          sendOnEveryLevel:
+                                            prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
+                                          defaultMessage:
+                                            prev.xp?.levelUpDm?.defaultMessage ??
+                                            '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                          messages,
+                                        },
+                                      },
+                                    };
+                                  });
+                                }}
+                                disabled={saving}
+                                className="w-24"
+                              />
+                            </label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="mt-6"
+                              onClick={() =>
+                                updateDraftConfig((prev) => ({
+                                  ...prev,
+                                  xp: {
+                                    ...prev.xp,
+                                    levelUpDm: {
+                                      enabled: prev.xp?.levelUpDm?.enabled ?? true,
+                                      sendOnEveryLevel:
+                                        prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
+                                      defaultMessage:
+                                        prev.xp?.levelUpDm?.defaultMessage ??
+                                        '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                      messages: (prev.xp?.levelUpDm?.messages ?? []).filter(
+                                        (_candidate, index) => index !== entry.originalIndex,
+                                      ),
+                                    },
+                                  },
+                                }))
+                              }
+                              disabled={saving}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+
+                          <label className="space-y-2 block">
+                            <span className="text-sm font-medium">Message</span>
+                            <textarea
+                              value={entry.message ?? ''}
+                              onChange={(event) =>
+                                updateDraftConfig((prev) => {
+                                  const messages = [...(prev.xp?.levelUpDm?.messages ?? [])];
+                                  const targetIndex = entry.originalIndex;
+                                  if (targetIndex !== -1) {
+                                    messages[targetIndex] = {
+                                      ...messages[targetIndex],
+                                      message: event.target.value,
+                                    };
+                                  }
+                                  return {
+                                    ...prev,
+                                    xp: {
+                                      ...prev.xp,
+                                      levelUpDm: {
+                                        enabled: prev.xp?.levelUpDm?.enabled ?? true,
+                                        sendOnEveryLevel:
+                                          prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
+                                        defaultMessage:
+                                          prev.xp?.levelUpDm?.defaultMessage ??
+                                          '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                        messages,
+                                      },
+                                    },
+                                  };
+                                })
+                              }
+                              disabled={saving}
+                              rows={3}
+                              maxLength={2000}
+                              className={`${inputClasses} min-h-[6rem] resize-y`}
+                            />
+                          </label>
+
+                          <div className="space-y-2 rounded-lg border border-border/50 bg-background/80 p-3">
+                            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                              Override Preview
+                            </p>
+                            <p className="whitespace-pre-wrap text-sm">
+                              {renderLevelUpDmPreview(entry.message ?? '')}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           }
           forceOpenAdvanced={forceOpenAdvancedFeatureId === 'xp-level-actions'}

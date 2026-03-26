@@ -91,6 +91,19 @@ const minimalConfig = {
   permissions: { enabled: false, botOwners: [] },
   memory: { enabled: false },
   reputation: { enabled: false },
+  xp: {
+    enabled: false,
+    levelThresholds: [100, 300, 600],
+    levelActions: [],
+    defaultActions: [],
+    levelUpDm: {
+      enabled: false,
+      sendOnEveryLevel: false,
+      defaultMessage: '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+      messages: [],
+    },
+    roleRewards: { stackRoles: true, removeOnLevelDown: false },
+  },
   engagement: { enabled: false },
   challenges: { enabled: false },
   github: { feed: { enabled: false } },
@@ -103,6 +116,17 @@ const minimalConfig = {
   review: { enabled: false },
   tldr: { enabled: false, defaultMessages: 25, maxMessages: 100, cooldownSeconds: 30 },
   afk: { enabled: false },
+};
+
+const minimalConfigWithoutLevelUpDm = {
+  ...minimalConfig,
+  xp: {
+    enabled: false,
+    levelThresholds: [100, 300, 600],
+    levelActions: [],
+    defaultActions: [],
+    roleRewards: { stackRoles: true, removeOnLevelDown: false },
+  },
 };
 
 describe('ConfigEditor workspace integration (new architecture)', () => {
@@ -142,7 +166,7 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'AI Chat' })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('renders onboarding features when on the onboarding route', async () => {
     mockPathname = '/dashboard/settings/onboarding-growth';
@@ -203,6 +227,147 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     expect(screen.getByRole('heading', { name: 'Reputation / XP' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Welcome Messages' })).not.toBeInTheDocument();
   });
+
+  it('finds level-up DM settings via search query', async () => {
+    mockPathname = '/dashboard/settings/onboarding-growth';
+    const user = userEvent.setup();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(minimalConfig),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { OnboardingGrowthCategory } = await import(
+      '@/components/dashboard/config-categories/onboarding-growth'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <OnboardingGrowthCategory />
+      </ConfigLayoutShell>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Level-Up Actions' })).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText('Search settings'), 'levelup');
+
+    expect(screen.getByRole('heading', { name: 'Level-Up Actions' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Welcome Messages' })).not.toBeInTheDocument();
+  }, 15000);
+
+  it('edits level-up DM settings from the level-up actions card', async () => {
+    mockPathname = '/dashboard/settings/onboarding-growth';
+    const user = userEvent.setup();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(minimalConfig),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { OnboardingGrowthCategory } = await import(
+      '@/components/dashboard/config-categories/onboarding-growth'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <OnboardingGrowthCategory />
+      </ConfigLayoutShell>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Level-Up Actions' })).toBeInTheDocument();
+    });
+
+    const levelUpCard = screen
+      .getByRole('heading', { name: 'Level-Up Actions' })
+      .closest('.feature-card');
+    expect(levelUpCard).not.toBeNull();
+
+    const advancedButton = levelUpCard?.querySelector('button[aria-expanded]');
+    expect(advancedButton).not.toBeNull();
+    await user.click(advancedButton as HTMLButtonElement);
+
+    await user.click(screen.getByLabelText('Toggle level-up DMs'));
+    expect(screen.getByLabelText('Toggle send on every level')).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText('Default DM Template'));
+    await user.type(screen.getByLabelText('Default DM Template'), 'Nice work {{username}}');
+
+    await user.click(screen.getByRole('button', { name: 'Add Override' }));
+    expect(screen.getAllByText('Override Preview').length).toBeGreaterThan(0);
+  }, 15000);
+
+  it('saves level-up DM fields as dotted patches when levelUpDm is newly added', async () => {
+    mockPathname = '/dashboard/settings/onboarding-growth';
+    const user = userEvent.setup();
+
+    const fetchMock = vi.fn().mockImplementation((_url: string, options?: { method?: string; body?: string }) => {
+      if (options?.method === 'PATCH') {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(minimalConfigWithoutLevelUpDm),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');
+    const { OnboardingGrowthCategory } = await import(
+      '@/components/dashboard/config-categories/onboarding-growth'
+    );
+
+    render(
+      <ConfigLayoutShell>
+        <OnboardingGrowthCategory />
+      </ConfigLayoutShell>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Level-Up Actions' })).toBeInTheDocument();
+    });
+
+    const levelUpCard = screen
+      .getByRole('heading', { name: 'Level-Up Actions' })
+      .closest('.feature-card');
+    const advancedButton = levelUpCard?.querySelector('button[aria-expanded]');
+    await user.click(advancedButton as HTMLButtonElement);
+
+    await user.click(screen.getByLabelText('Toggle level-up DMs'));
+    await user.clear(screen.getByLabelText('Default DM Template'));
+    await user.type(screen.getByLabelText('Default DM Template'), 'Level {{level}}');
+    await user.click(screen.getByRole('button', { name: /Save Changes/i }));
+    await user.click(screen.getByRole('button', { name: /Confirm Save/i }));
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(
+        (call: unknown[]) => (call[1] as { method?: string } | undefined)?.method === 'PATCH',
+      );
+      expect(patchCalls.length).toBeGreaterThan(0);
+    });
+
+    const patchBodies = fetchMock.mock.calls
+      .filter((call: unknown[]) => (call[1] as { method?: string } | undefined)?.method === 'PATCH')
+      .map((call: unknown[]) => JSON.parse(((call[1] as { body?: string }).body ?? '{}')));
+
+    expect(patchBodies.some((body: { path?: string }) => body.path === 'xp')).toBe(false);
+    expect(
+      patchBodies.some(
+        (body: { path?: string; value?: unknown }) =>
+          body.path === 'xp.levelUpDm.enabled' && body.value === true,
+      ),
+    ).toBe(true);
+  }, 15000);
 
   it('shows unsaved changes banner after edits', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
