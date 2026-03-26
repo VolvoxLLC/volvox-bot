@@ -397,5 +397,260 @@ describe('reminderHandler', () => {
       await handleReminderDismiss(interaction);
       expect(mockPool.query).not.toHaveBeenCalled();
     });
+
+    it('should reply with error when database is unavailable', async () => {
+      getPool.mockReturnValue(null);
+
+      const interaction = {
+        customId: 'reminder_dismiss_30',
+        user: { id: 'u1' },
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderDismiss(interaction);
+
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: '❌ Database unavailable. Please try again later.',
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('should fall back to reply if update fails', async () => {
+      const reminder = { id: 21, user_id: 'u1' };
+      mockPool.query.mockResolvedValueOnce({ rows: [reminder] });
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      const interaction = {
+        customId: 'reminder_dismiss_21',
+        user: { id: 'u1' },
+        update: vi.fn().mockRejectedValue(new Error('expired')),
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderDismiss(interaction);
+
+      expect(interaction.update).toHaveBeenCalled();
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: '✅ Reminder dismissed.',
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('should handle not-found reminder', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      const interaction = {
+        customId: 'reminder_dismiss_999',
+        user: { id: 'u1' },
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderDismiss(interaction);
+
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: '❌ Reminder not found.' }),
+      );
+    });
+  });
+
+  describe('handleReminderSnooze – extra branches', () => {
+    it('should reply with error when database is unavailable', async () => {
+      getPool.mockReturnValue(null);
+
+      const interaction = {
+        customId: 'reminder_snooze_50_15m',
+        user: { id: 'u1' },
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderSnooze(interaction);
+
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: '❌ Database unavailable. Please try again later.',
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('should reject snooze on a completed reminder', async () => {
+      const reminder = { id: 51, user_id: 'u1', completed: true };
+      mockPool.query.mockResolvedValueOnce({ rows: [reminder] });
+
+      const interaction = {
+        customId: 'reminder_snooze_51_1h',
+        user: { id: 'u1' },
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderSnooze(interaction);
+
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: '❌ This reminder has already been completed.',
+          ephemeral: true,
+        }),
+      );
+    });
+  });
+
+  describe('checkReminders – extra branches', () => {
+    it('should return early when pool is unavailable', async () => {
+      getPool.mockReturnValue(null);
+      const mockClient = { users: { fetch: vi.fn() } };
+
+      await checkReminders(mockClient);
+
+      expect(mockClient.users.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should skip reminder when reminders are disabled for guild', async () => {
+      const { getConfig } = await import('../../src/modules/config.js');
+      getConfig.mockReturnValueOnce({ reminders: { enabled: false } });
+
+      const reminder = {
+        id: 60,
+        guild_id: 'g1',
+        user_id: 'u1',
+        channel_id: 'c1',
+        message: 'Disabled guild',
+        remind_at: new Date().toISOString(),
+        recurring_cron: null,
+        snoozed_count: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      mockPool.query.mockResolvedValueOnce({ rows: [reminder] });
+      const mockClient = { users: { fetch: vi.fn() } };
+
+      await checkReminders(mockClient);
+
+      expect(mockClient.users.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should increment failure count and retry on delivery failure', async () => {
+      const mockClient = {
+        users: { fetch: vi.fn().mockRejectedValue(new Error('DM fail')) },
+        channels: { fetch: vi.fn().mockRejectedValue(new Error('channel fail')) },
+      };
+
+      const reminder = {
+        id: 61,
+        guild_id: 'g1',
+        user_id: 'u1',
+        channel_id: 'c1',
+        message: 'Fail delivery',
+        remind_at: new Date().toISOString(),
+        recurring_cron: null,
+        snoozed_count: 0,
+        failed_delivery_count: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [reminder] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await checkReminders(mockClient);
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('SET failed_delivery_count'),
+        [1, 61],
+      );
+    });
+
+    it('should mark completed after max delivery retries', async () => {
+      const mockClient = {
+        users: { fetch: vi.fn().mockRejectedValue(new Error('DM fail')) },
+        channels: { fetch: vi.fn().mockRejectedValue(new Error('channel fail')) },
+      };
+
+      const reminder = {
+        id: 62,
+        guild_id: 'g1',
+        user_id: 'u1',
+        channel_id: 'c1',
+        message: 'Max retries',
+        remind_at: new Date().toISOString(),
+        recurring_cron: null,
+        snoozed_count: 0,
+        failed_delivery_count: 2,
+        created_at: new Date().toISOString(),
+      };
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [reminder] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await checkReminders(mockClient);
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('completed = true, failed_delivery_count'),
+        [3, 62],
+      );
+    });
+
+    it('should handle error thrown during reminder processing', async () => {
+      const { getConfig } = await import('../../src/modules/config.js');
+      getConfig.mockImplementationOnce(() => {
+        throw new Error('config explosion');
+      });
+
+      const reminder = {
+        id: 63,
+        guild_id: 'g1',
+        user_id: 'u1',
+        channel_id: 'c1',
+        message: 'Boom',
+        remind_at: new Date().toISOString(),
+        recurring_cron: null,
+        snoozed_count: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      mockPool.query.mockResolvedValueOnce({ rows: [reminder] });
+      const mockClient = { users: { fetch: vi.fn() } };
+
+      await expect(checkReminders(mockClient)).resolves.toBeUndefined();
+    });
+
+    it('should warn when channel is not found for fallback', async () => {
+      const { fetchChannelCached } = await import('../../src/utils/discordCache.js');
+      fetchChannelCached.mockResolvedValueOnce(null);
+
+      const mockClient = {
+        users: { fetch: vi.fn().mockRejectedValue(new Error('DM fail')) },
+        channels: { fetch: vi.fn() },
+      };
+
+      const reminder = {
+        id: 64,
+        guild_id: 'g1',
+        user_id: 'u1',
+        channel_id: 'c1',
+        message: 'No channel',
+        remind_at: new Date().toISOString(),
+        recurring_cron: null,
+        snoozed_count: 0,
+        failed_delivery_count: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [reminder] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await checkReminders(mockClient);
+
+      const { warn } = await import('../../src/logger.js');
+      expect(warn).toHaveBeenCalledWith(
+        'Reminder channel not found',
+        expect.objectContaining({ reminderId: 64 }),
+      );
+    });
   });
 });
