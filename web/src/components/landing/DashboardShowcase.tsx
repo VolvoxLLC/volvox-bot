@@ -40,6 +40,7 @@ function AnimatedCell({
 }
 
 import type { DailyActivityPoint } from './bento/bento-data';
+
 export type { DailyActivityPoint } from './bento/bento-data';
 
 // Re-use the same shape as Stats.tsx. TODO(#363): extract BotStats to shared types

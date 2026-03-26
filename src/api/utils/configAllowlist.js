@@ -31,6 +31,7 @@ export const SAFE_CONFIG_KEYS = new Set([
   'aiAutoMod',
   'botStatus',
   'quietMode',
+  'xp',
 ]);
 
 export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];
