@@ -7,12 +7,15 @@
 
 import { info, warn } from '../logger.js';
 import { buildTemplateContext } from '../utils/templateEngine.js';
+import { handleAddReaction } from './actions/addReaction.js';
+import { handleAnnounce } from './actions/announce.js';
 import { handleGrantRole } from './actions/grantRole.js';
 import { handleNickPrefix, handleNickSuffix } from './actions/nickPrefix.js';
 import { handleRemoveRole } from './actions/removeRole.js';
 import { checkRoleRateLimit, collectXpManagedRoles } from './actions/roleUtils.js';
 import { handleWebhook } from './actions/webhook.js';
 import { handleXpBonus } from './actions/xpBonus.js';
+import { handleSendDm } from './actions/sendDm.js';
 
 /**
  * Action handler registry: action type → async handler function.
@@ -31,9 +34,12 @@ export function registerAction(type, handler) {
   actionRegistry.set(type, handler);
 }
 
-// Register Phase 1 action handlers
+// Register built-in action handlers
 registerAction('grantRole', handleGrantRole);
 registerAction('removeRole', handleRemoveRole);
+registerAction('sendDm', handleSendDm);
+registerAction('announce', handleAnnounce);
+registerAction('addReaction', handleAddReaction);
 
 // Register Phase 2 action handlers
 registerAction('xpBonus', handleXpBonus);

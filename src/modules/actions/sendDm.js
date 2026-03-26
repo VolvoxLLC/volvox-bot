@@ -1,0 +1,136 @@
+/**
+ * sendDm Action Handler
+ * Sends a DM to the member who leveled up with a rendered template.
+ *
+ * @see https://github.com/VolvoxLLC/volvox-bot/issues/368
+ */
+
+import { EmbedBuilder } from 'discord.js';
+import { debug, info, warn } from '../../logger.js';
+import { renderTemplate } from '../../utils/templateEngine.js';
+
+/** Rate limit: 1 DM per user per 60 seconds. */
+const DM_RATE_WINDOW_MS = 60_000;
+
+/**
+ * In-memory DM rate limiter: `${guildId}:${userId}` → last DM timestamp.
+ * @type {Map<string, number>}
+ */
+const dmLimits = new Map();
+
+/**
+ * Check whether a DM is allowed under the rate limit.
+ *
+ * @param {string} guildId
+ * @param {string} userId
+ * @returns {boolean}
+ */
+export function checkDmRateLimit(guildId, userId) {
+  const key = `${guildId}:${userId}`;
+  const lastSent = dmLimits.get(key);
+  if (lastSent && Date.now() - lastSent < DM_RATE_WINDOW_MS) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Record a successful DM send for rate limiting.
+ *
+ * @param {string} guildId
+ * @param {string} userId
+ */
+export function recordDmSend(guildId, userId) {
+  dmLimits.set(`${guildId}:${userId}`, Date.now());
+}
+
+/**
+ * Evict stale DM rate limit entries. Call periodically to prevent memory leaks.
+ * Exported for testability.
+ */
+export function sweepDmLimits() {
+  const now = Date.now();
+  for (const [key, ts] of dmLimits) {
+    if (now - ts >= DM_RATE_WINDOW_MS) {
+      dmLimits.delete(key);
+    }
+  }
+}
+
+/**
+ * Clear all DM rate limit entries. Used in tests only.
+ */
+export function resetDmLimits() {
+  dmLimits.clear();
+}
+
+/**
+ * Build message payload from action config and template context.
+ *
+ * @param {Object} action - { format: 'text'|'embed'|'both', template, embed }
+ * @param {Object} templateContext
+ * @returns {Object} Discord message options
+ */
+function buildDmPayload(action, templateContext) {
+  const payload = {};
+
+  const format = action.format ?? 'text';
+
+  if (format === 'text' || format === 'both') {
+    payload.content = renderTemplate(action.template ?? '', templateContext);
+  }
+
+  if (format === 'embed' || format === 'both') {
+    const embedConfig = action.embed ?? {};
+    const embed = new EmbedBuilder();
+    if (embedConfig.title) embed.setTitle(renderTemplate(embedConfig.title, templateContext));
+    if (embedConfig.description)
+      embed.setDescription(renderTemplate(embedConfig.description, templateContext));
+    if (embedConfig.color) embed.setColor(embedConfig.color);
+    if (embedConfig.thumbnail) embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
+    if (embedConfig.footer)
+      embed.setFooter({ text: renderTemplate(embedConfig.footer, templateContext) });
+    payload.embeds = [embed];
+  }
+
+  return payload;
+}
+
+/**
+ * Send a DM to the member who leveled up.
+ * Fails silently when the user has DMs disabled.
+ *
+ * @param {Object} action - { type: "sendDm", format, template, embed }
+ * @param {Object} context - Pipeline context
+ */
+export async function handleSendDm(action, context) {
+  const { member, guild, templateContext } = context;
+  const userId = member.user?.id;
+
+  if (!checkDmRateLimit(guild.id, userId)) {
+    debug('DM rate-limited — skipping', { guildId: guild.id, userId });
+    return;
+  }
+
+  const payload = buildDmPayload(action, templateContext);
+
+  try {
+    await member.user.send(payload);
+    recordDmSend(guild.id, userId);
+    info('Level-up DM sent', { guildId: guild.id, userId });
+  } catch (err) {
+    // 50007 = Cannot send messages to this user (DMs disabled)
+    if (err.code === 50007) {
+      debug('User has DMs disabled — skipping', { guildId: guild.id, userId });
+      return;
+    }
+    warn('Failed to send level-up DM', {
+      guildId: guild.id,
+      userId,
+      error: err.message,
+    });
+  }
+}
+
+// Periodic sweep to prevent memory leaks
+setInterval(sweepDmLimits, 5 * 60 * 1000).unref();
