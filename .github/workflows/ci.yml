@@ -106,8 +106,12 @@ jobs:
         run: pnpm mono:build
 
   e2e:
-    name: E2E Tests
+    name: E2E Tests (${{ matrix.shard }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
 
     steps:
       - name: Checkout
@@ -128,17 +132,31 @@ jobs:
       - name: Install web dependencies
         run: pnpm --prefix web install --frozen-lockfile
 
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --prefix web exec playwright install chromium --with-deps
 
-      - name: Run E2E tests
-        run: pnpm --prefix web test:e2e
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --prefix web exec playwright install-deps chromium
+
+      - name: Run E2E tests (shard ${{ matrix.shard }})
+        run: pnpm --prefix web test:e2e --shard=${{ matrix.shard }}
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.0
         with:
-          name: playwright-report-${{ github.run_id }}
+          name: playwright-report-${{ github.run_id }}-${{ strategy.job-index }}
           path: web/playwright-report/
           retention-days: 7
 
