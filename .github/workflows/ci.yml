@@ -151,13 +151,17 @@ jobs:
 
       - name: Run E2E tests (shard ${{ matrix.shard }})
         run: pnpm --prefix web test:e2e --shard=${{ matrix.shard }}
+        env:
+          NEXT_FONT_GOOGLE_MOCKED: "1"
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.0
         with:
           name: playwright-report-${{ github.run_id }}-${{ strategy.job-index }}
-          path: web/playwright-report/
+          path: |
+            web/playwright-report/
+            web/blob-report/
           retention-days: 7
 
   ci:
