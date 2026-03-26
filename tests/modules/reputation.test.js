@@ -14,43 +14,29 @@ vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn(),
 }));
 
-vi.mock('../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn(),
+vi.mock('../../src/modules/levelUpActions.js', () => ({
+  executeLevelUpPipeline: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('discord.js', () => {
-  class MockEmbedBuilder {
-    setColor() {
-      return this;
-    }
-    setTitle() {
-      return this;
-    }
-    setDescription() {
-      return this;
-    }
-    setThumbnail() {
-      return this;
-    }
-    addFields() {
-      return this;
-    }
-    setTimestamp() {
-      return this;
-    }
-  }
-  return { EmbedBuilder: MockEmbedBuilder };
-});
+vi.mock('../../src/modules/xpDefaults.js', () => ({
+  XP_DEFAULTS: {
+    enabled: true,
+    levelThresholds: [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000],
+    levelActions: [],
+    defaultActions: [],
+    roleRewards: { stackRoles: true, removeOnLevelDown: false },
+  },
+}));
 
 import { getPool } from '../../src/db.js';
 import { getConfig } from '../../src/modules/config.js';
+import { executeLevelUpPipeline } from '../../src/modules/levelUpActions.js';
 import {
   buildProgressBar,
   computeLevel,
   handleXpGain,
   sweepCooldowns,
 } from '../../src/modules/reputation.js';
-import { safeSend } from '../../src/utils/safeSend.js';
 
 const DEFAULT_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000];
 
@@ -59,8 +45,6 @@ function makeMessage({
   botAuthor = false,
   guildId = 'guild1',
   userId = 'user1',
-  roleAdd = vi.fn(),
-  channelCache = new Map(),
 } = {}) {
   return {
     content,
@@ -71,9 +55,9 @@ function makeMessage({
     },
     guild: {
       id: guildId,
-      channels: { cache: channelCache },
+      channels: { cache: new Map() },
     },
-    member: { roles: { add: roleAdd } },
+    member: { roles: { add: vi.fn() } },
   };
 }
 
@@ -140,7 +124,6 @@ describe('handleXpGain', () => {
   });
 
   it('returns early when message has no guild (DM context)', async () => {
-    // Covers the `if (!message.guild) return;` true branch (line 73)
     const pool = makePool();
     getPool.mockReturnValue(pool);
     const message = makeMessage();
@@ -179,9 +162,13 @@ describe('handleXpGain', () => {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
     const pool = makePool({ xp: 5, level: 0 });
@@ -202,9 +189,13 @@ describe('handleXpGain', () => {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
 
@@ -232,9 +223,13 @@ describe('handleXpGain', () => {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
 
@@ -259,60 +254,19 @@ describe('handleXpGain', () => {
     expect(pool.query.mock.calls.filter((c) => c[0].includes('INSERT')).length).toBe(2);
   });
 
-  it('detects level-up and sends announcement', async () => {
-    const announceChannelId = 'announce-channel';
-    const announceChannel = { id: announceChannelId };
-    const channelCache = new Map([[announceChannelId, announceChannel]]);
-
+  it('calls executeLevelUpPipeline on level-up when xp system is enabled', async () => {
     getConfig.mockReturnValue({
       reputation: {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
-        levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId,
       },
-    });
-
-    // XP returned is 100, which triggers level 1 (current stored level is 0)
-    const pool = {
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] }) // upsert result
-        .mockResolvedValue({ rows: [] }), // UPDATE level
-    };
-    getPool.mockReturnValue(pool);
-
-    const message = makeMessage({
-      userId: 'levelUpUser',
-      guildId: 'levelUpGuild',
-      channelCache,
-    });
-
-    await handleXpGain(message);
-
-    expect(safeSend).toHaveBeenCalledWith(
-      announceChannel,
-      expect.objectContaining({ embeds: expect.any(Array) }),
-    );
-  });
-
-  it('assigns role reward on level-up when configured', async () => {
-    const announceChannelId = 'announce-ch-role';
-    const announceChannel = { id: announceChannelId };
-    const channelCache = new Map([[announceChannelId, announceChannel]]);
-    const roleId = 'role-level-1';
-    const roleAdd = vi.fn().mockResolvedValue(undefined);
-
-    getConfig.mockReturnValue({
-      reputation: {
+      xp: {
         enabled: true,
-        xpPerMessage: [5, 5],
-        xpCooldownSeconds: 60,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: { 1: roleId },
-        announceChannelId,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
 
@@ -324,34 +278,29 @@ describe('handleXpGain', () => {
     };
     getPool.mockReturnValue(pool);
 
-    const message = makeMessage({
-      userId: 'roleRewardUser',
-      guildId: 'roleRewardGuild',
-      roleAdd,
-      channelCache,
-    });
+    const message = makeMessage({ userId: 'pipelineUser', guildId: 'pipelineGuild' });
 
     await handleXpGain(message);
 
-    expect(roleAdd).toHaveBeenCalledWith(roleId);
+    expect(executeLevelUpPipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousLevel: 0,
+        newLevel: 1,
+        xp: 100,
+      }),
+    );
   });
 
-  it('logs error but does not crash when role add throws on level-up', async () => {
-    const { error: logError } = await import('../../src/logger.js');
-    const announceChannelId = 'announce-ch-role-err';
-    const announceChannel = { id: announceChannelId };
-    const channelCache = new Map([[announceChannelId, announceChannel]]);
-    const roleId = 'role-level-1-err';
-    const roleAdd = vi.fn().mockRejectedValue(new Error('Missing Permissions'));
-
+  it('does not call executeLevelUpPipeline when xp system is disabled', async () => {
     getConfig.mockReturnValue({
       reputation: {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: false,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: { 1: roleId },
-        announceChannelId,
       },
     });
 
@@ -363,30 +312,26 @@ describe('handleXpGain', () => {
     };
     getPool.mockReturnValue(pool);
 
-    const message = makeMessage({
-      userId: 'roleErrUser',
-      guildId: 'roleErrGuild',
-      roleAdd,
-      channelCache,
-    });
+    const message = makeMessage({ userId: 'disabledXpUser', guildId: 'disabledXpGuild' });
 
-    await expect(handleXpGain(message)).resolves.not.toThrow();
-    expect(logError).toHaveBeenCalledWith(
-      'Failed to assign role reward',
-      expect.objectContaining({ error: 'Missing Permissions' }),
-    );
+    await handleXpGain(message);
+
+    expect(executeLevelUpPipeline).not.toHaveBeenCalled();
   });
 
   it('uses default xpCooldownSeconds and xpPerMessage when not configured', async () => {
-    // Covers the `?? 60` and `?? [5, 15]` branches (lines 82, 88)
     getConfig.mockReturnValue({
       reputation: {
         enabled: true,
         // xpCooldownSeconds intentionally omitted → uses ?? 60
         // xpPerMessage intentionally omitted → uses ?? [5, 15]
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
 
@@ -402,121 +347,21 @@ describe('handleXpGain', () => {
     );
   });
 
-  it('does not crash on level-up when announceChannelId is not configured', async () => {
-    // Covers the `if (announceChannelId)` false branch (line 146)
-    getConfig.mockReturnValue({
-      reputation: {
-        enabled: true,
-        xpPerMessage: [5, 5],
-        xpCooldownSeconds: 60,
-        levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null, // explicitly null → false branch
-      },
-    });
-
-    const pool = {
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] })
-        .mockResolvedValue({ rows: [] }),
-    };
-    getPool.mockReturnValue(pool);
-    const message = makeMessage({ userId: 'noAnnounceUser', guildId: 'noAnnounceGuild' });
-
-    await expect(handleXpGain(message)).resolves.not.toThrow();
-    // No safeSend should be called
-    expect(safeSend).not.toHaveBeenCalled();
-  });
-
-  it('does not crash on level-up when announce channel is not in guild cache', async () => {
-    // Covers the `if (announceChannel)` false branch (line 148)
-    const announceChannelId = 'missing-channel-id';
-    const channelCache = new Map(); // empty — channel not in cache
-
-    getConfig.mockReturnValue({
-      reputation: {
-        enabled: true,
-        xpPerMessage: [5, 5],
-        xpCooldownSeconds: 60,
-        levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId,
-      },
-    });
-
-    const pool = {
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] })
-        .mockResolvedValue({ rows: [] }),
-    };
-    getPool.mockReturnValue(pool);
-    const message = makeMessage({
-      userId: 'missingChanUser',
-      guildId: 'missingChanGuild',
-      channelCache,
-    });
-
-    await expect(handleXpGain(message)).resolves.not.toThrow();
-    expect(safeSend).not.toHaveBeenCalled();
-  });
-
-  it('logs error but does not crash when level-up announcement send throws', async () => {
-    const { error: logError } = await import('../../src/logger.js');
-    const { safeSend: mockSafeSend } = await import('../../src/utils/safeSend.js');
-    const announceChannelId = 'announce-ch-send-err';
-    const announceChannel = { id: announceChannelId };
-    const channelCache = new Map([[announceChannelId, announceChannel]]);
-
-    getConfig.mockReturnValue({
-      reputation: {
-        enabled: true,
-        xpPerMessage: [5, 5],
-        xpCooldownSeconds: 60,
-        levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId,
-      },
-    });
-
-    const pool = {
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: [{ xp: 100, level: 0 }] })
-        .mockResolvedValue({ rows: [] }),
-    };
-    getPool.mockReturnValue(pool);
-
-    mockSafeSend.mockRejectedValueOnce(new Error('Cannot send messages'));
-
-    const message = makeMessage({
-      userId: 'sendErrUser',
-      guildId: 'sendErrGuild',
-      channelCache,
-    });
-
-    await expect(handleXpGain(message)).resolves.not.toThrow();
-    expect(logError).toHaveBeenCalledWith(
-      'Failed to send level-up announcement',
-      expect.objectContaining({ error: 'Cannot send messages' }),
-    );
-  });
-
   it('logs error and returns early when level UPDATE query throws', async () => {
     const { error: logError } = await import('../../src/logger.js');
-    const announceChannelId = 'announce-ch-update-err';
-    const announceChannel = { id: announceChannelId };
-    const channelCache = new Map([[announceChannelId, announceChannel]]);
 
     getConfig.mockReturnValue({
       reputation: {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
 
@@ -531,7 +376,6 @@ describe('handleXpGain', () => {
     const message = makeMessage({
       userId: 'levelUpdateErrUser',
       guildId: 'levelUpdateErrGuild',
-      channelCache,
     });
 
     await expect(handleXpGain(message)).resolves.not.toThrow();
@@ -539,8 +383,8 @@ describe('handleXpGain', () => {
       'Failed to update level',
       expect.objectContaining({ error: 'DB write failed' }),
     );
-    // safeSend should NOT be called since we returned early
-    expect(safeSend).not.toHaveBeenCalled();
+    // executeLevelUpPipeline should NOT be called since we returned early
+    expect(executeLevelUpPipeline).not.toHaveBeenCalled();
   });
 });
 
@@ -560,9 +404,13 @@ describe('sweepCooldowns', () => {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
     const pool = makePool({ xp: 5, level: 0 });
@@ -585,9 +433,13 @@ describe('sweepCooldowns', () => {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
 
@@ -601,9 +453,13 @@ describe('sweepCooldowns', () => {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
     const pool = makePool({ xp: 5, level: 0 });
@@ -626,9 +482,13 @@ describe('sweepCooldowns', () => {
         enabled: true,
         xpPerMessage: [5, 5],
         xpCooldownSeconds: 60,
+      },
+      xp: {
+        enabled: true,
         levelThresholds: DEFAULT_THRESHOLDS,
-        roleRewards: {},
-        announceChannelId: null,
+        levelActions: [],
+        defaultActions: [],
+        roleRewards: { stackRoles: true, removeOnLevelDown: false },
       },
     });
 

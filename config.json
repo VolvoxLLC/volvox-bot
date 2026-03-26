@@ -281,21 +281,17 @@
       5,
       15
     ],
-    "xpCooldownSeconds": 60,
-    "announceChannelId": null,
-    "levelThresholds": [
-      100,
-      300,
-      600,
-      1000,
-      1500,
-      2500,
-      4000,
-      6000,
-      8500,
-      12000
-    ],
-    "roleRewards": {}
+    "xpCooldownSeconds": 60
+  },
+  "xp": {
+    "enabled": false,
+    "levelThresholds": [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000],
+    "levelActions": [],
+    "defaultActions": [],
+    "roleRewards": {
+      "stackRoles": true,
+      "removeOnLevelDown": false
+    }
   },
   "challenges": {
     "enabled": false,

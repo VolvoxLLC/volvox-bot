@@ -10,7 +10,7 @@ import { getPool } from '../db.js';
 import { error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { buildProgressBar, computeLevel } from '../modules/reputation.js';
-import { REPUTATION_DEFAULTS } from '../modules/reputationDefaults.js';
+import { XP_DEFAULTS } from '../modules/xpDefaults.js';
 import {
   getRankCached,
   getReputationCached,
@@ -42,11 +42,14 @@ export async function execute(interaction) {
     return safeEditReply(interaction, { content: 'Reputation system is not enabled.' });
   }
 
+  const xpCfg = { ...XP_DEFAULTS, ...cfg.xp };
+  // Allow /rank to work when reputation is enabled but XP is disabled (backward compat)
+  // The command will show the user's current XP/level data regardless of xp.enabled
+
   try {
     const pool = getPool();
     const target = interaction.options.getUser('user') ?? interaction.user;
-    const repCfg = { ...REPUTATION_DEFAULTS, ...cfg.reputation };
-    const thresholds = repCfg.levelThresholds;
+    const thresholds = xpCfg.levelThresholds;
 
     // Fetch reputation row (cached)
     const cachedRep = await getReputationCached(interaction.guildId, target.id);
