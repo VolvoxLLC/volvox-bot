@@ -10,8 +10,11 @@ import type {
   ConfigCategoryId,
   ConfigFeatureId,
 } from '@/components/dashboard/config-workspace/types';
+import { Button } from '@/components/ui/button';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RoleSelector } from '@/components/ui/role-selector';
 import { Switch } from '@/components/ui/switch';
 import type { BotConfig, DeepPartial } from '@/types/config';
 
@@ -55,9 +58,9 @@ export function CommunitySettingsSection({
 }: CommunitySettingsSectionProps) {
   const showFeature = (featureId: ConfigFeatureId) => visibleFeatureIds.has(featureId);
 
-  const _tldrDefaultMessages = draftConfig.tldr?.defaultMessages ?? 25;
-  const _tldrMaxMessages = draftConfig.tldr?.maxMessages ?? 100;
-  const _tldrCooldownSeconds = draftConfig.tldr?.cooldownSeconds ?? 30;
+  const tldrDefaultMessages = draftConfig.tldr?.defaultMessages ?? 25;
+  const tldrMaxMessages = draftConfig.tldr?.maxMessages ?? 100;
+  const tldrCooldownSeconds = draftConfig.tldr?.cooldownSeconds ?? 30;
 
   return (
     <>
