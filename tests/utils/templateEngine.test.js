@@ -201,4 +201,69 @@ describe('buildTemplateContext', () => {
     expect(ctx.xpToNext).toBe('0');
     expect(ctx.nextLevel).toBe('0');
   });
+
+  it('should populate DB-derived variables when query returns rows', async () => {
+    const { getPool } = await import('../../src/db.js');
+    getPool.mockReturnValueOnce({
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ rank: 3 }] })
+        .mockResolvedValueOnce({
+          rows: [{ messages_count: 42, days_active: 7, voice_seconds: 3600 }],
+        }),
+    });
+
+    const member = {
+      user: { id: 'u1', displayName: 'U', displayAvatarURL: () => '' },
+      joinedAt: new Date(),
+    };
+    const guild = { id: 'g1', name: 'S', iconURL: () => '', memberCount: 1 };
+
+    const ctx = await buildTemplateContext({
+      member,
+      message: { channel: { name: 'ch' } },
+      guild,
+      level: 1,
+      previousLevel: 0,
+      xp: 100,
+      levelThresholds: [100, 300],
+      roleName: null,
+      roleId: null,
+    });
+
+    expect(ctx.rank).toBe('#3');
+    expect(ctx.messages).toBe('42');
+    expect(ctx.daysActive).toBe('7');
+    expect(ctx.voiceHours).toBe('1');
+  });
+
+  it('should use fallback values when DB query rejects', async () => {
+    const { getPool } = await import('../../src/db.js');
+    getPool.mockReturnValueOnce({
+      query: vi.fn().mockRejectedValue(new Error('DB down')),
+    });
+
+    const member = {
+      user: { id: 'u1', displayName: 'U', displayAvatarURL: () => '' },
+      joinedAt: new Date(),
+    };
+    const guild = { id: 'g1', name: 'S', iconURL: () => '', memberCount: 1 };
+
+    const ctx = await buildTemplateContext({
+      member,
+      message: { channel: { name: 'ch' } },
+      guild,
+      level: 1,
+      previousLevel: 0,
+      xp: 100,
+      levelThresholds: [100, 300],
+      roleName: null,
+      roleId: null,
+    });
+
+    expect(ctx.rank).toBe('#0');
+    expect(ctx.messages).toBe('0');
+    expect(ctx.daysActive).toBe('0');
+    expect(ctx.voiceHours).toBe('0');
+  });
 });
