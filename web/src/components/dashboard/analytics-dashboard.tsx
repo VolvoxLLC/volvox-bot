@@ -1,37 +1,16 @@
 'use client';
 
 import {
-  Activity,
-  ArrowDown,
-  ArrowUp,
   Bot,
   Coins,
   Download,
   FileText,
-  Heart,
   MessageSquare,
-  Minus,
   RefreshCw,
-  Star,
   UserPlus,
   Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartTheme } from '@/hooks/use-chart-theme';
@@ -48,7 +27,23 @@ import {
 } from '@/lib/analytics-utils';
 import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
 import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
-import { EmptyState } from './empty-state';
+import {
+  ActivityHeatmapCard,
+  AiUsageCard,
+  ChannelFilterCard,
+  CommandUsageCard,
+  KpiCardItem,
+  KpiSkeleton,
+  MessageVolumeCard,
+  RealtimeIndicatorsCard,
+  TopChannelsCard,
+  UserEngagementCard,
+  XpEconomyCard,
+  escapeCsvCell,
+  formatDeltaPercent,
+  toDeltaPercent,
+  type KpiCard,
+} from './analytics-dashboard-sections';
 
 const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Today', value: 'today' },
@@ -56,68 +51,6 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Month', value: 'month' },
   { label: 'Custom', value: 'custom' },
 ];
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-
-type KpiCard = {
-  label: string;
-  value: number | undefined;
-  previous: number | undefined;
-  icon: typeof MessageSquare;
-  format: (value: number) => string;
-};
-
-function KpiSkeleton() {
-  return (
-    <Card className="kpi-card">
-      <CardHeader className="pb-2">
-        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-9 w-9 animate-pulse rounded-lg bg-muted" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function escapeCsvCell(value: string | number | null): string {
-  if (value === null) return '';
-  const text = String(value);
-  if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
-}
-
-function toDeltaPercent(current: number, previous: number): number | null {
-  if (previous === 0) {
-    return current === 0 ? 0 : null;
-  }
-  return ((current - previous) / previous) * 100;
-}
-
-function formatDeltaPercent(deltaPercent: number | null): string {
-  if (deltaPercent === null) return '—';
-  if (deltaPercent === 0) return '0%';
-  return `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%`;
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const normalized = hex.replace('#', '');
-  if (normalized.length !== 6) {
-    return `rgba(88, 101, 242, ${alpha})`;
-  }
-
-  const r = Number.parseInt(normalized.slice(0, 2), 16);
-  const g = Number.parseInt(normalized.slice(2, 4), 16);
-  const b = Number.parseInt(normalized.slice(4, 6), 16);
-
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 export function AnalyticsDashboard() {
   const [now] = useState(() => new Date());
@@ -295,11 +228,6 @@ export function AnalyticsDashboard() {
   );
 
   const topChannels = analytics?.topChannels ?? analytics?.channelActivity ?? [];
-  const hasMessageVolumeData = (analytics?.messageVolume?.length ?? 0) > 0;
-  const hasModelUsageData = modelUsageData.length > 0;
-  const hasTokenUsageData =
-    (analytics?.aiUsage.tokens.prompt ?? 0) > 0 || (analytics?.aiUsage.tokens.completion ?? 0) > 0;
-  const hasTopChannelsData = topChannels.length > 0;
   const canShowNoDataStates = !loading && analytics !== null;
 
   const kpiCards = useMemo<KpiCard[]>(
@@ -419,115 +347,28 @@ export function AnalyticsDashboard() {
   }
 
   const showKpiSkeleton = loading && !analytics;
+  const hasComparison = compareMode && analytics?.comparison != null;
 
   return (
     <div className="space-y-6 overflow-x-hidden">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-gradient-primary">Analytics</span> Dashboard
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Usage trends, AI performance, and community activity for your server.
-          </p>
-          {lastUpdatedAt ? (
-            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="status-dot-live" style={{ width: 6, height: 6 }} />
-              Last updated {formatLastUpdatedTime(lastUpdatedAt)}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {RANGE_PRESETS.map((preset) => (
-            <Button
-              key={preset.value}
-              variant={rangePreset === preset.value ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setRangePreset(preset.value);
-                if (preset.value !== 'custom') {
-                  setCustomRangeError(null);
-                }
-              }}
-            >
-              {preset.label}
-            </Button>
-          ))}
-
-          <Button
-            variant={compareMode ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setCompareMode((current) => !current)}
-          >
-            Compare vs previous
-          </Button>
-
-          {rangePreset === 'custom' ? (
-            <>
-              <input
-                aria-label="From date"
-                type="date"
-                value={customFromDraft}
-                onChange={(event) => {
-                  setCustomFromDraft(event.target.value);
-                  setCustomRangeError(null);
-                }}
-                className="h-9 rounded-md border bg-background px-3 text-sm"
-              />
-              <input
-                aria-label="To date"
-                type="date"
-                value={customToDraft}
-                onChange={(event) => {
-                  setCustomToDraft(event.target.value);
-                  setCustomRangeError(null);
-                }}
-                className="h-9 rounded-md border bg-background px-3 text-sm"
-              />
-              <Button size="sm" onClick={applyCustomRange}>
-                Apply
-              </Button>
-              {customRangeError ? (
-                <p role="alert" className="text-xs text-destructive">
-                  {customRangeError}
-                </p>
-              ) : null}
-            </>
-          ) : null}
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => void fetchAnalytics()}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={exportCsv}
-            disabled={!analytics}
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => analytics && exportAnalyticsPdf(analytics)}
-            disabled={!analytics}
-          >
-            <FileText className="h-4 w-4" />
-            Export PDF
-          </Button>
-        </div>
-      </div>
+      <DashboardHeader
+        lastUpdatedAt={lastUpdatedAt}
+        rangePreset={rangePreset}
+        setRangePreset={setRangePreset}
+        compareMode={compareMode}
+        setCompareMode={setCompareMode}
+        customFromDraft={customFromDraft}
+        setCustomFromDraft={setCustomFromDraft}
+        customToDraft={customToDraft}
+        setCustomToDraft={setCustomToDraft}
+        customRangeError={customRangeError}
+        setCustomRangeError={setCustomRangeError}
+        applyCustomRange={applyCustomRange}
+        loading={loading}
+        analytics={analytics}
+        fetchAnalytics={fetchAnalytics}
+        exportCsv={exportCsv}
+      />
 
       {error ? (
         <Card className="border-destructive/50" role="alert">
@@ -546,568 +387,206 @@ export function AnalyticsDashboard() {
           ? (['kpi-0', 'kpi-1', 'kpi-2', 'kpi-3', 'kpi-4'] as const).map((key) => (
               <KpiSkeleton key={key} />
             ))
-          : kpiCards.map((card) => {
-              const Icon = card.icon;
-              const value = card.value ?? 0;
-              const hasComparison = compareMode && analytics?.comparison != null;
-              const delta =
-                hasComparison && card.previous != null
-                  ? toDeltaPercent(value, card.previous)
-                  : null;
-
-              const deltaColor =
-                delta === null
-                  ? 'text-muted-foreground'
-                  : delta > 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : delta < 0
-                      ? 'text-rose-600 dark:text-rose-400'
-                      : 'text-muted-foreground';
-
-              return (
-                <Card key={card.label} className="kpi-card">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {card.label}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold tracking-tight">
-                        {analytics ? card.format(value) : '\u2014'}
-                      </span>
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                        <Icon className="h-4 w-4 text-primary" />
-                      </span>
-                    </div>
-                    {hasComparison ? (
-                      <div
-                        className={`mt-2.5 flex items-center gap-1 text-xs font-medium ${deltaColor}`}
-                      >
-                        {delta === null ? (
-                          <Minus className="h-3 w-3" />
-                        ) : delta > 0 ? (
-                          <ArrowUp className="h-3 w-3" />
-                        ) : delta < 0 ? (
-                          <ArrowDown className="h-3 w-3" />
-                        ) : (
-                          <Minus className="h-3 w-3" />
-                        )}
-                        <span>{formatDeltaPercent(delta)} vs previous period</span>
-                      </div>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              );
-            })}
+          : kpiCards.map((card) => (
+              <KpiCardItem
+                key={card.label}
+                card={card}
+                compareMode={compareMode}
+                hasAnalytics={analytics !== null}
+                hasComparison={hasComparison}
+              />
+            ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="glow-card rounded-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="status-dot-live" />
-              Real-time indicators
-            </CardTitle>
-            <CardDescription>Live status updates every 30 seconds.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
-                  <Activity className="h-3.5 w-3.5 text-primary" />
-                </span>
-                Online members
-              </div>
-              <output
-                className="mt-2 block text-2xl font-bold tracking-tight"
-                aria-label="Online members value"
-              >
-                {analytics == null
-                  ? '\u2014'
-                  : analytics.realtime.onlineMembers === null
-                    ? 'N/A'
-                    : formatNumber(analytics.realtime.onlineMembers)}
-              </output>
-            </div>
-            <div className="rounded-xl border border-secondary/10 bg-secondary/5 p-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/15">
-                  <Bot className="h-3.5 w-3.5 text-secondary" />
-                </span>
-                Active AI conversations
-              </div>
-              <output
-                className="mt-2 block text-2xl font-bold tracking-tight"
-                aria-label="Active AI conversations value"
-              >
-                {loading || analytics == null
-                  ? '\u2014'
-                  : analytics.realtime.activeAiConversations === null
-                    ? 'N/A'
-                    : formatNumber(analytics.realtime.activeAiConversations)}
-              </output>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glow-card rounded-2xl">
-          <CardHeader>
-            <CardTitle>Channel filter</CardTitle>
-            <CardDescription>Click a channel in the chart to filter all metrics.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant={channelFilter === null ? 'default' : 'outline'}
-              onClick={() => setChannelFilter(null)}
-              className="rounded-full"
-            >
-              All channels
-            </Button>
-            {topChannels.map((channel) => (
-              <Button
-                key={channel.channelId}
-                size="sm"
-                variant={channelFilter === channel.channelId ? 'default' : 'outline'}
-                className="rounded-full"
-                onClick={() =>
-                  setChannelFilter((current) =>
-                    current === channel.channelId ? null : channel.channelId,
-                  )
-                }
-              >
-                {channel.name}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
+        <RealtimeIndicatorsCard analytics={analytics} loading={loading} />
+        <ChannelFilterCard
+          channelFilter={channelFilter}
+          setChannelFilter={setChannelFilter}
+          topChannels={topChannels}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
-          <CardHeader>
-            <CardTitle>Message volume</CardTitle>
-            <CardDescription>Messages and AI requests over the selected range.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasMessageVolumeData ? (
-              <div className="h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics?.messageVolume ?? []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                    <XAxis dataKey="label" minTickGap={20} tick={{ fill: chart.tooltipText }} />
-                    <YAxis allowDecimals={false} tick={{ fill: chart.tooltipText }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: chart.tooltipBg,
-                        borderColor: chart.tooltipBorder,
-                        borderRadius: 10,
-                        color: chart.tooltipText,
-                      }}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="messages"
-                      name="Messages"
-                      stroke={chart.primary}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="aiRequests"
-                      name="AI Requests"
-                      stroke={chart.success}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ) : canShowNoDataStates ? (
-              <EmptyState
-                icon={MessageSquare}
-                title="No message volume yet"
-                description="Run activity in this range to populate the trend chart."
-                className="min-h-[340px]"
-              />
-            ) : (
-              <div className="min-h-[340px]" aria-hidden="true" />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
-          <CardHeader>
-            <CardTitle>AI usage breakdown</CardTitle>
-            <CardDescription>Request distribution by model and token usage.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {hasModelUsageData ? (
-              <div className="h-[160px] rounded-xl border border-border/60 bg-background/50 p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={modelUsageData}
-                      dataKey="requests"
-                      nameKey="model"
-                      outerRadius={72}
-                      labelLine={false}
-                    >
-                      {modelUsageData.map((entry) => (
-                        <Cell key={entry.model} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: chart.tooltipBg,
-                        borderColor: chart.tooltipBorder,
-                        borderRadius: 10,
-                        color: chart.tooltipText,
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : canShowNoDataStates ? (
-              <EmptyState
-                icon={Bot}
-                title="No model usage"
-                description="AI model distribution appears after AI requests are processed."
-                className="min-h-[160px]"
-              />
-            ) : (
-              <div className="min-h-[160px]" aria-hidden="true" />
-            )}
-
-            {hasTokenUsageData ? (
-              <div className="h-[160px] rounded-xl border border-border/60 bg-background/50 p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={tokenBreakdownData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                    <XAxis dataKey="label" tick={{ fill: chart.tooltipText }} />
-                    <YAxis allowDecimals={false} tick={{ fill: chart.tooltipText }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: chart.tooltipBg,
-                        borderColor: chart.tooltipBorder,
-                        borderRadius: 10,
-                        color: chart.tooltipText,
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="prompt" name="Prompt tokens" fill={chart.primary} />
-                    <Bar dataKey="completion" name="Completion tokens" fill={chart.success} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : canShowNoDataStates ? (
-              <EmptyState
-                icon={Coins}
-                title="No token metrics"
-                description="Token usage will appear once prompt/completion usage is recorded."
-                className="min-h-[160px]"
-              />
-            ) : (
-              <div className="min-h-[160px]" aria-hidden="true" />
-            )}
-          </CardContent>
-        </Card>
+        <MessageVolumeCard
+          data={analytics?.messageVolume ?? []}
+          chart={chart}
+          canShowNoDataStates={canShowNoDataStates}
+        />
+        <AiUsageCard
+          modelUsageData={modelUsageData}
+          tokenBreakdownData={tokenBreakdownData}
+          chart={chart}
+          canShowNoDataStates={canShowNoDataStates}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
-          <CardHeader>
-            <CardTitle>Top channels breakdown</CardTitle>
-            <CardDescription>
-              Channels ranked by message volume in the selected period.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasTopChannelsData ? (
-              <div className="h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={topChannels}
-                    layout="vertical"
-                    margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fill: chart.tooltipText }} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={140}
-                      tick={{ fill: chart.tooltipText }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: chart.tooltipBg,
-                        borderColor: chart.tooltipBorder,
-                        borderRadius: 10,
-                        color: chart.tooltipText,
-                      }}
-                    />
-                    <Bar
-                      dataKey="messages"
-                      fill={chart.success}
-                      radius={[0, 6, 6, 0]}
-                      onClick={(_value, index) => {
-                        const selected = topChannels[index]?.channelId;
-                        if (!selected) return;
-                        setChannelFilter((current) => (current === selected ? null : selected));
-                      }}
-                    >
-                      {topChannels.map((channel) => (
-                        <Cell
-                          key={channel.channelId}
-                          fill={channel.channelId === channelFilter ? chart.primary : chart.success}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : canShowNoDataStates ? (
-              <EmptyState
-                icon={MessageSquare}
-                title="No channel activity"
-                description="Top channel breakdown appears when messages are recorded in the selected range."
-                className="min-h-[220px]"
-              />
-            ) : (
-              <div className="min-h-[220px]" aria-hidden="true" />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="dashboard-panel rounded-2xl xl:col-span-6">
-          <CardHeader>
-            <CardTitle>Command usage stats</CardTitle>
-            <CardDescription>Most used slash commands for the selected range.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {analytics?.commandUsage?.items?.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[320px] text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th scope="col" className="py-2 pr-2">
-                        Command
-                      </th>
-                      <th scope="col" className="py-2 text-right">
-                        Uses
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analytics.commandUsage.items.map((entry) => (
-                      <tr key={entry.command} className="border-b last:border-0">
-                        <td className="py-2 pr-2 font-mono text-xs">/{entry.command}</td>
-                        <td className="py-2 text-right font-semibold">
-                          {formatNumber(entry.uses)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : canShowNoDataStates ? (
-              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                {analytics?.commandUsage?.source === 'unavailable'
-                  ? 'Command usage source is currently unavailable. Showing empty state until telemetry is ready.'
-                  : 'No command usage found for this range.'}
-              </div>
-            ) : (
-              <div className="min-h-[120px]" aria-hidden="true" />
-            )}
-          </CardContent>
-        </Card>
+        <TopChannelsCard
+          topChannels={topChannels}
+          channelFilter={channelFilter}
+          setChannelFilter={setChannelFilter}
+          chart={chart}
+          canShowNoDataStates={canShowNoDataStates}
+        />
+        <CommandUsageCard analytics={analytics} canShowNoDataStates={canShowNoDataStates} />
       </div>
 
       {(analytics?.userEngagement ?? analytics?.xpEconomy) ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          {analytics?.userEngagement ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>User engagement metrics</CardTitle>
-                <CardDescription>
-                  Aggregate engagement from message and reaction activity.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    Tracked users
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Tracked users value"
-                  >
-                    {formatNumber(analytics.userEngagement.trackedUsers)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MessageSquare className="h-4 w-4" />
-                    Avg messages / user
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Average messages per user value"
-                  >
-                    {analytics.userEngagement.avgMessagesPerUser.toFixed(1)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Heart className="h-4 w-4" />
-                    Reactions given
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Total reactions given value"
-                  >
-                    {formatNumber(analytics.userEngagement.totalReactionsGiven)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Activity className="h-4 w-4" />
-                    Reactions received
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Total reactions received value"
-                  >
-                    {formatNumber(analytics.userEngagement.totalReactionsReceived)}
-                  </output>
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {analytics?.xpEconomy ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>XP economy</CardTitle>
-                <CardDescription>Reputation and level distribution across members.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    Users with XP
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Users with XP value"
-                  >
-                    {formatNumber(analytics.xpEconomy.totalUsers)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Star className="h-4 w-4" />
-                    Total XP distributed
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Total XP distributed value"
-                  >
-                    {formatNumber(analytics.xpEconomy.totalXp)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Activity className="h-4 w-4" />
-                    Average level
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Average level value"
-                  >
-                    {analytics.xpEconomy.avgLevel.toFixed(1)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/60 p-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Star className="h-4 w-4" />
-                    Highest level
-                  </div>
-                  <output
-                    className="mt-2 block text-2xl font-semibold"
-                    aria-label="Highest level value"
-                  >
-                    {formatNumber(analytics.xpEconomy.maxLevel)}
-                  </output>
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
+          {analytics ? <UserEngagementCard analytics={analytics} /> : null}
+          {analytics ? <XpEconomyCard analytics={analytics} /> : null}
         </div>
       ) : null}
 
-      <Card className="dashboard-panel rounded-2xl">
-        <CardHeader>
-          <CardTitle>Activity heatmap</CardTitle>
-          <CardDescription>Message density by day of week and hour of day.</CardDescription>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-separate border-spacing-1 text-xs">
-            <thead>
-              <tr>
-                <th scope="col" className="w-14 text-left text-muted-foreground">
-                  Day
-                </th>
-                {HOURS.map((hour) => (
-                  <th
-                    key={hour}
-                    scope="col"
-                    className="text-center text-[10px] text-muted-foreground"
-                  >
-                    {hour % 3 === 0 ? hour : ''}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {DAYS.map((day, dayIndex) => (
-                <tr key={day}>
-                  <th scope="row" className="pr-2 text-muted-foreground">
-                    {day}
-                  </th>
-                  {HOURS.map((hour) => {
-                    const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
-                    const alpha =
-                      value === 0 || heatmapLookup.max === 0
-                        ? 0
-                        : 0.2 + (value / heatmapLookup.max) * 0.8;
+      <ActivityHeatmapCard heatmapLookup={heatmapLookup} chart={chart} />
+    </div>
+  );
+}
 
-                    return (
-                      <td key={`${day}-${hour}`}>
-                        <div
-                          title={`${day} ${hour}:00 — ${value} messages`}
-                          className="h-4 rounded-sm border"
-                          style={{
-                            backgroundColor:
-                              value === 0
-                                ? 'transparent'
-                                : hexToRgba(chart.primary, Number(alpha.toFixed(3))),
-                          }}
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+// ---- Dashboard header (extracted to reduce main function complexity) ----
+
+function DashboardHeader({
+  lastUpdatedAt,
+  rangePreset,
+  setRangePreset,
+  compareMode,
+  setCompareMode,
+  customFromDraft,
+  setCustomFromDraft,
+  customToDraft,
+  setCustomToDraft,
+  customRangeError,
+  setCustomRangeError,
+  applyCustomRange,
+  loading,
+  analytics,
+  fetchAnalytics,
+  exportCsv,
+}: {
+  lastUpdatedAt: Date | null;
+  rangePreset: AnalyticsRangePreset;
+  setRangePreset: (preset: AnalyticsRangePreset) => void;
+  compareMode: boolean;
+  setCompareMode: (updater: (current: boolean) => boolean) => void;
+  customFromDraft: string;
+  setCustomFromDraft: (value: string) => void;
+  customToDraft: string;
+  setCustomToDraft: (value: string) => void;
+  customRangeError: string | null;
+  setCustomRangeError: (value: string | null) => void;
+  applyCustomRange: () => void;
+  loading: boolean;
+  analytics: DashboardAnalytics | null;
+  fetchAnalytics: () => Promise<void>;
+  exportCsv: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          <span className="text-gradient-primary">Analytics</span> Dashboard
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          Usage trends, AI performance, and community activity for your server.
+        </p>
+        {lastUpdatedAt ? (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="status-dot-live" style={{ width: 6, height: 6 }} />
+            Last updated {formatLastUpdatedTime(lastUpdatedAt)}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {RANGE_PRESETS.map((preset) => (
+          <Button
+            key={preset.value}
+            variant={rangePreset === preset.value ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setRangePreset(preset.value);
+              if (preset.value !== 'custom') {
+                setCustomRangeError(null);
+              }
+            }}
+          >
+            {preset.label}
+          </Button>
+        ))}
+
+        <Button
+          variant={compareMode ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setCompareMode((current) => !current)}
+        >
+          Compare vs previous
+        </Button>
+
+        {rangePreset === 'custom' ? (
+          <>
+            <input
+              aria-label="From date"
+              type="date"
+              value={customFromDraft}
+              onChange={(event) => {
+                setCustomFromDraft(event.target.value);
+                setCustomRangeError(null);
+              }}
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+            />
+            <input
+              aria-label="To date"
+              type="date"
+              value={customToDraft}
+              onChange={(event) => {
+                setCustomToDraft(event.target.value);
+                setCustomRangeError(null);
+              }}
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+            />
+            <Button size="sm" onClick={applyCustomRange}>
+              Apply
+            </Button>
+            {customRangeError ? (
+              <p role="alert" className="text-xs text-destructive">
+                {customRangeError}
+              </p>
+            ) : null}
+          </>
+        ) : null}
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => void fetchAnalytics()}
+          disabled={loading}
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={exportCsv}
+          disabled={!analytics}
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => analytics && exportAnalyticsPdf(analytics)}
+          disabled={!analytics}
+        >
+          <FileText className="h-4 w-4" />
+          Export PDF
+        </Button>
+      </div>
     </div>
   );
 }
