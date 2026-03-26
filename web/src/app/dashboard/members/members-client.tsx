@@ -85,7 +85,7 @@ export default function MembersClient() {
   // Fetch on guild/search/sort change
   useEffect(() => {
     if (!guildId) return;
-    void runFetch({
+    runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -110,7 +110,7 @@ export default function MembersClient() {
 
   const handleLoadMore = useCallback(() => {
     if (!guildId || !nextAfter || loading) return;
-    void runFetch({
+    runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -123,7 +123,7 @@ export default function MembersClient() {
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
     resetPagination();
-    void runFetch({
+    runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
