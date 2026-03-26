@@ -946,6 +946,73 @@ router.get('/:id/stats', requireGuildAdmin, validateGuild, async (req, res) => {
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
+/**
+ * Build a WHERE clause and values array from base conditions, optionally adding a channel filter.
+ * @param {string[]} baseParts - Base WHERE conditions
+ * @param {Array} baseValues - Base parameter values
+ * @param {string|null} channelFilter - Optional channel ID filter
+ * @param {string} channelColumn - Column name for channel filtering
+ * @returns {{ where: string, values: Array }}
+ */
+function buildFilteredQuery(baseParts, baseValues, channelFilter, channelColumn) {
+  const parts = [...baseParts];
+  const values = [...baseValues];
+  if (channelFilter) {
+    values.push(channelFilter);
+    parts.push(`${channelColumn} = $${values.length}`);
+  }
+  return { where: parts.join(' AND '), values };
+}
+
+/**
+ * Count members that joined within a time range from cached guild members.
+ * @param {Map} membersCache - guild.members.cache
+ * @param {number} fromMs - Start timestamp
+ * @param {number} toMs - End timestamp
+ * @returns {number}
+ */
+function countNewMembersInRange(membersCache, fromMs, toMs) {
+  return Array.from(membersCache.values()).reduce((count, member) => {
+    if (member.user?.bot) return count;
+    const joinedAt = member.joinedTimestamp;
+    if (!joinedAt) return count;
+    return joinedAt >= fromMs && joinedAt <= toMs ? count + 1 : count;
+  }, 0);
+}
+
+/**
+ * Parse and validate the analytics channel filter from the request query.
+ * @param {Object} query - Express request query
+ * @returns {string|null} Validated channel ID or null
+ */
+function parseChannelFilter(query) {
+  const channelId = typeof query.channelId === 'string' ? query.channelId.trim() : '';
+  return channelId.length > 0 && /^\d{1,20}$/.test(channelId) ? channelId : null;
+}
+
+/**
+ * Parse the analytics range from the request, returning a config or an error response.
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @returns {{ rangeConfig: Object } | null} null if an error response was sent
+ */
+function parseAnalyticsRangeOrRespond(req, res) {
+  try {
+    return { rangeConfig: parseAnalyticsRange(req.query) };
+  } catch (err) {
+    if (err instanceof AnalyticsRangeValidationError) {
+      res.status(400).json({ error: err.message });
+      return null;
+    }
+    warn('Unexpected analytics range parsing error', {
+      guild: req.params.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    res.status(400).json({ error: 'Invalid range parameter' });
+    return null;
+  }
+}
+
 router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) => {
   const { dbPool } = req.app.locals;
 
@@ -953,22 +1020,10 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
     return res.status(503).json({ error: 'Database not available' });
   }
 
-  let rangeConfig;
-  try {
-    rangeConfig = parseAnalyticsRange(req.query);
-  } catch (err) {
-    if (err instanceof AnalyticsRangeValidationError) {
-      return res.status(400).json({ error: err.message });
-    }
+  const parsed = parseAnalyticsRangeOrRespond(req, res);
+  if (!parsed) return;
 
-    warn('Unexpected analytics range parsing error', {
-      guild: req.params.id,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return res.status(400).json({ error: 'Invalid range parameter' });
-  }
-
-  const { from, to, range } = rangeConfig;
+  const { from, to, range } = parsed.rangeConfig;
   const interval = parseAnalyticsInterval(req.query, from, to);
   const compareMode = parseComparisonMode(req.query);
 
@@ -976,11 +1031,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
   const comparisonFrom = compareMode ? new Date(from.getTime() - rangeDurationMs) : null;
   const comparisonTo = compareMode ? new Date(to.getTime() - rangeDurationMs) : null;
 
-  const channelId = typeof req.query.channelId === 'string' ? req.query.channelId.trim() : '';
-  // Validate channelId as a Discord snowflake (digits only, max 20 chars) to prevent
-  // cache key abuse with arbitrary strings.
-  const activeChannelFilter =
-    channelId.length > 0 && /^\d{1,20}$/.test(channelId) ? channelId : null;
+  const activeChannelFilter = parseChannelFilter(req.query);
 
   const ALLOWED_INTERVALS = new Set(['hour', 'day']);
   if (!ALLOWED_INTERVALS.has(interval)) {
@@ -1005,87 +1056,61 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
     const analyticsData = await cacheGetOrSet(
       analyticsCacheKey,
       async () => {
-        const conversationWhereParts = ['guild_id = $1', 'created_at >= $2', 'created_at <= $3'];
-        const conversationValues = [req.params.id, from.toISOString(), to.toISOString()];
+        const convBase = ['guild_id = $1', 'created_at >= $2', 'created_at <= $3'];
+        const { where: conversationWhere, values: conversationValues } = buildFilteredQuery(
+          convBase,
+          [req.params.id, from.toISOString(), to.toISOString()],
+          activeChannelFilter,
+          'channel_id',
+        );
 
-        if (activeChannelFilter) {
-          conversationValues.push(activeChannelFilter);
-          conversationWhereParts.push(`channel_id = $${conversationValues.length}`);
-        }
-
-        const conversationWhere = conversationWhereParts.join(' AND ');
-
-        const comparisonConversationValues =
+        const comparisonConv =
           comparisonFrom && comparisonTo
-            ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
+            ? buildFilteredQuery(
+                convBase,
+                [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()],
+                activeChannelFilter,
+                'channel_id',
+              )
             : null;
-        const comparisonConversationWhereParts = comparisonConversationValues
-          ? ['guild_id = $1', 'created_at >= $2', 'created_at <= $3']
-          : [];
-
-        if (
-          activeChannelFilter &&
-          comparisonConversationValues &&
-          comparisonConversationWhereParts
-        ) {
-          comparisonConversationValues.push(activeChannelFilter);
-          comparisonConversationWhereParts.push(
-            `channel_id = $${comparisonConversationValues.length}`,
-          );
-        }
-
-        const comparisonConversationWhere = comparisonConversationWhereParts.join(' AND ');
+        const comparisonConversationWhere = comparisonConv?.where ?? '';
+        const comparisonConversationValues = comparisonConv?.values ?? null;
 
         const bucketExpr =
           interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
 
-        const logsWhereParts = [
+        const logsBase = [
           "message = 'AI usage'",
           "metadata->>'guildId' = $1",
           'timestamp >= $2',
           'timestamp <= $3',
         ];
-        const logsValues = [req.params.id, from.toISOString(), to.toISOString()];
+        const { where: logsWhere, values: logsValues } = buildFilteredQuery(
+          logsBase,
+          [req.params.id, from.toISOString(), to.toISOString()],
+          activeChannelFilter,
+          "metadata->>'channelId'",
+        );
 
-        if (activeChannelFilter) {
-          logsValues.push(activeChannelFilter);
-          logsWhereParts.push(`metadata->>'channelId' = $${logsValues.length}`);
-        }
-
-        const logsWhere = logsWhereParts.join(' AND ');
-
-        const comparisonLogsValues =
+        const comparisonLogs =
           comparisonFrom && comparisonTo
-            ? [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()]
+            ? buildFilteredQuery(
+                logsBase,
+                [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()],
+                activeChannelFilter,
+                "metadata->>'channelId'",
+              )
             : null;
-        const comparisonLogsWhereParts = comparisonLogsValues
-          ? [
-              "message = 'AI usage'",
-              "metadata->>'guildId' = $1",
-              'timestamp >= $2',
-              'timestamp <= $3',
-            ]
-          : [];
-
-        if (activeChannelFilter && comparisonLogsValues && comparisonLogsWhereParts) {
-          comparisonLogsValues.push(activeChannelFilter);
-          comparisonLogsWhereParts.push(`metadata->>'channelId' = $${comparisonLogsValues.length}`);
-        }
-
-        const comparisonLogsWhere = comparisonLogsWhereParts.join(' AND ');
+        const comparisonLogsWhere = comparisonLogs?.where ?? '';
+        const comparisonLogsValues = comparisonLogs?.values ?? null;
 
         // Build command usage query dynamically to avoid SQL injection
-        const commandUsageConditions = ['guild_id = $1', 'used_at >= $2', 'used_at <= $3'];
-        const commandUsageValues = [req.params.id, from.toISOString(), to.toISOString()];
-        let commandUsageParamIndex = 4;
-
-        if (activeChannelFilter) {
-          commandUsageConditions.push(`channel_id = $${commandUsageParamIndex}`);
-          commandUsageValues.push(activeChannelFilter);
-          commandUsageParamIndex++;
-        }
-
-        const commandUsageWhereClause = commandUsageConditions.join(' AND ');
+        const { where: commandUsageWhereClause, values: commandUsageValues } = buildFilteredQuery(
+          ['guild_id = $1', 'used_at >= $2', 'used_at <= $3'],
+          [req.params.id, from.toISOString(), to.toISOString()],
+          activeChannelFilter,
+          'channel_id',
+        );
 
         const [
           kpiResult,
@@ -1334,8 +1359,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           uses: Number(row.uses || 0),
         }));
 
-        const fromMs = from.getTime();
-        const toMs = to.getTime();
         /**
          * NOTE: guild.members.cache only contains members Discord has sent to the
          * bot (typically those with recent activity/presence). Both newMembers and
@@ -1343,25 +1366,19 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
          * This is a known Discord gateway limitation — a complete count would
          * require guild.members.fetch(), which is expensive and rate-limited.
          */
-        const newMembers = Array.from(req.guild.members.cache.values()).reduce((count, member) => {
-          if (member.user?.bot) return count;
-          const joinedAt = member.joinedTimestamp;
-          if (!joinedAt) return count;
-          return joinedAt >= fromMs && joinedAt <= toMs ? count + 1 : count;
-        }, 0);
+        const newMembers = countNewMembersInRange(
+          req.guild.members.cache,
+          from.getTime(),
+          to.getTime(),
+        );
 
-        const comparisonFromMs = comparisonFrom?.getTime() ?? null;
-        const comparisonToMs = comparisonTo?.getTime() ?? null;
         const comparisonNewMembers =
-          comparisonFromMs !== null && comparisonToMs !== null
-            ? Array.from(req.guild.members.cache.values()).reduce((count, member) => {
-                if (member.user?.bot) return count;
-                const joinedAt = member.joinedTimestamp;
-                if (!joinedAt) return count;
-                return joinedAt >= comparisonFromMs && joinedAt <= comparisonToMs
-                  ? count + 1
-                  : count;
-              }, 0)
+          comparisonFrom && comparisonTo
+            ? countNewMembersInRange(
+                req.guild.members.cache,
+                comparisonFrom.getTime(),
+                comparisonTo.getTime(),
+              )
             : 0;
 
         return {
