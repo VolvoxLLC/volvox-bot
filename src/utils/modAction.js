@@ -74,11 +74,7 @@ function runPreActionChecks(interaction, target, targetTag, action, opts) {
   }
 
   if (!skipHierarchy && target) {
-    const hierarchyError = checkHierarchy(
-      interaction.member,
-      target,
-      interaction.guild.members.me,
-    );
+    const hierarchyError = checkHierarchy(interaction.member, target, interaction.guild.members.me);
     if (hierarchyError) return hierarchyError;
   }
 
