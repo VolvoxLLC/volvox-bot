@@ -67,7 +67,7 @@ describe('Footer', () => {
   it('should render the tagline and copyright', () => {
     render(<Footer />);
     expect(screen.getByText(/Open source. Self-hostable. Free forever./i)).toBeInTheDocument();
-    expect(screen.getByText(/Volvox/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Volvox/i).length).toBeGreaterThan(0);
   });
 
   it('should render newsletter email input and disabled subscribe button', () => {

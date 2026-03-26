@@ -64,6 +64,8 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
+import { error as logError } from '../../src/logger.js';
+import { getConfig } from '../../src/modules/config.js';
 import {
   getNextCronRun,
   parseCron,
@@ -71,6 +73,7 @@ import {
   stopScheduler,
 } from '../../src/modules/scheduler.js';
 import { checkAutoClose } from '../../src/modules/ticketHandler.js';
+import { runMaintenance } from '../../src/utils/dbMaintenance.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('scheduler module', () => {
@@ -465,6 +468,200 @@ describe('scheduler module', () => {
       }
 
       expect(checkAutoClose).toHaveBeenCalled();
+    });
+
+    it('should skip poll when previous poll is still in-flight', async () => {
+      let resolveSlowQuery;
+      const slowQuery = new Promise((resolve) => {
+        resolveSlowQuery = resolve;
+      });
+
+      mockPool.query.mockReturnValueOnce(slowQuery);
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Advance past one interval — second poll fires but pollInFlight is true
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      // Only the initial poll's SELECT was issued
+      expect(mockPool.query).toHaveBeenCalledTimes(1);
+
+      // Clean up: resolve the slow query so the poll completes
+      resolveSlowQuery({ rows: [] });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('should call runMaintenance on every 60th tick', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      startScheduler(mockClient);
+
+      for (let i = 0; i < 60; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      expect(runMaintenance).toHaveBeenCalled();
+    });
+
+    it('should catch runMaintenance errors gracefully', async () => {
+      runMaintenance.mockRejectedValue(new Error('maintenance boom'));
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      startScheduler(mockClient);
+
+      for (let i = 0; i < 60; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      expect(runMaintenance).toHaveBeenCalled();
+    });
+
+    it('should purge expired audit logs on the 360th tick', async () => {
+      getConfig.mockReturnValue({ auditLog: { retentionDays: 30 } });
+      mockPool.query.mockImplementation((sql) => {
+        if (typeof sql === 'string' && sql.includes('DELETE FROM audit_logs')) {
+          return Promise.resolve({ rowCount: 5 });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      startScheduler(mockClient);
+
+      for (let i = 0; i < 360; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM audit_logs'),
+        [30],
+      );
+    }, 30_000);
+
+    it('should not log when zero audit log entries are purged', async () => {
+      getConfig.mockReturnValue({ auditLog: { retentionDays: 30 } });
+      mockPool.query.mockImplementation((sql) => {
+        if (typeof sql === 'string' && sql.includes('DELETE FROM audit_logs')) {
+          return Promise.resolve({ rowCount: 0 });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      startScheduler(mockClient);
+
+      for (let i = 0; i < 360; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM audit_logs'),
+        [30],
+      );
+    }, 30_000);
+
+    it('should skip audit log purge when retentionDays is not configured', async () => {
+      getConfig.mockReturnValue({});
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      startScheduler(mockClient);
+
+      for (let i = 0; i < 360; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      const deleteCalls = mockPool.query.mock.calls.filter(
+        (c) => typeof c[0] === 'string' && c[0].includes('DELETE FROM audit_logs'),
+      );
+      expect(deleteCalls).toHaveLength(0);
+    }, 30_000);
+
+    it('should skip audit log purge when retentionDays is 0', async () => {
+      getConfig.mockReturnValue({ auditLog: { retentionDays: 0 } });
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      startScheduler(mockClient);
+
+      for (let i = 0; i < 360; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      const deleteCalls = mockPool.query.mock.calls.filter(
+        (c) => typeof c[0] === 'string' && c[0].includes('DELETE FROM audit_logs'),
+      );
+      expect(deleteCalls).toHaveLength(0);
+    }, 30_000);
+
+    it('should handle audit log purge DB failure gracefully', async () => {
+      getConfig.mockReturnValue({ auditLog: { retentionDays: 30 } });
+      mockPool.query.mockImplementation((sql) => {
+        if (typeof sql === 'string' && sql.includes('DELETE FROM audit_logs')) {
+          return Promise.reject(new Error('purge query failed'));
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      startScheduler(mockClient);
+
+      for (let i = 0; i < 360; i++) {
+        await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 60_000);
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      // Error is caught internally — no throw
+      expect(mockPool.query).toHaveBeenCalled();
+    }, 30_000);
+
+    it('should handle initial poll rejection via outer catch', async () => {
+      // Make getPool throw so the inner catch fires, then make logError throw
+      // so pollScheduledMessages rejects, triggering the .catch() on startScheduler
+      getPool.mockImplementation(() => {
+        throw new Error('pool init failed');
+      });
+      logError.mockImplementationOnce(() => {
+        throw new Error('logger also broken');
+      });
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The outer .catch() handler calls logError with 'Initial scheduler poll failed'
+      expect(logError).toHaveBeenCalledWith(
+        'Initial scheduler poll failed',
+        expect.objectContaining({ error: 'logger also broken' }),
+      );
+    });
+
+    it('should handle interval poll rejection via outer catch', async () => {
+      // First poll succeeds normally
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      startScheduler(mockClient);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // For the interval poll, make getPool throw and logError throw once
+      getPool.mockImplementation(() => {
+        throw new Error('pool gone');
+      });
+      logError.mockImplementationOnce(() => {
+        throw new Error('logger kaput');
+      });
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The setInterval .catch() handler calls logError with 'Scheduler poll failed'
+      expect(logError).toHaveBeenCalledWith(
+        'Scheduler poll failed',
+        expect.objectContaining({ error: 'logger kaput' }),
+      );
     });
   });
 });

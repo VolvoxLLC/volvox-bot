@@ -31,6 +31,7 @@ vi.mock('../../src/db.js', () => ({
 }));
 
 import { getPool } from '../../src/db.js';
+import { debug, warn } from '../../src/logger.js';
 import {
   buildStarboardEmbed,
   deleteStarboardPost,
@@ -371,6 +372,27 @@ describe('starboard module', () => {
       const result = await getStarCount(message, '*', false);
       expect(result.count).toBe(0);
       expect(result.emoji).toBe('⭐');
+    });
+
+    it('should return raw count when reaction.users.fetch throws', async () => {
+      const reactions = new Map();
+      reactions.set('⭐', {
+        emoji: { name: '⭐' },
+        count: 4,
+        users: { fetch: vi.fn().mockRejectedValue(new Error('API error')) },
+      });
+      const message = makeMockMessage({
+        reactions: { cache: reactions },
+      });
+
+      const result = await getStarCount(message, '⭐', false);
+      // Self-star subtraction is skipped; raw count is returned
+      expect(result.count).toBe(4);
+      expect(result.emoji).toBe('⭐');
+      expect(debug).toHaveBeenCalledWith(
+        'Could not fetch reaction users for self-star check',
+        expect.objectContaining({ error: 'API error' }),
+      );
     });
   });
 
@@ -719,6 +741,87 @@ describe('starboard module', () => {
       );
       // SELECT + UPDATE
       expect(pool.query).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle already-deleted starboard message when below threshold', async () => {
+      const existingRow = {
+        source_message_id: 'msg-1',
+        starboard_message_id: 'sb-msg-1',
+        star_count: 3,
+      };
+      const pool = mockPool({ rows: [existingRow] });
+
+      const reactions = new Map();
+      reactions.set('⭐', {
+        emoji: { name: '⭐' },
+        count: 2,
+        users: { fetch: vi.fn().mockResolvedValue(new Map()) },
+      });
+      const message = makeMockMessage({ reactions: { cache: reactions } });
+      const reaction = { emoji: { name: '⭐' }, message, partial: false };
+
+      const mockFetchMessage = vi.fn().mockRejectedValue(new Error('Unknown Message'));
+      const client = {
+        channels: {
+          fetch: vi.fn().mockResolvedValue({ messages: { fetch: mockFetchMessage } }),
+        },
+      };
+
+      await handleReactionRemove(
+        reaction,
+        { id: 'user-1', bot: false },
+        client,
+        makeStarboardConfig(),
+      );
+
+      expect(debug).toHaveBeenCalledWith(
+        'Starboard message already deleted',
+        expect.objectContaining({ error: 'Unknown Message' }),
+      );
+      // SELECT + DELETE (DB record still cleaned up)
+      expect(pool.query).toHaveBeenCalledTimes(2);
+      expect(pool.query).toHaveBeenLastCalledWith(
+        expect.stringContaining('DELETE FROM starboard_posts'),
+        ['msg-1'],
+      );
+    });
+
+    it('should handle edit failure when updating count above threshold', async () => {
+      const existingRow = {
+        source_message_id: 'msg-1',
+        starboard_message_id: 'sb-msg-1',
+        star_count: 5,
+      };
+      mockPool({ rows: [existingRow] });
+
+      const reactions = new Map();
+      reactions.set('⭐', {
+        emoji: { name: '⭐' },
+        count: 4,
+        users: { fetch: vi.fn().mockResolvedValue(new Map()) },
+      });
+      const message = makeMockMessage({ reactions: { cache: reactions } });
+      const reaction = { emoji: { name: '⭐' }, message, partial: false };
+
+      const mockEdit = vi.fn().mockRejectedValue(new Error('Missing Access'));
+      const mockFetchMessage = vi.fn().mockResolvedValue({ edit: mockEdit });
+      const client = {
+        channels: {
+          fetch: vi.fn().mockResolvedValue({ messages: { fetch: mockFetchMessage } }),
+        },
+      };
+
+      await handleReactionRemove(
+        reaction,
+        { id: 'user-1', bot: false },
+        client,
+        makeStarboardConfig(),
+      );
+
+      expect(warn).toHaveBeenCalledWith(
+        'Failed to update starboard message on reaction remove',
+        expect.objectContaining({ error: 'Missing Access' }),
+      );
     });
   });
 });
