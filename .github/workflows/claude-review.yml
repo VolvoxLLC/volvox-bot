@@ -1,12 +1,12 @@
 name: Claude Code Review
 
-#on:
-#  issue_comment:
-#    types: [created, edited]
-#  pull_request_review_comment:
-#    types: [created, edited]
-#  pull_request_review:
-#    types: [submitted, edited]
+on:
+  issue_comment:
+    types: [created, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number || github.ref }}-${{ github.actor }}
@@ -60,6 +60,8 @@ jobs:
           plugins: 'code-review@claude-code-plugins'
           prompt: |
             Run /code-review --comment on PR #${{ env.PR_NUMBER }} in ${{ github.repository }}.
+
+            You are an expert core reviewer that has been tasked with reviewing a GitHub Pull Request.
 
             In addition to CLAUDE.md and AGENTS.md (which the plugin reads automatically),
             enforce these project-specific rules that the plugin cannot infer:
