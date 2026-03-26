@@ -96,9 +96,10 @@ export async function executeLevelUpPipeline({
     actionCount: actions.length,
   });
 
-  // Check rate limit ONCE before the pipeline (not per-action)
+  // Check rate limit and track remaining quota (2 changes per pipeline)
   // Note: We don't return early here - rate limit only skips role actions, not the whole pipeline
   const rateLimitOk = checkRoleRateLimit(guild.id, member.user?.id);
+  let roleChangesRemaining = rateLimitOk ? 2 : 0;
 
   // Compute XP-managed roles once for stack/replace logic
   const xpManagedRoles = collectXpManagedRoles(config);
@@ -126,18 +127,29 @@ export async function executeLevelUpPipeline({
     // Cache per level to avoid duplicate DB queries
     let templateContext = templateContextCache.get(level);
     if (!templateContext) {
-      templateContext = await buildTemplateContext({
-        member,
-        message,
-        guild,
-        level,
-        previousLevel: levelPreviousLevel,
-        xp,
-        levelThresholds: config.levelThresholds ?? [],
-        roleName: null,
-        roleId: null,
-      });
-      templateContextCache.set(level, templateContext);
+      try {
+        templateContext = await buildTemplateContext({
+          member,
+          message,
+          guild,
+          level,
+          previousLevel: levelPreviousLevel,
+          xp,
+          levelThresholds: config.levelThresholds ?? [],
+          roleName: null,
+          roleId: null,
+        });
+        templateContextCache.set(level, templateContext);
+      } catch (err) {
+        warn('Template context build failed — continuing with empty context', {
+          level,
+          guildId: guild.id,
+          userId: member.user?.id,
+          error: err.message,
+        });
+        templateContext = {};
+        templateContextCache.set(level, templateContext);
+      }
     }
 
     const pipelineContext = { ...basePipelineContext, templateContext, currentLevel: level };
@@ -152,15 +164,18 @@ export async function executeLevelUpPipeline({
       continue;
     }
 
-    // Skip role-related actions if rate limit is exceeded
-    if (!rateLimitOk && (action.type === 'grantRole' || action.type === 'removeRole')) {
-      warn('Role action skipped due to rate limit', {
-        actionType: action.type,
-        level,
-        guildId: guild.id,
-        userId: member.user?.id,
-      });
-      continue;
+    // Skip role-related actions if rate limit quota is exhausted
+    if ((action.type === 'grantRole' || action.type === 'removeRole')) {
+      if (roleChangesRemaining <= 0) {
+        warn('Role action skipped due to rate limit quota exhausted', {
+          actionType: action.type,
+          level,
+          guildId: guild.id,
+          userId: member.user?.id,
+        });
+        continue;
+      }
+      roleChangesRemaining--;
     }
 
     try {
