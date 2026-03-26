@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -11,6 +10,7 @@ import {
   Server,
   Wifi,
 } from 'lucide-react';
+import type React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatUptime } from '@/lib/format-time';
@@ -66,9 +66,7 @@ function MetricCard({ title, icon, iconBg, children }: MetricCardProps) {
     <Card className="kpi-card rounded-2xl">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
-          <span
-            className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}
-          >
+          <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
             {icon}
           </span>
           {title}
@@ -130,13 +128,21 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-fade-in">
-      <MetricCard title="Uptime" icon={<Clock className="h-3.5 w-3.5" />} iconBg="bg-primary/12 text-primary">
+      <MetricCard
+        title="Uptime"
+        icon={<Clock className="h-3.5 w-3.5" />}
+        iconBg="bg-primary/12 text-primary"
+      >
         <span className="text-2xl font-bold tracking-tight">
           {health ? formatUptime(health.uptime) : '—'}
         </span>
       </MetricCard>
 
-      <MetricCard title="Memory" icon={<MemoryStick className="h-3.5 w-3.5" />} iconBg="bg-secondary/12 text-secondary">
+      <MetricCard
+        title="Memory"
+        icon={<MemoryStick className="h-3.5 w-3.5" />}
+        iconBg="bg-secondary/12 text-secondary"
+      >
         <span className="text-2xl font-bold tracking-tight">
           {health ? formatBytes(health.memory.heapUsed) : '—'}
         </span>
@@ -155,30 +161,52 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         icon={<Wifi className="h-3.5 w-3.5" />}
         iconBg={health ? pingBg(health.discord.ping) : 'bg-muted text-muted-foreground'}
       >
-        <span className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}>
+        <span
+          className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}
+        >
           {health ? `${health.discord.ping}ms` : '—'}
         </span>
       </MetricCard>
 
-      <MetricCard title="Guilds" icon={<Globe className="h-3.5 w-3.5" />} iconBg="bg-cyan-500/12 text-cyan-600 dark:text-cyan-400">
+      <MetricCard
+        title="Guilds"
+        icon={<Globe className="h-3.5 w-3.5" />}
+        iconBg="bg-cyan-500/12 text-cyan-600 dark:text-cyan-400"
+      >
         <span className="text-2xl font-bold tracking-tight">
           {health ? health.discord.guilds.toLocaleString() : '—'}
         </span>
       </MetricCard>
 
-      <MetricCard title="Errors (1h)" icon={<AlertTriangle className="h-3.5 w-3.5" />} iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400">
-        <span className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastHour)}`}>
+      <MetricCard
+        title="Errors (1h)"
+        icon={<AlertTriangle className="h-3.5 w-3.5" />}
+        iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400"
+      >
+        <span
+          className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastHour)}`}
+        >
           {health ? formatErrorValue(health.errors.lastHour) : '—'}
         </span>
       </MetricCard>
 
-      <MetricCard title="Errors (24h)" icon={<Activity className="h-3.5 w-3.5" />} iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400">
-        <span className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastDay)}`}>
+      <MetricCard
+        title="Errors (24h)"
+        icon={<Activity className="h-3.5 w-3.5" />}
+        iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400"
+      >
+        <span
+          className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastDay)}`}
+        >
           {health ? formatErrorValue(health.errors.lastDay) : '—'}
         </span>
       </MetricCard>
 
-      <MetricCard title="CPU (avg since start)" icon={<Cpu className="h-3.5 w-3.5" />} iconBg="bg-primary/12 text-primary">
+      <MetricCard
+        title="CPU (avg since start)"
+        icon={<Cpu className="h-3.5 w-3.5" />}
+        iconBg="bg-primary/12 text-primary"
+      >
         <span className="text-2xl font-bold tracking-tight">{cpu ? `${cpu.cpuPct}%` : '—'}</span>
         {cpu ? (
           <>
@@ -190,7 +218,11 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         ) : null}
       </MetricCard>
 
-      <MetricCard title="Node" icon={<Server className="h-3.5 w-3.5" />} iconBg="bg-muted text-muted-foreground">
+      <MetricCard
+        title="Node"
+        icon={<Server className="h-3.5 w-3.5" />}
+        iconBg="bg-muted text-muted-foreground"
+      >
         <span className="text-2xl font-bold tracking-tight">
           {health ? health.system.nodeVersion : '—'}
         </span>
