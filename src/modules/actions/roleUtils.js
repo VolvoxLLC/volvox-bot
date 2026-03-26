@@ -143,14 +143,6 @@ function collectRolesToRemove(member, newLevel, xpConfig) {
     }
   }
 
-  // Also collect roles from defaultActions (granted at all levels)
-  for (const action of xpConfig.defaultActions ?? []) {
-    if (action.type !== 'grantRole' || !action.roleId) continue;
-    if (!member.roles.cache.has(action.roleId)) continue;
-
-    rolesToRemove.push({ roleId: action.roleId, entry: { level: 0, actions: [action] } });
-  }
-
   return rolesToRemove;
 }
 
@@ -214,13 +206,16 @@ export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
     }
   }
 
-  if (roleIds.length === 0) return;
+  // Deduplicate role IDs
+  const uniqueRoleIds = [...new Set(roleIds)];
+
+  if (uniqueRoleIds.length === 0) return;
 
   try {
     // Use batch removal for efficiency
-    await member.roles.remove(roleIds);
+    await member.roles.remove(uniqueRoleIds);
     // Record role changes for each removed role
-    for (const roleId of roleIds) {
+    for (const roleId of uniqueRoleIds) {
       recordRoleChange(member.guild.id, member.user.id);
     }
   } catch (err) {
@@ -228,12 +223,42 @@ export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
     warn('Batch role removal failed — falling back to individual removal', {
       guildId: member.guild.id,
       userId: member.user.id,
-      roleIds,
+      roleIds: uniqueRoleIds,
       error: err.message,
     });
 
     for (const { roleId, entry } of rolesToRemove) {
       await removeSingleRole(member, roleId, entry);
+    }
+  }
+
+  // Replace mode: restore the highest role that should be granted at newLevel
+  if (!xpConfig.roleRewards?.stackRoles) {
+    let highestGrantRole = null;
+    let highestLevel = -1;
+
+    for (const entry of xpConfig.levelActions ?? []) {
+      if (entry.level > newLevel) continue;
+      for (const action of entry.actions ?? []) {
+        if (action.type === 'grantRole' && action.roleId && entry.level > highestLevel) {
+          highestLevel = entry.level;
+          highestGrantRole = action.roleId;
+        }
+      }
+    }
+
+    if (highestGrantRole && canManageRole(member.guild, highestGrantRole)) {
+      try {
+        await member.roles.add(highestGrantRole);
+        recordRoleChange(member.guild.id, member.user.id);
+      } catch (err) {
+        warn('Failed to restore highest role in replace mode', {
+          guildId: member.guild.id,
+          userId: member.user.id,
+          roleId: highestGrantRole,
+          error: err.message,
+        });
+      }
     }
   }
 }
