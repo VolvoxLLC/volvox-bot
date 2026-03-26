@@ -255,6 +255,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
       {dayLabels && (
         <div className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5">
           {dayLabels.map((label, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: day labels can repeat
             <span key={`day-${label}-${i}`}>{label}</span>
           ))}
         </div>

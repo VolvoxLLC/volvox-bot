@@ -302,9 +302,7 @@ describe('tempRoleHandler', () => {
       // Call stop without start — should not throw or log
       stopTempRoleScheduler();
 
-      const stoppedCalls = info.mock.calls.filter(
-        ([msg]) => msg === 'Temp role scheduler stopped',
-      );
+      const stoppedCalls = info.mock.calls.filter(([msg]) => msg === 'Temp role scheduler stopped');
       expect(stoppedCalls).toHaveLength(0);
     });
   });
@@ -353,7 +351,9 @@ describe('tempRoleHandler', () => {
     });
 
     it('logs info when member is no longer in guild', async () => {
-      const mockGuild = { members: { fetch: vi.fn().mockRejectedValue(new Error('Unknown Member')) } };
+      const mockGuild = {
+        members: { fetch: vi.fn().mockRejectedValue(new Error('Unknown Member')) },
+      };
       const mockClient = { guilds: { fetch: vi.fn().mockResolvedValue(mockGuild) } };
 
       await startAndFlushInitialPoll(mockClient);
@@ -411,7 +411,9 @@ describe('tempRoleHandler', () => {
     });
 
     it('logs error when roles.remove throws', async () => {
-      const mockMember = { roles: { remove: vi.fn().mockRejectedValue(new Error('Missing Permissions')) } };
+      const mockMember = {
+        roles: { remove: vi.fn().mockRejectedValue(new Error('Missing Permissions')) },
+      };
       const mockGuild = { members: { fetch: vi.fn().mockResolvedValue(mockMember) } };
       const mockClient = { guilds: { fetch: vi.fn().mockResolvedValue(mockGuild) } };
 
