@@ -64,18 +64,16 @@ export async function handleWebhook(action, context) {
     });
   }
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
 
+  try {
     const response = await fetch(action.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: rendered,
       signal: controller.signal,
     });
-
-    clearTimeout(timeout);
 
     info('webhook fired', {
       guildId,
@@ -94,5 +92,7 @@ export async function handleWebhook(action, context) {
         error: err.message,
       });
     }
+  } finally {
+    clearTimeout(timeout);
   }
 }
