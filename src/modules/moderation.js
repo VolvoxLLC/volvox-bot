@@ -332,7 +332,16 @@ async function countActiveWarnings(pool, guildId, targetId, withinDays) {
 /**
  * Execute a single escalation action (timeout or ban) and create the mod case.
  */
-async function executeEscalationAction(client, config, guildId, targetId, moderatorId, moderatorTag, threshold, reason) {
+async function executeEscalationAction(
+  client,
+  config,
+  guildId,
+  targetId,
+  moderatorId,
+  moderatorTag,
+  threshold,
+  reason,
+) {
   const guild = await client.guilds.fetch(guildId);
   const member = await guild.members.fetch(targetId).catch(() => null);
 
@@ -382,7 +391,16 @@ export async function checkEscalation(
     info('Escalation triggered', { guildId, targetId, warnCount, threshold });
 
     try {
-      return await executeEscalationAction(client, config, guildId, targetId, moderatorId, moderatorTag, threshold, reason);
+      return await executeEscalationAction(
+        client,
+        config,
+        guildId,
+        targetId,
+        moderatorId,
+        moderatorTag,
+        threshold,
+        reason,
+      );
     } catch (err) {
       logError('Escalation action failed', { error: err.message, guildId, targetId, threshold });
       return null;

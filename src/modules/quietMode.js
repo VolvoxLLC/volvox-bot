@@ -303,7 +303,15 @@ async function handleUnquietSubcommand(message, member, config, guildId, channel
 }
 
 /** Handle the activate quiet subcommand. */
-async function handleActivateSubcommand(message, member, config, guildId, channelId, authorId, cleanContent) {
+async function handleActivateSubcommand(
+  message,
+  member,
+  config,
+  guildId,
+  channelId,
+  authorId,
+  cleanContent,
+) {
   if (!hasQuietPermission(member, config)) {
     await safeReply(message, { content: "You don't have permission to enable quiet mode." });
     return;
@@ -346,7 +354,15 @@ export async function handleQuietCommand(message, config) {
   }
 
   if (QUIET_KEYWORDS.has(firstWord)) {
-    await handleActivateSubcommand(message, member, config, guild.id, channel.id, author.id, cleanContent);
+    await handleActivateSubcommand(
+      message,
+      member,
+      config,
+      guild.id,
+      channel.id,
+      author.id,
+      cleanContent,
+    );
     return true;
   }
 
