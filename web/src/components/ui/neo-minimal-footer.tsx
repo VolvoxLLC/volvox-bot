@@ -1,5 +1,3 @@
-'use client';
-
 import { ArrowRight } from 'lucide-react';
 import { siDiscord, siX } from 'simple-icons';
 import { GithubIcon } from '@/components/ui/github-icon';
@@ -64,11 +62,11 @@ const defaultSections: FooterSection[] = [
  */
 export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFooterProps) {
   return (
-    <div className="max-w-7xl mx-auto bg-card/10 border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden">
+    <footer className="max-w-7xl mx-auto bg-card/10 border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden">
       {/* Background grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--foreground)/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--foreground)/0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(circle_at_center,black,transparent_80%)]" />
 
-      <div className="max-w-6xl mx-auto px-6 relative z-10">
+      <div className="max-w-6xl mx-auto px-6 relative z-10 w-full">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 mb-16">
           {/* Brand column */}
           <div className="col-span-1 md:col-span-5 flex flex-col gap-6">
@@ -182,6 +180,6 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
           </div>
         </div>
       </div>
-    </div>
+    </footer>
   );
 }
