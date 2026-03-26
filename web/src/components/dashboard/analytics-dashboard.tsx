@@ -53,7 +53,6 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Custom', value: 'custom' },
 ];
 
-
 export function AnalyticsDashboard() {
   const [now] = useState(() => new Date());
   const chart = useChartTheme();
