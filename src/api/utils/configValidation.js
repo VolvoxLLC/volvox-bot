@@ -289,6 +289,57 @@ export const CONFIG_SCHEMA = {
       cooldownSeconds: { type: 'number', min: 0, max: 3600 },
     },
   },
+  xp: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      levelThresholds: {
+        type: 'array',
+        items: { type: 'number', min: 0 },
+      },
+      levelActions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['level', 'actions'],
+          properties: {
+            level: { type: 'number', min: 1, max: 1000 },
+            actions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['type'],
+                properties: {
+                  type: { type: 'string' },
+                  roleId: { type: 'string', nullable: true },
+                },
+                openProperties: true,
+              },
+            },
+          },
+        },
+      },
+      defaultActions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['type'],
+          properties: {
+            type: { type: 'string' },
+            roleId: { type: 'string', nullable: true },
+          },
+          openProperties: true,
+        },
+      },
+      roleRewards: {
+        type: 'object',
+        properties: {
+          stackRoles: { type: 'boolean' },
+          removeOnLevelDown: { type: 'boolean' },
+        },
+      },
+    },
+  },
 };
 
 /**
