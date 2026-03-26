@@ -1,31 +1,42 @@
 # syntax=docker/dockerfile:1
 
-# --- Dependencies ---
-FROM node:22-alpine AS deps
+# --- Base ---
+FROM node:22-alpine AS base
+RUN apk add --no-cache libc6-compat
 RUN corepack enable
 WORKDIR /app
 
-# Build context is web/ (Railway root directory).
-COPY package.json ./
-# Generate lockfile on the fly — eliminates drift between root and web lockfiles
-RUN pnpm install --lockfile-only && pnpm install --frozen-lockfile
+# --- Pruner: extract only what web needs from the monorepo ---
+FROM base AS pruner
+RUN pnpm add -g turbo
+COPY . .
+RUN turbo prune volvox-bot-web --docker
+
+# --- Dependencies: install from pruned lockfile ---
+FROM base AS deps
+# Copy pruned package.json files and lockfile
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # --- Builder ---
-FROM node:22-alpine AS builder
-RUN corepack enable
-WORKDIR /app
+FROM base AS builder
+# Copy installed deps
+COPY --from=deps /app/ .
+# Copy pruned source code
+COPY --from=pruner /app/out/full/ .
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+WORKDIR /app/web
 
-# Build args for env vars needed at build time
 ARG NEXT_PUBLIC_DISCORD_CLIENT_ID
 ENV NEXT_PUBLIC_DISCORD_CLIENT_ID=$NEXT_PUBLIC_DISCORD_CLIENT_ID
-
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
 RUN pnpm build
-# Flatten standalone output if nested (monorepo turbopack.root creates subdirs)
+
+# Flatten standalone output if nested
 RUN if [ -f .next/standalone/server.js ]; then \
       echo "server.js at root"; \
     elif [ -f .next/standalone/web/server.js ]; then \
@@ -48,14 +59,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/web/public ./public
 
 USER nextjs
 
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 

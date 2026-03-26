@@ -216,7 +216,7 @@ jobs:
       - name: Build web Docker image
         uses: docker/build-push-action@v7.0.0
         with:
-          context: web
+          context: .
           file: web/Dockerfile
           push: false
           tags: volvox-web-ci:${{ github.sha }}
