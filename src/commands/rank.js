@@ -43,9 +43,8 @@ export async function execute(interaction) {
   }
 
   const xpCfg = { ...XP_DEFAULTS, ...cfg.xp };
-  if (!xpCfg.enabled) {
-    return safeEditReply(interaction, { content: 'XP leveling system is not enabled.' });
-  }
+  // Allow /rank to work when reputation is enabled but XP is disabled (backward compat)
+  // The command will show the user's current XP/level data regardless of xp.enabled
 
   try {
     const pool = getPool();

@@ -990,7 +990,6 @@ router.post(
 
       // If level dropped and removeOnLevelDown is enabled, revoke roles
       if (amount < 0 && newLevel < oldLevel) {
-        const xpConfig = getXpConfig(guildId);
         if (xpConfig.enabled && xpConfig.roleRewards.removeOnLevelDown) {
           try {
             const member = await req.guild.members.fetch(userId);

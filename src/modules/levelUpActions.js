@@ -97,13 +97,8 @@ export async function executeLevelUpPipeline({
   });
 
   // Check rate limit ONCE before the pipeline (not per-action)
-  if (!checkRoleRateLimit(guild.id, member.user?.id)) {
-    warn('Level-up pipeline rate limit exceeded — skipping all actions', {
-      guildId: guild.id,
-      userId: member.user?.id,
-    });
-    return;
-  }
+  // Note: We don't return early here - rate limit only skips role actions, not the whole pipeline
+  const rateLimitOk = checkRoleRateLimit(guild.id, member.user?.id);
 
   // Compute XP-managed roles once for stack/replace logic
   const xpManagedRoles = collectXpManagedRoles(config);
@@ -153,6 +148,17 @@ export async function executeLevelUpPipeline({
         actionType: action.type,
         level,
         guildId: guild.id,
+      });
+      continue;
+    }
+
+    // Skip role-related actions if rate limit is exceeded
+    if (!rateLimitOk && (action.type === 'grantRole' || action.type === 'removeRole')) {
+      warn('Role action skipped due to rate limit', {
+        actionType: action.type,
+        level,
+        guildId: guild.id,
+        userId: member.user?.id,
       });
       continue;
     }

@@ -213,4 +213,53 @@ describe('executeLevelUpPipeline', () => {
       }),
     ).resolves.not.toThrow();
   });
+
+  it('should skip role actions when rate limit exceeded but continue other actions', async () => {
+    // Mock rate limit to return false (rate limited)
+    const { checkRoleRateLimit } = await import('../../src/modules/actions/roleUtils.js');
+    checkRoleRateLimit.mockReturnValueOnce(false);
+
+    const { handleGrantRole } = await import('../../src/modules/actions/grantRole.js');
+    const nonRoleCalls = [];
+
+    registerAction('nonRoleAction', async () => {
+      nonRoleCalls.push('nonRoleAction executed');
+    });
+
+    await executeLevelUpPipeline({
+      member: { user: { id: '123' }, roles: { cache: new Map() } },
+      message: { channel: { name: 'general' } },
+      guild: { id: 'g1', name: 'S', iconURL: () => '', memberCount: 1 },
+      previousLevel: 0,
+      newLevel: 1,
+      xp: 100,
+      config: {
+        levelActions: [
+          {
+            level: 1,
+            actions: [
+              { type: 'grantRole', roleId: 'role-1' },
+              { type: 'nonRoleAction' },
+              { type: 'grantRole', roleId: 'role-2' },
+            ],
+          },
+        ],
+        defaultActions: [],
+        roleRewards: { stackRoles: true },
+        levelThresholds: [100],
+      },
+    });
+
+    // Role actions should be skipped due to rate limit
+    expect(handleGrantRole).not.toHaveBeenCalled();
+
+    // Non-role actions should still execute
+    expect(nonRoleCalls).toEqual(['nonRoleAction executed']);
+
+    // Should warn about skipped role actions
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Role action skipped due to rate limit'),
+      expect.any(Object),
+    );
+  });
 });
