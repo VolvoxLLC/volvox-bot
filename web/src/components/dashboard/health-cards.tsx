@@ -10,6 +10,7 @@ import {
   Server,
   Wifi,
 } from 'lucide-react';
+import type React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatUptime } from '@/lib/format-time';
@@ -53,6 +54,64 @@ function SkeletonCard() {
   );
 }
 
+interface MetricCardProps {
+  title: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  children: React.ReactNode;
+}
+
+function MetricCard({ title, icon, iconBg, children }: MetricCardProps) {
+  return (
+    <Card className="kpi-card rounded-2xl">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
+            {icon}
+          </span>
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+function ProgressBar({ percent }: { percent: number }) {
+  return (
+    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        className="h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
+        style={{ width: `${Math.min(percent, 100).toFixed(1)}%` }}
+      />
+    </div>
+  );
+}
+
+function computeHeapMetrics(health: BotHealth) {
+  const heapUsedMb = health.memory.heapUsed / 1_048_576;
+  const heapTotalMb = health.memory.heapTotal / 1_048_576;
+  const heapPct = heapTotalMb > 0 ? (heapUsedMb / heapTotalMb) * 100 : 0;
+  return { heapUsedMb, heapTotalMb, heapPct };
+}
+
+function computeCpuMetrics(health: BotHealth) {
+  const cpuUserSec = health.system.cpuUsage.user / 1_000_000;
+  const cpuSystemSec = health.system.cpuUsage.system / 1_000_000;
+  const cpuTotalSec = cpuUserSec + cpuSystemSec;
+  const rawPct = health.uptime > 0 ? (cpuTotalSec / health.uptime) * 100 : 0;
+  const cpuPct = Math.min(Math.max(rawPct, 0), 100).toFixed(1);
+  return { cpuUserSec, cpuSystemSec, cpuPct };
+}
+
+function formatErrorValue(value: number | null | undefined): string {
+  return value?.toLocaleString() ?? '—';
+}
+
+function errorValueColor(value: number | null | undefined): string {
+  return value != null ? errorColor(value) : '';
+}
+
 export function HealthCards({ health, loading }: HealthCardsProps) {
   if (loading && !health) {
     return (
@@ -64,189 +123,110 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
     );
   }
 
-  const heapUsedMb = health ? health.memory.heapUsed / 1_048_576 : 0;
-  const heapTotalMb = health ? health.memory.heapTotal / 1_048_576 : 0;
-  const heapPct = heapTotalMb > 0 ? (heapUsedMb / heapTotalMb) * 100 : 0;
-
-  // cpuUsage is cumulative microseconds from process.cpuUsage(), not a percentage.
-  // Display as total CPU seconds consumed since process start.
-  const cpuUserSec = health ? health.system.cpuUsage.user / 1_000_000 : 0;
-  const cpuSystemSec = health ? health.system.cpuUsage.system / 1_000_000 : 0;
-  const cpuTotalSec = cpuUserSec + cpuSystemSec;
-  // Show utilization estimate: total CPU time / wall-clock uptime
-  // Clamp to 0-100 to handle multi-core environments where raw value can exceed 100%
-  const rawPct = health && health.uptime > 0 ? (cpuTotalSec / health.uptime) * 100 : 0;
-  const cpuPct = Math.min(Math.max(rawPct, 0), 100).toFixed(1);
+  const heap = health ? computeHeapMetrics(health) : null;
+  const cpu = health ? computeCpuMetrics(health) : null;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-fade-in">
-      {/* Uptime */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/12 text-primary">
-              <Clock className="h-3.5 w-3.5" />
-            </span>
-            Uptime
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span className="text-2xl font-bold tracking-tight">
-            {health ? formatUptime(health.uptime) : '—'}
-          </span>
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="Uptime"
+        icon={<Clock className="h-3.5 w-3.5" />}
+        iconBg="bg-primary/12 text-primary"
+      >
+        <span className="text-2xl font-bold tracking-tight">
+          {health ? formatUptime(health.uptime) : '—'}
+        </span>
+      </MetricCard>
 
-      {/* Memory */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/12 text-secondary">
-              <MemoryStick className="h-3.5 w-3.5" />
-            </span>
-            Memory
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span className="text-2xl font-bold tracking-tight">
-            {health ? formatBytes(health.memory.heapUsed) : '—'}
-          </span>
-          {health ? (
-            <>
-              <p className="mt-1 text-xs text-muted-foreground">
-                of {formatBytes(health.memory.heapTotal)} ({heapPct.toFixed(0)}%)
-              </p>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
-                  style={{ width: `${Math.min(heapPct, 100).toFixed(1)}%` }}
-                />
-              </div>
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="Memory"
+        icon={<MemoryStick className="h-3.5 w-3.5" />}
+        iconBg="bg-secondary/12 text-secondary"
+      >
+        <span className="text-2xl font-bold tracking-tight">
+          {health ? formatBytes(health.memory.heapUsed) : '—'}
+        </span>
+        {health && heap ? (
+          <>
+            <p className="mt-1 text-xs text-muted-foreground">
+              of {formatBytes(health.memory.heapTotal)} ({heap.heapPct.toFixed(0)}%)
+            </p>
+            <ProgressBar percent={heap.heapPct} />
+          </>
+        ) : null}
+      </MetricCard>
 
-      {/* Discord Ping */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span
-              className={`flex h-7 w-7 items-center justify-center rounded-lg ${health ? pingBg(health.discord.ping) : 'bg-muted text-muted-foreground'}`}
-            >
-              <Wifi className="h-3.5 w-3.5" />
-            </span>
-            Discord Ping
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span
-            className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}
-          >
-            {health ? `${health.discord.ping}ms` : '—'}
-          </span>
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="Discord Ping"
+        icon={<Wifi className="h-3.5 w-3.5" />}
+        iconBg={health ? pingBg(health.discord.ping) : 'bg-muted text-muted-foreground'}
+      >
+        <span
+          className={`text-2xl font-bold tracking-tight ${health ? pingColor(health.discord.ping) : ''}`}
+        >
+          {health ? `${health.discord.ping}ms` : '—'}
+        </span>
+      </MetricCard>
 
-      {/* Guilds */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/12 text-cyan-600 dark:text-cyan-400">
-              <Globe className="h-3.5 w-3.5" />
-            </span>
-            Guilds
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span className="text-2xl font-bold tracking-tight">
-            {health ? health.discord.guilds.toLocaleString() : '—'}
-          </span>
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="Guilds"
+        icon={<Globe className="h-3.5 w-3.5" />}
+        iconBg="bg-cyan-500/12 text-cyan-600 dark:text-cyan-400"
+      >
+        <span className="text-2xl font-bold tracking-tight">
+          {health ? health.discord.guilds.toLocaleString() : '—'}
+        </span>
+      </MetricCard>
 
-      {/* Errors (1h) */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/12 text-orange-600 dark:text-orange-400">
-              <AlertTriangle className="h-3.5 w-3.5" />
-            </span>
-            Errors (1h)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span
-            className={`text-2xl font-bold tracking-tight ${health?.errors.lastHour != null ? errorColor(health.errors.lastHour) : ''}`}
-          >
-            {health ? (health.errors.lastHour?.toLocaleString() ?? '—') : '—'}
-          </span>
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="Errors (1h)"
+        icon={<AlertTriangle className="h-3.5 w-3.5" />}
+        iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400"
+      >
+        <span
+          className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastHour)}`}
+        >
+          {health ? formatErrorValue(health.errors.lastHour) : '—'}
+        </span>
+      </MetricCard>
 
-      {/* Errors (24h) */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/12 text-orange-600 dark:text-orange-400">
-              <Activity className="h-3.5 w-3.5" />
-            </span>
-            Errors (24h)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span
-            className={`text-2xl font-bold tracking-tight ${health?.errors.lastDay != null ? errorColor(health.errors.lastDay) : ''}`}
-          >
-            {health ? (health.errors.lastDay?.toLocaleString() ?? '—') : '—'}
-          </span>
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="Errors (24h)"
+        icon={<Activity className="h-3.5 w-3.5" />}
+        iconBg="bg-orange-500/12 text-orange-600 dark:text-orange-400"
+      >
+        <span
+          className={`text-2xl font-bold tracking-tight ${errorValueColor(health?.errors.lastDay)}`}
+        >
+          {health ? formatErrorValue(health.errors.lastDay) : '—'}
+        </span>
+      </MetricCard>
 
-      {/* CPU — estimated utilisation from cumulative cpuUsage / uptime */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/12 text-primary">
-              <Cpu className="h-3.5 w-3.5" />
-            </span>
-            CPU (avg since start)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span className="text-2xl font-bold tracking-tight">{health ? `${cpuPct}%` : '—'}</span>
-          {health ? (
-            <>
-              <p className="mt-1 text-xs text-muted-foreground">
-                user {cpuUserSec.toFixed(1)}s / sys {cpuSystemSec.toFixed(1)}s
-              </p>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
-                  style={{ width: `${cpuPct}%` }}
-                />
-              </div>
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="CPU (avg since start)"
+        icon={<Cpu className="h-3.5 w-3.5" />}
+        iconBg="bg-primary/12 text-primary"
+      >
+        <span className="text-2xl font-bold tracking-tight">{cpu ? `${cpu.cpuPct}%` : '—'}</span>
+        {cpu ? (
+          <>
+            <p className="mt-1 text-xs text-muted-foreground">
+              user {cpu.cpuUserSec.toFixed(1)}s / sys {cpu.cpuSystemSec.toFixed(1)}s
+            </p>
+            <ProgressBar percent={Number(cpu.cpuPct)} />
+          </>
+        ) : null}
+      </MetricCard>
 
-      {/* Node Version */}
-      <Card className="kpi-card rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <Server className="h-3.5 w-3.5" />
-            </span>
-            Node
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <span className="text-2xl font-bold tracking-tight">
-            {health ? health.system.nodeVersion : '—'}
-          </span>
-        </CardContent>
-      </Card>
+      <MetricCard
+        title="Node"
+        icon={<Server className="h-3.5 w-3.5" />}
+        iconBg="bg-muted text-muted-foreground"
+      >
+        <span className="text-2xl font-bold tracking-tight">
+          {health ? health.system.nodeVersion : '—'}
+        </span>
+      </MetricCard>
     </div>
   );
 }
