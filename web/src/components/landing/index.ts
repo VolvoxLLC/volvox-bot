@@ -1,6 +1,6 @@
 export { AnimatedCounter } from './AnimatedCounter';
 export { ComparisonTable } from './ComparisonTable';
-export { DashboardPreview } from './DashboardPreview';
+export { DashboardShowcase } from './DashboardShowcase';
 export { FeatureGrid } from './FeatureGrid';
 export { Footer } from './Footer';
 export { Hero } from './Hero';

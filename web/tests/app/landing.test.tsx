@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('framer-motion', async () => {
   const React = await import('react');
@@ -16,6 +16,7 @@ vi.mock('framer-motion', async () => {
       h2: createComponent('h2'),
       li: createComponent('li'),
       p: createComponent('p'),
+      path: createComponent('path'),
       span: createComponent('span'),
       section: createComponent('section'),
       tr: createComponent('tr'),
@@ -34,7 +35,23 @@ import LandingPage from '@/app/page';
 describe('LandingPage', () => {
   const originalClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        servers: 1,
+        members: 1,
+        commandsServed: 1,
+        activeConversations: 0,
+        uptime: 0,
+        messagesProcessed: 0,
+        cachedAt: '',
+      }),
+    } as Response);
+  });
+
   afterEach(() => {
+    vi.restoreAllMocks();
     if (originalClientId !== undefined) {
       process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = originalClientId;
     } else {
@@ -87,5 +104,10 @@ describe('LandingPage', () => {
   it('renders theme toggle', () => {
     render(<LandingPage />);
     expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
+  });
+
+  it('renders the product showcase section', () => {
+    render(<LandingPage />);
+    expect(screen.getByText('THE PRODUCT')).toBeInTheDocument();
   });
 });

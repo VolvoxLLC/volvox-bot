@@ -133,7 +133,7 @@ export function OnboardingGrowthCategory() {
         .replace(/{greeting}/g, 'Good morning @johndoe! You just joined Volvox.')
         .replace(
           /{vibeLine}/g,
-          "Things are moving at a healthy pace in #general, so you'll fit right in.",
+          'Things are moving at a healthy pace in #general, so you\'ll fit right in.',
         )
         .replace(
           /{ctaLine}/g,
@@ -228,9 +228,7 @@ export function OnboardingGrowthCategory() {
                     <div>
                       <code>{'{vibeLine}'}</code> — Activity description{' '}
                       <span className="italic text-muted-foreground/70">
-                        {
-                          "You're catching us in a quiet window - perfect time to introduce yourself."
-                        }
+                        {'You\'re catching us in a quiet window - perfect time to introduce yourself.'}
                       </span>
                     </div>
                     <div>
@@ -329,7 +327,7 @@ export function OnboardingGrowthCategory() {
                 </div>
 
                 <div className="space-y-1 block">
-                  <span className="text-sm font-medium">
+                  <span id="highlight-channels-label" className="text-sm font-medium">
                     Highlight Channels
                     <InfoTip text="Channels suggested to new members in the {ctaLine} and {topChannels} variables. If no channels have recent activity, these are used as fallbacks." />
                   </span>
@@ -340,11 +338,12 @@ export function OnboardingGrowthCategory() {
                     disabled={saving}
                     placeholder="Select channels to highlight"
                     filter="text"
+                    aria-labelledby="highlight-channels-label"
                   />
                 </div>
 
                 <div className="space-y-1 block">
-                  <span className="text-sm font-medium">
+                  <span id="exclude-channels-label" className="text-sm font-medium">
                     Exclude Channels
                     <InfoTip text="Channels to ignore when measuring server activity. Messages in these channels won't count toward the activity level." />
                   </span>
@@ -355,6 +354,7 @@ export function OnboardingGrowthCategory() {
                     disabled={saving}
                     placeholder="Select channels to exclude"
                     filter="text"
+                    aria-labelledby="exclude-channels-label"
                   />
                 </div>
 

@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 // Below-fold sections lazy-loaded for performance
-const DashboardPreview = dynamic(
+const DashboardShowcase = dynamic(
   () =>
-    import('@/components/landing/DashboardPreview').then((m) => ({ default: m.DashboardPreview })),
+    import('@/components/landing/DashboardShowcase').then((m) => ({
+      default: m.DashboardShowcase,
+    })),
   { ssr: false },
 );
 const ComparisonTable = dynamic(
@@ -240,9 +242,9 @@ export default function LandingPage() {
       {/* Hero Section */}
       <Hero />
 
-      {/* Dashboard Preview */}
+      {/* Dashboard Showcase */}
       <div id="dashboard">
-        <DashboardPreview />
+        <DashboardShowcase />
       </div>
 
       {/* Competitor Comparison */}
