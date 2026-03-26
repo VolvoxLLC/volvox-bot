@@ -8,9 +8,7 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
-import { getConfig } from '../../modules/config.js';
-import { computeLevel } from '../../modules/reputation.js';
-import { XP_DEFAULTS } from '../../modules/xpDefaults.js';
+import { computeLevel, getXpConfig } from '../../modules/reputation.js';
 import { cacheGet, cacheSet, TTL } from '../../utils/cache.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parseLimit, parsePage } from '../utils/pagination.js';
@@ -20,16 +18,6 @@ const router = Router();
 
 /** Rate limiter for member endpoints — 120 requests / 15 min per IP. */
 const membersRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
-
-/**
- * Resolve the XP config for a guild, merging defaults.
- * @param {string} guildId - Guild identifier used to load the guild's configuration.
- * @returns {object} The XP configuration with guild-specific values overriding defaults.
- */
-function getXpConfig(guildId) {
-  const cfg = getConfig(guildId);
-  return { ...XP_DEFAULTS, ...cfg.xp };
-}
 
 /**
  * Obtain the PostgreSQL connection pool instance for the application.

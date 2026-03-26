@@ -45,7 +45,7 @@ function getRepConfig(guildId) {
  * @param {string} guildId
  * @returns {object}
  */
-function getXpConfig(guildId) {
+export function getXpConfig(guildId) {
   const cfg = getConfig(guildId);
   const merged = { ...XP_DEFAULTS, ...cfg.xp };
   // Deep merge roleRewards to preserve defaults for missing nested properties

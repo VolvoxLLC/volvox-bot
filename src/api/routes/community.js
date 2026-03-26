@@ -8,9 +8,7 @@
 
 import { Router } from 'express';
 import { error as logError } from '../../logger.js';
-import { getConfig } from '../../modules/config.js';
-import { computeLevel } from '../../modules/reputation.js';
-import { XP_DEFAULTS } from '../../modules/xpDefaults.js';
+import { computeLevel, getXpConfig } from '../../modules/reputation.js';
 import { cacheGetOrSet, TTL } from '../../utils/cache.js';
 import { redisRateLimit } from '../middleware/redisRateLimit.js';
 
@@ -23,16 +21,6 @@ const communityRateLimit = redisRateLimit({
   keyPrefix: 'rl:community',
 });
 router.use(communityRateLimit);
-
-/**
- * Resolve the XP config for a guild, merging defaults.
- * @param {string} guildId - The guild identifier to load configuration for.
- * @returns {object} The XP configuration with guild-specific values overriding defaults.
- */
-function getXpConfig(guildId) {
-  const cfg = getConfig(guildId);
-  return { ...XP_DEFAULTS, ...cfg.xp };
-}
 
 /**
  * Map a numeric reputation level to its corresponding badge label.
@@ -694,9 +682,9 @@ router.get('/:guildId/profile/:userId', async (req, res) => {
     const rep = repResult.rows[0] || { xp: 0, level: 0 };
     const level = computeLevel(rep.xp, xpConfig.levelThresholds);
     const currentLevelXp = xpConfig.levelThresholds[level - 1] ?? 0;
-    const nextLevelXp =
-      xpConfig.levelThresholds[level] ??
-      xpConfig.levelThresholds[xpConfig.levelThresholds.length - 1];
+    // Consistent with leaderboard: null for max-level users
+    const isMaxLevel = level >= xpConfig.levelThresholds.length;
+    const nextLevelXp = isMaxLevel ? null : (xpConfig.levelThresholds[level] ?? null);
 
     // Resolve Discord user info
     const { client } = req.app.locals;

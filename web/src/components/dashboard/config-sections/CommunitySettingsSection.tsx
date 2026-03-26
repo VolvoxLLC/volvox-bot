@@ -540,11 +540,13 @@ export function CommunitySettingsSection({
                       .split(',')
                       .map((value) => Number(value.trim()))
                       .filter((value) => Number.isFinite(value) && value > 0);
-                    const sorted = [...nums].sort((a, b) => a - b);
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      xp: { ...prev.xp, levelThresholds: sorted },
-                    }));
+                    if (nums.length > 0) {
+                      const sorted = [...nums].sort((a, b) => a - b);
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        xp: { ...prev.xp, levelThresholds: sorted },
+                      }));
+                    }
                   }}
                   disabled={saving}
                   className={inputClasses}
