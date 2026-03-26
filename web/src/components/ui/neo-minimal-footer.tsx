@@ -1,22 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { siDiscord, siX } from 'simple-icons';
 import { GithubIcon } from '@/components/ui/github-icon';
-
-/** Inline SVG helper for simple-icons. */
-function SimpleIcon({ path, className }: { path: string; className?: string }) {
-  return (
-    <svg
-      role="img"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d={path} />
-    </svg>
-  );
-}
+import { SimpleIcon } from '@/components/ui/simple-icon';
 
 interface FooterLink {
   label: string;
@@ -28,9 +13,9 @@ interface FooterSection {
   links: FooterLink[];
 }
 
-interface NeoMinimalFooterProps {
+type NeoMinimalFooterProps = Readonly<{
   sections?: FooterSection[];
-}
+}>;
 
 const defaultSections: FooterSection[] = [
   {
