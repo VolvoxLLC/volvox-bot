@@ -295,6 +295,79 @@ export async function sendModLogEmbed(client, config, caseData) {
  * @param {Object} config - Bot configuration containing moderation.escalation settings and thresholds.
  * @returns {Object|null} The created escalation case object when an escalation is applied, `null` if no thresholds triggered or on failure.
  */
+/**
+ * Count active warnings for a user within a threshold window.
+ * Falls back to mod_cases if the warnings table doesn't exist yet.
+ */
+async function countActiveWarnings(pool, guildId, targetId, withinDays) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::integer AS count FROM warnings
+       WHERE guild_id = $1 AND user_id = $2 AND active = TRUE
+       AND (expires_at IS NULL OR expires_at > NOW())
+       AND created_at > NOW() - INTERVAL '1 day' * $3`,
+      [guildId, targetId, withinDays],
+    );
+    return rows[0]?.count || 0;
+  } catch (err) {
+    if (err.code === '42P01') {
+      // 42P01 = undefined_table — fall back to mod_cases
+      const { rows } = await pool.query(
+        `SELECT COUNT(*)::integer AS count FROM mod_cases
+         WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
+         AND created_at > NOW() - INTERVAL '1 day' * $3`,
+        [guildId, targetId, withinDays],
+      );
+      return rows[0]?.count || 0;
+    }
+    logError('Failed to count active warnings for escalation', {
+      error: err.message,
+      guildId,
+      targetId,
+    });
+    throw err;
+  }
+}
+
+/**
+ * Execute a single escalation action (timeout or ban) and create the mod case.
+ */
+async function executeEscalationAction(
+  client,
+  config,
+  guildId,
+  targetId,
+  moderatorId,
+  moderatorTag,
+  threshold,
+  reason,
+) {
+  const guild = await client.guilds.fetch(guildId);
+  const member = await guild.members.fetch(targetId).catch(() => null);
+
+  if (threshold.action === 'timeout' && member) {
+    const ms = parseDuration(threshold.duration);
+    if (ms) {
+      await member.timeout(ms, reason);
+    }
+  } else if (threshold.action === 'ban') {
+    await guild.members.ban(targetId, { reason });
+  }
+
+  const escalationCase = await createCase(guildId, {
+    action: threshold.action,
+    targetId,
+    targetTag: member?.user?.tag || targetId,
+    moderatorId,
+    moderatorTag,
+    reason,
+    duration: threshold.duration || null,
+  });
+
+  await sendModLogEmbed(client, config, escalationCase);
+  return escalationCase;
+}
+
 export async function checkEscalation(
   client,
   guildId,
@@ -311,71 +384,23 @@ export async function checkEscalation(
   const pool = getPool();
 
   for (const threshold of thresholds) {
-    // Count only active warnings from the warnings table.
-    // Falls back to mod_cases if the warnings table has no rows yet (migration pending).
-    let warnCount = 0;
-
-    try {
-      const { rows } = await pool.query(
-        `SELECT COUNT(*)::integer AS count FROM warnings
-         WHERE guild_id = $1 AND user_id = $2 AND active = TRUE
-         AND (expires_at IS NULL OR expires_at > NOW())
-         AND created_at > NOW() - INTERVAL '1 day' * $3`,
-        [guildId, targetId, threshold.withinDays],
-      );
-      warnCount = rows[0]?.count || 0;
-    } catch (err) {
-      // Only fall back to mod_cases if warnings table doesn't exist (migration pending)
-      if (err.code === '42P01') {
-        // 42P01 = undefined_table
-        const { rows } = await pool.query(
-          `SELECT COUNT(*)::integer AS count FROM mod_cases
-           WHERE guild_id = $1 AND target_id = $2 AND action = 'warn'
-           AND created_at > NOW() - INTERVAL '1 day' * $3`,
-          [guildId, targetId, threshold.withinDays],
-        );
-        warnCount = rows[0]?.count || 0;
-      } else {
-        logError('Failed to count active warnings for escalation', {
-          error: err.message,
-          guildId,
-          targetId,
-        });
-        throw err;
-      }
-    }
-
+    const warnCount = await countActiveWarnings(pool, guildId, targetId, threshold.withinDays);
     if (warnCount < threshold.warns) continue;
 
     const reason = `Auto-escalation: ${warnCount} active warns in ${threshold.withinDays} days`;
     info('Escalation triggered', { guildId, targetId, warnCount, threshold });
 
     try {
-      const guild = await client.guilds.fetch(guildId);
-      const member = await guild.members.fetch(targetId).catch(() => null);
-
-      if (threshold.action === 'timeout' && member) {
-        const ms = parseDuration(threshold.duration);
-        if (ms) {
-          await member.timeout(ms, reason);
-        }
-      } else if (threshold.action === 'ban') {
-        await guild.members.ban(targetId, { reason });
-      }
-
-      const escalationCase = await createCase(guildId, {
-        action: threshold.action,
+      return await executeEscalationAction(
+        client,
+        config,
+        guildId,
         targetId,
-        targetTag: member?.user?.tag || targetId,
         moderatorId,
         moderatorTag,
+        threshold,
         reason,
-        duration: threshold.duration || null,
-      });
-
-      await sendModLogEmbed(client, config, escalationCase);
-
-      return escalationCase;
+      );
     } catch (err) {
       logError('Escalation action failed', { error: err.message, guildId, targetId, threshold });
       return null;

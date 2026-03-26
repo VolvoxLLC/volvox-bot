@@ -272,13 +272,70 @@ export async function isQuietMode(guildId, channelId) {
  * @param {Object} config - Per-guild merged config
  * @returns {Promise<boolean>} Whether this was a quiet mode command
  */
+/** Handle the quiet mode status check subcommand. */
+async function handleStatusSubcommand(message, guildId, channelId) {
+  const record = await getQuiet(guildId, channelId);
+  if (!record) {
+    await safeReply(message, { content: 'Quiet mode is **not** active in this channel.' });
+    return;
+  }
+  const remaining = Math.max(0, Math.ceil((record.until - Date.now()) / 1000));
+  const mins = Math.ceil(remaining / 60);
+  await safeReply(message, {
+    content: `Quiet mode is active — expires in **${mins} minute${mins !== 1 ? 's' : ''}**.`,
+  });
+}
+
+/** Handle the unquiet subcommand. */
+async function handleUnquietSubcommand(message, member, config, guildId, channelId, authorId) {
+  if (!hasQuietPermission(member, config)) {
+    await safeReply(message, { content: "You don't have permission to change quiet mode." });
+    return;
+  }
+  const record = await getQuiet(guildId, channelId);
+  if (!record) {
+    await safeReply(message, { content: 'Quiet mode is already off.' });
+  } else {
+    await clearQuiet(guildId, channelId);
+    info('quietMode: deactivated', { guildId, channelId, by: authorId });
+    await safeReply(message, { content: "Quiet mode lifted — I'm back!" });
+  }
+}
+
+/** Handle the activate quiet subcommand. */
+async function handleActivateSubcommand(
+  message,
+  member,
+  config,
+  guildId,
+  channelId,
+  authorId,
+  cleanContent,
+) {
+  if (!hasQuietPermission(member, config)) {
+    await safeReply(message, { content: "You don't have permission to enable quiet mode." });
+    return;
+  }
+  const quietConfig = config.quietMode;
+  const defaultSecs = (quietConfig?.defaultDurationMinutes ?? 30) * 60;
+  const durationSecs = parseDurationFromContent(cleanContent, defaultSecs, config);
+  const untilMs = Date.now() + durationSecs * 1000;
+
+  await setQuiet(guildId, channelId, untilMs, authorId);
+
+  const mins = Math.ceil(durationSecs / 60);
+  info('quietMode: activated', { guildId, channelId, by: authorId, durationSecs });
+  await safeReply(message, {
+    content: `Going quiet for **${mins} minute${mins !== 1 ? 's' : ''}**. Use \`@bot unquiet\` to resume early.`,
+  });
+}
+
 export async function handleQuietCommand(message, config) {
   if (!config?.quietMode?.enabled) return false;
 
   const { guild, channel, author, member, content } = message;
   if (!guild || !member) return false;
 
-  // Strip bot mention(s) to isolate the command body
   const cleanContent = content
     .replace(/<@!?\d+>/g, '')
     .trim()
@@ -286,68 +343,26 @@ export async function handleQuietCommand(message, config) {
 
   const firstWord = cleanContent.split(/\s+/)[0] ?? '';
 
-  // ── Status ─────────────────────────────────────────────────────────────────
   if (STATUS_KEYWORDS.has(firstWord)) {
-    const record = await getQuiet(guild.id, channel.id);
-    if (!record) {
-      await safeReply(message, { content: 'Quiet mode is **not** active in this channel.' });
-    } else {
-      const remaining = Math.max(0, Math.ceil((record.until - Date.now()) / 1000));
-      const mins = Math.ceil(remaining / 60);
-      await safeReply(message, {
-        content: `Quiet mode is active — expires in **${mins} minute${mins !== 1 ? 's' : ''}**.`,
-      });
-    }
+    await handleStatusSubcommand(message, guild.id, channel.id);
     return true;
   }
 
-  // ── Unquiet ────────────────────────────────────────────────────────────────
   if (UNQUIET_KEYWORDS.has(firstWord)) {
-    if (!hasQuietPermission(member, config)) {
-      await safeReply(message, {
-        content: "You don't have permission to change quiet mode.",
-      });
-      return true;
-    }
-
-    const record = await getQuiet(guild.id, channel.id);
-    if (!record) {
-      await safeReply(message, { content: 'Quiet mode is already off.' });
-    } else {
-      await clearQuiet(guild.id, channel.id);
-      info('quietMode: deactivated', { guildId: guild.id, channelId: channel.id, by: author.id });
-      await safeReply(message, { content: "Quiet mode lifted — I'm back!" });
-    }
+    await handleUnquietSubcommand(message, member, config, guild.id, channel.id, author.id);
     return true;
   }
 
-  // ── Activate ───────────────────────────────────────────────────────────────
   if (QUIET_KEYWORDS.has(firstWord)) {
-    if (!hasQuietPermission(member, config)) {
-      await safeReply(message, {
-        content: "You don't have permission to enable quiet mode.",
-      });
-      return true;
-    }
-
-    const quietConfig = config.quietMode;
-    const defaultSecs = (quietConfig?.defaultDurationMinutes ?? 30) * 60;
-
-    const durationSecs = parseDurationFromContent(cleanContent, defaultSecs, config);
-    const untilMs = Date.now() + durationSecs * 1000;
-
-    await setQuiet(guild.id, channel.id, untilMs, author.id);
-
-    const mins = Math.ceil(durationSecs / 60);
-    info('quietMode: activated', {
-      guildId: guild.id,
-      channelId: channel.id,
-      by: author.id,
-      durationSecs,
-    });
-    await safeReply(message, {
-      content: `Going quiet for **${mins} minute${mins !== 1 ? 's' : ''}**. Use \`@bot unquiet\` to resume early.`,
-    });
+    await handleActivateSubcommand(
+      message,
+      member,
+      config,
+      guild.id,
+      channel.id,
+      author.id,
+      cleanContent,
+    );
     return true;
   }
 
