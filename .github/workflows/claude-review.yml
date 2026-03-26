@@ -49,7 +49,7 @@ jobs:
           fetch-depth: 1
 
       - name: Claude Code Review
-        uses: anthropics/claude-code-action@v1.0.77
+        uses: anthropics/claude-code-action@v1.0.79
         env:
           PR_NUMBER: ${{ github.event.pull_request.number && github.event.pull_request.number || github.event.issue.number }}
         with:
