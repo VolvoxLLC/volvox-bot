@@ -1,33 +1,24 @@
 # syntax=docker/dockerfile:1
 
-# --- Base ---
-FROM node:22-alpine AS base
+# --- Dependencies ---
+FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 RUN corepack enable
 WORKDIR /app
 
-# --- Pruner: extract only what web needs from the monorepo ---
-FROM base AS pruner
-RUN pnpm add -g turbo
-COPY . .
-RUN turbo prune volvox-bot-web --docker
-
-# --- Dependencies: install from pruned lockfile ---
-FROM base AS deps
-# Copy pruned package.json files and lockfile
-COPY --from=pruner /app/out/json/ .
-COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+# Railway context is web/ — only package.json is available
+COPY package.json ./
+# Generate lockfile from package.json (eliminates lockfile drift entirely)
+RUN pnpm install --lockfile-only
+RUN pnpm install --frozen-lockfile
 
 # --- Builder ---
-FROM base AS builder
-# Copy installed deps
-COPY --from=deps /app/ .
-# Copy pruned source code
-COPY --from=pruner /app/out/full/ .
+FROM node:22-alpine AS builder
+RUN corepack enable
+WORKDIR /app
 
-WORKDIR /app/web
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
 ARG NEXT_PUBLIC_DISCORD_CLIENT_ID
 ENV NEXT_PUBLIC_DISCORD_CLIENT_ID=$NEXT_PUBLIC_DISCORD_CLIENT_ID
@@ -59,9 +50,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/web/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 

@@ -46,7 +46,7 @@ jobs:
       - name: Build & push bot
         uses: docker/build-push-action@v7.0.0
         with:
-          context: .
+          context: web
           file: Dockerfile
           push: true
           tags: |
@@ -58,7 +58,7 @@ jobs:
       - name: Build & push web
         uses: docker/build-push-action@v7.0.0
         with:
-          context: .
+          context: web
           file: web/Dockerfile
           push: true
           tags: |

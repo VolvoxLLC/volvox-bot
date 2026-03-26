@@ -1,8 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "web/Dockerfile"
 dockerLayerCaching = true
-watchPatterns = ["web/**", "pnpm-lock.yaml", "package.json", "pnpm-workspace.yaml"]
 
 [deploy]
 healthcheckPath = "/api/health"
