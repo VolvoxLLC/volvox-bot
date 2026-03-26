@@ -410,6 +410,39 @@ export class CLIProcess {
     }
   }
 
+  /**
+   * Parse a single stdout line from the CLI process, accumulating text parts
+   * and detecting the result message.
+   */
+  #parseStdoutLine(line, textParts, onEvent) {
+    if (!line.trim()) return null;
+    let msg;
+    try {
+      msg = JSON.parse(line);
+    } catch {
+      debug(`${this.#name}: non-JSON stdout line (short-lived)`, { line: line.slice(0, 200) });
+      return null;
+    }
+    if (msg.type === 'result') {
+      if (msg.result === undefined && textParts.length > 0) {
+        msg.result = textParts.join('');
+      }
+      return msg;
+    }
+    // Accumulate text from assistant messages (claude-code >=2.1.77)
+    if (msg.type === 'assistant' && msg.message?.content) {
+      for (const block of msg.message.content) {
+        if (block.type === 'text' && block.text) {
+          textParts.push(block.text);
+        }
+      }
+    }
+    if (onEvent) {
+      onEvent(msg);
+    }
+    return null;
+  }
+
   async #sendShortLived(prompt, overrides = {}, onEvent = null) {
     const mergedFlags = { ...this.#flags, ...overrides };
     const args = buildArgs(mergedFlags, false);
@@ -454,37 +487,8 @@ export class CLIProcess {
       const rl = createInterface({ input: proc.stdout, crlfDelay: Infinity });
 
       rl.on('line', (line) => {
-        if (!line.trim()) return;
-        let msg;
-        try {
-          msg = JSON.parse(line);
-        } catch {
-          debug(`${this.#name}: non-JSON stdout line (short-lived)`, { line: line.slice(0, 200) });
-          return;
-        }
-        if (msg.type === 'result') {
-          // The result message no longer carries a `result` field in newer
-          // claude-code versions. Reconstruct it from the accumulated
-          // assistant text blocks collected during the stream.
-          if (msg.result === undefined && textParts.length > 0) {
-            msg.result = textParts.join('');
-          }
-          result = msg;
-        } else {
-          // Accumulate text from assistant messages so we can attach it
-          // to the result message (claude-code >=2.1.77 moved text out
-          // of the result envelope into streamed assistant messages).
-          if (msg.type === 'assistant' && msg.message?.content) {
-            for (const block of msg.message.content) {
-              if (block.type === 'text' && block.text) {
-                textParts.push(block.text);
-              }
-            }
-          }
-          if (onEvent) {
-            onEvent(msg);
-          }
-        }
+        const parsed = this.#parseStdoutLine(line, textParts, onEvent);
+        if (parsed) result = parsed;
       });
 
       proc.on('exit', (code, signal) => {
