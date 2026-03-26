@@ -10,7 +10,7 @@ export function Footer() {
   const botInviteUrl = getBotInviteUrl();
 
   return (
-    <section className="relative overflow-hidden">
+    <section aria-label="Footer" className="relative overflow-hidden">
       {/* CTA Section */}
       <div className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)]">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] h-[300px] hero-glow pointer-events-none" />
