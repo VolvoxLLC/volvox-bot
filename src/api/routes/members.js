@@ -973,7 +973,9 @@ router.post(
         );
 
         newXp = rows[0].xp;
-        oldLevel = computeLevel(rows[0].xp, xpConfig.levelThresholds);
+        // Calculate oldLevel from pre-update XP (newXp - amount)
+        const oldXp = newXp - amount;
+        oldLevel = computeLevel(oldXp, xpConfig.levelThresholds);
 
         // Recompute level from thresholds
         newLevel = computeLevel(newXp, xpConfig.levelThresholds);
