@@ -165,7 +165,7 @@ export async function executeLevelUpPipeline({
     }
 
     // Skip role-related actions if rate limit quota is exhausted
-    if ((action.type === 'grantRole' || action.type === 'removeRole')) {
+    if (action.type === 'grantRole' || action.type === 'removeRole') {
       if (roleChangesRemaining <= 0) {
         warn('Role action skipped due to rate limit quota exhausted', {
           actionType: action.type,

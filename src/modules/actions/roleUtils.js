@@ -203,7 +203,7 @@ export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
 
   // Batch remove roles using member.roles.remove(roleArray)
   const roleIds = [];
-  for (const { roleId, entry } of rolesToRemove) {
+  for (const { roleId } of rolesToRemove) {
     if (canManageRole(member.guild, roleId)) {
       roleIds.push(roleId);
     }
@@ -218,7 +218,7 @@ export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
     // Use batch removal for efficiency
     await member.roles.remove(uniqueRoleIds);
     // Record role changes for each removed role
-    for (const roleId of uniqueRoleIds) {
+    for (const _roleId of uniqueRoleIds) {
       recordRoleChange(member.guild.id, member.user.id);
     }
   } catch (err) {

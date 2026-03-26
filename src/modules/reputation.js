@@ -6,7 +6,7 @@
  */
 
 import { getPool } from '../db.js';
-import { info, warn, error as logError } from '../logger.js';
+import { info, error as logError, warn } from '../logger.js';
 import { invalidateReputationCache } from '../utils/reputationCache.js';
 import { getConfig } from './config.js';
 import { executeLevelUpPipeline } from './levelUpActions.js';

@@ -328,6 +328,7 @@ export function OnboardingGrowthCategory() {
                   />
                 </div>
 
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: ChannelSelector renders its own input */}
                 <label className="space-y-1 block">
                   <span className="text-sm font-medium">
                     Highlight Channels
@@ -343,6 +344,7 @@ export function OnboardingGrowthCategory() {
                   />
                 </label>
 
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: ChannelSelector renders its own input */}
                 <label className="space-y-1 block">
                   <span className="text-sm font-medium">
                     Exclude Channels

@@ -13,10 +13,7 @@ vi.mock('../../../src/modules/actions/roleUtils.js', () => ({
 }));
 
 import { handleRemoveRole } from '../../../src/modules/actions/removeRole.js';
-import {
-  canManageRole,
-  recordRoleChange,
-} from '../../../src/modules/actions/roleUtils.js';
+import { canManageRole, recordRoleChange } from '../../../src/modules/actions/roleUtils.js';
 
 function makeContext() {
   const rolesRemove = vi.fn().mockResolvedValue(undefined);
