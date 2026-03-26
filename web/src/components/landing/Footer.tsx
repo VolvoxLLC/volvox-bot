@@ -1,9 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { BookOpen, Heart, MessageCircle } from 'lucide-react';
 import { GetStartedButton } from '@/components/ui/get-started-button';
-import { GithubIcon } from '@/components/ui/github-icon';
+import { NeoMinimalFooter } from '@/components/ui/neo-minimal-footer';
 import { getBotInviteUrl } from '@/lib/discord';
 import { ScrollStage } from './ScrollStage';
 
@@ -11,100 +10,56 @@ export function Footer() {
   const botInviteUrl = getBotInviteUrl();
 
   return (
-    <footer className="relative py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)] overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] h-[300px] hero-glow pointer-events-none" />
+    <footer className="relative overflow-hidden">
+      {/* CTA Section */}
+      <div className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--bg-secondary)]">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] h-[300px] hero-glow pointer-events-none" />
 
-      <ScrollStage className="max-w-4xl mx-auto text-center relative" enterOffset={30}>
-        {/* CTA Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="mb-16"
-        >
-          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground mb-6">
-            Ready to <span className="text-aurora">upgrade</span>?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Your community deserves smarter moderation, AI-powered chat, and a dashboard that
-            actually works.
-          </p>
-          {botInviteUrl ? (
-            <GetStartedButton
-              variant="discord"
-              href={botInviteUrl}
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase shadow-lg shadow-[var(--color-discord)]/20"
-            />
-          ) : (
-            <GetStartedButton
-              variant="discord"
-              label="Coming Soon"
-              disabled
-              className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase opacity-50"
-            />
-          )}
-        </motion.div>
-
-        {/* Tagline */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-muted-foreground mb-12 font-[family-name:var(--font-mono)] text-sm"
-        >
-          Open source. Self-hostable. Free forever.
-        </motion.p>
-
-        {/* Links */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex flex-wrap justify-center gap-8 mb-12"
-        >
-          <a
-            href="https://docs.volvox.bot"
-            className="flex items-center gap-2 text-muted-foreground hover:text-accent transition-colors text-sm font-medium"
+        <ScrollStage className="max-w-4xl mx-auto text-center relative" enterOffset={30}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="mb-8"
           >
-            <BookOpen className="w-4 h-4" />
-            Documentation
-          </a>
-          <a
-            href="https://github.com/VolvoxLLC/volvox-bot"
-            className="flex items-center gap-2 text-muted-foreground hover:text-secondary transition-colors text-sm font-medium"
-          >
-            <GithubIcon className="w-4 h-4" />
-            GitHub
-          </a>
-          <a
-            href="https://discord.gg/8ahXACdamN"
-            className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm font-medium"
-          >
-            <MessageCircle className="w-4 h-4" />
-            Support Server
-          </a>
-        </motion.div>
+            <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground mb-6">
+              Ready to <span className="text-aurora">upgrade</span>?
+            </h2>
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+              Your community deserves smarter moderation, AI-powered chat, and a dashboard that
+              actually works.
+            </p>
+            {botInviteUrl ? (
+              <GetStartedButton
+                variant="discord"
+                href={botInviteUrl}
+                className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase shadow-lg shadow-[var(--color-discord)]/20"
+              />
+            ) : (
+              <GetStartedButton
+                variant="discord"
+                label="Coming Soon"
+                disabled
+                className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase opacity-50"
+              />
+            )}
+          </motion.div>
 
-        {/* Copyright */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="pt-8 border-t border-border"
-        >
-          <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-            Made with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> by developers, for
-            developers
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            © {new Date().getFullYear()} Volvox. Not affiliated with Discord.
-          </p>
-        </motion.div>
-      </ScrollStage>
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-muted-foreground font-[family-name:var(--font-mono)] text-sm mb-12"
+          >
+            Open source. Self-hostable. Free forever.
+          </motion.p>
+        </ScrollStage>
+      </div>
+
+      {/* Neo-minimal footer */}
+      <NeoMinimalFooter />
     </footer>
   );
 }
