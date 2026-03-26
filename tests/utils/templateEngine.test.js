@@ -261,7 +261,7 @@ describe('buildTemplateContext', () => {
       roleId: null,
     });
 
-    expect(ctx.rank).toBe('#0');
+    expect(ctx.rank).toBe('?');
     expect(ctx.messages).toBe('0');
     expect(ctx.daysActive).toBe('0');
     expect(ctx.voiceHours).toBe('0');
