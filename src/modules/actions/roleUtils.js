@@ -180,6 +180,96 @@ async function removeSingleRole(member, roleId, entry) {
 }
 
 /**
+ * Collect manageable role IDs from the roles-to-remove list.
+ * @param {import('discord.js').Guild} guild
+ * @param {Array<{roleId: string, entry: Object}>} rolesToRemove
+ * @returns {string[]} Deduplicated array of manageable role IDs.
+ */
+function collectManageableRoleIds(guild, rolesToRemove) {
+  const roleIds = [];
+  for (const { roleId } of rolesToRemove) {
+    if (canManageRole(guild, roleId)) {
+      roleIds.push(roleId);
+    }
+  }
+  return [...new Set(roleIds)];
+}
+
+/**
+ * Batch-remove roles, falling back to individual removal on failure.
+ * @param {import('discord.js').GuildMember} member
+ * @param {string[]} uniqueRoleIds
+ * @param {Array<{roleId: string, entry: Object}>} rolesToRemove
+ */
+async function batchRemoveRoles(member, uniqueRoleIds, rolesToRemove) {
+  try {
+    await member.roles.remove(uniqueRoleIds);
+    for (const _roleId of uniqueRoleIds) {
+      recordRoleChange(member.guild.id, member.user.id);
+    }
+  } catch (err) {
+    warn('Batch role removal failed — falling back to individual removal', {
+      guildId: member.guild.id,
+      userId: member.user.id,
+      roleIds: uniqueRoleIds,
+      error: err.message,
+    });
+
+    for (const { roleId, entry } of rolesToRemove) {
+      await removeSingleRole(member, roleId, entry);
+    }
+  }
+}
+
+/**
+ * Find the highest-level grantRole at or below the given level.
+ * @param {Object} xpConfig
+ * @param {number} newLevel
+ * @returns {string|null} The role ID, or null if none found.
+ */
+function findHighestGrantRole(xpConfig, newLevel) {
+  let highestGrantRole = null;
+  let highestLevel = -1;
+
+  for (const entry of xpConfig.levelActions ?? []) {
+    if (entry.level > newLevel) continue;
+    for (const action of entry.actions ?? []) {
+      if (action.type === 'grantRole' && action.roleId && entry.level > highestLevel) {
+        highestLevel = entry.level;
+        highestGrantRole = action.roleId;
+      }
+    }
+  }
+
+  return highestGrantRole;
+}
+
+/**
+ * In replace mode, restore the highest role the member should have at newLevel.
+ * @param {import('discord.js').GuildMember} member
+ * @param {number} newLevel
+ * @param {Object} xpConfig
+ */
+async function restoreHighestRoleForReplaceMode(member, newLevel, xpConfig) {
+  if (xpConfig.roleRewards?.stackRoles) return;
+
+  const highestGrantRole = findHighestGrantRole(xpConfig, newLevel);
+  if (!highestGrantRole || !canManageRole(member.guild, highestGrantRole)) return;
+
+  try {
+    await member.roles.add(highestGrantRole);
+    recordRoleChange(member.guild.id, member.user.id);
+  } catch (err) {
+    warn('Failed to restore highest role in replace mode', {
+      guildId: member.guild.id,
+      userId: member.user.id,
+      roleId: highestGrantRole,
+      error: err.message,
+    });
+  }
+}
+
+/**
  * Remove roles granted at levels above the new level.
  * Called when XP is manually reduced and removeOnLevelDown is enabled.
  * Uses batch removal with error handling per role.
@@ -201,69 +291,13 @@ export async function enforceRoleLevelDown(member, newLevel, xpConfig) {
   const rolesToRemove = collectRolesToRemove(member, newLevel, xpConfig);
   if (rolesToRemove.length === 0) return;
 
-  // Batch remove roles using member.roles.remove(roleArray)
-  const roleIds = [];
-  for (const { roleId } of rolesToRemove) {
-    if (canManageRole(member.guild, roleId)) {
-      roleIds.push(roleId);
-    }
-  }
-
-  // Deduplicate role IDs
-  const uniqueRoleIds = [...new Set(roleIds)];
-
+  const uniqueRoleIds = collectManageableRoleIds(member.guild, rolesToRemove);
   if (uniqueRoleIds.length === 0) return;
 
-  try {
-    // Use batch removal for efficiency
-    await member.roles.remove(uniqueRoleIds);
-    // Record role changes for each removed role
-    for (const _roleId of uniqueRoleIds) {
-      recordRoleChange(member.guild.id, member.user.id);
-    }
-  } catch (err) {
-    // If batch fails, try individual removal with error handling
-    warn('Batch role removal failed — falling back to individual removal', {
-      guildId: member.guild.id,
-      userId: member.user.id,
-      roleIds: uniqueRoleIds,
-      error: err.message,
-    });
-
-    for (const { roleId, entry } of rolesToRemove) {
-      await removeSingleRole(member, roleId, entry);
-    }
-  }
+  await batchRemoveRoles(member, uniqueRoleIds, rolesToRemove);
 
   // Replace mode: restore the highest role that should be granted at newLevel
-  if (!xpConfig.roleRewards?.stackRoles) {
-    let highestGrantRole = null;
-    let highestLevel = -1;
-
-    for (const entry of xpConfig.levelActions ?? []) {
-      if (entry.level > newLevel) continue;
-      for (const action of entry.actions ?? []) {
-        if (action.type === 'grantRole' && action.roleId && entry.level > highestLevel) {
-          highestLevel = entry.level;
-          highestGrantRole = action.roleId;
-        }
-      }
-    }
-
-    if (highestGrantRole && canManageRole(member.guild, highestGrantRole)) {
-      try {
-        await member.roles.add(highestGrantRole);
-        recordRoleChange(member.guild.id, member.user.id);
-      } catch (err) {
-        warn('Failed to restore highest role in replace mode', {
-          guildId: member.guild.id,
-          userId: member.user.id,
-          roleId: highestGrantRole,
-          error: err.message,
-        });
-      }
-    }
-  }
+  await restoreHighestRoleForReplaceMode(member, newLevel, xpConfig);
 }
 
 // Periodic sweep — same pattern as reputation.js cooldowns.
