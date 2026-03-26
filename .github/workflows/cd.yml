@@ -55,6 +55,11 @@ jobs:
           cache-from: type=gha,scope=volvox-bot
           cache-to: type=gha,mode=max,scope=volvox-bot
 
+      - name: Sync web lockfile
+        run: |
+          cd web && rm -f pnpm-lock.yaml
+          corepack enable && pnpm install --lockfile-only
+
       - name: Build & push web
         uses: docker/build-push-action@v7.0.0
         with:
