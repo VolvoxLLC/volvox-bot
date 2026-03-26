@@ -129,7 +129,7 @@ jobs:
         run: pnpm --prefix web install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: cd web && npx playwright install chromium --with-deps
+        run: pnpm --prefix web exec playwright install chromium --with-deps
 
       - name: Run E2E tests
         run: pnpm --prefix web test:e2e
@@ -159,13 +159,9 @@ jobs:
 
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ]; then
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.e2e.result }}" != "success" ]; then
             echo "One or more checks failed."
-            exit 1
-          fi
-
-          if [ "${{ needs.e2e.result }}" != "success" ]; then
-            echo "E2E tests failed."
             exit 1
           fi
 

@@ -11,12 +11,32 @@ import { expect, test } from '@playwright/test';
 
 /**
  * Scroll a section into the center of the viewport so framer-motion's
- * `useInView` triggers and content actually renders.
+ * `useInView` triggers and content actually renders. Waits for the
+ * section's first heading or text to become visible before returning.
  */
 async function scrollSectionIntoView(page: import('@playwright/test').Page, selector: string) {
   await page.locator(selector).scrollIntoViewIfNeeded();
-  // Give framer-motion animations time to trigger after IntersectionObserver fires
-  await page.waitForTimeout(1000);
+  // Wait for framer-motion's IntersectionObserver callback to fire and trigger animations
+  await page.locator(selector).locator(':scope > *').first().waitFor({ state: 'visible' });
+}
+
+/**
+ * Click a navigation button and verify the page scrolled from the current position.
+ * Uses `page.waitForFunction` instead of a hard-coded timeout.
+ */
+async function expectScrollAfterClick(
+  page: import('@playwright/test').Page,
+  locator: import('@playwright/test').Locator,
+) {
+  const scrollBefore = await page.evaluate(() => window.scrollY);
+  await locator.click();
+  await page.waitForFunction(
+    (prevY) => window.scrollY > prevY,
+    scrollBefore,
+    { timeout: 5000 },
+  );
+  const scrollAfter = await page.evaluate(() => window.scrollY);
+  expect(scrollAfter).toBeGreaterThan(scrollBefore);
 }
 
 // ─── Header / Navbar ─────────────────────────────────────────────────────────
@@ -64,38 +84,22 @@ test.describe('Desktop Navigation', () => {
 
   test('clicking Features nav scrolls the page', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
-    const scrollBefore = await page.evaluate(() => window.scrollY);
-    await desktopNav.getByText('Features').click();
-    await page.waitForTimeout(1500);
-    const scrollAfter = await page.evaluate(() => window.scrollY);
-    expect(scrollAfter).toBeGreaterThan(scrollBefore);
+    await expectScrollAfterClick(page, desktopNav.getByText('Features'));
   });
 
   test('clicking Pricing nav scrolls the page', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
-    const scrollBefore = await page.evaluate(() => window.scrollY);
-    await desktopNav.getByText('Pricing').click();
-    await page.waitForTimeout(1500);
-    const scrollAfter = await page.evaluate(() => window.scrollY);
-    expect(scrollAfter).toBeGreaterThan(scrollBefore);
+    await expectScrollAfterClick(page, desktopNav.getByText('Pricing'));
   });
 
   test('clicking Dashboard nav scrolls the page', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
-    const scrollBefore = await page.evaluate(() => window.scrollY);
-    await desktopNav.getByText('Dashboard').click();
-    await page.waitForTimeout(1500);
-    const scrollAfter = await page.evaluate(() => window.scrollY);
-    expect(scrollAfter).toBeGreaterThan(scrollBefore);
+    await expectScrollAfterClick(page, desktopNav.getByText('Dashboard'));
   });
 
   test('clicking Compare nav scrolls the page', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
-    const scrollBefore = await page.evaluate(() => window.scrollY);
-    await desktopNav.getByText('Compare').click();
-    await page.waitForTimeout(1500);
-    const scrollAfter = await page.evaluate(() => window.scrollY);
-    expect(scrollAfter).toBeGreaterThan(scrollBefore);
+    await expectScrollAfterClick(page, desktopNav.getByText('Compare'));
   });
 });
 
@@ -390,7 +394,8 @@ test.describe('Stats Section', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(1500);
+    // Wait for the section heading to render (signals IntersectionObserver fired)
+    await page.getByRole('heading', { name: /Loved by/ }).waitFor({ state: 'visible', timeout: 15_000 });
   });
 
   test('renders the "Loved by developers" heading', async ({ page }) => {
@@ -427,7 +432,8 @@ test.describe('Footer', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(1000);
+    // Wait for the footer to be visible
+    await page.locator('footer').waitFor({ state: 'visible', timeout: 10_000 });
   });
 
   test('renders the footer CTA heading "Ready to upgrade?"', async ({ page }) => {
