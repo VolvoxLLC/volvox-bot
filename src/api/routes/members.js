@@ -83,6 +83,7 @@ router.get(
       if (!pool) {
         return res.status(503).json({ error: 'Database unavailable' });
       }
+      const xpConfig = getXpConfig(guild.id);
 
       // Stream CSV in batches of 1000 to avoid holding all guild members in
       // memory at once.  Each batch is fetched from Discord, enriched from the
@@ -134,6 +135,7 @@ router.get(
           const stats = statsMap.get(member.id) || {};
           const rep = repMap.get(member.id) || {};
           const warnings = warningsMap.get(member.id) || 0;
+          const xp = rep.xp ?? 0;
 
           const row = [
             member.id,
@@ -141,8 +143,8 @@ router.get(
             escapeCsv(member.displayName),
             member.joinedAt ? member.joinedAt.toISOString() : '',
             stats.messages_sent ?? 0,
-            rep.xp ?? 0,
-            rep.level ?? 0,
+            xp,
+            computeLevel(xp, xpConfig.levelThresholds),
             stats.days_active ?? 0,
             warnings,
           ].join(',');
@@ -297,6 +299,7 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
     if (!pool) {
       return res.status(503).json({ error: 'Database unavailable' });
     }
+    const xpConfig = getXpConfig(guild.id);
 
     // Fetch members — use Discord server-side search when a query is provided
     // (searches all guild members by username/nickname prefix), otherwise use
@@ -377,12 +380,13 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
       const stats = statsMap.get(userId) || {};
       const rep = repMap.get(userId) || {};
       const warnings = warningsMap.get(userId) || 0;
+      const xp = rep.xp ?? 0;
       const enrichment = {
         messages_sent: stats.messages_sent ?? 0,
         days_active: stats.days_active ?? 0,
         last_active: stats.last_active ?? null,
-        xp: rep.xp ?? 0,
-        level: rep.level ?? 0,
+        xp,
+        level: computeLevel(xp, xpConfig.levelThresholds),
         warning_count: warnings,
       };
       cacheWrites.push(cacheSet(enrichmentCacheKeys[i], enrichment, TTL.MEMBERS).catch(() => {}));
@@ -392,12 +396,13 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 
     // Build enriched member objects by merging Discord data with enrichment (cache or DB)
     const enriched = memberList.map((m, i) => {
+      const repXp = repMap.get(m.id)?.xp ?? 0;
       const enrichment = cachedEnrichments[i] ?? {
         messages_sent: statsMap.get(m.id)?.messages_sent ?? 0,
         days_active: statsMap.get(m.id)?.days_active ?? 0,
         last_active: statsMap.get(m.id)?.last_active ?? null,
-        xp: repMap.get(m.id)?.xp ?? 0,
-        level: repMap.get(m.id)?.level ?? 0,
+        xp: repXp,
+        level: computeLevel(repXp, xpConfig.levelThresholds),
         warning_count: warningsMap.get(m.id) ?? 0,
       };
 
@@ -948,6 +953,7 @@ router.post(
         return res.status(503).json({ error: 'Database unavailable' });
       }
       const guildId = req.guild.id;
+      const xpConfig = getXpConfig(guildId);
 
       // Wrap XP upsert + level update in a transaction for consistency
       const client = await pool.connect();
@@ -966,10 +972,9 @@ router.post(
         );
 
         newXp = rows[0].xp;
-        oldLevel = rows[0].level;
+        oldLevel = computeLevel(rows[0].xp, xpConfig.levelThresholds);
 
         // Recompute level from thresholds
-        const xpConfig = getXpConfig(guildId);
         newLevel = computeLevel(newXp, xpConfig.levelThresholds);
 
         // Update level if changed

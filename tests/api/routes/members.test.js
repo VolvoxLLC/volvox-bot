@@ -176,7 +176,8 @@ describe('members routes', () => {
       const alice = res.body.members.find((m) => m.id === 'user1');
       expect(alice.messages_sent).toBe(42);
       expect(alice.xp).toBe(250);
-      expect(alice.level).toBe(2);
+      // 250 XP with thresholds [100, 300, 600, 1000] = level 1 (0-indexed)
+      expect(alice.level).toBe(1);
       expect(alice.warning_count).toBe(3);
 
       const bob = res.body.members.find((m) => m.id === 'user2');
