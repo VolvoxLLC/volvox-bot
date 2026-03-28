@@ -65,24 +65,42 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
       return [];
     }
 
-    // Fetch messages before the oldest buffered message
-    const oldest = bufferSnapshot[0];
-    const options = { limit };
-    if (oldest) options.before = oldest.messageId;
+    const toContextEntry = (m) => ({
+      author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
+      content: sanitizeText(m.content?.slice(0, CONTEXT_MESSAGE_CHAR_LIMIT)) || '',
+      userId: m.author.id,
+      messageId: m.id,
+      timestamp: m.createdTimestamp,
+      isContext: true, // marker to distinguish from triage targets
+      channelName: channel.name ?? null,
+      channelTopic: channel.topic ?? null,
+    });
 
-    const fetched = await channel.messages.fetch(options);
-    return [...fetched.values()]
-      .reverse() // chronological order
-      .map((m) => ({
-        author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
-        content: sanitizeText(m.content?.slice(0, CONTEXT_MESSAGE_CHAR_LIMIT)) || '',
-        userId: m.author.id,
-        messageId: m.id,
-        timestamp: m.createdTimestamp,
-        isContext: true, // marker to distinguish from triage targets
-        channelName: channel.name ?? null,
-        channelTopic: channel.topic ?? null,
-      }));
+    // Fetch messages before the oldest buffered message (historical context)
+    const oldest = bufferSnapshot[0];
+    const historyOptions = { limit };
+    if (oldest) historyOptions.before = oldest.messageId;
+    const historyFetched = await channel.messages.fetch(historyOptions);
+
+    // Also fetch the most recent messages (catches replies that arrived after
+    // the buffer started accumulating — fixes the "already being helped" blind spot)
+    const RECENT_LIMIT = 5;
+    const recentFetched = await channel.messages.fetch({ limit: RECENT_LIMIT });
+
+    // Merge and deduplicate by messageId, excluding messages already in the buffer
+    const bufferIds = new Set(bufferSnapshot.map((m) => m.messageId));
+    const seen = new Set();
+    const merged = [];
+
+    for (const m of [...historyFetched.values(), ...recentFetched.values()]) {
+      if (bufferIds.has(m.id) || seen.has(m.id)) continue;
+      seen.add(m.id);
+      merged.push(m);
+    }
+
+    return merged
+      .sort((a, b) => a.createdTimestamp - b.createdTimestamp) // chronological
+      .map(toContextEntry);
   } catch (err) {
     warn('fetchChannelContext failed', { channelId, error: err.message });
     return []; // channel inaccessible -- proceed without context
@@ -204,7 +222,18 @@ export async function sendResponses(
   channelId = channelId || channel.id;
   const triageConfig = config.triage || {};
   const type = classification.classification;
-  const responses = parsed.responses || [];
+  const allResponses = parsed.responses || [];
+
+  // Cap responses per evaluation to prevent rapid-fire bot messages
+  const maxResponses = triageConfig.maxResponsesPerEval ?? 2;
+  const responses = allResponses.slice(0, maxResponses);
+  if (allResponses.length > maxResponses) {
+    warn('Response count capped', {
+      channelId,
+      produced: allResponses.length,
+      capped: maxResponses,
+    });
+  }
 
   // Build debug embed if enabled
   let debugEmbed;

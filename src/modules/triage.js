@@ -25,17 +25,18 @@ import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
 
-import { addToHistory, isChannelBlocked } from './ai.js';
+import { addToHistory, getConversationHistory, isChannelBlocked } from './ai.js';
 import { getConfig } from './config.js';
 import {
   channelBuffers,
   clearEvaluatedMessages,
   consumePendingReeval,
   pushToBuffer,
+  setLastResponseAt,
 } from './triage-buffer.js';
 import { getDynamicInterval, isChannelEligible, resolveTriageConfig } from './triage-config.js';
 
-import { checkTriggerWords, sanitizeText } from './triage-filter.js';
+import { checkTriggerWords, isGratitude, sanitizeText } from './triage-filter.js';
 
 import { parseClassifyResult, parseRespondResult } from './triage-parse.js';
 
@@ -100,7 +101,17 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
       ? await fetchChannelContext(channelId, evalClient, snapshot, contextLimit)
       : [];
 
-  const classifyPrompt = buildClassifyPrompt(context, snapshot, evalClient.user?.id);
+  // Gather bot's recent responses in this channel for self-awareness
+  const BOT_ACTIVITY_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+  const now = Date.now();
+  const channelHistory = getConversationHistory().get(channelId) || [];
+  const botActivity = channelHistory
+    .filter(
+      (m) => m.role === 'assistant' && m.timestamp && now - m.timestamp < BOT_ACTIVITY_WINDOW_MS,
+    )
+    .slice(-3); // last 3 bot responses at most
+
+  const classifyPrompt = buildClassifyPrompt(context, snapshot, evalClient.user?.id, botActivity);
   debug('Classifier prompt built', {
     channelId,
     promptLength: classifyPrompt.length,
@@ -122,11 +133,12 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
   });
 
   // Never ignore when the bot is @mentioned — override classifier mistakes.
+  let wasMentioned = false;
   const botId = evalClient.user?.id;
-  if (classification.classification === 'ignore' && botId) {
+  if (botId) {
     const mentionTag = `<@${botId}>`;
-    const mentioned = snapshot.some((m) => m.content?.includes(mentionTag));
-    if (mentioned) {
+    wasMentioned = snapshot.some((m) => m.content?.includes(mentionTag));
+    if (classification.classification === 'ignore' && wasMentioned) {
       info('Triage: overriding ignore → respond (bot was @mentioned)', { channelId });
       classification.classification = 'respond';
       classification.targetMessageIds = snapshot
@@ -137,6 +149,24 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
 
   if (classification.classification === 'ignore') {
     info('Triage: ignoring channel', { channelId, reasoning: classification.reasoning });
+    return null;
+  }
+
+  // ── Confidence threshold gate ─────────────────────────────────────────────
+  // Drop low-confidence classifications unless safety-critical or @mentioned.
+  const confidenceThreshold = evalConfig.triage?.confidenceThreshold ?? 0.6;
+  const confidence = classification.confidence ?? 1.0;
+  if (
+    classification.classification !== 'moderate' &&
+    !wasMentioned &&
+    confidence < confidenceThreshold
+  ) {
+    info('Triage: confidence below threshold, skipping', {
+      channelId,
+      confidence,
+      threshold: confidenceThreshold,
+      classification: classification.classification,
+    });
     return null;
   }
 
@@ -171,7 +201,7 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     memoryContext = memoryParts.filter(Boolean).join('');
   }
 
-  return { classification, classifyMessage, context, memoryContext };
+  return { classification, classifyMessage, context, memoryContext, wasMentioned };
 }
 
 /**
@@ -418,11 +448,49 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     const classResult = await runClassification(channelId, snapshot, evalConfig, evalClient);
     if (!classResult) return;
 
-    const { classification, classifyMessage, context, memoryContext } = classResult;
+    const { classification, classifyMessage, context, memoryContext, wasMentioned } = classResult;
+
+    // ── Gratitude detection ──────────────────────────────────────────────────
+    // If the bot recently responded and the newest message is gratitude,
+    // react with ❤️ and skip the responder entirely — no text reply needed.
+    const buf = channelBuffers.get(channelId);
+    const gratitudeWindowMs = 60_000;
+    const newestMsg = snapshot[snapshot.length - 1];
+    if (
+      buf?.lastResponseAt > 0 &&
+      Date.now() - buf.lastResponseAt < gratitudeWindowMs &&
+      newestMsg &&
+      isGratitude(newestMsg.content)
+    ) {
+      info('Triage: gratitude detected, reacting with ❤️', {
+        channelId,
+        messageId: newestMsg.messageId,
+        author: newestMsg.author,
+      });
+      addReaction(evalClient, channelId, newestMsg.messageId, '\u2764\uFE0F');
+      return;
+    }
+
+    // ── Response cooldown gate ───────────────────────────────────────────────
+    // Prevent rapid-fire responses. @mentions and moderation bypass the cooldown.
+    const cooldownMs = evalConfig.triage?.responseCooldownMs ?? 10_000;
+    if (
+      buf?.lastResponseAt > 0 &&
+      Date.now() - buf.lastResponseAt < cooldownMs &&
+      classification.classification !== 'moderate' &&
+      !wasMentioned
+    ) {
+      info('Triage: cooldown active, skipping response', {
+        channelId,
+        elapsed: Date.now() - buf.lastResponseAt,
+        cooldownMs,
+      });
+      return;
+    }
 
     // Add 👀 reaction to trigger message as visual "I'm on it" signal (fire-and-forget)
     const statusReactions = evalConfig.triage?.statusReactions !== false;
-    const triggerMessageId = snapshot[snapshot.length - 1]?.messageId ?? null;
+    const triggerMessageId = newestMsg?.messageId ?? null;
     if (statusReactions && triggerMessageId) {
       addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
     }
@@ -469,6 +537,9 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     }
 
     await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
+
+    // Record response timestamp for cooldown tracking
+    setLastResponseAt(channelId);
 
     // Clean up status reactions — remove 💬/🧠 now that response is sent (🔍 stays as historical marker)
     if (statusReactions && triggerMessageId) {
@@ -690,6 +761,9 @@ export async function accumulateMessage(message, msgConfig) {
         content: sanitizeText(ref.content?.slice(0, 500)) || '',
         messageId: ref.id,
       };
+      // Mark replies to non-bot users so the classifier can deprioritize them
+      const botId = client?.user?.id;
+      entry.replyToHuman = !ref.author.bot && ref.author.id !== botId;
     } catch (err) {
       debug('Referenced message fetch failed', {
         channelId,

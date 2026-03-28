@@ -33,16 +33,18 @@ export function escapePromptDelimiters(text) {
  *
  * @param {Array} context - Historical messages to include in <recent-history>.
  * @param {Array} buffer - Messages to include in <messages-to-evaluate>.
+ * @param {Array} [botActivity] - Recent bot responses to include in <bot-activity>.
  * @returns {string} The formatted conversation text containing the assembled sections.
  */
-export function buildConversationText(context, buffer) {
+export function buildConversationText(context, buffer, botActivity) {
   const formatMsg = (m) => {
     const time = m.timestamp ? new Date(m.timestamp).toISOString().slice(11, 19) : '';
     const timePrefix = time ? `[${time}] ` : '';
+    const replyTag = m.replyToHuman ? ' [reply-to-human]' : '';
     const replyPrefix = m.replyTo
       ? `(replying to ${escapePromptDelimiters(m.replyTo.author)}: "${escapePromptDelimiters((m.replyTo.content ?? '').slice(0, 100))}")\n  `
       : '';
-    return `${timePrefix}[${m.messageId}] ${escapePromptDelimiters(m.author)} (<@${m.userId}>): ${replyPrefix}${escapePromptDelimiters(m.content)}`;
+    return `${timePrefix}[${m.messageId}] ${escapePromptDelimiters(m.author)} (<@${m.userId}>):${replyTag} ${replyPrefix}${escapePromptDelimiters(m.content)}`;
   };
 
   let text = '';
@@ -57,6 +59,18 @@ export function buildConversationText(context, buffer) {
       text += `Topic: ${escapePromptDelimiters(channelEntry.channelTopic ?? '')}\n`;
     }
     text += '</channel-context>\n\n';
+  }
+
+  // Bot's recent activity in this channel (helps classifier avoid re-engaging)
+  if (botActivity?.length > 0) {
+    text += '<bot-activity>\n';
+    for (const entry of botActivity) {
+      const time = entry.timestamp ? new Date(entry.timestamp).toISOString().slice(11, 19) : '';
+      const timePrefix = time ? `[${time}] ` : '';
+      const snippet = (entry.content || '').slice(0, 200);
+      text += `${timePrefix}Bot responded: ${escapePromptDelimiters(snippet)}\n`;
+    }
+    text += '</bot-activity>\n\n';
   }
 
   if (context.length > 0) {
@@ -77,10 +91,11 @@ export function buildConversationText(context, buffer) {
  * @param {Array} context - Historical messages to include in the recent-history section.
  * @param {Array} snapshot - Messages to evaluate that will populate the messages-to-evaluate section.
  * @param {string} [botUserId] - The bot's Discord user ID; when omitted, 'unknown' is used.
+ * @param {Array} [botActivity] - Recent bot responses for the <bot-activity> section.
  * @returns {string} The completed classifier prompt text.
  */
-export function buildClassifyPrompt(context, snapshot, botUserId) {
-  const conversationText = buildConversationText(context, snapshot);
+export function buildClassifyPrompt(context, snapshot, botUserId, botActivity) {
+  const conversationText = buildConversationText(context, snapshot, botActivity);
   const communityRules = loadPrompt('community-rules');
   return loadPrompt('triage-classify', {
     conversationText,

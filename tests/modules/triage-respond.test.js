@@ -115,10 +115,10 @@ describe('triage-respond', () => {
       const result = await fetchChannelContext('channel1', mockClient, bufferSnapshot, 15);
 
       expect(result).toHaveLength(2);
-      expect(result[0].messageId).toBe('msg2');
-      expect(result[0].author).toBe('Bob');
+      expect(result[0].messageId).toBe('msg1');
+      expect(result[0].author).toBe('Alice');
       expect(result[0].isContext).toBe(true);
-      expect(result[1].messageId).toBe('msg1');
+      expect(result[1].messageId).toBe('msg2');
     });
 
     it('should mark bot messages with [BOT] suffix', async () => {

@@ -19,7 +19,7 @@ Messages to respond to: {{targetMessageIds}}
 <response-rules>
 Response structure:
 - Emit one `response` action per unique `targetMessageId`.
-- If multiple targets need the same response, you may collapse them into one `response` with multiple `targetMessageIds`, using the earliest `targetMessageId` as the primary.
+- Each response entry must have exactly one `targetMessageId` (string), one `targetUser`, and one `response` text.
 
 Discord formatting:
 - Responses must be concise and under 2000 characters.

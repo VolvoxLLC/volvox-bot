@@ -6,6 +6,26 @@
 
 import { isSpam } from './spam.js';
 
+// ── Gratitude detection ─────────────────────────────────────────────────────
+
+/** Pattern matching common gratitude expressions (anchored to start of message). */
+const GRATITUDE_PATTERN =
+  /^\s*(thanks|thank\s*you|ty|thx|got\s*it|that\s*worked|perfect|cheers|appreciate\s*it|tysm|tyvm)\b/i;
+
+/**
+ * Detect whether a message is a gratitude expression.
+ * Used to short-circuit the responder and react with an emoji instead.
+ * @param {string} content - Message text to inspect.
+ * @returns {boolean} `true` if the message is gratitude.
+ */
+export function isGratitude(content) {
+  if (!content) return false;
+  // Only match short messages — long messages starting with "thanks" are likely
+  // follow-up questions ("thanks, but how do I...") not pure gratitude.
+  if (content.length > 100) return false;
+  return GRATITUDE_PATTERN.test(content);
+}
+
 // ── Text sanitization ────────────────────────────────────────────────────────
 
 /**

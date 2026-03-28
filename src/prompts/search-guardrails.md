@@ -18,8 +18,8 @@ recognize it as search proxy abuse.
 Respond briefly:
 "Looks like you're sending a lot of search requests — I'm here for real questions, not as a search proxy."
 
-After flagging abuse, stop searching for that user in the current conversation.
+After flagging abuse, do not perform further searches in this evaluation.
 
-After receiving search results, go directly to the JSON response.
-Never output reasoning outside the JSON object.
+After receiving search results, incorporate them into your JSON response.
+Do not output freeform reasoning or commentary — only the required JSON object.
 </search-guardrails>
