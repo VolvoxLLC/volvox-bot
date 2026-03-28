@@ -37,6 +37,59 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+// --- Section validators extracted from validateBotHealth ---
+
+function validateMemory(memory: unknown): string | null {
+  if (!isObject(memory)) return 'missing memory';
+  if (typeof memory.heapUsed !== 'number' || typeof memory.heapTotal !== 'number')
+    return 'invalid memory fields';
+  return null;
+}
+
+function validateDiscord(discord: unknown): string | null {
+  if (!isObject(discord)) return 'missing discord';
+  if (typeof discord.ping !== 'number' || typeof discord.guilds !== 'number')
+    return 'invalid discord fields';
+  return null;
+}
+
+function validateErrors(errors: unknown): string | null {
+  if (!isObject(errors)) return 'missing errors';
+  if (errors.lastHour !== null && typeof errors.lastHour !== 'number')
+    return 'invalid errors.lastHour';
+  if (errors.lastDay !== null && typeof errors.lastDay !== 'number')
+    return 'invalid errors.lastDay';
+  return null;
+}
+
+function validateSystem(system: unknown): string | null {
+  if (!isObject(system)) return 'missing system';
+  if (typeof system.nodeVersion !== 'string') return 'invalid system.nodeVersion';
+  if (!isObject(system.cpuUsage)) return 'missing system.cpuUsage';
+  if (typeof system.cpuUsage.user !== 'number' || typeof system.cpuUsage.system !== 'number')
+    return 'invalid system.cpuUsage fields';
+  return null;
+}
+
+function validateRestartEntry(item: unknown): string | null {
+  if (!isObject(item)) return 'invalid restart entry';
+  if (typeof item.timestamp !== 'string') return 'invalid restart.timestamp';
+  if (typeof item.reason !== 'string') return 'invalid restart.reason';
+  if (item.version !== null && typeof item.version !== 'string') return 'invalid restart.version';
+  if (item.uptimeBefore !== null && typeof item.uptimeBefore !== 'number')
+    return 'invalid restart.uptimeBefore';
+  return null;
+}
+
+function validateRestarts(restarts: unknown): string | null {
+  if (!Array.isArray(restarts)) return 'missing restarts';
+  for (const item of restarts) {
+    const result = validateRestartEntry(item);
+    if (result !== null) return result;
+  }
+  return null;
+}
+
 /**
  * Validate that `value` conforms to the {@link BotHealth} shape.
  *
@@ -48,40 +101,15 @@ function isObject(value: unknown): value is Record<string, unknown> {
  */
 export function validateBotHealth(value: unknown): string | null {
   if (!isObject(value)) return 'payload is not an object';
-
   if (typeof value.uptime !== 'number') return 'missing uptime';
 
-  if (!isObject(value.memory)) return 'missing memory';
-  if (typeof value.memory.heapUsed !== 'number' || typeof value.memory.heapTotal !== 'number')
-    return 'invalid memory fields';
-
-  if (!isObject(value.discord)) return 'missing discord';
-  if (typeof value.discord.ping !== 'number' || typeof value.discord.guilds !== 'number')
-    return 'invalid discord fields';
-
-  if (!isObject(value.errors)) return 'missing errors';
-  if (value.errors.lastHour !== null && typeof value.errors.lastHour !== 'number')
-    return 'invalid errors.lastHour';
-  if (value.errors.lastDay !== null && typeof value.errors.lastDay !== 'number')
-    return 'invalid errors.lastDay';
-
-  if (!isObject(value.system)) return 'missing system';
-  if (typeof value.system.nodeVersion !== 'string') return 'invalid system.nodeVersion';
-  if (!isObject(value.system.cpuUsage)) return 'missing system.cpuUsage';
-  if (typeof value.system.cpuUsage.user !== 'number' || typeof value.system.cpuUsage.system !== 'number')
-    return 'invalid system.cpuUsage fields';
-
-  if (!Array.isArray(value.restarts)) return 'missing restarts';
-  for (const item of value.restarts) {
-    if (!isObject(item)) return 'invalid restart entry';
-    if (typeof item.timestamp !== 'string') return 'invalid restart.timestamp';
-    if (typeof item.reason !== 'string') return 'invalid restart.reason';
-    if (item.version !== null && typeof item.version !== 'string') return 'invalid restart.version';
-    if (item.uptimeBefore !== null && typeof item.uptimeBefore !== 'number')
-      return 'invalid restart.uptimeBefore';
-  }
-
-  return null;
+  return (
+    validateMemory(value.memory) ??
+    validateDiscord(value.discord) ??
+    validateErrors(value.errors) ??
+    validateSystem(value.system) ??
+    validateRestarts(value.restarts)
+  );
 }
 
 /**

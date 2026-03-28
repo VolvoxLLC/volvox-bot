@@ -20,20 +20,23 @@ vi.mock('node:fs', () => ({
   mkdirSync: vi.fn(),
 }));
 
-// Mock winston-daily-rotate-file
+// Mock winston-daily-rotate-file — use `function` keyword so the mock is new-able.
+// Must include `log` method as winston validates transports have one.
 vi.mock('winston-daily-rotate-file', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    on: vi.fn(),
-  })),
+  default: vi.fn().mockImplementation(function () {
+    this.on = vi.fn();
+    this.log = vi.fn();
+  }),
 }));
 
 // Mock PostgresTransport (imported by logger.js but only used when explicitly added)
+// Use `function` keyword so the mock is new-able (arrow functions cannot be constructors).
 vi.mock('../src/transports/postgres.js', () => ({
-  PostgresTransport: vi.fn().mockImplementation(() => ({
-    on: vi.fn(),
-    log: vi.fn(),
-    close: vi.fn(),
-  })),
+  PostgresTransport: vi.fn().mockImplementation(function () {
+    this.on = vi.fn();
+    this.log = vi.fn();
+    this.close = vi.fn();
+  }),
 }));
 
 // NOTE: Logger module is cached after first import. Tests that need fresh
@@ -114,25 +117,12 @@ describe('logger module', () => {
 
   it('should load with file output enabled config', async () => {
     vi.resetModules();
-    vi.mock('node:fs', () => ({
-      existsSync: vi.fn().mockReturnValue(true),
-      readFileSync: vi
-        .fn()
-        .mockReturnValue(JSON.stringify({ logging: { level: 'debug', fileOutput: true } })),
-      mkdirSync: vi.fn(),
-    }));
-    vi.mock('winston-daily-rotate-file', () => ({
-      default: vi.fn().mockImplementation(() => ({
-        on: vi.fn(),
-      })),
-    }));
-    vi.mock('../src/transports/postgres.js', () => ({
-      PostgresTransport: vi.fn().mockImplementation(() => ({
-        on: vi.fn(),
-        log: vi.fn(),
-        close: vi.fn(),
-      })),
-    }));
+
+    const fs = await import('node:fs');
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(
+      JSON.stringify({ logging: { level: 'debug', fileOutput: true } }),
+    );
 
     const logger = await import('../src/logger.js');
     expect(typeof logger.info).toBe('function');
@@ -140,23 +130,10 @@ describe('logger module', () => {
 
   it('should handle config parse errors gracefully', async () => {
     vi.resetModules();
-    vi.mock('node:fs', () => ({
-      existsSync: vi.fn().mockReturnValue(true),
-      readFileSync: vi.fn().mockReturnValue('invalid json'),
-      mkdirSync: vi.fn(),
-    }));
-    vi.mock('winston-daily-rotate-file', () => ({
-      default: vi.fn().mockImplementation(() => ({
-        on: vi.fn(),
-      })),
-    }));
-    vi.mock('../src/transports/postgres.js', () => ({
-      PostgresTransport: vi.fn().mockImplementation(() => ({
-        on: vi.fn(),
-        log: vi.fn(),
-        close: vi.fn(),
-      })),
-    }));
+
+    const fs = await import('node:fs');
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue('invalid json');
 
     const logger = await import('../src/logger.js');
     expect(typeof logger.info).toBe('function');
@@ -171,23 +148,6 @@ describe('logger module', () => {
   describe('addPostgresTransport', () => {
     it('should add a transport to the winston logger and return it', async () => {
       vi.resetModules();
-      vi.mock('node:fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
-        readFileSync: vi.fn().mockReturnValue('{}'),
-        mkdirSync: vi.fn(),
-      }));
-      vi.mock('winston-daily-rotate-file', () => ({
-        default: vi.fn().mockImplementation(() => ({
-          on: vi.fn(),
-        })),
-      }));
-      vi.mock('../src/transports/postgres.js', () => ({
-        PostgresTransport: vi.fn().mockImplementation(function () {
-          this.on = vi.fn();
-          this.log = vi.fn();
-          this.close = vi.fn();
-        }),
-      }));
 
       const logger = await import('../src/logger.js');
       const addSpy = vi.spyOn(logger.default.logger, 'add');

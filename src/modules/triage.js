@@ -384,7 +384,7 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
               const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
               if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
                 budgetAlertSentAt.set(guildId, now);
-                fetchChannelCached(evalClient, logChannelId)
+                fetchChannelCached(evalClient, logChannelId, guildId)
                   .then((logCh) => {
                     if (logCh) {
                       return safeSend(
@@ -458,9 +458,14 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
 
     // Fire-and-forget: send audit embed to moderation log channel
     if (classification.classification === 'moderate') {
-      sendModerationLog(evalClient, classification, snapshot, channelId, evalConfig).catch((err) =>
-        debug('Moderation log fire-and-forget failed', { error: err.message }),
-      );
+      sendModerationLog(
+        evalClient,
+        classification,
+        snapshot,
+        channelId,
+        evalConfig,
+        channel?.guildId,
+      ).catch((err) => debug('Moderation log fire-and-forget failed', { error: err.message }));
     }
 
     await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);

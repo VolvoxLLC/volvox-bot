@@ -32,12 +32,12 @@ export function deriveAction(method, path) {
   if (segments.length === 0) return `${method.toLowerCase()}.unknown`;
 
   // Skip 'guilds' + guild ID prefix when present
-  let i = 0;
+  let segmentIndex = 0;
   if (segments[0] === 'guilds' && segments.length > 1) {
-    i = 2; // skip 'guilds' and guild ID
+    segmentIndex = 2; // skip 'guilds' and guild ID
   }
 
-  const rest = segments.slice(i);
+  const rest = segments.slice(segmentIndex);
   if (rest.length === 0) return 'guild.update';
 
   const resource = rest[0];
@@ -82,9 +82,9 @@ export function computeConfigDiff(before, after) {
   const allKeys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
 
   for (const key of allKeys) {
-    const b = JSON.stringify(before?.[key]);
-    const a = JSON.stringify(after?.[key]);
-    if (b !== a) {
+    const beforeValue = JSON.stringify(before?.[key]);
+    const afterValue = JSON.stringify(after?.[key]);
+    if (beforeValue !== afterValue) {
       diff.before[key] = before?.[key];
       diff.after[key] = after?.[key];
     }

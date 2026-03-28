@@ -1,212 +1,41 @@
-# AGENTS.md - Volvox.Bot Workspace
+# AGENTS.md
 
-Coding agent workspace for VolvoxLLC/volvox-bot Discord bot development.
+Keep this file for repo-specific rules, gotchas, and conventions. If something belongs in `README.md`, it does not belong here.
 
-## Prerequisites
+## Hard Rules
 
-- **Node.js >=22.0.0** — required by `engines` field
-- **pnpm** — monorepo via `pnpm-workspace.yaml`
-- **PostgreSQL** — primary data store
-- **Redis** — optional, falls back to in-memory
+- Use Node 22+ and LATEST version of `pnpm`.
+- Use the latest version of ALL package.json dependencies. These should always be upgraded to the latest version before committing.
+- ESM only.
+- Use `src/logger.js`; do not use `console.*`.
+- Use the safe Discord messaging helpers in `src/utils/safeSend.js` instead of raw reply/send/edit calls.
+- Use parameterized SQL only.
+- Do not lower lint, typecheck, test, or coverage gates to make CI shut up. Bot and web both enforce 85% coverage thresholds.
+- When in doubt, ask questions. When unsure, ask questions. When you're not sure what to do, ask questions. Ask questions.
 
-### Environment Setup
+## Easy-To-Miss Wiring
 
-```bash
-cp .env.example .env   # See .env.example for full docs
-pnpm install
-pnpm migrate           # Run database migrations
-pnpm deploy            # Register slash commands with Discord
-pnpm start             # Start the bot
-```
+- Config-backed features must be added to `config.json` and `src/api/utils/configAllowlist.js`. If a key is missing from `SAFE_CONFIG_KEYS`, the dashboard cannot save it.
+- Community features should be gated behind `config.<feature>.enabled`. Moderation commands are the exception.
+- New dashboard routes need title wiring in `web/src/lib/page-titles.ts`: use `createPageMetadata()` for SSR and keep `DashboardTitleSync` aligned for client navigation.
+- If a feature is configurable, ship the whole path: runtime logic, API/dashboard wiring, and tests.
 
-**Required env vars:** `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DATABASE_URL`
-**Required for dashboard:** `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `BOT_API_SECRET`
-**Required for AI features:** `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (not both)
+## Visual Verification - IMPORTANT
 
-## Code Quality Standards
+- Any visual dashboard or landing page change must be verified with Chrome DevTools MCP before you call it done.
+- Take a screenshot after the change.
+- Check both themes, light and dark, if colors or theming changed. Always check both themes this is important.
+- Check responsive behavior if layout changed. Verify on mobile, tablet, and desktop.
+- If the dashboard is not running or MCP is unavailable, say so plainly. Do not pretend it was verified.
 
-- **ESM only** — `import/export`, no CommonJS
-- **Single quotes** — no double quotes except in JSON
-- **Semicolons** — always required
-- **2-space indent** — Biome enforced
-- **Winston logger** — use `src/logger.js`, NEVER `console.*`
-- **Safe Discord messages** — use `safeReply()`/`safeSend()`/`safeEditReply()`
-- **Parameterized SQL** — never string interpolation in queries
-- **Tests required** — 80% coverage threshold, never lower it
+## Verification
 
-## Architecture Overview
+- Run the narrowest checks that actually prove the change.
+- Use repo-level commands when the blast radius is real: `pnpm mono:lint`, `pnpm mono:test`, `pnpm mono:typecheck`, `pnpm mono:build`, `pnpm mono:test:coverage`.
+- Workspace-only checks are fine for tight loops, but they do not replace the real gate on risky changes.
 
-```
-src/
-├── index.js              # Bot entry point, event handlers
-├── logger.js             # Winston logger singleton
-├── redis.js              # Redis client with graceful degradation
-├── deploy-commands.js    # Slash command registration (pnpm deploy)
-├── modules/              # ~46 feature modules
-│   ├── ai.js, aiAutoMod.js, aiFeedback.js       # AI chat, moderation, feedback
-│   ├── cli-process.js, triage.js, triage-*.js    # Claude CLI subprocess, AI triage pipeline
-│   ├── config.js                                 # Config management (DB-backed)
-│   ├── moderation.js, warningEngine.js           # Mod actions, case management, warnings
-│   ├── reputation.js, engagement.js, starboard.js # XP/rep system, engagement, starboard
-│   ├── welcome.js, welcomeOnboarding.js          # Welcome messages + onboarding
-│   ├── ticketHandler.js, pollHandler.js          # Support tickets, polls
-│   ├── roleMenuTemplates.js, reactionRoles.js    # Role assignment systems
-│   ├── githubFeed.js, webhookNotifier.js         # Outbound integrations
-│   ├── backup.js, scheduler.js, memory.js        # Backup, scheduling, mem0 memory
-│   └── ...                                       # afk, voice, spam, linkFilter, etc.
-├── commands/             # ~45 slash commands
-├── prompts/              # AI prompt templates (triage, anti-abuse, guardrails)
-├── api/                  # REST API (Express 5)
-│   ├── server.js         # App setup + route mounting
-│   ├── swagger.js        # OpenAPI/Swagger config
-│   ├── routes/           # 19 route files (auth, config, moderation, etc.)
-│   ├── middleware/       # Auth, rate limiting (redisRateLimit.js)
-│   └── utils/            # configAllowlist, validation
-├── utils/                # ~25 helpers
-│   ├── cache.js, discordCache.js, reputationCache.js  # Caching (Redis + in-memory fallback)
-│   ├── safeSend.js, sanitizeMentions.js               # Safe Discord messaging
-│   ├── permissions.js, modAction.js, modExempt.js     # Auth + mod helpers
-│   ├── errors.js, retry.js, health.js                 # Error handling, resilience
-│   ├── loadCommands.js, registerCommands.js           # Command loading/registration
-│   └── timeParser.js, cronParser.js, duration.js      # Time/scheduling utilities
-└── transports/
-    ├── sentry.js         # Sentry Winston transport
-    ├── postgres.js       # PostgreSQL Winston transport
-    └── websocket.js      # WebSocket log streaming
+## Design
 
-web/                      # Next.js 16 dashboard
-├── src/
-│   ├── app/              # App router pages
-│   ├── components/       # React components
-│   └── lib/              # Utilities (page-titles.ts, etc.)
-```
-
-## Key Patterns
-
-### Config System
-
-- `getConfig(guildId)` returns merged global + guild config
-- All community features gated behind `config.<feature>.enabled`
-- Mod commands always available regardless of config
-- Config changes via `/config` command or web dashboard
-
-### Config Allowlist
-
-- `src/api/utils/configAllowlist.js`
-- `SAFE_CONFIG_KEYS` — writable via API; `READABLE_CONFIG_KEYS` — read-only via API
-- New config sections MUST be added to SAFE to enable saves
-
-### Redis Caching
-
-- `cache.js` — generic cache with Redis + in-memory fallback
-- `discordCache.js` — channels, roles, members
-- `reputationCache.js` — leaderboard, rank, user data
-- All caches auto-invalidate on config changes
-
-### AI Integration
-
-- Claude CLI in headless mode for AI chat
-- Claude SDK for auto-moderation (toxicity/spam detection)
-- Feedback tracking via thumbs up/down reactions
-- Channel blocklist for ignoring specific channels
-
-### Web Dashboard
-
-- Next.js 16 with App Router, Discord OAuth2 auth
-- Dark/light theme, mobile-responsive, real-time WebSocket updates
-
-#### Dashboard Tab Titles
-
-- **SSR entry points**: export `metadata` using `createPageMetadata()` from `web/src/lib/page-titles.ts`
-- **Client-side navigations**: `DashboardTitleSync` syncs `document.title` using `getDashboardDocumentTitle()`
-- **New routes** require a matcher entry in `dashboardTitleMatchers` in `web/src/lib/page-titles.ts` — use exact equality for leaf routes plus a `startsWith` subtree check
-
-#### Visual Change Verification (MANDATORY)
-
-**Every visual change to the dashboard MUST be verified using the Chrome DevTools MCP server. This is non-negotiable and cannot be skipped.** After any UI modification:
-
-1. Use `mcp__chrome-devtools__take_screenshot` to capture the result
-2. Visually confirm the change renders correctly
-3. Check both dark and light themes if the change affects colors/theming
-4. Verify responsive behavior if the change affects layout
-
-Do NOT mark dashboard UI work as complete without visual verification. If the dashboard is not running or the MCP server is unavailable, flag it — do not silently skip verification.
-
-## Common Tasks
-
-### Adding a New Feature
-
-1. Create module in `src/modules/`
-2. Add config section to `config.json`
-3. Update `SAFE_CONFIG_KEYS` in `src/api/utils/configAllowlist.js`
-4. Add slash command in `src/commands/` if needed
-5. Create database migration if needed
-6. Write tests in `tests/`
-7. Update dashboard UI if configurable
-8. New dashboard routes need a matcher in `dashboardTitleMatchers` (see above)
-
-### Adding a New Command
-
-1. Create file in `src/commands/`
-2. Export slash command builder + execute function
-3. Add tests in `tests/commands/`
-
-### Adding a New API Endpoint
-
-1. Create route in `src/api/routes/`
-2. Mount in `src/api/server.js`
-3. Add auth middleware if needed
-4. Document in OpenAPI spec
-5. Add tests in `tests/api/`
-
-## Commands
-
-```bash
-# Monorepo (preferred — runs across all workspaces via Turbo)
-pnpm mono:dev              # Dev servers (bot + web) in parallel
-pnpm mono:lint             # Lint all workspaces
-pnpm mono:test             # Test all workspaces
-pnpm mono:test:coverage    # Test with coverage (80% branch threshold)
-pnpm mono:typecheck        # Typecheck all workspaces
-pnpm mono:build            # Build all workspaces
-
-# Bot (root workspace only)
-pnpm start               # Start bot
-pnpm dev                 # Start with --watch
-pnpm deploy              # Register slash commands
-LOG_LEVEL=debug pnpm start  # Debug mode
-
-# Database
-pnpm migrate             # Run pending migrations
-pnpm migrate:down        # Roll back last migration
-pnpm migrate:create NAME # Create new migration (.cjs files, sequential numbering)
-
-# Linting (single workspace)
-pnpm lint:fix            # Auto-fix lint issues in root
-pnpm format              # Format code in root
-
-# API Docs
-pnpm docs:generate       # Regenerate OpenAPI spec (docs/openapi.json)
-
-# Releases
-pnpm changeset           # Create release note entry
-pnpm version-packages    # Apply version bumps
-```
-
-## Git Workflow
-
-1. Create feature branch from `main`
-2. Make changes with conventional commits
-3. Push and create PR
-4. CI + review bots run (Claude, CodeRabbit, Greptile, Copilot) — all re-review on every push
-5. Address review comments; fix real bugs, resolve stale threads in batches
-6. Squash merge with `--admin` flag (branch protection)
-
-## Troubleshooting
-
-1. **Slash commands not appearing** — Run `pnpm deploy`
-2. **Redis connection errors** — Check `REDIS_URL`, Redis must be running
-3. **Tests failing** — Check if migration ran, verify test DB is clean
-4. **Config not saving** — Verify key is in `SAFE_CONFIG_KEYS`
-5. **CI failing** — Run `pnpm mono:test:coverage` locally, check threshold
-
+See [DESIGN.md](DESIGN.md) for the design system and color palette. Follow the design system when making changes to the UI/UX.
+This is extremely important. If you don't follow the design system, your changes will be rejected.
+Always update the design system when making changes to the UI/UX.

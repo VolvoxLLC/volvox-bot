@@ -239,15 +239,23 @@ export async function setTemplateShared(guildId, name, shared) {
  */
 export async function seedBuiltinTemplates() {
   const pool = getPool();
-  for (const tpl of BUILTIN_TEMPLATES) {
-    await pool.query(
-      `INSERT INTO role_menu_templates
-         (name, description, category, created_by_guild_id, is_builtin, is_shared, options)
-       VALUES ($1, $2, $3, NULL, TRUE, TRUE, $4::jsonb)
-       ON CONFLICT (LOWER(name), COALESCE(created_by_guild_id, '__builtin__')) DO NOTHING`,
-      [tpl.name, tpl.description, tpl.category, JSON.stringify(tpl.options)],
-    );
-  }
+  if (BUILTIN_TEMPLATES.length === 0) return;
+
+  // Build a single parameterized batch INSERT — one round-trip instead of N.
+  const params = [];
+  const valueClauses = BUILTIN_TEMPLATES.map((tpl, i) => {
+    const base = i * 4;
+    params.push(tpl.name, tpl.description, tpl.category, JSON.stringify(tpl.options));
+    return `($${base + 1}, $${base + 2}, $${base + 3}, NULL, TRUE, TRUE, $${base + 4}::jsonb)`;
+  });
+
+  await pool.query(
+    `INSERT INTO role_menu_templates
+       (name, description, category, created_by_guild_id, is_builtin, is_shared, options)
+     VALUES ${valueClauses.join(', ')}
+     ON CONFLICT (LOWER(name), COALESCE(created_by_guild_id, '__builtin__')) DO NOTHING`,
+    params,
+  );
   info('Built-in role menu templates seeded', { count: BUILTIN_TEMPLATES.length });
 }
 

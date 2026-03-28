@@ -67,17 +67,17 @@ function extractStats(result, model) {
   // `modelUsage` (camelCase, per-model).  When tools are used (multi-turn),
   // `usage` may be empty while `modelUsage` contains the real totals.
   // Fall back to the first modelUsage entry when `usage` has no input tokens.
-  let mu = {};
+  let accumulatedModelUsage = {};
   if (!usage.input_tokens && !usage.inputTokens && result?.modelUsage) {
     const entries = Object.values(result.modelUsage);
     if (entries.length > 0) {
-      mu = entries.reduce(
-        (acc, e) => ({
-          inputTokens: (acc.inputTokens || 0) + (e.inputTokens || 0),
-          outputTokens: (acc.outputTokens || 0) + (e.outputTokens || 0),
+      accumulatedModelUsage = entries.reduce(
+        (acc, entry) => ({
+          inputTokens: (acc.inputTokens || 0) + (entry.inputTokens || 0),
+          outputTokens: (acc.outputTokens || 0) + (entry.outputTokens || 0),
           cacheCreationInputTokens:
-            (acc.cacheCreationInputTokens || 0) + (e.cacheCreationInputTokens || 0),
-          cacheReadInputTokens: (acc.cacheReadInputTokens || 0) + (e.cacheReadInputTokens || 0),
+            (acc.cacheCreationInputTokens || 0) + (entry.cacheCreationInputTokens || 0),
+          cacheReadInputTokens: (acc.cacheReadInputTokens || 0) + (entry.cacheReadInputTokens || 0),
         }),
         {},
       );
@@ -88,10 +88,12 @@ function extractStats(result, model) {
     model: model || 'unknown',
     cost: result?.total_cost_usd || 0,
     durationMs: result?.duration_ms || 0,
-    inputTokens: usage.input_tokens ?? usage.inputTokens ?? mu.inputTokens ?? 0,
-    outputTokens: usage.output_tokens ?? usage.outputTokens ?? mu.outputTokens ?? 0,
-    cacheCreation: usage.cache_creation_input_tokens ?? mu.cacheCreationInputTokens ?? 0,
-    cacheRead: usage.cache_read_input_tokens ?? mu.cacheReadInputTokens ?? 0,
+    inputTokens: usage.input_tokens ?? usage.inputTokens ?? accumulatedModelUsage.inputTokens ?? 0,
+    outputTokens:
+      usage.output_tokens ?? usage.outputTokens ?? accumulatedModelUsage.outputTokens ?? 0,
+    cacheCreation:
+      usage.cache_creation_input_tokens ?? accumulatedModelUsage.cacheCreationInputTokens ?? 0,
+    cacheRead: usage.cache_read_input_tokens ?? accumulatedModelUsage.cacheReadInputTokens ?? 0,
   };
 }
 
@@ -301,8 +303,8 @@ export function logAiUsage(guildId, channelId, stats) {
 
   const sql = `INSERT INTO ai_usage (guild_id, channel_id, type, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cost_usd, duration_ms, user_id, search_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
 
-  const c = stats?.classify || {};
-  const r = stats?.respond || {};
+  const classifyStats = stats?.classify || {};
+  const respondStats = stats?.respond || {};
   const userId = stats?.userId || null;
   const searchCount = stats?.searchCount || 0;
 
@@ -311,13 +313,13 @@ export function logAiUsage(guildId, channelId, stats) {
       guildId || null,
       channelId,
       'classify',
-      c.model || 'unknown',
-      c.inputTokens || 0,
-      c.outputTokens || 0,
-      c.cacheCreation || 0,
-      c.cacheRead || 0,
-      c.cost || 0,
-      c.durationMs || 0,
+      classifyStats.model || 'unknown',
+      classifyStats.inputTokens || 0,
+      classifyStats.outputTokens || 0,
+      classifyStats.cacheCreation || 0,
+      classifyStats.cacheRead || 0,
+      classifyStats.cost || 0,
+      classifyStats.durationMs || 0,
       userId,
       0,
     ])
@@ -328,13 +330,13 @@ export function logAiUsage(guildId, channelId, stats) {
       guildId || null,
       channelId,
       'respond',
-      r.model || 'unknown',
-      r.inputTokens || 0,
-      r.outputTokens || 0,
-      r.cacheCreation || 0,
-      r.cacheRead || 0,
-      r.cost || 0,
-      r.durationMs || 0,
+      respondStats.model || 'unknown',
+      respondStats.inputTokens || 0,
+      respondStats.outputTokens || 0,
+      respondStats.cacheCreation || 0,
+      respondStats.cacheRead || 0,
+      respondStats.cost || 0,
+      respondStats.durationMs || 0,
       userId,
       searchCount,
     ])

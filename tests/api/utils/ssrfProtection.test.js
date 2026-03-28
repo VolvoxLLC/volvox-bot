@@ -242,7 +242,8 @@ describe('validateUrlForSsrfSync', () => {
 describe('validateUrlForSsrf (async)', () => {
   describe('basic validation', () => {
     it('should accept valid HTTPS URLs', async () => {
-      const result = await validateUrlForSsrf('https://example.com/webhook');
+      // Skip DNS resolution to avoid real network calls in tests
+      const result = await validateUrlForSsrf('https://example.com/webhook', { checkDns: false });
       expect(result.valid).toBe(true);
     });
 
@@ -264,7 +265,6 @@ describe('validateUrlForSsrf (async)', () => {
 
   describe('DNS resolution check', () => {
     it('should skip DNS check when checkDns is false', async () => {
-      // This would normally do a DNS lookup
       const result = await validateUrlForSsrf('https://example.com/webhook', { checkDns: false });
       expect(result.valid).toBe(true);
     });

@@ -112,6 +112,71 @@ function applyTimeOfDay(date, time) {
 }
 
 /**
+ * Try to parse a shorthand time expression like "5m", "2h", "1d".
+ * @param {string} trimmed - Lowercased trimmed input
+ * @param {Date} ref - Reference date
+ * @returns {{ date: Date, consumed: string } | null}
+ */
+function tryParseShorthand(trimmed, ref) {
+  const match = trimmed.match(/^(\d+)\s*([smhdw])(?:\s|$)/);
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 10);
+  if (value <= 0) return null;
+  const ms = value * UNIT_MS[match[2]];
+  if (!Number.isFinite(ms)) return null;
+  return { date: new Date(ref.getTime() + ms), consumed: match[0].trim() };
+}
+
+/**
+ * Try to parse "in <N> <unit>" expressions like "in 5 minutes".
+ * @param {string} trimmed - Lowercased trimmed input
+ * @param {Date} ref - Reference date
+ * @returns {{ date: Date, consumed: string } | null}
+ */
+function tryParseInDuration(trimmed, ref) {
+  const match = trimmed.match(/^in\s+(\d+)\s+([a-z]+)(?:\s|$)/);
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 10);
+  const ms = UNIT_MS[match[2]];
+  if (!ms || value <= 0) return null;
+  return { date: new Date(ref.getTime() + value * ms), consumed: match[0].trim() };
+}
+
+/**
+ * Try to parse "tomorrow" or "tomorrow at <time>".
+ * @param {string} trimmed - Lowercased trimmed input
+ * @param {Date} ref - Reference date
+ * @returns {{ date: Date, consumed: string } | null}
+ */
+function tryParseTomorrow(trimmed, ref) {
+  const match = trimmed.match(/^tomorrow(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
+  if (!match) return null;
+  const tomorrow = new Date(ref.getTime());
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  applyTimeOfDay(tomorrow, match[1] ? parseTimeOfDay(match[1]) : null);
+  return { date: tomorrow, consumed: match[0].trim() };
+}
+
+/**
+ * Try to parse "next <day>" or "next <day> at <time>".
+ * @param {string} trimmed - Lowercased trimmed input
+ * @param {Date} ref - Reference date
+ * @returns {{ date: Date, consumed: string } | null}
+ */
+function tryParseNextDay(trimmed, ref) {
+  const match = trimmed.match(/^next\s+([a-z]+)(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
+  if (!match) return null;
+  const targetDay = DAY_NAMES[match[1]];
+  if (targetDay === undefined) return null;
+  const result = new Date(ref.getTime());
+  let daysAhead = targetDay - result.getDay();
+  if (daysAhead <= 0) daysAhead += 7;
+  result.setDate(result.getDate() + daysAhead);
+  applyTimeOfDay(result, match[2] ? parseTimeOfDay(match[2]) : null);
+  return { date: result, consumed: match[0].trim() };
+}
+
+/**
  * Parse a natural language time string into a Date.
  *
  * @param {string} input - Natural language time expression
@@ -126,56 +191,13 @@ export function parseTime(input, now) {
 
   const ref = now ? new Date(now.getTime()) : new Date();
 
-  // Pattern 1: Shorthand — "5m", "2h", "1d", "30s", "3w"
-  const shortMatch = trimmed.match(/^(\d+)\s*([smhdw])(?:\s|$)/);
-  if (shortMatch) {
-    const value = Number.parseInt(shortMatch[1], 10);
-    const unit = shortMatch[2];
-    if (value <= 0) return null;
-    const ms = value * UNIT_MS[unit];
-    if (!Number.isFinite(ms)) return null;
-    return { date: new Date(ref.getTime() + ms), consumed: shortMatch[0].trim() };
-  }
-
-  // Pattern 2: "in <N> <unit>" — "in 5 minutes", "in 2 hours"
-  const inMatch = trimmed.match(/^in\s+(\d+)\s+([a-z]+)(?:\s|$)/);
-  if (inMatch) {
-    const value = Number.parseInt(inMatch[1], 10);
-    const unitStr = inMatch[2];
-    const ms = UNIT_MS[unitStr];
-    if (!ms || value <= 0) return null;
-    return { date: new Date(ref.getTime() + value * ms), consumed: inMatch[0].trim() };
-  }
-
-  // Pattern 3: "tomorrow" or "tomorrow at <time>"
-  const tomorrowMatch = trimmed.match(/^tomorrow(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
-  if (tomorrowMatch) {
-    const tomorrow = new Date(ref.getTime());
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const time = tomorrowMatch[1] ? parseTimeOfDay(tomorrowMatch[1]) : null;
-    applyTimeOfDay(tomorrow, time);
-    return { date: tomorrow, consumed: tomorrowMatch[0].trim() };
-  }
-
-  // Pattern 4: "next <day>" or "next <day> at <time>"
-  const nextDayMatch = trimmed.match(/^next\s+([a-z]+)(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
-  if (nextDayMatch) {
-    const dayName = nextDayMatch[1];
-    const targetDay = DAY_NAMES[dayName];
-    if (targetDay === undefined) return null;
-
-    const result = new Date(ref.getTime());
-    const currentDay = result.getDay();
-    let daysAhead = targetDay - currentDay;
-    if (daysAhead <= 0) daysAhead += 7;
-    result.setDate(result.getDate() + daysAhead);
-
-    const time = nextDayMatch[2] ? parseTimeOfDay(nextDayMatch[2]) : null;
-    applyTimeOfDay(result, time);
-    return { date: result, consumed: nextDayMatch[0].trim() };
-  }
-
-  return null;
+  return (
+    tryParseShorthand(trimmed, ref) ??
+    tryParseInDuration(trimmed, ref) ??
+    tryParseTomorrow(trimmed, ref) ??
+    tryParseNextDay(trimmed, ref) ??
+    null
+  );
 }
 
 /**

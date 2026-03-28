@@ -13,6 +13,11 @@ import {
   revokeTempRoleById,
 } from '../../modules/tempRoleHandler.js';
 import { formatDuration, parseDuration } from '../../utils/duration.js';
+import {
+  adaptDeleteGuildIdParam,
+  adaptGuildIdFromBody,
+  adaptGuildIdFromQuery,
+} from '../middleware/adaptGuildId.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parsePagination, requireGuildModerator } from './guilds.js';
 
@@ -20,40 +25,6 @@ const router = Router();
 
 /** Rate limiter — 120 req / 15 min per IP */
 const tempRoleRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
-
-/**
- * Adapt ?guildId= query param to :id path param for requireGuildModerator.
- * Only use on routes that need guild id in params (GET list).
- */
-function adaptGuildIdParam(req, _res, next) {
-  if (req.query.guildId) {
-    req.params.id = req.query.guildId;
-  }
-  next();
-}
-
-/**
- * Adapt req.body.guildId to :id path param for requireGuildModerator.
- * Used for POST route where guildId is in the body, not query string.
- */
-function adaptBodyGuildId(req, _res, next) {
-  if (req.body?.guildId) {
-    req.params.id = req.body.guildId;
-  }
-  next();
-}
-
-/**
- * Adapt delete route params for requireGuildModerator.
- * Keeps the temp-role record id available while mapping guildId to req.params.id.
- */
-function adaptDeleteGuildIdParam(req, _res, next) {
-  if (req.query.guildId) {
-    req.params.tempRoleId = req.params.id;
-    req.params.id = req.query.guildId;
-  }
-  next();
-}
 
 router.use(tempRoleRateLimit);
 
@@ -83,7 +54,7 @@ router.use(tempRoleRateLimit);
  *       "200":
  *         description: Paginated list of active temp roles
  */
-router.get('/', adaptGuildIdParam, requireGuildModerator, async (req, res) => {
+router.get('/', adaptGuildIdFromQuery, requireGuildModerator, async (req, res) => {
   try {
     const guildId = req.query.guildId;
 
@@ -202,7 +173,7 @@ router.delete('/:id', adaptDeleteGuildIdParam, requireGuildModerator, async (req
  *       "201": { description: Assigned }
  *       "400": { description: Invalid input }
  */
-router.post('/', adaptBodyGuildId, requireGuildModerator, async (req, res) => {
+router.post('/', adaptGuildIdFromBody, requireGuildModerator, async (req, res) => {
   try {
     const { guildId, userId, roleId, duration: durationStr, reason } = req.body || {};
 

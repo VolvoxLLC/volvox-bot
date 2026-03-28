@@ -29,6 +29,39 @@ const pendingHydrations = new Map();
 const VALID_MODES = new Set(['off', 'mention', 'vibe']);
 
 /**
+ * Check if a channel or its parent is in the blocked list.
+ * @param {Array|undefined} blocked - Blocked channel IDs array
+ * @param {string} channelId
+ * @param {string|null} parentId
+ * @returns {boolean}
+ */
+function isInBlockedList(blocked, channelId, parentId) {
+  if (!Array.isArray(blocked) || blocked.length === 0) return false;
+  return blocked.includes(channelId) || (parentId != null && blocked.includes(parentId));
+}
+
+/**
+ * Look up the mode for a channel from the modes map, falling back to defaultMode.
+ * @param {Object} modes - Channel modes map
+ * @param {string} channelId
+ * @param {string|null} parentId
+ * @param {string} defaultMode
+ * @returns {string|null} Resolved mode, or null if no entry found
+ */
+function lookupChannelMode(modes, channelId, parentId, defaultMode) {
+  if (!modes || typeof modes !== 'object') return null;
+
+  // Threads inherit the parent mode first
+  if (parentId && modes[parentId] != null) {
+    return VALID_MODES.has(modes[parentId]) ? modes[parentId] : defaultMode;
+  }
+  if (modes[channelId] != null) {
+    return VALID_MODES.has(modes[channelId]) ? modes[channelId] : defaultMode;
+  }
+  return null;
+}
+
+/**
  * Resolve the effective AI response mode for a channel.
  * Priority: blockedChannelIds → channelModes map → defaultChannelMode → 'mention'
  *
@@ -42,31 +75,16 @@ const VALID_MODES = new Set(['off', 'mention', 'vibe']);
 export function getChannelMode(channelId, parentId = null, guildId) {
   try {
     const config = getConfig(guildId);
-    // Hard block from blockedChannelIds takes precedence
-    const blocked = config?.ai?.blockedChannelIds;
-    if (Array.isArray(blocked) && blocked.length > 0) {
-      if (blocked.includes(channelId)) return 'off';
-      if (parentId && blocked.includes(parentId)) return 'off';
-    }
 
-    const modes = config?.ai?.channelModes;
+    if (isInBlockedList(config?.ai?.blockedChannelIds, channelId, parentId)) return 'off';
+
     const rawDefault = config?.ai?.defaultChannelMode ?? 'mention';
     const defaultMode = VALID_MODES.has(rawDefault) ? rawDefault : 'mention';
 
-    if (modes && typeof modes === 'object') {
-      // Threads inherit the parent mode first unless explicitly blocked above.
-      if (parentId && modes[parentId] != null) {
-        return VALID_MODES.has(modes[parentId]) ? modes[parentId] : defaultMode;
-      }
-
-      if (modes[channelId] != null) {
-        return VALID_MODES.has(modes[channelId]) ? modes[channelId] : defaultMode;
-      }
-    }
-
-    return defaultMode;
+    return (
+      lookupChannelMode(config?.ai?.channelModes, channelId, parentId, defaultMode) ?? defaultMode
+    );
   } catch {
-    // Config not loaded yet — fail open (default to mention)
     return 'mention';
   }
 }

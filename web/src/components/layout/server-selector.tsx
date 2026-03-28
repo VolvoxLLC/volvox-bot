@@ -23,6 +23,10 @@ interface ServerSelectorProps {
   className?: string;
 }
 
+function formatServerCount(count: number, label: string): string {
+  return `${count} ${label}${count === 1 ? '' : 's'}`;
+}
+
 /** Compact guild icon + name row used in both sections of the dropdown. */
 function GuildRow({ guild }: { guild: MutualGuild }) {
   return (
@@ -58,6 +62,14 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     }),
     [guilds],
   );
+  const accessSummary =
+    manageable.length === 0
+      ? memberOnly.length > 0
+        ? `${formatServerCount(memberOnly.length, 'view-only community')}`
+        : 'No server access yet'
+      : memberOnly.length > 0
+        ? `${formatServerCount(manageable.length, 'manageable server')} • ${formatServerCount(memberOnly.length, 'view-only community')}`
+        : `${formatServerCount(manageable.length, 'manageable server')}`;
 
   // Persist selected guild to localStorage
   const selectGuild = useCallback((guild: MutualGuild) => {
@@ -140,15 +152,18 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     return (
       <div className="dashboard-chip flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground">
         <Server className="h-4 w-4 animate-pulse" />
-        <span>Loading servers...</span>
+        <span>Loading workspaces...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="dashboard-chip flex flex-col items-center gap-2 rounded-xl px-3 py-3 text-sm text-muted-foreground">
-        <span>Failed to load servers</span>
+      <div className="dashboard-chip flex flex-col items-start gap-2 rounded-xl px-3 py-3 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">Couldn&apos;t load workspaces</span>
+        <span className="text-xs text-muted-foreground">
+          Refresh the list and we&apos;ll try again.
+        </span>
         <Button variant="outline" size="sm" className="gap-1" onClick={() => loadGuilds()}>
           <RefreshCw className="h-3 w-3" />
           Retry
@@ -160,9 +175,9 @@ export function ServerSelector({ className }: ServerSelectorProps) {
   if (guilds.length === 0) {
     const inviteUrl = getBotInviteUrl();
     return (
-      <div className="dashboard-chip flex flex-col items-center gap-2 rounded-xl px-3 py-3 text-center text-sm text-muted-foreground">
+      <div className="dashboard-chip flex flex-col items-start gap-2 rounded-xl px-3 py-3 text-sm text-muted-foreground">
         <Bot className="h-5 w-5" />
-        <span className="font-medium">No mutual servers</span>
+        <span className="font-medium text-foreground">No shared servers yet</span>
         <span className="text-xs">Volvox.Bot isn&apos;t in any of your Discord servers yet.</span>
         {inviteUrl ? (
           <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
@@ -188,9 +203,9 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         <Button
           variant="outline"
           className={cn(
-            'h-[3.2rem] w-full justify-between',
+            'h-auto min-h-[3.85rem] w-full justify-between py-2.5',
             'rounded-xl border-border/70',
-            'bg-gradient-to-r from-background to-muted/40',
+            'bg-card/80',
             'px-3 shadow-sm',
             className,
           )}
@@ -213,11 +228,12 @@ export function ServerSelector({ className }: ServerSelectorProps) {
               <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
                 Active server
               </span>
-              <span className="block truncate text-sm font-medium">
+              <span className="block truncate text-sm font-medium leading-tight">
                 {manageable.length === 0
                   ? 'No manageable servers'
                   : (selectedGuild?.name ?? 'Select server')}
               </span>
+              <span className="block truncate text-xs text-muted-foreground">{accessSummary}</span>
             </span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -230,10 +246,11 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         {/* ── Manageable servers (mod / admin / owner) ── */}
         {manageable.length > 0 ? (
           <>
-            <DropdownMenuLabel
-              className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-            >
-              Manage
+            <DropdownMenuLabel className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Workspace access
+              <span className="mt-1 block normal-case tracking-normal text-xs font-normal text-muted-foreground/80">
+                {accessSummary}
+              </span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {manageable.map((guild) => (
@@ -261,7 +278,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="flex items-center gap-1 px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Member Only
+              View only
             </DropdownMenuLabel>
             {memberOnly.map((guild) => (
               <DropdownMenuItem key={guild.id} asChild>

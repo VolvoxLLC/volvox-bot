@@ -4,9 +4,9 @@
  * Summarizes recent messages into key topics, decisions, action items, and links.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { info, error as logError } from '../logger.js';
+import { CLIProcess } from '../modules/cli-process.js';
 import { getConfig } from '../modules/config.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
@@ -25,15 +25,20 @@ const MAX_MESSAGE_COUNT = 200;
 /** Cooldown tracking: channelId → last-used timestamp (ms) */
 const cooldownMap = new Map();
 
-/** Shared Anthropic client (connection pooling, auth caching). */
-const anthropicClient = new Anthropic();
-
 /** Claude model for cost-efficient summarization */
 const SUMMARIZE_MODEL = 'claude-haiku-4-5';
 
-/** System prompt for summarization */
-const SYSTEM_PROMPT =
+/** Default system prompt for summarization (used when no per-guild override is set) */
+const DEFAULT_SYSTEM_PROMPT =
   'Summarize this Discord conversation. Extract: 1) Key topics discussed, 2) Decisions made, 3) Action items, 4) Notable links shared. Be concise.';
+
+/** Short-lived CLIProcess for summarization (spawns a fresh process per call). */
+const summarizerProcess = new CLIProcess('tldr-summarizer', {
+  model: SUMMARIZE_MODEL,
+  systemPrompt: DEFAULT_SYSTEM_PROMPT,
+  tools: '',
+  permissionMode: 'bypassPermissions',
+});
 
 export const data = new SlashCommandBuilder()
   .setName('tldr')
@@ -93,6 +98,41 @@ function formatTime(date) {
   return `${h}:${m}`;
 }
 
+/** Discord API hard limit for messages.fetch */
+const DISCORD_FETCH_LIMIT = 100;
+
+/**
+ * Fetch messages from a channel, paginating when the requested amount exceeds
+ * Discord's per-request cap of 100.
+ * @param {import('discord.js').TextBasedChannel} channel
+ * @param {number} total - Total number of messages to fetch
+ * @returns {Promise<import('discord.js').Collection<string, import('discord.js').Message>>}
+ */
+async function fetchMessagesPaginated(channel, total) {
+  if (total <= DISCORD_FETCH_LIMIT) {
+    return channel.messages.fetch({ limit: total });
+  }
+
+  const allMessages = new Map();
+  let remaining = total;
+  let beforeId;
+
+  while (remaining > 0) {
+    const batchSize = Math.min(remaining, DISCORD_FETCH_LIMIT);
+    const options = { limit: batchSize };
+    if (beforeId) options.before = beforeId;
+
+    const batch = await channel.messages.fetch(options);
+    if (batch.size === 0) break;
+
+    for (const [id, msg] of batch) allMessages.set(id, msg);
+    beforeId = [...batch.keys()].pop();
+    remaining -= batch.size;
+  }
+
+  return allMessages;
+}
+
 /**
  * Fetch and format messages from the channel.
  * @param {import('discord.js').TextBasedChannel} channel
@@ -105,7 +145,7 @@ async function fetchAndFormatMessages(channel, opts) {
   if (hours != null) {
     // Fetch recent messages and filter by time window
     const cutoff = Date.now() - hours * 60 * 60 * 1000;
-    const fetched = await channel.messages.fetch({ limit: maxMessages });
+    const fetched = await fetchMessagesPaginated(channel, maxMessages);
     const sorted = [...fetched.values()]
       .filter((m) => m.createdTimestamp >= cutoff)
       .sort((a, b) => a.createdTimestamp - b.createdTimestamp);
@@ -119,7 +159,7 @@ async function fetchAndFormatMessages(channel, opts) {
 
   // Fetch by count
   const limit = Math.min(count ?? defaultMessages, maxMessages);
-  const fetched = await channel.messages.fetch({ limit });
+  const fetched = await fetchMessagesPaginated(channel, limit);
   const sorted = [...fetched.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
 
   const lines = sorted
@@ -130,21 +170,19 @@ async function fetchAndFormatMessages(channel, opts) {
 }
 
 /**
- * Call Claude to summarize a conversation.
+ * Call Claude via CLI subprocess to summarize a conversation.
+ * Uses the same auth flow as AI chat (ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN).
  * @param {string} conversationText
+ * @param {string} [systemPrompt] - Per-guild system prompt override
  * @returns {Promise<string>} Raw summary text from Claude
  */
-async function summarizeWithAI(conversationText) {
+async function summarizeWithAI(conversationText, systemPrompt) {
   const truncated = conversationText.slice(0, MAX_INPUT_CHARS);
+  const overrides = systemPrompt ? { systemPrompt } : {};
 
-  const response = await anthropicClient.messages.create({
-    model: SUMMARIZE_MODEL,
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: truncated }],
-  });
-
-  return response.content[0]?.text ?? '';
+  await summarizerProcess.start();
+  const result = await summarizerProcess.send(truncated, overrides);
+  return result.result ?? '';
 }
 
 /**
@@ -265,8 +303,8 @@ export async function execute(interaction) {
 
     info('TLDR summarizing', { guildId, channelId, messageCount });
 
-    // Call AI
-    const summary = await summarizeWithAI(conversationText);
+    // Call AI with per-guild system prompt if configured
+    const summary = await summarizeWithAI(conversationText, tldrConfig.systemPrompt);
 
     if (!summary) {
       return await safeEditReply(interaction, '❌ Failed to generate summary.');

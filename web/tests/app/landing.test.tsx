@@ -1,33 +1,57 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import LandingPage from '@/app/page';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock Framer Motion to avoid animation issues in tests
-// Use async import inside mock factory for ESM compatibility (no require)
 vi.mock('framer-motion', async () => {
   const React = await import('react');
   const createComponent = (tag: string) =>
-    React.forwardRef((props: any, ref: any) =>
+    React.forwardRef(({ animate: _animate, initial: _initial, transition: _transition, whileHover: _whileHover, whileInView: _whileInView, viewport: _viewport, ...props }: any, ref: any) =>
       React.createElement(tag, { ...props, ref }, props.children)
     );
+
   return {
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
     motion: {
       div: createComponent('div'),
       h1: createComponent('h1'),
       h2: createComponent('h2'),
+      li: createComponent('li'),
       p: createComponent('p'),
+      path: createComponent('path'),
       span: createComponent('span'),
+      section: createComponent('section'),
+      tr: createComponent('tr'),
+      td: createComponent('td'),
     },
     useInView: () => true,
+    useScroll: () => ({ scrollY: 0, scrollYProgress: 0 }),
+    useSpring: (value: unknown) => value,
+    useTransform: (_value: unknown, _input: unknown, output: unknown[]) => output[0],
     useReducedMotion: () => false,
   };
 });
 
+import LandingPage from '@/app/page';
+
 describe('LandingPage', () => {
   const originalClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        servers: 1,
+        members: 1,
+        commandsServed: 1,
+        activeConversations: 0,
+        uptime: 0,
+        messagesProcessed: 0,
+        cachedAt: '',
+      }),
+    } as Response);
+  });
+
   afterEach(() => {
-    // Restore env var to prevent pollution between tests
+    vi.restoreAllMocks();
     if (originalClientId !== undefined) {
       process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = originalClientId;
     } else {
@@ -37,18 +61,16 @@ describe('LandingPage', () => {
 
   it('renders the hero heading with volvox-bot', () => {
     render(<LandingPage />);
-    // The typewriter effect renders "volvox-bot" after the ">" prompt
-    // Check that the brand name appears somewhere in the document
-    const volvoxElements = screen.getAllByText(/volvox-bot/);
+    const volvoxElements = screen.getAllByText(/Volvox/i);
     expect(volvoxElements.length).toBeGreaterThan(0);
   });
 
   it('renders feature cards', () => {
     render(<LandingPage />);
-    expect(screen.getByText('AI Chat')).toBeInTheDocument();
-    expect(screen.getByText('Moderation')).toBeInTheDocument();
-    expect(screen.getByText('Starboard')).toBeInTheDocument();
-    expect(screen.getByText('Analytics')).toBeInTheDocument();
+    expect(screen.getAllByText('AI Chat').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Moderation').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Starboard').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Analytics').length).toBeGreaterThan(0);
   });
 
   it('renders sign in button', () => {
@@ -70,19 +92,22 @@ describe('LandingPage', () => {
 
   it('renders footer with links', () => {
     render(<LandingPage />);
-    // GitHub appears in both header nav and footer
     expect(screen.getAllByText('GitHub').length).toBeGreaterThan(0);
     expect(screen.getByText('Support Server')).toBeInTheDocument();
   });
 
   it('has CTA section', () => {
     render(<LandingPage />);
-    expect(screen.getByText(/Ready to upgrade your server/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ready to upgrade/i })).toBeInTheDocument();
   });
 
   it('renders theme toggle', () => {
     render(<LandingPage />);
-    // Theme toggle button is present
     expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
+  });
+
+  it('renders the product showcase section', () => {
+    render(<LandingPage />);
+    expect(screen.getByText('THE PRODUCT')).toBeInTheDocument();
   });
 });

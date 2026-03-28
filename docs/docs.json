@@ -7,7 +7,7 @@
     "light": "#4ade80",
     "dark": "#16a34a"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/logo/logo.png",
   "navigation": {
     "tabs": [
       {
@@ -29,13 +29,13 @@
     ]
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/logo.png",
+    "dark": "/logo/logo.png"
   },
   "footer": {
     "socials": {
       "github": "https://github.com/VolvoxLLC/volvox-bot",
-      "discord": "https://discord.gg/volvox"
+      "discord": "https://discord.gg/8ahXACdamN"
     }
   }
 }

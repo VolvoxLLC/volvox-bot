@@ -6,7 +6,10 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
+import { cacheGetOrSet, TTL } from '../../utils/cache.js';
+import { adaptGuildIdFromQuery } from '../middleware/adaptGuildId.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { parseLimit, parsePage } from '../utils/pagination.js';
 import { requireGuildModerator } from './guilds.js';
 
 const router = Router();
@@ -14,24 +17,13 @@ const router = Router();
 /** Rate limiter for moderation API endpoints — 120 requests / 15 min per IP. */
 const moderationRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
 
-/**
- * Middleware: adapt query param guildId to path param for requireGuildModerator.
- * Moderation routes use `?guildId=` instead of `/:id`, so we bridge the gap.
- */
-function adaptGuildIdParam(req, _res, next) {
-  if (req.query.guildId) {
-    req.params.id = req.query.guildId;
-  }
-  next();
-}
-
 // Apply a global rate limiter first so static analysis and runtime behavior
 // both see all moderation routes protected before authz and DB access.
 router.use(moderationRateLimit);
 
 // Apply guild-scoped authorization to all moderation routes
 // (requireAuth is already applied at the router mount level in api/index.js)
-router.use(adaptGuildIdParam, requireGuildModerator);
+router.use(adaptGuildIdFromQuery, requireGuildModerator);
 
 // ─── GET /cases ───────────────────────────────────────────────────────────────
 
@@ -155,8 +147,8 @@ router.get('/cases', moderationRateLimit, async (req, res) => {
     return res.status(400).json({ error: 'guildId is required' });
   }
 
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit);
   const order = req.query.order === 'asc' ? 'ASC' : 'DESC';
   const offset = (page - 1) * limit;
 
@@ -449,63 +441,73 @@ router.get('/stats', moderationRateLimit, async (req, res) => {
   }
 
   try {
-    const pool = getPool();
+    const cacheKey = `mod:stats:${guildId}`;
 
-    const [totalResult, last24hResult, last7dResult, byActionResult, topTargetsResult] =
-      await Promise.all([
-        // Total cases
-        pool.query('SELECT COUNT(*)::integer AS total FROM mod_cases WHERE guild_id = $1', [
-          guildId,
-        ]),
+    const statsData = await cacheGetOrSet(
+      cacheKey,
+      async () => {
+        const pool = getPool();
 
-        // Last 24 hours
-        pool.query(
-          `SELECT COUNT(*)::integer AS total FROM mod_cases
+        const [totalResult, last24hResult, last7dResult, byActionResult, topTargetsResult] =
+          await Promise.all([
+            // Total cases
+            pool.query('SELECT COUNT(*)::integer AS total FROM mod_cases WHERE guild_id = $1', [
+              guildId,
+            ]),
+
+            // Last 24 hours
+            pool.query(
+              `SELECT COUNT(*)::integer AS total FROM mod_cases
            WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '24 hours'`,
-          [guildId],
-        ),
+              [guildId],
+            ),
 
-        // Last 7 days
-        pool.query(
-          `SELECT COUNT(*)::integer AS total FROM mod_cases
+            // Last 7 days
+            pool.query(
+              `SELECT COUNT(*)::integer AS total FROM mod_cases
            WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '7 days'`,
-          [guildId],
-        ),
+              [guildId],
+            ),
 
-        // Breakdown by action
-        pool.query(
-          `SELECT action, COUNT(*)::integer AS count
+            // Breakdown by action
+            pool.query(
+              `SELECT action, COUNT(*)::integer AS count
            FROM mod_cases
            WHERE guild_id = $1
            GROUP BY action`,
-          [guildId],
-        ),
+              [guildId],
+            ),
 
-        // Top targets (most cases in last 30 days)
-        pool.query(
-          `SELECT target_id AS "userId", target_tag AS tag, COUNT(*)::integer AS count
+            // Top targets (most cases in last 30 days)
+            pool.query(
+              `SELECT target_id AS "userId", target_tag AS tag, COUNT(*)::integer AS count
            FROM mod_cases
            WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'
            GROUP BY target_id, target_tag
            ORDER BY count DESC
            LIMIT 10`,
-          [guildId],
-        ),
-      ]);
+              [guildId],
+            ),
+          ]);
 
-    // Convert byAction rows to a flat object
-    const byAction = {};
-    for (const row of byActionResult.rows) {
-      byAction[row.action] = row.count;
-    }
+        // Convert byAction rows to a flat object
+        const byAction = {};
+        for (const row of byActionResult.rows) {
+          byAction[row.action] = row.count;
+        }
 
-    return res.json({
-      totalCases: totalResult.rows[0]?.total ?? 0,
-      last24h: last24hResult.rows[0]?.total ?? 0,
-      last7d: last7dResult.rows[0]?.total ?? 0,
-      byAction,
-      topTargets: topTargetsResult.rows,
-    });
+        return {
+          totalCases: totalResult.rows[0]?.total ?? 0,
+          last24h: last24hResult.rows[0]?.total ?? 0,
+          last7d: last7dResult.rows[0]?.total ?? 0,
+          byAction,
+          topTargets: topTargetsResult.rows,
+        };
+      },
+      TTL.MOD_STATS,
+    );
+
+    return res.json(statsData);
   } catch (err) {
     logError('Failed to fetch mod stats', { error: err.message, guildId });
     return res.status(500).json({ error: 'Failed to fetch mod stats' });
@@ -616,8 +618,8 @@ router.get('/user/:userId/history', moderationRateLimit, async (req, res) => {
     return res.status(400).json({ error: 'userId is required' });
   }
 
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit);
   const offset = (page - 1) * limit;
 
   try {

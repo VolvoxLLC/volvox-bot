@@ -26,6 +26,26 @@ vi.mock('../../../src/modules/config.js', () => ({
   setConfigValue: vi.fn(),
 }));
 
+// Mock cache utilities — always simulate a cache miss so tests exercise DB paths
+vi.mock('../../../src/utils/cache.js', () => ({
+  cacheGet: vi.fn().mockResolvedValue(null),
+  cacheSet: vi.fn().mockResolvedValue(undefined),
+  cacheGetOrSet: vi.fn().mockImplementation((_key, factory) => factory()),
+  cacheDel: vi.fn().mockResolvedValue(undefined),
+  cacheDelPattern: vi.fn().mockResolvedValue(0),
+  TTL: {
+    CHANNELS: 300,
+    ROLES: 300,
+    MEMBERS: 60,
+    CONFIG: 60,
+    REPUTATION: 60,
+    LEADERBOARD: 300,
+    ANALYTICS: 3600,
+    SESSION: 86400,
+    CHANNEL_DETAIL: 600,
+  },
+}));
+
 // oauthJwt is used by requireAuth — mock it to avoid real JWT parsing
 vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
   handleOAuthJwt: vi.fn().mockResolvedValue(false),
@@ -156,7 +176,8 @@ describe('members routes', () => {
       const alice = res.body.members.find((m) => m.id === 'user1');
       expect(alice.messages_sent).toBe(42);
       expect(alice.xp).toBe(250);
-      expect(alice.level).toBe(2);
+      // 250 XP with thresholds [100, 300, 600, 1000] = level 1 (0-indexed)
+      expect(alice.level).toBe(1);
       expect(alice.warning_count).toBe(3);
 
       const bob = res.body.members.find((m) => m.id === 'user2');

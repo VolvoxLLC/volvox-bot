@@ -69,7 +69,7 @@ export default function ConversationDetailPage() {
   }, [guildId, conversationId, router]);
 
   useEffect(() => {
-    void fetchDetail();
+    fetchDetail();
   }, [fetchDetail]);
 
   return (

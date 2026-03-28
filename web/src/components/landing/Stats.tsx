@@ -1,8 +1,10 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
-import { Activity, Clock, Globe, MessageSquare, Terminal, Users } from 'lucide-react';
+import { Clock, Terminal, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { AnimatedCounter, formatNumber } from './AnimatedCounter';
+import { ScrollStage } from './ScrollStage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,12 +20,6 @@ interface BotStats {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
-
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -33,144 +29,38 @@ function formatUptime(seconds: number): string {
   return `${minutes}m`;
 }
 
-// ─── AnimatedCounter ─────────────────────────────────────────────────────────
-
-function AnimatedCounter({
-  target,
-  duration = 2,
-  formatter = formatNumber,
-}: {
-  target: number;
-  duration?: number;
-  formatter?: (n: number) => string;
-}) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
-  const rafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!isInView) return;
-
-    let startTime: number | null = null;
-    const animate = (timestamp: number) => {
-      if (startTime === null) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
-      const eased = 1 - (1 - progress) ** 3;
-      setCount(Math.floor(eased * target));
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        setCount(target);
-      }
-    };
-    rafRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [isInView, target, duration]);
-
-  return <span ref={ref}>{formatter(count)}</span>;
-}
-
-// ─── Skeleton Card ────────────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <div className="relative p-6 rounded-2xl border border-border bg-card overflow-hidden">
-      <div
-        className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite]"
-        style={{
-          background: [
-            'linear-gradient(',
-            '90deg, ',
-            'transparent 0%, ',
-            'hsl(var(--primary) / 0.04) 50%, ',
-            'transparent 100%',
-            ')',
-          ].join(''),
-        }}
-      />
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-muted animate-pulse" />
-        <div className="w-24 h-8 rounded-lg bg-muted animate-pulse" />
-        <div className="w-20 h-4 rounded bg-muted animate-pulse" />
-      </div>
-    </div>
-  );
-}
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
-interface StatCardProps {
-  readonly icon: React.ReactNode;
-  readonly color: string;
-  readonly value: number;
-  readonly label: string;
-  readonly formatter?: (n: number) => string;
-  readonly delay: number;
-  readonly isInView: boolean;
-}
-
-function StatCard({
-  icon,
-  color,
-  value,
-  label,
-  formatter = formatNumber,
-  delay,
-  isInView,
-}: StatCardProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="group relative p-6 rounded-2xl border border-border bg-card hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 overflow-hidden text-center"
-    >
-      {/* Icon */}
-      <div
-        className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-        style={{ backgroundColor: `${color}15`, color }}
-      >
-        {icon}
-      </div>
-
-      {/* Value */}
-      <div className="text-3xl sm:text-4xl font-extrabold text-foreground mb-2 tabular-nums tracking-tight">
-        <AnimatedCounter target={value} formatter={formatter} />
-      </div>
-
-      {/* Label */}
-      <div className="text-sm text-muted-foreground font-medium">{label}</div>
-    </motion.div>
-  );
-}
-
-// ─── Testimonials ─────────────────────────────────────────────────────────────
+// ─── Testimonial placeholders ────────────────────────────────────────────────
 
 const testimonials = [
   {
     id: 'testimonial-1',
-    quote: "Finally, a Discord bot that doesn't suck. The AI actually understands context.",
-    author: 'Sarah Chen',
-    role: 'DevOps Engineer @ TechFlow',
+    quote: '[Quote from a real user — coming soon]',
+    author: 'Community Member',
+    role: 'Discord Server Admin',
+    lineClassName: 'bg-primary/55',
+    quoteClassName: 'text-primary/20',
+    avatarBg: 'bg-primary/15 text-primary',
+    initial: 'C',
   },
   {
     id: 'testimonial-2',
-    quote: "We migrated from MEE6 and never looked back. The dashboard is chef's kiss.",
-    author: 'Marcus Johnson',
-    role: 'Community Manager @ Streamline',
+    quote: '[Quote from a real user — coming soon]',
+    author: 'Community Member',
+    role: 'Developer',
+    lineClassName: 'bg-secondary/60',
+    quoteClassName: 'text-secondary/20',
+    avatarBg: 'bg-secondary/15 text-secondary',
+    initial: 'C',
   },
   {
     id: 'testimonial-3',
-    quote: 'Self-hosted in 10 minutes. The docs are actually readable. Revolutionary.',
-    author: 'Alex Rivera',
-    role: 'Founder @ OpenSaaS',
+    quote: '[Quote from a real user — coming soon]',
+    author: 'Community Member',
+    role: 'Open Source Contributor',
+    lineClassName: 'bg-accent/65',
+    quoteClassName: 'text-accent/25',
+    avatarBg: 'bg-accent/15 text-accent',
+    initial: 'C',
   },
 ];
 
@@ -230,158 +120,128 @@ export function Stats() {
     cachedAt: '',
   };
 
-  const statCards = [
+  const condensedStats = [
     {
-      icon: <Globe className="w-6 h-6" />,
-      color: '#22c55e',
-      value: s.servers,
-      label: 'Servers',
-      formatter: formatNumber,
-    },
-    {
-      icon: <Users className="w-6 h-6" />,
-      color: '#22c55e',
+      icon: <Users className="w-5 h-5" />,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
       value: s.members,
       label: 'Members',
       formatter: formatNumber,
     },
     {
-      icon: <Terminal className="w-6 h-6" />,
-      color: '#ff9500',
+      icon: <Terminal className="w-5 h-5" />,
+      color: 'text-secondary',
+      bgColor: 'bg-secondary/10',
       value: s.commandsServed,
       label: 'Commands Served',
       formatter: formatNumber,
     },
     {
-      icon: <MessageSquare className="w-6 h-6" />,
-      color: '#af58da',
-      value: s.activeConversations,
-      label: 'Active Conversations',
-      formatter: formatNumber,
-    },
-    {
-      icon: <Clock className="w-6 h-6" />,
-      color: '#14b8a6',
+      icon: <Clock className="w-5 h-5" />,
+      color: 'text-accent',
+      bgColor: 'bg-accent/10',
       value: s.uptime,
       label: 'Uptime',
       formatter: formatUptime,
-    },
-    {
-      icon: <Activity className="w-6 h-6" />,
-      color: '#f43f5e',
-      value: s.messagesProcessed,
-      label: 'Messages Processed',
-      formatter: formatNumber,
     },
   ];
 
   return (
     <section className="py-28 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)]">
       <div className="max-w-6xl mx-auto" ref={containerRef}>
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-14"
-        >
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
-            Live bot stats
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Real-time data, refreshed every minute
-            {stats?.cachedAt && (
-              <span className="ml-2 opacity-50">
-                · as of {new Date(stats.cachedAt).toLocaleTimeString()}
-              </span>
-            )}
-          </p>
-        </motion.div>
+        <ScrollStage>
+          {/* Testimonials */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-20"
+          >
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center text-foreground mb-14">
+              Loved by <span className="text-aurora">developers</span>
+            </h2>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-24">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-            : error && !stats
-              ? statCards.map((card, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={isInView ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.5, delay: i * 0.07 }}
-                    className="p-6 rounded-2xl border border-border bg-card text-center"
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {testimonials.map((t, i) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }}
+                  className="p-8 rounded-2xl border border-border bg-card relative hover:-translate-y-1 transition-transform duration-300"
+                >
+                  <div className={`absolute inset-x-0 top-0 h-px ${t.lineClassName}`} />
+                  <div
+                    className={`absolute top-5 left-6 text-5xl font-serif leading-none ${t.quoteClassName}`}
                   >
+                    &ldquo;
+                  </div>
+                  <p className="text-foreground/60 italic mb-5 pt-8 relative z-10 leading-relaxed">
+                    {t.quote}
+                  </p>
+                  <div className="border-t border-border pt-4 flex items-center gap-3">
                     <div
-                      className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-                      style={{
-                        backgroundColor: `${card.color}15`,
-                        color: card.color,
-                      }}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${t.avatarBg}`}
                     >
-                      {card.icon}
+                      {t.initial}
                     </div>
-                    <div className="text-3xl font-bold text-muted-foreground mb-2">—</div>
-                    <div className="text-sm text-muted-foreground">{card.label}</div>
-                  </motion.div>
-                ))
-              : statCards.map((card, i) => (
-                  <StatCard
-                    key={i}
-                    icon={card.icon}
-                    color={card.color}
-                    value={card.value}
-                    label={card.label}
-                    formatter={card.formatter}
-                    delay={i * 0.07}
-                    isInView={isInView}
-                  />
-                ))}
-        </div>
+                    <div>
+                      <div className="font-semibold text-foreground text-sm">{t.author}</div>
+                      <div className="text-xs text-muted-foreground">{t.role}</div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
 
-        {/* Testimonials */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mb-14"
-        >
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center text-foreground mb-14">
-            Loved by <span className="text-aurora">developers</span>
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <motion.div
-                key={t.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.5, delay: 0.4 + i * 0.1 }}
-                className="p-8 rounded-2xl border border-border bg-card relative hover:-translate-y-1 transition-transform duration-300"
-              >
-                <div className="text-5xl text-primary/20 absolute top-5 left-6 font-serif leading-none">
-                  &ldquo;
-                </div>
-                <p className="text-foreground mb-5 pt-8 relative z-10 leading-relaxed">{t.quote}</p>
-                <div className="border-t border-border pt-4">
-                  <div className="font-semibold text-foreground">{t.author}</div>
-                  <div className="text-sm text-muted-foreground">{t.role}</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Trust Badge */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="text-center"
-        >
-          <p className="text-muted-foreground text-sm">
-            Trusted by teams at leading tech companies and thousands of open-source communities
-          </p>
-        </motion.div>
+          {/* Condensed Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+              {loading
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
+                    <div key={i} className="text-center p-4">
+                      <div className="w-16 h-8 rounded-lg bg-muted animate-pulse mx-auto mb-2" />
+                      <div className="w-20 h-4 rounded bg-muted animate-pulse mx-auto" />
+                    </div>
+                  ))
+                : error && !stats
+                  ? condensedStats.map((stat) => (
+                      <div key={stat.label} className="text-center p-4">
+                        <div
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}
+                        >
+                          {stat.icon}
+                        </div>
+                        <div className="text-2xl font-bold text-muted-foreground mb-1">—</div>
+                        <div className="text-xs text-muted-foreground">{stat.label}</div>
+                      </div>
+                    ))
+                  : condensedStats.map((stat) => (
+                      <div key={stat.label} className="text-center p-4">
+                        <div
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg mb-2 ${stat.bgColor} ${stat.color}`}
+                        >
+                          {stat.icon}
+                        </div>
+                        <div className="text-2xl font-bold text-foreground mb-1 tabular-nums">
+                          <AnimatedCounter target={stat.value} formatter={stat.formatter} />
+                        </div>
+                        <div className="text-xs text-muted-foreground">{stat.label}</div>
+                      </div>
+                    ))}
+            </div>
+            <p className="text-center text-xs text-muted-foreground/60 mt-4">
+              Live data · refreshed every minute
+            </p>
+          </motion.div>
+        </ScrollStage>
       </div>
     </section>
   );

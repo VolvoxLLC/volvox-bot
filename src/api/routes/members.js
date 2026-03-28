@@ -8,26 +8,16 @@
 import { Router } from 'express';
 import { getPool } from '../../db.js';
 import { info, error as logError } from '../../logger.js';
-import { getConfig } from '../../modules/config.js';
-import { computeLevel } from '../../modules/reputation.js';
-import { REPUTATION_DEFAULTS } from '../../modules/reputationDefaults.js';
+import { computeLevel, getXpConfig } from '../../modules/reputation.js';
+import { cacheGet, cacheSet, TTL } from '../../utils/cache.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { parseLimit, parsePage } from '../utils/pagination.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router();
 
 /** Rate limiter for member endpoints — 120 requests / 15 min per IP. */
 const membersRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 120 });
-
-/**
- * Resolve the reputation configuration for a guild by returning the defaults overridden by the guild's configured reputation values.
- * @param {string} guildId - Guild identifier used to load the guild's configuration.
- * @returns {object} The resolved reputation configuration containing level thresholds and related reputation settings.
- */
-function getRepConfig(guildId) {
-  const cfg = getConfig(guildId);
-  return { ...REPUTATION_DEFAULTS, ...cfg.reputation };
-}
 
 /**
  * Obtain the PostgreSQL connection pool instance for the application.
@@ -93,6 +83,7 @@ router.get(
       if (!pool) {
         return res.status(503).json({ error: 'Database unavailable' });
       }
+      const xpConfig = getXpConfig(guild.id);
 
       // Stream CSV in batches of 1000 to avoid holding all guild members in
       // memory at once.  Each batch is fetched from Discord, enriched from the
@@ -144,6 +135,7 @@ router.get(
           const stats = statsMap.get(member.id) || {};
           const rep = repMap.get(member.id) || {};
           const warnings = warningsMap.get(member.id) || 0;
+          const xp = rep.xp ?? 0;
 
           const row = [
             member.id,
@@ -151,8 +143,8 @@ router.get(
             escapeCsv(member.displayName),
             member.joinedAt ? member.joinedAt.toISOString() : '',
             stats.messages_sent ?? 0,
-            rep.xp ?? 0,
-            rep.level ?? 0,
+            xp,
+            computeLevel(xp, xpConfig.levelThresholds),
             stats.days_active ?? 0,
             warnings,
           ].join(',');
@@ -295,9 +287,7 @@ router.get(
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
 router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
-  let limit = Number.parseInt(req.query.limit, 10) || 25;
-  if (limit < 1) limit = 1;
-  if (limit > 100) limit = 100;
+  const limit = parseLimit(req.query.limit);
   const after = req.query.after || undefined;
   const search = req.query.search || undefined;
   const sort = req.query.sort || 'joined';
@@ -309,6 +299,7 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
     if (!pool) {
       return res.status(503).json({ error: 'Database unavailable' });
     }
+    const xpConfig = getXpConfig(guild.id);
 
     // Fetch members — use Discord server-side search when a query is provided
     // (searches all guild members by username/nickname prefix), otherwise use
@@ -337,44 +328,83 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 
     const userIds = memberList.map((m) => m.id);
 
-    // Batch-fetch enrichment data
-    const [statsResult, repResult, warningsResult] = await Promise.all([
-      userIds.length > 0
-        ? pool.query(
-            `SELECT user_id, messages_sent, days_active, last_active
+    // Try to load per-user enrichment data from cache first, then batch-fetch DB for misses.
+    // Cache key per user: `member:enrichment:{guildId}:{userId}` — TTL.MEMBERS (60 s).
+    const enrichmentCacheKeys = userIds.map((id) => `member:enrichment:${guild.id}:${id}`);
+    const cachedEnrichments = await Promise.all(enrichmentCacheKeys.map((k) => cacheGet(k)));
+
+    // Determine which users still need DB enrichment
+    const uncachedUserIds = userIds.filter((_, i) => cachedEnrichments[i] === null);
+
+    let statsRows = [];
+    let repRows = [];
+    let warningsRows = [];
+
+    if (uncachedUserIds.length > 0) {
+      // Batch-fetch enrichment data only for cache-miss users
+      const [statsResult, repResult, warningsResult] = await Promise.all([
+        pool.query(
+          `SELECT user_id, messages_sent, days_active, last_active
                FROM user_stats
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-            [guild.id, userIds],
-          )
-        : { rows: [] },
-      userIds.length > 0
-        ? pool.query(
-            `SELECT user_id, xp, level
+          [guild.id, uncachedUserIds],
+        ),
+        pool.query(
+          `SELECT user_id, xp, level
                FROM reputation
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-            [guild.id, userIds],
-          )
-        : { rows: [] },
-      userIds.length > 0
-        ? pool.query(
-            `SELECT target_id, COUNT(*)::integer AS count
+          [guild.id, uncachedUserIds],
+        ),
+        pool.query(
+          `SELECT target_id, COUNT(*)::integer AS count
                FROM mod_cases
                WHERE guild_id = $1 AND target_id = ANY($2) AND action = 'warn'
                GROUP BY target_id`,
-            [guild.id, userIds],
-          )
-        : { rows: [] },
-    ]);
+          [guild.id, uncachedUserIds],
+        ),
+      ]);
+      statsRows = statsResult.rows;
+      repRows = repResult.rows;
+      warningsRows = warningsResult.rows;
+    }
 
-    const statsMap = new Map(statsResult.rows.map((r) => [r.user_id, r]));
-    const repMap = new Map(repResult.rows.map((r) => [r.user_id, r]));
-    const warningsMap = new Map(warningsResult.rows.map((r) => [r.target_id, r.count]));
+    const statsMap = new Map(statsRows.map((r) => [r.user_id, r]));
+    const repMap = new Map(repRows.map((r) => [r.user_id, r]));
+    const warningsMap = new Map(warningsRows.map((r) => [r.target_id, r.count]));
 
-    // Build enriched member objects
-    const enriched = memberList.map((m) => {
-      const stats = statsMap.get(m.id) || {};
-      const rep = repMap.get(m.id) || {};
-      const warnings = warningsMap.get(m.id) || 0;
+    // Persist freshly-fetched enrichment data to cache (fire-and-forget)
+    const cacheWrites = [];
+    for (let i = 0; i < userIds.length; i++) {
+      if (cachedEnrichments[i] !== null) continue; // already cached
+      const userId = userIds[i];
+      const stats = statsMap.get(userId) || {};
+      const rep = repMap.get(userId) || {};
+      const warnings = warningsMap.get(userId) || 0;
+      const xp = rep.xp ?? 0;
+      const enrichment = {
+        messages_sent: stats.messages_sent ?? 0,
+        days_active: stats.days_active ?? 0,
+        last_active: stats.last_active ?? null,
+        xp,
+        level: computeLevel(xp, xpConfig.levelThresholds),
+        warning_count: warnings,
+      };
+      cacheWrites.push(cacheSet(enrichmentCacheKeys[i], enrichment, TTL.MEMBERS).catch(() => {}));
+    }
+    // Write to cache without blocking the response
+    Promise.all(cacheWrites).catch(() => {});
+
+    // Build enriched member objects by merging Discord data with enrichment (cache or DB)
+    const enriched = memberList.map((m, i) => {
+      const repXp = repMap.get(m.id)?.xp ?? 0;
+      const enrichment = cachedEnrichments[i] ?? {
+        messages_sent: statsMap.get(m.id)?.messages_sent ?? 0,
+        days_active: statsMap.get(m.id)?.days_active ?? 0,
+        last_active: statsMap.get(m.id)?.last_active ?? null,
+        xp: repXp,
+        level: computeLevel(repXp, xpConfig.levelThresholds),
+        warning_count: warningsMap.get(m.id) ?? 0,
+      };
 
       return {
         id: m.id,
@@ -383,12 +413,12 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
         avatar: m.user.displayAvatarURL(),
         roles: Array.from(m.roles.cache.values()).map((r) => ({ id: r.id, name: r.name })),
         joinedAt: m.joinedAt,
-        messages_sent: stats.messages_sent ?? 0,
-        days_active: stats.days_active ?? 0,
-        last_active: stats.last_active ?? null,
-        xp: rep.xp ?? 0,
-        level: rep.level ?? 0,
-        warning_count: warnings,
+        messages_sent: enrichment.messages_sent,
+        days_active: enrichment.days_active,
+        last_active: enrichment.last_active,
+        xp: enrichment.xp,
+        level: enrichment.level,
+        warning_count: enrichment.warning_count,
       };
     });
 
@@ -623,10 +653,11 @@ router.get(
       const warningCount = warningCountResult.rows[0]?.count ?? 0;
 
       // Compute badge/level info
-      const repConfig = getRepConfig(guild.id);
+      const xpConfig = getXpConfig(guild.id);
       const xp = rep?.xp ?? 0;
-      const level = rep?.level ?? computeLevel(xp, repConfig.levelThresholds);
-      const nextThreshold = repConfig.levelThresholds[level] ?? null;
+      // Recompute level from XP instead of trusting reputation.level (stale after threshold changes)
+      const level = computeLevel(xp, xpConfig.levelThresholds);
+      const nextThreshold = xpConfig.levelThresholds[level] ?? null;
 
       res.json({
         id: member.id,
@@ -770,8 +801,8 @@ router.get(
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;
-    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
+    const page = parsePage(req.query.page);
+    const limit = parseLimit(req.query.limit);
     const offset = (page - 1) * limit;
 
     try {
@@ -916,16 +947,18 @@ router.post(
       return res.status(400).json({ error: 'amount must be between -1000000 and 1000000' });
     }
 
+    let xpConfig;
     try {
       const pool = safeGetPool();
       if (!pool) {
         return res.status(503).json({ error: 'Database unavailable' });
       }
       const guildId = req.guild.id;
+      xpConfig = getXpConfig(guildId);
 
       // Wrap XP upsert + level update in a transaction for consistency
       const client = await pool.connect();
-      let newXp, newLevel;
+      let newXp, newLevel, oldLevel;
       try {
         await client.query('BEGIN');
 
@@ -940,10 +973,12 @@ router.post(
         );
 
         newXp = rows[0].xp;
+        // Calculate oldLevel from pre-update XP (newXp - amount)
+        const oldXp = newXp - amount;
+        oldLevel = computeLevel(oldXp, xpConfig.levelThresholds);
 
         // Recompute level from thresholds
-        const repConfig = getRepConfig(guildId);
-        newLevel = computeLevel(newXp, repConfig.levelThresholds);
+        newLevel = computeLevel(newXp, xpConfig.levelThresholds);
 
         // Update level if changed
         if (newLevel !== rows[0].level) {
@@ -959,6 +994,24 @@ router.post(
         throw txErr;
       } finally {
         client.release();
+      }
+
+      // If level dropped and removeOnLevelDown is enabled, revoke roles
+      if (amount < 0 && newLevel < oldLevel) {
+        if (xpConfig.enabled && xpConfig.roleRewards.removeOnLevelDown) {
+          try {
+            const member = await req.guild.members.fetch(userId);
+            const { enforceRoleLevelDown } = await import('../../modules/actions/roleUtils.js');
+            await enforceRoleLevelDown(member, newLevel, xpConfig);
+          } catch (err) {
+            logError('Failed to enforce role level-down', {
+              guildId,
+              userId,
+              newLevel,
+              error: err.message,
+            });
+          }
+        }
       }
 
       info('XP adjusted via API', {

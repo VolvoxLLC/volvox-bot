@@ -1,14 +1,42 @@
 'use client';
 
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { FeatureGrid, Footer, Hero, InviteButton, Pricing, Stats } from '@/components/landing';
+import { useCallback, useEffect, useState } from 'react';
+import { FeatureGrid, Footer, Hero, InviteButton, Pricing } from '@/components/landing';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+
+// Below-fold sections lazy-loaded for performance
+const DashboardShowcase = dynamic(
+  () =>
+    import('@/components/landing/DashboardShowcase').then((m) => ({
+      default: m.DashboardShowcase,
+    })),
+  { ssr: false },
+);
+const ComparisonTable = dynamic(
+  () =>
+    import('@/components/landing/ComparisonTable').then((m) => ({ default: m.ComparisonTable })),
+  { ssr: false },
+);
+const Stats = dynamic(
+  () => import('@/components/landing/Stats').then((m) => ({ default: m.Stats })),
+  { ssr: false },
+);
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const shouldReduceMotion = useReducedMotion() ?? false;
+  const { scrollY, scrollYProgress } = useScroll();
+  const progressScaleX = useSpring(scrollYProgress, {
+    damping: 32,
+    mass: 0.22,
+    stiffness: 180,
+  });
+  const progressOpacity = useTransform(scrollY, [0, 120], [0, 1]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -16,8 +44,32 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  /** Smooth-scroll to a section with offset for the fixed navbar. */
+  const scrollToSection = useCallback(
+    (id: string) => {
+      const element = document.getElementById(id);
+      if (!element) return;
+      const navbarHeight = 100;
+      const top = element.getBoundingClientRect().top + window.scrollY - navbarHeight;
+      window.scrollTo({ top, behavior: shouldReduceMotion ? 'auto' : 'smooth' });
+    },
+    [shouldReduceMotion],
+  );
+
   return (
     <div className="flex min-h-screen flex-col">
+      {!shouldReduceMotion && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2px] bg-foreground/10"
+        >
+          <motion.div
+            className="h-full origin-left bg-gradient-to-r from-primary via-secondary to-primary shadow-[0_0_12px_hsl(var(--secondary)/0.35)]"
+            style={{ opacity: progressOpacity, scaleX: progressScaleX }}
+          />
+        </div>
+      )}
+
       {/* Noise overlay */}
       <div className="noise" />
 
@@ -43,39 +95,46 @@ export default function LandingPage() {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center">
             <div className={`flex items-center ${scrolled ? 'nav-links-pill' : 'gap-1'}`}>
-              <a
-                href="#features"
+              <button
+                type="button"
+                onClick={() => scrollToSection('features')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
                 Features
-              </a>
-              <a
-                href="#pricing"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('pricing')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
                 Pricing
-              </a>
-              <a
-                href="https://docs.volvox.bot"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('dashboard')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
-                Docs
-              </a>
-              <a
-                href="https://github.com/VolvoxLLC/volvox-bot"
-                target="_blank"
-                rel="noopener noreferrer"
+                Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('compare')}
                 className="text-[0.9rem] font-medium text-[var(--text-primary)] opacity-60 hover:opacity-100 rounded-full px-4 py-2 hover:bg-[hsl(var(--foreground)/0.05)] transition-all"
               >
-                GitHub
-              </a>
+                Compare
+              </button>
             </div>
           </nav>
 
           {/* Right actions */}
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" className="rounded-full" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-secondary/25 text-secondary font-semibold hover:bg-secondary hover:text-secondary-foreground hover:border-secondary hover:shadow-[0_0_12px_-3px] hover:shadow-secondary/25 transition-all"
+              asChild
+            >
               <Link href="/login">Sign In</Link>
             </Button>
             <InviteButton size="sm" />
@@ -104,10 +163,10 @@ export default function LandingPage() {
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <title>Open menu</title>
                 <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   strokeWidth={2}
-                  d='M4 6h16M4 12h16M4 18h16'
+                  d="M4 6h16M4 12h16M4 18h16"
                 />
               </svg>
             )}
@@ -126,7 +185,7 @@ export default function LandingPage() {
                 className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  scrollToSection('features');
                 }}
               >
                 Features
@@ -136,28 +195,39 @@ export default function LandingPage() {
                 className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                  scrollToSection('pricing');
                 }}
               >
                 Pricing
               </button>
-              <a
-                href="https://docs.volvox.bot"
-                className="text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+              <button
+                type="button"
+                className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('dashboard');
+                }}
               >
-                Docs
-              </a>
-              <a
-                href="https://github.com/VolvoxLLC/volvox-bot"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+                Dashboard
+              </button>
+              <button
+                type="button"
+                className="text-left text-sm font-medium text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl px-4 py-3 hover:bg-muted transition-all"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('compare');
+                }}
               >
-                GitHub
-              </a>
+                Compare
+              </button>
               <div className="flex items-center gap-3 pt-3 mt-2 border-t border-[var(--border-default)]">
                 <ThemeToggle />
-                <Button variant="outline" size="sm" className="rounded-full" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-secondary/25 text-secondary font-semibold hover:bg-secondary hover:text-secondary-foreground hover:border-secondary hover:shadow-[0_0_12px_-3px] hover:shadow-secondary/25 transition-all"
+                  asChild
+                >
                   <Link href="/login">Sign In</Link>
                 </Button>
                 <InviteButton size="sm" />
@@ -167,8 +237,20 @@ export default function LandingPage() {
         )}
       </header>
 
+      {/* Page Flow: Hero → Dashboard Preview → Comparison → Features → Pricing → Stats → Footer */}
+
       {/* Hero Section */}
       <Hero />
+
+      {/* Dashboard Showcase */}
+      <div id="dashboard">
+        <DashboardShowcase />
+      </div>
+
+      {/* Competitor Comparison */}
+      <div id="compare">
+        <ComparisonTable />
+      </div>
 
       {/* Features Section */}
       <div id="features">

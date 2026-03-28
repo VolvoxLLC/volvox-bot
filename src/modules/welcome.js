@@ -48,29 +48,48 @@ export function __resetCommunityActivityState() {
 /**
  * Render welcome message with placeholder replacements.
  *
- * Supported variables:
- *   {user}        – Discord mention (<@id>)
- *   {username}    – Plain username
- *   {server}      – Guild name (alias: {guild})
- *   {guild}       – Guild name (alias: {server})
- *   {memberCount} – Current member count (alias: {count})
- *   {count}       – Current member count (alias: {memberCount})
+ * Static variables (always available):
+ *   {user}          – Discord mention (<@id>)
+ *   {username}      – Plain username
+ *   {server}        – Guild name
+ *   {memberCount}   – Current member count
+ *
+ * Dynamic variables (available when dynamic welcome is enabled):
+ *   {greeting}      – Time-of-day greeting line
+ *   {vibeLine}      – Community activity description
+ *   {ctaLine}       – Suggested channels call-to-action
+ *   {milestoneLine} – Member milestone or "rolled in as member #N"
+ *   {timeOfDay}     – morning, afternoon, evening, or night
+ *   {activityLevel} – quiet, light, steady, busy, or hype
+ *   {topChannels}   – Most active channel mentions
  *
  * @param {string} messageTemplate - Welcome message template
  * @param {Object} member - Member object with id and optional username
  * @param {Object} guild - Guild object with name and memberCount
+ * @param {Object} [dynamicContext] - Dynamic context from computeDynamicContext
  * @returns {string} Rendered welcome message
  */
-export function renderWelcomeMessage(messageTemplate, member, guild) {
+export function renderWelcomeMessage(messageTemplate, member, guild, dynamicContext) {
   const count = (guild.memberCount ?? 0).toString();
   const guildName = guild.name ?? '';
-  return messageTemplate
+  let result = messageTemplate
     .replace(/{user}/g, `<@${member.id}>`)
     .replace(/{username}/g, member.username || 'Unknown')
     .replace(/{server}/g, guildName)
-    .replace(/{guild}/g, guildName)
-    .replace(/{memberCount}/g, count)
-    .replace(/{count}/g, count);
+    .replace(/{memberCount}/g, count);
+
+  if (dynamicContext) {
+    result = result
+      .replace(/{greeting}/g, dynamicContext.greeting ?? '')
+      .replace(/{vibeLine}/g, dynamicContext.vibeLine ?? '')
+      .replace(/{ctaLine}/g, dynamicContext.ctaLine ?? '')
+      .replace(/{milestoneLine}/g, dynamicContext.milestoneLine ?? '')
+      .replace(/{timeOfDay}/g, dynamicContext.timeOfDay ?? '')
+      .replace(/{activityLevel}/g, dynamicContext.activityLevel ?? '')
+      .replace(/{topChannels}/g, dynamicContext.topChannels ?? '');
+  }
+
+  return result;
 }
 
 /**
@@ -199,6 +218,8 @@ export async function sendWelcomeMessage(member, client, config) {
   const useDynamic = config.welcome?.dynamic?.enabled === true;
   const returningMember = isReturningMember(member);
 
+  const dynamicCtx = useDynamic ? computeDynamicContext(member, config) : null;
+
   /**
    * Build the final message string for a given channel.
    * @param {string} channelId
@@ -213,17 +234,15 @@ export async function sendWelcomeMessage(member, client, config) {
       );
     }
 
-    if (useDynamic) {
-      return buildDynamicWelcomeMessage(member, config);
-    }
-
     const template = resolveWelcomeTemplate(channelId, config.welcome);
-    return renderWelcomeMessage(template, memberCtx, guildCtx);
+    return renderWelcomeMessage(template, memberCtx, guildCtx, dynamicCtx);
   };
+
+  const guildId = member.guild.id;
 
   // --- Primary channel ---
   try {
-    const channel = await fetchChannelCached(client, config.welcome.channelId);
+    const channel = await fetchChannelCached(client, config.welcome.channelId, guildId);
     if (channel) {
       await safeSend(channel, buildMessage(config.welcome.channelId));
       info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });
@@ -239,7 +258,7 @@ export async function sendWelcomeMessage(member, client, config) {
 
   for (const channelCfg of extraChannels) {
     try {
-      const channel = await fetchChannelCached(client, channelCfg.channelId);
+      const channel = await fetchChannelCached(client, channelCfg.channelId, guildId);
       if (channel) {
         const template = pickWelcomeVariant(channelCfg.variants, channelCfg.message);
         const msg = renderWelcomeMessage(template, memberCtx, guildCtx);
@@ -260,12 +279,22 @@ export async function sendWelcomeMessage(member, client, config) {
 }
 
 /**
- * Build contextual welcome message based on time, activity, and milestones.
+ * Compute dynamic context variables for template rendering.
+ *
+ * Returns an object whose keys map to template placeholders:
+ *   {greeting}      – Time-of-day greeting line
+ *   {vibeLine}      – Community activity description
+ *   {ctaLine}       – Suggested channels call-to-action
+ *   {milestoneLine} – Member milestone or "rolled in as member #N"
+ *   {timeOfDay}     – morning, afternoon, evening, or night
+ *   {activityLevel} – quiet, light, steady, busy, or hype
+ *   {topChannels}   – Most active channel mentions
+ *
  * @param {Object} member - Discord guild member
  * @param {Object} config - Bot configuration
- * @returns {string} Dynamic welcome message
+ * @returns {Object} Dynamic template variables
  */
-function buildDynamicWelcomeMessage(member, config) {
+function computeDynamicContext(member, config) {
   const welcomeDynamic = config?.welcome?.dynamic || {};
   const timezone = welcomeDynamic.timezone || 'America/New_York';
 
@@ -278,25 +307,19 @@ function buildDynamicWelcomeMessage(member, config) {
 
   const timeOfDay = getTimeOfDay(timezone);
   const snapshot = getCommunitySnapshot(member.guild, welcomeDynamic);
-  const milestoneLine = getMilestoneLine(memberContext.memberCount, welcomeDynamic);
   const suggestedChannels = getSuggestedChannels(member, config, snapshot);
 
-  const greeting = pickFrom(getGreetingTemplates(timeOfDay), memberContext);
-  const vibeLine = buildVibeLine(snapshot, suggestedChannels);
-  const ctaLine = buildCtaLine(suggestedChannels);
+  const milestone = getMilestoneLine(memberContext.memberCount, welcomeDynamic);
 
-  const lines = [greeting];
-
-  if (milestoneLine) {
-    lines.push(milestoneLine);
-  } else {
-    lines.push(`You just rolled in as member **#${memberContext.memberCount}**.`);
-  }
-
-  lines.push(vibeLine);
-  lines.push(ctaLine);
-
-  return lines.join('\n\n');
+  return {
+    greeting: pickFrom(getGreetingTemplates(timeOfDay), memberContext),
+    vibeLine: buildVibeLine(snapshot, suggestedChannels),
+    ctaLine: buildCtaLine(suggestedChannels),
+    milestoneLine: milestone || `You just rolled in as member **#${memberContext.memberCount}**.`,
+    timeOfDay,
+    activityLevel: snapshot.level,
+    topChannels: suggestedChannels.slice(0, 3).join(', '),
+  };
 }
 
 /**
@@ -424,16 +447,16 @@ function buildCtaLine(channels) {
   const [first, second, third] = channels;
 
   if (first && second && third) {
-    return `Start in ${first}, share what you're building in ${second}, and lurk project updates in ${third}.`;
+    return `Start in ${first}, check out ${second}, and browse ${third}.`;
   }
   if (first && second) {
-    return `Drop a quick intro in ${first} and show off what you're building in ${second}.`;
+    return `Start in ${first} or check out ${second}.`;
   }
   if (first) {
-    return `Say hey in ${first} and let us know what you're building.`;
+    return `Head over to ${first} to get started.`;
   }
 
-  return "Say hey and tell us what you're building — we're glad you're here.";
+  return "Say hey and introduce yourself — we're glad you're here.";
 }
 
 /**

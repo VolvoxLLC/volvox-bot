@@ -2,7 +2,6 @@ import {
   ArrowLeft,
   Calendar,
   ExternalLink,
-  Github,
   Heart,
   MessageSquare,
   ThumbsUp,
@@ -14,6 +13,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { GithubIcon } from '@/components/ui/github-icon';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -354,7 +354,7 @@ export default async function ProfilePage({ params }: PageProps) {
                           className="text-muted-foreground hover:text-foreground transition-colors"
                           aria-label="View repository"
                         >
-                          <Github className="h-4 w-4" />
+                          <GithubIcon className="h-4 w-4" />
                         </a>
                       )}
                       {project.liveUrl && (

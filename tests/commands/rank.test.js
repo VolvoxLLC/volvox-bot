@@ -11,7 +11,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/modules/config.js', () => ({
-  getConfig: vi.fn().mockReturnValue({ reputation: { enabled: true } }),
+  getConfig: vi.fn().mockReturnValue({ reputation: { enabled: true }, xp: { enabled: true } }),
 }));
 
 vi.mock('../../src/modules/reputation.js', async (importOriginal) => {
@@ -169,6 +169,28 @@ describe('/rank command', () => {
     expect(safeEditReply).toHaveBeenCalledWith(
       interaction,
       expect.objectContaining({ content: 'Reputation system is not enabled.' }),
+    );
+  });
+
+  it('works when xp.enabled is false but reputation is enabled (backward compat)', async () => {
+    const { getConfig } = await import('../../src/modules/config.js');
+    getConfig.mockReturnValueOnce({ reputation: { enabled: true }, xp: { enabled: false } });
+
+    const pool = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ xp: 350, level: 2, messages_count: 42 }] })
+        .mockResolvedValueOnce({ rows: [{ rank: 3 }] }),
+    };
+    getPool.mockReturnValue(pool);
+
+    const interaction = makeInteraction();
+    await execute(interaction);
+
+    // Should still show rank info even when xp.enabled is false
+    expect(safeEditReply).toHaveBeenCalledWith(
+      interaction,
+      expect.objectContaining({ embeds: expect.any(Array) }),
     );
   });
 

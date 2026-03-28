@@ -5,9 +5,9 @@
  * warn, timeout, kick, ban, or flag for review.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
+import { _setAnthropicClient, getAnthropicClient } from '../utils/anthropicClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
@@ -33,25 +33,19 @@ const DEFAULTS = {
   exemptRoleIds: [],
 };
 
-/** Anthropic client (lazy initialized) */
-let _client = null;
-
 /**
- * Get or create the Anthropic client.
- * @returns {Anthropic}
+ * Get the shared Anthropic client.
+ * @returns {import('@anthropic-ai/sdk').default}
  */
 function getClient() {
-  if (!_client) {
-    _client = new Anthropic();
-  }
-  return _client;
+  return getAnthropicClient();
 }
 
 /**
  * Reset the Anthropic client (for testing).
  */
 export function resetClient() {
-  _client = null;
+  _setAnthropicClient(null);
 }
 
 /**
@@ -78,7 +72,7 @@ export function getAiAutoModConfig(config) {
  * @returns {Promise<{flagged: boolean, scores: Object, categories: string[], reason: string, action: string}>}
  */
 export async function analyzeMessage(content, autoModConfig) {
-  const cfg = autoModConfig ?? DEFAULTS;
+  const mergedConfig = autoModConfig ?? DEFAULTS;
 
   if (!content || content.trim().length < 3) {
     return {
@@ -113,7 +107,7 @@ Respond ONLY with valid JSON in this exact format:
 }`;
 
   const response = await client.messages.create({
-    model: cfg.model ?? DEFAULTS.model,
+    model: mergedConfig.model ?? DEFAULTS.model,
     max_tokens: 256,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -141,7 +135,7 @@ Respond ONLY with valid JSON in this exact format:
     harassment: Math.min(1, Math.max(0, Number(parsed.harassment) || 0)),
   };
 
-  const thresholds = cfg.thresholds;
+  const thresholds = mergedConfig.thresholds;
   const triggeredCategories = [];
 
   if (scores.toxicity >= thresholds.toxicity) triggeredCategories.push('toxicity');
@@ -152,10 +146,10 @@ Respond ONLY with valid JSON in this exact format:
 
   const actionPriority = { ban: 5, kick: 4, timeout: 3, warn: 2, delete: 2, flag: 1, none: -1 };
   let action = 'none';
-  for (const cat of triggeredCategories) {
-    const catAction = cfg.actions[cat] ?? 'flag';
-    if ((actionPriority[catAction] ?? 0) > (actionPriority[action] ?? -1)) {
-      action = catAction;
+  for (const categoryName of triggeredCategories) {
+    const categoryAction = mergedConfig.actions[categoryName] ?? 'flag';
+    if ((actionPriority[categoryAction] ?? 0) > (actionPriority[action] ?? -1)) {
+      action = categoryAction;
     }
   }
 
@@ -180,7 +174,9 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
   const channelId = autoModConfig.flagChannelId;
   if (!channelId) return;
 
-  const flagChannel = await fetchChannelCached(client, channelId).catch(() => null);
+  const flagChannel = await fetchChannelCached(client, channelId, message.guild?.id).catch(
+    () => null,
+  );
   if (!flagChannel) return;
 
   const scoreBar = (score) => {
@@ -342,7 +338,9 @@ export async function checkAiAutoMod(message, client, guildConfig) {
 
   const exemptRoleIds = autoModConfig.exemptRoleIds ?? [];
   if (exemptRoleIds.length > 0 && message.member) {
-    const hasExemptRole = message.member.roles.cache.some((r) => exemptRoleIds.includes(r.id));
+    const hasExemptRole = message.member.roles.cache.some((memberRole) =>
+      exemptRoleIds.includes(memberRole.id),
+    );
     if (hasExemptRole) return { flagged: false };
   }
 

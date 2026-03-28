@@ -3,8 +3,7 @@
  * Handles Discord button interactions for poll voting.
  */
 
-import { error as logError } from '../../logger.js';
-import { safeReply } from '../../utils/safeSend.js';
+import { handleButtonError } from '../../utils/interactionError.js';
 import { getConfig } from '../config.js';
 import { handlePollVote } from '../pollHandler.js';
 
@@ -25,22 +24,10 @@ export async function handlePollButton(interaction) {
   try {
     await handlePollVote(interaction);
   } catch (err) {
-    logError('Poll vote handler failed', {
-      customId: interaction.customId,
-      userId: interaction.user?.id,
-      error: err.message,
+    await handleButtonError(interaction, err, {
+      context: 'Poll vote handler failed',
+      message: '❌ Something went wrong processing your vote.',
     });
-
-    if (!interaction.replied && !interaction.deferred) {
-      try {
-        await safeReply(interaction, {
-          content: '❌ Something went wrong processing your vote.',
-          ephemeral: true,
-        });
-      } catch {
-        // Ignore — we tried
-      }
-    }
   }
   return true;
 }

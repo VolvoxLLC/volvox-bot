@@ -1,6 +1,6 @@
 {
   "name": "volvox-bot",
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@10.33.0",
   "version": "0.1.0",
   "description": "Volvox Discord bot - AI chat, welcome messages, and moderation",
   "main": "src/index.js",
@@ -33,22 +33,21 @@
     "docs:generate": "node scripts/generate-openapi.js"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.79",
     "@anthropic-ai/sdk": "^0.80.0",
-    "@sentry/node": "^10.44.0",
+    "@sentry/node": "^10.46.0",
     "discord.js": "^14.25.1",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "ioredis": "^5.10.0",
+    "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
-    "mem0ai": "^2.4.1",
+    "mem0ai": "^2.4.2",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.20.0",
     "swagger-jsdoc": "^6.2.8",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "winston-transport": "^4.9.0",
-    "ws": "^8.19.0"
+    "ws": "^8.20.0"
   },
   "pnpm": {
     "overrides": {
@@ -63,11 +62,11 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
+    "@biomejs/biome": "^2.4.9",
     "@changesets/cli": "^2.30.0",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.1",
     "supertest": "^7.2.2",
-    "turbo": "^2.8.19",
-    "vitest": "^4.1.0"
+    "turbo": "^2.8.20",
+    "vitest": "^4.1.1"
   }
 }

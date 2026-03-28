@@ -45,13 +45,13 @@ function sessionKey(guildId, userId) {
  * @returns {object}
  */
 function getVoiceConfig(guildId) {
-  const cfg = getConfig(guildId);
+  const guildConfig = getConfig(guildId);
   return {
     enabled: false,
     xpPerMinute: 2,
     dailyXpCap: 120,
     logChannel: null,
-    ...cfg?.voice,
+    ...guildConfig?.voice,
   };
 }
 
@@ -224,10 +224,10 @@ export async function getVoiceLeaderboard(guildId, { limit = 10, period = 'week'
     [guildId, limit],
   );
 
-  return rows.map((r) => ({
-    user_id: r.user_id,
-    total_seconds: Number(r.total_seconds),
-    session_count: Number(r.session_count),
+  return rows.map((voiceRow) => ({
+    user_id: voiceRow.user_id,
+    total_seconds: Number(voiceRow.total_seconds),
+    session_count: Number(voiceRow.session_count),
   }));
 }
 
@@ -403,9 +403,9 @@ export function clearActiveSessions() {
  */
 export function formatDuration(seconds) {
   if (seconds < 60) return `${seconds}s`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours === 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
 }

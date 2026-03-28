@@ -52,23 +52,13 @@ describe('welcome routes', () => {
         .post('/api/v1/guilds/guild1/welcome/preview')
         .set('x-api-secret', SECRET)
         .send({
-          template: 'Hello {user} in {guild}!',
+          template: 'Hello {user} in {server}!',
           guild: { name: 'Test Guild', memberCount: 5 },
         });
 
       expect(res.status).toBe(200);
       expect(res.body.rendered).toBe('Hello <@123456789> in Test Guild!');
-      expect(res.body.template).toBe('Hello {user} in {guild}!');
-    });
-
-    it('renders using {count} alias', async () => {
-      const res = await request(app)
-        .post('/api/v1/guilds/guild1/welcome/preview')
-        .set('x-api-secret', SECRET)
-        .send({ template: 'Member #{count}', guild: { memberCount: 77 } });
-
-      expect(res.status).toBe(200);
-      expect(res.body.rendered).toBe('Member #77');
+      expect(res.body.template).toBe('Hello {user} in {server}!');
     });
 
     it('renders from variants when provided in body', async () => {
@@ -138,10 +128,11 @@ describe('welcome routes', () => {
       const varNames = res.body.variables.map((v) => v.variable);
       expect(varNames).toContain('{user}');
       expect(varNames).toContain('{username}');
-      expect(varNames).toContain('{guild}');
       expect(varNames).toContain('{server}');
-      expect(varNames).toContain('{count}');
       expect(varNames).toContain('{memberCount}');
+      expect(varNames).toContain('{greeting}');
+      expect(varNames).toContain('{vibeLine}');
+      expect(varNames).toContain('{ctaLine}');
     });
 
     it('each variable entry has description', async () => {

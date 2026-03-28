@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { extractApiError, isAbortError, safeParseJson, toErrorMessage } from '@/lib/api-utils';
 import { HealthCards } from './health-cards';
 import { RestartHistory } from './restart-history';
 import { type BotHealth, validateBotHealth } from './types';
@@ -56,22 +57,10 @@ export function HealthSection() {
           return;
         }
 
-        let payload: unknown = null;
-        try {
-          payload = await response.json();
-        } catch {
-          payload = null;
-        }
+        const payload = await safeParseJson(response);
 
         if (!response.ok) {
-          const message =
-            typeof payload === 'object' &&
-            payload !== null &&
-            'error' in payload &&
-            typeof payload.error === 'string'
-              ? payload.error
-              : 'Failed to fetch health data';
-          throw new Error(message);
+          throw new Error(extractApiError(payload, 'Failed to fetch health data'));
         }
 
         const validationError = validateBotHealth(payload);
@@ -83,8 +72,8 @@ export function HealthSection() {
         setError(null);
         setLastUpdatedAt(new Date());
       } catch (fetchError) {
-        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
-        setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch health data');
+        if (isAbortError(fetchError)) return;
+        setError(toErrorMessage(fetchError, 'Failed to fetch health data'));
       } finally {
         if (didSetLoading) {
           setLoading(false);
@@ -96,14 +85,14 @@ export function HealthSection() {
 
   // Initial fetch
   useEffect(() => {
-    void fetchHealth();
+    fetchHealth();
     return () => abortControllerRef.current?.abort();
   }, [fetchHealth]);
 
   // Auto-refresh every 60s
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      void fetchHealth(true);
+      fetchHealth(true);
     }, AUTO_REFRESH_MS);
     return () => window.clearInterval(intervalId);
   }, [fetchHealth]);
@@ -127,7 +116,7 @@ export function HealthSection() {
           variant="outline"
           size="sm"
           className="gap-2 self-start sm:self-auto"
-          onClick={() => void fetchHealth()}
+          onClick={() => fetchHealth()}
           disabled={loading}
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -141,7 +130,7 @@ export function HealthSection() {
           className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
         >
           <strong>Failed to load health data:</strong> {error}
-          <Button variant="outline" size="sm" className="ml-4" onClick={() => void fetchHealth()}>
+          <Button variant="outline" size="sm" className="ml-4" onClick={() => fetchHealth()}>
             Try again
           </Button>
         </div>

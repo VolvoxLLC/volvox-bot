@@ -103,7 +103,7 @@ async function sendReminderNotification(client, reminder) {
 
   // Fallback: channel mention
   try {
-    const channel = await fetchChannelCached(client, reminder.channel_id);
+    const channel = await fetchChannelCached(client, reminder.channel_id, reminder.guild_id);
     if (channel) {
       await safeSend(channel, {
         content: `<@${reminder.user_id}>`,

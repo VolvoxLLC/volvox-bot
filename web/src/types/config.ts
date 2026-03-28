@@ -269,6 +269,7 @@ export interface BotStatusConfig {
 
 /** TL;DR summary feature settings. */
 export interface TldrConfig extends ToggleSectionConfig {
+  systemPrompt: string;
   defaultMessages: number;
   maxMessages: number;
   cooldownSeconds: number;
@@ -278,9 +279,48 @@ export interface TldrConfig extends ToggleSectionConfig {
 export interface ReputationConfig extends ToggleSectionConfig {
   xpPerMessage: number[];
   xpCooldownSeconds: number;
-  announceChannelId: string | null;
+}
+
+/** XP level-up action definition. */
+export interface XpLevelAction {
+  type:
+    | 'grantRole'
+    | 'removeRole'
+    | 'sendDm'
+    | 'announce'
+    | 'xpBonus'
+    | 'addReaction'
+    | 'nickPrefix'
+    | 'webhook';
+  roleId?: string;
+  message?: string;
+  format?: 'text' | 'embed' | 'both';
+  channelMode?: 'current' | 'specific' | 'none';
+  channelId?: string;
+  emoji?: string;
+  amount?: number;
+  prefix?: string;
+  suffix?: string;
+  url?: string;
+  payload?: string;
+  embed?: Record<string, unknown>;
+}
+
+/** Per-level action configuration. */
+export interface XpLevelActionEntry {
+  level: number;
+  actions: XpLevelAction[];
+}
+
+/** XP / Level-Up Actions configuration. */
+export interface XpConfig extends ToggleSectionConfig {
   levelThresholds: number[];
-  roleRewards: Record<string, string>;
+  levelActions: XpLevelActionEntry[];
+  defaultActions: XpLevelAction[];
+  roleRewards: {
+    stackRoles: boolean;
+    removeOnLevelDown: boolean;
+  };
 }
 
 /** Activity badge definition for profile/engagement. */
@@ -296,7 +336,7 @@ export interface EngagementConfig extends ToggleSectionConfig {
   activityBadges: ActivityBadge[];
 }
 
-/** GitHub feed settings. */
+/** Github feed settings. */
 export interface GithubFeedConfig extends ToggleSectionConfig {
   channelId: string | null;
   repos: string[];
@@ -304,7 +344,7 @@ export interface GithubFeedConfig extends ToggleSectionConfig {
   pollIntervalMinutes?: number;
 }
 
-/** GitHub integration settings. */
+/** Github integration settings. */
 export interface GithubConfig {
   feed: GithubFeedConfig;
 }
@@ -362,6 +402,7 @@ export interface BotConfig {
   showcase?: ToggleSectionConfig;
   tldr?: TldrConfig;
   reputation?: ReputationConfig;
+  xp?: XpConfig;
   afk?: ToggleSectionConfig;
   engagement?: EngagementConfig;
   github?: GithubConfig;
@@ -389,6 +430,7 @@ export type ConfigSection =
   | 'showcase'
   | 'tldr'
   | 'reputation'
+  | 'xp'
   | 'afk'
   | 'engagement'
   | 'github'

@@ -91,7 +91,9 @@ function LogRow({
 
       {/* Expand indicator */}
       {hasMeta && (
-        <span className="ml-auto shrink-0 text-muted-foreground select-none">{isExpanded ? '▲' : '▼'}</span>
+        <span className="ml-auto shrink-0 text-muted-foreground select-none">
+          {isExpanded ? '▲' : '▼'}
+        </span>
       )}
     </div>
   );

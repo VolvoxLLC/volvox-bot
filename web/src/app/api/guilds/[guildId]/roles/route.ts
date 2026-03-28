@@ -39,5 +39,7 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch roles');
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch roles', {
+    revalidate: 300,
+  });
 }

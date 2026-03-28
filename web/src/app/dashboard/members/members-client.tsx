@@ -85,7 +85,7 @@ export default function MembersClient() {
   // Fetch on guild/search/sort change
   useEffect(() => {
     if (!guildId) return;
-    void runFetch({
+    runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -110,7 +110,7 @@ export default function MembersClient() {
 
   const handleLoadMore = useCallback(() => {
     if (!guildId || !nextAfter || loading) return;
-    void runFetch({
+    runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -123,7 +123,7 @@ export default function MembersClient() {
   const handleRefresh = useCallback(() => {
     if (!guildId) return;
     resetPagination();
-    void runFetch({
+    runFetch({
       guildId,
       search: debouncedSearch,
       sortColumn,
@@ -148,117 +148,117 @@ export default function MembersClient() {
 
   return (
     <div className="space-y-6">
-        <PageHeader
+      <PageHeader
+        icon={Users}
+        title="Members"
+        description="View member activity, XP, levels, and moderation history."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={!guildId || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
+
+      {/* No guild selected */}
+      {!guildId && (
+        <EmptyState
           icon={Users}
-          title="Members"
-          description="View member activity, XP, levels, and moderation history."
-          actions={
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleRefresh}
-              disabled={!guildId || loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          }
+          title="Select a server"
+          description="Choose a server from the sidebar to view members."
         />
+      )}
 
-        {/* No guild selected */}
-        {!guildId && (
-          <EmptyState
-            icon={Users}
-            title="Select a server"
-            description="Choose a server from the sidebar to view members."
-          />
-        )}
-
-        {/* Content */}
-        {guildId && (
-          <>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-primary/12 to-background p-4 md:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Total Members
-                </p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                  {total.toLocaleString()}
-                </p>
-              </div>
-              <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-secondary/10 to-background p-4 md:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Filtered Results
-                </p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                  {(filteredTotal ?? total).toLocaleString()}
-                </p>
-              </div>
-              <div className="dashboard-panel rounded-2xl p-4 md:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Sort Strategy
-                </p>
-                <p className="mt-3 text-lg font-semibold tracking-tight capitalize md:text-xl">
-                  {sortColumn} · {sortOrder}
-                </p>
-              </div>
+      {/* Content */}
+      {guildId && (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-primary/12 to-background p-4 md:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Total Members
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+                {total.toLocaleString()}
+              </p>
             </div>
+            <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-secondary/10 to-background p-4 md:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Filtered Results
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+                {(filteredTotal ?? total).toLocaleString()}
+              </p>
+            </div>
+            <div className="dashboard-panel rounded-2xl p-4 md:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Sort Strategy
+              </p>
+              <p className="mt-3 text-lg font-semibold tracking-tight capitalize md:text-xl">
+                {sortColumn} · {sortOrder}
+              </p>
+            </div>
+          </div>
 
-            {/* Search + stats bar */}
-            <div className="dashboard-panel flex flex-wrap items-center gap-3 rounded-2xl p-4 md:p-5">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="h-10 rounded-xl border-border/70 bg-background/70 pl-9 pr-8"
-                  placeholder="Search by username or display name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  aria-label="Search members"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={handleClearSearch}
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              {total > 0 && (
-                <span className="text-sm text-muted-foreground tabular-nums">
-                  {filteredTotal !== null && filteredTotal !== total
-                    ? `${filteredTotal.toLocaleString()} of ${total.toLocaleString()} members`
-                    : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
-                </span>
+          {/* Search + stats bar */}
+          <div className="dashboard-panel flex flex-wrap items-center gap-3 rounded-2xl p-4 md:p-5">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="h-10 rounded-xl border-border/70 bg-background/70 pl-9 pr-8"
+                placeholder="Search by username or display name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search members"
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={handleClearSearch}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               )}
             </div>
-
-            {/* Error */}
-            {error && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
-              >
-                <strong>Error:</strong> {error}
-              </div>
+            {total > 0 && (
+              <span className="text-sm text-muted-foreground tabular-nums">
+                {filteredTotal !== null && filteredTotal !== total
+                  ? `${filteredTotal.toLocaleString()} of ${total.toLocaleString()} members`
+                  : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
+              </span>
             )}
+          </div>
 
-            {/* Table */}
-            <MemberTable
-              members={members}
-              onSort={handleSort}
-              sortColumn={sortColumn}
-              sortOrder={sortOrder}
-              onLoadMore={handleLoadMore}
-              hasMore={nextAfter !== null}
-              loading={loading}
-              onRowClick={handleRowClick}
-            />
-          </>
-        )}
+          {/* Error */}
+          {error && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+            >
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+
+          {/* Table */}
+          <MemberTable
+            members={members}
+            onSort={handleSort}
+            sortColumn={sortColumn}
+            sortOrder={sortOrder}
+            onLoadMore={handleLoadMore}
+            hasMore={nextAfter !== null}
+            loading={loading}
+            onRowClick={handleRowClick}
+          />
+        </>
+      )}
     </div>
   );
 }

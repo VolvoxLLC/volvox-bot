@@ -328,6 +328,7 @@ export function ChannelSelector({
                 {loading ? (
                   <div className="flex flex-col gap-2 p-2">
                     {Array.from({ length: 5 }).map((_, i) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
                       <div key={`skeleton-${i}`} className="flex items-center gap-2 px-1">
                         <Skeleton className="h-4 w-4" />
                         <Skeleton className="h-4 flex-1" />
@@ -424,5 +425,5 @@ export function ChannelSelector({
   );
 }
 
-export { CHANNEL_TYPES, getChannelIcon, getChannelTypeLabel };
 export type { ChannelTypeFilter };
+export { CHANNEL_TYPES, getChannelIcon, getChannelTypeLabel };

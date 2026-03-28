@@ -35,7 +35,7 @@ interface CommunitySettingsSectionProps {
  * Renders the Community settings UI as a set of feature-specific settings cards.
  *
  * Renders SettingsFeatureCard sections (Community Tools, Activity Badges, Reputation/XP, TL;DR & AFK,
- * Daily Coding Challenges, GitHub Activity Feed, Tickets) when a feature is visible and its category is active.
+ * Daily Coding Challenges, Github Activity Feed, Tickets) when a feature is visible and its category is active.
  * Controls are bound to `draftConfig` and updates are applied via `updateDraftConfig`; inputs are disabled while `saving` is true.
  *
  * @param draftConfig - Partial guild configuration used to populate control values
@@ -176,7 +176,10 @@ export function CommunitySettingsSection({
                   </p>
                 </div>
                 <Switch
-                  checked={draftConfig.botStatus?.rotation?.enabled ?? (draftConfig.botStatus?.rotateIntervalMs != null ? true : false)}
+                  checked={
+                    draftConfig.botStatus?.rotation?.enabled ??
+                    draftConfig.botStatus?.rotateIntervalMs != null
+                  }
                   onCheckedChange={(value) => {
                     updateDraftConfig((prev) => {
                       const legacyMs = prev.botStatus?.rotateIntervalMs;
@@ -209,7 +212,10 @@ export function CommunitySettingsSection({
                 id="bot-status-interval-minutes"
                 type="number"
                 min={0.5}
-                value={draftConfig.botStatus?.rotation?.intervalMinutes ?? (draftConfig.botStatus?.rotateIntervalMs != null ? draftConfig.botStatus.rotateIntervalMs / 60000 : 5)}
+                value={
+                  draftConfig.botStatus?.rotation?.intervalMinutes ??
+                  (draftConfig.botStatus?.rotateIntervalMs ?? 300000) / 60000
+                }
                 onChange={(event) => {
                   const num = parseNumberInput(event.target.value, 1);
                   if (num === undefined) return;
@@ -246,7 +252,10 @@ export function CommunitySettingsSection({
             <div className="space-y-3">
               {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
                 (badge: Badge, index: number) => (
-                  <div key={`badge-${index}`} className="flex items-center gap-2">
+                  <div
+                    key={`badge-${badge.days}-${badge.label}`}
+                    className="flex items-center gap-2"
+                  >
                     <Input
                       className="w-20"
                       type="number"
@@ -371,7 +380,7 @@ export function CommunitySettingsSection({
         <SettingsFeatureCard
           featureId="reputation"
           title="Reputation / XP"
-          description="Tune XP ranges, cooldowns, and progression thresholds."
+          description="Tune XP gain per message and cooldown between awards."
           enabled={draftConfig.reputation?.enabled ?? false}
           onEnabledChange={(value) =>
             updateDraftConfig((prev) => ({
@@ -448,68 +457,115 @@ export function CommunitySettingsSection({
                     className={inputClasses}
                   />
                 </label>
-                <label htmlFor="announce-channel-id" className="space-y-2">
-                  <span className="text-sm font-medium">Announce Channel ID</span>
-                  <ChannelSelector
-                    id="announce-channel-id"
-                    guildId={guildId}
-                    selected={
-                      draftConfig.reputation?.announceChannelId
-                        ? [draftConfig.reputation.announceChannelId]
-                        : []
-                    }
-                    onChange={(selected) =>
-                      updateDraftConfig((prev) => ({
-                        ...prev,
-                        reputation: {
-                          ...prev.reputation,
-                          announceChannelId: selected[0] ?? null,
-                        },
-                      }))
-                    }
-                    disabled={saving}
-                    placeholder="Select announcement channel"
-                    maxSelections={1}
-                    filter="text"
-                  />
-                </label>
+              </div>
+            </div>
+          }
+        />
+      )}
+
+      {showFeature('xp-level-actions') && activeCategoryId === 'onboarding-growth' && (
+        <SettingsFeatureCard
+          featureId="xp-level-actions"
+          title="Level-Up Actions"
+          description="Configure what happens when users reach specific XP levels — role rewards, stacking, and thresholds."
+          enabled={draftConfig.xp?.enabled ?? false}
+          onEnabledChange={(value) =>
+            updateDraftConfig((prev) => ({
+              ...prev,
+              xp: { ...prev.xp, enabled: value },
+            }))
+          }
+          disabled={saving}
+          basicContent={
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Stack Roles</p>
+                  <p className="text-xs text-muted-foreground">
+                    When enabled, users keep all earned roles. When disabled, only the highest
+                    earned role is kept.
+                  </p>
+                </div>
+                <Switch
+                  checked={draftConfig.xp?.roleRewards?.stackRoles ?? true}
+                  onCheckedChange={(value) =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: {
+                        ...prev.xp,
+                        roleRewards: { ...prev.xp?.roleRewards, stackRoles: value },
+                      },
+                    }))
+                  }
+                  disabled={saving}
+                  aria-label="Toggle role stacking"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Remove on Level Down</p>
+                  <p className="text-xs text-muted-foreground">
+                    Remove earned roles when a user's XP is manually reduced below the required
+                    level.
+                  </p>
+                </div>
+                <Switch
+                  checked={draftConfig.xp?.roleRewards?.removeOnLevelDown ?? false}
+                  onCheckedChange={(value) =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: {
+                        ...prev.xp,
+                        roleRewards: { ...prev.xp?.roleRewards, removeOnLevelDown: value },
+                      },
+                    }))
+                  }
+                  disabled={saving}
+                  aria-label="Toggle remove on level down"
+                />
               </div>
             </div>
           }
           advancedContent={
-            <label htmlFor="level-thresholds-comma-separated" className="space-y-2 block">
-              <span className="text-sm font-medium">Level Thresholds (comma-separated)</span>
-              <input
-                id="level-thresholds-comma-separated"
-                type="text"
-                value={(
-                  draftConfig.reputation?.levelThresholds ?? [
-                    100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000,
-                  ]
-                ).join(', ')}
-                onChange={(event) => {
-                  const nums = event.target.value
-                    .split(',')
-                    .map((value) => Number(value.trim()))
-                    .filter((value) => Number.isFinite(value) && value > 0);
-                  if (nums.length > 0) {
-                    const sorted = [...nums].sort((a, b) => a - b);
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      reputation: { ...prev.reputation, levelThresholds: sorted },
-                    }));
-                  }
-                }}
-                disabled={saving}
-                className={inputClasses}
-                placeholder="100, 300, 600, 1000"
-              />
-              <p className="text-xs text-muted-foreground">
-                XP required for each level (L1, L2, L3...).
+            <div className="space-y-4">
+              <label htmlFor="xp-level-thresholds" className="space-y-2 block">
+                <span className="text-sm font-medium">Level Thresholds (comma-separated)</span>
+                <input
+                  id="xp-level-thresholds"
+                  type="text"
+                  value={(
+                    draftConfig.xp?.levelThresholds ?? [
+                      100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000,
+                    ]
+                  ).join(', ')}
+                  onChange={(event) => {
+                    const nums = event.target.value
+                      .split(',')
+                      .map((value) => Number(value.trim()))
+                      .filter((value) => Number.isFinite(value) && value > 0);
+                    if (nums.length > 0) {
+                      const sorted = [...nums].sort((a, b) => a - b);
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        xp: { ...prev.xp, levelThresholds: sorted },
+                      }));
+                    }
+                  }}
+                  disabled={saving}
+                  className={inputClasses}
+                  placeholder="100, 300, 600, 1000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  XP required for each level (L1, L2, L3...).
+                </p>
+              </label>
+              <p className="text-xs text-muted-foreground italic">
+                Per-level actions and the full action builder are coming in a future update.
+                Configure actions directly in config.json for now.
               </p>
-            </label>
+            </div>
           }
-          forceOpenAdvanced={forceOpenAdvancedFeatureId === 'reputation'}
+          forceOpenAdvanced={forceOpenAdvancedFeatureId === 'xp-level-actions'}
         />
       )}
 
@@ -557,64 +613,90 @@ export function CommunitySettingsSection({
             </div>
           }
           advancedContent={
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <label htmlFor="tldr-default-messages" className="space-y-2">
-                <span className="text-sm font-medium">Default Messages</span>
-                <input
-                  id="tldr-default-messages"
-                  type="number"
-                  min={1}
-                  value={tldrDefaultMessages}
-                  onChange={(event) => {
-                    const value = parseNumberInput(event.target.value, 1);
-                    if (value === undefined) return;
+            <div className="space-y-4">
+              <label htmlFor="tldr-system-prompt" className="space-y-2">
+                <span className="text-sm font-medium">System Prompt</span>
+                <textarea
+                  id="tldr-system-prompt"
+                  value={draftConfig.tldr?.systemPrompt ?? ''}
+                  onChange={(event) =>
                     updateDraftConfig((prev) => ({
                       ...prev,
-                      tldr: { ...prev.tldr, defaultMessages: value },
-                    }));
-                  }}
+                      tldr: { ...prev.tldr, systemPrompt: event.target.value },
+                    }))
+                  }
                   disabled={saving}
-                  className={inputClasses}
+                  rows={4}
+                  maxLength={4000}
+                  className={`${inputClasses} min-h-[5rem] resize-y`}
+                  placeholder="Summarize this Discord conversation. Extract: 1) Key topics discussed, 2) Decisions made, 3) Action items, 4) Notable links shared. Be concise."
                 />
+                <p className="text-xs text-muted-foreground">
+                  Instructions sent to the AI when summarizing. Leave blank for the default prompt.
+                </p>
               </label>
-              <label htmlFor="tldr-max-messages" className="space-y-2">
-                <span className="text-sm font-medium">Max Messages</span>
-                <input
-                  id="tldr-max-messages"
-                  type="number"
-                  min={1}
-                  value={tldrMaxMessages}
-                  onChange={(event) => {
-                    const value = parseNumberInput(event.target.value, 1);
-                    if (value === undefined) return;
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      tldr: { ...prev.tldr, maxMessages: value },
-                    }));
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
-              <label htmlFor="tldr-cooldown" className="space-y-2">
-                <span className="text-sm font-medium">Cooldown (seconds)</span>
-                <input
-                  id="tldr-cooldown"
-                  type="number"
-                  min={0}
-                  value={tldrCooldownSeconds}
-                  onChange={(event) => {
-                    const value = parseNumberInput(event.target.value, 0);
-                    if (value === undefined) return;
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      tldr: { ...prev.tldr, cooldownSeconds: value },
-                    }));
-                  }}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </label>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <label htmlFor="tldr-default-messages" className="space-y-2">
+                  <span className="text-sm font-medium">Default Messages</span>
+                  <input
+                    id="tldr-default-messages"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={tldrDefaultMessages}
+                    onChange={(event) => {
+                      const value = parseNumberInput(event.target.value, 1, 200);
+                      if (value === undefined) return;
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        tldr: { ...prev.tldr, defaultMessages: value },
+                      }));
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  />
+                </label>
+                <label htmlFor="tldr-max-messages" className="space-y-2">
+                  <span className="text-sm font-medium">Max Messages</span>
+                  <input
+                    id="tldr-max-messages"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={tldrMaxMessages}
+                    onChange={(event) => {
+                      const value = parseNumberInput(event.target.value, 1, 200);
+                      if (value === undefined) return;
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        tldr: { ...prev.tldr, maxMessages: value },
+                      }));
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  />
+                </label>
+                <label htmlFor="tldr-cooldown" className="space-y-2">
+                  <span className="text-sm font-medium">Cooldown (seconds)</span>
+                  <input
+                    id="tldr-cooldown"
+                    type="number"
+                    min={0}
+                    max={3600}
+                    value={tldrCooldownSeconds}
+                    onChange={(event) => {
+                      const value = parseNumberInput(event.target.value, 0, 3600);
+                      if (value === undefined) return;
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        tldr: { ...prev.tldr, cooldownSeconds: value },
+                      }));
+                    }}
+                    disabled={saving}
+                    className={inputClasses}
+                  />
+                </label>
+              </div>
             </div>
           }
           forceOpenAdvanced={forceOpenAdvancedFeatureId === 'tldr-afk'}
@@ -709,7 +791,7 @@ export function CommunitySettingsSection({
       {showFeature('github-feed') && activeCategoryId === 'support-integrations' && (
         <SettingsFeatureCard
           featureId="github-feed"
-          title="GitHub Activity Feed"
+          title="Github Activity Feed"
           description="Post repository updates into a Discord channel."
           enabled={draftConfig.github?.feed?.enabled ?? false}
           onEnabledChange={(value) =>
@@ -738,7 +820,7 @@ export function CommunitySettingsSection({
                   }))
                 }
                 disabled={saving}
-                placeholder="Select GitHub feed channel"
+                placeholder="Select Github feed channel"
                 maxSelections={1}
                 filter="text"
               />

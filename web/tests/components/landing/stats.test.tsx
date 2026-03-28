@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockUseInView } = vi.hoisted(() => ({
+const { mockUseInView, mockUseReducedMotion } = vi.hoisted(() => ({
   mockUseInView: vi.fn(),
+  mockUseReducedMotion: vi.fn(),
 }));
 
 vi.mock('framer-motion', async () => {
@@ -13,51 +14,54 @@ vi.mock('framer-motion', async () => {
     );
 
   return {
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
     motion: {
       div: createComponent('div'),
+      h1: createComponent('h1'),
       h2: createComponent('h2'),
+      li: createComponent('li'),
       p: createComponent('p'),
       span: createComponent('span'),
+      section: createComponent('section'),
     },
     useInView: (...args: unknown[]) => mockUseInView(...args),
+    useScroll: () => ({ scrollY: 0, scrollYProgress: 0 }),
+    useSpring: (value: unknown) => value,
+    useTransform: (_value: unknown, _input: unknown, output: unknown[]) => output[0],
+    useReducedMotion: () => mockUseReducedMotion(),
   };
 });
 
 import { Stats } from '@/components/landing/Stats';
 
 describe('Stats', () => {
-  const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
-  const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+  const originalRaf = globalThis.requestAnimationFrame;
+  const originalCaf = globalThis.cancelAnimationFrame;
   let nextHandle = 1;
   let lastTimestamp = 0;
   let cancelledHandles: Set<number>;
 
   beforeEach(() => {
     mockUseInView.mockReturnValue(true);
+    mockUseReducedMotion.mockReturnValue(false);
     nextHandle = 1;
     lastTimestamp = 0;
     cancelledHandles = new Set();
-    globalThis.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+    globalThis.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
       const handle = nextHandle++;
-      queueMicrotask(() => {
-        if (cancelledHandles.has(handle)) return;
-        lastTimestamp += 2_000;
-        callback(lastTimestamp);
-      });
+      queueMicrotask(() => { if (!cancelledHandles.has(handle)) { lastTimestamp += 2000; cb(lastTimestamp); } });
       return handle;
     });
-    globalThis.cancelAnimationFrame = vi.fn((handle: number) => {
-      cancelledHandles.add(handle);
-    });
+    globalThis.cancelAnimationFrame = vi.fn((h: number) => { cancelledHandles.add(h); });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
-    globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
+    globalThis.requestAnimationFrame = originalRaf;
+    globalThis.cancelAnimationFrame = originalCaf;
   });
 
-  it('renders formatted live stats after a successful fetch', async () => {
+  it('should render 3 condensed stats after successful fetch', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -74,26 +78,31 @@ describe('Stats', () => {
     render(<Stats />);
 
     await waitFor(() => {
-      expect(screen.getByText('1.2K')).toBeInTheDocument();
-      expect(screen.getByText('1.2M')).toBeInTheDocument();
-      expect(screen.getByText('999')).toBeInTheDocument();
-      expect(screen.getByText('12')).toBeInTheDocument();
-      expect(screen.getByText('1d 3h')).toBeInTheDocument();
-      expect(screen.getByText('5.5K')).toBeInTheDocument();
+      expect(screen.getByText('1.2M')).toBeInTheDocument(); // Members
+      expect(screen.getByText('999')).toBeInTheDocument(); // Commands
+      expect(screen.getByText('1d 3h')).toBeInTheDocument(); // Uptime
     });
-    expect(screen.getByText(/as of/i)).toBeInTheDocument();
-    expect(screen.getByText('Loved by developers')).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith('/api/stats');
+    // Only 3 stats, not 6
+    expect(screen.queryByText('5.5K')).not.toBeInTheDocument();
   });
 
-  it('renders the error fallback when fetching stats fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('boom'));
+  it('should render testimonial placeholders', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        servers: 0, members: 0, commandsServed: 0,
+        activeConversations: 0, uptime: 0, messagesProcessed: 0, cachedAt: '',
+      }),
+    } as Response);
 
     render(<Stats />);
+    expect(screen.getByRole('heading', { name: /Loved by developers/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/coming soon/i)).toHaveLength(3);
+  });
 
-    await waitFor(() => {
-      expect(screen.getAllByText('—')).toHaveLength(6);
-    });
-    expect(screen.getByText('Trusted by teams at leading tech companies and thousands of open-source communities')).toBeInTheDocument();
+  it('should render error fallback with 3 dashes', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('boom'));
+    render(<Stats />);
+    await waitFor(() => { expect(screen.getAllByText('—')).toHaveLength(3); });
   });
 });

@@ -5,6 +5,7 @@ node_modules/
 coverage/
 .next/
 package-lock.json
+.DS_Store
 
 # Auto Claude data directory and files
 .auto-claude/
@@ -38,9 +39,16 @@ web/.env.local
 web/.env.*.local
 web/tsconfig.tsbuildinfo
 
+# Playwright
+web/test-results/
+web/playwright-report/
+web/blob-report/
+web/playwright/.cache/
+
 # Tools
 openclaw-studio/
 .codex/
 .turbo/
 worktrees/
 TASK.md
+.superpowers/

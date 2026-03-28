@@ -18,13 +18,14 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn((interaction, opts) => interaction.editReply(opts)),
 }));
 
-// Mock @anthropic-ai/sdk
-const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
-vi.mock('@anthropic-ai/sdk', () => {
-  const MockAnthropic = function MockAnthropic() {
-    return { messages: { create: mockCreate } };
-  };
-  return { default: MockAnthropic };
+// Mock CLIProcess
+const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
+vi.mock('../../src/modules/cli-process.js', () => {
+  function MockCLIProcess() {
+    this.start = vi.fn().mockResolvedValue(undefined);
+    this.send = mockSend;
+  }
+  return { CLIProcess: MockCLIProcess };
 });
 
 // Mock discord.js builders
@@ -154,13 +155,10 @@ beforeEach(() => {
     tldr: { enabled: true, defaultMessages: 50, maxMessages: 200, cooldownSeconds: 300 },
   });
 
-  // Default AI response
-  mockCreate.mockResolvedValue({
-    content: [
-      {
-        text: 'Key Topics\nSome topic\n\nDecisions Made\nSome decision\n\nAction Items\nSome action\n\nNotable Links\nhttp://example.com',
-      },
-    ],
+  // Default AI response (CLIProcess result format)
+  mockSend.mockResolvedValue({
+    result:
+      'Key Topics\nSome topic\n\nDecisions Made\nSome decision\n\nAction Items\nSome action\n\nNotable Links\nhttp://example.com',
   });
 });
 
@@ -195,15 +193,14 @@ describe('execute — count option', () => {
     expect(interaction.channel.messages.fetch).toHaveBeenCalledWith({ limit: 100 });
   });
 
-  it('caps count at maxMessages', async () => {
+  it('caps count at maxMessages and paginates beyond 100', async () => {
     getConfig.mockReturnValue({
       tldr: { enabled: true, defaultMessages: 50, maxMessages: 200, cooldownSeconds: 300 },
     });
     const interaction = createInteraction({ count: 999 });
-    // getInteger for 'count' returns 999, but buildEmbed should use 200
-    // The command clamps to maxMessages
+    // The command clamps to maxMessages (200), then paginates in batches of 100
     await execute(interaction);
-    expect(interaction.channel.messages.fetch).toHaveBeenCalledWith({ limit: 200 });
+    expect(interaction.channel.messages.fetch).toHaveBeenCalledWith({ limit: 100 });
   });
 });
 
@@ -225,7 +222,11 @@ describe('execute — hours option', () => {
     }
 
     const interaction = createInteraction({ hours: 1 });
-    interaction.channel.messages.fetch = vi.fn().mockResolvedValue(messages);
+    // First call returns all messages; second call returns empty to end pagination
+    interaction.channel.messages.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(messages)
+      .mockResolvedValue(new Map());
 
     await execute(interaction);
 
@@ -235,13 +236,12 @@ describe('execute — hours option', () => {
     );
 
     // Verify AI was called (only triggered when messages > 0)
-    expect(mockCreate).toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalled();
 
     // The conversation text sent to AI should only contain "New" messages
-    const aiCallArg = mockCreate.mock.calls[0][0];
-    const userContent = aiCallArg.messages[0].content;
-    expect(userContent).toContain('New 0');
-    expect(userContent).not.toContain('Old 0');
+    const prompt = mockSend.mock.calls[0][0];
+    expect(prompt).toContain('New 0');
+    expect(prompt).not.toContain('Old 0');
   });
 });
 
@@ -282,7 +282,7 @@ describe('execute — disabled config', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('not enabled'));
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
   });
 });
 
@@ -308,7 +308,7 @@ describe('execute — empty channel', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.stringContaining('No messages found'),
     );
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
   });
 
   it('handles empty fetch result gracefully', async () => {
@@ -325,8 +325,8 @@ describe('execute — empty channel', () => {
 
 describe('execute — null/empty AI response', () => {
   it('returns error message when summarizeWithAI returns null', async () => {
-    mockCreate.mockResolvedValue({
-      content: [], // empty content → null summary
+    mockSend.mockResolvedValue({
+      result: '', // empty result → null summary
     });
 
     const interaction = createInteraction();
@@ -338,12 +338,9 @@ describe('execute — null/empty AI response', () => {
   });
 
   it('uses channelId when channel.name is null', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          text: '1) Key Topics\n- Test\n\n2) Decisions Made\n- None\n\n3) Action Items\n- None\n\n4) Notable Links\n- None',
-        },
-      ],
+    mockSend.mockResolvedValue({
+      result:
+        '1) Key Topics\n- Test\n\n2) Decisions Made\n- None\n\n3) Action Items\n- None\n\n4) Notable Links\n- None',
     });
 
     const interaction = createInteraction();
@@ -360,12 +357,9 @@ describe('execute — null/empty AI response', () => {
 
 describe('execute — AI response formatted into embed', () => {
   it('builds embed with all four sections', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          text: '1) Key Topics\n- Deployment pipeline\n- CI/CD fixes\n\n2) Decisions Made\n- Use GitHub Actions\n\n3) Action Items\n- Set up workflow\n\n4) Notable Links\n- https://github.com/actions',
-        },
-      ],
+    mockSend.mockResolvedValue({
+      result:
+        '1) Key Topics\n- Deployment pipeline\n- CI/CD fixes\n\n2) Decisions Made\n- Use GitHub Actions\n\n3) Action Items\n- Set up workflow\n\n4) Notable Links\n- https://github.com/actions',
     });
 
     const interaction = createInteraction();
