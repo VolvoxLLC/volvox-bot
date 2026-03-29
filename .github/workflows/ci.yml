@@ -200,25 +200,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
-
       - name: Build bot Docker image
-        uses: docker/build-push-action@v7.0.0
-        with:
-          context: .
-          file: Dockerfile
-          push: false
-          tags: volvox-bot-ci:${{ github.sha }}
-          cache-from: type=gha,scope=volvox-bot
-          cache-to: type=gha,mode=max,scope=volvox-bot
+        run: docker build --tag volvox-bot-ci:${{ github.sha }} --file Dockerfile .
 
       - name: Build web Docker image
-        uses: docker/build-push-action@v7.0.0
-        with:
-          context: web
-          file: web/Dockerfile
-          push: false
-          tags: volvox-web-ci:${{ github.sha }}
-          cache-from: type=gha,scope=volvox-web
-          cache-to: type=gha,mode=max,scope=volvox-web
+        run: docker build --tag volvox-web-ci:${{ github.sha }} --file web/Dockerfile web
