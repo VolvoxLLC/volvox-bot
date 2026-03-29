@@ -263,9 +263,15 @@ describe("fetchUserGuilds", () => {
       statusText: "Unauthorized",
     } as Response);
 
-    await expect(fetchUserGuilds("bad-token")).rejects.toThrow(
-      "Failed to fetch user guilds",
-    );
+    let thrown: unknown;
+    try {
+      await fetchUserGuilds("bad-token");
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toContain("Failed to fetch user guilds");
   });
 
   it("paginates through multiple pages using after param", async () => {
