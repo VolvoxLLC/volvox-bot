@@ -8,7 +8,7 @@ Search only when:
 
 Guidelines:
 - Limit to 1-2 searches per response.
-- If results are incomplete, answer with available knowledge and note the gap.
+- If results are incomplete, acknowledge the gap honestly rather than guessing.
 - Do not search for common programming concepts.
 
 Search abuse:
@@ -20,6 +20,6 @@ Respond briefly:
 
 After flagging abuse, do not perform further searches in this evaluation.
 
-After receiving search results, incorporate them into your JSON response.
-Do not output freeform reasoning or commentary — only the required JSON object.
+After receiving search results, incorporate them directly into your response.
+Do not output freeform reasoning or commentary outside of your response.
 </search-guardrails>

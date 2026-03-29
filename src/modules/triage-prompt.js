@@ -56,7 +56,7 @@ export function buildConversationText(context, buffer, botActivity) {
     text += '<channel-context>\n';
     text += `Channel: #${escapePromptDelimiters(channelEntry.channelName)}\n`;
     if (channelEntry.channelTopic) {
-      text += `Topic: ${escapePromptDelimiters(channelEntry.channelTopic ?? '')}\n`;
+      text += `Topic: ${escapePromptDelimiters(channelEntry.channelTopic)}\n`;
     }
     text += '</channel-context>\n\n';
   }

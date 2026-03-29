@@ -155,7 +155,7 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
   // ── Confidence threshold gate ─────────────────────────────────────────────
   // Drop low-confidence classifications unless safety-critical or @mentioned.
   const confidenceThreshold = evalConfig.triage?.confidenceThreshold ?? 0.6;
-  const confidence = classification.confidence ?? 1.0;
+  const confidence = classification.confidence ?? 1;
   if (
     classification.classification !== 'moderate' &&
     !wasMentioned &&
@@ -455,7 +455,7 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     // react with ❤️ and skip the responder entirely — no text reply needed.
     const buf = channelBuffers.get(channelId);
     const gratitudeWindowMs = 60_000;
-    const newestMsg = snapshot[snapshot.length - 1];
+    const newestMsg = snapshot.at(-1);
     if (
       buf?.lastResponseAt > 0 &&
       Date.now() - buf.lastResponseAt < gratitudeWindowMs &&
