@@ -204,6 +204,7 @@ export async function sendModerationLog(
  * @param {Object} config - Bot configuration; uses `config.triage` for debug/footer and moderationResponse settings.
  * @param {Object} [stats] - Optional stats used to build the debug embed (classify/respond stats and optional searchCount).
  * @param {string} [channelId] - Channel ID fallback used for logging when `channel` is not available.
+ * @returns {Promise<boolean>} `true` if at least one message was sent, `false` otherwise.
  */
 export async function sendResponses(
   channel,
@@ -216,7 +217,7 @@ export async function sendResponses(
 ) {
   if (!channel) {
     warn('Could not fetch channel for triage response', { channelId });
-    return;
+    return false;
   }
 
   channelId = channelId || channel.id;
@@ -245,6 +246,8 @@ export async function sendResponses(
     });
   }
 
+  let sent = false;
+
   if (type === 'moderate') {
     warn('Moderation flagged', { channelId, reasoning: classification.reasoning });
 
@@ -260,6 +263,7 @@ export async function sendResponses(
               if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
               const sentMsg = await safeSend(channel, msgOpts);
               logAssistantHistory(channelId, channel.guild?.id || null, chunks[i], sentMsg);
+              sent = true;
             }
           }
         } catch (err) {
@@ -271,13 +275,13 @@ export async function sendResponses(
         }
       }
     }
-    return;
+    return sent;
   }
 
   // respond or chime-in
   if (responses.length === 0) {
     warn('Triage generated no responses for classification', { channelId, classification: type });
-    return;
+    return false;
   }
 
   await channel.sendTyping();
@@ -299,6 +303,7 @@ export async function sendResponses(
         const sentMsg = await safeSend(channel, msgOpts);
         // Log AI response to conversation history
         logAssistantHistory(channelId, channel.guild?.id || null, chunks[i], sentMsg);
+        sent = true;
       }
 
       info('Triage response sent', {
@@ -315,6 +320,8 @@ export async function sendResponses(
       });
     }
   }
+
+  return sent;
 }
 
 /**

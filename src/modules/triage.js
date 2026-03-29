@@ -387,6 +387,29 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
 
   try {
+    // Shared state used by gratitude detection, cooldown gate, and status reactions
+    const buf = channelBuffers.get(channelId);
+    const newestMsg = snapshot.at(-1);
+
+    // ── Gratitude detection (before any AI call) ────────────────────────────
+    // If the bot recently responded and the newest message is gratitude,
+    // react with ❤️ and skip entirely — no classifier or responder cost.
+    const gratitudeWindowMs = 60_000;
+    if (
+      buf?.lastResponseAt > 0 &&
+      Date.now() - buf.lastResponseAt < gratitudeWindowMs &&
+      newestMsg &&
+      isGratitude(newestMsg.content)
+    ) {
+      info('Triage: gratitude detected, reacting with ❤️', {
+        channelId,
+        messageId: newestMsg.messageId,
+        author: newestMsg.author,
+      });
+      addReaction(evalClient, channelId, newestMsg.messageId, '\u2764\uFE0F');
+      return;
+    }
+
     // ── Guild daily budget gate ─────────────────────────────────────────────
     // Skip evaluation if the guild has exhausted its daily AI spend cap.
     // This prevents runaway costs from high-volume guilds.
@@ -449,27 +472,6 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     if (!classResult) return;
 
     const { classification, classifyMessage, context, memoryContext, wasMentioned } = classResult;
-
-    // ── Gratitude detection ──────────────────────────────────────────────────
-    // If the bot recently responded and the newest message is gratitude,
-    // react with ❤️ and skip the responder entirely — no text reply needed.
-    const buf = channelBuffers.get(channelId);
-    const gratitudeWindowMs = 60_000;
-    const newestMsg = snapshot.at(-1);
-    if (
-      buf?.lastResponseAt > 0 &&
-      Date.now() - buf.lastResponseAt < gratitudeWindowMs &&
-      newestMsg &&
-      isGratitude(newestMsg.content)
-    ) {
-      info('Triage: gratitude detected, reacting with ❤️', {
-        channelId,
-        messageId: newestMsg.messageId,
-        author: newestMsg.author,
-      });
-      addReaction(evalClient, channelId, newestMsg.messageId, '\u2764\uFE0F');
-      return;
-    }
 
     // ── Response cooldown gate ───────────────────────────────────────────────
     // Prevent rapid-fire responses. @mentions and moderation bypass the cooldown.
@@ -536,10 +538,10 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
       ).catch((err) => debug('Moderation log fire-and-forget failed', { error: err.message }));
     }
 
-    await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
+    const didSend = await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
 
-    // Record response timestamp for cooldown tracking
-    setLastResponseAt(channelId);
+    // Record response timestamp for cooldown tracking — only if we actually sent something
+    if (didSend) setLastResponseAt(channelId);
 
     // Clean up status reactions — remove 💬/🧠 now that response is sent (🔍 stays as historical marker)
     if (statusReactions && triggerMessageId) {
