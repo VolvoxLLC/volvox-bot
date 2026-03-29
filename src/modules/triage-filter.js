@@ -10,19 +10,25 @@ import { isSpam } from './spam.js';
 
 /** Pattern matching common gratitude expressions (anchored to start of message). */
 const GRATITUDE_PATTERN =
-  /^\s*(thanks|thank\s*you|ty|thx|got\s*it|that\s*worked|perfect|cheers|appreciate\s*it|tysm|tyvm)\b/i;
+  /^\s*(thanks|thank\s*you|ty|thx|got\s+it\b|that\s*worked|perfect|cheers|appreciate\s*it|tysm|tyvm)\b/i;
 
 /**
- * Detect whether a message is a gratitude expression.
+ * Detect whether a message is a *pure* gratitude expression.
  * Used to short-circuit the responder and react with an emoji instead.
+ * Rejects messages that contain follow-up questions or continuations
+ * (e.g., "thanks, but how do I..." or "ty, one more thing?").
  * @param {string} content - Message text to inspect.
- * @returns {boolean} `true` if the message is gratitude.
+ * @returns {boolean} `true` if the message is pure gratitude with no follow-up.
  */
 export function isGratitude(content) {
   if (!content) return false;
   // Only match short messages — long messages starting with "thanks" are likely
   // follow-up questions ("thanks, but how do I...") not pure gratitude.
   if (content.length > 100) return false;
+  // Reject if it contains a question mark (follow-up question)
+  if (content.includes('?')) return false;
+  // Reject if it contains a comma or dash followed by substantive text (continuation)
+  if (/,\s*\w{3,}/.test(content) || /--?\s*\w/.test(content)) return false;
   return GRATITUDE_PATTERN.test(content);
 }
 

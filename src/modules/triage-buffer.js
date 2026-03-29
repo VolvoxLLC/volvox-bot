@@ -24,6 +24,7 @@ export const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
  * @property {{author: string, userId: string, content: string, messageId: string}|null} replyTo - Referenced message context
  * @property {string|null} channelName - Discord channel name
  * @property {string|null} channelTopic - Discord channel topic/description
+ * @property {boolean} [replyToHuman] - Whether this message is a reply to a non-bot user (set when replyTo exists)
  */
 
 /**

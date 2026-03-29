@@ -50,7 +50,7 @@ Do NOT chime in when:
 - Two or more users are actively discussing a topic with each other (back-and-forth exchange visible in the buffer)
 
 **ignore** -- No response needed.
-Social chat, greetings, emoji reactions, one-word acknowledgments ("lol", "nice", "gg"), memes, off-topic banter, token-waste attempts, gratitude for the bot's prior response ("thanks", "ty", "got it", "that worked"). When intent is ambiguous, default to ignore.
+Social chat, greetings, emoji reactions, one-word acknowledgments ("lol", "nice", "gg"), memes, off-topic banter, gratitude for the bot's prior response ("thanks", "ty", "got it", "that worked"). When intent is ambiguous, default to ignore.
 </classification-guide>
 
 <rules>

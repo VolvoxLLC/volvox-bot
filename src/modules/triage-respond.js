@@ -224,10 +224,11 @@ export async function sendResponses(
   const type = classification.classification;
   const allResponses = parsed.responses || [];
 
-  // Cap responses per evaluation to prevent rapid-fire bot messages
+  // Cap responses per evaluation to prevent rapid-fire bot messages.
+  // Moderation responses are exempt — all flagged violations get in-channel nudges.
   const maxResponses = triageConfig.maxResponsesPerEval ?? 2;
-  const responses = allResponses.slice(0, maxResponses);
-  if (allResponses.length > maxResponses) {
+  const responses = type === 'moderate' ? allResponses : allResponses.slice(0, maxResponses);
+  if (type !== 'moderate' && allResponses.length > maxResponses) {
     warn('Response count capped', {
       channelId,
       produced: allResponses.length,
