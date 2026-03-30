@@ -51,7 +51,9 @@ const LEVEL_UP_DM_PREVIEW_CONTEXT: Record<string, string> = {
 
 function renderLevelUpDmPreview(template: string) {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-    return key in LEVEL_UP_DM_PREVIEW_CONTEXT ? LEVEL_UP_DM_PREVIEW_CONTEXT[key] : match;
+    return Object.hasOwn(LEVEL_UP_DM_PREVIEW_CONTEXT, key)
+      ? LEVEL_UP_DM_PREVIEW_CONTEXT[key]
+      : match;
   });
 }
 
