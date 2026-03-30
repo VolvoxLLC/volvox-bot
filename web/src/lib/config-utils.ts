@@ -11,9 +11,14 @@ function flattenObjectToLeafPatches(
   obj: Record<string, unknown>,
   prefix: string,
 ): Array<{ path: string; value: unknown }> {
+  const entries = Object.entries(obj);
+  if (entries.length === 0) {
+    return [{ path: prefix, value: {} }];
+  }
+
   const patches: Array<{ path: string; value: unknown }> = [];
 
-  for (const [key, value] of Object.entries(obj)) {
+  for (const [key, value] of entries) {
     const fullPath = `${prefix}.${key}`;
     if (isPlainObject(value)) {
       patches.push(...flattenObjectToLeafPatches(value, fullPath));

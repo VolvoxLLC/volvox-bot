@@ -30,4 +30,14 @@ describe('computePatches', () => {
       { path: 'xp.levelUpDm.messages', value: [] },
     ]);
   });
+
+  it('preserves empty-object additions and removals', () => {
+    expect(computePatches({ xp: {} }, { xp: { levelUpDm: {} } })).toEqual([
+      { path: 'xp.levelUpDm', value: {} },
+    ]);
+
+    expect(computePatches({ xp: { levelUpDm: {} } }, { xp: {} })).toEqual([
+      { path: 'xp.levelUpDm', value: null },
+    ]);
+  });
 });
