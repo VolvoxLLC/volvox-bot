@@ -115,7 +115,15 @@ describe('resolveActions', () => {
 
     const result = resolveActions(4, 5, config);
     expect(result).toEqual([
-      { level: 5, action: { type: 'sendDm', format: 'text', template: 'Hit {{level}}' } },
+      {
+        level: 5,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Hit {{level}}',
+          rateLimitScope: 'levelUpDm',
+        },
+      },
     ]);
   });
 
@@ -133,7 +141,15 @@ describe('resolveActions', () => {
 
     const result = resolveActions(2, 3, config);
     expect(result).toEqual([
-      { level: 3, action: { type: 'sendDm', format: 'text', template: 'Default {{level}}' } },
+      {
+        level: 3,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Default {{level}}',
+          rateLimitScope: 'levelUpDm',
+        },
+      },
     ]);
   });
 
@@ -152,7 +168,49 @@ describe('resolveActions', () => {
     const result = resolveActions(4, 5, config);
     expect(result).toEqual([
       { level: 5, action: { type: 'grantRole', roleId: 'r1' } },
-      { level: 5, action: { type: 'sendDm', format: 'text', template: 'Hit {{level}}' } },
+      {
+        level: 5,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Hit {{level}}',
+          rateLimitScope: 'levelUpDm',
+        },
+      },
+    ]);
+  });
+
+  it('should derive DMs for each crossed level during a level skip', () => {
+    const config = {
+      levelActions: [],
+      defaultActions: [],
+      levelUpDm: {
+        enabled: true,
+        sendOnEveryLevel: true,
+        defaultMessage: 'Default {{level}}',
+        messages: [{ level: 5, message: 'Milestone {{level}}' }],
+      },
+    };
+
+    expect(resolveActions(4, 6, config)).toEqual([
+      {
+        level: 5,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Milestone {{level}}',
+          rateLimitScope: 'levelUpDm',
+        },
+      },
+      {
+        level: 6,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Default {{level}}',
+          rateLimitScope: 'levelUpDm',
+        },
+      },
     ]);
   });
 

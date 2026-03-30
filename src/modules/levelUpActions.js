@@ -53,11 +53,21 @@ function getLevelUpDmAction(level, config) {
 
   const override = levelUpDm.messages?.find((entry) => entry.level === level);
   if (override?.message) {
-    return { type: 'sendDm', format: 'text', template: override.message };
+    return {
+      type: 'sendDm',
+      format: 'text',
+      template: override.message,
+      rateLimitScope: 'levelUpDm',
+    };
   }
 
   if (levelUpDm.sendOnEveryLevel && levelUpDm.defaultMessage) {
-    return { type: 'sendDm', format: 'text', template: levelUpDm.defaultMessage };
+    return {
+      type: 'sendDm',
+      format: 'text',
+      template: levelUpDm.defaultMessage,
+      rateLimitScope: 'levelUpDm',
+    };
   }
 
   return null;
