@@ -63,11 +63,17 @@ describe("DashboardLayout", () => {
       throw new Error(`NEXT_REDIRECT:${url}`);
     });
 
-    await expect(
-      DashboardLayout({
+    let thrown: unknown;
+    try {
+      await DashboardLayout({
         children: <div>Child</div>,
-      }),
-    ).rejects.toThrow("NEXT_REDIRECT:/login");
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe("NEXT_REDIRECT:/login");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 });
