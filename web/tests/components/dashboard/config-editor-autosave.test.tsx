@@ -302,6 +302,25 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     await user.type(screen.getByLabelText('Default DM Template'), 'Nice work {{username}}');
 
     await user.click(screen.getByRole('button', { name: 'Add Override' }));
+    await user.click(screen.getByRole('button', { name: 'Add Override' }));
+
+    const levelInputs = screen.getAllByRole('spinbutton', { name: 'Level' });
+    expect(levelInputs).toHaveLength(2);
+    expect(levelInputs[0]).toHaveValue(1);
+    expect(levelInputs[1]).toHaveValue(2);
+
+    const overrideTextareas = screen.getAllByRole('textbox').filter(
+      (element) =>
+        element.tagName === 'TEXTAREA' && element.getAttribute('id') !== 'xp-level-dm-default',
+    );
+    expect(overrideTextareas).toHaveLength(2);
+
+    const firstOverrideTextarea = overrideTextareas[0] as HTMLTextAreaElement;
+    await user.click(firstOverrideTextarea);
+    await user.type(firstOverrideTextarea, 'Override text');
+
+    expect(document.activeElement).toBe(firstOverrideTextarea);
+    expect(firstOverrideTextarea).toHaveValue('Override text');
     expect(screen.getAllByText('Override Preview').length).toBeGreaterThan(0);
   }, 15000);
 

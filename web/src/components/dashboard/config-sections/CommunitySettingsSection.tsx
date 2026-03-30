@@ -22,6 +22,8 @@ type GuildConfig = DeepPartial<BotConfig>;
 type Badge = { days?: number; label?: string };
 type LevelUpDmOverride = { level?: number; message?: string };
 type LevelUpDmOverrideRow = LevelUpDmOverride & { originalIndex: number };
+type XpDraft = NonNullable<GuildConfig['xp']>;
+type XpLevelUpDmDraft = NonNullable<XpDraft['levelUpDm']>;
 
 const LEVEL_UP_DM_TEMPLATE_VARS = [
   '{{username}}',
@@ -35,6 +37,9 @@ const LEVEL_UP_DM_TEMPLATE_VARS = [
   '{{nextLevel}}',
   '{{xpToNext}}',
 ];
+
+const DEFAULT_LEVEL_UP_DM_MESSAGE =
+  '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!';
 
 const LEVEL_UP_DM_PREVIEW_CONTEXT: Record<string, string> = {
   username: 'Ada',
@@ -55,6 +60,30 @@ function renderLevelUpDmPreview(template: string) {
       ? LEVEL_UP_DM_PREVIEW_CONTEXT[key]
       : match;
   });
+}
+
+function getNextLevelUpDmOverrideLevel(messages: LevelUpDmOverride[] = []) {
+  const usedLevels = new Set(messages.map((entry) => entry.level).filter(Number.isFinite));
+  let nextLevel = 1;
+
+  while (usedLevels.has(nextLevel)) {
+    nextLevel += 1;
+  }
+
+  return nextLevel;
+}
+
+function buildLevelUpDmConfig(
+  current: XpDraft['levelUpDm'] | undefined,
+  updates: Partial<XpLevelUpDmDraft>,
+) {
+  return {
+    enabled: current?.enabled ?? true,
+    sendOnEveryLevel: current?.sendOnEveryLevel ?? false,
+    defaultMessage: current?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE,
+    messages: current?.messages ?? [],
+    ...updates,
+  };
 }
 
 interface CommunitySettingsSectionProps {
@@ -107,8 +136,7 @@ export function CommunitySettingsSection({
       (a: LevelUpDmOverrideRow, b: LevelUpDmOverrideRow) => (a.level ?? 0) - (b.level ?? 0),
   );
   const levelUpDmDefaultMessage =
-    levelUpDm?.defaultMessage ??
-    '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!';
+    levelUpDm?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE;
 
   return (
     <>
@@ -622,14 +650,7 @@ export function CommunitySettingsSection({
                         ...prev,
                         xp: {
                           ...prev.xp,
-                          levelUpDm: {
-                            enabled: value,
-                            sendOnEveryLevel: prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
-                            defaultMessage:
-                              prev.xp?.levelUpDm?.defaultMessage ??
-                              '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
-                            messages: prev.xp?.levelUpDm?.messages ?? [],
-                          },
+                          levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, { enabled: value }),
                         },
                       }))
                     }
@@ -655,14 +676,9 @@ export function CommunitySettingsSection({
                             ...prev,
                             xp: {
                               ...prev.xp,
-                              levelUpDm: {
-                                enabled: prev.xp?.levelUpDm?.enabled ?? true,
+                              levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, {
                                 sendOnEveryLevel: value,
-                                defaultMessage:
-                                  prev.xp?.levelUpDm?.defaultMessage ??
-                                  '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
-                                messages: prev.xp?.levelUpDm?.messages ?? [],
-                              },
+                              }),
                             },
                           }))
                         }
@@ -681,12 +697,9 @@ export function CommunitySettingsSection({
                             ...prev,
                             xp: {
                               ...prev.xp,
-                              levelUpDm: {
-                                enabled: prev.xp?.levelUpDm?.enabled ?? true,
-                                sendOnEveryLevel: prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
+                              levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, {
                                 defaultMessage: event.target.value,
-                                messages: prev.xp?.levelUpDm?.messages ?? [],
-                              },
+                              }),
                             },
                           }))
                         }
@@ -732,23 +745,24 @@ export function CommunitySettingsSection({
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            updateDraftConfig((prev) => ({
-                              ...prev,
-                              xp: {
-                                ...prev.xp,
-                                levelUpDm: {
-                                  enabled: prev.xp?.levelUpDm?.enabled ?? true,
-                                  sendOnEveryLevel: prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
-                                  defaultMessage:
-                                    prev.xp?.levelUpDm?.defaultMessage ??
-                                    '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
-                                  messages: [
-                                    ...(prev.xp?.levelUpDm?.messages ?? []),
-                                    { level: 1, message: '' },
-                                  ],
+                            updateDraftConfig((prev) => {
+                              const existingMessages = prev.xp?.levelUpDm?.messages ?? [];
+                              return {
+                                ...prev,
+                                xp: {
+                                  ...prev.xp,
+                                  levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, {
+                                    messages: [
+                                      ...existingMessages,
+                                      {
+                                        level: getNextLevelUpDmOverrideLevel(existingMessages),
+                                        message: '',
+                                      },
+                                    ],
+                                  }),
                                 },
-                              },
-                            }))
+                              };
+                            })
                           }
                           disabled={saving}
                         >
@@ -785,6 +799,13 @@ export function CommunitySettingsSection({
                                   updateDraftConfig((prev) => {
                                     const messages = [...(prev.xp?.levelUpDm?.messages ?? [])];
                                     const targetIndex = entry.originalIndex;
+                                    const hasDuplicateLevel = messages.some(
+                                      (candidate, index) =>
+                                        index !== targetIndex && candidate?.level === value,
+                                    );
+                                    if (hasDuplicateLevel) {
+                                      return prev;
+                                    }
                                     if (targetIndex !== -1) {
                                       messages[targetIndex] = {
                                         ...messages[targetIndex],
@@ -795,15 +816,9 @@ export function CommunitySettingsSection({
                                       ...prev,
                                       xp: {
                                         ...prev.xp,
-                                        levelUpDm: {
-                                          enabled: prev.xp?.levelUpDm?.enabled ?? true,
-                                          sendOnEveryLevel:
-                                            prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
-                                          defaultMessage:
-                                            prev.xp?.levelUpDm?.defaultMessage ??
-                                            '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                        levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, {
                                           messages,
-                                        },
+                                        }),
                                       },
                                     };
                                   });
@@ -822,17 +837,11 @@ export function CommunitySettingsSection({
                                   ...prev,
                                   xp: {
                                     ...prev.xp,
-                                    levelUpDm: {
-                                      enabled: prev.xp?.levelUpDm?.enabled ?? true,
-                                      sendOnEveryLevel:
-                                        prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
-                                      defaultMessage:
-                                        prev.xp?.levelUpDm?.defaultMessage ??
-                                        '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                    levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, {
                                       messages: (prev.xp?.levelUpDm?.messages ?? []).filter(
                                         (_candidate, index) => index !== entry.originalIndex,
                                       ),
-                                    },
+                                    }),
                                   },
                                 }))
                               }
@@ -860,15 +869,9 @@ export function CommunitySettingsSection({
                                     ...prev,
                                     xp: {
                                       ...prev.xp,
-                                      levelUpDm: {
-                                        enabled: prev.xp?.levelUpDm?.enabled ?? true,
-                                        sendOnEveryLevel:
-                                          prev.xp?.levelUpDm?.sendOnEveryLevel ?? false,
-                                        defaultMessage:
-                                          prev.xp?.levelUpDm?.defaultMessage ??
-                                          '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+                                      levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, {
                                         messages,
-                                      },
+                                      }),
                                     },
                                   };
                                 })
