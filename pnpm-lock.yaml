@@ -140,8 +140,8 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       simple-icons:
-        specifier: ^16.13.0
-        version: 16.13.0
+        specifier: ^16.14.0
+        version: 16.14.0
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -3684,8 +3684,8 @@ packages:
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
 
-  langsmith@0.5.13:
-    resolution: {integrity: sha512-arD4XzLdMTyb3rrKVainpXG9vtJPL3urOc/fC/yMHeoorK5KSHsvBWkogZUgjCsLkhtH8FdfSEAAG8Am8DNoYQ==}
+  langsmith@0.5.15:
+    resolution: {integrity: sha512-S20JnYmIgqGBjA/WEn12ZZJjqd03O5wd8K9KgGBvsKXQBn0bYuFrr1w20L37PpcMmX3/cftpgJ6g2y8KoEmHLw==}
     peerDependencies:
       '@opentelemetry/api': '*'
       '@opentelemetry/exporter-trace-otlp-proto': '*'
@@ -4641,8 +4641,8 @@ packages:
   simple-get@4.0.1:
     resolution: {integrity: sha512-brv7p5WgH0jmQJr1ZDDfKDOSeWWg+OVypG99A/5vYGPqJ6pxiaHLy8nxtFjBA7oMa01ebA9gfh1uMCFqOuXxvA==}
 
-  simple-icons@16.13.0:
-    resolution: {integrity: sha512-N4AMZvFERU5YLEtUudtUesiM2H4O5xQ9qfS3K0oOV5II5KVtxOUAlmZ7KqBgiTSGBgCVkuLD/Z9dJKBtnI3kKQ==}
+  simple-icons@16.14.0:
+    resolution: {integrity: sha512-2Nvs3jJpCfMWQerD4zdv91g/MpnWn81a7uhyAC0reuhrjmS2MtSmwIKwewOJR6Xe97ZmfltDntCDqKJIBawQOw==}
     engines: {node: '>=0.12.18'}
 
   simple-wcswidth@1.1.2:
@@ -4857,6 +4857,10 @@ packages:
 
   undici@7.24.5:
     resolution: {integrity: sha512-3IWdCpjgxp15CbJnsi/Y9TCDE7HWVN19j1hmzVhoAkY/+CJx449tVxT5wZc1Gwg8J+P0LWvzlBzxYRnHJ+1i7Q==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.24.6:
+    resolution: {integrity: sha512-Xi4agocCbRzt0yYMZGMA6ApD7gvtUFaxm4ZmeacWI4cZxaF6C+8I8QfofC20NAePiB/IcvZmzkJ7XPa471AEtA==}
     engines: {node: '>=20.18.1'}
 
   universalify@0.1.2:
@@ -5146,10 +5150,10 @@ packages:
     engines: {node: '>=8.0.0'}
     hasBin: true
 
-  zod-to-json-schema@3.25.1:
-    resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
+  zod-to-json-schema@3.25.2:
+    resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
-      zod: ^3.25 || ^4
+      zod: ^3.25.28 || ^4
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
@@ -5913,13 +5917,13 @@ snapshots:
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.21
-      langsmith: 0.5.13(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0)
+      langsmith: 0.5.15(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0)
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 10.0.0
       zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
     transitivePeerDependencies:
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
@@ -5947,7 +5951,7 @@ snapshots:
     dependencies:
       ws: 8.20.0
       zod: 4.3.6
-      zod-to-json-schema: 3.25.1(zod@4.3.6)
+      zod-to-json-schema: 3.25.2(zod@4.3.6)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -6309,7 +6313,7 @@ snapshots:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       '@sevinf/maybe': 0.5.0
       typescript: 6.0.2
-      undici: 7.24.5
+      undici: 7.24.6
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -8807,7 +8811,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langsmith@0.5.13(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0):
+  langsmith@0.5.15(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0):
     dependencies:
       '@types/uuid': 10.0.0
       chalk: 5.6.2
@@ -9803,7 +9807,7 @@ snapshots:
       once: 1.4.0
       simple-concat: 1.0.1
 
-  simple-icons@16.13.0: {}
+  simple-icons@16.14.0: {}
 
   simple-wcswidth@1.1.2: {}
 
@@ -10005,6 +10009,8 @@ snapshots:
   undici-types@7.18.2: {}
 
   undici@7.24.5: {}
+
+  undici@7.24.6: {}
 
   universalify@0.1.2: {}
 
@@ -10241,11 +10247,11 @@ snapshots:
     optionalDependencies:
       commander: 9.5.0
 
-  zod-to-json-schema@3.25.1(zod@3.25.76):
+  zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
       zod: 3.25.76
 
-  zod-to-json-schema@3.25.1(zod@4.3.6):
+  zod-to-json-schema@3.25.2(zod@4.3.6):
     dependencies:
       zod: 4.3.6
 
