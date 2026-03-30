@@ -42,15 +42,20 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
 // ── Channel context fetching ─────────────────────────────────────────────────
 
 /**
- * Fetch recent messages from Discord's API to provide conversation context
- * beyond the buffer window. Called at evaluation time (not accumulation) to
- * minimize API calls.
+ * Retrieve recent channel messages to provide additional conversation context.
  *
- * @param {string} channelId - The channel to fetch history from
- * @param {import('discord.js').Client} client - Discord client
- * @param {Array} bufferSnapshot - Current buffer snapshot (to fetch messages before)
- * @param {number} [limit=15] - Maximum messages to fetch
- * @returns {Promise<Array>} Context messages in chronological order
+ * Returns an array of context message objects in chronological order. Each object contains:
+ * - `author`: display name (appended with " [BOT]" for bot accounts),
+ * - `content`: sanitized message text truncated to the context character limit,
+ * - `userId`, `messageId`, `timestamp`,
+ * - `isContext`: true,
+ * - `channelName`, `channelTopic`.
+ *
+ * @param {string} channelId - ID of the channel to fetch history from.
+ * @param {import('discord.js').Client} client - Discord client used to access the channel messages API.
+ * @param {Array} bufferSnapshot - Current buffer snapshot; messages are fetched before the oldest entry if present.
+ * @param {number} [limit=15] - Maximum number of messages to fetch.
+ * @returns {Promise<Array<Object>>} Context message objects in chronological order.
  */
 export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15) {
   try {
@@ -60,22 +65,42 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
       return [];
     }
 
-    // Fetch messages before the oldest buffered message
-    const oldest = bufferSnapshot[0];
-    const options = { limit };
-    if (oldest) options.before = oldest.messageId;
+    const toContextEntry = (m) => ({
+      author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
+      content: sanitizeText(m.content?.slice(0, CONTEXT_MESSAGE_CHAR_LIMIT)) || '',
+      userId: m.author.id,
+      messageId: m.id,
+      timestamp: m.createdTimestamp,
+      isContext: true, // marker to distinguish from triage targets
+      channelName: channel.name ?? null,
+      channelTopic: channel.topic ?? null,
+    });
 
-    const fetched = await channel.messages.fetch(options);
-    return [...fetched.values()]
-      .reverse() // chronological order
-      .map((m) => ({
-        author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
-        content: sanitizeText(m.content?.slice(0, CONTEXT_MESSAGE_CHAR_LIMIT)) || '',
-        userId: m.author.id,
-        messageId: m.id,
-        timestamp: m.createdTimestamp,
-        isContext: true, // marker to distinguish from triage targets
-      }));
+    // Fetch messages before the oldest buffered message (historical context)
+    const oldest = bufferSnapshot[0];
+    const historyOptions = { limit };
+    if (oldest) historyOptions.before = oldest.messageId;
+    const historyFetched = await channel.messages.fetch(historyOptions);
+
+    // Also fetch the most recent messages (catches replies that arrived after
+    // the buffer started accumulating — fixes the "already being helped" blind spot)
+    const RECENT_LIMIT = 5;
+    const recentFetched = await channel.messages.fetch({ limit: RECENT_LIMIT });
+
+    // Merge and deduplicate by messageId, excluding messages already in the buffer
+    const bufferIds = new Set(bufferSnapshot.map((m) => m.messageId));
+    const seen = new Set();
+    const merged = [];
+
+    for (const m of [...historyFetched.values(), ...recentFetched.values()]) {
+      if (bufferIds.has(m.id) || seen.has(m.id)) continue;
+      seen.add(m.id);
+      merged.push(m);
+    }
+
+    return merged
+      .sort((a, b) => a.createdTimestamp - b.createdTimestamp) // chronological
+      .map(toContextEntry);
   } catch (err) {
     warn('fetchChannelContext failed', { channelId, error: err.message });
     return []; // channel inaccessible -- proceed without context
@@ -179,6 +204,7 @@ export async function sendModerationLog(
  * @param {Object} config - Bot configuration; uses `config.triage` for debug/footer and moderationResponse settings.
  * @param {Object} [stats] - Optional stats used to build the debug embed (classify/respond stats and optional searchCount).
  * @param {string} [channelId] - Channel ID fallback used for logging when `channel` is not available.
+ * @returns {Promise<boolean>} `true` if at least one message was sent, `false` otherwise.
  */
 export async function sendResponses(
   channel,
@@ -191,13 +217,25 @@ export async function sendResponses(
 ) {
   if (!channel) {
     warn('Could not fetch channel for triage response', { channelId });
-    return;
+    return false;
   }
 
   channelId = channelId || channel.id;
   const triageConfig = config.triage || {};
   const type = classification.classification;
-  const responses = parsed.responses || [];
+  const allResponses = parsed.responses || [];
+
+  // Cap responses per evaluation to prevent rapid-fire bot messages.
+  // Moderation responses are exempt — all flagged violations get in-channel nudges.
+  const maxResponses = triageConfig.maxResponsesPerEval ?? 2;
+  const responses = type === 'moderate' ? allResponses : allResponses.slice(0, maxResponses);
+  if (type !== 'moderate' && allResponses.length > maxResponses) {
+    warn('Response count capped', {
+      channelId,
+      produced: allResponses.length,
+      capped: maxResponses,
+    });
+  }
 
   // Build debug embed if enabled
   let debugEmbed;
@@ -207,6 +245,8 @@ export async function sendResponses(
       searchCount: stats.searchCount,
     });
   }
+
+  let sent = false;
 
   if (type === 'moderate') {
     warn('Moderation flagged', { channelId, reasoning: classification.reasoning });
@@ -223,6 +263,7 @@ export async function sendResponses(
               if (replyRef && i === 0) msgOpts.reply = { messageReference: replyRef };
               const sentMsg = await safeSend(channel, msgOpts);
               logAssistantHistory(channelId, channel.guild?.id || null, chunks[i], sentMsg);
+              sent = true;
             }
           }
         } catch (err) {
@@ -234,13 +275,13 @@ export async function sendResponses(
         }
       }
     }
-    return;
+    return sent;
   }
 
   // respond or chime-in
   if (responses.length === 0) {
     warn('Triage generated no responses for classification', { channelId, classification: type });
-    return;
+    return false;
   }
 
   await channel.sendTyping();
@@ -262,6 +303,7 @@ export async function sendResponses(
         const sentMsg = await safeSend(channel, msgOpts);
         // Log AI response to conversation history
         logAssistantHistory(channelId, channel.guild?.id || null, chunks[i], sentMsg);
+        sent = true;
       }
 
       info('Triage response sent', {
@@ -278,6 +320,8 @@ export async function sendResponses(
       });
     }
   }
+
+  return sent;
 }
 
 /**
