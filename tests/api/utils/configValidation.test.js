@@ -451,6 +451,16 @@ describe('configValidation', () => {
       expect(errors.some((e) => e.includes('at least 1 characters'))).toBe(true);
     });
 
+    it('should reject whitespace-only xp.levelUpDm templates', () => {
+      const defaultErrors = validateSingleValue('xp.levelUpDm.defaultMessage', '   ');
+      const overrideErrors = validateSingleValue('xp.levelUpDm.messages', [
+        { level: 5, message: '   ' },
+      ]);
+
+      expect(defaultErrors.some((e) => e.includes('required pattern'))).toBe(true);
+      expect(overrideErrors.some((e) => e.includes('required pattern'))).toBe(true);
+    });
+
     it('should reject xp.levelUpDm messages above Discord length limit', () => {
       const errors = validateSingleValue('xp.levelUpDm.defaultMessage', 'x'.repeat(2001));
       expect(errors.some((e) => e.includes('max length'))).toBe(true);

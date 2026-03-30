@@ -336,7 +336,7 @@ export const CONFIG_SCHEMA = {
         properties: {
           enabled: { type: 'boolean' },
           sendOnEveryLevel: { type: 'boolean' },
-          defaultMessage: { type: 'string', maxLength: 2000 },
+          defaultMessage: { type: 'string', minLength: 1, maxLength: 2000, pattern: '\\S' },
           messages: {
             type: 'array',
             uniqueBy: 'level',
@@ -345,7 +345,7 @@ export const CONFIG_SCHEMA = {
               required: ['level', 'message'],
               properties: {
                 level: { type: 'number', min: 1, max: 1000 },
-                message: { type: 'string', minLength: 1, maxLength: 2000 },
+                message: { type: 'string', minLength: 1, maxLength: 2000, pattern: '\\S' },
               },
             },
           },
