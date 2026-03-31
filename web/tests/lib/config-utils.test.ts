@@ -37,7 +37,27 @@ describe('computePatches', () => {
     ]);
 
     expect(computePatches({ xp: { levelUpDm: {} } }, { xp: {} })).toEqual([
-      { path: 'xp.levelUpDm', value: null },
+      { path: 'xp.levelUpDm', value: {} },
+    ]);
+  });
+
+  it('resets removed nested objects at the parent path', () => {
+    expect(
+      computePatches(
+        {
+          xp: {
+            levelUpDm: {
+              enabled: true,
+              sendOnEveryLevel: false,
+              defaultMessage: 'Level {{level}}',
+              messages: [{ level: 5, message: 'Hit {{level}}' }],
+            },
+          },
+        },
+        { xp: {} },
+      ),
+    ).toEqual([
+      { path: 'xp.levelUpDm', value: {} },
     ]);
   });
 });

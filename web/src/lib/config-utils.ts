@@ -84,9 +84,7 @@ export function computePatches(
         walk(origVal as Record<string, unknown>, modVal as Record<string, unknown>, fullPath);
       } else if (!modHasKey || modVal === undefined) {
         if (isPlainObject(origVal)) {
-          for (const patch of flattenObjectToLeafPatches(origVal, fullPath)) {
-            patches.push({ path: patch.path, value: null });
-          }
+          patches.push({ path: fullPath, value: {} });
         } else {
           patches.push({ path: fullPath, value: null });
         }
