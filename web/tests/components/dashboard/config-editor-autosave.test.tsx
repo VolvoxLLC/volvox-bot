@@ -309,18 +309,27 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     expect(levelInputs[0]).toHaveValue(1);
     expect(levelInputs[1]).toHaveValue(2);
 
-    const overrideTextareas = screen.getAllByRole('textbox').filter(
-      (element) =>
-        element.tagName === 'TEXTAREA' && element.getAttribute('id') !== 'xp-level-dm-default',
-    );
-    expect(overrideTextareas).toHaveLength(2);
+    const getOverrideTextareas = () =>
+      Array.from(levelUpCard?.querySelectorAll('textarea') ?? []).filter(
+        (element) => element.getAttribute('id') !== 'xp-level-dm-default',
+      );
 
-    const firstOverrideTextarea = overrideTextareas[0] as HTMLTextAreaElement;
+    expect(getOverrideTextareas()).toHaveLength(2);
+
+    const firstOverrideTextarea = getOverrideTextareas()[0] as HTMLTextAreaElement;
     await user.click(firstOverrideTextarea);
+    await user.clear(firstOverrideTextarea);
     await user.type(firstOverrideTextarea, 'Override text');
 
-    expect(document.activeElement).toBe(firstOverrideTextarea);
-    expect(firstOverrideTextarea).toHaveValue('Override text');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const refreshedFirstOverrideTextarea = getOverrideTextareas()[0] as HTMLTextAreaElement;
+
+    expect(refreshedFirstOverrideTextarea).toBe(firstOverrideTextarea);
+    expect(document.activeElement).toBe(refreshedFirstOverrideTextarea);
+    expect(refreshedFirstOverrideTextarea).toHaveValue('Override text');
     expect(screen.getAllByText('Override Preview').length).toBeGreaterThan(0);
   }, 15000);
 
@@ -328,17 +337,19 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     mockPathname = '/dashboard/settings/onboarding-growth';
     const user = userEvent.setup();
 
-    const fetchMock = vi.fn().mockImplementation((_url: string, options?: { method?: string; body?: string }) => {
-      if (options?.method === 'PATCH') {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
-      }
+    const fetchMock = vi.fn().mockImplementation(
+      (_url: string, options?: { method?: string; body?: string }) => {
+        if (options?.method === 'PATCH') {
+          return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+        }
 
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfigWithoutLevelUpDm),
-      });
-    });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(minimalConfigWithoutLevelUpDm),
+        });
+      },
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const { ConfigLayoutShell } = await import('@/components/dashboard/config-layout-shell');

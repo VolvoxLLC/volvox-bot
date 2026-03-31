@@ -86,6 +86,11 @@ function buildLevelUpDmConfig(
   };
 }
 
+function getLevelUpDmOverrideSeedMessage(current: XpDraft['levelUpDm'] | undefined) {
+  const defaultMessage = buildLevelUpDmConfig(current, {}).defaultMessage.trim();
+  return defaultMessage || DEFAULT_LEVEL_UP_DM_MESSAGE;
+}
+
 interface CommunitySettingsSectionProps {
   draftConfig: GuildConfig;
   saving: boolean;
@@ -747,6 +752,7 @@ export function CommunitySettingsSection({
                           onClick={() =>
                             updateDraftConfig((prev) => {
                               const existingMessages = prev.xp?.levelUpDm?.messages ?? [];
+                              const nextLevel = getNextLevelUpDmOverrideLevel(existingMessages);
                               return {
                                 ...prev,
                                 xp: {
@@ -755,8 +761,10 @@ export function CommunitySettingsSection({
                                     messages: [
                                       ...existingMessages,
                                       {
-                                        level: getNextLevelUpDmOverrideLevel(existingMessages),
-                                        message: '',
+                                        level: nextLevel,
+                                        message: getLevelUpDmOverrideSeedMessage(
+                                          prev.xp?.levelUpDm,
+                                        ),
                                       },
                                     ],
                                   }),
