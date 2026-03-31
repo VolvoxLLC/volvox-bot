@@ -169,7 +169,7 @@ export interface WarningsConfig {
 /** Moderation configuration. */
 export interface ModerationConfig {
   enabled: boolean;
-  alertChannelId: string;
+  alertChannelId?: string | null;
   autoDelete: boolean;
   dmNotifications: ModerationDmNotifications;
   escalation: ModerationEscalation;
@@ -237,7 +237,7 @@ export interface TriageConfig {
   excludeChannels: string[];
   debugFooter: boolean;
   debugFooterLevel: string;
-  moderationLogChannel: string;
+  moderationLogChannel: string | null;
   statusReactions: boolean;
 }
 
