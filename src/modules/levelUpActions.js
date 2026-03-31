@@ -47,6 +47,10 @@ registerAction('nickPrefix', handleNickPrefix);
 registerAction('nickSuffix', handleNickSuffix);
 registerAction('webhook', handleWebhook);
 
+function getLevelUpDmRateLimitScope(level) {
+  return `levelUpDm:${level}`;
+}
+
 function getLevelUpDmAction(level, config) {
   const levelUpDm = config.levelUpDm;
   if (!levelUpDm?.enabled) return null;
@@ -57,7 +61,7 @@ function getLevelUpDmAction(level, config) {
       type: 'sendDm',
       format: 'text',
       template: override.message,
-      rateLimitScope: 'levelUpDm',
+      rateLimitScope: getLevelUpDmRateLimitScope(level),
     };
   }
 
@@ -66,7 +70,7 @@ function getLevelUpDmAction(level, config) {
       type: 'sendDm',
       format: 'text',
       template: levelUpDm.defaultMessage,
-      rateLimitScope: 'levelUpDm',
+      rateLimitScope: getLevelUpDmRateLimitScope(level),
     };
   }
 

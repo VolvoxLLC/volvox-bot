@@ -121,7 +121,7 @@ describe('resolveActions', () => {
           type: 'sendDm',
           format: 'text',
           template: 'Hit {{level}}',
-          rateLimitScope: 'levelUpDm',
+          rateLimitScope: 'levelUpDm:5',
         },
       },
     ]);
@@ -147,7 +147,7 @@ describe('resolveActions', () => {
           type: 'sendDm',
           format: 'text',
           template: 'Default {{level}}',
-          rateLimitScope: 'levelUpDm',
+          rateLimitScope: 'levelUpDm:3',
         },
       },
     ]);
@@ -174,7 +174,7 @@ describe('resolveActions', () => {
           type: 'sendDm',
           format: 'text',
           template: 'Hit {{level}}',
-          rateLimitScope: 'levelUpDm',
+          rateLimitScope: 'levelUpDm:5',
         },
       },
     ]);
@@ -199,7 +199,7 @@ describe('resolveActions', () => {
           type: 'sendDm',
           format: 'text',
           template: 'Milestone {{level}}',
-          rateLimitScope: 'levelUpDm',
+          rateLimitScope: 'levelUpDm:5',
         },
       },
       {
@@ -208,7 +208,7 @@ describe('resolveActions', () => {
           type: 'sendDm',
           format: 'text',
           template: 'Default {{level}}',
-          rateLimitScope: 'levelUpDm',
+          rateLimitScope: 'levelUpDm:6',
         },
       },
     ]);
