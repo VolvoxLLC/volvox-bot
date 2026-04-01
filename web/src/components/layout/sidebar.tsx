@@ -23,8 +23,8 @@ import { usePathname } from 'next/navigation';
 import { type ComponentType, useEffect, useState } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-import type { MutualGuild } from '@/types/discord';
 import { cn } from '@/lib/utils';
+import { useGuildDirectory } from './guild-directory-context';
 
 /** Shared shape for sidebar navigation entries */
 interface NavItem {
@@ -105,7 +105,7 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
   const guildId = useGuildSelection();
-  const [guilds, setGuilds] = useState<MutualGuild[]>([]);
+  const { guilds } = useGuildDirectory();
   const isNavItemActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
   const activeGuildAccess = guilds.find((guild) => guild.id === guildId)?.access ?? null;
@@ -121,34 +121,6 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
       setIsSecondaryOpen(true);
     }
   }, [activeSecondaryHref]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    (async () => {
-      try {
-        const response = await fetch('/api/guilds', { signal: controller.signal });
-        if (!response.ok) return;
-        const data: unknown = await response.json();
-        if (!Array.isArray(data)) return;
-        setGuilds(
-          data.filter(
-            (guild): guild is MutualGuild =>
-              typeof guild === 'object' &&
-              guild !== null &&
-              typeof (guild as { id?: unknown }).id === 'string' &&
-              typeof (guild as { name?: unknown }).name === 'string' &&
-              typeof (guild as { permissions?: unknown }).permissions === 'string' &&
-              typeof (guild as { owner?: unknown }).owner === 'boolean',
-          ),
-        );
-      } catch {
-        // Keep full nav if the guild list cannot be loaded.
-      }
-    })();
-
-    return () => controller.abort();
-  }, []);
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
