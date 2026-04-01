@@ -301,7 +301,7 @@ export function addToHistory(channelId, role, content, username, discordMessageI
     conversationHistory.set(channelId, []);
   }
   const history = conversationHistory.get(channelId);
-  history.push({ role, content });
+  history.push({ role, content, timestamp: Date.now() });
 
   const maxHistory = getHistoryLength();
 

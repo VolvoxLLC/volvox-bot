@@ -22,6 +22,9 @@ export const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
  * @property {string} messageId - Discord message ID
  * @property {number} timestamp - Message creation timestamp (ms)
  * @property {{author: string, userId: string, content: string, messageId: string}|null} replyTo - Referenced message context
+ * @property {string|null} channelName - Discord channel name
+ * @property {string|null} channelTopic - Discord channel topic/description
+ * @property {boolean} [replyToHuman] - Whether this message is a reply to a non-bot user (set when replyTo exists)
  */
 
 /**
@@ -32,6 +35,7 @@ export const CHANNEL_INACTIVE_MS = 30 * 60 * 1000; // 30 minutes
  * @property {boolean} evaluating - Concurrent evaluation guard
  * @property {boolean} pendingReeval - Flag to re-trigger evaluation after current completes
  * @property {AbortController|null} abortController - For cancelling in-flight evaluations
+ * @property {number} lastResponseAt - Timestamp (ms) of the last bot response in this channel
  */
 
 /** @type {Map<string, ChannelState>} */
@@ -103,6 +107,7 @@ export function getBuffer(channelId) {
       evaluating: false,
       pendingReeval: false,
       abortController: null,
+      lastResponseAt: 0,
     });
   }
   const buf = channelBuffers.get(channelId);
@@ -156,5 +161,17 @@ export function pushToBuffer(channelId, entry, maxBufferSize) {
       remaining: maxBufferSize,
     });
     buf.messages.splice(0, excess);
+  }
+}
+
+/**
+ * Record that the bot just responded in a channel.
+ * Used by the cooldown gate to throttle consecutive responses.
+ * @param {string} channelId - The channel ID
+ */
+export function setLastResponseAt(channelId) {
+  const buf = channelBuffers.get(channelId);
+  if (buf) {
+    buf.lastResponseAt = Date.now();
   }
 }
