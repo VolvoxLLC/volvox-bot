@@ -150,6 +150,17 @@ describe('guilds routes coverage', () => {
 
       expect(res.status).toBe(401);
     });
+
+    it('rejects oversized guild access batches', async () => {
+      const guildIds = Array.from({ length: 101 }, (_, index) => `guild-${index}`).join(',');
+
+      const res = await request(app)
+        .get(`/api/v1/guilds/access?userId=user1&guildIds=${guildIds}`)
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('at most 100');
+    });
   });
 
   afterEach(() => {

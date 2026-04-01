@@ -27,6 +27,7 @@ const ADMINISTRATOR_FLAG = 0x8;
 /** Discord MANAGE_GUILD permission flag */
 const MANAGE_GUILD_FLAG = 0x20;
 const ACCESS_LOOKUP_CONCURRENCY = 10;
+const MAX_ACCESS_LOOKUP_GUILDS = 100;
 
 /**
  * Upper bound on content length for abuse prevention.
@@ -559,6 +560,11 @@ router.get('/access', async (req, res) => {
   ];
   if (guildIds.length === 0) {
     return res.json([]);
+  }
+  if (guildIds.length > MAX_ACCESS_LOOKUP_GUILDS) {
+    return res.status(400).json({
+      error: `guildIds may include at most ${MAX_ACCESS_LOOKUP_GUILDS} entries`,
+    });
   }
 
   const { client } = req.app.locals;
