@@ -14,7 +14,7 @@ const LOG_PREFIX = '[api/moderation/stats]';
 /**
  * GET /api/moderation/stats
  * Proxies to bot API GET /api/v1/moderation/stats
- * Requires guildId query param and admin authorization.
+ * Requires guildId query param and moderator authorization.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const guildId = request.nextUrl.searchParams.get('guildId');

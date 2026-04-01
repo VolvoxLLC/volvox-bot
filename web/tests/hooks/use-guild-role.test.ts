@@ -28,7 +28,7 @@ describe('use-guild-role', () => {
     expect(getGuildDashboardRole(createGuild({ permissions: '8' }))).toBe('admin');
   });
 
-  it('returns admin for manage guild permissions', () => {
+  it('returns moderator for manage guild permissions', () => {
     expect(getGuildDashboardRole(createGuild({ permissions: '32' }))).toBe('moderator');
   });
 

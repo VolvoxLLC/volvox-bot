@@ -69,6 +69,12 @@ function getFallbackGuildAccess(guild: { owner?: boolean; permissions: string })
   return 'viewer';
 }
 
+function getUserIdFromToken(token: AuthToken): string {
+  if (typeof token.id === 'string') return token.id;
+  if (typeof token.sub === 'string') return token.sub;
+  return '';
+}
+
 async function resolveGuildAccess(
   token: AuthToken,
   guildId: string,
@@ -83,8 +89,7 @@ async function resolveGuildAccess(
   }
 
   const fallbackAccess = getFallbackGuildAccess(targetGuild);
-  const userId =
-    typeof token.id === 'string' ? token.id : typeof token.sub === 'string' ? token.sub : '';
+  const userId = getUserIdFromToken(token);
   const botApiBaseUrl = getBotApiBaseUrl();
   const botApiSecret = process.env.BOT_API_SECRET;
 
@@ -174,7 +179,7 @@ async function authorizeGuildAccess(
 }
 
 /**
- * Verify that the incoming request is from the owner or an administrator of the specified guild.
+ * Verify that the incoming request has admin-or-higher dashboard access for the specified guild.
  *
  * @param request - The incoming NextRequest containing the user's session/token.
  * @param guildId - The Discord guild ID to authorize against.
@@ -183,7 +188,7 @@ async function authorizeGuildAccess(
  *          Possible responses:
  *          - 401 Unauthorized when the access token is missing or expired.
  *          - 502 Bad Gateway when mutual guilds cannot be verified.
- *          - 403 Forbidden when the user is neither the guild owner nor has administrator permission.
+ *          - 403 Forbidden when the user does not have admin-or-higher dashboard access.
  */
 export async function authorizeGuildAdmin(
   request: NextRequest,
@@ -193,6 +198,18 @@ export async function authorizeGuildAdmin(
   return authorizeGuildAccess(request, guildId, logPrefix, 'admin');
 }
 
+/**
+ * Verify that the incoming request has moderator-or-higher dashboard access for the specified guild.
+ *
+ * @param request - The incoming NextRequest containing the user's session/token.
+ * @param guildId - The Discord guild ID to authorize against.
+ * @param logPrefix - Prefix used when logging contextual error messages.
+ * @returns `null` if the requester is authorized; a `NextResponse` containing an error JSON otherwise.
+ *          Possible responses:
+ *          - 401 Unauthorized when the access token is missing or expired.
+ *          - 502 Bad Gateway when mutual guilds cannot be verified.
+ *          - 403 Forbidden when the user does not have moderator-or-higher dashboard access.
+ */
 export async function authorizeGuildModerator(
   request: NextRequest,
   guildId: string,

@@ -11,7 +11,7 @@ const REQUEST_TIMEOUT_MS = 30_000; // CSV can take longer for large guilds
 /**
  * Proxy the guild members CSV export from the bot API and stream the resulting CSV back to the client.
  *
- * Validates the route parameter, enforces guild-admin authorization, forwards the upstream export request with a timeout, and returns the upstream CSV body with appropriate `Content-Type` and `Content-Disposition`. On failure returns a JSON error response with an appropriate HTTP status (e.g., 400 for missing guildId, the upstream status for upstream errors, 504 for timeouts, or 500 for internal failures).
+ * Validates the route parameter, enforces guild-moderator authorization, forwards the upstream export request with a timeout, and returns the upstream CSV body with appropriate `Content-Type` and `Content-Disposition`. On failure returns a JSON error response with an appropriate HTTP status (e.g., 400 for missing guildId, the upstream status for upstream errors, 504 for timeouts, or 500 for internal failures).
  *
  * @returns A NextResponse containing the streamed CSV on success; on error a JSON response describing the failure with the corresponding HTTP status.
  */

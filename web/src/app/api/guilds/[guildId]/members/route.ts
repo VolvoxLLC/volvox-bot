@@ -14,7 +14,7 @@ const LOG_PREFIX = '[api/guilds/:guildId/members]';
 /**
  * Proxy guild member list requests to the bot API, enriching and forwarding query parameters.
  *
- * Validates presence of `guildId` and that the requester is a guild admin, forwards `limit`, `after`, `search`, `sort`, and `order` query parameters to the upstream `/guilds/{guildId}/members` path, and proxies the response from the bot API.
+ * Validates presence of `guildId` and that the requester is a guild moderator, forwards `limit`, `after`, `search`, `sort`, and `order` query parameters to the upstream `/guilds/{guildId}/members` path, and proxies the response from the bot API.
  *
  * @returns A NextResponse from the proxy call or an error NextResponse (e.g., 400 when `guildId` is missing, an authorization error response, or an upstream configuration/resolution error).
  */

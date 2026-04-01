@@ -849,7 +849,7 @@ router.get(
   },
 );
 
-// ─── POST /:id/members/:userId/xp — Admin XP adjustment ──────────────────────
+// ─── POST /:id/members/:userId/xp — Moderator XP adjustment ──────────────────
 
 /**
  * @openapi

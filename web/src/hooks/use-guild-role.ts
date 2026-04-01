@@ -12,8 +12,8 @@ const MODERATE_MEMBERS = 0x10000000000n; // 1 << 40
 /**
  * Dashboard role hierarchy (highest to lowest access).
  *   owner      — guild owner
- *   admin      — ADMINISTRATOR or MANAGE_GUILD permission
- *   moderator  — KICK_MEMBERS, BAN_MEMBERS, or MODERATE_MEMBERS permission
+ *   admin      — ADMINISTRATOR permission
+ *   moderator  — MANAGE_GUILD, KICK_MEMBERS, BAN_MEMBERS, or MODERATE_MEMBERS permission
  *   viewer     — member with no elevated permissions
  */
 export type GuildDashboardRole = 'owner' | 'admin' | 'moderator' | 'viewer';

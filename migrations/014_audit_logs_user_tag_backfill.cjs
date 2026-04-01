@@ -3,9 +3,9 @@
  *
  * Background:
  *   `013_audit_log.cjs` now creates `audit_logs.user_tag`, but some databases
- *   already had an older `audit_logs` table from `001_initial-schema.cjs`.
- *   Because `013_audit_log.cjs` uses `ifNotExists`, those existing tables do
- *   not receive the new column automatically.
+ *   already had an older `audit_logs` table created before the `user_tag`
+ *   column existed. Because `013_audit_log.cjs` uses `ifNotExists`, those
+ *   existing tables do not receive the new column automatically.
  *
  * Purpose:
  *   Preserve the historical `014_*` slot already recorded in some databases
@@ -29,6 +29,8 @@ exports.up = (pgm) => {
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.down = (pgm) => {
+  // Keep idx_audit_logs_guild_user in place because 013_audit_log.cjs also
+  // creates it; dropping it here would leave that migration chain inconsistent.
   pgm.sql(`
     ALTER TABLE IF EXISTS audit_logs
     DROP COLUMN IF EXISTS user_tag
