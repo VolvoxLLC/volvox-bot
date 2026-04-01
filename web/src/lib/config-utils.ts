@@ -7,6 +7,10 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function hasPlainObjectChild(value: Record<string, unknown>): boolean {
+  return Object.values(value).some((entry) => isPlainObject(entry));
+}
+
 function flattenObjectToLeafPatches(
   obj: Record<string, unknown>,
   prefix: string,
@@ -81,6 +85,10 @@ export function computePatches(
       if (deepEqual(origVal, modVal)) continue;
 
       if (isPlainObject(origVal) && isPlainObject(modVal)) {
+        if (Object.keys(modVal).length === 0 && !hasPlainObjectChild(origVal)) {
+          patches.push({ path: fullPath, value: {} });
+          continue;
+        }
         walk(origVal as Record<string, unknown>, modVal as Record<string, unknown>, fullPath);
       } else if (!modHasKey || modVal === undefined) {
         if (isPlainObject(origVal)) {
