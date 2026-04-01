@@ -323,14 +323,17 @@ async function getGuildAccessLevel(guild, userId) {
  * Return Express middleware that enforces a guild-level permission for OAuth users.
  *
  * The middleware bypasses checks for API-secret requests and for configured bot owners.
- * For OAuth-authenticated requests it calls `permissionCheck(user, guildId)` and:
- * - responds 403 with `errorMessage` when the check resolves to `false`,
+ * For cached bot guilds it resolves dashboard access via `getGuildAccessLevel(...)`;
+ * otherwise it falls back to `permissionCheck(user, guildId)`. The resolved access
+ * level must satisfy `requiredAccess`.
+ * - responds 403 with `errorMessage` when the resolved access is insufficient,
  * - responds 502 when the permission verification throws,
  * - otherwise allows the request to continue.
  * Unknown or missing auth methods receive a 401 response.
  *
  * @param {(user: Object, guildId: string) => Promise<boolean>} permissionCheck - Function that returns `true` if the provided user has the required permission in the specified guild, `false` otherwise.
  * @param {string} errorMessage - Message to include in the 403 response when permission is denied.
+ * @param {'moderator'|'admin'} requiredAccess - Minimum dashboard access level required for the route.
  * @returns {import('express').RequestHandler} Express middleware enforcing the permission.
  */
 function requireGuildPermission(permissionCheck, errorMessage, requiredAccess) {
@@ -485,26 +488,29 @@ router.get('/', async (req, res) => {
 
     try {
       const userGuilds = await fetchUserGuilds(req.user.userId, accessToken);
-      const filtered = [];
-      for (const ug of userGuilds) {
+      const resolvedGuilds = await mapWithConcurrency(
+        userGuilds,
+        ACCESS_LOOKUP_CONCURRENCY,
+        async (ug) => {
         const botGuild = botGuilds.get(ug.id);
-        if (!botGuild) continue;
+          if (!botGuild) return null;
 
-        const access =
-          getOAuthDerivedAccessLevel(ug.owner, ug.permissions) ??
-          (await getGuildAccessLevel(botGuild, req.user.userId));
-        if (access === 'viewer') continue;
+          const access =
+            getOAuthDerivedAccessLevel(ug.owner, ug.permissions) ??
+            (await getGuildAccessLevel(botGuild, req.user.userId));
+          if (access === 'viewer') return null;
 
-        filtered.push({
-          id: ug.id,
-          name: botGuild.name,
-          icon: botGuild.iconURL(),
-          memberCount: botGuild.memberCount,
-          access,
-        });
-      }
+          return {
+            id: ug.id,
+            name: botGuild.name,
+            icon: botGuild.iconURL(),
+            memberCount: botGuild.memberCount,
+            access,
+          };
+        },
+      );
 
-      return res.json(filtered);
+      return res.json(resolvedGuilds.filter(Boolean));
     } catch (err) {
       error('Failed to fetch user guilds from Discord', {
         error: err.message,
@@ -532,7 +538,7 @@ router.get('/', async (req, res) => {
 router.get('/access', async (req, res) => {
   if (req.authMethod !== 'api-secret') {
     return res
-      .status(403)
+      .status(401)
       .json({ error: 'Guild access endpoint requires API secret authentication' });
   }
 
