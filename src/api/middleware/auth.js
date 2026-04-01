@@ -48,6 +48,13 @@ export function requireAuth() {
         });
       } else if (isValidSecret(apiSecret)) {
         req.authMethod = 'api-secret';
+        const trustedUserId =
+          typeof req.headers['x-discord-user-id'] === 'string'
+            ? req.headers['x-discord-user-id'].trim()
+            : '';
+        if (trustedUserId) {
+          req.user = { userId: trustedUserId };
+        }
         return next();
       } else {
         // BOT_API_SECRET is configured but the provided secret doesn't match.

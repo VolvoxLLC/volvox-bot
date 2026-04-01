@@ -4,22 +4,28 @@ import { NextRequest } from 'next/server';
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
 
 const {
-  mockAuthorizeGuildAdmin,
+  mockAuthorizeGuildModerator,
   mockGetBotApiConfig,
   mockBuildUpstreamUrl,
   mockProxyToBotApi,
+  mockGetToken,
 } = vi.hoisted(() => ({
-  mockAuthorizeGuildAdmin: vi.fn(),
+  mockAuthorizeGuildModerator: vi.fn(),
   mockGetBotApiConfig: vi.fn(),
   mockBuildUpstreamUrl: vi.fn(),
   mockProxyToBotApi: vi.fn(),
+  mockGetToken: vi.fn(),
 }));
 
 vi.mock('@/lib/bot-api-proxy', () => ({
-  authorizeGuildAdmin: (...args: unknown[]) => mockAuthorizeGuildAdmin(...args),
+  authorizeGuildModerator: (...args: unknown[]) => mockAuthorizeGuildModerator(...args),
   getBotApiConfig: (...args: unknown[]) => mockGetBotApiConfig(...args),
   buildUpstreamUrl: (...args: unknown[]) => mockBuildUpstreamUrl(...args),
   proxyToBotApi: (...args: unknown[]) => mockProxyToBotApi(...args),
+}));
+
+vi.mock('next-auth/jwt', () => ({
+  getToken: (...args: unknown[]) => mockGetToken(...args),
 }));
 
 vi.mock('@/lib/logger', () => ({
@@ -47,9 +53,10 @@ function makeParams(guildId = 'g1', userId = 'u1') {
 describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuthorizeGuildAdmin.mockResolvedValue(null); // authorized
+    mockAuthorizeGuildModerator.mockResolvedValue(null); // authorized
     mockGetBotApiConfig.mockReturnValue({ baseUrl: 'http://bot:3001', secret: 's3cret' });
     mockBuildUpstreamUrl.mockReturnValue(new URL('http://bot:3001/guilds/g1/members/u1/xp'));
+    mockGetToken.mockResolvedValue({ id: 'moderator-1' });
     mockProxyToBotApi.mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
@@ -168,5 +175,15 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
     const forwardedBody = JSON.parse(call[4].body);
     expect(forwardedBody).toEqual({ amount: 10, reason: 'ok' });
     expect(forwardedBody).not.toHaveProperty('extra');
+  });
+
+  it('forwards the authenticated moderator id to the bot api', async () => {
+    await POST(makeRequest({ amount: 10 }), makeParams());
+
+    expect(mockProxyToBotApi).toHaveBeenCalled();
+    expect(mockProxyToBotApi.mock.calls[0][4].headers).toMatchObject({
+      'Content-Type': 'application/json',
+      'x-discord-user-id': 'moderator-1',
+    });
   });
 });

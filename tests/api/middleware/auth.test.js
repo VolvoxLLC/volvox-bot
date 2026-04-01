@@ -136,6 +136,19 @@ describe('auth middleware', () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
+  it('should attach trusted actor identity for valid api-secret requests', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    req.headers['x-api-secret'] = 'test-secret';
+    req.headers['x-discord-user-id'] = '1234567890';
+    const middleware = requireAuth();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('api-secret');
+    expect(req.user).toEqual({ userId: '1234567890' });
+  });
+
   it('should authenticate with valid JWT Bearer token', async () => {
     vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
     sessionStore.set('123', 'discord-access-token');

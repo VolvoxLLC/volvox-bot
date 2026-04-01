@@ -54,6 +54,7 @@ vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
 
 import { createApp } from '../../../src/api/server.js';
 import { getPool } from '../../../src/db.js';
+import { info } from '../../../src/logger.js';
 
 const TEST_SECRET = 'test-members-secret';
 
@@ -505,6 +506,32 @@ describe('members routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.xp).toBe(50);
       expect(res.body.adjustment).toBe(-200);
+    });
+
+    it('should attribute XP adjustments to the forwarded moderator identity', async () => {
+      const mockClient = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({})
+          .mockResolvedValueOnce({ rows: [{ xp: 350, level: 2 }] })
+          .mockResolvedValueOnce({})
+          .mockResolvedValueOnce({}),
+        release: vi.fn(),
+      };
+      mockPool.connect.mockResolvedValueOnce(mockClient);
+
+      const res = await authed(
+        request(app)
+          .post('/api/v1/guilds/guild1/members/user1/xp')
+          .set('x-discord-user-id', 'moderator-42')
+          .send({ amount: 100 }),
+      );
+
+      expect(res.status).toBe(200);
+      expect(info).toHaveBeenCalledWith(
+        'XP adjusted via API',
+        expect.objectContaining({ adjustedBy: 'moderator-42' }),
+      );
     });
 
     it('should reject fractional XP amount', async () => {
