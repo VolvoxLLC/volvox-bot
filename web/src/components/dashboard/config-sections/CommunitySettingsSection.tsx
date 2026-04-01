@@ -54,10 +54,24 @@ const LEVEL_UP_DM_PREVIEW_CONTEXT: Record<string, string> = {
   xpToNext: '250',
 };
 
-function renderLevelUpDmPreview(template: string) {
+function buildLevelUpDmPreviewContext(level?: number): Record<string, string> {
+  if (!Number.isFinite(level)) {
+    return LEVEL_UP_DM_PREVIEW_CONTEXT;
+  }
+
+  const resolvedLevel = Math.max(1, Math.floor(level ?? 1));
+  return {
+    ...LEVEL_UP_DM_PREVIEW_CONTEXT,
+    level: String(resolvedLevel),
+    previousLevel: String(Math.max(0, resolvedLevel - 1)),
+    nextLevel: String(resolvedLevel + 1),
+  };
+}
+
+function renderLevelUpDmPreview(template: string, context = LEVEL_UP_DM_PREVIEW_CONTEXT) {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-    return Object.hasOwn(LEVEL_UP_DM_PREVIEW_CONTEXT, key)
-      ? LEVEL_UP_DM_PREVIEW_CONTEXT[key]
+    return Object.hasOwn(context, key)
+      ? context[key]
       : match;
   });
 }
@@ -896,7 +910,10 @@ export function CommunitySettingsSection({
                               Override Preview
                             </p>
                             <p className="whitespace-pre-wrap text-sm">
-                              {renderLevelUpDmPreview(entry.message ?? '')}
+                              {renderLevelUpDmPreview(
+                                entry.message ?? '',
+                                buildLevelUpDmPreviewContext(entry.level),
+                              )}
                             </p>
                           </div>
                         </div>

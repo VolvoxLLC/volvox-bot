@@ -331,6 +331,19 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     expect(document.activeElement).toBe(refreshedFirstOverrideTextarea);
     expect(refreshedFirstOverrideTextarea).toHaveValue('Override text');
     expect(screen.getAllByText('Override Preview').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Override text/).length).toBeGreaterThan(0);
+
+    fireEvent.change(levelInputs[1], { target: { value: '10' } });
+    const secondOverrideTextarea = getOverrideTextareas()[1] as HTMLTextAreaElement;
+    fireEvent.change(secondOverrideTextarea, { target: { value: 'Level {{level}}' } });
+    const secondOverrideCard = secondOverrideTextarea.closest('.space-y-3');
+    expect(secondOverrideCard).not.toBeNull();
+
+    await waitFor(() => {
+      expect(levelInputs[1]).toHaveValue(10);
+      const previewParagraph = secondOverrideCard?.querySelector('p.whitespace-pre-wrap');
+      expect(previewParagraph?.textContent).toContain('Level 10');
+    });
   }, 15000);
 
   it('saves level-up DM fields as dotted patches when levelUpDm is newly added', async () => {
