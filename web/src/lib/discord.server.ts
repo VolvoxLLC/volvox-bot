@@ -54,6 +54,7 @@ export async function fetchWithRateLimit(
   const maxRetryDelayMs = init?.rateLimit?.maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS;
   const totalRetryBudgetMs = init?.rateLimit?.totalRetryBudgetMs ?? DEFAULT_TOTAL_RETRY_BUDGET_MS;
   let totalWaitMs = 0;
+  const maxAttempts = maxRetries + 1;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, init);
@@ -69,14 +70,14 @@ export async function fetchWithRateLimit(
     if (attempt === maxRetries || waitMs > maxRetryDelayMs || waitMs > remainingBudgetMs) {
       logger.warn(
         `[discord] Rate limited on ${url}, not retrying after ${waitMs}ms ` +
-          `(attempt ${attempt + 1}/${maxRetries}, remaining budget ${Math.max(remainingBudgetMs, 0)}ms)`,
+          `(attempt ${attempt + 1}/${maxAttempts}, remaining budget ${Math.max(remainingBudgetMs, 0)}ms)`,
       );
       return response;
     }
 
     logger.warn(
       `[discord] Rate limited on ${url}, retrying in ${waitMs}ms ` +
-        `(attempt ${attempt + 1}/${maxRetries}, remaining budget ${remainingBudgetMs}ms)`,
+        `(attempt ${attempt + 1}/${maxAttempts}, remaining budget ${remainingBudgetMs}ms)`,
     );
     // Abort-aware sleep: if the caller's signal fires while we're waiting,
     // cancel the delay immediately instead of blocking for the full duration.
