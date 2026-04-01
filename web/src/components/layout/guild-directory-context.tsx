@@ -19,7 +19,8 @@ function isMutualGuild(value: unknown): value is MutualGuild {
     typeof (value as { id?: unknown }).id === 'string' &&
     typeof (value as { name?: unknown }).name === 'string' &&
     typeof (value as { permissions?: unknown }).permissions === 'string' &&
-    typeof (value as { owner?: unknown }).owner === 'boolean'
+    typeof (value as { owner?: unknown }).owner === 'boolean' &&
+    typeof (value as { botPresent?: unknown }).botPresent === 'boolean'
   );
 }
 
