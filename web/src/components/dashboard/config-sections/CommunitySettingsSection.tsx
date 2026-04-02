@@ -151,11 +151,8 @@ export function CommunitySettingsSection({
       ...entry,
       originalIndex,
     }))
-    .sort(
-      (a: LevelUpDmOverrideRow, b: LevelUpDmOverrideRow) => (a.level ?? 0) - (b.level ?? 0),
-  );
-  const levelUpDmDefaultMessage =
-    levelUpDm?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE;
+    .sort((a: LevelUpDmOverrideRow, b: LevelUpDmOverrideRow) => (a.level ?? 0) - (b.level ?? 0));
+  const levelUpDmDefaultMessage = levelUpDm?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE;
 
   return (
     <>

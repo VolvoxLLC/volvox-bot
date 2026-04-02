@@ -538,7 +538,15 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
       ).catch((err) => debug('Moderation log fire-and-forget failed', { error: err.message }));
     }
 
-    const didSend = await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
+    const didSend = await sendResponses(
+      channel,
+      parsed,
+      classification,
+      snapshot,
+      evalConfig,
+      stats,
+      channelId,
+    );
 
     // Record response timestamp for cooldown tracking — only if we actually sent something
     if (didSend) setLastResponseAt(channelId);
