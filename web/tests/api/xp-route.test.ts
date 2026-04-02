@@ -186,4 +186,13 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
       'x-discord-user-id': 'moderator-1',
     });
   });
+
+  it('returns 401 when the Discord user id is unavailable', async () => {
+    mockGetToken.mockResolvedValueOnce({ sub: 'nextauth-sub-only' });
+
+    const res = await POST(makeRequest({ amount: 10 }), makeParams());
+
+    expect(res.status).toBe(401);
+    expect(mockProxyToBotApi).not.toHaveBeenCalled();
+  });
 });

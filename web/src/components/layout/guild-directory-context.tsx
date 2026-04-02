@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { MutualGuild } from '@/types/discord';
 
 interface GuildDirectoryContextValue {
@@ -24,7 +32,7 @@ function isMutualGuild(value: unknown): value is MutualGuild {
   );
 }
 
-export function GuildDirectoryProvider({ children }: { children: React.ReactNode }) {
+export function GuildDirectoryProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [guilds, setGuilds] = useState<MutualGuild[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -41,7 +49,7 @@ export function GuildDirectoryProvider({ children }: { children: React.ReactNode
     try {
       const response = await fetch('/api/guilds', { signal: controller.signal });
       if (response.status === 401) {
-        window.location.href = '/login';
+        globalThis.location.href = '/login';
         return;
       }
       if (!response.ok) {
@@ -50,7 +58,7 @@ export function GuildDirectoryProvider({ children }: { children: React.ReactNode
 
       const data: unknown = await response.json();
       if (!Array.isArray(data)) {
-        throw new Error('Invalid guild response');
+        throw new TypeError('Invalid guild response');
       }
 
       setGuilds(data.filter(isMutualGuild));

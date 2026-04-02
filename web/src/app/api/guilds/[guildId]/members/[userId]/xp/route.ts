@@ -104,18 +104,16 @@ export async function POST(
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
   const token = await getToken({ req: request });
-  const requesterId =
-    typeof token?.id === 'string'
-      ? token.id
-      : typeof token?.sub === 'string'
-        ? token.sub
-        : null;
+  const requesterId = typeof token?.id === 'string' ? token.id : null;
+  if (!requesterId) {
+    return NextResponse.json({ error: 'Unable to determine Discord user id' }, { status: 401 });
+  }
 
   return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to adjust XP', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(requesterId ? { 'x-discord-user-id': requesterId } : {}),
+      'x-discord-user-id': requesterId,
     },
     body,
   });

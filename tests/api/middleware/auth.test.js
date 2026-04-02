@@ -139,14 +139,56 @@ describe('auth middleware', () => {
   it('should attach trusted actor identity for valid api-secret requests', async () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     req.headers['x-api-secret'] = 'test-secret';
-    req.headers['x-discord-user-id'] = '1234567890';
+    req.headers['x-discord-user-id'] = '123456789012345678';
     const middleware = requireAuth();
 
     await middleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
     expect(req.authMethod).toBe('api-secret');
-    expect(req.user).toEqual({ userId: '1234567890' });
+    expect(req.user).toEqual({ userId: '123456789012345678' });
+  });
+
+  it('should ignore missing or blank trusted actor identity on valid api-secret requests', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    req.headers['x-api-secret'] = 'test-secret';
+    const middleware = requireAuth();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('api-secret');
+    expect(req.user).toBeUndefined();
+
+    req = {
+      headers: { 'x-api-secret': 'test-secret', 'x-discord-user-id': '   ' },
+      ip: '127.0.0.1',
+      path: '/test',
+    };
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+    };
+    next = vi.fn();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('api-secret');
+    expect(req.user).toBeUndefined();
+  });
+
+  it('should ignore invalid trusted actor identity on valid api-secret requests', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    req.headers['x-api-secret'] = 'test-secret';
+    req.headers['x-discord-user-id'] = 'not-a-snowflake';
+    const middleware = requireAuth();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authMethod).toBe('api-secret');
+    expect(req.user).toBeUndefined();
   });
 
   it('should authenticate with valid JWT Bearer token', async () => {
