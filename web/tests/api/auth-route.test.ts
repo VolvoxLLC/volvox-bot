@@ -73,6 +73,18 @@ describe('auth route fallback handling', () => {
     await expect(response.json()).resolves.toEqual({});
   });
 
+  it('returns an empty csrf token when auth env is unavailable for /csrf', async () => {
+    mockGetAuthOptions.mockImplementation(() => {
+      throw new Error('missing auth env');
+    });
+
+    const { GET } = await importRouteModule();
+    const response = await GET(createRequest('/api/auth/csrf'), createContext(['csrf']));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ csrfToken: '' });
+  });
+
   it('delegates to NextAuth when auth env is valid', async () => {
     const nextAuthResponse = NextResponse.json({ ok: true }, { status: 200 });
     const handler = vi.fn().mockResolvedValue(nextAuthResponse);
@@ -88,6 +100,26 @@ describe('auth route fallback handling', () => {
     expect(handler).toHaveBeenCalledWith(request, context);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });
+  });
+
+  it('reuses the cached NextAuth handler after the first successful request', async () => {
+    const nextAuthResponse = NextResponse.json({ ok: true }, { status: 200 });
+    const handler = vi.fn().mockResolvedValue(nextAuthResponse);
+    mockGetAuthOptions.mockReturnValue({ providers: [] });
+    mockNextAuth.mockReturnValue(handler);
+
+    const { GET } = await importRouteModule();
+    const firstRequest = createRequest('/api/auth/session');
+    const firstContext = createContext(['session']);
+    const secondRequest = createRequest('/api/auth/providers');
+    const secondContext = createContext(['providers']);
+
+    await GET(firstRequest, firstContext);
+    await GET(secondRequest, secondContext);
+
+    expect(mockNextAuth).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenNthCalledWith(2, secondRequest, secondContext);
   });
 
   it('uses the same fallback for POST requests', async () => {
