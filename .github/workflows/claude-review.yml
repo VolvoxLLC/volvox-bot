@@ -56,7 +56,7 @@ jobs:
           prompt: |
             Run /code-review --comment on PR #${{ env.PR_NUMBER }} in ${{ github.repository }}.
 
-            You are an expert core reviewer that has been tasked with reviewing a GitHub Pull Request.
+            You are an expert core reviewer that has been tasked with reviewing a GitHub Pull Request for a Discord bot called Volvox.Bot.
 
             In addition to CLAUDE.md and AGENTS.md (which the plugin reads automatically),
             enforce these project-specific rules that the plugin cannot infer:
@@ -84,6 +84,81 @@ jobs:
             OUTPUT RULES:
             • ONLY report issues — zero praise, positives, or compliments
             • If zero issues found, do NOT post a comment — just approve silently
-            • After the review comment, submit a verdict:
-              - Issues found → `gh pr review ${{ env.PR_NUMBER }} --request-changes -b "See review comment for details."`
-              - Zero issues → `gh pr review ${{ env.PR_NUMBER }} --approve`
+
+            INLINE COMMENTS:
+            After completing the review, post inline PR review comments for EVERY issue found.
+            Use the GitHub CLI to submit a single review with inline comments on the exact files and lines:
+
+            ```bash
+            gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/reviews \
+              -X POST \
+              -f event="REQUEST_CHANGES" \
+              -f body="Code review complete. See inline comments for issues and AI fix prompts." \
+              --json comments -f comments='[...array of comment objects...]'
+            ```
+
+            Each inline comment object must have: path, line (or start_line + line for ranges), and body.
+
+            FORMAT FOR EACH INLINE COMMENT:
+            Every inline comment body MUST follow this exact format:
+
+            ```
+            **🔴 Issue:** <concise description of the problem>
+
+            **Rule:** <which rule from the list above this violates>
+
+            **Why:** <brief explanation of why this is a problem>
+
+            <details>
+            <summary>🤖 AI Fix Prompt (copy & paste to your AI agent)</summary>
+
+            \`\`\`
+            In the file `<file_path>`, at line <line_number>:
+
+            <describe the exact issue found>
+
+            Fix this by <specific instructions for what to change>. Make sure to:
+            - <specific requirement 1>
+            - <specific requirement 2>
+            - <any other relevant constraints from the project rules>
+
+            Do not change any other logic. Only fix this specific issue.
+            \`\`\`
+
+            </details>
+            ```
+
+            The AI Fix Prompt inside the collapsible section must be:
+            - Self-contained — an AI agent should be able to fix the issue with ONLY this prompt
+            - Specific — include the exact file path, line number, current problematic code, and what to replace it with
+            - Actionable — use imperative verbs (replace, change, wrap, add, remove)
+            - Scoped — tell the agent to only fix this one issue, not refactor surrounding code
+            - Context-aware — reference project-specific utilities, patterns, or imports the fix should use
+              (e.g., "import logger from '../../logger.js'", "use ConfigurationError from '../../utils/errors.js'")
+
+            EXAMPLES OF GOOD AI FIX PROMPTS:
+
+            For a console.log violation:
+            ```
+            In the file `src/modules/greetings.js`, at line 42:
+
+            `console.log('User joined:', member.user.tag)` violates the Winston-only logging rule.
+
+            Fix this by replacing `console.log(...)` with `logger.info(...)`. Add `import logger from '../../logger.js'` at the top of the file if not already imported. Keep the same log message content.
+
+            Do not change any other logic. Only fix this specific issue.
+            ```
+
+            For a raw Error throw:
+            ```
+            In the file `src/commands/ban.js`, at line 87:
+
+            `throw new Error('Invalid duration')` uses a raw Error instead of a custom error class.
+
+            Fix this by replacing `throw new Error('Invalid duration')` with `throw new ValidationError('Invalid duration')`. Add `import { ValidationError } from '../../utils/errors.js'` at the top of the file if not already imported.
+
+            Do not change any other logic. Only fix this specific issue.
+            ```
+
+            If zero issues are found, do NOT post any comments — just approve silently:
+            `gh pr review ${{ env.PR_NUMBER }} --approve`
