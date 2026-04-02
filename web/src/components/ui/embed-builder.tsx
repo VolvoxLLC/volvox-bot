@@ -1,29 +1,30 @@
 'use client';
 
-import * as React from 'react';
 import {
-  Plus,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
-  Eye,
-  Settings,
-  Clock,
-  ImageIcon,
-  Type,
   AlignLeft,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   Columns,
+  Eye,
+  ImageIcon,
+  Plus,
+  Settings,
+  Trash2,
+  Type,
 } from 'lucide-react';
+import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { Input } from './input';
-import { Textarea } from './textarea';
 import { Label } from './label';
 import { Switch } from './switch';
+import { Textarea } from './textarea';
 
 // ── Types ───────────────────────────────────────────────────────────
 
 export interface EmbedField {
+  id?: string;
   name: string;
   value: string;
   inline: boolean;
@@ -90,7 +91,54 @@ const FORMAT_OPTIONS: { value: FormatType; label: string }[] = [
   { value: 'text_embed', label: 'Text + Embed' },
 ];
 
+let embedFieldIdCounter = 0;
+
 // ── Helpers ─────────────────────────────────────────────────────────
+
+function createFieldId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  embedFieldIdCounter += 1;
+  return `embed-field-${embedFieldIdCounter}`;
+}
+
+function createEmptyField(): EmbedField {
+  return {
+    id: createFieldId(),
+    name: '',
+    value: '',
+    inline: false,
+  };
+}
+
+function ensureFieldIds(fields: EmbedField[]): EmbedField[] {
+  let changed = false;
+  const nextFields = fields.map((field) => {
+    if (field.id) return field;
+    changed = true;
+    return { ...field, id: createFieldId() };
+  });
+
+  return changed ? nextFields : fields;
+}
+
+function appendVariable(text: string, variable: string, maxLength: number): string {
+  return `${text}{{${variable}}}`.slice(0, maxLength);
+}
+
+function sanitizeColorInput(rawValue: string): string {
+  const normalized = rawValue.trim().replace(/^#*/, '');
+  const hex = normalized
+    .replace(/[^0-9a-f]/gi, '')
+    .toUpperCase()
+    .slice(0, 6);
+  return hex ? `#${hex}` : '#';
+}
+
+function isValidHexColor(value: string): boolean {
+  return /^#[0-9A-F]{6}$/i.test(value);
+}
 
 export function defaultEmbedConfig(): EmbedConfig {
   return {
@@ -118,6 +166,8 @@ export function getTotalCharCount(config: EmbedConfig): number {
 
 /** Render template variables as styled badges in a string for preview */
 function renderVariablePreview(text: string): React.ReactNode[] {
+  if (!text) return [];
+
   const parts = text.split(/({{[^}]+}})/g);
   return parts.map((part, i) => {
     if (part.startsWith('{{') && part.endsWith('}}')) {
@@ -135,7 +185,7 @@ function renderVariablePreview(text: string): React.ReactNode[] {
   });
 }
 
-/** Very lightweight Discord markdown → HTML (bold, italic, code, codeblock) */
+/** Very lightweight Discord markdown → HTML (bold, italic, inline code) */
 function renderDiscordMarkdown(text: string): React.ReactNode[] {
   const lines = text.split('\n');
   const result: React.ReactNode[] = [];
@@ -159,17 +209,12 @@ function renderDiscordMarkdown(text: string): React.ReactNode[] {
           </span>,
         );
       } else if (seg.startsWith('**') && seg.endsWith('**')) {
-        result.push(
-          <strong key={`b-${li}-${si}`}>{seg.slice(2, -2)}</strong>,
-        );
+        result.push(<strong key={`b-${li}-${si}`}>{seg.slice(2, -2)}</strong>);
       } else if (seg.startsWith('*') && seg.endsWith('*')) {
         result.push(<em key={`i-${li}-${si}`}>{seg.slice(1, -1)}</em>);
       } else if (seg.startsWith('`') && seg.endsWith('`')) {
         result.push(
-          <code
-            key={`c-${li}-${si}`}
-            className="rounded bg-muted px-1 py-0.5 text-xs font-mono"
-          >
+          <code key={`c-${li}-${si}`} className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
             {seg.slice(1, -1)}
           </code>,
         );
@@ -190,7 +235,11 @@ function CharCount({ current, max }: { current: number; max: number }) {
       data-testid="char-count"
       className={cn(
         'text-xs tabular-nums',
-        ratio >= 1 ? 'text-destructive font-semibold' : ratio >= 0.9 ? 'text-yellow-500' : 'text-muted-foreground',
+        ratio >= 1
+          ? 'text-destructive font-semibold'
+          : ratio >= 0.9
+            ? 'text-yellow-500'
+            : 'text-muted-foreground',
       )}
     >
       {current}/{max}
@@ -215,7 +264,7 @@ function VariablePalette({
           key={v}
           type="button"
           onClick={() => onInsert(v)}
-          className="inline-flex items-center rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+          className="inline-flex cursor-pointer items-center rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
         >
           {`{{${v}}}`}
         </button>
@@ -228,11 +277,25 @@ function VariablePalette({
 
 function EmbedPreview({ config }: { config: EmbedConfig }) {
   const hasContent =
-    config.title || config.description || config.fields.length > 0 || config.footerText || config.imageUrl;
+    config.title ||
+    config.description ||
+    config.fields.length > 0 ||
+    config.footerText ||
+    config.imageUrl ||
+    config.showTimestamp;
+
+  const previewTimestamp = React.useMemo(
+    () =>
+      new Date().toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+      }),
+    [],
+  );
 
   if (!hasContent) {
     return (
-      <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+      <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
         Start editing to see a preview
       </div>
     );
@@ -241,7 +304,7 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
   return (
     <div
       data-testid="embed-preview"
-      className="rounded-md overflow-hidden border border-border bg-[#2b2d31] text-[#dbdee1] text-sm"
+      className="overflow-hidden rounded-md border border-border bg-[#2b2d31] text-sm text-[#dbdee1]"
     >
       <div className="flex">
         {/* Accent color bar */}
@@ -251,9 +314,9 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           data-testid="embed-color-bar"
         />
 
-        <div className="flex-1 p-3 space-y-2 min-w-0">
+        <div className="min-w-0 flex-1 space-y-2 p-3">
           <div className="flex gap-3">
-            <div className="flex-1 min-w-0 space-y-1">
+            <div className="min-w-0 flex-1 space-y-1">
               {/* Title */}
               {config.title && (
                 <div className="font-semibold text-white" data-testid="embed-preview-title">
@@ -263,7 +326,10 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
 
               {/* Description */}
               {config.description && (
-                <div className="text-sm leading-relaxed whitespace-pre-wrap" data-testid="embed-preview-description">
+                <div
+                  className="whitespace-pre-wrap text-sm leading-relaxed"
+                  data-testid="embed-preview-description"
+                >
                   {renderDiscordMarkdown(config.description)}
                 </div>
               )}
@@ -276,10 +342,10 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
                   <img
                     src={config.thumbnailUrl}
                     alt="Thumbnail"
-                    className="w-16 h-16 rounded object-cover"
+                    className="h-16 w-16 rounded object-cover"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded bg-[#404249] flex items-center justify-center text-xs text-[#80848e]">
+                  <div className="flex h-16 w-16 items-center justify-center rounded bg-[#404249] text-xs text-[#80848e]">
                     {config.thumbnailType === 'user_avatar' ? 'Avatar' : 'Icon'}
                   </div>
                 )}
@@ -290,19 +356,24 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           {/* Fields */}
           {config.fields.length > 0 && (
             <div className="grid grid-cols-3 gap-2" data-testid="embed-preview-fields">
-              {config.fields.map((field, i) => (
-                <div
-                  key={`field-${i}`}
-                  className={cn(field.inline ? 'col-span-1' : 'col-span-3')}
-                >
-                  <div className="font-semibold text-xs text-white">
-                    {renderVariablePreview(field.name) || '\u200b'}
+              {config.fields.map((field, i) => {
+                const renderedName = renderVariablePreview(field.name);
+                const renderedValue = renderDiscordMarkdown(field.value);
+
+                return (
+                  <div
+                    key={field.id ?? `field-${i}`}
+                    className={cn(field.inline ? 'col-span-1' : 'col-span-3')}
+                  >
+                    <div className="text-xs font-semibold text-white">
+                      {renderedName.length > 0 ? renderedName : '\u200b'}
+                    </div>
+                    <div className="text-xs">
+                      {renderedValue.length > 0 ? renderedValue : '\u200b'}
+                    </div>
                   </div>
-                  <div className="text-xs">
-                    {renderDiscordMarkdown(field.value) || '\u200b'}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -312,24 +383,27 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
               <img
                 src={config.imageUrl}
                 alt="Embed"
-                className="max-w-full rounded max-h-64 object-contain"
+                className="max-h-64 max-w-full rounded object-contain"
               />
             </div>
           )}
 
           {/* Footer */}
           {(config.footerText || config.showTimestamp) && (
-            <div className="flex items-center gap-1.5 text-xs text-[#80848e]" data-testid="embed-preview-footer">
+            <div
+              className="flex items-center gap-1.5 text-xs text-[#80848e]"
+              data-testid="embed-preview-footer"
+            >
               {config.footerIconUrl && (
                 <img
                   src={config.footerIconUrl}
                   alt="Footer icon"
-                  className="w-5 h-5 rounded-full object-cover"
+                  className="h-5 w-5 rounded-full object-cover"
                 />
               )}
               {config.footerText && <span>{renderVariablePreview(config.footerText)}</span>}
               {config.footerText && config.showTimestamp && <span>•</span>}
-              {config.showTimestamp && <span>Today at 12:00 PM</span>}
+              {config.showTimestamp && <span>{previewTimestamp}</span>}
             </div>
           )}
         </div>
@@ -341,6 +415,19 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
 // ── Main Component ──────────────────────────────────────────────────
 
 function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuilderProps) {
+  const [colorInput, setColorInput] = React.useState(value.color);
+
+  React.useEffect(() => {
+    setColorInput(value.color);
+  }, [value.color]);
+
+  React.useEffect(() => {
+    const fieldsWithIds = ensureFieldIds(value.fields);
+    if (fieldsWithIds !== value.fields) {
+      onChange({ ...value, fields: fieldsWithIds });
+    }
+  }, [value, onChange]);
+
   const update = React.useCallback(
     (patch: Partial<EmbedConfig>) => {
       onChange({ ...value, ...patch });
@@ -360,7 +447,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
   const addField = React.useCallback(() => {
     onChange({
       ...value,
-      fields: [...value.fields, { name: '', value: '', inline: false }],
+      fields: [...value.fields, createEmptyField()],
     });
   }, [value, onChange]);
 
@@ -392,7 +479,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
       {/* ── Editor Panel ─────────────────── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
             <Settings className="size-4" />
             Embed Editor
           </h3>
@@ -405,14 +492,15 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
         {/* Format selector */}
         <div className="space-y-1.5">
           <Label className="text-xs">Format</Label>
-          <div className="flex gap-1">
+          <div className="flex gap-1" role="group" aria-label="Format">
             {FORMAT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => update({ format: opt.value })}
+                aria-pressed={value.format === opt.value}
                 className={cn(
-                  'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                   value.format === opt.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80',
@@ -428,15 +516,18 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
         <div className="space-y-1.5">
           <Label className="text-xs">Accent Color</Label>
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex flex-wrap gap-1">
               {DISCORD_PRESET_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => update({ color: c })}
+                  onClick={() => {
+                    setColorInput(c);
+                    update({ color: c });
+                  }}
                   className={cn(
                     'size-6 rounded-md border-2 transition-all',
-                    value.color === c ? 'border-foreground scale-110' : 'border-transparent',
+                    value.color === c ? 'scale-110 border-foreground' : 'border-transparent',
                   )}
                   style={{ backgroundColor: c }}
                   aria-label={`Color ${c}`}
@@ -444,9 +535,15 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
               ))}
             </div>
             <Input
-              value={value.color}
-              onChange={(e) => update({ color: e.target.value })}
-              className="w-24 h-8 text-xs font-mono"
+              value={colorInput}
+              onChange={(e) => {
+                const nextColor = sanitizeColorInput(e.target.value);
+                setColorInput(nextColor);
+                if (isValidHexColor(nextColor)) {
+                  update({ color: nextColor });
+                }
+              }}
+              className="h-8 w-24 font-mono text-xs"
               maxLength={7}
               placeholder="#5865F2"
             />
@@ -456,7 +553,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
         {/* Title */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label className="text-xs flex items-center gap-1">
+            <Label className="flex items-center gap-1 text-xs">
               <Type className="size-3" /> Title
             </Label>
             <CharCount current={value.title.length} max={CHAR_LIMITS.title} />
@@ -470,7 +567,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
           {variables.length > 0 && (
             <VariablePalette
               variables={variables}
-              onInsert={(v) => update({ title: `${value.title}{{${v}}}` })}
+              onInsert={(v) => update({ title: appendVariable(value.title, v, CHAR_LIMITS.title) })}
             />
           )}
         </div>
@@ -478,7 +575,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
         {/* Description */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label className="text-xs flex items-center gap-1">
+            <Label className="flex items-center gap-1 text-xs">
               <AlignLeft className="size-3" /> Description
             </Label>
             <CharCount current={value.description.length} max={CHAR_LIMITS.description} />
@@ -493,24 +590,29 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
           {variables.length > 0 && (
             <VariablePalette
               variables={variables}
-              onInsert={(v) => update({ description: `${value.description}{{${v}}}` })}
+              onInsert={(v) =>
+                update({
+                  description: appendVariable(value.description, v, CHAR_LIMITS.description),
+                })
+              }
             />
           )}
         </div>
 
         {/* Thumbnail */}
         <div className="space-y-1.5">
-          <Label className="text-xs flex items-center gap-1">
+          <Label className="flex items-center gap-1 text-xs">
             <ImageIcon className="size-3" /> Thumbnail
           </Label>
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Thumbnail type">
             {THUMBNAIL_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => update({ thumbnailType: opt.value })}
+                aria-pressed={value.thumbnailType === opt.value}
                 className={cn(
-                  'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                   value.thumbnailType === opt.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80',
@@ -533,7 +635,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
         {/* Fields */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-xs flex items-center gap-1">
+            <Label className="flex items-center gap-1 text-xs">
               <Columns className="size-3" /> Fields
             </Label>
             <Button
@@ -543,20 +645,18 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
               onClick={addField}
               className="h-7 text-xs"
             >
-              <Plus className="size-3 mr-1" />
+              <Plus className="mr-1 size-3" />
               Add Field
             </Button>
           </div>
 
           {value.fields.map((field, i) => (
             <div
-              key={`field-editor-${i}`}
-              className="rounded-md border border-border p-3 space-y-2 bg-muted/30"
+              key={field.id ?? `field-editor-${i}`}
+              className="space-y-2 rounded-md border border-border bg-muted/30 p-3"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Field {i + 1}
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">Field {i + 1}</span>
                 <div className="flex items-center gap-1">
                   <Button
                     type="button"
@@ -605,6 +705,16 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
                   maxLength={CHAR_LIMITS.fieldName}
                   className="h-8 text-xs"
                 />
+                {variables.length > 0 && (
+                  <VariablePalette
+                    variables={variables}
+                    onInsert={(v) =>
+                      updateField(i, {
+                        name: appendVariable(field.name, v, CHAR_LIMITS.fieldName),
+                      })
+                    }
+                  />
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -618,8 +728,18 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
                   placeholder="Field value"
                   maxLength={CHAR_LIMITS.fieldValue}
                   rows={2}
-                  className="text-xs min-h-[60px]"
+                  className="min-h-[60px] text-xs"
                 />
+                {variables.length > 0 && (
+                  <VariablePalette
+                    variables={variables}
+                    onInsert={(v) =>
+                      updateField(i, {
+                        value: appendVariable(field.value, v, CHAR_LIMITS.fieldValue),
+                      })
+                    }
+                  />
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -631,13 +751,6 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
                 />
                 <Label className="text-xs">Inline</Label>
               </div>
-
-              {variables.length > 0 && (
-                <VariablePalette
-                  variables={variables}
-                  onInsert={(v) => updateField(i, { name: `${field.name}{{${v}}}` })}
-                />
-              )}
             </div>
           ))}
         </div>
@@ -654,6 +767,16 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
             placeholder="Footer text..."
             maxLength={CHAR_LIMITS.footer}
           />
+          {variables.length > 0 && (
+            <VariablePalette
+              variables={variables}
+              onInsert={(v) =>
+                update({
+                  footerText: appendVariable(value.footerText, v, CHAR_LIMITS.footer),
+                })
+              }
+            />
+          )}
           <Input
             value={value.footerIconUrl}
             onChange={(e) => update({ footerIconUrl: e.target.value })}
@@ -664,7 +787,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
 
         {/* Image */}
         <div className="space-y-1.5">
-          <Label className="text-xs flex items-center gap-1">
+          <Label className="flex items-center gap-1 text-xs">
             <ImageIcon className="size-3" /> Image URL
           </Label>
           <Input
@@ -681,7 +804,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
             onCheckedChange={(checked: boolean) => update({ showTimestamp: checked })}
             aria-label="Show Timestamp"
           />
-          <Label className="text-xs flex items-center gap-1">
+          <Label className="flex items-center gap-1 text-xs">
             <Clock className="size-3" /> Show Timestamp
           </Label>
         </div>
@@ -689,7 +812,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
 
       {/* ── Preview Panel ────────────────── */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Eye className="size-4" />
           Preview
         </h3>
@@ -700,10 +823,10 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
 }
 
 export {
+  CharCount,
   EmbedBuilder,
   EmbedPreview,
-  CharCount,
-  VariablePalette,
   renderDiscordMarkdown,
   renderVariablePreview,
+  VariablePalette,
 };

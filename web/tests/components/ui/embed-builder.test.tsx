@@ -1,12 +1,12 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CHAR_LIMITS,
   EmbedBuilder,
   EmbedPreview,
   defaultEmbedConfig,
   getTotalCharCount,
-  CHAR_LIMITS,
   type EmbedConfig,
 } from '@/components/ui/embed-builder';
 
@@ -42,7 +42,7 @@ describe('EmbedBuilder', () => {
     await user.type(titleInput, 'Hello');
     expect(onChange).toHaveBeenCalled();
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    expect(lastCall.title).toContain('o'); // last char typed
+    expect(lastCall.title).toContain('o');
   });
 
   // ── Description editing ───────────────────────────────────────
@@ -67,13 +67,18 @@ describe('EmbedBuilder', () => {
     );
   });
 
-  it('updates color via hex input', async () => {
+  it('normalizes custom hex input and only commits valid colors', async () => {
     const user = userEvent.setup();
-    const { onChange } = renderBuilder({ color: '#FFF' });
+    const { onChange } = renderBuilder({ color: '#5865F2' });
     const hexInput = screen.getByPlaceholderText('#5865F2');
-    await user.type(hexInput, '0');
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    expect(lastCall.color).toBe('#FFF0');
+
+    await user.clear(hexInput);
+    await user.type(hexInput, 'abc123');
+
+    expect(hexInput).toHaveValue('#ABC123');
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ color: '#ABC123' }),
+    );
   });
 
   // ── Format selector ───────────────────────────────────────────
@@ -87,6 +92,12 @@ describe('EmbedBuilder', () => {
     );
   });
 
+  it('marks the selected format button as pressed', () => {
+    renderBuilder({ format: 'embed' });
+    expect(screen.getByRole('button', { name: 'Embed Only' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Text Only' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
   // ── Thumbnail selector ────────────────────────────────────────
 
   it('selects thumbnail type and shows custom URL input', async () => {
@@ -97,7 +108,6 @@ describe('EmbedBuilder', () => {
       expect.objectContaining({ thumbnailType: 'custom' }),
     );
 
-    // Re-render with custom type to see URL input
     const updatedConfig = { ...defaultEmbedConfig(), thumbnailType: 'custom' as const };
     rerender(
       <EmbedBuilder value={updatedConfig} onChange={onChange} variables={[]} />,
@@ -105,15 +115,23 @@ describe('EmbedBuilder', () => {
     expect(screen.getByPlaceholderText('https://example.com/thumbnail.png')).toBeInTheDocument();
   });
 
+  it('marks the selected thumbnail type button as pressed', () => {
+    renderBuilder({ thumbnailType: 'server_icon' });
+    expect(screen.getByRole('button', { name: 'Server Icon' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'None' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
   // ── Field management ──────────────────────────────────────────
 
-  it('adds a field', async () => {
+  it('adds a field with a stable id', async () => {
     const user = userEvent.setup();
     const { onChange } = renderBuilder();
     await user.click(screen.getByText('Add Field'));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        fields: [{ name: '', value: '', inline: false }],
+        fields: [
+          expect.objectContaining({ id: expect.any(String), name: '', value: '', inline: false }),
+        ],
       }),
     );
   });
@@ -122,8 +140,8 @@ describe('EmbedBuilder', () => {
     const user = userEvent.setup();
     const { onChange } = renderBuilder({
       fields: [
-        { name: 'Field 1', value: 'Val 1', inline: false },
-        { name: 'Field 2', value: 'Val 2', inline: true },
+        { id: 'field-1', name: 'Field 1', value: 'Val 1', inline: false },
+        { id: 'field-2', name: 'Field 2', value: 'Val 2', inline: true },
       ],
     });
 
@@ -131,7 +149,7 @@ describe('EmbedBuilder', () => {
     await user.click(removeButtons[0]);
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        fields: [{ name: 'Field 2', value: 'Val 2', inline: true }],
+        fields: [{ id: 'field-2', name: 'Field 2', value: 'Val 2', inline: true }],
       }),
     );
   });
@@ -140,40 +158,42 @@ describe('EmbedBuilder', () => {
     const user = userEvent.setup();
     const { onChange } = renderBuilder({
       fields: [
-        { name: 'A', value: '1', inline: false },
-        { name: 'B', value: '2', inline: false },
+        { id: 'field-a', name: 'A', value: '1', inline: false },
+        { id: 'field-b', name: 'B', value: '2', inline: false },
       ],
     });
 
     const upButtons = screen.getAllByLabelText('Move field up');
-    // Click up on second field (index 1)
     await user.click(upButtons[1]);
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(lastCall.fields[0].name).toBe('B');
     expect(lastCall.fields[1].name).toBe('A');
+    expect(lastCall.fields[0].id).toBe('field-b');
+    expect(lastCall.fields[1].id).toBe('field-a');
   });
 
   it('reorders fields down', async () => {
     const user = userEvent.setup();
     const { onChange } = renderBuilder({
       fields: [
-        { name: 'A', value: '1', inline: false },
-        { name: 'B', value: '2', inline: false },
+        { id: 'field-a', name: 'A', value: '1', inline: false },
+        { id: 'field-b', name: 'B', value: '2', inline: false },
       ],
     });
 
     const downButtons = screen.getAllByLabelText('Move field down');
-    // Click down on first field
     await user.click(downButtons[0]);
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(lastCall.fields[0].name).toBe('B');
     expect(lastCall.fields[1].name).toBe('A');
+    expect(lastCall.fields[0].id).toBe('field-b');
+    expect(lastCall.fields[1].id).toBe('field-a');
   });
 
   it('toggles field inline', async () => {
     const user = userEvent.setup();
     const { onChange } = renderBuilder({
-      fields: [{ name: 'Test', value: 'Val', inline: false }],
+      fields: [{ id: 'field-1', name: 'Test', value: 'Val', inline: false }],
     });
 
     const inlineSwitch = screen.getByRole('switch', { name: /field 1 inline/i });
@@ -190,9 +210,9 @@ describe('EmbedBuilder', () => {
   it('toggles timestamp', async () => {
     const user = userEvent.setup();
     const { onChange } = renderBuilder();
-    // Find the Show Timestamp switch - it's the one not in a field editor
-    const switches = screen.getAllByRole('switch');
-    const timestampSwitch = switches[switches.length - 1]; // last switch is timestamp
+    const timestampSwitch = screen.getByRole('switch', {
+      name: /show timestamp/i,
+    });
     await user.click(timestampSwitch);
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ showTimestamp: true }),
@@ -204,7 +224,6 @@ describe('EmbedBuilder', () => {
   it('shows character counts', () => {
     renderBuilder({ title: 'Hello', description: 'World' });
     const charCounts = screen.getAllByTestId('char-count');
-    // Should have title, description, footer, and total char counts
     expect(charCounts.length).toBeGreaterThanOrEqual(3);
   });
 
@@ -220,9 +239,60 @@ describe('EmbedBuilder', () => {
     const user = userEvent.setup();
     const { onChange } = renderBuilder({ title: 'Hello ' }, ['username']);
     const varButtons = screen.getAllByText('{{username}}');
-    await user.click(varButtons[0]); // click the first one (title section)
+    await user.click(varButtons[0]);
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Hello {{username}}' }),
+    );
+  });
+
+  it('inserts variable into field value on click', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderBuilder(
+      {
+        fields: [{ id: 'field-1', name: 'Level', value: 'Current ', inline: false }],
+      },
+      ['username'],
+    );
+
+    const fieldEditor = screen.getByText('Field 1').closest('div[class*="space-y-2"]');
+    expect(fieldEditor).not.toBeNull();
+    const valueGroup = within(fieldEditor as HTMLElement).getByPlaceholderText('Field value').closest('div');
+    expect(valueGroup).not.toBeNull();
+
+    await user.click(within(valueGroup as HTMLElement).getByText('{{username}}'));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: [expect.objectContaining({ value: 'Current {{username}}' })],
+      }),
+    );
+  });
+
+  it('inserts variable into footer text on click', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderBuilder({ footerText: 'Footer ' }, ['username']);
+    const footerInput = screen.getByPlaceholderText('Footer text...');
+    const footerSection = footerInput.closest('div');
+    expect(footerSection).not.toBeNull();
+
+    await user.click(within(footerSection as HTMLElement).getByText('{{username}}'));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ footerText: 'Footer {{username}}' }),
+    );
+  });
+
+  it('truncates variable insertion to the configured maximum length', async () => {
+    const user = userEvent.setup();
+    const almostFullTitle = 'a'.repeat(CHAR_LIMITS.title - '{{username}}'.length + 2);
+    const { onChange } = renderBuilder({ title: almostFullTitle }, ['username']);
+
+    await user.click(screen.getAllByText('{{username}}')[0]);
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: `${almostFullTitle}{{username}}`.slice(0, CHAR_LIMITS.title),
+      }),
     );
   });
 
@@ -240,6 +310,15 @@ describe('EmbedBuilder', () => {
 // ── Preview component ─────────────────────────────────────────────
 
 describe('EmbedPreview', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-02T16:49:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders title in preview', () => {
     const config = { ...defaultEmbedConfig(), title: 'Test Title' };
     render(<EmbedPreview config={config} />);
@@ -265,14 +344,24 @@ describe('EmbedPreview', () => {
     const config = {
       ...defaultEmbedConfig(),
       fields: [
-        { name: 'Level', value: '42', inline: true },
-        { name: 'XP', value: '1000', inline: true },
+        { id: 'field-1', name: 'Level', value: '42', inline: true },
+        { id: 'field-2', name: 'XP', value: '1000', inline: true },
       ],
     };
     render(<EmbedPreview config={config} />);
     const fieldsContainer = screen.getByTestId('embed-preview-fields');
     expect(fieldsContainer).toHaveTextContent('Level');
     expect(fieldsContainer).toHaveTextContent('42');
+  });
+
+  it('renders zero-width placeholders for empty field content', () => {
+    const config = {
+      ...defaultEmbedConfig(),
+      fields: [{ id: 'field-1', name: '', value: '', inline: false }],
+    };
+    render(<EmbedPreview config={config} />);
+    const fieldsContainer = screen.getByTestId('embed-preview-fields');
+    expect(fieldsContainer).toHaveTextContent('\u200b');
   });
 
   it('renders accent color bar', () => {
@@ -282,7 +371,7 @@ describe('EmbedPreview', () => {
     expect(colorBar).toHaveStyle({ backgroundColor: '#FF0000' });
   });
 
-  it('renders footer with timestamp', () => {
+  it('renders footer with a dynamic timestamp', () => {
     const config = {
       ...defaultEmbedConfig(),
       footerText: 'Bot Footer',
@@ -291,7 +380,22 @@ describe('EmbedPreview', () => {
     render(<EmbedPreview config={config} />);
     const footer = screen.getByTestId('embed-preview-footer');
     expect(footer).toHaveTextContent('Bot Footer');
-    expect(footer).toHaveTextContent('Today at 12:00 PM');
+    expect(footer).toHaveTextContent(
+      new Date('2026-04-02T16:49:00Z').toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+      }),
+    );
+  });
+
+  it('renders preview when only timestamp is enabled', () => {
+    const config = {
+      ...defaultEmbedConfig(),
+      showTimestamp: true,
+    };
+    render(<EmbedPreview config={config} />);
+    expect(screen.getByTestId('embed-preview-footer')).toBeInTheDocument();
+    expect(screen.queryByText('Start editing to see a preview')).not.toBeInTheDocument();
   });
 
   it('renders thumbnail placeholder for user avatar', () => {
@@ -311,11 +415,11 @@ describe('getTotalCharCount', () => {
   it('sums all character counts', () => {
     const config: EmbedConfig = {
       ...defaultEmbedConfig(),
-      title: 'abc',         // 3
-      description: 'defgh', // 5
-      footerText: 'ij',     // 2
+      title: 'abc',
+      description: 'defgh',
+      footerText: 'ij',
       fields: [
-        { name: 'kl', value: 'mno', inline: false }, // 2 + 3
+        { id: 'field-1', name: 'kl', value: 'mno', inline: false },
       ],
     };
     expect(getTotalCharCount(config)).toBe(15);

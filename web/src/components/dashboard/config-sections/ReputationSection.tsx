@@ -10,9 +10,7 @@ interface ReputationSectionProps {
   draftConfig: GuildConfig;
   saving: boolean;
   onEnabledChange: (enabled: boolean) => void;
-  /** @deprecated Prefer updateDraftConfig for consistent update patterns. */
   onFieldChange: (field: string, value: unknown) => void;
-  updateDraftConfig: (updater: (prev: GuildConfig) => GuildConfig) => void;
 }
 
 /** Shared input styling for text inputs. */
@@ -24,17 +22,19 @@ const DEFAULT_LEVEL_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8
 /**
  * Reputation / XP configuration section.
  *
- * Provides controls for XP settings, cooldowns, and level thresholds.
+ * Provides controls for XP settings, cooldowns, level thresholds, and announcements.
  */
 export function ReputationSection({
   draftConfig,
   saving,
   onEnabledChange,
-  onFieldChange: _onFieldChange,
-  updateDraftConfig,
+  onFieldChange,
 }: ReputationSectionProps) {
   const xpRange = draftConfig.reputation?.xpPerMessage ?? [5, 15];
   const levelThresholds = draftConfig.xp?.levelThresholds ?? DEFAULT_LEVEL_THRESHOLDS;
+  const announceChannelId =
+    (draftConfig.reputation as { announceChannelId?: string | null } | undefined)
+      ?.announceChannelId ?? '';
 
   // Local state for level thresholds raw input (parsed on blur)
   const thresholdsDisplay = levelThresholds.join(', ');
@@ -68,10 +68,7 @@ export function ReputationSection({
                 const num = parseNumberInput(e.target.value, 1, 100);
                 if (num !== undefined) {
                   const newMax = num > (xpRange[1] ?? 15) ? num : (xpRange[1] ?? 15);
-                  updateDraftConfig((prev) => ({
-                    ...prev,
-                    reputation: { ...prev.reputation, xpPerMessage: [num, newMax] },
-                  }));
+                  onFieldChange('xpPerMessage', [num, newMax]);
                 }
               }}
               disabled={saving}
@@ -90,10 +87,7 @@ export function ReputationSection({
                 const num = parseNumberInput(e.target.value, 1, 100);
                 if (num !== undefined) {
                   const newMin = num < (xpRange[0] ?? 5) ? num : (xpRange[0] ?? 5);
-                  updateDraftConfig((prev) => ({
-                    ...prev,
-                    reputation: { ...prev.reputation, xpPerMessage: [newMin, num] },
-                  }));
+                  onFieldChange('xpPerMessage', [newMin, num]);
                 }
               }}
               disabled={saving}
@@ -109,15 +103,22 @@ export function ReputationSection({
               value={draftConfig.reputation?.xpCooldownSeconds ?? 60}
               onChange={(e) => {
                 const num = parseNumberInput(e.target.value, 0);
-                if (num !== undefined) {
-                  updateDraftConfig((prev) => ({
-                    ...prev,
-                    reputation: { ...prev.reputation, xpCooldownSeconds: num },
-                  }));
-                }
+                if (num !== undefined) onFieldChange('xpCooldownSeconds', num);
               }}
               disabled={saving}
               className={inputClasses}
+            />
+          </label>
+          <label htmlFor="announce-channel-id" className="space-y-2">
+            <span className="text-sm font-medium">Announce Channel ID</span>
+            <input
+              id="announce-channel-id"
+              type="text"
+              value={announceChannelId}
+              onChange={(e) => onFieldChange('announceChannelId', e.target.value.trim() || null)}
+              disabled={saving}
+              className={inputClasses}
+              placeholder="Channel ID for level-up announcements"
             />
           </label>
         </div>
@@ -136,10 +137,7 @@ export function ReputationSection({
               if (nums.length > 0) {
                 const sorted = [...nums].sort((a, b) => a - b);
                 const deduped = sorted.filter((t, i, arr) => i === 0 || t !== arr[i - 1]);
-                updateDraftConfig((prev) => ({
-                  ...prev,
-                  xp: { ...prev.xp, levelThresholds: deduped },
-                }));
+                onFieldChange('levelThresholds', deduped);
               }
             }}
             disabled={saving}
