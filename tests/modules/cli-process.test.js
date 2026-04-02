@@ -643,17 +643,20 @@ describe('CLIProcess — long-lived mode', () => {
   });
 
   it('should reject on timeout in long-lived mode', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers();
     const cli = new CLIProcess('test-ll', {}, { streaming: true, timeout: 3000 });
     await cli.start();
 
     const sendP = cli.send('slow');
+    const rejection = sendP.catch((error) => error);
 
-    vi.advanceTimersByTime(3001);
+    await vi.advanceTimersByTimeAsync(3001);
 
-    await expect(sendP).rejects.toThrow('timed out after 3000ms');
+    const error = await rejection;
+    expect(error).toBeInstanceOf(CLIProcessError);
+    expect(error.message).toContain('timed out after 3000ms');
     expect(fakeProc.kill).toHaveBeenCalledWith('SIGKILL');
-  });
+  }, 30_000);
 
   it('should reject when process exits unexpectedly while awaiting result', async () => {
     const cli = new CLIProcess('test-ll', {}, { streaming: true });

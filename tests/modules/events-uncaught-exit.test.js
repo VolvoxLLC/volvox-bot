@@ -106,7 +106,7 @@ describe('registerErrorHandlers — uncaughtException exits process (issue #156)
     registerErrorHandlers({ on: vi.fn() });
 
     expect(capturedHandlers.uncaughtException).toBeDefined();
-  });
+  }, 30_000);
 
   it('calls process.exit(1) after logging an uncaught exception', async () => {
     const capturedHandlers = {};

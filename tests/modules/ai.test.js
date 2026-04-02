@@ -49,7 +49,9 @@ describe('ai module', () => {
       addToHistory('ch1', 'user', 'hello');
       const history = await getHistoryAsync('ch1');
       expect(history.length).toBe(1);
-      expect(history[0]).toEqual({ role: 'user', content: 'hello' });
+      expect(history[0]).toEqual(
+        expect.objectContaining({ role: 'user', content: 'hello', timestamp: expect.any(Number) }),
+      );
     });
 
     it('should hydrate DB history in-place when concurrent messages are added', async () => {
@@ -86,7 +88,11 @@ describe('ai module', () => {
         expect(historyRef).toEqual([
           { role: 'user', content: 'db message' },
           { role: 'assistant', content: 'db reply' },
-          { role: 'user', content: 'concurrent message' },
+          expect.objectContaining({
+            role: 'user',
+            content: 'concurrent message',
+            timestamp: expect.any(Number),
+          }),
         ]);
         expect(getConversationHistory().get('race-channel')).toBe(historyRef);
       });
