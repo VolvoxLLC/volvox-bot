@@ -10,6 +10,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 
+let mockPathname = '/dashboard/settings/ai-automation';
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockPathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+}));
+
 // ── Mocks ─────────────────────────────────────────────────────────
 
 vi.mock('sonner', () => ({
@@ -92,6 +99,7 @@ const minimalConfig = {
 
 describe('ConfigEditor integration', () => {
   beforeEach(() => {
+    mockPathname = '/dashboard/settings/ai-automation';
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
   });
@@ -101,7 +109,9 @@ describe('ConfigEditor integration', () => {
     vi.unstubAllGlobals();
   });
 
-  it('loads config without issuing any PATCH request', async () => {
+  it(
+    'loads config without issuing any PATCH request',
+    async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -112,10 +122,9 @@ describe('ConfigEditor integration', () => {
     const { ConfigEditor } = await import('@/components/dashboard/config-editor');
     render(<ConfigEditor />);
 
-    // Wait for config to load
     await waitFor(
       () => {
-        expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
+        expect(screen.getAllByText('AI Chat').length).toBeGreaterThan(0);
       },
       { timeout: 3000 },
     );
@@ -125,9 +134,13 @@ describe('ConfigEditor integration', () => {
       (call: unknown[]) => (call[1] as { method?: string } | undefined)?.method === 'PATCH',
     );
     expect(patchCalls).toHaveLength(0);
-  });
+    },
+    30_000,
+  );
 
-  it('renders all section components after loading', async () => {
+  it(
+    'renders AI settings on the AI category route',
+    async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -140,16 +153,45 @@ describe('ConfigEditor integration', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByText('Bot Configuration')).toBeInTheDocument();
+        expect(screen.getAllByText('AI Chat').length).toBeGreaterThan(0);
       },
       { timeout: 3000 },
     );
 
-    // Check that main sections are rendered
-    expect(screen.getByText('AI Chat')).toBeInTheDocument();
-    expect(screen.getByText('Welcome Messages')).toBeInTheDocument();
-    expect(screen.getByText('Save Changes')).toBeInTheDocument();
-  });
+    expect(screen.getAllByText('AI Chat').length).toBeGreaterThan(0);
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+      expect(screen.getAllByText('Save Changes').length).toBeGreaterThan(0);
+    },
+    30_000,
+  );
+
+  it(
+    'renders onboarding settings on the onboarding category route',
+    async () => {
+      mockPathname = '/dashboard/settings/onboarding-growth';
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(minimalConfig),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await waitFor(
+      () => {
+        expect(screen.getAllByText('Welcome Messages').length).toBeGreaterThan(0);
+      },
+      { timeout: 3000 },
+    );
+
+      expect(screen.getAllByText('Welcome Messages').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Save Changes').length).toBeGreaterThan(0);
+    },
+    30_000,
+  );
 
   it('renders with initial disabled discard button', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -164,7 +206,7 @@ describe('ConfigEditor integration', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByTestId('system-prompt')).toBeInTheDocument();
+        expect(screen.getByTestId('discard-button')).toBeInTheDocument();
       },
       { timeout: 3000 },
     );

@@ -523,14 +523,14 @@ describe('members routes', () => {
       const res = await authed(
         request(app)
           .post('/api/v1/guilds/guild1/members/user1/xp')
-          .set('x-discord-user-id', 'moderator-42')
+          .set('x-discord-user-id', '123456789012345678')
           .send({ amount: 100 }),
       );
 
       expect(res.status).toBe(200);
       expect(info).toHaveBeenCalledWith(
         'XP adjusted via API',
-        expect.objectContaining({ adjustedBy: 'moderator-42' }),
+        expect.objectContaining({ adjustedBy: '123456789012345678' }),
       );
     });
 
