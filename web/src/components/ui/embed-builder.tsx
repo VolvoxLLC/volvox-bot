@@ -165,24 +165,107 @@ export function getTotalCharCount(config: EmbedConfig): number {
   return total;
 }
 
+function tokenizeVariableSegments(text: string): string[] {
+  const segments: string[] = [];
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const variableStart = text.indexOf('{{', cursor);
+    if (variableStart === -1) {
+      segments.push(text.slice(cursor));
+      break;
+    }
+
+    if (variableStart > cursor) {
+      segments.push(text.slice(cursor, variableStart));
+    }
+
+    const variableEnd = text.indexOf('}}', variableStart + 2);
+    if (variableEnd === -1) {
+      segments.push(text.slice(variableStart));
+      break;
+    }
+
+    segments.push(text.slice(variableStart, variableEnd + 2));
+    cursor = variableEnd + 2;
+  }
+
+  return segments;
+}
+
+function tokenizeMarkdownSegments(line: string): string[] {
+  const segments: string[] = [];
+  let cursor = 0;
+
+  while (cursor < line.length) {
+    if (line.startsWith('{{', cursor)) {
+      const variableEnd = line.indexOf('}}', cursor + 2);
+      if (variableEnd !== -1) {
+        segments.push(line.slice(cursor, variableEnd + 2));
+        cursor = variableEnd + 2;
+        continue;
+      }
+    }
+
+    if (line.startsWith('**', cursor)) {
+      const boldEnd = line.indexOf('**', cursor + 2);
+      if (boldEnd !== -1) {
+        segments.push(line.slice(cursor, boldEnd + 2));
+        cursor = boldEnd + 2;
+        continue;
+      }
+    }
+
+    if (line.startsWith('*', cursor)) {
+      const italicEnd = line.indexOf('*', cursor + 1);
+      if (italicEnd !== -1) {
+        segments.push(line.slice(cursor, italicEnd + 1));
+        cursor = italicEnd + 1;
+        continue;
+      }
+    }
+
+    if (line.startsWith('`', cursor)) {
+      const codeEnd = line.indexOf('`', cursor + 1);
+      if (codeEnd !== -1) {
+        segments.push(line.slice(cursor, codeEnd + 1));
+        cursor = codeEnd + 1;
+        continue;
+      }
+    }
+
+    const nextTokenStarts = [
+      line.indexOf('{{', cursor + 1),
+      line.indexOf('**', cursor + 1),
+      line.indexOf('*', cursor + 1),
+      line.indexOf('`', cursor + 1),
+    ].filter((index) => index !== -1);
+    const nextTokenStart = nextTokenStarts.length > 0 ? Math.min(...nextTokenStarts) : line.length;
+
+    segments.push(line.slice(cursor, nextTokenStart));
+    cursor = nextTokenStart;
+  }
+
+  return segments;
+}
+
 /** Render template variables as styled badges in a string for preview */
 function renderVariablePreview(text: string): React.ReactNode[] {
   if (!text) return [];
 
-  const parts = text.split(/({{[^}]+}})/g);
-  return parts.map((part, i) => {
+  return tokenizeVariableSegments(text).map((part, index) => {
     if (part.startsWith('{{') && part.endsWith('}}')) {
       const varName = part.slice(2, -2);
       return (
         <span
-          key={`${varName}-${i}`}
+          key={`${varName}-${index}`}
           className="inline-flex items-center rounded bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary"
         >
           {varName}
         </span>
       );
     }
-    return <span key={`text-${i}`}>{part}</span>;
+    return <span key={`text-${index}`}>{part}</span>;
   });
 }
 
@@ -229,8 +312,7 @@ function renderDiscordMarkdown(text: string): React.ReactNode[] {
   for (let li = 0; li < lines.length; li++) {
     if (li > 0) result.push(<br key={`br-${li}`} />);
     const line = lines[li];
-    // Split by variable tokens first, then process markdown in text segments
-    const segments = line.split(/({{[^}]+}}|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+    const segments = tokenizeMarkdownSegments(line);
     for (let si = 0; si < segments.length; si++) {
       const seg = segments[si];
       if (!seg) continue;
