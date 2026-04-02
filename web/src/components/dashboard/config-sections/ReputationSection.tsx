@@ -23,7 +23,7 @@ const DEFAULT_LEVEL_THRESHOLDS = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8
 /**
  * Reputation / XP configuration section.
  *
- * Provides controls for XP settings, cooldowns, level thresholds, and announcements.
+ * Provides controls for XP settings, cooldowns, and level thresholds.
  */
 export function ReputationSection({
   draftConfig,
@@ -33,7 +33,10 @@ export function ReputationSection({
   updateDraftConfig,
 }: ReputationSectionProps) {
   const xpRange = draftConfig.reputation?.xpPerMessage ?? [5, 15];
-  const levelThresholds = draftConfig.xp?.levelThresholds ?? DEFAULT_LEVEL_THRESHOLDS;
+  const levelThresholds =
+    draftConfig.xp?.levelThresholds ??
+    draftConfig.reputation?.levelThresholds ??
+    DEFAULT_LEVEL_THRESHOLDS;
 
   // Local state for level thresholds raw input (parsed on blur)
   const thresholdsDisplay = levelThresholds.join(', ');

@@ -84,7 +84,7 @@ function ConfigEditorContent() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Welcome Messages</h2>
         <p className="text-sm text-muted-foreground">
-          Legacy compatibility wrapper for dashboard config tests.
+          Configure welcome message templates for new server members.
         </p>
       </section>
     </div>

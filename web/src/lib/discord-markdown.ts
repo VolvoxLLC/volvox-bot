@@ -121,11 +121,11 @@ function parseHeading(line: string, ctx: ParseContext): boolean {
 }
 
 function parseBlockQuote(line: string, ctx: ParseContext): boolean {
-  if (!line.startsWith('>')) {
+  if (!line.startsWith('> ') && line !== '>') {
     return false;
   }
 
-  const content = line[1] === ' ' ? line.slice(2) : line.slice(1);
+  const content = line.length > 2 ? line.slice(2) : '';
   closeList(ctx);
   ctx.result.push(`<blockquote>${parseInline(escapeHtml(content))}</blockquote>`);
   return true;
@@ -191,7 +191,7 @@ function parseParagraph(line: string, ctx: ParseContext): void {
     return;
   }
 
-  ctx.result.push(`<p>${parseInline(escapeHtml(line))}</p>`);
+  ctx.result.push(`${parseInline(escapeHtml(line))}<br/>`);
 }
 
 /** Parse block-level and inline markdown (non-code-block content) */

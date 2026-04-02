@@ -374,6 +374,7 @@ export async function initConversationHistory() {
       hydratedByChannel.get(channelId).push({
         role: row.role,
         content: row.content,
+        timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
       });
     }
 
