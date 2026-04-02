@@ -26,19 +26,41 @@ function fallbackAuthResponse(request: NextRequest, error: unknown) {
   return NextResponse.json({ error: 'AuthUnavailable' }, { status: 503 });
 }
 
-async function handleAuth(request: NextRequest) {
+// Cache the NextAuth handler after the first successful creation to avoid
+// reconstructing it on every request (getAuthOptions() is already cached internally).
+let cachedHandler: ReturnType<typeof NextAuth> | undefined;
+
+function getHandler() {
+  if (!cachedHandler) {
+    cachedHandler = NextAuth(getAuthOptions());
+  }
+  return cachedHandler;
+}
+
+async function handleAuth(
+  request: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> },
+) {
   try {
-    const handler = NextAuth(getAuthOptions());
-    return await handler(request);
+    const handler = getHandler();
+    return await handler(request, context);
   } catch (error) {
+    // Reset cache on failure so next request retries handler creation
+    cachedHandler = undefined;
     return fallbackAuthResponse(request, error);
   }
 }
 
-export async function GET(request: NextRequest) {
-  return handleAuth(request);
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> },
+) {
+  return handleAuth(request, context);
 }
 
-export async function POST(request: NextRequest) {
-  return handleAuth(request);
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> },
+) {
+  return handleAuth(request, context);
 }

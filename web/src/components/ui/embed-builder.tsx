@@ -15,12 +15,12 @@ import {
 } from 'lucide-react';
 import * as React from 'react';
 import { generateId } from '@/components/dashboard/config-editor-utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Button } from './button';
-import { Input } from './input';
-import { Label } from './label';
-import { Switch } from './switch';
-import { Textarea } from './textarea';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ export interface EmbedField {
 }
 
 export type ThumbnailType = 'none' | 'user_avatar' | 'server_icon' | 'custom';
-export type FormatType = 'text' | 'embed' | 'text_embed';
+export type FormatType = 'text' | 'embed' | 'both';
 
 export interface EmbedConfig {
   color: string;
@@ -89,7 +89,7 @@ const THUMBNAIL_OPTIONS: { value: ThumbnailType; label: string }[] = [
 const FORMAT_OPTIONS: { value: FormatType; label: string }[] = [
   { value: 'text', label: 'Text Only' },
   { value: 'embed', label: 'Embed Only' },
-  { value: 'text_embed', label: 'Text + Embed' },
+  { value: 'both', label: 'Text + Embed' },
 ];
 
 // ── Helpers ─────────────────────────────────────────────────────────

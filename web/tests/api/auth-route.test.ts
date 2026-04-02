@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockGetAuthOptions, mockNextAuth, mockWarn } = vi.hoisted(() => ({
   mockGetAuthOptions: vi.fn(),
@@ -21,15 +21,25 @@ vi.mock('@/lib/logger', () => ({
   },
 }));
 
-import { GET, POST } from '@/app/api/auth/[...nextauth]/route';
-
 function createRequest(pathname: string) {
   return new NextRequest(new URL(`http://localhost:3000${pathname}`));
+}
+
+function createContext(nextauth: string[] = []) {
+  return {
+    params: Promise.resolve({ nextauth }),
+  };
+}
+
+async function importRouteModule() {
+  const route = await import('@/app/api/auth/[...nextauth]/route');
+  return route;
 }
 
 describe('auth route fallback handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   it('returns a null session when auth env is unavailable for /session', async () => {
@@ -37,7 +47,8 @@ describe('auth route fallback handling', () => {
       throw new Error('missing auth env');
     });
 
-    const response = await GET(createRequest('/api/auth/session'));
+    const { GET } = await importRouteModule();
+    const response = await GET(createRequest('/api/auth/session'), createContext(['session']));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({});
@@ -52,7 +63,11 @@ describe('auth route fallback handling', () => {
       throw new Error('missing auth env');
     });
 
-    const response = await GET(createRequest('/api/auth/providers'));
+    const { GET } = await importRouteModule();
+    const response = await GET(
+      createRequest('/api/auth/providers'),
+      createContext(['providers']),
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({});
@@ -64,11 +79,13 @@ describe('auth route fallback handling', () => {
     mockGetAuthOptions.mockReturnValue({ providers: [] });
     mockNextAuth.mockReturnValue(handler);
 
+    const { GET } = await importRouteModule();
     const request = createRequest('/api/auth/session');
-    const response = await GET(request);
+    const context = createContext(['session']);
+    const response = await GET(request, context);
 
     expect(mockNextAuth).toHaveBeenCalledWith({ providers: [] });
-    expect(handler).toHaveBeenCalledWith(request);
+    expect(handler).toHaveBeenCalledWith(request, context);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });
   });
@@ -78,7 +95,11 @@ describe('auth route fallback handling', () => {
       throw new Error('missing auth env');
     });
 
-    const response = await POST(createRequest('/api/auth/callback/discord'));
+    const { POST } = await importRouteModule();
+    const response = await POST(
+      createRequest('/api/auth/callback/discord'),
+      createContext(['callback', 'discord']),
+    );
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ error: 'AuthUnavailable' });
