@@ -14,26 +14,21 @@ concurrency:
 
 jobs:
   claude-review:
-    if: >-
-      github.actor != 'github-actions[bot]' &&
-      github.actor != 'copilot-pull-request-reviewer[bot]' &&
-      github.actor != 'coderabbitai[bot]' &&
-      github.actor != 'greptile-apps[bot]' &&
+    if: 
       (
-        (
-          github.event_name == 'issue_comment' &&
-          github.event.issue.pull_request != null &&
-          contains(github.event.comment.body || '', '@claude')
-        ) ||
-        (
-          github.event_name == 'pull_request_review_comment' &&
-          contains(github.event.comment.body || '', '@claude')
-        ) ||
-        (
-          github.event_name == 'pull_request_review' &&
-          contains(github.event.review.body || '', '@claude')
-        )
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request != null &&
+        contains(github.event.comment.body || '', '@claude')
+      ) ||
+      (
+        github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body || '', '@claude')
+      ) ||
+      (
+        github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body || '', '@claude')
       )
+
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
