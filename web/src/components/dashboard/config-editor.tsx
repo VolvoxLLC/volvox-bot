@@ -3,8 +3,8 @@
 import { Save } from 'lucide-react';
 import { ConfigProvider, useConfigContext } from '@/components/dashboard/config-context';
 import { Button } from '@/components/ui/button';
-import { SystemPromptEditor } from './system-prompt-editor';
 import { DiscardChangesButton } from './reset-defaults-button';
+import { SystemPromptEditor } from './system-prompt-editor';
 
 export function ConfigEditor() {
   return (

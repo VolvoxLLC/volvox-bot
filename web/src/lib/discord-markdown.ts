@@ -21,9 +21,30 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
+function parseCodeBlock(rawContent: string): { content: string; lang?: string } {
+  if (rawContent.startsWith('\n')) {
+    return { content: rawContent.slice(1) };
+  }
+
+  const firstNewlineIndex = rawContent.indexOf('\n');
+  if (firstNewlineIndex <= 0) {
+    return { content: rawContent };
+  }
+
+  const firstLine = rawContent.slice(0, firstNewlineIndex);
+  if (!/^[a-zA-Z0-9_+-]+$/.test(firstLine)) {
+    return { content: rawContent };
+  }
+
+  return {
+    content: rawContent.slice(firstNewlineIndex + 1),
+    lang: firstLine,
+  };
+}
+
 /** Parse Discord markdown to HTML */
 export function parseDiscordMarkdown(input: string): string {
-  const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+  const codeBlockRegex = /```([\s\S]*?)```/g;
   const segments: { type: 'text' | 'codeblock'; content: string; lang?: string }[] = [];
   let lastIndex = 0;
 
@@ -35,8 +56,7 @@ export function parseDiscordMarkdown(input: string): string {
 
     segments.push({
       type: 'codeblock',
-      content: match[2],
-      lang: match[1] || undefined,
+      ...parseCodeBlock(match[1]),
     });
     lastIndex = match.index + match[0].length;
     match = codeBlockRegex.exec(input);

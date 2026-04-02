@@ -49,7 +49,8 @@ describe('ai module', () => {
       addToHistory('ch1', 'user', 'hello');
       const history = await getHistoryAsync('ch1');
       expect(history.length).toBe(1);
-      expect(history[0]).toEqual({ role: 'user', content: 'hello' });
+      expect(history[0]).toMatchObject({ role: 'user', content: 'hello' });
+      expect(history[0].timestamp).toEqual(expect.any(Number));
     });
 
     it('should hydrate DB history in-place when concurrent messages are added', async () => {
@@ -83,11 +84,11 @@ describe('ai module', () => {
       await asyncHistoryPromise;
 
       await vi.waitFor(() => {
-        expect(historyRef).toEqual([
-          { role: 'user', content: 'db message' },
-          { role: 'assistant', content: 'db reply' },
-          { role: 'user', content: 'concurrent message' },
-        ]);
+        expect(historyRef).toHaveLength(3);
+        expect(historyRef[0]).toEqual({ role: 'user', content: 'db message' });
+        expect(historyRef[1]).toEqual({ role: 'assistant', content: 'db reply' });
+        expect(historyRef[2]).toMatchObject({ role: 'user', content: 'concurrent message' });
+        expect(historyRef[2].timestamp).toEqual(expect.any(Number));
         expect(getConversationHistory().get('race-channel')).toBe(historyRef);
       });
     });

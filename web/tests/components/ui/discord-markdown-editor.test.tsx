@@ -3,82 +3,70 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
 import {
-  parseDiscordMarkdown,
-  wrapSelection,
   insertAtCursor,
+  parseDiscordMarkdown,
   wrapLine,
+  wrapSelection,
 } from '@/lib/discord-markdown';
 
-// ---------------------------------------------------------------------------
-// Unit tests for discord-markdown parser utilities
-// ---------------------------------------------------------------------------
+const createDefaultProps = () => ({
+  value: '',
+  onChange: vi.fn(),
+  variables: ['username', 'mention', 'level'],
+  maxLength: 2000,
+  placeholder: 'Enter your message...',
+});
 
 describe('parseDiscordMarkdown', () => {
-  it('renders bold text', () => {
-    expect(parseDiscordMarkdown('**hello**')).toContain('<strong>hello</strong>');
-  });
+  const inlineCases = [
+    ['renders bold text', '**hello**', '<strong>hello</strong>'],
+    ['renders italic text', '*hello*', '<em>hello</em>'],
+    ['renders underline text', '__hello__', '<u>hello</u>'],
+    ['renders strikethrough text', '~~hello~~', '<s>hello</s>'],
+    ['renders inline code', '`code`', '<code>code</code>'],
+    ['renders spoiler text', '||spoiler||', 'class="discord-spoiler'],
+    ['renders template variables', 'Hello {{username}}!', 'data-variable="username"'],
+  ] as const;
 
-  it('renders italic text', () => {
-    expect(parseDiscordMarkdown('*hello*')).toContain('<em>hello</em>');
-  });
-
-  it('renders underline text', () => {
-    expect(parseDiscordMarkdown('__hello__')).toContain('<u>hello</u>');
-  });
-
-  it('renders strikethrough text', () => {
-    expect(parseDiscordMarkdown('~~hello~~')).toContain('<s>hello</s>');
-  });
-
-  it('renders inline code', () => {
-    expect(parseDiscordMarkdown('`code`')).toContain('<code>code</code>');
+  it.each(inlineCases)('%s', (_label, input, expected) => {
+    expect(parseDiscordMarkdown(input)).toContain(expected);
   });
 
   it('preserves markdown markers inside inline code', () => {
-    expect(parseDiscordMarkdown('`**bold**`')).toContain('<code>**bold**</code>');
-    expect(parseDiscordMarkdown('`**bold**`')).not.toContain('<code><strong>bold</strong></code>');
+    const result = parseDiscordMarkdown('`**bold**`');
+    expect(result).toContain('<code>**bold**</code>');
+    expect(result).not.toContain('<code><strong>bold</strong></code>');
   });
 
-  it('renders code blocks', () => {
+  it('renders code blocks with language metadata when the fence header is multiline', () => {
     const result = parseDiscordMarkdown('```js\nconsole.log("hi")\n```');
     expect(result).toContain('<pre><code data-lang="js">');
     expect(result).toContain('console.log');
   });
 
-  it('renders spoiler text', () => {
-    expect(parseDiscordMarkdown('||spoiler||')).toContain('class="discord-spoiler');
+  it('preserves same-line fenced content instead of treating it as a language token', () => {
+    const result = parseDiscordMarkdown('```hello```');
+    expect(result).toContain('<pre><code>hello</code></pre>');
+    expect(result).not.toContain('data-lang="hello"');
   });
 
   it('renders headings', () => {
-    expect(parseDiscordMarkdown('# Title')).toContain('<h1>Title</h1>');
-    expect(parseDiscordMarkdown('## Subtitle')).toContain('<h2>Subtitle</h2>');
-    expect(parseDiscordMarkdown('### Small')).toContain('<h3>Small</h3>');
+    const result = parseDiscordMarkdown('# Title\n## Subtitle\n### Small');
+    expect(result).toContain('<h1>Title</h1>');
+    expect(result).toContain('<h2>Subtitle</h2>');
+    expect(result).toContain('<h3>Small</h3>');
   });
 
   it('renders block quotes', () => {
     expect(parseDiscordMarkdown('> quoted text')).toContain('<blockquote>quoted text</blockquote>');
   });
 
-  it('renders unordered lists', () => {
-    const result = parseDiscordMarkdown('- item one\n- item two');
-    expect(result).toContain('<ul>');
-    expect(result).toContain('<li>item one</li>');
-    expect(result).toContain('<li>item two</li>');
-    expect(result).toContain('</ul>');
-  });
-
-  it('renders ordered lists', () => {
-    const result = parseDiscordMarkdown('1. first\n2. second');
-    expect(result).toContain('<ol>');
-    expect(result).toContain('<li>first</li>');
-    expect(result).toContain('<li>second</li>');
-    expect(result).toContain('</ol>');
-  });
-
-  it('renders template variables', () => {
-    const result = parseDiscordMarkdown('Hello {{username}}!');
-    expect(result).toContain('class="discord-variable');
-    expect(result).toContain('data-variable="username"');
+  it.each([
+    ['unordered', '- item one\n- item two', '<ul>', '<li>item one</li>', '<li>item two</li>', '</ul>'],
+    ['ordered', '1. first\n2. second', '<ol>', '<li>first</li>', '<li>second</li>', '</ol>'],
+  ])('renders %s lists', (_label, input, ...expectedParts) => {
+    const result = parseDiscordMarkdown(input);
+    expectedParts.forEach((part) => expect(result).toContain(part));
   });
 
   it('escapes HTML to prevent XSS', () => {
@@ -88,89 +76,76 @@ describe('parseDiscordMarkdown', () => {
   });
 });
 
-describe('wrapSelection', () => {
-  it('wraps selected text with prefix and suffix', () => {
+describe('markdown text helpers', () => {
+  it('wrapSelection wraps selected text with prefix and suffix', () => {
     const result = wrapSelection('hello world', 6, 11, '**', '**');
-    expect(result.text).toBe('hello **world**');
-    expect(result.selectionStart).toBe(8);
-    expect(result.selectionEnd).toBe(13);
+    expect(result).toEqual({
+      text: 'hello **world**',
+      selectionStart: 8,
+      selectionEnd: 13,
+    });
   });
 
-  it('inserts markers at cursor when no selection', () => {
-    const result = wrapSelection('hello', 5, 5, '**', '**');
-    expect(result.text).toBe('hello****');
+  it('wrapSelection inserts markers at cursor when no selection', () => {
+    expect(wrapSelection('hello', 5, 5, '**', '**').text).toBe('hello****');
+  });
+
+  it('insertAtCursor inserts text at cursor position', () => {
+    expect(insertAtCursor('hello world', 5, ' beautiful')).toEqual({
+      text: 'hello beautiful world',
+      cursorPos: 15,
+    });
+  });
+
+  it('wrapLine prepends a prefix to the current line', () => {
+    expect(wrapLine('hello\nworld', 8, '> ')).toEqual({
+      text: 'hello\n> world',
+      cursorPos: 10,
+    });
   });
 });
-
-describe('insertAtCursor', () => {
-  it('inserts text at cursor position', () => {
-    const result = insertAtCursor('hello world', 5, ' beautiful');
-    expect(result.text).toBe('hello beautiful world');
-    expect(result.cursorPos).toBe(15);
-  });
-});
-
-describe('wrapLine', () => {
-  it('prepends prefix to the current line', () => {
-    const result = wrapLine('hello\nworld', 8, '> ');
-    expect(result.text).toBe('hello\n> world');
-    expect(result.cursorPos).toBe(10);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Component tests
-// ---------------------------------------------------------------------------
 
 describe('DiscordMarkdownEditor', () => {
-  const createDefaultProps = () => ({
-    value: '',
-    onChange: vi.fn(),
-    variables: ['username', 'mention', 'level'],
-    maxLength: 2000,
-    placeholder: 'Enter your message...',
-  });
-
   let defaultProps: ReturnType<typeof createDefaultProps>;
 
   beforeEach(() => {
     defaultProps = createDefaultProps();
   });
 
-  it('renders toolbar buttons', () => {
-    render(<DiscordMarkdownEditor {...defaultProps} />);
-    expect(screen.getByRole('toolbar', { name: /formatting toolbar/i })).toBeInTheDocument();
-    expect(screen.getByLabelText('Bold')).toBeInTheDocument();
-    expect(screen.getByLabelText('Italic')).toBeInTheDocument();
-    expect(screen.getByLabelText('Underline')).toBeInTheDocument();
-    expect(screen.getByLabelText('Strikethrough')).toBeInTheDocument();
-    expect(screen.getByLabelText('Inline Code')).toBeInTheDocument();
-    expect(screen.getByLabelText('Code Block')).toBeInTheDocument();
-    expect(screen.getByLabelText('Spoiler')).toBeInTheDocument();
-    expect(screen.getByLabelText('Quote')).toBeInTheDocument();
-    expect(screen.getByLabelText('Heading 1')).toBeInTheDocument();
-    expect(screen.getByLabelText('Heading 2')).toBeInTheDocument();
-    expect(screen.getByLabelText('Heading 3')).toBeInTheDocument();
-    expect(screen.getByLabelText('Bullet List')).toBeInTheDocument();
-    expect(screen.getByLabelText('Numbered List')).toBeInTheDocument();
-  });
+  it('renders the full toolbar and main editor UI', () => {
+    render(<DiscordMarkdownEditor {...defaultProps} value="**bold text**" />);
 
-  it('renders textarea with placeholder', () => {
-    render(<DiscordMarkdownEditor {...defaultProps} />);
+    expect(screen.getByRole('toolbar', { name: /formatting toolbar/i })).toBeInTheDocument();
+
+    [
+      'Bold',
+      'Italic',
+      'Underline',
+      'Strikethrough',
+      'Inline Code',
+      'Code Block',
+      'Spoiler',
+      'Quote',
+      'Heading 1',
+      'Heading 2',
+      'Heading 3',
+      'Bullet List',
+      'Numbered List',
+      'Insert variable',
+      'Preview',
+    ].forEach((label) => {
+      expect(screen.getByLabelText(label)).toBeInTheDocument();
+    });
+
     expect(screen.getByPlaceholderText('Enter your message...')).toBeInTheDocument();
   });
 
-  it('renders preview section', () => {
-    render(<DiscordMarkdownEditor {...defaultProps} value="**bold text**" />);
-    expect(screen.getByLabelText('Preview')).toBeInTheDocument();
-  });
-
-  it('displays character counter', () => {
+  it('displays the character counter', () => {
     render(<DiscordMarkdownEditor {...defaultProps} value="hello" />);
     expect(screen.getByLabelText('Character count')).toHaveTextContent('5 / 2000');
   });
 
-  it('shows character counter in red when over limit', () => {
+  it('shows the character counter in red when over limit', () => {
     const longText = 'a'.repeat(2001);
     render(<DiscordMarkdownEditor {...defaultProps} value={longText} />);
     const counter = screen.getByLabelText('Character count');
@@ -178,46 +153,29 @@ describe('DiscordMarkdownEditor', () => {
     expect(counter.className).toContain('text-red-500');
   });
 
-  it('shows variable inserter button', () => {
-    render(<DiscordMarkdownEditor {...defaultProps} />);
-    expect(screen.getByLabelText('Insert variable')).toBeInTheDocument();
-  });
-
-  it('toggles variable dropdown on click', async () => {
-    const user = userEvent.setup();
-    render(<DiscordMarkdownEditor {...defaultProps} />);
-
-    const varButton = screen.getByLabelText('Insert variable');
-    await user.click(varButton);
-
-    expect(screen.getByText('username')).toBeInTheDocument();
-    expect(screen.getByText('mention')).toBeInTheDocument();
-    expect(screen.getByText('level')).toBeInTheDocument();
-  });
-
-  it('dismisses the variable dropdown when clicking outside', async () => {
+  it('toggles and dismisses the variable dropdown', async () => {
     const user = userEvent.setup();
     render(<DiscordMarkdownEditor {...defaultProps} />);
 
     await user.click(screen.getByLabelText('Insert variable'));
-    expect(screen.getByText('username')).toBeInTheDocument();
+    ['username', 'mention', 'level'].forEach((variable) => {
+      expect(screen.getByText(variable)).toBeInTheDocument();
+    });
 
     await user.click(screen.getByLabelText('Markdown editor'));
     expect(screen.queryByText('username')).not.toBeInTheDocument();
   });
 
-  it('calls onChange when typing in textarea', async () => {
+  it('calls onChange when typing in the textarea', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     render(<DiscordMarkdownEditor {...defaultProps} onChange={onChange} />);
 
-    const textarea = screen.getByPlaceholderText('Enter your message...');
-    await user.type(textarea, 'hi');
-
+    await user.type(screen.getByPlaceholderText('Enter your message...'), 'hi');
     expect(onChange).toHaveBeenCalled();
   });
 
-  it('does not render variable button when no variables provided', () => {
+  it('does not render the variable button when no variables are provided', () => {
     render(<DiscordMarkdownEditor {...defaultProps} variables={[]} />);
     expect(screen.queryByLabelText('Insert variable')).not.toBeInTheDocument();
   });
@@ -229,25 +187,23 @@ describe('DiscordMarkdownEditor', () => {
     expect(screen.getByLabelText('Insert variable')).toBeDisabled();
   });
 
-  it('renders markdown in preview pane', () => {
+  it('renders markdown and template variables in the preview pane', () => {
     const { container } = render(
-      <DiscordMarkdownEditor {...defaultProps} value="**bold** and *italic*" />,
+      <DiscordMarkdownEditor {...defaultProps} value="**bold** and *italic* Hello {{username}}!" />,
     );
+
     const preview = container.querySelector('.discord-preview');
     expect(preview?.innerHTML).toContain('<strong>bold</strong>');
     expect(preview?.innerHTML).toContain('<em>italic</em>');
-  });
-
-  it('renders template variables as styled badges in preview', () => {
-    const { container } = render(
-      <DiscordMarkdownEditor {...defaultProps} value="Hello {{username}}!" />,
-    );
-    const preview = container.querySelector('.discord-preview');
     expect(preview?.innerHTML).toContain('class="discord-variable');
     expect(preview?.innerHTML).toContain('data-variable="username"');
   });
 
-  it('applies bold formatting with Ctrl+B', async () => {
+  it.each([
+    ['Ctrl+B', '{Control>}b{/Control}', '**hello**'],
+    ['Ctrl+I', '{Control>}i{/Control}', '*hello*'],
+    ['Ctrl+U', '{Control>}u{/Control}', '__hello__'],
+  ])('applies %s keyboard formatting shortcuts', async (_label, shortcut, expected) => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     render(<DiscordMarkdownEditor {...defaultProps} value="hello" onChange={onChange} />);
@@ -255,34 +211,8 @@ describe('DiscordMarkdownEditor', () => {
     const textarea = screen.getByPlaceholderText('Enter your message...') as HTMLTextAreaElement;
     await user.click(textarea);
     textarea.setSelectionRange(0, 5);
-    await user.keyboard('{Control>}b{/Control}');
+    await user.keyboard(shortcut);
 
-    expect(onChange).toHaveBeenCalledWith('**hello**');
-  });
-
-  it('applies italic formatting with Ctrl+I', async () => {
-    const onChange = vi.fn();
-    const user = userEvent.setup();
-    render(<DiscordMarkdownEditor {...defaultProps} value="hello" onChange={onChange} />);
-
-    const textarea = screen.getByPlaceholderText('Enter your message...') as HTMLTextAreaElement;
-    await user.click(textarea);
-    textarea.setSelectionRange(0, 5);
-    await user.keyboard('{Control>}i{/Control}');
-
-    expect(onChange).toHaveBeenCalledWith('*hello*');
-  });
-
-  it('applies underline formatting with Ctrl+U', async () => {
-    const onChange = vi.fn();
-    const user = userEvent.setup();
-    render(<DiscordMarkdownEditor {...defaultProps} value="hello" onChange={onChange} />);
-
-    const textarea = screen.getByPlaceholderText('Enter your message...') as HTMLTextAreaElement;
-    await user.click(textarea);
-    textarea.setSelectionRange(0, 5);
-    await user.keyboard('{Control>}u{/Control}');
-
-    expect(onChange).toHaveBeenCalledWith('__hello__');
+    expect(onChange).toHaveBeenCalledWith(expected);
   });
 });
