@@ -11,6 +11,7 @@ interface ReputationSectionProps {
   saving: boolean;
   onEnabledChange: (enabled: boolean) => void;
   onFieldChange: (field: string, value: unknown) => void;
+  updateDraftConfig: (updater: (prev: GuildConfig) => GuildConfig) => void;
 }
 
 /** Shared input styling for text inputs. */
@@ -29,6 +30,7 @@ export function ReputationSection({
   saving,
   onEnabledChange,
   onFieldChange,
+  updateDraftConfig,
 }: ReputationSectionProps) {
   const xpRange = draftConfig.reputation?.xpPerMessage ?? [5, 15];
   const levelThresholds = draftConfig.xp?.levelThresholds ?? DEFAULT_LEVEL_THRESHOLDS;
@@ -122,7 +124,10 @@ export function ReputationSection({
               if (nums.length > 0) {
                 const sorted = [...nums].sort((a, b) => a - b);
                 const deduped = sorted.filter((t, i, arr) => i === 0 || t !== arr[i - 1]);
-                onFieldChange('levelThresholds', deduped);
+                updateDraftConfig((prev) => ({
+                  ...prev,
+                  xp: { ...prev.xp, levelThresholds: deduped },
+                }));
               }
             }}
             disabled={saving}

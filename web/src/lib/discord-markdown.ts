@@ -187,24 +187,44 @@ function parseInlineAndBlocks(text: string): string {
   return ctx.result.join('');
 }
 
+const INLINE_FORMAT_REGEX =
+  /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||\{\{(\w+)\}\}/g;
+
 function formatInlineText(text: string): string {
-  let formatted = text;
+  let result = '';
+  let lastIndex = 0;
 
-  formatted = formatted.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  formatted = formatted.replace(/__(.+?)__/g, '<u>$1</u>');
-  formatted = formatted.replace(/~~(.+?)~~/g, '<s>$1</s>');
-  formatted = formatted.replace(
-    /\|\|(.+?)\|\|/g,
-    '<span class="discord-spoiler inline-block rounded bg-foreground px-1 text-transparent transition-colors hover:text-background">$1</span>',
-  );
-  formatted = formatted.replace(
-    /\{\{(\w+)\}\}/g,
-    '<span class="discord-variable inline-flex items-center rounded bg-primary/10 px-1 py-0.5 font-mono text-primary" data-variable="$1">{{$1}}</span>',
-  );
+  for (const match of text.matchAll(INLINE_FORMAT_REGEX)) {
+    const [fullMatch, boldItalic, bold, italic, underline, strikethrough, spoiler, variable] =
+      match;
+    const index = match.index ?? 0;
 
-  return formatted;
+    result += text.slice(lastIndex, index);
+
+    if (boldItalic !== undefined) {
+      result += `<strong><em>${formatInlineText(boldItalic)}</em></strong>`;
+    } else if (bold !== undefined) {
+      result += `<strong>${formatInlineText(bold)}</strong>`;
+    } else if (italic !== undefined) {
+      result += `<em>${formatInlineText(italic)}</em>`;
+    } else if (underline !== undefined) {
+      result += `<u>${formatInlineText(underline)}</u>`;
+    } else if (strikethrough !== undefined) {
+      result += `<s>${formatInlineText(strikethrough)}</s>`;
+    } else if (spoiler !== undefined) {
+      result += `<span class="discord-spoiler inline-block rounded bg-foreground px-1 text-transparent transition-colors hover:text-background">${formatInlineText(spoiler)}</span>`;
+    } else if (variable !== undefined) {
+      result += `<span class="discord-variable inline-flex items-center rounded bg-primary/10 px-1 py-0.5 font-mono text-primary" data-variable="${variable}">{{${variable}}}</span>`;
+    }
+
+    lastIndex = index + fullMatch.length;
+  }
+
+  if (lastIndex === 0) {
+    return text;
+  }
+
+  return result + text.slice(lastIndex);
 }
 
 /** Parse inline markdown formatting */

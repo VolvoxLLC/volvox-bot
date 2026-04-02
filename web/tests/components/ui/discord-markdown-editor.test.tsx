@@ -50,6 +50,13 @@ describe('parseDiscordMarkdown', () => {
     expect(result).not.toContain('data-lang="hello"');
   });
 
+  it('keeps underline parsing scoped to markdown content instead of generated HTML attributes', () => {
+    const result = parseDiscordMarkdown('**||__secret__||**');
+    expect(result).toContain('<strong><span class="discord-spoiler');
+    expect(result).toContain('<u>secret</u>');
+    expect(result).not.toContain('</span></u>');
+  });
+
   it('renders headings', () => {
     const result = parseDiscordMarkdown('# Title\n## Subtitle\n### Small');
     expect(result).toContain('<h1>Title</h1>');
