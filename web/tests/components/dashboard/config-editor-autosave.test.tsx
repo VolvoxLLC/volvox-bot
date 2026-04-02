@@ -17,6 +17,11 @@ vi.mock('sonner', () => ({
   Toaster: () => null,
 }));
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/dashboard/settings',
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock('@/components/dashboard/reset-defaults-button', () => ({
   DiscardChangesButton: ({
     onReset,
