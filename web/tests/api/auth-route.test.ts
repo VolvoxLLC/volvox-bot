@@ -73,6 +73,25 @@ describe('auth route fallback handling', () => {
     await expect(response.json()).resolves.toEqual({});
   });
 
+  it('stringifies non-Error throws in fallback logging metadata', async () => {
+    mockGetAuthOptions.mockImplementation(() => {
+      throw 'missing auth env';
+    });
+
+    const { GET } = await importRouteModule();
+    const response = await GET(
+      createRequest('/api/auth/providers'),
+      createContext(['providers']),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({});
+    expect(mockWarn).toHaveBeenCalledWith(
+      '[auth] Auth route requested without valid environment configuration',
+      expect.objectContaining({ pathname: '/api/auth/providers', error: 'missing auth env' }),
+    );
+  });
+
   it('returns an empty csrf token when auth env is unavailable for /csrf', async () => {
     mockGetAuthOptions.mockImplementation(() => {
       throw new Error('missing auth env');
@@ -122,7 +141,54 @@ describe('auth route fallback handling', () => {
     expect(handler).toHaveBeenNthCalledWith(2, secondRequest, secondContext);
   });
 
-  it('uses the same fallback for POST requests', async () => {
+  it('returns the CSRF fallback for POST requests when auth env is unavailable', async () => {
+    mockGetAuthOptions.mockImplementation(() => {
+      throw new Error('missing auth env');
+    });
+
+    const { POST } = await importRouteModule();
+    const response = await POST(createRequest('/api/auth/csrf'), createContext(['csrf']));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ csrfToken: '' });
+    expect(mockWarn).toHaveBeenCalledWith(
+      '[auth] Auth route requested without valid environment configuration',
+      expect.objectContaining({ pathname: '/api/auth/csrf', error: 'missing auth env' }),
+    );
+  });
+
+  it('resets the cached handler after a failure and retries initialization on the next request', async () => {
+    const firstHandler = vi.fn().mockRejectedValue(new Error('cached handler failed'));
+    const secondResponse = NextResponse.json({ ok: true }, { status: 200 });
+    const secondHandler = vi.fn().mockResolvedValue(secondResponse);
+
+    mockGetAuthOptions.mockReturnValue({ providers: [] });
+    mockNextAuth.mockReturnValueOnce(firstHandler).mockReturnValueOnce(secondHandler);
+
+    const { GET } = await importRouteModule();
+
+    const failedResponse = await GET(createRequest('/api/auth/session'), createContext(['session']));
+    expect(failedResponse.status).toBe(200);
+    await expect(failedResponse.json()).resolves.toEqual({});
+    expect(mockNextAuth).toHaveBeenCalledTimes(1);
+    expect(firstHandler).toHaveBeenCalledTimes(1);
+
+    const recoveredResponse = await GET(
+      createRequest('/api/auth/providers'),
+      createContext(['providers']),
+    );
+
+    expect(mockNextAuth).toHaveBeenCalledTimes(2);
+    expect(secondHandler).toHaveBeenCalledTimes(1);
+    expect(recoveredResponse.status).toBe(200);
+    await expect(recoveredResponse.json()).resolves.toEqual({ ok: true });
+    expect(mockWarn).toHaveBeenCalledWith(
+      '[auth] Auth route requested without valid environment configuration',
+      expect.objectContaining({ pathname: '/api/auth/session', error: 'cached handler failed' }),
+    );
+  });
+
+  it('uses the same fallback for non-CSRF POST requests', async () => {
     mockGetAuthOptions.mockImplementation(() => {
       throw new Error('missing auth env');
     });
