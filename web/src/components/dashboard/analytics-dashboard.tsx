@@ -34,7 +34,6 @@ import {
   ChannelFilterCard,
   CommandUsageCard,
   escapeCsvCell,
-  formatDeltaPercent,
   type KpiCard,
   KpiCardItem,
   KpiSkeleton,
@@ -380,7 +379,6 @@ export function AnalyticsDashboard() {
               <KpiCardItem
                 key={card.label}
                 card={card}
-                compareMode={compareMode}
                 hasAnalytics={analytics !== null}
                 hasComparison={hasComparison}
               />

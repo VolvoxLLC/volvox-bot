@@ -117,12 +117,10 @@ function DeltaIcon({ delta }: { delta: number | null }) {
 
 export function KpiCardItem({
   card,
-  compareMode,
   hasAnalytics,
   hasComparison,
 }: {
   card: KpiCard;
-  compareMode: boolean;
   hasAnalytics: boolean;
   hasComparison: boolean;
 }) {

@@ -31,7 +31,7 @@ export function ReputationSection({
   onFieldChange,
 }: ReputationSectionProps) {
   const xpRange = draftConfig.reputation?.xpPerMessage ?? [5, 15];
-  const levelThresholds = draftConfig.reputation?.levelThresholds ?? DEFAULT_LEVEL_THRESHOLDS;
+  const levelThresholds = draftConfig.xp?.levelThresholds ?? DEFAULT_LEVEL_THRESHOLDS;
 
   // Local state for level thresholds raw input (parsed on blur)
   const thresholdsDisplay = levelThresholds.join(', ');
@@ -106,18 +106,6 @@ export function ReputationSection({
               className={inputClasses}
             />
           </label>
-          <label htmlFor="announce-channel-id" className="space-y-2">
-            <span className="text-sm font-medium">Announce Channel ID</span>
-            <input
-              id="announce-channel-id"
-              type="text"
-              value={draftConfig.reputation?.announceChannelId ?? ''}
-              onChange={(e) => onFieldChange('announceChannelId', e.target.value.trim() || null)}
-              disabled={saving}
-              className={inputClasses}
-              placeholder="Channel ID for level-up announcements"
-            />
-          </label>
         </div>
         <label htmlFor="level-thresholds-comma-separated" className="space-y-2">
           <span className="text-sm font-medium">Level Thresholds (comma-separated XP values)</span>
@@ -129,8 +117,8 @@ export function ReputationSection({
             onBlur={() => {
               const nums = thresholdsRaw
                 .split(',')
-                .map((s) => Number(s.trim()))
-                .filter((n) => Number.isFinite(n) && n > 0);
+                .map((segment: string) => Number(segment.trim()))
+                .filter((num: number) => Number.isFinite(num) && num > 0);
               if (nums.length > 0) {
                 const sorted = [...nums].sort((a, b) => a - b);
                 const deduped = sorted.filter((t, i, arr) => i === 0 || t !== arr[i - 1]);
