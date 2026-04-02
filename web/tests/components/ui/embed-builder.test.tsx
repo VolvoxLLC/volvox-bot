@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,7 @@ import {
   EmbedBuilder,
   EmbedPreview,
   defaultEmbedConfig,
+  formatPreviewTimestamp,
   getTotalCharCount,
   type EmbedConfig,
 } from '@/components/ui/embed-builder';
@@ -35,14 +37,31 @@ describe('EmbedBuilder', () => {
 
   // ── Title editing ─────────────────────────────────────────────
 
-  it('calls onChange when title is edited', async () => {
+  it('calls onChange with the full title when title is edited', async () => {
     const user = userEvent.setup();
-    const { onChange } = renderBuilder();
+    const onChange = vi.fn();
+
+    function Wrapper() {
+      const [value, setValue] = React.useState(defaultEmbedConfig());
+      return (
+        <EmbedBuilder
+          value={value}
+          onChange={(next) => {
+            onChange(next);
+            setValue(next);
+          }}
+          variables={[]}
+        />
+      );
+    }
+
+    render(<Wrapper />);
+
     const titleInput = screen.getByPlaceholderText('Embed title...');
     await user.type(titleInput, 'Hello');
     expect(onChange).toHaveBeenCalled();
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    expect(lastCall.title).toContain('o');
+    expect(lastCall.title).toBe('Hello');
   });
 
   // ── Description editing ───────────────────────────────────────
@@ -282,7 +301,7 @@ describe('EmbedBuilder', () => {
     );
   });
 
-  it('truncates variable insertion to the configured maximum length', async () => {
+  it('does not insert a partial variable token when the field is near its limit', async () => {
     const user = userEvent.setup();
     const almostFullTitle = 'a'.repeat(CHAR_LIMITS.title - '{{username}}'.length + 2);
     const { onChange } = renderBuilder({ title: almostFullTitle }, ['username']);
@@ -291,9 +310,23 @@ describe('EmbedBuilder', () => {
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: `${almostFullTitle}{{username}}`.slice(0, CHAR_LIMITS.title),
+        title: almostFullTitle,
       }),
     );
+  });
+
+  it('hydrates missing field ids only once for the same field payload', () => {
+    const onChange = vi.fn();
+    const value = {
+      ...defaultEmbedConfig(),
+      fields: [{ name: 'Level', value: '42', inline: false }],
+    };
+
+    const { rerender } = render(<EmbedBuilder value={value} onChange={onChange} variables={[]} />);
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    rerender(<EmbedBuilder value={{ ...value }} onChange={onChange} variables={[]} />);
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   // ── Footer ────────────────────────────────────────────────────
@@ -381,10 +414,7 @@ describe('EmbedPreview', () => {
     const footer = screen.getByTestId('embed-preview-footer');
     expect(footer).toHaveTextContent('Bot Footer');
     expect(footer).toHaveTextContent(
-      new Date('2026-04-02T16:49:00Z').toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-      }),
+      formatPreviewTimestamp(new Date('2026-04-02T16:49:00Z')),
     );
   });
 

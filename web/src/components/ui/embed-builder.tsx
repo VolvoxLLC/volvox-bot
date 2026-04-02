@@ -14,6 +14,7 @@ import {
   Type,
 } from 'lucide-react';
 import * as React from 'react';
+import { generateId } from '@/components/dashboard/config-editor-utils';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { Input } from './input';
@@ -91,16 +92,10 @@ const FORMAT_OPTIONS: { value: FormatType; label: string }[] = [
   { value: 'text_embed', label: 'Text + Embed' },
 ];
 
-let embedFieldIdCounter = 0;
-
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function createFieldId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  embedFieldIdCounter += 1;
-  return `embed-field-${embedFieldIdCounter}`;
+  return generateId();
 }
 
 function createEmptyField(): EmbedField {
@@ -124,7 +119,13 @@ function ensureFieldIds(fields: EmbedField[]): EmbedField[] {
 }
 
 function appendVariable(text: string, variable: string, maxLength: number): string {
-  return `${text}{{${variable}}}`.slice(0, maxLength);
+  const normalizedText = text.slice(0, maxLength);
+  const token = `{{${variable}}}`;
+  if (normalizedText.length + token.length > maxLength) {
+    return normalizedText;
+  }
+
+  return `${normalizedText}${token}`;
 }
 
 function sanitizeColorInput(rawValue: string): string {
@@ -186,6 +187,41 @@ function renderVariablePreview(text: string): React.ReactNode[] {
 }
 
 /** Very lightweight Discord markdown → HTML (bold, italic, inline code) */
+function renderMarkdownSegment(segment: string, lineIndex: number, segmentIndex: number) {
+  if (segment.startsWith('{{') && segment.endsWith('}}')) {
+    const varName = segment.slice(2, -2);
+    return (
+      <span
+        key={`var-${lineIndex}-${segmentIndex}`}
+        className="inline-flex items-center rounded bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary"
+      >
+        {varName}
+      </span>
+    );
+  }
+
+  if (segment.startsWith('**') && segment.endsWith('**')) {
+    return <strong key={`b-${lineIndex}-${segmentIndex}`}>{segment.slice(2, -2)}</strong>;
+  }
+
+  if (segment.startsWith('*') && segment.endsWith('*')) {
+    return <em key={`i-${lineIndex}-${segmentIndex}`}>{segment.slice(1, -1)}</em>;
+  }
+
+  if (segment.startsWith('`') && segment.endsWith('`')) {
+    return (
+      <code
+        key={`c-${lineIndex}-${segmentIndex}`}
+        className="rounded bg-muted px-1 py-0.5 text-xs font-mono"
+      >
+        {segment.slice(1, -1)}
+      </code>
+    );
+  }
+
+  return <span key={`t-${lineIndex}-${segmentIndex}`}>{segment}</span>;
+}
+
 function renderDiscordMarkdown(text: string): React.ReactNode[] {
   const lines = text.split('\n');
   const result: React.ReactNode[] = [];
@@ -198,32 +234,29 @@ function renderDiscordMarkdown(text: string): React.ReactNode[] {
     for (let si = 0; si < segments.length; si++) {
       const seg = segments[si];
       if (!seg) continue;
-      if (seg.startsWith('{{') && seg.endsWith('}}')) {
-        const varName = seg.slice(2, -2);
-        result.push(
-          <span
-            key={`var-${li}-${si}`}
-            className="inline-flex items-center rounded bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary"
-          >
-            {varName}
-          </span>,
-        );
-      } else if (seg.startsWith('**') && seg.endsWith('**')) {
-        result.push(<strong key={`b-${li}-${si}`}>{seg.slice(2, -2)}</strong>);
-      } else if (seg.startsWith('*') && seg.endsWith('*')) {
-        result.push(<em key={`i-${li}-${si}`}>{seg.slice(1, -1)}</em>);
-      } else if (seg.startsWith('`') && seg.endsWith('`')) {
-        result.push(
-          <code key={`c-${li}-${si}`} className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
-            {seg.slice(1, -1)}
-          </code>,
-        );
-      } else {
-        result.push(<span key={`t-${li}-${si}`}>{seg}</span>);
-      }
+      result.push(renderMarkdownSegment(seg, li, si));
     }
   }
   return result;
+}
+
+function getCharCountClassName(ratio: number): string {
+  if (ratio >= 1) {
+    return 'text-destructive font-semibold';
+  }
+
+  if (ratio >= 0.9) {
+    return 'text-yellow-500';
+  }
+
+  return 'text-muted-foreground';
+}
+
+function formatPreviewTimestamp(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
 }
 
 // ── CharCount indicator ─────────────────────────────────────────────
@@ -233,14 +266,7 @@ function CharCount({ current, max }: { current: number; max: number }) {
   return (
     <span
       data-testid="char-count"
-      className={cn(
-        'text-xs tabular-nums',
-        ratio >= 1
-          ? 'text-destructive font-semibold'
-          : ratio >= 0.9
-            ? 'text-yellow-500'
-            : 'text-muted-foreground',
-      )}
+      className={cn('text-xs tabular-nums', getCharCountClassName(ratio))}
     >
       {current}/{max}
     </span>
@@ -284,14 +310,7 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
     config.imageUrl ||
     config.showTimestamp;
 
-  const previewTimestamp = React.useMemo(
-    () =>
-      new Date().toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-      }),
-    [],
-  );
+  const previewTimestamp = React.useMemo(() => formatPreviewTimestamp(new Date()), []);
 
   if (!hasContent) {
     return (
@@ -416,12 +435,25 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
 
 function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuilderProps) {
   const [colorInput, setColorInput] = React.useState(value.color);
+  const lastHydratedFieldsKeyRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     setColorInput(value.color);
   }, [value.color]);
 
   React.useEffect(() => {
+    if (!value.fields.some((field) => !field.id)) {
+      lastHydratedFieldsKeyRef.current = null;
+      return;
+    }
+
+    const hydrationKey = JSON.stringify(value.fields.map(({ id: _id, ...field }) => field));
+    if (lastHydratedFieldsKeyRef.current === hydrationKey) {
+      return;
+    }
+
+    lastHydratedFieldsKeyRef.current = hydrationKey;
+
     const fieldsWithIds = ensureFieldIds(value.fields);
     if (fieldsWithIds !== value.fields) {
       onChange({ ...value, fields: fieldsWithIds });
@@ -490,9 +522,9 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
         </div>
 
         {/* Format selector */}
-        <div className="space-y-1.5">
-          <Label className="text-xs">Format</Label>
-          <div className="flex gap-1" role="group" aria-label="Format">
+        <fieldset className="space-y-1.5">
+          <legend className="text-xs font-medium">Format</legend>
+          <div className="flex gap-1">
             {FORMAT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -510,7 +542,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
               </button>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         {/* Color picker */}
         <div className="space-y-1.5">
@@ -600,11 +632,11 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
         </div>
 
         {/* Thumbnail */}
-        <div className="space-y-1.5">
-          <Label className="flex items-center gap-1 text-xs">
+        <fieldset className="space-y-1.5">
+          <legend className="flex items-center gap-1 text-xs font-medium">
             <ImageIcon className="size-3" /> Thumbnail
-          </Label>
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Thumbnail type">
+          </legend>
+          <div className="flex flex-wrap gap-1">
             {THUMBNAIL_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -630,7 +662,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
               className="h-8 text-xs"
             />
           )}
-        </div>
+        </fieldset>
 
         {/* Fields */}
         <div className="space-y-2">
@@ -826,6 +858,7 @@ export {
   CharCount,
   EmbedBuilder,
   EmbedPreview,
+  formatPreviewTimestamp,
   renderDiscordMarkdown,
   renderVariablePreview,
   VariablePalette,

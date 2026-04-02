@@ -7,22 +7,14 @@
  * - Section-level revert functionality
  * - Normalization utilities
  */
-import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 
 // ── Mocks ─────────────────────────────────────────────────────────
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
   Toaster: () => null,
-}));
-
-const mockPush = vi.fn();
-let mockPathname = '/dashboard/settings';
-
-vi.mock('next/navigation', () => ({
-  usePathname: () => mockPathname,
-  useRouter: () => ({ push: mockPush }),
 }));
 
 vi.mock('@/components/dashboard/reset-defaults-button', () => ({
@@ -100,8 +92,6 @@ const minimalConfig = {
 
 describe('ConfigEditor integration', () => {
   beforeEach(() => {
-    mockPathname = '/dashboard/settings';
-    mockPush.mockClear();
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
   });
@@ -182,6 +172,77 @@ describe('ConfigEditor integration', () => {
     // Initially discard button should be disabled (no changes yet)
     const discardButton = screen.getByTestId('discard-button');
     expect(discardButton).toBeDisabled();
+  });
+
+  it('saves the edited system prompt via PATCH', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(minimalConfig),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          ...minimalConfig.ai,
+          systemPrompt: 'Updated prompt',
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await waitFor(() => expect(screen.getByTestId('system-prompt')).toBeInTheDocument());
+
+    const prompt = screen.getByTestId('system-prompt') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(prompt, { target: { value: 'Updated prompt' } });
+    });
+
+    const saveButton = screen.getByRole('button', { name: 'Save Changes' });
+    await act(async () => {
+      saveButton.click();
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/guilds/guild-123/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: 'ai.systemPrompt', value: 'Updated prompt' }),
+      });
+    });
+  });
+
+  it('discard restores the last saved config', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        ...minimalConfig,
+        ai: { ...minimalConfig.ai, systemPrompt: 'Saved prompt' },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await waitFor(() => expect(screen.getByTestId('system-prompt')).toBeInTheDocument());
+
+    const prompt = screen.getByTestId('system-prompt') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(prompt, { target: { value: 'Edited prompt' } });
+    });
+
+    const discardButton = screen.getByTestId('discard-button');
+    await act(async () => {
+      discardButton.click();
+    });
+
+    expect(screen.getByTestId('system-prompt')).toHaveValue('Saved prompt');
   });
 });
 

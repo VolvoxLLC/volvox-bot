@@ -17,7 +17,9 @@ function getSelectedGuildId(): string {
 
 export function ConfigEditor() {
   const [draftConfig, setDraftConfig] = useState<GuildConfig | null>(null);
+  const [savedConfig, setSavedConfig] = useState<GuildConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -51,6 +53,7 @@ export function ConfigEditor() {
 
         if (!cancelled) {
           setDraftConfig(data);
+          setSavedConfig(data);
           setHasChanges(false);
         }
       } catch (err) {
@@ -79,6 +82,54 @@ export function ConfigEditor() {
     return <div role="alert">{error}</div>;
   }
 
+  async function saveChanges() {
+    const guildId = getSelectedGuildId();
+    if (!guildId || !draftConfig) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: 'ai.systemPrompt',
+          value: draftConfig.ai?.systemPrompt ?? '',
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const updatedSection: unknown = await res.json();
+      const nextDraftConfig = {
+        ...(draftConfig ?? {}),
+        ai: updatedSection && typeof updatedSection === 'object' ? updatedSection : draftConfig.ai,
+      } satisfies GuildConfig;
+
+      setDraftConfig(nextDraftConfig);
+      setSavedConfig(nextDraftConfig);
+      setHasChanges(false);
+    } catch (err) {
+      setError((err as Error).message || 'Failed to save config');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function discardChanges() {
+    if (!savedConfig) {
+      return;
+    }
+
+    setDraftConfig(structuredClone(savedConfig));
+    setHasChanges(false);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -88,15 +139,17 @@ export function ConfigEditor() {
         </div>
         <div className="flex items-center gap-2">
           <DiscardChangesButton
-            onReset={() => setHasChanges(false)}
-            disabled={!hasChanges}
+            onReset={discardChanges}
+            disabled={!hasChanges || saving}
             sectionLabel="all unsaved changes"
           />
           <button
             type="button"
-            className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+            onClick={() => void saveChanges()}
+            disabled={!hasChanges || saving}
+            className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Save Changes
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </div>
