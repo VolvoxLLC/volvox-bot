@@ -85,10 +85,21 @@ describe('ai module', () => {
 
       await vi.waitFor(() => {
         expect(historyRef).toHaveLength(3);
-        expect(historyRef[0]).toEqual({ role: 'user', content: 'db message' });
-        expect(historyRef[1]).toEqual({ role: 'assistant', content: 'db reply' });
-        expect(historyRef[2]).toMatchObject({ role: 'user', content: 'concurrent message' });
-        expect(historyRef[2].timestamp).toEqual(expect.any(Number));
+        expect(historyRef[0]).toMatchObject({
+          role: 'user',
+          content: 'db message',
+          timestamp: expect.any(Number),
+        });
+        expect(historyRef[1]).toMatchObject({
+          role: 'assistant',
+          content: 'db reply',
+          timestamp: expect.any(Number),
+        });
+        expect(historyRef[2]).toMatchObject({
+          role: 'user',
+          content: 'concurrent message',
+          timestamp: expect.any(Number),
+        });
         expect(getConversationHistory().get('race-channel')).toBe(historyRef);
       });
     });
@@ -108,7 +119,7 @@ describe('ai module', () => {
       expect(history[0].content).toBe('from db');
       expect(history[1].content).toBe('response');
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT role, content FROM conversations'),
+        expect.stringContaining('SELECT role, content, created_at FROM conversations'),
         ['ch-new', 20],
       );
     });

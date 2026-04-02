@@ -6,8 +6,8 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-import { handleWebhook, validateWebhookUrl } from '../../../src/modules/actions/webhook.js';
 import { info, warn } from '../../../src/logger.js';
+import { handleWebhook, validateWebhookUrl } from '../../../src/modules/actions/webhook.js';
 
 function makeContext() {
   return {
@@ -89,10 +89,7 @@ describe('handleWebhook', () => {
       }),
     );
 
-    expect(info).toHaveBeenCalledWith(
-      'webhook fired',
-      expect.objectContaining({ status: 200 }),
-    );
+    expect(info).toHaveBeenCalledWith('webhook fired', expect.objectContaining({ status: 200 }));
   });
 
   it('should skip on invalid URL', async () => {
@@ -100,10 +97,7 @@ describe('handleWebhook', () => {
     globalThis.fetch = mockFetch;
 
     const ctx = makeContext();
-    await handleWebhook(
-      { type: 'webhook', url: 'not-a-url', payload: '{}' },
-      ctx,
-    );
+    await handleWebhook({ type: 'webhook', url: 'not-a-url', payload: '{}' }, ctx);
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(
@@ -118,10 +112,7 @@ describe('handleWebhook', () => {
     globalThis.fetch = mockFetch;
 
     const ctx = makeContext();
-    await handleWebhook(
-      { type: 'webhook', url: 'https://example.com/hook', payload: '{}' },
-      ctx,
-    );
+    await handleWebhook({ type: 'webhook', url: 'https://example.com/hook', payload: '{}' }, ctx);
 
     expect(warn).toHaveBeenCalledWith(
       'webhook timed out (5s)',
@@ -134,10 +125,7 @@ describe('handleWebhook', () => {
     globalThis.fetch = mockFetch;
 
     const ctx = makeContext();
-    await handleWebhook(
-      { type: 'webhook', url: 'https://example.com/hook', payload: '{}' },
-      ctx,
-    );
+    await handleWebhook({ type: 'webhook', url: 'https://example.com/hook', payload: '{}' }, ctx);
 
     expect(warn).toHaveBeenCalledWith(
       'webhook request failed',
@@ -150,10 +138,7 @@ describe('handleWebhook', () => {
     globalThis.fetch = mockFetch;
 
     const ctx = makeContext();
-    await handleWebhook(
-      { type: 'webhook', url: 'https://example.com/hook' },
-      ctx,
-    );
+    await handleWebhook({ type: 'webhook', url: 'https://example.com/hook' }, ctx);
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/hook',

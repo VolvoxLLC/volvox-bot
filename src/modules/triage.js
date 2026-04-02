@@ -325,7 +325,7 @@ async function runResponder(
   );
   const parsed = parseRespondResult(respondMessage, channelId);
 
-  if (!parsed || !parsed.responses?.length) {
+  if (!parsed?.responses?.length) {
     warn('Responder returned no responses', { channelId });
     return null;
   }
@@ -538,7 +538,15 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
       ).catch((err) => debug('Moderation log fire-and-forget failed', { error: err.message }));
     }
 
-    const didSend = await sendResponses(channel, parsed, classification, snapshot, evalConfig, stats, channelId);
+    const didSend = await sendResponses(
+      channel,
+      parsed,
+      classification,
+      snapshot,
+      evalConfig,
+      stats,
+      channelId,
+    );
 
     // Record response timestamp for cooldown tracking — only if we actually sent something
     if (didSend) setLastResponseAt(channelId);

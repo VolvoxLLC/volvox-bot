@@ -411,7 +411,9 @@ describe('configValidation', () => {
     });
 
     it('should accept valid xp.defaultActions array', () => {
-      expect(validateSingleValue('xp.defaultActions', [{ type: 'grantRole', roleId: '123' }])).toEqual([]);
+      expect(
+        validateSingleValue('xp.defaultActions', [{ type: 'grantRole', roleId: '123' }]),
+      ).toEqual([]);
     });
 
     it('should reject defaultActions missing type', () => {
@@ -420,7 +422,9 @@ describe('configValidation', () => {
     });
 
     it('should accept valid xp.roleRewards object', () => {
-      expect(validateSingleValue('xp.roleRewards', { stackRoles: true, removeOnLevelDown: false })).toEqual([]);
+      expect(
+        validateSingleValue('xp.roleRewards', { stackRoles: true, removeOnLevelDown: false }),
+      ).toEqual([]);
     });
 
     it('should reject non-boolean roleRewards.stackRoles', () => {

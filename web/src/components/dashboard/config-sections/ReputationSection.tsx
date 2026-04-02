@@ -119,8 +119,8 @@ export function ReputationSection({
             onBlur={() => {
               const nums = thresholdsRaw
                 .split(',')
-                .map((s: string) => Number(s.trim()))
-                .filter((n: number) => Number.isFinite(n) && n > 0);
+                .map((s) => Number(s.trim()))
+                .filter((n) => Number.isFinite(n) && n > 0);
               if (nums.length > 0) {
                 const sorted = [...nums].sort((a, b) => a - b);
                 const deduped = sorted.filter((t, i, arr) => i === 0 || t !== arr[i - 1]);

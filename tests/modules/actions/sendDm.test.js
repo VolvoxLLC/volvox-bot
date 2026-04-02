@@ -11,14 +11,13 @@ vi.mock('../../../src/utils/templateEngine.js', () => ({
   renderTemplate: vi.fn((tpl) => tpl),
 }));
 
+import { debug, warn } from '../../../src/logger.js';
 import {
   checkDmRateLimit,
   handleSendDm,
   recordDmSend,
   resetDmLimits,
-  sweepDmLimits,
 } from '../../../src/modules/actions/sendDm.js';
-import { debug, warn } from '../../../src/logger.js';
 import { renderTemplate } from '../../../src/utils/templateEngine.js';
 
 function makeContext({ sendFn } = {}) {

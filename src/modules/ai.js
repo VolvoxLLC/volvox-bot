@@ -221,7 +221,7 @@ function hydrateHistory(channelId) {
   const limit = getHistoryLength();
   const hydrationPromise = pool
     .query(
-      `SELECT role, content FROM conversations
+      `SELECT role, content, created_at FROM conversations
        WHERE channel_id = $1
        ORDER BY created_at DESC
        LIMIT $2`,
@@ -232,6 +232,7 @@ function hydrateHistory(channelId) {
         const dbHistory = rows.reverse().map((row) => ({
           role: row.role,
           content: row.content,
+          timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
         }));
 
         // Merge DB history with any messages added while hydration was in-flight.

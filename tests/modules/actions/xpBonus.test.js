@@ -11,8 +11,8 @@ vi.mock('../../../src/db.js', () => ({
   getPool: () => ({ query: mockQuery }),
 }));
 
-import { handleXpBonus, isXpBonusActive } from '../../../src/modules/actions/xpBonus.js';
 import { warn } from '../../../src/logger.js';
+import { handleXpBonus, isXpBonusActive } from '../../../src/modules/actions/xpBonus.js';
 
 function makeContext() {
   return {

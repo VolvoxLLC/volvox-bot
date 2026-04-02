@@ -72,6 +72,8 @@ function renderPreviewNode(node: ChildNode, key: string): React.ReactNode {
   }
 
   const props: Record<string, unknown> = { key };
+  // SECURITY: Safe to forward attributes because parseDiscordMarkdown only generates
+  // attributes from escaped content or constrained patterns (e.g., \w+ for variables)
   for (const attr of node.getAttributeNames()) {
     props[attr === 'class' ? 'className' : attr] = node.getAttribute(attr) ?? undefined;
   }
@@ -169,10 +171,10 @@ const TOOLBAR_ACTIONS: ToolbarAction[] = [
 // Keyboard shortcut map
 // ---------------------------------------------------------------------------
 
-const SHORTCUT_MAP: Record<string, number> = {
-  'ctrl+b': 0,
-  'ctrl+i': 1,
-  'ctrl+u': 2,
+const SHORTCUT_MAP: Record<string, string> = {
+  'ctrl+b': 'Bold',
+  'ctrl+i': 'Italic',
+  'ctrl+u': 'Underline',
 };
 
 // ---------------------------------------------------------------------------
@@ -189,7 +191,18 @@ export function DiscordMarkdownEditor({
   disabled = false,
 }: DiscordMarkdownEditorProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const rafIdsRef = React.useRef<number[]>([]);
   const [showVariables, setShowVariables] = React.useState(false);
+
+  React.useEffect(
+    () => () => {
+      for (const id of rafIdsRef.current) {
+        cancelAnimationFrame(id);
+      }
+      rafIdsRef.current = [];
+    },
+    [],
+  );
 
   const applyAction = React.useCallback(
     (action: ToolbarAction['action']) => {
@@ -202,12 +215,16 @@ export function DiscordMarkdownEditor({
 
       onChange(result.text);
 
-      requestAnimationFrame(() => {
-        textarea.focus();
-        const newStart = result.selectionStart ?? result.cursorPos ?? end;
-        const newEnd = result.selectionEnd ?? result.cursorPos ?? end;
-        textarea.setSelectionRange(newStart, newEnd);
+      const rafId = requestAnimationFrame(() => {
+        rafIdsRef.current = rafIdsRef.current.filter((id) => id !== rafId);
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const newStart = result.selectionStart ?? result.cursorPos ?? end;
+          const newEnd = result.selectionEnd ?? result.cursorPos ?? end;
+          textareaRef.current.setSelectionRange(newStart, newEnd);
+        }
       });
+      rafIdsRef.current.push(rafId);
     },
     [value, onChange],
   );
@@ -223,10 +240,14 @@ export function DiscordMarkdownEditor({
       onChange(result.text);
       setShowVariables(false);
 
-      requestAnimationFrame(() => {
-        textarea.focus();
-        textarea.setSelectionRange(result.cursorPos, result.cursorPos);
+      const rafId = requestAnimationFrame(() => {
+        rafIdsRef.current = rafIdsRef.current.filter((id) => id !== rafId);
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(result.cursorPos, result.cursorPos);
+        }
       });
+      rafIdsRef.current.push(rafId);
     },
     [value, onChange],
   );
@@ -234,10 +255,13 @@ export function DiscordMarkdownEditor({
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const key = `${e.ctrlKey || e.metaKey ? 'ctrl+' : ''}${e.key.toLowerCase()}`;
-      const actionIndex = SHORTCUT_MAP[key];
-      if (actionIndex !== undefined) {
-        e.preventDefault();
-        applyAction(TOOLBAR_ACTIONS[actionIndex].action);
+      const actionLabel = SHORTCUT_MAP[key];
+      if (actionLabel !== undefined) {
+        const matched = TOOLBAR_ACTIONS.find((a) => a.label === actionLabel);
+        if (matched) {
+          e.preventDefault();
+          applyAction(matched.action);
+        }
       }
     },
     [applyAction],
@@ -340,9 +364,8 @@ export function DiscordMarkdownEditor({
           />
         </div>
 
-        <div
+        <section
           className="min-h-[200px] border-t border-input px-3 py-2 md:border-t-0"
-          role="region"
           aria-label="Preview"
         >
           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -351,13 +374,13 @@ export function DiscordMarkdownEditor({
           <div className="discord-preview prose prose-sm dark:prose-invert max-w-none text-sm">
             {previewContent}
           </div>
-        </div>
+        </section>
       </div>
 
       <div className="flex items-center justify-end border-t border-input px-3 py-1">
-        <span role="status" className={cn('text-xs', charCountColor)} aria-label="Character count">
+        <output className={cn('text-xs', charCountColor)} aria-label="Character count">
           {value.length} / {maxLength}
-        </span>
+        </output>
       </div>
     </div>
   );

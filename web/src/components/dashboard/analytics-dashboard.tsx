@@ -34,7 +34,6 @@ import {
   ChannelFilterCard,
   CommandUsageCard,
   escapeCsvCell,
-  formatDeltaPercent,
   type KpiCard,
   KpiCardItem,
   KpiSkeleton,

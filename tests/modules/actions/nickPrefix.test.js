@@ -6,14 +6,10 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-import { handleNickPrefix, handleNickSuffix } from '../../../src/modules/actions/nickPrefix.js';
 import { warn } from '../../../src/logger.js';
+import { handleNickPrefix, handleNickSuffix } from '../../../src/modules/actions/nickPrefix.js';
 
-function makeContext({
-  displayName = 'TestUser',
-  hasPermission = true,
-  isOwner = false,
-} = {}) {
+function makeContext({ displayName = 'TestUser', hasPermission = true, isOwner = false } = {}) {
   const setNickname = vi.fn().mockResolvedValue(undefined);
 
   return {

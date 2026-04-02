@@ -7,8 +7,8 @@
  * - Section-level revert functionality
  * - Normalization utilities
  */
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ─────────────────────────────────────────────────────────
 
@@ -17,9 +17,12 @@ vi.mock('sonner', () => ({
   Toaster: () => null,
 }));
 
+const mockPush = vi.fn();
+let mockPathname = '/dashboard/settings';
+
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/dashboard/settings',
-  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => mockPathname,
+  useRouter: () => ({ push: mockPush }),
 }));
 
 vi.mock('@/components/dashboard/reset-defaults-button', () => ({
@@ -97,6 +100,8 @@ const minimalConfig = {
 
 describe('ConfigEditor integration', () => {
   beforeEach(() => {
+    mockPathname = '/dashboard/settings';
+    mockPush.mockClear();
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
   });
