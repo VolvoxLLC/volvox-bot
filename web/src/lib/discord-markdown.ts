@@ -88,31 +88,44 @@ function closeList(ctx: ParseContext): void {
 }
 
 function parseHeading(line: string, ctx: ParseContext): boolean {
-  const match = /^(#{1,3})\s+(.+)$/.exec(line);
-  if (!match) {
+  let level = 0;
+  while (level < 3 && line[level] === '#') {
+    level += 1;
+  }
+
+  if (level === 0 || line[level] !== ' ') {
+    return false;
+  }
+
+  const content = line.slice(level).trim();
+  if (!content) {
     return false;
   }
 
   closeList(ctx);
-  const level = match[1].length;
-  ctx.result.push(`<h${level}>${parseInline(escapeHtml(match[2]))}</h${level}>`);
+  ctx.result.push(`<h${level}>${parseInline(escapeHtml(content))}</h${level}>`);
   return true;
 }
 
 function parseBlockQuote(line: string, ctx: ParseContext): boolean {
-  const match = /^>\s?(.*)$/.exec(line);
-  if (!match) {
+  if (!line.startsWith('>')) {
     return false;
   }
 
+  const content = line[1] === ' ' ? line.slice(2) : line.slice(1);
   closeList(ctx);
-  ctx.result.push(`<blockquote>${parseInline(escapeHtml(match[1]))}</blockquote>`);
+  ctx.result.push(`<blockquote>${parseInline(escapeHtml(content))}</blockquote>`);
   return true;
 }
 
 function parseUnorderedList(line: string, ctx: ParseContext): boolean {
-  const match = /^[-*]\s+(.+)$/.exec(line);
-  if (!match) {
+  const marker = line[0];
+  if ((marker !== '-' && marker !== '*') || line[1] !== ' ') {
+    return false;
+  }
+
+  const content = line.slice(2).trim();
+  if (!content) {
     return false;
   }
 
@@ -125,13 +138,22 @@ function parseUnorderedList(line: string, ctx: ParseContext): boolean {
     ctx.inList = 'ul';
   }
 
-  ctx.result.push(`<li>${parseInline(escapeHtml(match[1]))}</li>`);
+  ctx.result.push(`<li>${parseInline(escapeHtml(content))}</li>`);
   return true;
 }
 
 function parseOrderedList(line: string, ctx: ParseContext): boolean {
-  const match = /^\d+\.\s+(.+)$/.exec(line);
-  if (!match) {
+  let index = 0;
+  while (index < line.length && line[index] >= '0' && line[index] <= '9') {
+    index += 1;
+  }
+
+  if (index === 0 || line[index] !== '.' || line[index + 1] !== ' ') {
+    return false;
+  }
+
+  const content = line.slice(index + 2).trim();
+  if (!content) {
     return false;
   }
 
@@ -144,7 +166,7 @@ function parseOrderedList(line: string, ctx: ParseContext): boolean {
     ctx.inList = 'ol';
   }
 
-  ctx.result.push(`<li>${parseInline(escapeHtml(match[1]))}</li>`);
+  ctx.result.push(`<li>${parseInline(escapeHtml(content))}</li>`);
   return true;
 }
 
