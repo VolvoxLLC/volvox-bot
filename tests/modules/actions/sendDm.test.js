@@ -17,7 +17,6 @@ import {
   handleSendDm,
   recordDmSend,
   resetDmLimits,
-  sweepDmLimits,
 } from '../../../src/modules/actions/sendDm.js';
 import { renderTemplate } from '../../../src/utils/templateEngine.js';
 
