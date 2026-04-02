@@ -42,31 +42,44 @@ function parseCodeBlock(rawContent: string): { content: string; lang?: string } 
   };
 }
 
-/** Parse Discord markdown to HTML */
-export function parseDiscordMarkdown(input: string): string {
-  const codeBlockRegex = /```([\s\S]*?)```/g;
-  const segments: { type: 'text' | 'codeblock'; content: string; lang?: string }[] = [];
-  let lastIndex = 0;
+type MarkdownSegment = { type: 'text' | 'codeblock'; content: string; lang?: string };
 
-  let match = codeBlockRegex.exec(input);
-  while (match !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ type: 'text', content: input.slice(lastIndex, match.index) });
+function splitCodeBlockSegments(input: string): MarkdownSegment[] {
+  const segments: MarkdownSegment[] = [];
+  let index = 0;
+
+  while (index < input.length) {
+    const fenceStart = input.indexOf('```', index);
+    if (fenceStart === -1) {
+      break;
+    }
+
+    const fenceEnd = input.indexOf('```', fenceStart + 3);
+    if (fenceEnd === -1) {
+      break;
+    }
+
+    if (fenceStart > index) {
+      segments.push({ type: 'text', content: input.slice(index, fenceStart) });
     }
 
     segments.push({
       type: 'codeblock',
-      ...parseCodeBlock(match[1]),
+      ...parseCodeBlock(input.slice(fenceStart + 3, fenceEnd)),
     });
-    lastIndex = match.index + match[0].length;
-    match = codeBlockRegex.exec(input);
+    index = fenceEnd + 3;
   }
 
-  if (lastIndex < input.length) {
-    segments.push({ type: 'text', content: input.slice(lastIndex) });
+  if (index < input.length) {
+    segments.push({ type: 'text', content: input.slice(index) });
   }
 
-  return segments
+  return segments;
+}
+
+/** Parse Discord markdown to HTML */
+export function parseDiscordMarkdown(input: string): string {
+  return splitCodeBlockSegments(input)
     .map((segment) => {
       if (segment.type === 'codeblock') {
         const langAttr = segment.lang ? ` data-lang="${escapeHtml(segment.lang)}"` : '';
@@ -209,65 +222,148 @@ function parseInlineAndBlocks(text: string): string {
   return ctx.result.join('');
 }
 
-const INLINE_FORMAT_REGEX =
-  /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||\{\{(\w+)\}\}/g;
+interface InlineFormatMatch {
+  html: string;
+  nextIndex: number;
+}
+
+function isWordCharacter(char: string | undefined): boolean {
+  if (char === undefined || char.length !== 1) {
+    return false;
+  }
+
+  const code = char.charCodeAt(0);
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 65 && code <= 90) ||
+    (code >= 97 && code <= 122) ||
+    code === 95
+  );
+}
+
+function parseVariableAt(text: string, index: number): InlineFormatMatch | null {
+  if (!text.startsWith('{{', index)) {
+    return null;
+  }
+
+  const end = text.indexOf('}}', index + 2);
+  if (end === -1 || end === index + 2) {
+    return null;
+  }
+
+  const variable = text.slice(index + 2, end);
+  for (const char of variable) {
+    if (!isWordCharacter(char)) {
+      return null;
+    }
+  }
+
+  return {
+    html: `<span class="discord-variable inline-flex items-center rounded bg-primary/10 px-1 py-0.5 font-mono text-primary" data-variable="${variable}">{{${variable}}}</span>`,
+    nextIndex: end + 2,
+  };
+}
+
+function parseDelimitedInlineFormat(
+  text: string,
+  index: number,
+  delimiter: string,
+  render: (content: string) => string,
+): InlineFormatMatch | null {
+  if (!text.startsWith(delimiter, index)) {
+    return null;
+  }
+
+  const contentStart = index + delimiter.length;
+  const closeIndex = text.indexOf(delimiter, contentStart);
+  if (closeIndex <= contentStart) {
+    return null;
+  }
+
+  return {
+    html: render(formatInlineText(text.slice(contentStart, closeIndex))),
+    nextIndex: closeIndex + delimiter.length,
+  };
+}
+
+function parseInlineFormatAt(text: string, index: number): InlineFormatMatch | null {
+  return (
+    parseDelimitedInlineFormat(
+      text,
+      index,
+      '***',
+      (content) => `<strong><em>${content}</em></strong>`,
+    ) ??
+    parseDelimitedInlineFormat(text, index, '**', (content) => `<strong>${content}</strong>`) ??
+    parseDelimitedInlineFormat(text, index, '*', (content) => `<em>${content}</em>`) ??
+    parseDelimitedInlineFormat(text, index, '__', (content) => `<u>${content}</u>`) ??
+    parseDelimitedInlineFormat(text, index, '~~', (content) => `<s>${content}</s>`) ??
+    parseDelimitedInlineFormat(
+      text,
+      index,
+      '||',
+      (content) =>
+        `<span class="discord-spoiler inline-block rounded bg-foreground px-1 text-transparent transition-colors hover:text-background">${content}</span>`,
+    ) ??
+    parseVariableAt(text, index)
+  );
+}
 
 function formatInlineText(text: string): string {
   let result = '';
-  let lastIndex = 0;
+  let index = 0;
 
-  for (const match of text.matchAll(INLINE_FORMAT_REGEX)) {
-    const [fullMatch, boldItalic, bold, italic, underline, strikethrough, spoiler, variable] =
-      match;
-    const index = match.index ?? 0;
+  while (index < text.length) {
+    let match: InlineFormatMatch | null = null;
+    let matchIndex = index;
 
-    result += text.slice(lastIndex, index);
-
-    if (boldItalic !== undefined) {
-      result += `<strong><em>${formatInlineText(boldItalic)}</em></strong>`;
-    } else if (bold !== undefined) {
-      result += `<strong>${formatInlineText(bold)}</strong>`;
-    } else if (italic !== undefined) {
-      result += `<em>${formatInlineText(italic)}</em>`;
-    } else if (underline !== undefined) {
-      result += `<u>${formatInlineText(underline)}</u>`;
-    } else if (strikethrough !== undefined) {
-      result += `<s>${formatInlineText(strikethrough)}</s>`;
-    } else if (spoiler !== undefined) {
-      result += `<span class="discord-spoiler inline-block rounded bg-foreground px-1 text-transparent transition-colors hover:text-background">${formatInlineText(spoiler)}</span>`;
-    } else if (variable !== undefined) {
-      result += `<span class="discord-variable inline-flex items-center rounded bg-primary/10 px-1 py-0.5 font-mono text-primary" data-variable="${variable}">{{${variable}}}</span>`;
+    while (matchIndex < text.length) {
+      match = parseInlineFormatAt(text, matchIndex);
+      if (match) {
+        break;
+      }
+      matchIndex += 1;
     }
 
-    lastIndex = index + fullMatch.length;
+    if (!match) {
+      result += text.slice(index);
+      break;
+    }
+
+    result += text.slice(index, matchIndex);
+    result += match.html;
+    index = match.nextIndex;
   }
 
-  if (lastIndex === 0) {
-    return text;
-  }
-
-  return result + text.slice(lastIndex);
+  return result;
 }
 
 /** Parse inline markdown formatting */
 function parseInline(text: string): string {
   const segments: { isCode: boolean; content: string }[] = [];
-  const inlineCodeRegex = /`([^`]+)`/g;
-  let lastIndex = 0;
+  let index = 0;
 
-  let match = inlineCodeRegex.exec(text);
-  while (match !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ isCode: false, content: text.slice(lastIndex, match.index) });
+  while (index < text.length) {
+    const codeStart = text.indexOf('`', index);
+    if (codeStart === -1) {
+      break;
     }
 
-    segments.push({ isCode: true, content: match[1] });
-    lastIndex = inlineCodeRegex.lastIndex;
-    match = inlineCodeRegex.exec(text);
+    const codeEnd = text.indexOf('`', codeStart + 1);
+    if (codeEnd === -1) {
+      break;
+    }
+
+    if (codeStart > index) {
+      segments.push({ isCode: false, content: text.slice(index, codeStart) });
+    }
+
+    segments.push({ isCode: true, content: text.slice(codeStart + 1, codeEnd) });
+    index = codeEnd + 1;
   }
 
-  if (lastIndex < text.length) {
-    segments.push({ isCode: false, content: text.slice(lastIndex) });
+  if (index < text.length) {
+    segments.push({ isCode: false, content: text.slice(index) });
   }
 
   if (segments.length === 0) {
