@@ -4,7 +4,6 @@ import {
   Activity,
   ClipboardList,
   Clock,
-  Cog,
   LayoutDashboard,
   LifeBuoy,
   MessageSquare,
@@ -39,7 +38,6 @@ const navGroups = [
       { name: 'Moderation', href: '/dashboard/moderation', icon: Shield },
       { name: 'Members', href: '/dashboard/members', icon: Users },
       { name: 'Tickets', href: '/dashboard/tickets', icon: Ticket },
-      { name: 'Bot Config', href: '/dashboard/config', icon: Cog },
     ],
   },
   {
@@ -170,6 +168,9 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
           {/* Active Shine */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-foreground/30 to-transparent -translate-x-[150%] transition-transform duration-[1200ms] ease-in-out group-hover:translate-x-[150%] pointer-events-none" />
         </Link>
+        <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/35">
+          Volvox Dashboard · v1.0.0
+        </p>
       </div>
     </div>
   );

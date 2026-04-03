@@ -123,7 +123,9 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         title="Memory"
         value={health?.memory ? formatBytes(health.memory.heapUsed) : '—'}
         subtitle={
-          health?.memory ? `Total ${formatBytes(health.memory.heapTotal)}` : 'Memory configuration'
+          health?.memory
+            ? `Node heap total ${formatBytes(health.memory.heapTotal)}`
+            : 'Memory configuration'
         }
         icon={MemoryStick}
         iconColor="text-secondary"

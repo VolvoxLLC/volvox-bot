@@ -545,10 +545,10 @@ export function PerformanceDashboard() {
                 {[...(data?.responseTimes ?? [])]
                   .reverse()
                   .slice(0, 20)
-                  .map((s) => (
+                  .map((s, index) => (
                     <tr
-                      key={`${s.timestamp}-${s.name}`}
-                      className="transition-colors hover:bg-white/[0.02]"
+                      key={`${s.timestamp}-${s.name}-${index}`}
+                      className="transition-colors hover:bg-muted/30"
                     >
                       <td className="py-2 text-muted-foreground/60 tabular-nums">
                         {formatTs(s.timestamp)}

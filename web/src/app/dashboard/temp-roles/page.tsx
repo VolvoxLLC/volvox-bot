@@ -151,7 +151,7 @@ export default function TempRolesPage() {
                 Page
               </p>
               <p className="mt-3 text-lg font-bold md:text-xl">
-                {page} of {pagination?.pages ?? 1}
+                {pagination && pagination.total > 0 ? `${page} of ${pagination.pages}` : '0'}
               </p>
             </div>
           </div>
@@ -208,7 +208,7 @@ export default function TempRolesPage() {
                 </thead>
                 <tbody className="divide-y divide-border/10">
                   {rows.map((row) => (
-                    <tr key={row.id} className="transition-colors hover:bg-white/[0.02]">
+                    <tr key={row.id} className="transition-colors hover:bg-muted/30">
                       <td className="px-6 py-3">
                         <span className="font-medium text-foreground/80">{row.user_tag}</span>
                         <span className="ml-1.5 font-mono text-xs text-muted-foreground/40">

@@ -265,7 +265,7 @@ export function AnalyticsDashboard() {
   const showKpiSkeleton = loading && !analytics;
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div className="space-y-6">
       {error ? (
         <div
           className="group relative overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/5 p-6 backdrop-blur-xl"
@@ -306,7 +306,7 @@ export function AnalyticsDashboard() {
               return (
                 <div
                   key={card.label}
-                  className="glow-card group relative overflow-hidden rounded-[20px] border border-border/40 bg-gradient-to-br from-background/40 to-muted/20 p-5 backdrop-blur-3xl transition-all duration-500 hover:border-border/60 hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.3)] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"
+                  className="glow-card group relative min-h-[11rem] overflow-hidden rounded-[20px] border border-border/40 bg-gradient-to-br from-background/40 to-muted/20 p-5 backdrop-blur-3xl transition-all duration-500 hover:border-border/60 hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.3)] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"
                 >
                   {/* Background ambient light & large icon */}
                   <div className="absolute inset-0 bg-primary/[0.02] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />

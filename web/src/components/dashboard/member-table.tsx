@@ -94,7 +94,9 @@ function formatNumber(n: number): string {
  */
 function formatDateShort(iso: string | null): string {
   if (!iso) return '—';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(iso));
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
 }
 
 /**

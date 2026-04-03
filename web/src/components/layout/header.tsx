@@ -271,7 +271,7 @@ export function Header() {
                 <DropdownMenuPage id="main">
                   <DropdownMenuRadioGroup
                     value={rangePreset}
-                    onValueChange={(v) => v !== 'custom' && setRangePreset(v as any)}
+                    onValueChange={(v) => v !== 'custom' && setRangePreset(v as typeof rangePreset)}
                   >
                     <DropdownMenuRadioItem value="today">Today</DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="week">This Week</DropdownMenuRadioItem>
@@ -380,6 +380,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handleModerationRefresh}
               disabled={!guildId || statsLoading || casesLoading}
               className={cn(
@@ -404,6 +405,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handleMembersRefresh}
               disabled={!guildId || membersLoading}
               className={cn(
@@ -424,6 +426,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handleTicketsRefresh}
               disabled={!guildId || ticketsLoading}
               className={cn(
@@ -444,6 +447,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handleConversationsRefresh}
               disabled={!guildId || conversationsLoading}
               className={cn(
@@ -465,6 +469,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handleAuditLogRefresh}
               disabled={!guildId || auditLogLoading}
               className={cn(
@@ -485,6 +490,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handleTempRolesRefresh}
               disabled={!guildId || tempRolesLoading}
               className={cn(
@@ -505,6 +511,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handlePerformanceRefresh}
               disabled={performanceLoading}
               className={cn(
@@ -525,6 +532,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
             <button
+              type="button"
               onClick={handleHealthRefresh}
               disabled={!guildId || healthLoading}
               className={cn(
@@ -566,8 +574,8 @@ export function Header() {
                 <div className="relative z-10 w-full h-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                   <Avatar className="h-[34px] w-[34px] rounded-[14px]">
                     <AvatarImage
-                      src={session.user.image!}
-                      alt={session.user.name!}
+                      src={session.user.image ?? ''}
+                      alt={session.user.name ?? ''}
                       className="shadow-inner"
                     />
                     <AvatarFallback className="rounded-[14px] bg-background/50 font-black tracking-widest text-[10px] text-muted-foreground/60 shadow-inner">
@@ -613,13 +621,13 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <a
-                        href="https://github.com/VolvoxLLC/volvox-bot"
+                        href="https://github.com/VolvoxLLC"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2"
                       >
                         <GithubIcon className="h-4 w-4 opacity-60" />
-                        <span className="text-xs font-bold tracking-tight">Repository</span>
+                        <span className="text-xs font-bold tracking-tight">GitHub</span>
                       </a>
                     </DropdownMenuItem>
                   </div>

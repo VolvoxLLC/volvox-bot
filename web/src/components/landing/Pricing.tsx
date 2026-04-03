@@ -8,16 +8,14 @@ import { getBotInviteUrl } from '@/lib/discord';
 import { ScrollStage } from './ScrollStage';
 import { SectionHeader } from './SectionHeader';
 
-const GITHUB_REPO_URL = 'https://github.com/VolvoxLLC/volvox-bot';
-
 const tiers = [
   {
     name: 'Free',
     price: { monthly: 0, annual: 0 },
     description: 'For side projects that might actually ship.',
     cta: 'Get Started',
-    href: GITHUB_REPO_URL,
-    features: ['Core bot features', '1 Discord server', 'Community support', 'Self-hosted option'],
+    href: null,
+    features: ['Core bot features', '1 Discord server', 'Community support'],
     popular: false,
     cardClassName: 'border border-border',
     badgeClassName: '',
@@ -186,7 +184,7 @@ export function Pricing() {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="text-center text-sm text-muted-foreground"
           >
-            All plans include open-source self-hosting option. No credit card required for Free.
+            No credit card required for Free tier.
           </motion.p>
         </ScrollStage>
       </div>

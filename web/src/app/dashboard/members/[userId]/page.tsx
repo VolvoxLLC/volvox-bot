@@ -247,6 +247,7 @@ export default function MemberDetailPage() {
                     ...prev.reputation,
                     xp: result.xp,
                     level: result.level ?? prev.reputation.level,
+                    next_level_xp: result.next_level_xp ?? prev.reputation.next_level_xp,
                   },
                 }
               : prev,

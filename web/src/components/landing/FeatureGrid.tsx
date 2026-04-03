@@ -66,9 +66,9 @@ const features: readonly Feature[] = [
     accentColor: 'hsl(var(--secondary))',
     preview: (
       <div className="flex items-end gap-1.5 h-10 px-1">
-        {[40, 75, 55, 90, 65, 85].map((h, i) => (
+        {[40, 75, 55, 90, 65, 85].map((h) => (
           <motion.div
-            key={i}
+            key={`bar-${h}`}
             initial={{ height: 0 }}
             whileInView={{ height: `${h}%` }}
             className="flex-1 rounded-t-sm bg-gradient-to-t from-[hsl(var(--secondary))]/10 to-[hsl(var(--secondary))]"

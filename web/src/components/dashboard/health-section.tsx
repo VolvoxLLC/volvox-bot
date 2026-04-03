@@ -2,6 +2,7 @@
 
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useHealthStore } from '@/stores/health-store';
@@ -18,7 +19,7 @@ function formatLastUpdated(date: Date): string {
   }).format(date);
 }
 
-export function HealthSection() {
+export function HealthSection({ children }: { children?: ReactNode }) {
   const router = useRouter();
   const guildId = useGuildSelection();
   const { health, loading, error, lastUpdatedAt, refresh } = useHealthStore();
@@ -91,6 +92,8 @@ export function HealthSection() {
       )}
 
       <HealthCards health={health} loading={loading} />
+
+      {children}
 
       <div className="stagger-fade-in" style={{ animationDelay: '200ms' }}>
         <RestartHistory health={health} loading={loading} />

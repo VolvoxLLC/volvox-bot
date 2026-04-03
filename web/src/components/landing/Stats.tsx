@@ -56,7 +56,7 @@ const testimonials = [
     id: 'testimonial-3',
     quote: '[Quote from a real user — coming soon]',
     author: 'Community Member',
-    role: 'Open Source Contributor',
+    role: 'Power User',
     lineClassName: 'bg-accent/65',
     quoteClassName: 'text-accent/25',
     avatarBg: 'bg-accent/15 text-accent',
