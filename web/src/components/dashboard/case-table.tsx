@@ -256,7 +256,7 @@ export function CaseTable({
             ) : (
               cases.map((c) => (
                 <Fragment key={c.id}>
-                  <TableRow className="cursor-pointer" onClick={() => toggleExpand(c)}>
+                  <TableRow className="cursor-pointer transition-colors hover:bg-muted/30" onClick={() => toggleExpand(c)}>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       #{c.case_number}
                     </TableCell>

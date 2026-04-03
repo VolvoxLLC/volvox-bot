@@ -300,7 +300,7 @@ export default function TicketsClient() {
                   {tickets.map((ticket) => (
                     <TableRow
                       key={ticket.id}
-                      className="cursor-pointer hover:bg-white/[0.02] border-white/5"
+                      className="cursor-pointer transition-colors hover:bg-muted/30 border-white/5"
                       tabIndex={0}
                       onClick={() => handleRowClick(ticket.id)}
                       onKeyDown={(e) => {

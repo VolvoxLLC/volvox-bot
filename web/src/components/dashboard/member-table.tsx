@@ -297,7 +297,7 @@ export function MemberTable({
               members.map((m) => (
                 <TableRow
                   key={m.id}
-                  className="cursor-pointer group/row"
+                  className="cursor-pointer group/row transition-colors hover:bg-muted/30"
                   tabIndex={0}
                   onClick={() => onRowClick(m.id)}
                   onKeyDown={(e) => handleRowKeyDown(e, m.id, onRowClick)}

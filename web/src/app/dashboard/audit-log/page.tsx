@@ -321,7 +321,7 @@ export default function AuditLogPage() {
                       return (
                         <Fragment key={entry.id}>
                           <TableRow
-                            className="cursor-pointer border-border/10 hover:bg-white/[0.02]"
+                            className="cursor-pointer border-border/10 transition-colors hover:bg-muted/30"
                             tabIndex={0}
                             onClick={() => toggleRow(entry.id)}
                             onKeyDown={(e) => {

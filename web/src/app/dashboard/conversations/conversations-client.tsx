@@ -255,7 +255,7 @@ export default function ConversationsClient() {
                     {conversations.map((convo) => (
                       <TableRow
                         key={convo.id}
-                        className="cursor-pointer border-border/10 hover:bg-white/[0.02]"
+                        className="cursor-pointer border-border/10 transition-colors hover:bg-muted/30"
                         onClick={() => {
                           if (guildId)
                             router.push(
