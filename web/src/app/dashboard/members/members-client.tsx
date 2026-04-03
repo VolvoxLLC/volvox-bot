@@ -164,10 +164,11 @@ export default function MembersClient() {
             </div>
             <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Sort Strategy
+                Sorted By
               </p>
-              <p className="mt-3 text-lg font-semibold tracking-tight capitalize md:text-xl text-foreground/90">
-                {sortColumn} · {sortOrder}
+              <p className="mt-3 text-lg font-semibold tracking-tight md:text-xl text-foreground/90">
+                {sortColumn === 'username' ? 'Name' : sortColumn === 'xp' ? 'XP' : sortColumn === 'level' ? 'Level' : sortColumn}{' '}
+                {sortOrder === 'asc' ? '↑' : '↓'}
               </p>
             </div>
           </div>
