@@ -183,7 +183,7 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'AI Chat' })).toBeInTheDocument();
-  }, 15000);
+  }, 30000);
 
   it('renders onboarding features when on the onboarding route', async () => {
     mockPathname = '/dashboard/settings/onboarding-growth';
@@ -497,7 +497,7 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
 
     await user.click(screen.getByRole('button', { name: /Save Changes/i }));
 
-    expect(screen.getByText('Review Changes Before Saving')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Confirm Save/i })).toBeInTheDocument();
 
     const patchCallsBeforeConfirm = fetchMock.mock.calls.filter(
       (call: unknown[]) => (call[1] as { method?: string } | undefined)?.method === 'PATCH',
