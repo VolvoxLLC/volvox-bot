@@ -22,7 +22,7 @@ import {
   LineChart,
   Pie,
   PieChart,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -305,7 +305,7 @@ export function MessageVolumeCard({
                 <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                 <XAxis dataKey="label" minTickGap={20} tick={{ fill: chart.tooltipText }} />
                 <YAxis allowDecimals={false} tick={{ fill: chart.tooltipText }} />
-                <Tooltip
+                <RechartsTooltip
                   contentStyle={{
                     backgroundColor: chart.tooltipBg,
                     borderColor: chart.tooltipBorder,
@@ -419,7 +419,7 @@ function ModelPieChart({
                 <Cell key={entry.model} fill={entry.fill} />
               ))}
             </Pie>
-            <Tooltip
+            <RechartsTooltip
               contentStyle={{
                 backgroundColor: chart.tooltipBg,
                 borderColor: chart.tooltipBorder,
@@ -464,7 +464,7 @@ function TokenBarChart({
             <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
             <XAxis dataKey="label" tick={{ fill: chart.tooltipText }} />
             <YAxis allowDecimals={false} tick={{ fill: chart.tooltipText }} />
-            <Tooltip
+            <RechartsTooltip
               contentStyle={{
                 backgroundColor: chart.tooltipBg,
                 borderColor: chart.tooltipBorder,
@@ -533,7 +533,7 @@ export function TopChannelsCard({
                   width={140}
                   tick={{ fill: chart.tooltipText }}
                 />
-                <Tooltip
+                <RechartsTooltip
                   contentStyle={{
                     backgroundColor: chart.tooltipBg,
                     borderColor: chart.tooltipBorder,
