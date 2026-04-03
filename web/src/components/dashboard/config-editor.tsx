@@ -1,91 +1,180 @@
 'use client';
 
-import { Save } from 'lucide-react';
-import { ConfigProvider, useConfigContext } from '@/components/dashboard/config-context';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { SELECTED_GUILD_KEY } from '@/lib/guild-selection';
+import type { GuildConfig } from './config-editor-utils';
+import { isGuildConfig } from './config-editor-utils';
 import { DiscardChangesButton } from './reset-defaults-button';
 import { SystemPromptEditor } from './system-prompt-editor';
 
-export function ConfigEditor() {
-  return (
-    <ConfigProvider>
-      <ConfigEditorContent />
-    </ConfigProvider>
-  );
+function getSelectedGuildId(): string {
+  try {
+    return localStorage.getItem(SELECTED_GUILD_KEY) ?? '';
+  } catch {
+    return '';
+  }
 }
 
-function ConfigEditorContent() {
-  const {
-    guildId,
-    draftConfig,
-    loading,
-    error,
-    saving,
-    hasChanges,
-    hasValidationErrors,
-    openDiffModal,
-    discardChanges,
-    fetchConfig,
-    updateDraftConfig,
-  } = useConfigContext();
+export function ConfigEditor() {
+  const [draftConfig, setDraftConfig] = useState<GuildConfig | null>(null);
+  const [savedConfig, setSavedConfig] = useState<GuildConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
-  if (!guildId) {
-    return <div className="p-6">Select a server to manage its configuration.</div>;
-  }
+  useEffect(() => {
+    const guildId = getSelectedGuildId();
+    if (!guildId) {
+      setLoading(false);
+      setDraftConfig({});
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadConfig() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
+          cache: 'no-store',
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data: unknown = await res.json();
+        if (!isGuildConfig(data)) {
+          throw new Error('Invalid config response');
+        }
+
+        if (!cancelled) {
+          setDraftConfig(data);
+          setSavedConfig(data);
+          setHasChanges(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError((err as Error).message || 'Failed to load config');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (loading) {
-    return <div className="p-6">Loading configuration...</div>;
+    return <div>Loading configuration…</div>;
   }
 
   if (error) {
-    return (
-      <div className="space-y-4 p-6">
-        <p>{error}</p>
-        <Button variant="outline" onClick={() => fetchConfig(guildId)}>
-          Retry
-        </Button>
-      </div>
-    );
+    return <div role="alert">{error}</div>;
   }
 
-  if (!draftConfig) {
-    return null;
+  async function saveChanges() {
+    const guildId = getSelectedGuildId();
+    if (!guildId || !draftConfig) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: 'ai.systemPrompt',
+          value: draftConfig.ai?.systemPrompt ?? '',
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const updatedSection: unknown = await res.json();
+      const nextDraftConfig = {
+        ...(draftConfig ?? {}),
+        ai: updatedSection && typeof updatedSection === 'object' ? updatedSection : draftConfig.ai,
+      } satisfies GuildConfig;
+
+      setDraftConfig(nextDraftConfig);
+      setSavedConfig(nextDraftConfig);
+      setHasChanges(false);
+    } catch (err) {
+      setError((err as Error).message || 'Failed to save config');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function discardChanges() {
+    if (!savedConfig) {
+      return;
+    }
+
+    setDraftConfig(structuredClone(savedConfig));
+    setHasChanges(false);
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Bot Configuration</h1>
-          <p className="text-sm text-muted-foreground">Manage core bot settings in one place.</p>
+          <h1 className="text-2xl font-semibold">Bot Configuration</h1>
+          <p className="text-sm text-muted-foreground">Manage guild configuration sections.</p>
         </div>
         <div className="flex items-center gap-2">
-          <DiscardChangesButton onReset={discardChanges} disabled={saving || !hasChanges} />
-          <Button onClick={openDiffModal} disabled={saving || !hasChanges || hasValidationErrors}>
-            <Save className="mr-2 h-4 w-4" />
-            Save Changes
-          </Button>
+          <DiscardChangesButton
+            onReset={discardChanges}
+            disabled={!hasChanges || saving}
+            sectionLabel="all unsaved changes"
+          />
+          <button
+            type="button"
+            onClick={() => void saveChanges()}
+            disabled={!hasChanges || saving}
+            className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
         </div>
       </div>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">AI Chat</h2>
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">AI Chat</h2>
         <SystemPromptEditor
-          value={draftConfig.ai?.systemPrompt ?? ''}
-          onChange={(value) =>
-            updateDraftConfig((prev) => ({
-              ...prev,
-              ai: { ...prev.ai, systemPrompt: value },
-            }))
-          }
+          value={draftConfig?.ai?.systemPrompt ?? ''}
+          onChange={(systemPrompt) => {
+            setDraftConfig((prev) => ({
+              ...(prev ?? {}),
+              ai: {
+                ...(prev?.ai ?? {}),
+                systemPrompt,
+              },
+            }));
+            setHasChanges(true);
+          }}
         />
       </section>
 
-      {/* TODO: Integrate DiscordMarkdownEditor for welcome message template editing */}
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Welcome Messages</h2>
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">Welcome Messages</h2>
         <p className="text-sm text-muted-foreground">
-          Configure welcome message templates for new server members.
+          Welcome message configuration is available in the settings workspace.
         </p>
       </section>
     </div>

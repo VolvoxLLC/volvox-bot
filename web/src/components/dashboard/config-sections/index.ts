@@ -7,6 +7,5 @@ export { EngagementSection } from './EngagementSection';
 export { GitHubSection } from './GitHubSection';
 export { MemorySection } from './MemorySection';
 export { PermissionsSection } from './PermissionsSection';
-export { ReputationSection } from './ReputationSection';
 export { StarboardSection } from './StarboardSection';
 export { TicketsSection } from './TicketsSection';
