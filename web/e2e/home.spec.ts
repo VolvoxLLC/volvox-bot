@@ -26,6 +26,11 @@ test.describe('Header', () => {
   });
 
   test('shows Sign In link', async ({ page }) => {
+    // Sign In link is hidden on mobile (hidden md:flex), so only assert on desktop
+    test.skip(
+      page.viewportSize()?.width !== undefined && page.viewportSize()!.width < 768,
+      'Sign In link is hidden on mobile viewports',
+    );
     const signInLink = page.locator('header a[href="/login"]').first();
     await expect(signInLink).toBeVisible();
     await expect(signInLink).toHaveText('Sign In');
