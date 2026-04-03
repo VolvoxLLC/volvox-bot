@@ -78,17 +78,35 @@ function splitCodeBlockSegments(input: string): MarkdownSegment[] {
 }
 
 /** Parse Discord markdown to HTML */
-export function parseDiscordMarkdown(input: string): string {
-  return splitCodeBlockSegments(input)
-    .map((segment) => {
-      if (segment.type === 'codeblock') {
-        const langAttr = segment.lang ? ` data-lang="${escapeHtml(segment.lang)}"` : '';
-        return `<pre><code${langAttr}>${escapeHtml(segment.content)}</code></pre>`;
-      }
+/** Set of valid variable names for the current parse pass. Empty means match any `\w+`. */
+let activeVariables: ReadonlySet<string> | null = null;
 
-      return parseInlineAndBlocks(segment.content);
-    })
-    .join('');
+/**
+ * Parse Discord-flavored markdown to HTML.
+ *
+ * @param input - The raw markdown string
+ * @param validVariables - When provided, only these names are rendered as variable badges.
+ *   Any `{name}` or `{{name}}` not in the set is left as plain text.
+ */
+export function parseDiscordMarkdown(
+  input: string,
+  validVariables?: readonly string[],
+): string {
+  activeVariables = validVariables ? new Set(validVariables) : null;
+  try {
+    return splitCodeBlockSegments(input)
+      .map((segment) => {
+        if (segment.type === 'codeblock') {
+          const langAttr = segment.lang ? ` data-lang="${escapeHtml(segment.lang)}"` : '';
+          return `<pre><code${langAttr}>${escapeHtml(segment.content)}</code></pre>`;
+        }
+
+        return parseInlineAndBlocks(segment.content);
+      })
+      .join('');
+  } finally {
+    activeVariables = null;
+  }
 }
 
 function closeList(ctx: ParseContext): void {
@@ -242,25 +260,36 @@ function isWordCharacter(char: string | undefined): boolean {
 }
 
 function parseVariableAt(text: string, index: number): InlineFormatMatch | null {
-  if (!text.startsWith('{{', index)) {
+  // Match double-brace {{var}} or single-brace {var} template variables.
+  const isDouble = text.startsWith('{{', index);
+  const isSingle = !isDouble && text[index] === '{';
+  if (!isDouble && !isSingle) {
     return null;
   }
 
-  const end = text.indexOf('}}', index + 2);
-  if (end === -1 || end === index + 2) {
+  const openLen = isDouble ? 2 : 1;
+  const closeDelim = isDouble ? '}}' : '}';
+  const end = text.indexOf(closeDelim, index + openLen);
+  if (end === -1 || end === index + openLen) {
     return null;
   }
 
-  const variable = text.slice(index + 2, end);
+  const variable = text.slice(index + openLen, end);
   for (const char of variable) {
     if (!isWordCharacter(char)) {
       return null;
     }
   }
 
+  // When a valid-variables allowlist is active, skip unknown names.
+  if (activeVariables && !activeVariables.has(variable)) {
+    return null;
+  }
+
+  const display = `${isDouble ? '{{' : '{'}${variable}${isDouble ? '}}' : '}'}`;
   return {
-    html: `<span class="discord-variable inline-flex items-center rounded bg-primary/10 px-1 py-0.5 font-mono text-primary" data-variable="${variable}">{{${variable}}}</span>`,
-    nextIndex: end + 2,
+    html: `<span class="discord-variable inline rounded bg-primary/10 px-1 font-mono text-primary" data-variable="${variable}">${display}</span>`,
+    nextIndex: end + (isDouble ? 2 : 1),
   };
 }
 

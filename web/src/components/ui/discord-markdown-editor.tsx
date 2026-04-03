@@ -41,6 +41,10 @@ export type DiscordMarkdownEditorProps = Readonly<{
   value: string;
   onChange: (value: string) => void;
   variables?: string[];
+  /** Delimiters wrapping variable names when inserted and displayed. Defaults to `['{{', '}}']`. */
+  variableDelimiters?: readonly [string, string];
+  /** Maps variable names to sample values displayed inside the preview badges. */
+  variableSamples?: Readonly<Record<string, string>>;
   maxLength?: number;
   placeholder?: string;
   className?: string;
@@ -201,15 +205,20 @@ const SHORTCUT_MAP: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
+const DEFAULT_DELIMITERS = ['{{', '}}'] as const;
+
 export function DiscordMarkdownEditor({
   value,
   onChange,
   variables = [],
+  variableDelimiters = DEFAULT_DELIMITERS,
+  variableSamples,
   maxLength = 2000,
   placeholder = 'Enter your message...',
   className,
   disabled = false,
 }: DiscordMarkdownEditorProps) {
+  const [varOpen, varClose] = variableDelimiters;
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const rafIdsRef = React.useRef<number[]>([]);
   const [showVariables, setShowVariables] = React.useState(false);
@@ -292,10 +301,25 @@ export function DiscordMarkdownEditor({
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
-  const previewContent = React.useMemo(
-    () => (isMounted ? renderPreviewContent(parseDiscordMarkdown(value)) : null),
-    [value, isMounted],
-  );
+  const previewContent = React.useMemo(() => {
+    if (!isMounted) return null;
+    let html = parseDiscordMarkdown(value, variables.length > 0 ? variables : undefined);
+    if (variableSamples) {
+      html = html.replace(
+        /data-variable="(\w+)">[^<]+<\/span>/g,
+        (match, name: string) => {
+          const sample = variableSamples[name];
+          if (sample === undefined) return match;
+          const escaped = sample
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          return `data-variable="${name}">${escaped}</span>`;
+        },
+      );
+    }
+    return renderPreviewContent(html);
+  }, [value, isMounted, variableSamples]);
   const getCharCountColor = (): string => {
     if (isOverLimit) {
       return 'text-red-500';
@@ -364,7 +388,7 @@ export function DiscordMarkdownEditor({
                   onSelect={() => insertVariable(variable)}
                 >
                   <span className="rounded bg-primary/10 px-1 py-0.5 font-mono text-primary">
-                    {`{{${variable}}}`}
+                    {`${varOpen}${variable}${varClose}`}
                   </span>
                   {variable}
                 </DropdownMenuItem>
@@ -374,8 +398,8 @@ export function DiscordMarkdownEditor({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2">
-        <div className="relative md:border-r md:border-input">
+      <div className="grid min-h-[200px] grid-cols-1 md:grid-cols-2">
+        <div className="md:border-r md:border-input">
           <textarea
             ref={textareaRef}
             value={value}
@@ -384,19 +408,16 @@ export function DiscordMarkdownEditor({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="min-h-[200px] w-full resize-y bg-transparent px-3 py-2 font-mono text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[200px] w-full resize-none bg-transparent px-3 py-2 font-mono text-sm leading-relaxed [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Markdown editor"
           />
         </div>
 
         <section
-          className="min-h-[200px] border-t border-input px-3 py-2 md:border-t-0"
+          className="border-t border-input px-3 py-2 md:border-t-0"
           aria-label="Preview"
         >
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Preview
-          </div>
-          <div className="discord-preview prose prose-sm dark:prose-invert max-w-none text-sm">
+          <div className="discord-preview max-w-none text-sm leading-relaxed">
             {previewContent}
           </div>
         </section>
