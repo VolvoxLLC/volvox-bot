@@ -153,12 +153,18 @@ export function CommunitySettingsSection({
   const tldrMaxMessages = draftConfig.tldr?.maxMessages ?? 100;
   const tldrCooldownSeconds = draftConfig.tldr?.cooldownSeconds ?? 30;
   const levelUpDm = draftConfig.xp?.levelUpDm;
-  const levelUpDmMessages: LevelUpDmOverrideRow[] = (levelUpDm?.messages ?? [])
-    .map((entry: LevelUpDmOverride, originalIndex: number) => ({
-      ...entry,
-      originalIndex,
-    }))
-    .sort((a: LevelUpDmOverrideRow, b: LevelUpDmOverrideRow) => (a.level ?? 0) - (b.level ?? 0));
+  const levelUpDmMessages: LevelUpDmOverrideRow[] = useMemo(
+    () =>
+      (levelUpDm?.messages ?? [])
+        .map((entry: LevelUpDmOverride, originalIndex: number) => ({
+          ...entry,
+          originalIndex,
+        }))
+        .sort(
+          (a: LevelUpDmOverrideRow, b: LevelUpDmOverrideRow) => (a.level ?? 0) - (b.level ?? 0),
+        ),
+    [levelUpDm?.messages],
+  );
   const levelUpDmDefaultMessage = levelUpDm?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE;
   const nextLevelUpDmOverrideLevel = getNextLevelUpDmOverrideLevel(levelUpDm?.messages ?? []);
   const [levelUpDmDefaultDraft, setLevelUpDmDefaultDraft] = useState(levelUpDmDefaultMessage);
