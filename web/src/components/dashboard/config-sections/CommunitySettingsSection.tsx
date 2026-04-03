@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   DEFAULT_ACTIVITY_BADGES,
   inputClasses,
@@ -80,11 +81,19 @@ function getNextLevelUpDmOverrideLevel(messages: LevelUpDmOverride[] = []) {
   const usedLevels = new Set(messages.map((entry) => entry.level).filter(Number.isFinite));
   let nextLevel = 1;
 
-  while (usedLevels.has(nextLevel)) {
+  while (usedLevels.has(nextLevel) && nextLevel <= 1000) {
     nextLevel += 1;
   }
 
+  if (nextLevel > 1000) {
+    return undefined;
+  }
+
   return nextLevel;
+}
+
+function isValidLevelUpDmTemplate(template: string) {
+  return template.trim().length > 0;
 }
 
 function buildLevelUpDmConfig(
@@ -153,6 +162,26 @@ export function CommunitySettingsSection({
     }))
     .sort((a: LevelUpDmOverrideRow, b: LevelUpDmOverrideRow) => (a.level ?? 0) - (b.level ?? 0));
   const levelUpDmDefaultMessage = levelUpDm?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE;
+  const nextLevelUpDmOverrideLevel = getNextLevelUpDmOverrideLevel(levelUpDm?.messages ?? []);
+  const [levelUpDmDefaultDraft, setLevelUpDmDefaultDraft] = useState(levelUpDmDefaultMessage);
+  const [levelUpDmOverrideDrafts, setLevelUpDmOverrideDrafts] = useState<Record<number, string>>(
+    {},
+  );
+  const levelUpDmOverrideDraftKey = levelUpDmMessages
+    .map((entry) => `${entry.originalIndex}:${entry.message ?? ''}`)
+    .join('|');
+
+  useEffect(() => {
+    setLevelUpDmDefaultDraft(levelUpDmDefaultMessage);
+  }, [levelUpDmDefaultMessage]);
+
+  useEffect(() => {
+    setLevelUpDmOverrideDrafts(
+      Object.fromEntries(
+        levelUpDmMessages.map((entry) => [entry.originalIndex, entry.message ?? '']),
+      ),
+    );
+  }, [levelUpDmOverrideDraftKey]);
 
   return (
     <>
@@ -707,18 +736,23 @@ export function CommunitySettingsSection({
                       <span className="text-sm font-medium">Default DM Template</span>
                       <textarea
                         id="xp-level-dm-default"
-                        value={levelUpDmDefaultMessage}
-                        onChange={(event) =>
+                        value={levelUpDmDefaultDraft}
+                        onChange={(event) => setLevelUpDmDefaultDraft(event.target.value)}
+                        onBlur={() => {
+                          if (!isValidLevelUpDmTemplate(levelUpDmDefaultDraft)) {
+                            return;
+                          }
+
                           updateDraftConfig((prev) => ({
                             ...prev,
                             xp: {
                               ...prev.xp,
                               levelUpDm: buildLevelUpDmConfig(prev.xp?.levelUpDm, {
-                                defaultMessage: event.target.value,
+                                defaultMessage: levelUpDmDefaultDraft,
                               }),
                             },
-                          }))
-                        }
+                          }));
+                        }}
                         disabled={saving}
                         rows={3}
                         maxLength={2000}
@@ -737,6 +771,9 @@ export function CommunitySettingsSection({
                         `nextLevel` is the next level number. `xpToNext` is the XP remaining to
                         reach it. Keep rendered DMs under 2000 characters.
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        Blank templates are kept local until they are valid again.
+                      </p>
                     </div>
 
                     <div className="space-y-2 rounded-lg border border-border/50 bg-background/80 p-3">
@@ -744,7 +781,7 @@ export function CommunitySettingsSection({
                         Preview
                       </p>
                       <p className="whitespace-pre-wrap text-sm">
-                        {renderLevelUpDmPreview(levelUpDmDefaultMessage)}
+                        {renderLevelUpDmPreview(levelUpDmDefaultDraft)}
                       </p>
                     </div>
 
@@ -760,10 +797,13 @@ export function CommunitySettingsSection({
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() =>
+                          onClick={() => {
+                            if (nextLevelUpDmOverrideLevel === undefined) {
+                              return;
+                            }
+
                             updateDraftConfig((prev) => {
                               const existingMessages = prev.xp?.levelUpDm?.messages ?? [];
-                              const nextLevel = getNextLevelUpDmOverrideLevel(existingMessages);
                               return {
                                 ...prev,
                                 xp: {
@@ -772,7 +812,7 @@ export function CommunitySettingsSection({
                                     messages: [
                                       ...existingMessages,
                                       {
-                                        level: nextLevel,
+                                        level: nextLevelUpDmOverrideLevel,
                                         message: getLevelUpDmOverrideSeedMessage(
                                           prev.xp?.levelUpDm,
                                         ),
@@ -781,9 +821,9 @@ export function CommunitySettingsSection({
                                   }),
                                 },
                               };
-                            })
-                          }
-                          disabled={saving}
+                            });
+                          }}
+                          disabled={saving || nextLevelUpDmOverrideLevel === undefined}
                         >
                           Add Override
                         </Button>
@@ -873,15 +913,26 @@ export function CommunitySettingsSection({
                           <label className="space-y-2 block">
                             <span className="text-sm font-medium">Message</span>
                             <textarea
-                              value={entry.message ?? ''}
+                              value={levelUpDmOverrideDrafts[entry.originalIndex] ?? ''}
                               onChange={(event) =>
+                                setLevelUpDmOverrideDrafts((prev) => ({
+                                  ...prev,
+                                  [entry.originalIndex]: event.target.value,
+                                }))
+                              }
+                              onBlur={() => {
+                                const draftValue = levelUpDmOverrideDrafts[entry.originalIndex] ?? '';
+                                if (!isValidLevelUpDmTemplate(draftValue)) {
+                                  return;
+                                }
+
                                 updateDraftConfig((prev) => {
                                   const messages = [...(prev.xp?.levelUpDm?.messages ?? [])];
                                   const targetIndex = entry.originalIndex;
                                   if (targetIndex !== -1) {
                                     messages[targetIndex] = {
                                       ...messages[targetIndex],
-                                      message: event.target.value,
+                                      message: draftValue,
                                     };
                                   }
                                   return {
@@ -893,8 +944,8 @@ export function CommunitySettingsSection({
                                       }),
                                     },
                                   };
-                                })
-                              }
+                                });
+                              }}
                               disabled={saving}
                               rows={3}
                               maxLength={2000}
@@ -908,7 +959,7 @@ export function CommunitySettingsSection({
                             </p>
                             <p className="whitespace-pre-wrap text-sm">
                               {renderLevelUpDmPreview(
-                                entry.message ?? '',
+                                levelUpDmOverrideDrafts[entry.originalIndex] ?? '',
                                 buildLevelUpDmPreviewContext(entry.level),
                               )}
                             </p>
