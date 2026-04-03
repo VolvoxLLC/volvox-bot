@@ -832,17 +832,32 @@ export function AnalyticsDashboard() {
         </DashboardCard>
 
         <DashboardCard>
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
-              Command Telemetry
-            </h2>
-            <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
-              Slash command execution frequency
-            </p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
+                Command Telemetry
+              </h2>
+              <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                Slash command execution frequency
+              </p>
+            </div>
+            {analytics?.commandUsage?.items?.length ? (
+              <div className="flex items-center gap-2">
+                <span className="status-dot-live shadow-[0_0_8px_hsl(var(--destructive))]" />
+                <span className="text-2xl font-black tracking-tighter text-foreground/90">
+                  {formatNumber(
+                    analytics.commandUsage.items.reduce((sum, e) => sum + e.uses, 0),
+                  )}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                  served
+                </span>
+              </div>
+            ) : null}
           </div>
           <div className="relative">
             {analytics?.commandUsage?.items?.length ? (
-              <div className="overflow-x-auto rounded-xl border border-border/40 bg-muted/30">
+              <div className="max-h-[340px] overflow-y-auto overflow-x-auto rounded-xl border border-border/40 bg-muted/30">
                 <table className="w-full min-w-[320px] text-sm">
                   <thead>
                     <tr className="border-b border-border/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground/70">
