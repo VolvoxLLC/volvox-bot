@@ -8,7 +8,7 @@
  * - Normalization utilities
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 
 let mockPathname = '/dashboard/settings/ai-automation';
 
@@ -67,7 +67,20 @@ vi.mock('@/components/dashboard/config-diff', () => ({
 }));
 
 vi.mock('@/components/dashboard/config-diff-modal', () => ({
-  ConfigDiffModal: () => <div data-testid="config-diff-modal" />,
+  ConfigDiffModal: ({
+    open,
+    onConfirm,
+  }: {
+    open: boolean;
+    onConfirm: () => void;
+  }) =>
+    open ? (
+      <div data-testid="config-diff-modal">
+        <button type="button" onClick={onConfirm}>
+          Confirm Save
+        </button>
+      </div>
+    ) : null,
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────
@@ -214,6 +227,99 @@ describe('ConfigEditor integration', () => {
     // Initially discard button should be disabled (no changes yet)
     const discardButton = screen.getByTestId('discard-button');
     expect(discardButton).toBeDisabled();
+  });
+
+  it('saves the edited system prompt via PATCH', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(minimalConfig),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          ...minimalConfig.ai,
+          systemPrompt: 'Updated prompt',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          ...minimalConfig,
+          ai: { ...minimalConfig.ai, systemPrompt: 'Updated prompt' },
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await waitFor(() => expect(screen.getByTestId('system-prompt')).toBeInTheDocument());
+
+    const prompt = screen.getByTestId('system-prompt') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(prompt, { target: { value: 'Updated prompt' } });
+    });
+
+    const saveButton = screen.getByRole('button', { name: 'Save Changes' });
+    await act(async () => {
+      saveButton.click();
+    });
+
+    const confirmButton = await screen.findByRole('button', { name: 'Confirm Save' });
+    await act(async () => {
+      confirmButton.click();
+    });
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(
+        (call: unknown[]) =>
+          call[0] === '/api/guilds/guild-123/config' &&
+          (call[1] as { method?: string } | undefined)?.method === 'PATCH',
+      );
+
+      expect(patchCall).toBeDefined();
+      expect(patchCall?.[1]).toEqual(
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: 'ai.systemPrompt', value: 'Updated prompt' }),
+        }),
+      );
+    });
+  });
+
+  it('discard restores the last saved config', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        ...minimalConfig,
+        ai: { ...minimalConfig.ai, systemPrompt: 'Saved prompt' },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { ConfigEditor } = await import('@/components/dashboard/config-editor');
+    render(<ConfigEditor />);
+
+    await waitFor(() => expect(screen.getByTestId('system-prompt')).toBeInTheDocument());
+
+    const prompt = screen.getByTestId('system-prompt') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(prompt, { target: { value: 'Edited prompt' } });
+    });
+
+    const discardButton = screen.getByTestId('discard-button');
+    await act(async () => {
+      discardButton.click();
+    });
+
+    expect(screen.getByTestId('system-prompt')).toHaveValue('Saved prompt');
   });
 });
 

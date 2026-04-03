@@ -86,8 +86,16 @@ describe('ai module', () => {
 
       await vi.waitFor(() => {
         expect(historyRef).toEqual([
-          { role: 'user', content: 'db message' },
-          { role: 'assistant', content: 'db reply' },
+          expect.objectContaining({
+            role: 'user',
+            content: 'db message',
+            timestamp: expect.any(Number),
+          }),
+          expect.objectContaining({
+            role: 'assistant',
+            content: 'db reply',
+            timestamp: expect.any(Number),
+          }),
           expect.objectContaining({
             role: 'user',
             content: 'concurrent message',
@@ -113,7 +121,7 @@ describe('ai module', () => {
       expect(history[0].content).toBe('from db');
       expect(history[1].content).toBe('response');
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT role, content FROM conversations'),
+        expect.stringContaining('SELECT role, content, created_at FROM conversations'),
         ['ch-new', 20],
       );
     });

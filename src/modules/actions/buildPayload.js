@@ -29,7 +29,8 @@ export function buildPayload(action, templateContext) {
     if (embedConfig.description)
       embed.setDescription(renderTemplate(embedConfig.description, templateContext));
     if (embedConfig.color) embed.setColor(embedConfig.color);
-    if (embedConfig.thumbnail) embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
+    if (embedConfig.thumbnail)
+      embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
     if (embedConfig.footer)
       embed.setFooter({ text: renderTemplate(embedConfig.footer, templateContext) });
     payload.embeds = [embed];
