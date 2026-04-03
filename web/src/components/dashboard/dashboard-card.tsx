@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { ElementType, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -24,7 +24,7 @@ export function DashboardCard({
   children: ReactNode;
   className?: string;
   /** Optional HTML element (e.g. `'section'`) */
-  as?: keyof JSX.IntrinsicElements;
+  as?: ElementType;
 }) {
   return (
     <Tag

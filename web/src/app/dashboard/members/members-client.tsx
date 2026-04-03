@@ -167,13 +167,15 @@ export default function MembersClient() {
                 Sorted By
               </p>
               <p className="mt-3 text-lg font-semibold tracking-tight md:text-xl text-foreground/90">
-                {sortColumn === 'username'
-                  ? 'Name'
+                {sortColumn === 'messages'
+                  ? 'Messages'
                   : sortColumn === 'xp'
                     ? 'XP'
-                    : sortColumn === 'level'
-                      ? 'Level'
-                      : sortColumn}{' '}
+                    : sortColumn === 'warnings'
+                      ? 'Warnings'
+                      : sortColumn === 'joined'
+                        ? 'Joined'
+                        : sortColumn}{' '}
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </p>
             </div>
