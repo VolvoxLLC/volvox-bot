@@ -38,6 +38,7 @@ import { formatNumber, formatUsd } from '@/lib/analytics-utils';
 import { cn } from '@/lib/utils';
 import type { AnalyticsRangePreset } from '@/types/analytics';
 import { EmptyState } from './empty-state';
+import { DashboardCard } from './dashboard-card';
 
 const _RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Today', value: 'today' },
@@ -362,7 +363,7 @@ export function AnalyticsDashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-muted/30">
+        <DashboardCard>
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-sm font-semibold tracking-wide text-foreground/90">
@@ -408,9 +409,9 @@ export function AnalyticsDashboard() {
               </output>
             </div>
           </div>
-        </div>
+        </DashboardCard>
 
-        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-muted/30">
+        <DashboardCard>
           <div className="mb-5">
             <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
               Workspace Filter
@@ -443,11 +444,11 @@ export function AnalyticsDashboard() {
               </Button>
             ))}
           </div>
-        </div>
+        </DashboardCard>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl xl:col-span-6">
+        <DashboardCard>
           <div className="mb-6">
             <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
               Message Volume
@@ -519,7 +520,7 @@ export function AnalyticsDashboard() {
               <div className="min-h-[340px]" aria-hidden="true" />
             )}
           </div>
-        </div>
+        </DashboardCard>
 
         <div className="group relative overflow-hidden rounded-3xl border border-border/40 bg-muted/10 p-6 backdrop-blur-3xl xl:col-span-6">
           <div className="mb-8 flex items-center justify-between">
@@ -641,7 +642,7 @@ export function AnalyticsDashboard() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl xl:col-span-6">
+        <DashboardCard>
           <div className="mb-6">
             <h2 className="text-sm font-semibold tracking-wide text-foreground/90">Top Channels</h2>
             <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
@@ -709,9 +710,9 @@ export function AnalyticsDashboard() {
               <div className="min-h-[340px]" aria-hidden="true" />
             )}
           </div>
-        </div>
+        </DashboardCard>
 
-        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl xl:col-span-6">
+        <DashboardCard>
           <div className="mb-6">
             <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
               Command Telemetry
@@ -761,13 +762,13 @@ export function AnalyticsDashboard() {
               <div className="min-h-[120px]" aria-hidden="true" />
             )}
           </div>
-        </div>
+        </DashboardCard>
       </div>
 
       {(analytics?.userEngagement ?? analytics?.xpEconomy) ? (
         <div className="grid gap-4 xl:grid-cols-2">
           {analytics?.userEngagement ? (
-            <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl">
+            <DashboardCard>
               <div className="mb-6">
                 <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
                   Community Engagement
@@ -814,11 +815,11 @@ export function AnalyticsDashboard() {
                   </output>
                 </div>
               </div>
-            </div>
+            </DashboardCard>
           ) : null}
 
           {analytics?.xpEconomy ? (
-            <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl">
+            <DashboardCard>
               <div className="mb-6">
                 <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
                   XP Economy
@@ -865,12 +866,12 @@ export function AnalyticsDashboard() {
                   </output>
                 </div>
               </div>
-            </div>
+            </DashboardCard>
           ) : null}
         </div>
       ) : null}
 
-      <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl mb-8">
+      <DashboardCard className="mb-8">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
@@ -951,7 +952,7 @@ export function AnalyticsDashboard() {
             ))}
           </div>
         </div>
-      </div>
+      </DashboardCard>
     </div>
   );
 }
