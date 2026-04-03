@@ -52,9 +52,28 @@ const defaultSections: FooterSection[] = [
  */
 export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFooterProps) {
   return (
-    <footer className="max-w-7xl mx-auto bg-background border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden">
+    <footer className="max-w-7xl mx-auto border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden bg-gradient-to-b from-background via-background to-muted/20">
+      {/* Inline keyframes for glow-pulse (avoids touching globals.css) */}
+      <style>{`
+        @keyframes footer-glow-pulse {
+          0%, 100% { opacity: 0.3; transform: scaleX(0.5); }
+          50% { opacity: 1; transform: scaleX(1); }
+        }
+      `}</style>
+
+      {/* Subtle gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.02]" />
+
+      {/* Animated shimmer sweep */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/[0.04] to-transparent animate-[shimmer_8s_ease-in-out_infinite] [animation-delay:2s]" />
+      </div>
+
       {/* Background grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--foreground)/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--foreground)/0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(circle_at_center,black,transparent_80%)]" />
+
+      {/* Animated top border glow */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-[footer-glow-pulse_4s_ease-in-out_infinite]" />
 
       <div className="max-w-6xl mx-auto px-6 relative z-10 w-full">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 mb-16">
