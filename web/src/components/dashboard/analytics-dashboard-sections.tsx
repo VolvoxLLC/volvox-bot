@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ChartTheme } from '@/hooks/use-chart-theme';
 import { formatNumber } from '@/lib/analytics-utils';
 import type {
@@ -811,14 +812,20 @@ function HeatmapRow({
 
         return (
           <td key={`${day}-${hour}`}>
-            <div
-              title={`${day} ${hour}:00 — ${value} messages`}
-              className="h-4 rounded-sm border"
-              style={{
-                backgroundColor:
-                  value === 0 ? 'transparent' : hexToRgba(chartPrimary, Number(alpha.toFixed(3))),
-              }}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="h-4 rounded-sm border cursor-default"
+                  style={{
+                    backgroundColor:
+                      value === 0 ? 'transparent' : hexToRgba(chartPrimary, Number(alpha.toFixed(3))),
+                  }}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-[11px] font-medium tabular-nums">
+                {day} {hour}:00 — {value} message{value !== 1 ? 's' : ''}
+              </TooltipContent>
+            </Tooltip>
           </td>
         );
       })}

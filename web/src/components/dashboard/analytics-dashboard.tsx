@@ -37,6 +37,7 @@ import { useGlowCard } from '@/hooks/use-glow-card';
 import { formatNumber, formatUsd } from '@/lib/analytics-utils';
 import { cn } from '@/lib/utils';
 import type { AnalyticsRangePreset } from '@/types/analytics';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DashboardCard } from './dashboard-card';
 import { EmptyState } from './empty-state';
 
@@ -931,21 +932,26 @@ export function AnalyticsDashboard() {
                     value === 0 ? 0 : ratio <= 0.25 ? 1 : ratio <= 0.5 ? 2 : ratio <= 0.75 ? 3 : 4;
 
                   return (
-                    <div
-                      key={`${day}-${hour}`}
-                      title={`${day} ${String(hour).padStart(2, '0')}:00 — ${value} messages`}
-                      className={cn(
-                        'aspect-square w-full rounded-[4px] border transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:scale-[1.15] hover:z-20 cursor-default',
-                        level === 0
-                          ? 'bg-black/5 border-black/5 dark:bg-white/5 dark:border-white/5'
-                          : 'border-transparent',
-                      )}
-                      style={
-                        level > 0
-                          ? { backgroundColor: hexToRgba(chart.primary, 0.15 + level * 0.2125) }
-                          : undefined
-                      }
-                    />
+                    <Tooltip key={`${day}-${hour}`}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            'aspect-square w-full rounded-[4px] border transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:scale-[1.15] hover:z-20 cursor-default',
+                            level === 0
+                              ? 'bg-black/5 border-black/5 dark:bg-white/5 dark:border-white/5'
+                              : 'border-transparent',
+                          )}
+                          style={
+                            level > 0
+                              ? { backgroundColor: hexToRgba(chart.primary, 0.15 + level * 0.2125) }
+                              : undefined
+                          }
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-[11px] font-medium tabular-nums">
+                        {day} {String(hour).padStart(2, '0')}:00 — {value} message{value !== 1 ? 's' : ''}
+                      </TooltipContent>
+                    </Tooltip>
                   );
                 })}
               </React.Fragment>
