@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
-  authorizeGuildAdmin,
+  authorizeGuildModerator,
   buildUpstreamUrl,
   getBotApiConfig,
   proxyToBotApi,
@@ -15,7 +15,7 @@ const ALLOWED_PARAMS = ['guildId', 'targetId', 'action', 'page', 'limit', 'order
 /**
  * GET /api/moderation/cases
  * Proxies to bot API GET /api/v1/moderation/cases
- * Requires guildId query param and admin authorization.
+ * Requires guildId query param and moderator authorization.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const guildId = request.nextUrl.searchParams.get('guildId');
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'guildId is required' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
+  const authError = await authorizeGuildModerator(request, guildId, LOG_PREFIX);
   if (authError) return authError;
 
   const config = getBotApiConfig(LOG_PREFIX);

@@ -1,6 +1,6 @@
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,7 +21,7 @@ describe('command files', () => {
       let mod;
 
       beforeAll(async () => {
-        mod = await import(join(commandsDir, file));
+        mod = await import(pathToFileURL(join(commandsDir, file)).href);
       });
 
       it('should export data and execute', () => {

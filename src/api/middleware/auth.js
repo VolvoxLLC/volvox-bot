@@ -7,6 +7,8 @@ import crypto from 'node:crypto';
 import { warn } from '../../logger.js';
 import { handleOAuthJwt } from './oauthJwt.js';
 
+const DISCORD_SNOWFLAKE_PATTERN = /^\d{17,20}$/;
+
 /**
  * Performs a constant-time comparison of the given secret against BOT_API_SECRET.
  *
@@ -48,6 +50,13 @@ export function requireAuth() {
         });
       } else if (isValidSecret(apiSecret)) {
         req.authMethod = 'api-secret';
+        const trustedUserId =
+          typeof req.headers['x-discord-user-id'] === 'string'
+            ? req.headers['x-discord-user-id'].trim()
+            : '';
+        if (trustedUserId && DISCORD_SNOWFLAKE_PATTERN.test(trustedUserId)) {
+          req.user = { userId: trustedUserId };
+        }
         return next();
       } else {
         // BOT_API_SECRET is configured but the provided secret doesn't match.

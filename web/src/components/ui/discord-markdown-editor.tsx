@@ -66,6 +66,26 @@ interface ToolbarAction {
   ) => { text: string; selectionStart?: number; selectionEnd?: number; cursorPos?: number };
 }
 
+function clampEditResult(
+  result: ReturnType<ToolbarAction['action']>,
+  maxLength: number,
+): ReturnType<ToolbarAction['action']> {
+  if (result.text.length <= maxLength) {
+    return result;
+  }
+
+  const text = result.text.slice(0, maxLength);
+  const clampIndex = (index: number | undefined) =>
+    index === undefined ? undefined : Math.min(index, maxLength);
+
+  return {
+    text,
+    selectionStart: clampIndex(result.selectionStart),
+    selectionEnd: clampIndex(result.selectionEnd),
+    cursorPos: clampIndex(result.cursorPos),
+  };
+}
+
 function renderPreviewNode(node: ChildNode, key: string): React.ReactNode {
   if (node.nodeType === Node.TEXT_NODE) {
     return node.textContent;
@@ -220,7 +240,7 @@ export function DiscordMarkdownEditor({
 
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      const result = action(value, start, end);
+      const result = clampEditResult(action(value, start, end), maxLength);
 
       onChange(result.text);
 
@@ -235,7 +255,7 @@ export function DiscordMarkdownEditor({
       });
       rafIdsRef.current.push(rafId);
     },
-    [value, onChange],
+    [maxLength, onChange, value],
   );
 
   const insertVariable = React.useCallback(
@@ -244,7 +264,7 @@ export function DiscordMarkdownEditor({
       if (!textarea) return;
 
       const cursor = textarea.selectionStart;
-      const result = insertAtCursor(value, cursor, `${varOpen}${varName}${varClose}`);
+      const result = clampEditResult(insertAtCursor(value, cursor, `{{${varName}}}`), maxLength);
 
       onChange(result.text);
       setShowVariables(false);
@@ -258,7 +278,7 @@ export function DiscordMarkdownEditor({
       });
       rafIdsRef.current.push(rafId);
     },
-    [value, onChange],
+    [maxLength, onChange, value],
   );
 
   const handleKeyDown = React.useCallback(
@@ -384,6 +404,7 @@ export function DiscordMarkdownEditor({
             ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            maxLength={maxLength}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}

@@ -12,7 +12,7 @@ import { computeLevel, getXpConfig } from '../../modules/reputation.js';
 import { cacheGet, cacheSet, TTL } from '../../utils/cache.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parseLimit, parsePage } from '../utils/pagination.js';
-import { requireGuildAdmin, validateGuild } from './guilds.js';
+import { requireGuildModerator, validateGuild } from './guilds.js';
 
 const router = Router();
 
@@ -74,7 +74,7 @@ function safeGetPool() {
 router.get(
   '/:id/members/export',
   membersRateLimit,
-  requireGuildAdmin,
+  requireGuildModerator,
   validateGuild,
   async (req, res) => {
     try {
@@ -286,7 +286,7 @@ router.get(
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/members', membersRateLimit, requireGuildModerator, validateGuild, async (req, res) => {
   const limit = parseLimit(req.query.limit);
   const after = req.query.after || undefined;
   const search = req.query.search || undefined;
@@ -598,7 +598,7 @@ router.get('/:id/members', membersRateLimit, requireGuildAdmin, validateGuild, a
 router.get(
   '/:id/members/:userId',
   membersRateLimit,
-  requireGuildAdmin,
+  requireGuildModerator,
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;
@@ -797,7 +797,7 @@ router.get(
 router.get(
   '/:id/members/:userId/cases',
   membersRateLimit,
-  requireGuildAdmin,
+  requireGuildModerator,
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;
@@ -849,7 +849,7 @@ router.get(
   },
 );
 
-// ─── POST /:id/members/:userId/xp — Admin XP adjustment ──────────────────────
+// ─── POST /:id/members/:userId/xp — Moderator XP adjustment ──────────────────
 
 /**
  * @openapi
@@ -928,7 +928,7 @@ router.get(
 router.post(
   '/:id/members/:userId/xp',
   membersRateLimit,
-  requireGuildAdmin,
+  requireGuildModerator,
   validateGuild,
   async (req, res) => {
     const { userId } = req.params;

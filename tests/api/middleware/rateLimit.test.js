@@ -20,6 +20,7 @@ describe('rateLimit middleware', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it('should allow requests within the limit', () => {
@@ -189,5 +190,20 @@ describe('rateLimit middleware', () => {
       error: 'Too many authentication attempts',
     });
     expect(next).toHaveBeenCalledTimes(1); // only the first (allowed) request called next
+  });
+
+  it('should skip rate limiting for trusted internal requests', () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    req.get = vi.fn().mockReturnValue('test-secret');
+
+    const middleware = rateLimit({ windowMs: 60000, max: 1 });
+
+    middleware(req, res, next);
+    middleware(req, res, next);
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(3);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.set).not.toHaveBeenCalledWith('Retry-After', expect.any(String));
   });
 });

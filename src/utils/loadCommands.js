@@ -1,5 +1,6 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { error as logError, info as logInfo, warn as logWarn } from '../logger.js';
 
 const defaultCommandLogger = {
@@ -31,7 +32,7 @@ export async function loadCommandsFromDirectory({
     const filePath = join(commandsPath, file);
 
     try {
-      const command = await import(filePath);
+      const command = await import(pathToFileURL(filePath).href);
 
       if (!command.data || !command.execute) {
         commandLogger.warn('Command missing data or execute export', { file });

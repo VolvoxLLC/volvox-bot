@@ -8,6 +8,7 @@
 
 import { getRedis } from '../../redis.js';
 import { rateLimit as inMemoryRateLimit } from './rateLimit.js';
+import { isTrustedInternalRequest } from './trustedInternalRequest.js';
 
 /**
  * Creates Redis-backed rate limiting middleware using a sliding window counter.
@@ -24,6 +25,10 @@ export function redisRateLimit({ windowMs = 15 * 60 * 1000, max = 100, keyPrefix
   const fallback = inMemoryRateLimit({ windowMs, max });
 
   const middleware = async (req, res, next) => {
+    if (isTrustedInternalRequest(req)) {
+      return next();
+    }
+
     const redis = getRedis();
 
     // Fall back to in-memory if Redis isn't available

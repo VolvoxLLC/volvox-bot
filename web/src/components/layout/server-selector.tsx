@@ -3,7 +3,7 @@
 import { Bot, ChevronsUpDown, ExternalLink, RefreshCw, Server } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import { getBotInviteUrl, getGuildIconUrl } from '@/lib/discord';
 import { broadcastSelectedGuild, SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 import { cn } from '@/lib/utils';
 import type { MutualGuild } from '@/types/discord';
+import { useGuildDirectory } from './guild-directory-context';
 
 interface ServerSelectorProps {
   className?: string;
@@ -48,11 +49,8 @@ function GuildRow({ guild }: { guild: MutualGuild }) {
 }
 
 export function ServerSelector({ className }: ServerSelectorProps) {
-  const [guilds, setGuilds] = useState<MutualGuild[]>([]);
   const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const { error, guilds, loading, refreshGuilds } = useGuildDirectory();
 
   // Split guilds into manageable (mod/admin/owner) and member-only (viewer)
   const { manageable, memberOnly } = useMemo(
@@ -82,71 +80,31 @@ export function ServerSelector({ className }: ServerSelectorProps) {
     broadcastSelectedGuild(guild.id);
   }, []);
 
-  const loadGuilds = useCallback(async () => {
-    // Abort any previous in-flight request before starting a new one.
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    setError(false);
-    try {
-      const response = await fetch('/api/guilds', { signal: controller.signal });
-      if (response.status === 401) {
-        window.location.href = '/login';
-        return;
-      }
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data: unknown = await response.json();
-      if (!Array.isArray(data)) throw new Error('Invalid response: expected array');
-
-      // Runtime shape check — permissions and owner required for isGuildManageable
-      const fetchedGuilds = data.filter(
-        (g): g is MutualGuild =>
-          typeof g === 'object' &&
-          g !== null &&
-          typeof (g as Record<string, unknown>).id === 'string' &&
-          typeof (g as Record<string, unknown>).name === 'string' &&
-          typeof (g as Record<string, unknown>).permissions === 'string' &&
-          typeof (g as Record<string, unknown>).owner === 'boolean',
-      );
-      setGuilds(fetchedGuilds);
-
-      // Only manageable guilds can be selected as the active dashboard guild
-      const manageableGuilds = fetchedGuilds.filter(isGuildManageable);
-
-      // Restore previously selected guild from localStorage (must be manageable)
-      let restored = false;
-      try {
-        const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
-        if (savedId) {
-          const saved = manageableGuilds.find((g) => g.id === savedId);
-          if (saved) {
-            setSelectedGuild(saved);
-            restored = true;
-          }
-        }
-      } catch {
-        // localStorage unavailable
-      }
-
-      if (!restored && manageableGuilds.length > 0) {
-        selectGuild(manageableGuilds[0]);
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      setError(true);
-    } finally {
-      if (abortControllerRef.current === controller) {
-        setLoading(false);
-      }
-    }
-  }, [selectGuild]);
-
   useEffect(() => {
-    loadGuilds();
-    return () => abortControllerRef.current?.abort();
-  }, [loadGuilds]);
+    const manageableGuilds = guilds.filter(isGuildManageable);
+    if (manageableGuilds.length === 0) {
+      setSelectedGuild(null);
+      return;
+    }
+
+    let restored = false;
+    try {
+      const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
+      if (savedId) {
+        const saved = manageableGuilds.find((guild) => guild.id === savedId);
+        if (saved) {
+          setSelectedGuild(saved);
+          restored = true;
+        }
+      }
+    } catch {
+      // localStorage unavailable
+    }
+
+    if (!restored) {
+      selectGuild(manageableGuilds[0]);
+    }
+  }, [guilds, selectGuild]);
 
   if (loading) {
     return (
@@ -164,7 +122,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         <span className="text-xs text-muted-foreground">
           Refresh the list and we&apos;ll try again.
         </span>
-        <Button variant="outline" size="sm" className="gap-1" onClick={() => loadGuilds()}>
+        <Button variant="outline" size="sm" className="gap-1" onClick={() => refreshGuilds()}>
           <RefreshCw className="h-3 w-3" />
           Retry
         </Button>
@@ -269,7 +227,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         ) : (
           <div className="px-2 py-3 text-center text-xs text-muted-foreground">
             <Server className="mx-auto mb-1 h-4 w-4" />
-            You need mod or admin permissions to manage a server.
+            You need moderator, admin, or owner permissions to manage a server.
           </div>
         )}
 

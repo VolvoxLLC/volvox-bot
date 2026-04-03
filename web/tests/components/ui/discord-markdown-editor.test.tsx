@@ -222,4 +222,45 @@ describe('DiscordMarkdownEditor', () => {
 
     expect(onChange).toHaveBeenCalledWith(expected);
   });
+
+  it('passes maxLength through to the textarea', () => {
+    render(<DiscordMarkdownEditor {...defaultProps} maxLength={25} />);
+    expect(screen.getByLabelText('Markdown editor')).toHaveAttribute('maxlength', '25');
+  });
+
+  it('clamps toolbar edits to maxLength', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<DiscordMarkdownEditor {...defaultProps} value="hello" onChange={onChange} maxLength={6} />);
+
+    const textarea = screen.getByPlaceholderText('Enter your message...') as HTMLTextAreaElement;
+    await user.click(textarea);
+    textarea.setSelectionRange(0, 5);
+    await user.click(screen.getByLabelText('Bold'));
+
+    expect(onChange).toHaveBeenCalledWith('**hell');
+  });
+
+  it('clamps inserted variables to maxLength', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <DiscordMarkdownEditor
+        {...defaultProps}
+        value="hello"
+        onChange={onChange}
+        maxLength={8}
+        variables={['username']}
+      />,
+    );
+
+    const textarea = screen.getByPlaceholderText('Enter your message...') as HTMLTextAreaElement;
+    await user.click(textarea);
+    textarea.setSelectionRange(5, 5);
+
+    await user.click(screen.getByLabelText('Insert variable'));
+    await user.click(screen.getByText('username'));
+
+    expect(onChange).toHaveBeenCalledWith('hello{{u');
+  });
 });

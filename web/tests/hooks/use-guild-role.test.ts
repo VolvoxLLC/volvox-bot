@@ -28,8 +28,14 @@ describe('use-guild-role', () => {
     expect(getGuildDashboardRole(createGuild({ permissions: '8' }))).toBe('admin');
   });
 
-  it('returns admin for manage guild permissions', () => {
-    expect(getGuildDashboardRole(createGuild({ permissions: '32' }))).toBe('admin');
+  it('returns moderator for manage guild permissions', () => {
+    expect(getGuildDashboardRole(createGuild({ permissions: '32' }))).toBe('moderator');
+  });
+
+  it('prefers explicit access from the api when provided', () => {
+    expect(getGuildDashboardRole(createGuild({ permissions: '0', access: 'moderator' }))).toBe(
+      'moderator',
+    );
   });
 
   it('returns moderator for kick members permissions', () => {
@@ -63,5 +69,9 @@ describe('use-guild-role', () => {
     expect(isGuildManageable(createGuild({ owner: true }))).toBe(true);
     expect(isGuildManageable(createGuild({ permissions: '8' }))).toBe(true);
     expect(isGuildManageable(createGuild({ permissions: '2' }))).toBe(true);
+  });
+
+  it('prefers ownership over a downgraded access field', () => {
+    expect(getGuildDashboardRole(createGuild({ owner: true, access: 'viewer' }))).toBe('owner');
   });
 });

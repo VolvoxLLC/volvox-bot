@@ -125,6 +125,46 @@ describe("fetchWithRateLimit", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(4);
   });
 
+  it("does not retry when retry-after exceeds the allowed delay cap", async () => {
+    const headers = new Map([["retry-after", "728"]]);
+    fetchSpy.mockResolvedValue({
+      status: 429,
+      headers: { get: (key: string) => headers.get(key) ?? null },
+    } as unknown as Response);
+
+    const response = await fetchWithRateLimit("https://example.com/api");
+    expect(response.status).toBe(429);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry when the next wait would exceed the remaining retry budget", async () => {
+    const headers = new Map([["retry-after", "1.5"]]);
+    let callCount = 0;
+    fetchSpy.mockImplementation(() => {
+      callCount++;
+      if (callCount <= 2) {
+        return Promise.resolve({
+          status: 429,
+          headers: { get: (key: string) => headers.get(key) ?? null },
+        } as unknown as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200 } as Response);
+    });
+
+    const promise = fetchWithRateLimit("https://example.com/api", {
+      rateLimit: {
+        maxRetries: 3,
+        maxRetryDelayMs: 2_000,
+        totalRetryBudgetMs: 2_000,
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(1_600);
+    const response = await promise;
+    expect(response.status).toBe(429);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
   it("aborts sleep when signal fires during rate-limit wait", async () => {
     const controller = new AbortController();
     const headers = new Map([["retry-after", "30"]]); // 30 seconds
@@ -142,6 +182,10 @@ describe("fetchWithRateLimit", () => {
 
     const promise = fetchWithRateLimit("https://example.com/api", {
       signal: controller.signal,
+      rateLimit: {
+        maxRetryDelayMs: 60_000,
+        totalRetryBudgetMs: 60_000,
+      },
     });
 
     // Advance a little, then abort (well before the 30s retry-after)
@@ -219,6 +263,30 @@ describe("fetchWithRateLimit", () => {
     await vi.advanceTimersByTimeAsync(1100);
     const response = await promise;
     expect(response.status).toBe(200);
+  });
+
+  it("falls back to x-ratelimit-reset-after when retry-after is malformed", async () => {
+    const headers = new Map([
+      ["retry-after", "nope"],
+      ["x-ratelimit-reset-after", "0.001"],
+    ]);
+    let callCount = 0;
+    fetchSpy.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          status: 429,
+          headers: { get: (key: string) => headers.get(key) ?? null },
+        } as unknown as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200 } as Response);
+    });
+
+    const promise = fetchWithRateLimit("https://example.com/api");
+    await vi.advanceTimersByTimeAsync(100);
+    const response = await promise;
+    expect(response.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -430,6 +498,28 @@ describe("fetchBotGuilds", () => {
         headers: { "x-api-secret": "my-secret" },
       }),
     );
+  });
+
+  it("fails fast when bot API retry-after is too large", async () => {
+    vi.useFakeTimers();
+    try {
+      process.env.BOT_API_URL = "http://localhost:3001";
+      process.env.BOT_API_SECRET = "test-secret";
+
+      const headers = new Map([["retry-after", "1"]]);
+      fetchSpy.mockResolvedValue({
+        status: 429,
+        ok: false,
+        statusText: "Too Many Requests",
+        headers: { get: (key: string) => headers.get(key) ?? null },
+      } as unknown as Response);
+
+      const result = await fetchBotGuilds();
+      expect(result).toEqual({ available: false, guilds: [] });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

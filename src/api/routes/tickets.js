@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { error as logError } from '../../logger.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { parseLimit, parsePage } from '../utils/pagination.js';
-import { requireGuildAdmin, validateGuild } from './guilds.js';
+import { requireGuildModerator, validateGuild } from './guilds.js';
 
 const router = Router();
 
@@ -74,7 +74,7 @@ function getDbPool(req) {
 router.get(
   '/:id/tickets/stats',
   ticketRateLimit,
-  requireGuildAdmin,
+  requireGuildModerator,
   validateGuild,
   async (req, res) => {
     const { id: guildId } = req.params;
@@ -202,7 +202,7 @@ router.get(
 router.get(
   '/:id/tickets/:ticketId',
   ticketRateLimit,
-  requireGuildAdmin,
+  requireGuildModerator,
   validateGuild,
   async (req, res) => {
     const { id: guildId, ticketId } = req.params;
@@ -334,7 +334,7 @@ router.get(
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/tickets', ticketRateLimit, requireGuildAdmin, validateGuild, async (req, res) => {
+router.get('/:id/tickets', ticketRateLimit, requireGuildModerator, validateGuild, async (req, res) => {
   const { id: guildId } = req.params;
   const { status, user } = req.query;
   const page = parsePage(req.query.page);

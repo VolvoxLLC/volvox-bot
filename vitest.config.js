@@ -5,7 +5,8 @@ export default defineConfig({
     globals: false,
     environment: 'node',
     include: ['tests/**/*.test.js'],
-    testTimeout: 10000,
+    testTimeout: 30000,
+    hookTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

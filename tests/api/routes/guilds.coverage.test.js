@@ -30,11 +30,17 @@ vi.mock('../../../src/modules/config.js', () => ({
 vi.mock('../../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue({ id: 'msg1', content: 'Hello!' }),
 }));
+vi.mock('../../../src/utils/permissions.js', () => ({
+  getBotOwnerIds: vi.fn().mockReturnValue([]),
+  isAdmin: vi.fn().mockReturnValue(false),
+  isModerator: vi.fn().mockReturnValue(false),
+}));
 
 import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
+import { isAdmin, isModerator } from '../../../src/utils/permissions.js';
 import { safeSend } from '../../../src/utils/safeSend.js';
 
 const SECRET = 'test-secret';
@@ -96,6 +102,65 @@ describe('guilds routes coverage', () => {
       user: { tag: 'Bot#1234' },
     };
     app = createApp(client, mockPool);
+  });
+
+  describe('GET /access', () => {
+    it('returns access levels based on configured moderator/admin role checks', async () => {
+      isAdmin.mockReset().mockReturnValue(false);
+      isModerator.mockReset().mockReturnValue(true);
+
+      const res = await request(app)
+        .get('/api/v1/guilds/access?userId=user1&guildIds=guild1')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([{ id: 'guild1', access: 'moderator' }]);
+      expect(isModerator).toHaveBeenCalled();
+    });
+
+    it('returns viewer for unknown members but 502 for transient Discord failures', async () => {
+      const originalCache = mockGuild.members.cache;
+      const originalFetch = mockGuild.members.fetch;
+      mockGuild.members.cache = new Map();
+
+      mockGuild.members.fetch = vi
+        .fn()
+        .mockRejectedValueOnce(Object.assign(new Error('Unknown Member'), { code: 10007 }));
+      let res = await request(app)
+        .get('/api/v1/guilds/access?userId=user1&guildIds=guild1')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([{ id: 'guild1', access: 'viewer' }]);
+
+      mockGuild.members.fetch = vi.fn().mockRejectedValueOnce(new Error('Discord timeout'));
+      res = await request(app)
+        .get('/api/v1/guilds/access?userId=user1&guildIds=guild1')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(502);
+      expect(res.body).toEqual({ error: 'Failed to verify guild permissions with Discord' });
+
+      mockGuild.members.cache = originalCache;
+      mockGuild.members.fetch = originalFetch;
+    });
+
+    it('rejects non-api-secret callers', async () => {
+      const res = await request(app).get('/api/v1/guilds/access?userId=user1&guildIds=guild1');
+
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects oversized guild access batches', async () => {
+      const guildIds = Array.from({ length: 101 }, (_, index) => `guild-${index}`).join(',');
+
+      const res = await request(app)
+        .get(`/api/v1/guilds/access?userId=user1&guildIds=${guildIds}`)
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('at most 100');
+    });
   });
 
   afterEach(() => {
@@ -190,7 +255,7 @@ describe('guilds routes coverage', () => {
         .send({ action: 'sendMessage', channelId: 'ch1', content: 'hello' });
 
       expect(res.status).toBe(403);
-      expect(res.body.error).toContain('API secret');
+      expect(res.body.error).toContain('admin access');
     });
 
     it('returns 400 when body is missing', async () => {

@@ -21,6 +21,31 @@ function renderBuilder(overrides: Partial<EmbedConfig> = {}, variables: string[]
   return { config, onChange, ...result };
 }
 
+function renderControlledBuilder(
+  overrides: Partial<EmbedConfig> = {},
+  variables: string[] = [],
+  onChange = vi.fn(),
+) {
+  const initialValue = { ...defaultEmbedConfig(), ...overrides };
+
+  function Wrapper() {
+    const [value, setValue] = React.useState(initialValue);
+    return (
+      <EmbedBuilder
+        value={value}
+        onChange={(next) => {
+          onChange(next);
+          setValue(next);
+        }}
+        variables={variables}
+      />
+    );
+  }
+
+  const result = render(<Wrapper />);
+  return { onChange, ...result };
+}
+
 describe('EmbedBuilder', () => {
   // ── Rendering ──────────────────────────────────────────────────
 
@@ -337,6 +362,40 @@ describe('EmbedBuilder', () => {
     const footerInput = screen.getByPlaceholderText('Footer text...');
     await user.type(footerInput, 'My footer');
     expect(onChange).toHaveBeenCalled();
+  });
+
+  it('does not emit title updates that would exceed the total embed character cap', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderControlledBuilder({
+      ...defaultEmbedConfig(),
+      description: 'd'.repeat(4096),
+      footerText: 'f'.repeat(1900),
+    });
+
+    await user.type(screen.getByPlaceholderText('Embed title...'), 'abcdef');
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.title).toBe('abcd');
+    expect(getTotalCharCount(lastCall)).toBe(CHAR_LIMITS.total);
+  });
+
+  it('trims field edits to stay within the total embed character cap', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderControlledBuilder({
+      ...defaultEmbedConfig(),
+      title: 't'.repeat(256),
+      description: 'd'.repeat(4096),
+      footerText: 'f'.repeat(1647),
+      fields: [{ id: 'field-1', name: '', value: '', inline: false }],
+    });
+
+    await user.type(screen.getByPlaceholderText('Field name'), 'abcdef');
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.fields[0].name).toBe('a');
+    expect(getTotalCharCount(lastCall)).toBeLessThanOrEqual(CHAR_LIMITS.total);
   });
 });
 

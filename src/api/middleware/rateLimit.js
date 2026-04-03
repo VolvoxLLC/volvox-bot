@@ -3,6 +3,8 @@
  * Simple in-memory per-IP rate limiter with no external dependencies
  */
 
+import { isTrustedInternalRequest } from './trustedInternalRequest.js';
+
 const DEFAULT_MESSAGE = 'Too many requests, please try again later';
 
 /**
@@ -56,6 +58,10 @@ export function rateLimit({
   cleanup.unref();
 
   const middleware = (req, res, next) => {
+    if (isTrustedInternalRequest(req)) {
+      return next();
+    }
+
     const ip = req.ip;
     const now = Date.now();
 
