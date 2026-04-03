@@ -30,15 +30,25 @@ export function useGuildSelection(options?: UseGuildSelectionOptions): string | 
     const handleGuildSelect = (event: Event) => {
       const selected = (event as CustomEvent<string>).detail;
       if (selected) {
-        setGuildId(selected);
-        onGuildChangeRef.current?.();
+        setGuildId((currentGuildId) => {
+          if (currentGuildId === selected) {
+            return currentGuildId;
+          }
+          onGuildChangeRef.current?.();
+          return selected;
+        });
       }
     };
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== SELECTED_GUILD_KEY || !event.newValue) return;
-      setGuildId(event.newValue);
-      onGuildChangeRef.current?.();
+      setGuildId((currentGuildId) => {
+        if (currentGuildId === event.newValue) {
+          return currentGuildId;
+        }
+        onGuildChangeRef.current?.();
+        return event.newValue;
+      });
     };
 
     window.addEventListener(GUILD_SELECTED_EVENT, handleGuildSelect as EventListener);

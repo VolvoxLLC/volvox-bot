@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { createHash } from 'node:crypto';
 import { getBotApiBaseUrl } from '@/lib/bot-api';
 import { logger } from '@/lib/logger';
 import type { BotGuild, DiscordGuild, MutualGuild } from '@/types/discord';
@@ -17,6 +18,7 @@ const DEFAULT_TOTAL_RETRY_BUDGET_MS = 8_000;
 
 /** Discord returns at most 200 guilds per page. */
 const GUILDS_PER_PAGE = 200;
+const inFlightUserGuildRequests = new Map<string, Promise<DiscordGuild[]>>();
 
 interface FetchWithRateLimitOptions extends RequestInit {
   rateLimit?: {
@@ -39,6 +41,97 @@ function parseRetryAfterMs(response: Response): number {
   };
 
   return parseSeconds(retryAfter) ?? parseSeconds(resetAfter) ?? 1000;
+}
+
+function getUserGuildRequestKey(accessToken: string): string {
+  return createHash('sha256').update(accessToken).digest('hex');
+}
+
+function getAbortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw getAbortReason(signal);
+  }
+}
+
+function waitForPromiseOrAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  throwIfAborted(signal);
+
+  if (!signal) {
+    return promise;
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(getAbortReason(signal));
+    };
+
+    signal.addEventListener('abort', onAbort, { once: true });
+
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function fetchAllUserGuildPages(accessToken: string): Promise<DiscordGuild[]> {
+  const allGuilds: DiscordGuild[] = [];
+  let after: string | undefined;
+  let hasMore = true;
+
+  do {
+    const url = new URL(`${DISCORD_API_BASE}/users/@me/guilds`);
+    url.searchParams.set('limit', String(GUILDS_PER_PAGE));
+    if (after) {
+      url.searchParams.set('after', after);
+    }
+
+    const response = await fetchWithRateLimit(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: 'no-store',
+      rateLimit: {
+        maxRetryDelayMs: 2_000,
+        totalRetryBudgetMs: 4_000,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user guilds: ${response.status} ${response.statusText}`);
+    }
+
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Discord returned non-JSON response for user guilds');
+    }
+    if (!Array.isArray(data)) {
+      throw new Error(
+        'Discord returned unexpected response shape for user guilds (expected array)',
+      );
+    }
+    const page: DiscordGuild[] = data;
+    allGuilds.push(...page);
+
+    hasMore = page.length >= GUILDS_PER_PAGE;
+    if (hasMore) {
+      after = page[page.length - 1].id;
+    }
+  } while (hasMore);
+
+  return allGuilds;
 }
 
 /**
@@ -112,61 +205,25 @@ export async function fetchUserGuilds(
   accessToken: string,
   signal?: AbortSignal,
 ): Promise<DiscordGuild[]> {
-  const allGuilds: DiscordGuild[] = [];
-  let after: string | undefined;
-  let hasMore = true;
+  throwIfAborted(signal);
 
-  do {
-    const url = new URL(`${DISCORD_API_BASE}/users/@me/guilds`);
-    url.searchParams.set('limit', String(GUILDS_PER_PAGE));
-    if (after) {
-      url.searchParams.set('after', after);
+  const requestKey = getUserGuildRequestKey(accessToken);
+  const existingRequest = inFlightUserGuildRequests.get(requestKey);
+
+  if (existingRequest) {
+    return waitForPromiseOrAbort(existingRequest, signal);
+  }
+
+  let requestPromise: Promise<DiscordGuild[]>;
+  requestPromise = fetchAllUserGuildPages(accessToken).finally(() => {
+    if (inFlightUserGuildRequests.get(requestKey) === requestPromise) {
+      inFlightUserGuildRequests.delete(requestKey);
     }
+  });
 
-    // Note: Next.js skips the Data Cache for requests with Authorization
-    // headers when there's an uncached request above in the component tree,
-    // so `next: { revalidate }` is unreliable here. Use cache: 'no-store'
-    // to be explicit about always fetching fresh data.
-    const response = await fetchWithRateLimit(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      signal,
-      cache: 'no-store',
-      rateLimit: {
-        maxRetryDelayMs: 2_000,
-        totalRetryBudgetMs: 4_000,
-      },
-    });
+  inFlightUserGuildRequests.set(requestKey, requestPromise);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch user guilds: ${response.status} ${response.statusText}`);
-    }
-
-    let data: unknown;
-    try {
-      data = await response.json();
-    } catch {
-      throw new Error('Discord returned non-JSON response for user guilds');
-    }
-    if (!Array.isArray(data)) {
-      throw new Error(
-        'Discord returned unexpected response shape for user guilds (expected array)',
-      );
-    }
-    const page: DiscordGuild[] = data;
-    allGuilds.push(...page);
-
-    // If we got fewer than the max, we've fetched everything
-    hasMore = page.length >= GUILDS_PER_PAGE;
-
-    // Set cursor to the last guild's ID for the next page
-    if (hasMore) {
-      after = page[page.length - 1].id;
-    }
-  } while (hasMore);
-
-  return allGuilds;
+  return waitForPromiseOrAbort(requestPromise, signal);
 }
 
 /**

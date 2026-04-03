@@ -25,9 +25,20 @@ import { ServerSelector } from '@/components/layout/server-selector';
 import { GuildDirectoryProvider } from '@/components/layout/guild-directory-context';
 import { SELECTED_GUILD_KEY } from '@/lib/guild-selection';
 
+const originalAnimate = HTMLElement.prototype.animate;
+
 function renderServerSelector() {
   return render(
     <GuildDirectoryProvider>
+      <ServerSelector />
+    </GuildDirectoryProvider>,
+  );
+}
+
+function renderDuplicateServerSelectors() {
+  return render(
+    <GuildDirectoryProvider>
+      <ServerSelector />
       <ServerSelector />
     </GuildDirectoryProvider>,
   );
@@ -41,10 +52,23 @@ describe('ServerSelector', () => {
     localStorage.clear();
     mockBroadcastSelectedGuild.mockReset();
     fetchSpy = vi.spyOn(global, "fetch");
+    HTMLElement.prototype.animate = vi.fn(
+      () =>
+        ({
+          cancel: vi.fn(),
+          finished: Promise.resolve(),
+        }) as unknown as Animation,
+    );
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
+    if (originalAnimate) {
+      HTMLElement.prototype.animate = originalAnimate;
+    } else {
+      // @ts-expect-error jsdom does not define animate by default
+      delete HTMLElement.prototype.animate;
+    }
     if (originalClientId === undefined) {
       delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
     } else {
@@ -110,6 +134,33 @@ describe('ServerSelector', () => {
     await waitFor(() => {
       expect(screen.getByText("Test Server")).toBeInTheDocument();
     });
+  });
+
+  it('shares the guild directory fetch across multiple server selectors', async () => {
+    const guilds = [
+      {
+        id: '1',
+        name: 'Shared Server',
+        icon: null,
+        owner: true,
+        permissions: '8',
+        features: [],
+        botPresent: true,
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    renderDuplicateServerSelectors();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Shared Server')).toHaveLength(2);
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it('does not rebroadcast restored guild selection from localStorage', async () => {
@@ -285,13 +336,10 @@ describe('ServerSelector', () => {
     renderServerSelector();
 
     await waitFor(() => {
-      expect(screen.getByText("No manageable servers")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /No Access/i })).toBeInTheDocument();
     });
-
-    await userEvent.setup().click(screen.getByRole("button", { name: /No manageable servers/i }));
-
-    expect(screen.getByText(/You need moderator, admin, or owner permissions/i)).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /Viewer Server/i })).toHaveAttribute(
+    expect(screen.getByText("Community Hubs")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Viewer Server/i })).toHaveAttribute(
       "href",
       "/community/viewer-1",
     );

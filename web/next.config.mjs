@@ -40,6 +40,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  allowedDevOrigins: ["127.0.0.1"],
   ...(process.env.NODE_ENV !== "production" && {
     turbopack: {
       root: path.join(__dirname, ".."),

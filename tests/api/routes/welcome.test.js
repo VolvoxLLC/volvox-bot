@@ -13,13 +13,13 @@ vi.mock('../../../src/modules/config.js', () => ({
     welcome: {
       enabled: true,
       channelId: 'ch-main',
-      message: 'Welcome {user} to {server}! Member #{memberCount}.',
-      variants: ['Hey {user}!', 'Hello {user}!'],
+      message: 'Welcome {{user}} to {{server}}! Member #{{memberCount}}.',
+      variants: ['Hey {{user}}!', 'Hello {{user}}!'],
       channels: [
         {
           channelId: 'ch-specific',
-          message: 'Special channel welcome, {user}!',
-          variants: ['Ch variant {user}'],
+          message: 'Special channel welcome, {{user}}!',
+          variants: ['Ch variant {{user}}'],
         },
       ],
     },
@@ -52,17 +52,17 @@ describe('welcome routes', () => {
         .post('/api/v1/guilds/guild1/welcome/preview')
         .set('x-api-secret', SECRET)
         .send({
-          template: 'Hello {user} in {server}!',
+          template: 'Hello {{user}} in {{server}}!',
           guild: { name: 'Test Guild', memberCount: 5 },
         });
 
       expect(res.status).toBe(200);
       expect(res.body.rendered).toBe('Hello <@123456789> in Test Guild!');
-      expect(res.body.template).toBe('Hello {user} in {server}!');
+      expect(res.body.template).toBe('Hello {{user}} in {{server}}!');
     });
 
     it('renders from variants when provided in body', async () => {
-      const variants = ['Variant A {user}', 'Variant B {user}'];
+      const variants = ['Variant A {{user}}', 'Variant B {{user}}'];
       const res = await request(app)
         .post('/api/v1/guilds/guild1/welcome/preview')
         .set('x-api-secret', SECRET)
@@ -70,6 +70,20 @@ describe('welcome routes', () => {
 
       expect(res.status).toBe(200);
       expect(['Variant A <@123456789>', 'Variant B <@123456789>']).toContain(res.body.rendered);
+    });
+
+    it('leaves single-brace placeholders as plain text', async () => {
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/welcome/preview')
+        .set('x-api-secret', SECRET)
+        .send({
+          template: 'Hello {user} in {server}!',
+          guild: { name: 'Test Guild', memberCount: 5 },
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.rendered).toBe('Hello {user} in {server}!');
+      expect(res.body.template).toBe('Hello {user} in {server}!');
     });
 
     it('resolves per-channel config when channelId provided', async () => {
@@ -99,7 +113,7 @@ describe('welcome routes', () => {
         .post('/api/v1/guilds/guild1/welcome/preview')
         .set('x-api-secret', SECRET)
         .send({
-          template: '{username} joined!',
+          template: '{{username}} joined!',
           member: { id: '999', username: 'alice' },
         });
 
@@ -126,13 +140,13 @@ describe('welcome routes', () => {
       expect(Array.isArray(res.body.variables)).toBe(true);
 
       const varNames = res.body.variables.map((v) => v.variable);
-      expect(varNames).toContain('{user}');
-      expect(varNames).toContain('{username}');
-      expect(varNames).toContain('{server}');
-      expect(varNames).toContain('{memberCount}');
-      expect(varNames).toContain('{greeting}');
-      expect(varNames).toContain('{vibeLine}');
-      expect(varNames).toContain('{ctaLine}');
+      expect(varNames).toContain('{{user}}');
+      expect(varNames).toContain('{{username}}');
+      expect(varNames).toContain('{{server}}');
+      expect(varNames).toContain('{{memberCount}}');
+      expect(varNames).toContain('{{greeting}}');
+      expect(varNames).toContain('{{vibeLine}}');
+      expect(varNames).toContain('{{ctaLine}}');
     });
 
     it('each variable entry has description', async () => {

@@ -52,112 +52,29 @@ const TABS = [
   },
 ] as const;
 
-function InfoTip({ text }: { text: string }) {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-        </TooltipTrigger>
-        <TooltipContent className="bg-muted border-border text-foreground text-[10px] max-w-[200px] p-2 leading-relaxed shadow-xl">
-          {text}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-export function OnboardingGrowthCategory() {
-  const { draftConfig, saving, guildId, visibleFeatureIds, updateDraftConfig } = useConfigContext();
-
-  const availableTabs = TABS.filter((t) => visibleFeatureIds.has(t.id as ConfigFeatureId));
-  const [activeTab, setActiveTab] = useState<ConfigFeatureId | null>(
-    (availableTabs[0]?.id as ConfigFeatureId) ?? null,
+  const welcomeVariables = useMemo(
+    () =>
+      draftConfig?.welcome?.dynamic?.enabled
+        ? [
+            ...STATIC_VARIABLE_DEFINITIONS.map((variable) => variable.name),
+            ...DYNAMIC_VARIABLE_DEFINITIONS.map((variable) => variable.name),
+          ]
+        : STATIC_VARIABLE_DEFINITIONS.map((variable) => variable.name),
+    [draftConfig?.welcome?.dynamic?.enabled],
   );
 
-  const [dmStepsRaw, setDmStepsRaw] = useState('');
-
-  useEffect(() => {
-    if (draftConfig?.welcome?.dmSequence?.steps) {
-      setDmStepsRaw(draftConfig.welcome.dmSequence.steps.join('\n'));
-    }
-  }, [draftConfig?.welcome?.dmSequence?.steps]);
-
-  useEffect(() => {
-    if (activeTab && !visibleFeatureIds.has(activeTab)) {
-      setActiveTab((availableTabs[0]?.id as ConfigFeatureId) ?? null);
-    }
-  }, [visibleFeatureIds, activeTab, availableTabs]);
-
-  const updateWelcomeField = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: { ...(prev.welcome ?? {}), [field]: value },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
-  const updateWelcomeDynamic = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: {
-          ...(prev.welcome ?? {}),
-          dynamic: { ...(prev.welcome?.dynamic ?? {}), [field]: value },
-        },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
-  const updateWelcomeRoleMenu = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: {
-          ...(prev.welcome ?? {}),
-          roleMenu: { ...(prev.welcome?.roleMenu ?? {}), [field]: value },
-        },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
-  const updateWelcomeDmSequence = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: {
-          ...(prev.welcome ?? {}),
-          dmSequence: { ...(prev.welcome?.dmSequence ?? {}), [field]: value },
-        },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
-  const welcomePreview = useMemo(() => {
-    let text = draftConfig?.welcome?.message ?? '';
-    if (!text) return '';
-
-    text = text
-      .replace(/{user}/g, '@johndoe')
-      .replace(/{username}/g, 'johndoe')
-      .replace(/{server}/g, 'Volvox')
-      .replace(/{memberCount}/g, '142');
+  const welcomeVariableSamples = useMemo(() => {
+    const samples = Object.fromEntries(
+      STATIC_VARIABLE_DEFINITIONS.map((variable) => [variable.name, variable.sample]),
+    ) as Record<string, string>;
 
     if (draftConfig?.welcome?.dynamic?.enabled) {
-      Object.assign(samples, {
-        greeting: 'Good morning @johndoe! You just joined Volvox.',
-        vibeLine: "Things are moving at a healthy pace in #general, so you'll fit right in.",
-        ctaLine: 'Start in #general, check out #introductions, and browse #announcements.',
-        milestoneLine: 'You just rolled in as member #142.',
-        timeOfDay: 'morning',
-        activityLevel: 'steady',
-        topChannels: '#general, #projects, #showcase',
-      });
+      Object.assign(
+        samples,
+        Object.fromEntries(
+          DYNAMIC_VARIABLE_DEFINITIONS.map((variable) => [variable.name, variable.sample]),
+        ),
+      );
     }
 
     return samples;
@@ -284,41 +201,19 @@ export function OnboardingGrowthCategory() {
             {activeTab === 'welcome' && (
               <div className="space-y-6">
                 <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="welcome-message"
-                        className="block text-sm font-bold tracking-tight text-foreground/80"
-                      >
-                        Welcome Message Template
-                      </label>
-                      <textarea
-                        id="welcome-message"
-                        value={draftConfig.welcome?.message ?? ''}
-                        onChange={(e) => updateWelcomeField('message', e.target.value)}
-                        rows={8}
-                        disabled={saving}
-                        className={cn(inputClasses, 'resize-none')}
-                        placeholder="Welcome {user} to {server}!"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-bold tracking-tight text-muted-foreground/60">
-                        Live Preview
-                      </label>
-                      <div
-                        className={cn(
-                          inputClasses,
-                          'bg-background/20 h-[194px] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed p-4 border-dashed',
-                        )}
-                      >
-                        {welcomePreview || (
-                          <span className="text-muted-foreground/30 italic">
-                            No template provided.
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                      Welcome message
+                    </span>
+                    <DiscordMarkdownEditor
+                      value={draftConfig.welcome?.message ?? ''}
+                      onChange={(v) => updateWelcomeField('message', v)}
+                      variables={welcomeVariables}
+                      variableSamples={welcomeVariableSamples}
+                      maxLength={2000}
+                      placeholder="Welcome {{user}} to {{server}}!"
+                      disabled={saving}
+                    />
                   </div>
 
                   <details className="group">
@@ -330,32 +225,21 @@ export function OnboardingGrowthCategory() {
                       <div className="space-y-2 text-xs">
                         <p className="font-bold text-foreground/70 uppercase">Static Variables</p>
                         <ul className="space-y-1 text-muted-foreground">
-                          <li>
-                            <code>{'{user}'}</code> - Mention member
-                          </li>
-                          <li>
-                            <code>{'{username}'}</code> - Plain name
-                          </li>
-                          <li>
-                            <code>{'{server}'}</code> - Volvox
-                          </li>
-                          <li>
-                            <code>{'{memberCount}'}</code> - Total members
-                          </li>
+                          {STATIC_VARIABLE_DEFINITIONS.map((variable) => (
+                            <li key={variable.name}>
+                              <code>{`{{${variable.name}}}`}</code> - {variable.description}
+                            </li>
+                          ))}
                         </ul>
                       </div>
                       <div className="space-y-2 text-xs">
                         <p className="font-bold text-foreground/70 uppercase">Dynamic Variables</p>
                         <ul className="space-y-1 text-muted-foreground">
-                          <li>
-                            <code>{'{greeting}'}</code> - Time-aware hello
-                          </li>
-                          <li>
-                            <code>{'{vibeLine}'}</code> - Activity context
-                          </li>
-                          <li>
-                            <code>{'{topChannels}'}</code> - Trending channels
-                          </li>
+                          {DYNAMIC_VARIABLE_DEFINITIONS.map((variable) => (
+                            <li key={variable.name}>
+                              <code>{`{{${variable.name}}}`}</code> - {variable.description}
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import nextConfig from "../next.config.mjs";
 
 type SecurityHeader = {
@@ -16,6 +16,10 @@ describe("next.config security headers", () => {
     const headerGroups = await nextConfig.headers!();
     expect(headerGroups).toHaveLength(1);
     expect(headerGroups[0].source).toBe("/(.*)");
+  });
+
+  it("should allow 127.0.0.1 as a dev origin for HMR and MCP verification", () => {
+    expect(nextConfig.allowedDevOrigins).toEqual(["127.0.0.1"]);
   });
 
   it("should include X-Frame-Options: DENY", async () => {

@@ -69,42 +69,45 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         ? `${formatServerCount(manageable.length, 'manageable server')} • ${formatServerCount(memberOnly.length, 'view-only community')}`
         : `${formatServerCount(manageable.length, 'manageable server')}`;
 
-  // Persist selected guild to localStorage
+  // Persist and broadcast selected guild through the shared selection bus.
   const selectGuild = useCallback((guild: MutualGuild) => {
     setSelectedGuild(guild);
-    try {
-      localStorage.setItem(SELECTED_GUILD_KEY, guild.id);
-    } catch {
-      // localStorage may be unavailable (e.g. incognito)
-    }
     broadcastSelectedGuild(guild.id);
   }, []);
 
   useEffect(() => {
-    const manageableGuilds = guilds.filter(isGuildManageable);
-    if (manageableGuilds.length === 0) {
+    if (manageable.length === 0) {
       setSelectedGuild(null);
       return;
     }
 
-    let restored = false;
-    try {
-      const savedId = localStorage.getItem(SELECTED_GUILD_KEY);
-      if (savedId) {
-        const saved = manageableGuilds.find((guild) => guild.id === savedId);
-        if (saved) {
-          setSelectedGuild(saved);
-          restored = true;
-        }
+    const currentGuild = selectedGuild
+      ? (manageable.find((guild) => guild.id === selectedGuild.id) ?? null)
+      : null;
+
+    if (currentGuild) {
+      if (currentGuild !== selectedGuild) {
+        setSelectedGuild(currentGuild);
       }
-    } catch {
-      // localStorage unavailable
+      return;
     }
 
-    if (!restored) {
-      selectGuild(manageableGuilds[0]);
+    try {
+      const savedGuildId = localStorage.getItem(SELECTED_GUILD_KEY);
+      const restoredGuild = savedGuildId
+        ? (manageable.find((guild) => guild.id === savedGuildId) ?? null)
+        : null;
+
+      if (restoredGuild) {
+        setSelectedGuild(restoredGuild);
+        return;
+      }
+    } catch {
+      // localStorage may be unavailable (e.g. incognito)
     }
-  }, [guilds, selectGuild]);
+
+    selectGuild(manageable[0]);
+  }, [manageable, selectGuild, selectedGuild]);
 
   if (loading) {
     return (

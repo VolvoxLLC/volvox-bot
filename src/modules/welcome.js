@@ -6,6 +6,7 @@
 import { info, error as logError } from '../logger.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeSend } from '../utils/safeSend.js';
+import { renderTemplate } from '../utils/templateEngine.js';
 import { isReturningMember } from './welcomeOnboarding.js';
 
 const guildActivity = new Map();
@@ -49,19 +50,19 @@ export function __resetCommunityActivityState() {
  * Render welcome message with placeholder replacements.
  *
  * Static variables (always available):
- *   {user}          – Discord mention (<@id>)
- *   {username}      – Plain username
- *   {server}        – Guild name
- *   {memberCount}   – Current member count
+ *   {{user}}          – Discord mention (<@id>)
+ *   {{username}}      – Plain username
+ *   {{server}}        – Guild name
+ *   {{memberCount}}   – Current member count
  *
  * Dynamic variables (available when dynamic welcome is enabled):
- *   {greeting}      – Time-of-day greeting line
- *   {vibeLine}      – Community activity description
- *   {ctaLine}       – Suggested channels call-to-action
- *   {milestoneLine} – Member milestone or "rolled in as member #N"
- *   {timeOfDay}     – morning, afternoon, evening, or night
- *   {activityLevel} – quiet, light, steady, busy, or hype
- *   {topChannels}   – Most active channel mentions
+ *   {{greeting}}      – Time-of-day greeting line
+ *   {{vibeLine}}      – Community activity description
+ *   {{ctaLine}}       – Suggested channels call-to-action
+ *   {{milestoneLine}} – Member milestone or "rolled in as member #N"
+ *   {{timeOfDay}}     – morning, afternoon, evening, or night
+ *   {{activityLevel}} – quiet, light, steady, busy, or hype
+ *   {{topChannels}}   – Most active channel mentions
  *
  * @param {string} messageTemplate - Welcome message template
  * @param {Object} member - Member object with id and optional username
@@ -70,26 +71,13 @@ export function __resetCommunityActivityState() {
  * @returns {string} Rendered welcome message
  */
 export function renderWelcomeMessage(messageTemplate, member, guild, dynamicContext) {
-  const count = (guild.memberCount ?? 0).toString();
-  const guildName = guild.name ?? '';
-  let result = messageTemplate
-    .replace(/{user}/g, `<@${member.id}>`)
-    .replace(/{username}/g, member.username || 'Unknown')
-    .replace(/{server}/g, guildName)
-    .replace(/{memberCount}/g, count);
-
-  if (dynamicContext) {
-    result = result
-      .replace(/{greeting}/g, dynamicContext.greeting ?? '')
-      .replace(/{vibeLine}/g, dynamicContext.vibeLine ?? '')
-      .replace(/{ctaLine}/g, dynamicContext.ctaLine ?? '')
-      .replace(/{milestoneLine}/g, dynamicContext.milestoneLine ?? '')
-      .replace(/{timeOfDay}/g, dynamicContext.timeOfDay ?? '')
-      .replace(/{activityLevel}/g, dynamicContext.activityLevel ?? '')
-      .replace(/{topChannels}/g, dynamicContext.topChannels ?? '');
-  }
-
-  return result;
+  return renderTemplate(messageTemplate, {
+    user: `<@${member.id}>`,
+    username: member.username || 'Unknown',
+    server: guild.name ?? '',
+    memberCount: (guild.memberCount ?? 0).toString(),
+    ...(dynamicContext ?? {}),
+  });
 }
 
 /**
@@ -105,7 +93,7 @@ export function pickWelcomeVariant(variants, fallback) {
     const idx = Math.floor(Math.random() * variants.length);
     return variants[idx];
   }
-  return fallback || 'Welcome, {user}!';
+  return fallback || 'Welcome, {{user}}!';
 }
 
 /**
@@ -228,7 +216,7 @@ export async function sendWelcomeMessage(member, client, config) {
   const buildMessage = (channelId) => {
     if (returningMember) {
       return renderWelcomeMessage(
-        'Welcome back, {user}! Glad to see you again. Jump back in whenever you are ready.',
+        'Welcome back, {{user}}! Glad to see you again. Jump back in whenever you are ready.',
         memberCtx,
         guildCtx,
       );
@@ -282,13 +270,13 @@ export async function sendWelcomeMessage(member, client, config) {
  * Compute dynamic context variables for template rendering.
  *
  * Returns an object whose keys map to template placeholders:
- *   {greeting}      – Time-of-day greeting line
- *   {vibeLine}      – Community activity description
- *   {ctaLine}       – Suggested channels call-to-action
- *   {milestoneLine} – Member milestone or "rolled in as member #N"
- *   {timeOfDay}     – morning, afternoon, evening, or night
- *   {activityLevel} – quiet, light, steady, busy, or hype
- *   {topChannels}   – Most active channel mentions
+ *   {{greeting}}      – Time-of-day greeting line
+ *   {{vibeLine}}      – Community activity description
+ *   {{ctaLine}}       – Suggested channels call-to-action
+ *   {{milestoneLine}} – Member milestone or "rolled in as member #N"
+ *   {{timeOfDay}}     – morning, afternoon, evening, or night
+ *   {{activityLevel}} – quiet, light, steady, busy, or hype
+ *   {{topChannels}}   – Most active channel mentions
  *
  * @param {Object} member - Discord guild member
  * @param {Object} config - Bot configuration

@@ -19,6 +19,10 @@ Keep this file for repo-specific rules, gotchas, and conventions. If something b
 - Community features should be gated behind `config.<feature>.enabled`. Moderation commands are the exception.
 - New dashboard routes need title wiring in `web/src/lib/page-titles.ts`: use `createPageMetadata()` for SSR and keep `DashboardTitleSync` aligned for client navigation.
 - If a feature is configurable, ship the whole path: runtime logic, API/dashboard wiring, and tests.
+- Next.js 16 dev + Chrome DevTools MCP uses `127.0.0.1`; keep `web/next.config.mjs` `allowedDevOrigins` including `127.0.0.1` or HMR will fail, pages will reload-loop, and Turbopack can fall over with `Map maximum size exceeded`.
+- Dashboard clients that need the guild list should consume `GuildDirectoryProvider`; do not stack extra `/api/guilds` fetch loops in leaf components.
+- Recharts dashboard views should use `web/src/components/ui/stable-responsive-container.tsx`; raw `ResponsiveContainer` mounts can spam `width(-1)/height(-1)` warnings when panels render before layout settles.
+- Welcome-message variables use double braces only, like `{{user}}`; single braces are plain text and should not be documented, inserted, or parsed as variables.
 
 ## Visual Verification - IMPORTANT
 

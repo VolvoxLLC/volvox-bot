@@ -32,6 +32,12 @@ describe('parseDiscordMarkdown', () => {
     expect(parseDiscordMarkdown(input)).toContain(expected);
   });
 
+  it('does not treat single-brace tokens as variables by default', () => {
+    const result = parseDiscordMarkdown('Hello {username}!');
+    expect(result).not.toContain('data-variable="username"');
+    expect(result).toContain('Hello {username}!');
+  });
+
   it('preserves markdown markers inside inline code', () => {
     const result = parseDiscordMarkdown('`**bold**`');
     expect(result).toContain('<code>**bold**</code>');
@@ -206,6 +212,31 @@ describe('DiscordMarkdownEditor', () => {
     expect(preview?.innerHTML).toContain('data-variable="username"');
   });
 
+  it('keeps the editor and preview panes on the same spacing contract', () => {
+    const { container } = render(<DiscordMarkdownEditor {...defaultProps} value="{{username}}\n\nhello there" />);
+
+    const textarea = screen.getByLabelText('Markdown editor');
+    const preview = container.querySelector('.discord-preview');
+    const panesGrid = textarea.closest('.grid');
+
+    expect(textarea.className).toContain('px-3');
+    expect(textarea.className).toContain('py-2');
+    expect(textarea.className).toContain('text-sm');
+    expect(textarea.className).toContain('leading-relaxed');
+    expect(textarea.className).not.toContain('min-h-[200px]');
+
+    expect(preview).not.toBeNull();
+    expect(preview?.className).toContain('px-3');
+    expect(preview?.className).toContain('py-2');
+    expect(preview?.className).toContain('text-sm');
+    expect(preview?.className).toContain('leading-relaxed');
+    expect(preview?.className).not.toContain('min-h-[200px]');
+    expect(preview?.className).toContain('-top-[3px]');
+    expect(preview?.className).toContain('md:overflow-x-auto');
+    expect(preview?.className).toContain('md:whitespace-nowrap');
+    expect(panesGrid?.className).not.toContain('min-h-[200px]');
+  });
+
   it.each([
     ['Ctrl+B', '{Control>}b{/Control}', '**hello**'],
     ['Ctrl+I', '{Control>}i{/Control}', '*hello*'],
@@ -263,4 +294,5 @@ describe('DiscordMarkdownEditor', () => {
 
     expect(onChange).toHaveBeenCalledWith('hello{{u');
   });
+
 });

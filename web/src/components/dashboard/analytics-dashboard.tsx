@@ -22,12 +22,12 @@ import {
   LineChart,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGlowCard } from '@/hooks/use-glow-card';
@@ -407,7 +407,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
           <div className="relative">
             {hasMessageVolumeData ? (
               <div className="h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <StableResponsiveContainer>
                   <LineChart data={analytics?.messageVolume ?? []}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
                     <XAxis
@@ -454,7 +454,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
                       activeDot={{ r: 6, strokeWidth: 0 }}
                     />
                   </LineChart>
-                </ResponsiveContainer>
+                </StableResponsiveContainer>
               </div>
             ) : canShowNoDataStates ? (
               <EmptyState
@@ -488,7 +488,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
             <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-5 transition-all hover:bg-muted/30">
               {hasModelUsageData ? (
                 <div className="h-[140px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <StableResponsiveContainer>
                     <PieChart>
                       <Pie
                         data={modelUsageData}
@@ -512,7 +512,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
                         }}
                       />
                     </PieChart>
-                  </ResponsiveContainer>
+                  </StableResponsiveContainer>
                 </div>
               ) : (
                 <div className="flex h-[140px] flex-col items-center justify-center text-center">
@@ -532,7 +532,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
             <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-5 transition-all hover:bg-muted/30">
               {hasTokenUsageData ? (
                 <div className="h-[140px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <StableResponsiveContainer>
                     <BarChart data={tokenBreakdownData}>
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -568,7 +568,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
                         maxBarSize={20}
                       />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </StableResponsiveContainer>
                 </div>
               ) : (
                 <div className="flex h-[140px] flex-col items-center justify-center text-center">
@@ -599,7 +599,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
           <div className="relative">
             {hasTopChannelsData ? (
               <div className="h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <StableResponsiveContainer>
                   <BarChart
                     data={topChannels}
                     layout="vertical"
@@ -644,7 +644,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
+                </StableResponsiveContainer>
               </div>
             ) : canShowNoDataStates ? (
               <EmptyState

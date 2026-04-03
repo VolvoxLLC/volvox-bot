@@ -8,11 +8,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -362,7 +362,7 @@ export function PerformanceDashboard() {
                 Waiting for samples...
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <StableResponsiveContainer>
                 <AreaChart data={memChartData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -414,7 +414,7 @@ export function PerformanceDashboard() {
                     </linearGradient>
                   </defs>
                 </AreaChart>
-              </ResponsiveContainer>
+              </StableResponsiveContainer>
             )}
           </div>
         </div>
@@ -432,7 +432,7 @@ export function PerformanceDashboard() {
                 Waiting for samples...
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <StableResponsiveContainer>
                 <AreaChart data={cpuChartData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -474,7 +474,7 @@ export function PerformanceDashboard() {
                     </linearGradient>
                   </defs>
                 </AreaChart>
-              </ResponsiveContainer>
+              </StableResponsiveContainer>
             )}
           </div>
         </div>
@@ -496,7 +496,7 @@ export function PerformanceDashboard() {
                 No samples yet...
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <StableResponsiveContainer>
                 <BarChart data={rtHistogram}>
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -524,7 +524,7 @@ export function PerformanceDashboard() {
                   />
                   <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                 </BarChart>
-              </ResponsiveContainer>
+              </StableResponsiveContainer>
             )}
           </div>
         </div>

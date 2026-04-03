@@ -391,6 +391,36 @@ describe("fetchUserGuilds", () => {
 
     await expect(fetchUserGuilds("test-token", controller.signal)).rejects.toThrow();
   });
+
+  it("deduplicates concurrent guild fetches for the same access token", async () => {
+    const mockGuilds = [
+      { id: "1", name: "Shared Server", icon: null, owner: true, permissions: "8", features: [] },
+    ];
+
+    let resolveFetch: ((response: Response) => void) | null = null;
+    fetchSpy.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+
+    const firstRequest = fetchUserGuilds("shared-token");
+    const secondRequest = fetchUserGuilds("shared-token");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    resolveFetch?.({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(mockGuilds),
+    } as Response);
+
+    await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([
+      mockGuilds,
+      mockGuilds,
+    ]);
+  });
 });
 
 describe("fetchBotGuilds", () => {

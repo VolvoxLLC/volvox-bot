@@ -22,13 +22,13 @@ import {
   LineChart,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
 import type { ChartTheme } from '@/hooks/use-chart-theme';
 import { formatNumber } from '@/lib/analytics-utils';
 import type {
@@ -299,7 +299,7 @@ export function MessageVolumeCard({
       <CardContent>
         {hasData ? (
           <div className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <StableResponsiveContainer>
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                 <XAxis dataKey="label" minTickGap={20} tick={{ fill: chart.tooltipText }} />
@@ -330,7 +330,7 @@ export function MessageVolumeCard({
                   dot={false}
                 />
               </LineChart>
-            </ResponsiveContainer>
+            </StableResponsiveContainer>
           </div>
         ) : canShowNoDataStates ? (
           <EmptyState
@@ -411,7 +411,7 @@ function ModelPieChart({
   if (hasData) {
     return (
       <div className="h-[160px] rounded-xl border border-border/60 bg-background/50 p-2">
-        <ResponsiveContainer width="100%" height="100%">
+        <StableResponsiveContainer>
           <PieChart>
             <Pie data={data} dataKey="requests" nameKey="model" outerRadius={72} labelLine={false}>
               {data.map((entry) => (
@@ -427,7 +427,7 @@ function ModelPieChart({
               }}
             />
           </PieChart>
-        </ResponsiveContainer>
+        </StableResponsiveContainer>
       </div>
     );
   }
@@ -458,7 +458,7 @@ function TokenBarChart({
   if (hasData) {
     return (
       <div className="h-[160px] rounded-xl border border-border/60 bg-background/50 p-2">
-        <ResponsiveContainer width="100%" height="100%">
+        <StableResponsiveContainer>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
             <XAxis dataKey="label" tick={{ fill: chart.tooltipText }} />
@@ -475,7 +475,7 @@ function TokenBarChart({
             <Bar dataKey="prompt" name="Prompt tokens" fill={chart.primary} />
             <Bar dataKey="completion" name="Completion tokens" fill={chart.success} />
           </BarChart>
-        </ResponsiveContainer>
+        </StableResponsiveContainer>
       </div>
     );
   }
@@ -518,7 +518,7 @@ export function TopChannelsCard({
       <CardContent>
         {hasData ? (
           <div className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <StableResponsiveContainer>
               <BarChart
                 data={topChannels}
                 layout="vertical"
@@ -558,7 +558,7 @@ export function TopChannelsCard({
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
+            </StableResponsiveContainer>
           </div>
         ) : canShowNoDataStates ? (
           <EmptyState
