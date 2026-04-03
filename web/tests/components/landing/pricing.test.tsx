@@ -71,11 +71,11 @@ describe('Pricing', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Simple, transparent pricing');
   });
 
-  it('should link free tier to GitHub', () => {
+  it('should link free tier to bot invite URL when no custom href', () => {
     render(<Pricing />);
     expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
       'href',
-      'https://github.com/VolvoxLLC/volvox-bot',
+      'https://discord.com/invite/bot',
     );
   });
 

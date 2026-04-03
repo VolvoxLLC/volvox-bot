@@ -50,12 +50,10 @@ describe('ComparisonTable', () => {
     expect(screen.getByText('Carl-bot')).toBeInTheDocument();
   });
 
-  it('should render all 8 feature rows', () => {
+  it('should render all feature rows', () => {
     render(<ComparisonTable />);
     expect(screen.getByText('AI Chat')).toBeInTheDocument();
     expect(screen.getByText('AI Moderation')).toBeInTheDocument();
-    expect(screen.getByText('Open Source')).toBeInTheDocument();
-    expect(screen.getByText('Self-Hostable')).toBeInTheDocument();
     expect(screen.getByText('Web Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Starboard')).toBeInTheDocument();
     expect(screen.getByText('Analytics')).toBeInTheDocument();

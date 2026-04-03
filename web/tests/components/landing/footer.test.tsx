@@ -84,13 +84,13 @@ describe('Footer', () => {
   it('should render social links with correct hrefs', () => {
     render(<Footer />);
     const githubLink = screen.getByLabelText('GitHub');
-    expect(githubLink).toHaveAttribute('href', 'https://github.com/VolvoxLLC/volvox-bot');
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/VolvoxLLC');
 
     const discordLink = screen.getByLabelText('Discord');
     expect(discordLink).toHaveAttribute('href', 'https://discord.gg/8ahXACdamN');
 
     const xLink = screen.getByLabelText('X (Twitter)');
-    expect(xLink).toHaveAttribute('href', 'https://x.com/volvoxbot');
+    expect(xLink).toHaveAttribute('href', 'https://x.com/volvoxdev');
 
     const statusLink = screen.getByRole('link', { name: /Status/i });
     expect(statusLink).toHaveAttribute('href', 'https://status.volvox.bot');
