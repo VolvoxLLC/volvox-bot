@@ -135,6 +135,9 @@ export default function AuditLogPage() {
     void fetch(guildId, { ...filters, userId: debouncedUserSearch }).then((res) => {
       if (res === 'unauthorized') router.replace('/login');
     });
+    return () => {
+      useAuditLogStore.getState().abortInFlight();
+    };
   }, [
     guildId,
     filters.action,

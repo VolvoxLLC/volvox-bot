@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isAbortError } from '@/lib/api-utils';
 
 interface AuditEntry {
   id: number;
@@ -28,12 +29,22 @@ interface AuditLogState {
   filters: AuditLogFilters;
 
   setFilters: (filters: Partial<AuditLogFilters>) => void;
-  fetch: (guildId: string, filters: AuditLogFilters) => Promise<'unauthorized' | void>;
-  refresh: (guildId: string) => Promise<'unauthorized' | void>;
+  /**
+   * Loads audit log rows for the guild and filter snapshot. Cancels any in-flight
+   * request and ignores responses that are no longer current (stale filter/guild).
+   */
+  fetch: (guildId: string, filters: AuditLogFilters) => Promise<'unauthorized' | undefined>;
+  refresh: (guildId: string) => Promise<'unauthorized' | undefined>;
+  /** Aborts the current request without bumping generation (e.g. route unmount). */
+  abortInFlight: () => void;
   reset: () => void;
 }
 
 const PAGE_SIZE = 25;
+
+/** Monotonic generation: incremented on each new fetch and on reset so stale handlers bail out. */
+let fetchGeneration = 0;
+let inFlightAbort: AbortController | null = null;
 
 export const useAuditLogStore = create<AuditLogState>((set, get) => ({
   entries: [],
@@ -45,6 +56,11 @@ export const useAuditLogStore = create<AuditLogState>((set, get) => ({
   setFilters: (partial) => set((s) => ({ filters: { ...s.filters, ...partial } })),
 
   fetch: async (guildId, filters) => {
+    inFlightAbort?.abort();
+    const controller = new AbortController();
+    inFlightAbort = controller;
+    const requestId = ++fetchGeneration;
+
     set({ loading: true, error: null });
     try {
       const params = new URLSearchParams();
@@ -57,15 +73,28 @@ export const useAuditLogStore = create<AuditLogState>((set, get) => ({
 
       const res = await fetch(
         `/api/guilds/${encodeURIComponent(guildId)}/audit-log?${params.toString()}`,
+        { signal: controller.signal },
       );
-      if (res.status === 401) return 'unauthorized';
+
+      if (requestId !== fetchGeneration) return;
+
+      if (res.status === 401) {
+        return 'unauthorized';
+      }
       if (!res.ok) throw new Error(`Failed to fetch audit log (${res.status})`);
-      const data = await res.json();
+      const data = (await res.json()) as { entries: AuditEntry[]; total: number };
+
+      if (requestId !== fetchGeneration) return;
+
       set({ entries: data.entries, total: data.total });
     } catch (err) {
+      if (isAbortError(err)) return;
+      if (requestId !== fetchGeneration) return;
       set({ error: err instanceof Error ? err.message : 'Failed to fetch audit log' });
     } finally {
-      set({ loading: false });
+      if (requestId === fetchGeneration) {
+        set({ loading: false });
+      }
     }
   },
 
@@ -74,11 +103,19 @@ export const useAuditLogStore = create<AuditLogState>((set, get) => ({
     return fetch(guildId, filters);
   },
 
-  reset: () =>
+  abortInFlight: () => {
+    inFlightAbort?.abort();
+  },
+
+  reset: () => {
+    inFlightAbort?.abort();
+    inFlightAbort = null;
+    fetchGeneration += 1;
     set({
       entries: [],
       total: 0,
       error: null,
       filters: { action: '', userId: '', startDate: '', endDate: '', offset: 0 },
-    }),
+    });
+  },
 }));
