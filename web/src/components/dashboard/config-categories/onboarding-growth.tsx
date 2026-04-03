@@ -8,6 +8,7 @@ import { CommunitySettingsSection } from '@/components/dashboard/config-sections
 import { SettingsFeatureCard } from '@/components/dashboard/config-workspace/settings-feature-card';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
+import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ToggleSwitch } from '../toggle-switch';
@@ -27,6 +28,18 @@ function InfoTip({ text }: { text: string }) {
     </Tooltip>
   );
 }
+
+const STATIC_VARIABLES = ['user', 'username', 'server', 'memberCount'] as const;
+const DYNAMIC_VARIABLES = [
+  'greeting',
+  'vibeLine',
+  'ctaLine',
+  'milestoneLine',
+  'timeOfDay',
+  'activityLevel',
+  'topChannels',
+] as const;
+const SINGLE_BRACE_DELIMITERS = ['{', '}'] as const;
 
 /**
  * Onboarding & Growth category — renders the Welcome feature card directly,
@@ -116,37 +129,36 @@ export function OnboardingGrowthCategory() {
     [updateDraftConfig],
   );
 
-  const welcomePreview = useMemo(() => {
-    let text = draftConfig?.welcome?.message ?? '';
-    if (!text) return '';
+  const welcomeVariables = useMemo(
+    () =>
+      draftConfig?.welcome?.dynamic?.enabled
+        ? [...STATIC_VARIABLES, ...DYNAMIC_VARIABLES]
+        : [...STATIC_VARIABLES],
+    [draftConfig?.welcome?.dynamic?.enabled],
+  );
 
-    // Static variables — sample values
-    text = text
-      .replace(/{user}/g, '@johndoe')
-      .replace(/{username}/g, 'johndoe')
-      .replace(/{server}/g, 'Volvox')
-      .replace(/{memberCount}/g, '142');
+  const welcomeVariableSamples = useMemo(() => {
+    const samples: Record<string, string> = {
+      user: '@johndoe',
+      username: 'johndoe',
+      server: 'Volvox',
+      memberCount: '142',
+    };
 
-    // Dynamic variables — sample values (only if dynamic is enabled)
     if (draftConfig?.welcome?.dynamic?.enabled) {
-      text = text
-        .replace(/{greeting}/g, 'Good morning @johndoe! You just joined Volvox.')
-        .replace(
-          /{vibeLine}/g,
-          "Things are moving at a healthy pace in #general, so you'll fit right in.",
-        )
-        .replace(
-          /{ctaLine}/g,
-          'Start in #general, check out #introductions, and browse #announcements.',
-        )
-        .replace(/{milestoneLine}/g, 'You just rolled in as member #142.')
-        .replace(/{timeOfDay}/g, 'morning')
-        .replace(/{activityLevel}/g, 'steady')
-        .replace(/{topChannels}/g, '#general, #projects, #showcase');
+      Object.assign(samples, {
+        greeting: 'Good morning @johndoe! You just joined Volvox.',
+        vibeLine: "Things are moving at a healthy pace in #general, so you'll fit right in.",
+        ctaLine: 'Start in #general, check out #introductions, and browse #announcements.',
+        milestoneLine: 'You just rolled in as member #142.',
+        timeOfDay: 'morning',
+        activityLevel: 'steady',
+        topChannels: '#general, #projects, #showcase',
+      });
     }
 
-    return text;
-  }, [draftConfig?.welcome?.message, draftConfig?.welcome?.dynamic?.enabled]);
+    return samples;
+  }, [draftConfig?.welcome?.dynamic?.enabled]);
 
   if (!draftConfig) return null;
 
@@ -162,106 +174,16 @@ export function OnboardingGrowthCategory() {
           disabled={saving}
           basicContent={
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <label htmlFor="welcome-message" className="space-y-2 block">
-                  <span className="text-sm font-medium">Welcome Message</span>
-                  <textarea
-                    id="welcome-message"
-                    value={draftConfig.welcome?.message ?? ''}
-                    onChange={(e) => updateWelcomeMessage(e.target.value)}
-                    rows={6}
-                    disabled={saving}
-                    className={inputClasses}
-                    placeholder="Welcome message template..."
-                    aria-describedby="welcome-message-hint"
-                  />
-                </label>
-                <div className="space-y-2">
-                  <span className="text-sm font-medium text-muted-foreground">Preview</span>
-                  <textarea
-                    value={welcomePreview}
-                    rows={6}
-                    disabled
-                    readOnly
-                    className={`${inputClasses} cursor-default opacity-70`}
-                    aria-label="Welcome message preview"
-                  />
-                </div>
-              </div>
-              <details className="group">
-                <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
-                  Template Variables
-                </summary>
-                <div className="mt-2 space-y-3 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground">Always available</p>
-                  <div className="grid grid-cols-1 gap-1.5">
-                    <div>
-                      <code>{'{user}'}</code> — Member mention{' '}
-                      <span className="italic text-muted-foreground/70">@johndoe</span>
-                    </div>
-                    <div>
-                      <code>{'{username}'}</code> — Plain username{' '}
-                      <span className="italic text-muted-foreground/70">johndoe</span>
-                    </div>
-                    <div>
-                      <code>{'{server}'}</code> — Server name{' '}
-                      <span className="italic text-muted-foreground/70">Volvox</span>
-                    </div>
-                    <div>
-                      <code>{'{memberCount}'}</code> — Member count{' '}
-                      <span className="italic text-muted-foreground/70">142</span>
-                    </div>
-                  </div>
-                  <p className="font-medium text-foreground">
-                    Dynamic Welcome{' '}
-                    <span className="font-normal text-muted-foreground">
-                      (requires Dynamic Welcome enabled)
-                    </span>
-                  </p>
-                  <div className="grid grid-cols-1 gap-1.5">
-                    <div>
-                      <code>{'{greeting}'}</code> — Time-of-day greeting{' '}
-                      <span className="italic text-muted-foreground/70">
-                        Good morning @johndoe! You just joined Volvox.
-                      </span>
-                    </div>
-                    <div>
-                      <code>{'{vibeLine}'}</code> — Activity description{' '}
-                      <span className="italic text-muted-foreground/70">
-                        {
-                          "You're catching us in a quiet window - perfect time to introduce yourself."
-                        }
-                      </span>
-                    </div>
-                    <div>
-                      <code>{'{ctaLine}'}</code> — Channel suggestions CTA{' '}
-                      <span className="italic text-muted-foreground/70">
-                        Start in #general, check out #introductions, and browse #announcements.
-                      </span>
-                    </div>
-                    <div>
-                      <code>{'{milestoneLine}'}</code> — Member milestone{' '}
-                      <span className="italic text-muted-foreground/70">
-                        You just rolled in as member #142.
-                      </span>
-                    </div>
-                    <div>
-                      <code>{'{timeOfDay}'}</code> — Time period{' '}
-                      <span className="italic text-muted-foreground/70">morning</span>
-                    </div>
-                    <div>
-                      <code>{'{activityLevel}'}</code> — Activity level{' '}
-                      <span className="italic text-muted-foreground/70">steady</span>
-                    </div>
-                    <div>
-                      <code>{'{topChannels}'}</code> — Most active channels{' '}
-                      <span className="italic text-muted-foreground/70">
-                        #general, #projects, #showcase
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </details>
+              <DiscordMarkdownEditor
+                value={draftConfig.welcome?.message ?? ''}
+                onChange={updateWelcomeMessage}
+                variables={welcomeVariables}
+                variableDelimiters={SINGLE_BRACE_DELIMITERS}
+                variableSamples={welcomeVariableSamples}
+                maxLength={2000}
+                placeholder="Welcome message template..."
+                disabled={saving}
+              />
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <label htmlFor="rules-channel-id" className="space-y-2">
