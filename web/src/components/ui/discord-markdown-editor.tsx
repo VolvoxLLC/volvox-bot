@@ -268,9 +268,13 @@ export function DiscordMarkdownEditor({
   );
 
   const isOverLimit = value.length > maxLength;
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const previewContent = React.useMemo(
-    () => renderPreviewContent(parseDiscordMarkdown(value)),
-    [value],
+    () => (isMounted ? renderPreviewContent(parseDiscordMarkdown(value)) : null),
+    [value, isMounted],
   );
   const getCharCountColor = (): string => {
     if (isOverLimit) {

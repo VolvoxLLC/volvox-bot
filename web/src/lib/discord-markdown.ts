@@ -132,8 +132,8 @@ function parseBlockQuote(line: string, ctx: ParseContext): boolean {
 }
 
 function parseUnorderedList(line: string, ctx: ParseContext): boolean {
-  const marker = line[0];
-  if ((marker !== '-' && marker !== '*') || line[1] !== ' ') {
+  // Discord only supports '-' as an unordered list marker (not '*')
+  if (line[0] !== '-' || line[1] !== ' ') {
     return false;
   }
 

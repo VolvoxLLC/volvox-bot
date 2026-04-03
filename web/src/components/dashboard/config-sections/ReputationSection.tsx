@@ -10,6 +10,7 @@ interface ReputationSectionProps {
   draftConfig: GuildConfig;
   saving: boolean;
   onEnabledChange: (enabled: boolean) => void;
+  /** @deprecated Prefer updateDraftConfig for consistent update patterns. */
   onFieldChange: (field: string, value: unknown) => void;
   updateDraftConfig: (updater: (prev: GuildConfig) => GuildConfig) => void;
 }
@@ -29,14 +30,11 @@ export function ReputationSection({
   draftConfig,
   saving,
   onEnabledChange,
-  onFieldChange,
+  onFieldChange: _onFieldChange,
   updateDraftConfig,
 }: ReputationSectionProps) {
   const xpRange = draftConfig.reputation?.xpPerMessage ?? [5, 15];
-  const levelThresholds =
-    draftConfig.xp?.levelThresholds ??
-    draftConfig.reputation?.levelThresholds ??
-    DEFAULT_LEVEL_THRESHOLDS;
+  const levelThresholds = draftConfig.xp?.levelThresholds ?? DEFAULT_LEVEL_THRESHOLDS;
 
   // Local state for level thresholds raw input (parsed on blur)
   const thresholdsDisplay = levelThresholds.join(', ');
@@ -70,7 +68,10 @@ export function ReputationSection({
                 const num = parseNumberInput(e.target.value, 1, 100);
                 if (num !== undefined) {
                   const newMax = num > (xpRange[1] ?? 15) ? num : (xpRange[1] ?? 15);
-                  onFieldChange('xpPerMessage', [num, newMax]);
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    reputation: { ...prev.reputation, xpPerMessage: [num, newMax] },
+                  }));
                 }
               }}
               disabled={saving}
@@ -89,7 +90,10 @@ export function ReputationSection({
                 const num = parseNumberInput(e.target.value, 1, 100);
                 if (num !== undefined) {
                   const newMin = num < (xpRange[0] ?? 5) ? num : (xpRange[0] ?? 5);
-                  onFieldChange('xpPerMessage', [newMin, num]);
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    reputation: { ...prev.reputation, xpPerMessage: [newMin, num] },
+                  }));
                 }
               }}
               disabled={saving}
@@ -105,7 +109,12 @@ export function ReputationSection({
               value={draftConfig.reputation?.xpCooldownSeconds ?? 60}
               onChange={(e) => {
                 const num = parseNumberInput(e.target.value, 0);
-                if (num !== undefined) onFieldChange('xpCooldownSeconds', num);
+                if (num !== undefined) {
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    reputation: { ...prev.reputation, xpCooldownSeconds: num },
+                  }));
+                }
               }}
               disabled={saving}
               className={inputClasses}
@@ -122,8 +131,8 @@ export function ReputationSection({
             onBlur={() => {
               const nums = thresholdsRaw
                 .split(',')
-                .map((s) => Number(s.trim()))
-                .filter((n) => Number.isFinite(n) && n > 0);
+                .map((s: string) => Number(s.trim()))
+                .filter((n: number) => Number.isFinite(n) && n > 0);
               if (nums.length > 0) {
                 const sorted = [...nums].sort((a, b) => a - b);
                 const deduped = sorted.filter((t, i, arr) => i === 0 || t !== arr[i - 1]);

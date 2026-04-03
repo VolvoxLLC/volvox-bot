@@ -81,6 +81,7 @@ function ConfigEditorContent() {
         />
       </section>
 
+      {/* TODO: Integrate DiscordMarkdownEditor for welcome message template editing */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Welcome Messages</h2>
         <p className="text-sm text-muted-foreground">

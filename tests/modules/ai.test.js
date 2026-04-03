@@ -75,8 +75,8 @@ describe('ai module', () => {
 
       resolveHydration({
         rows: [
-          { role: 'assistant', content: 'db reply' },
-          { role: 'user', content: 'db message' },
+          { role: 'assistant', content: 'db reply', created_at: '2026-04-01T10:00:01.000Z' },
+          { role: 'user', content: 'db message', created_at: '2026-04-01T10:00:00.000Z' },
         ],
       });
 
@@ -88,12 +88,12 @@ describe('ai module', () => {
         expect(historyRef[0]).toMatchObject({
           role: 'user',
           content: 'db message',
-          timestamp: expect.any(Number),
+          timestamp: Date.parse('2026-04-01T10:00:00.000Z'),
         });
         expect(historyRef[1]).toMatchObject({
           role: 'assistant',
           content: 'db reply',
-          timestamp: expect.any(Number),
+          timestamp: Date.parse('2026-04-01T10:00:01.000Z'),
         });
         expect(historyRef[2]).toMatchObject({
           role: 'user',

@@ -17,6 +17,7 @@ import {
   handleSendDm,
   recordDmSend,
   resetDmLimits,
+  sweepDmLimits,
 } from '../../../src/modules/actions/sendDm.js';
 import { renderTemplate } from '../../../src/utils/templateEngine.js';
 
@@ -171,6 +172,35 @@ describe('checkDmRateLimit', () => {
     expect(checkDmRateLimit('g1', 'u1')).toBe(false);
     vi.advanceTimersByTime(60_001);
     expect(checkDmRateLimit('g1', 'u1')).toBe(true);
+    vi.useRealTimers();
+  });
+});
+
+describe('sweepDmLimits', () => {
+  beforeEach(() => {
+    resetDmLimits();
+  });
+
+  it('should evict stale entries and keep recent ones', () => {
+    vi.useFakeTimers();
+
+    // Record an entry that will become stale
+    recordDmSend('g1', 'u-stale');
+
+    // Advance past the rate window (60s)
+    vi.advanceTimersByTime(60_001);
+
+    // Record a recent entry
+    recordDmSend('g1', 'u-recent');
+
+    // Sweep should evict the stale entry
+    sweepDmLimits();
+
+    // Stale entry evicted — should be allowed again
+    expect(checkDmRateLimit('g1', 'u-stale')).toBe(true);
+    // Recent entry still rate-limited
+    expect(checkDmRateLimit('g1', 'u-recent')).toBe(false);
+
     vi.useRealTimers();
   });
 });
