@@ -279,6 +279,8 @@ export interface TldrConfig extends ToggleSectionConfig {
 export interface ReputationConfig extends ToggleSectionConfig {
   xpPerMessage: number[];
   xpCooldownSeconds: number;
+  levelThresholds: number[];
+  announceChannelId: string | null;
 }
 
 /** XP level-up action definition. */
