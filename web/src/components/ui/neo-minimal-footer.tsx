@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Linkedin } from 'lucide-react';
 import Image from 'next/image';
 import { siDiscord, siX } from 'simple-icons';
 import { GithubIcon } from '@/components/ui/github-icon';
@@ -25,20 +25,24 @@ const defaultSections: FooterSection[] = [
       { label: 'Features', href: '#features' },
       { label: 'Pricing', href: '#pricing' },
       { label: 'Dashboard', href: '/login' },
-      { label: 'Self-Host', href: 'https://docs.volvox.bot' },
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'Terms of Service', href: '/terms' },
     ],
   },
   {
     title: 'Resources',
     links: [
       { label: 'Documentation', href: 'https://docs.volvox.bot' },
-      { label: 'GitHub', href: 'https://github.com/VolvoxLLC/volvox-bot' },
+      { label: 'GitHub', href: 'https://github.com/VolvoxLLC' },
       { label: 'Support Server', href: 'https://discord.gg/8ahXACdamN' },
     ],
   },
   {
     title: 'Company',
-    links: [{ label: 'Open Source', href: 'https://github.com/VolvoxLLC' }],
+    links: [
+      { label: 'About', href: 'https://volvox.dev' },
+      { label: 'LinkedIn', href: 'https://www.linkedin.com/company/volvoxllc/' },
+    ],
   },
 ];
 
@@ -48,7 +52,7 @@ const defaultSections: FooterSection[] = [
  */
 export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFooterProps) {
   return (
-    <footer className="max-w-7xl mx-auto bg-card/10 border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden">
+    <footer className="max-w-7xl mx-auto bg-background border-t rounded-t-lg border-card/10 flex flex-wrap pt-16 pb-8 relative overflow-hidden">
       {/* Background grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--foreground)/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--foreground)/0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(circle_at_center,black,transparent_80%)]" />
 
@@ -65,8 +69,8 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-              Open-source Discord bot with AI chat, moderation, and a dashboard that actually works.
-              Built for speed. Free forever.
+              AI-powered Discord bot with smart moderation, analytics, and a dashboard that
+              actually works. Built for speed.
             </p>
 
             {/* Newsletter input */}
@@ -123,7 +127,7 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
             {/* Socials */}
             <div className="flex gap-4 border-r border-border/20 pr-6 mr-2">
               <a
-                href="https://github.com/VolvoxLLC/volvox-bot"
+                href="https://github.com/VolvoxLLC"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground/60 hover:text-foreground transition-colors"
@@ -141,13 +145,22 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
                 <SimpleIcon path={siDiscord.path} className="w-[18px] h-[18px]" />
               </a>
               <a
-                href="https://x.com/volvoxbot"
+                href="https://x.com/volvoxdev"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground/60 hover:text-foreground transition-colors"
                 aria-label="X (Twitter)"
               >
                 <SimpleIcon path={siX.path} className="w-[18px] h-[18px]" />
+              </a>
+              <a
+                href="https://www.linkedin.com/company/volvoxllc/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                aria-label="LinkedIn"
+              >
+                <Linkedin className="w-[18px] h-[18px]" />
               </a>
             </div>
 
