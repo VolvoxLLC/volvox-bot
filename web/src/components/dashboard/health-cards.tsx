@@ -98,7 +98,8 @@ function StatCard({
 export function HealthCards({ health, loading }: HealthCardsProps) {
   const heapUsedMb = health?.memory?.heapUsed ? health.memory.heapUsed / 1_048_576 : 0;
   const heapTotalMb = health?.memory?.heapTotal ? health.memory.heapTotal / 1_048_576 : 0;
-  const heapPct = heapTotalMb > 0 ? (heapUsedMb / heapTotalMb) * 100 : 0;
+  const MEMORY_MAX_MB = 4096;
+  const heapPct = heapUsedMb > 0 ? (heapUsedMb / MEMORY_MAX_MB) * 100 : 0;
 
   const cpuUserSec = health?.system?.cpuUsage?.user ? health.system.cpuUsage.user / 1_000_000 : 0;
   const cpuSystemSec = health?.system?.cpuUsage?.system
@@ -124,7 +125,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         value={health?.memory ? formatBytes(health.memory.heapUsed) : '—'}
         subtitle={
           health?.memory
-            ? `Node heap total ${formatBytes(health.memory.heapTotal)}`
+            ? `Heap ${formatBytes(health.memory.heapUsed)} / ${formatBytes(health.memory.heapTotal)}`
             : 'Memory configuration'
         }
         icon={MemoryStick}
