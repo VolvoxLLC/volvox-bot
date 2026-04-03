@@ -97,7 +97,6 @@ function StatCard({
 
 export function HealthCards({ health, loading }: HealthCardsProps) {
   const heapUsedMb = health?.memory?.heapUsed ? health.memory.heapUsed / 1_048_576 : 0;
-  const heapTotalMb = health?.memory?.heapTotal ? health.memory.heapTotal / 1_048_576 : 0;
   const MEMORY_MAX_MB = 4096;
   const heapPct = heapUsedMb > 0 ? (heapUsedMb / MEMORY_MAX_MB) * 100 : 0;
 
