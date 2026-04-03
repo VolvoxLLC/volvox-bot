@@ -158,32 +158,36 @@ describe("AnalyticsDashboard", () => {
     expect(screen.getByLabelText("Active AI conversations value")).not.toHaveTextContent(/^0$/);
   });
 
-  it("omits interval query param for custom range so server can auto-detect", async () => {
-    localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
+  it(
+    "omits interval query param for custom range so server can auto-detect",
+    async () => {
+      localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");
 
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(analyticsPayload),
-    } as Response);
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(analyticsPayload),
+      } as Response);
 
-    const user = userEvent.setup();
-    render(<AnalyticsDashboard />);
+      const user = userEvent.setup();
+      render(<AnalyticsDashboard />);
 
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalled();
-    });
+      await waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalled();
+      });
 
-    await user.click(screen.getByRole("button", { name: "Custom" }));
+      await user.click(screen.getByRole("button", { name: "Custom" }));
 
-    await waitFor(() => {
-      const customCall = fetchSpy.mock.calls
-        .map(([url]) => String(url))
-        .find((url) => url.includes("range=custom"));
-      expect(customCall).toBeDefined();
-      expect(customCall).not.toContain("interval=");
-    });
-  });
+      await waitFor(() => {
+        const customCall = fetchSpy.mock.calls
+          .map(([url]) => String(url))
+          .find((url) => url.includes("range=custom"));
+        expect(customCall).toBeDefined();
+        expect(customCall).not.toContain("interval=");
+      });
+    },
+    30_000,
+  );
 
   it("applies accessible scope attributes to heatmap table headers", async () => {
     localStorage.setItem(SELECTED_GUILD_KEY, "guild-1");

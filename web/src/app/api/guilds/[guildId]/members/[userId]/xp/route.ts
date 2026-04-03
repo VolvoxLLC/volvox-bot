@@ -1,7 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import {
-  authorizeGuildAdmin,
+  authorizeGuildModerator,
   buildUpstreamUrl,
   getBotApiConfig,
   proxyToBotApi,
@@ -35,7 +36,7 @@ export async function POST(
     return NextResponse.json({ error: 'Missing guildId or userId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
+  const authError = await authorizeGuildModerator(request, guildId, LOG_PREFIX);
   if (authError) return authError;
 
   const apiConfig = getBotApiConfig(LOG_PREFIX);
@@ -102,9 +103,19 @@ export async function POST(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
+  const token = await getToken({ req: request });
+  const requesterId =
+    typeof token?.id === 'string' ? token.id : typeof token?.sub === 'string' ? token.sub : null;
+  if (!requesterId) {
+    return NextResponse.json({ error: 'Unable to determine Discord user id' }, { status: 401 });
+  }
+
   return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to adjust XP', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-discord-user-id': requesterId,
+    },
     body,
   });
 }

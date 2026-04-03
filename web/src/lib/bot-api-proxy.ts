@@ -7,6 +7,24 @@ import { logger } from '@/lib/logger';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const ADMINISTRATOR_PERMISSION = 0x8n;
+const MANAGE_GUILD_PERMISSION = 0x20n;
+const KICK_MEMBERS_PERMISSION = 0x2n;
+const BAN_MEMBERS_PERMISSION = 0x4n;
+const MODERATE_MEMBERS_PERMISSION = 0x10000000000n;
+
+export type GuildAccessLevel = 'viewer' | 'moderator' | 'admin' | 'bot-owner';
+type RequiredGuildAccess = 'moderator' | 'admin';
+type AuthToken = {
+  accessToken: string;
+  id?: string;
+  sub?: string;
+};
+const GUILD_ACCESS_LEVELS = new Set<GuildAccessLevel>([
+  'viewer',
+  'moderator',
+  'admin',
+  'bot-owner',
+]);
 
 /**
  * Determines whether a Discord permission bitfield includes the administrator permission.
@@ -22,22 +40,106 @@ export function hasAdministratorPermission(permissions: string): boolean {
   }
 }
 
-/**
- * Verify that the incoming request is from the owner or an administrator of the specified guild.
- *
- * @param request - The incoming NextRequest containing the user's session/token.
- * @param guildId - The Discord guild ID to authorize against.
- * @param logPrefix - Prefix used when logging contextual error messages.
- * @returns `null` if the requester is authorized; a `NextResponse` containing an error JSON otherwise.
- *          Possible responses:
- *          - 401 Unauthorized when the access token is missing or expired.
- *          - 502 Bad Gateway when mutual guilds cannot be verified.
- *          - 403 Forbidden when the user is neither the guild owner nor has administrator permission.
- */
-export async function authorizeGuildAdmin(
+export function hasModeratorPermission(permissions: string): boolean {
+  try {
+    const bitfield = BigInt(permissions);
+    return (
+      (bitfield & MANAGE_GUILD_PERMISSION) === MANAGE_GUILD_PERMISSION ||
+      (bitfield & KICK_MEMBERS_PERMISSION) === KICK_MEMBERS_PERMISSION ||
+      (bitfield & BAN_MEMBERS_PERMISSION) === BAN_MEMBERS_PERMISSION ||
+      (bitfield & MODERATE_MEMBERS_PERMISSION) === MODERATE_MEMBERS_PERMISSION
+    );
+  } catch {
+    return false;
+  }
+}
+
+function accessSatisfiesRequirement(
+  access: GuildAccessLevel,
+  required: RequiredGuildAccess,
+): boolean {
+  if (access === 'bot-owner' || access === 'admin') return true;
+  return required === 'moderator' && access === 'moderator';
+}
+
+function getFallbackGuildAccess(guild: { owner?: boolean; permissions: string }): GuildAccessLevel {
+  if (guild.owner) return 'admin';
+  if (hasAdministratorPermission(guild.permissions)) return 'admin';
+  if (hasModeratorPermission(guild.permissions)) return 'moderator';
+  return 'viewer';
+}
+
+function getUserIdFromToken(token: AuthToken): string {
+  if (typeof token.id === 'string') return token.id;
+  if (typeof token.sub === 'string') return token.sub;
+  return '';
+}
+
+async function resolveGuildAccess(
+  token: AuthToken,
+  guildId: string,
+  logPrefix: string,
+  signal: AbortSignal,
+): Promise<{ access: GuildAccessLevel; present: boolean }> {
+  const mutualGuilds = await getMutualGuilds(token.accessToken, signal);
+  const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
+
+  if (!targetGuild) {
+    return { access: 'viewer', present: false };
+  }
+
+  const fallbackAccess = getFallbackGuildAccess(targetGuild);
+  const userId = getUserIdFromToken(token);
+  const botApiBaseUrl = getBotApiBaseUrl();
+  const botApiSecret = process.env.BOT_API_SECRET;
+
+  if (!userId || !botApiBaseUrl || !botApiSecret) {
+    return { access: fallbackAccess, present: true };
+  }
+
+  try {
+    const url = new URL(`${botApiBaseUrl}/guilds/access`);
+    url.searchParams.set('userId', userId);
+    url.searchParams.set('guildIds', guildId);
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'x-api-secret': botApiSecret,
+      },
+      signal,
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      return { access: fallbackAccess, present: true };
+    }
+
+    const entries: unknown = await response.json();
+    if (!Array.isArray(entries)) {
+      return { access: fallbackAccess, present: true };
+    }
+
+    const entry = entries.find(
+      (item): item is { id: string; access: GuildAccessLevel } =>
+        typeof item === 'object' &&
+        item !== null &&
+        (item as { id?: unknown }).id === guildId &&
+        typeof (item as { access?: unknown }).access === 'string' &&
+        GUILD_ACCESS_LEVELS.has((item as { access: GuildAccessLevel }).access),
+    );
+
+    return { access: entry?.access ?? fallbackAccess, present: true };
+  } catch (error) {
+    logger.error(`${logPrefix} Failed to resolve guild access:`, error);
+    return { access: fallbackAccess, present: true };
+  }
+}
+
+async function authorizeGuildAccess(
   request: NextRequest,
   guildId: string,
   logPrefix: string,
+  requiredAccess: RequiredGuildAccess,
 ): Promise<NextResponse | null> {
   const token = await getToken({ req: request });
 
@@ -49,23 +151,71 @@ export async function authorizeGuildAdmin(
     return NextResponse.json({ error: 'Token expired. Please sign in again.' }, { status: 401 });
   }
 
-  let mutualGuilds: Awaited<ReturnType<typeof getMutualGuilds>>;
+  const authToken: AuthToken = {
+    accessToken: token.accessToken,
+    id: typeof token.id === 'string' ? token.id : undefined,
+    sub: typeof token.sub === 'string' ? token.sub : undefined,
+  };
+
+  let resolved: Awaited<ReturnType<typeof resolveGuildAccess>>;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort(new DOMException('Timed out', 'TimeoutError'));
+  }, REQUEST_TIMEOUT_MS);
   try {
-    mutualGuilds = await getMutualGuilds(
-      token.accessToken,
-      AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    );
+    resolved = await resolveGuildAccess(authToken, guildId, logPrefix, controller.signal);
   } catch (error) {
     logger.error(`${logPrefix} Failed to verify guild permissions:`, error);
     return NextResponse.json({ error: 'Failed to verify guild permissions' }, { status: 502 });
+  } finally {
+    clearTimeout(timeout);
   }
 
-  const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
-  if (!targetGuild || !(targetGuild.owner || hasAdministratorPermission(targetGuild.permissions))) {
+  if (!resolved.present || !accessSatisfiesRequirement(resolved.access, requiredAccess)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  return null; // authorized
+  return null;
+}
+
+/**
+ * Verify that the incoming request has admin-or-higher dashboard access for the specified guild.
+ *
+ * @param request - The incoming NextRequest containing the user's session/token.
+ * @param guildId - The Discord guild ID to authorize against.
+ * @param logPrefix - Prefix used when logging contextual error messages.
+ * @returns `null` if the requester is authorized; a `NextResponse` containing an error JSON otherwise.
+ *          Possible responses:
+ *          - 401 Unauthorized when the access token is missing or expired.
+ *          - 502 Bad Gateway when mutual guilds cannot be verified.
+ *          - 403 Forbidden when the user does not have admin-or-higher dashboard access.
+ */
+export async function authorizeGuildAdmin(
+  request: NextRequest,
+  guildId: string,
+  logPrefix: string,
+): Promise<NextResponse | null> {
+  return authorizeGuildAccess(request, guildId, logPrefix, 'admin');
+}
+
+/**
+ * Verify that the incoming request has moderator-or-higher dashboard access for the specified guild.
+ *
+ * @param request - The incoming NextRequest containing the user's session/token.
+ * @param guildId - The Discord guild ID to authorize against.
+ * @param logPrefix - Prefix used when logging contextual error messages.
+ * @returns `null` if the requester is authorized; a `NextResponse` containing an error JSON otherwise.
+ *          Possible responses:
+ *          - 401 Unauthorized when the access token is missing or expired.
+ *          - 502 Bad Gateway when mutual guilds cannot be verified.
+ *          - 403 Forbidden when the user does not have moderator-or-higher dashboard access.
+ */
+export async function authorizeGuildModerator(
+  request: NextRequest,
+  guildId: string,
+  logPrefix: string,
+): Promise<NextResponse | null> {
+  return authorizeGuildAccess(request, guildId, logPrefix, 'moderator');
 }
 
 export interface BotApiConfig {

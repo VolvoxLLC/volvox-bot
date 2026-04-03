@@ -325,7 +325,7 @@ async function runResponder(
   );
   const parsed = parseRespondResult(respondMessage, channelId);
 
-  if (!parsed || !parsed.responses?.length) {
+  if (!parsed?.responses?.length) {
     warn('Responder returned no responses', { channelId });
     return null;
   }

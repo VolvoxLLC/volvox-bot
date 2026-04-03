@@ -22,7 +22,16 @@ vi.mock("@/lib/guild-selection", async () => {
 });
 
 import { ServerSelector } from '@/components/layout/server-selector';
+import { GuildDirectoryProvider } from '@/components/layout/guild-directory-context';
 import { SELECTED_GUILD_KEY } from '@/lib/guild-selection';
+
+function renderServerSelector() {
+  return render(
+    <GuildDirectoryProvider>
+      <ServerSelector />
+    </GuildDirectoryProvider>,
+  );
+}
 
 describe('ServerSelector', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
@@ -45,7 +54,7 @@ describe('ServerSelector', () => {
 
   it('shows loading state initially', () => {
     fetchSpy.mockReturnValue(new Promise(() => {})); // never resolves
-    render(<ServerSelector />);
+    renderServerSelector();
     expect(screen.getByText('Loading workspaces...')).toBeInTheDocument();
   });
 
@@ -55,7 +64,7 @@ describe('ServerSelector', () => {
       ok: true,
       json: () => Promise.resolve([]),
     } as Response);
-    render(<ServerSelector />);
+    renderServerSelector();
     await waitFor(() => {
       expect(screen.getByText('No shared servers yet')).toBeInTheDocument();
       expect(
@@ -71,7 +80,7 @@ describe('ServerSelector', () => {
       json: () => Promise.resolve([]),
     } as Response);
 
-    render(<ServerSelector />);
+    renderServerSelector();
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /Invite Volvox\.Bot/i })).toHaveAttribute(
@@ -97,7 +106,7 @@ describe('ServerSelector', () => {
       ok: true,
       json: () => Promise.resolve(guilds),
     } as Response);
-    render(<ServerSelector />);
+    renderServerSelector();
     await waitFor(() => {
       expect(screen.getByText("Test Server")).toBeInTheDocument();
     });
@@ -123,7 +132,7 @@ describe('ServerSelector', () => {
       json: () => Promise.resolve(guilds),
     } as Response);
 
-    render(<ServerSelector />);
+    renderServerSelector();
 
     await waitFor(() => {
       expect(screen.getByText("Restored Server")).toBeInTheDocument();
@@ -150,7 +159,7 @@ describe('ServerSelector', () => {
       json: () => Promise.resolve(guilds),
     } as Response);
 
-    render(<ServerSelector />);
+    renderServerSelector();
 
     await waitFor(() => {
       expect(screen.getByText("Default Server")).toBeInTheDocument();
@@ -178,7 +187,7 @@ describe('ServerSelector', () => {
       json: () => Promise.resolve(guilds),
     } as Response);
 
-    render(<ServerSelector />);
+    renderServerSelector();
 
     await waitFor(() => {
       expect(screen.getByText("Default Server")).toBeInTheDocument();
@@ -200,7 +209,7 @@ describe('ServerSelector', () => {
 
   it('shows error state with retry button on fetch failure', async () => {
     fetchSpy.mockRejectedValue(new Error("Network error"));
-    render(<ServerSelector />);
+    renderServerSelector();
     await waitFor(() => {
       expect(screen.getByText("Couldn't load workspaces")).toBeInTheDocument();
       expect(screen.getByText('Retry')).toBeInTheDocument();
@@ -212,7 +221,7 @@ describe('ServerSelector', () => {
       ok: false,
       status: 500,
     } as Response);
-    render(<ServerSelector />);
+    renderServerSelector();
     await waitFor(() => {
       expect(screen.getByText("Couldn't load workspaces")).toBeInTheDocument();
     });
@@ -224,7 +233,7 @@ describe('ServerSelector', () => {
     // First call fails
     fetchSpy.mockRejectedValueOnce(new Error("Network error"));
 
-    render(<ServerSelector />);
+    renderServerSelector();
     await waitFor(() => {
       expect(screen.getByText("Retry")).toBeInTheDocument();
     });
@@ -273,7 +282,7 @@ describe('ServerSelector', () => {
       json: () => Promise.resolve(guilds),
     } as Response);
 
-    render(<ServerSelector />);
+    renderServerSelector();
 
     await waitFor(() => {
       expect(screen.getByText("No manageable servers")).toBeInTheDocument();
@@ -281,7 +290,7 @@ describe('ServerSelector', () => {
 
     await userEvent.setup().click(screen.getByRole("button", { name: /No manageable servers/i }));
 
-    expect(screen.getByText(/You need mod or admin permissions/i)).toBeInTheDocument();
+    expect(screen.getByText(/You need moderator, admin, or owner permissions/i)).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /Viewer Server/i })).toHaveAttribute(
       "href",
       "/community/viewer-1",
@@ -291,6 +300,35 @@ describe('ServerSelector', () => {
       expect.stringContaining("/icons/viewer-1/a_hash.gif"),
     );
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
+  });
+
+  it('treats explicit moderator access as manageable without discord permission bits', async () => {
+    const guilds = [
+      {
+        id: "mod-1",
+        name: "Moderator Server",
+        icon: null,
+        owner: false,
+        permissions: "0",
+        access: "moderator",
+        features: [],
+        botPresent: true,
+      },
+    ];
+
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
+
+    renderServerSelector();
+
+    await waitFor(() => {
+      expect(screen.getByText("Moderator Server")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("No manageable servers")).not.toBeInTheDocument();
+    expect(mockBroadcastSelectedGuild).toHaveBeenCalledWith("mod-1");
   });
 
   it('ignores invalid guild records from the api response', async () => {
@@ -317,7 +355,7 @@ describe('ServerSelector', () => {
       json: () => Promise.resolve(guilds),
     } as Response);
 
-    render(<ServerSelector />);
+    renderServerSelector();
 
     await waitFor(() => {
       expect(screen.getByText("Valid Server")).toBeInTheDocument();

@@ -12,8 +12,8 @@ const MODERATE_MEMBERS = 0x10000000000n; // 1 << 40
 /**
  * Dashboard role hierarchy (highest to lowest access).
  *   owner      — guild owner
- *   admin      — ADMINISTRATOR or MANAGE_GUILD permission
- *   moderator  — KICK_MEMBERS, BAN_MEMBERS, or MODERATE_MEMBERS permission
+ *   admin      — ADMINISTRATOR permission
+ *   moderator  — MANAGE_GUILD, KICK_MEMBERS, BAN_MEMBERS, or MODERATE_MEMBERS permission
  *   viewer     — member with no elevated permissions
  */
 export type GuildDashboardRole = 'owner' | 'admin' | 'moderator' | 'viewer';
@@ -26,7 +26,11 @@ export type GuildDashboardRole = 'owner' | 'admin' | 'moderator' | 'viewer';
  * @returns The user's dashboard role in that guild
  */
 export function getGuildDashboardRole(guild: MutualGuild): GuildDashboardRole {
-  if (guild.owner) return 'owner';
+  if (guild.access === 'owner' || guild.owner) return 'owner';
+  if (guild.access === 'bot-owner') return 'admin';
+  if (guild.access === 'admin') return 'admin';
+  if (guild.access === 'moderator') return 'moderator';
+  if (guild.access === 'viewer') return 'viewer';
 
   let perms: bigint;
   try {
@@ -35,8 +39,12 @@ export function getGuildDashboardRole(guild: MutualGuild): GuildDashboardRole {
     return 'viewer';
   }
 
-  if ((perms & ADMINISTRATOR) === ADMINISTRATOR || (perms & MANAGE_GUILD) === MANAGE_GUILD) {
+  if ((perms & ADMINISTRATOR) === ADMINISTRATOR) {
     return 'admin';
+  }
+
+  if ((perms & MANAGE_GUILD) === MANAGE_GUILD) {
+    return 'moderator';
   }
 
   if (
@@ -56,5 +64,6 @@ export function getGuildDashboardRole(guild: MutualGuild): GuildDashboardRole {
  * Non-manageable roles: viewer (member-only).
  */
 export function isGuildManageable(guild: MutualGuild): boolean {
-  return getGuildDashboardRole(guild) !== 'viewer';
+  const role = getGuildDashboardRole(guild);
+  return role === 'owner' || role === 'admin' || role === 'moderator';
 }

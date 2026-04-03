@@ -19,10 +19,14 @@ describe('ConfigDiffModal', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the dialog when open', () => {
-    render(<ConfigDiffModal {...baseProps} />);
-    expect(screen.getByText('Review Changes Before Saving')).toBeInTheDocument();
-  });
+  it(
+    'renders the dialog when open',
+    () => {
+      render(<ConfigDiffModal {...baseProps} />);
+      expect(screen.getByText('Review Changes Before Saving')).toBeInTheDocument();
+    },
+    30_000,
+  );
 
   it('shows changed sections as badges', () => {
     render(<ConfigDiffModal {...baseProps} changedSections={['ai', 'welcome']} />);

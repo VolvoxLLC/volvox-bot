@@ -64,6 +64,23 @@ vi.mock('@/components/dashboard/config-diff', () => ({
   ConfigDiff: () => <div data-testid="config-diff" />,
 }));
 
+vi.mock('@/components/dashboard/config-diff-modal', () => ({
+  ConfigDiffModal: ({
+    open,
+    onConfirm,
+  }: {
+    open: boolean;
+    onConfirm: () => void;
+  }) =>
+    open ? (
+      <div data-testid="config-diff-modal">
+        <button type="button" onClick={onConfirm}>
+          Confirm Save
+        </button>
+      </div>
+    ) : null,
+}));
+
 let mockPathname = '/dashboard/settings/ai-automation';
 
 const minimalConfig = {
