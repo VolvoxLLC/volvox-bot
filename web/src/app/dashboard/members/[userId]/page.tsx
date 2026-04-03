@@ -56,6 +56,7 @@ interface MemberDetailResponse {
     voice_minutes: number;
     helps_given: number;
     last_xp_gain: string | null;
+    current_level_xp?: number | null;
     next_level_xp: number | null;
   };
   warnings: {
@@ -112,13 +113,24 @@ function StatCard({
 function XpProgress({
   level,
   xp,
+  currentLevelXp,
   nextLevelXp,
 }: {
   level: number;
   xp: number;
+  currentLevelXp: number | null | undefined;
   nextLevelXp: number | null;
 }) {
-  const pct = nextLevelXp ? Math.min(Math.max((xp / nextLevelXp) * 100, 0), 100) : 100;
+  let pct: number;
+  if (nextLevelXp && currentLevelXp != null && nextLevelXp > currentLevelXp) {
+    // Correct formula: progress within the current level
+    pct = Math.min(Math.max(((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100, 0), 100);
+  } else if (nextLevelXp) {
+    // Fallback when currentLevelXp is unavailable
+    pct = Math.min(Math.max((xp / nextLevelXp) * 100, 0), 100);
+  } else {
+    pct = 100;
+  }
   return (
     <div className="space-y-1.5 mt-1">
       <div className="flex items-center justify-between gap-2">
@@ -139,7 +151,9 @@ function XpProgress({
       </div>
       <p className="text-[11px] font-medium tabular-nums text-muted-foreground/60">
         {xp.toLocaleString()} XP
-        {nextLevelXp ? ` / ${nextLevelXp.toLocaleString()} · ${Math.round(pct)}%` : ' (max level)'}
+        {nextLevelXp
+          ? ` / ${nextLevelXp.toLocaleString()} · ${Math.round(pct)}%`
+          : ' (max level)'}
       </p>
     </div>
   );
@@ -247,6 +261,7 @@ export default function MemberDetailPage() {
                     ...prev.reputation,
                     xp: result.xp,
                     level: result.level ?? prev.reputation.level,
+                    current_level_xp: result.current_level_xp ?? prev.reputation.current_level_xp,
                     next_level_xp: result.next_level_xp ?? prev.reputation.next_level_xp,
                   },
                 }
@@ -436,14 +451,27 @@ export default function MemberDetailPage() {
               <span className="text-4xl font-black tabular-nums text-foreground">
                 {data.reputation.level}
               </span>
-              <div className="h-1 w-12 overflow-hidden rounded-full bg-white/5 mt-1">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60"
-                  style={{
-                    width: `${data.reputation.next_level_xp ? Math.min((data.reputation.xp / data.reputation.next_level_xp) * 100, 100) : 100}%`,
-                  }}
-                />
-              </div>
+              {(() => {
+                const clx = data.reputation.current_level_xp;
+                const nlx = data.reputation.next_level_xp;
+                const xp = data.reputation.xp;
+                let badgePct: number;
+                if (nlx && clx != null && nlx > clx) {
+                  badgePct = Math.min(((xp - clx) / (nlx - clx)) * 100, 100);
+                } else if (nlx) {
+                  badgePct = Math.min((xp / nlx) * 100, 100);
+                } else {
+                  badgePct = 100;
+                }
+                return (
+                  <div className="h-1 w-12 overflow-hidden rounded-full bg-white/5 mt-1">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60"
+                      style={{ width: `${badgePct}%` }}
+                    />
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -471,6 +499,7 @@ export default function MemberDetailPage() {
               <XpProgress
                 level={data.reputation.level}
                 xp={data.reputation.xp}
+                currentLevelXp={data.reputation.current_level_xp}
                 nextLevelXp={data.reputation.next_level_xp}
               />
             }
