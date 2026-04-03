@@ -9,6 +9,32 @@ import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useMembersStore } from '@/stores/members-store';
 
+type SummaryCardProps = {
+  label: string;
+  value: string;
+  accentClassName?: string;
+};
+
+function SummaryCard({ label, value, accentClassName }: SummaryCardProps) {
+  return (
+    <div
+      className={[
+        'group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50',
+        accentClassName,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl text-foreground/90">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Renders the Members page with search, sorting, pagination, and a member list table.
  *
@@ -131,6 +157,33 @@ export default function MembersClient() {
     setDebouncedSearch('');
   }, [setSearch, setDebouncedSearch]);
 
+  const summaryCards = [
+    {
+      label: 'Total Members',
+      value: total.toLocaleString(),
+      accentClassName: 'bg-gradient-to-br from-primary/12 to-background',
+    },
+    {
+      label: 'Filtered Results',
+      value: (filteredTotal ?? total).toLocaleString(),
+      accentClassName: 'bg-gradient-to-br from-secondary/10 to-background',
+    },
+    {
+      label: 'Sorted By',
+      value: `${
+        sortColumn === 'messages'
+          ? 'Messages'
+          : sortColumn === 'xp'
+            ? 'XP'
+            : sortColumn === 'warnings'
+              ? 'Warnings'
+              : sortColumn === 'joined'
+                ? 'Joined'
+                : sortColumn
+      } ${sortOrder === 'asc' ? '↑' : '↓'}`,
+    },
+  ] as const;
+
   return (
     <div className="space-y-6">
       {/* No guild selected */}
@@ -146,39 +199,9 @@ export default function MembersClient() {
       {guildId && (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50 bg-gradient-to-br from-primary/12 to-background">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Total Members
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                {total.toLocaleString()}
-              </p>
-            </div>
-            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50 bg-gradient-to-br from-secondary/10 to-background">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Filtered Results
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl text-foreground/90">
-                {(filteredTotal ?? total).toLocaleString()}
-              </p>
-            </div>
-            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Sorted By
-              </p>
-              <p className="mt-3 text-lg font-semibold tracking-tight md:text-xl text-foreground/90">
-                {sortColumn === 'messages'
-                  ? 'Messages'
-                  : sortColumn === 'xp'
-                    ? 'XP'
-                    : sortColumn === 'warnings'
-                      ? 'Warnings'
-                      : sortColumn === 'joined'
-                        ? 'Joined'
-                        : sortColumn}{' '}
-                {sortOrder === 'asc' ? '↑' : '↓'}
-              </p>
-            </div>
+            {summaryCards.map((card) => (
+              <SummaryCard key={card.label} {...card} />
+            ))}
           </div>
 
           {/* Search + stats bar — compact inline strip */}

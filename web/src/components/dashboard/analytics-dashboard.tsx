@@ -7,6 +7,7 @@ import {
   Bot,
   Coins,
   Heart,
+  type LucideIcon,
   MessageSquare,
   Minus,
   Star,
@@ -58,6 +59,57 @@ type KpiCard = {
   icon: typeof MessageSquare;
   format: (value: number) => string;
 };
+
+type MetricSummaryCardProps = {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  accentClassName: string;
+};
+
+function MetricSummaryCard({ label, value, icon: Icon, accentClassName }: MetricSummaryCardProps) {
+  return (
+    <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+        <Icon className={cn('h-3.5 w-3.5', accentClassName)} />
+        {label}
+      </div>
+      <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
+        {value}
+      </output>
+    </div>
+  );
+}
+
+type RealtimeMetricCardProps = {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  accentClassName: string;
+  badgeClassName: string;
+};
+
+function RealtimeMetricCard({
+  label,
+  value,
+  icon: Icon,
+  accentClassName,
+  badgeClassName,
+}: RealtimeMetricCardProps) {
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-border/40 bg-muted/30 p-5">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+        <span className={cn('flex h-6 w-6 items-center justify-center rounded-md', badgeClassName)}>
+          <Icon className={cn('h-3 w-3', accentClassName)} />
+        </span>
+        {label}
+      </div>
+      <output className="mt-3 block text-3xl font-bold tracking-tighter text-foreground/90">
+        {value}
+      </output>
+    </div>
+  );
+}
 
 function _KpiSkeleton() {
   return (
@@ -271,6 +323,88 @@ export function AnalyticsDashboard() {
     (analytics?.aiUsage.tokens.prompt ?? 0) > 0 || (analytics?.aiUsage.tokens.completion ?? 0) > 0;
   const hasTopChannelsData = topChannels.length > 0;
   const canShowNoDataStates = !loading && analytics !== null;
+  const realtimeMetrics = [
+    {
+      label: 'Active Sessions',
+      value:
+        analytics == null
+          ? '\u2014'
+          : analytics.realtime.onlineMembers === null
+            ? 'N/A'
+            : formatNumber(analytics.realtime.onlineMembers),
+      icon: Activity,
+      accentClassName: 'text-primary',
+      badgeClassName: 'bg-primary/10',
+    },
+    {
+      label: 'AI Workload',
+      value:
+        loading || analytics == null
+          ? '\u2014'
+          : analytics.realtime.activeAiConversations === null
+            ? 'N/A'
+            : formatNumber(analytics.realtime.activeAiConversations),
+      icon: Bot,
+      accentClassName: 'text-secondary',
+      badgeClassName: 'bg-secondary/10',
+    },
+  ] as const;
+  const engagementMetrics = analytics?.userEngagement
+    ? [
+        {
+          label: 'Tracked users',
+          value: formatNumber(analytics.userEngagement.trackedUsers),
+          icon: Users,
+          accentClassName: 'text-primary',
+        },
+        {
+          label: 'Avg msgs / user',
+          value: analytics.userEngagement.avgMessagesPerUser.toFixed(1),
+          icon: MessageSquare,
+          accentClassName: 'text-primary',
+        },
+        {
+          label: 'Reactions given',
+          value: formatNumber(analytics.userEngagement.totalReactionsGiven),
+          icon: Heart,
+          accentClassName: 'text-primary',
+        },
+        {
+          label: 'Reactions received',
+          value: formatNumber(analytics.userEngagement.totalReactionsReceived),
+          icon: Activity,
+          accentClassName: 'text-primary',
+        },
+      ]
+    : null;
+  const xpEconomyMetrics = analytics?.xpEconomy
+    ? [
+        {
+          label: 'Users with XP',
+          value: formatNumber(analytics.xpEconomy.totalUsers),
+          icon: Users,
+          accentClassName: 'text-secondary',
+        },
+        {
+          label: 'Total XP Minted',
+          value: formatNumber(analytics.xpEconomy.totalXp),
+          icon: Star,
+          accentClassName: 'text-secondary',
+        },
+        {
+          label: 'Average Level',
+          value: analytics.xpEconomy.avgLevel.toFixed(1),
+          icon: Activity,
+          accentClassName: 'text-secondary',
+        },
+        {
+          label: 'Highest Level',
+          value: formatNumber(analytics.xpEconomy.maxLevel),
+          icon: Star,
+          accentClassName: 'text-secondary',
+        },
+      ]
+    : null;
 
   const kpiCards = useMemo<KpiCard[]>(
     () => [
@@ -495,37 +629,9 @@ export function AnalyticsDashboard() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="relative overflow-hidden rounded-xl border border-border/40 bg-muted/30 p-5">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
-                  <Activity className="h-3 w-3 text-primary" />
-                </span>
-                Active Sessions
-              </div>
-              <output className="mt-3 block text-3xl font-bold tracking-tighter text-foreground/90">
-                {analytics == null
-                  ? '\u2014'
-                  : analytics.realtime.onlineMembers === null
-                    ? 'N/A'
-                    : formatNumber(analytics.realtime.onlineMembers)}
-              </output>
-            </div>
-
-            <div className="relative overflow-hidden rounded-xl border border-border/40 bg-muted/30 p-5">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary/10">
-                  <Bot className="h-3 w-3 text-secondary" />
-                </span>
-                AI Workload
-              </div>
-              <output className="mt-3 block text-3xl font-bold tracking-tighter text-foreground/90">
-                {loading || analytics == null
-                  ? '\u2014'
-                  : analytics.realtime.activeAiConversations === null
-                    ? 'N/A'
-                    : formatNumber(analytics.realtime.activeAiConversations)}
-              </output>
-            </div>
+            {realtimeMetrics.map((metric) => (
+              <RealtimeMetricCard key={metric.label} {...metric} />
+            ))}
           </div>
           <LiveActivityFeed />
         </DashboardCard>
@@ -910,42 +1016,9 @@ export function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <Users className="h-3.5 w-3.5 text-primary" />
-                    Tracked users
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {formatNumber(analytics.userEngagement.trackedUsers)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                    Avg msgs / user
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {analytics.userEngagement.avgMessagesPerUser.toFixed(1)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <Heart className="h-3.5 w-3.5 text-primary" />
-                    Reactions given
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {formatNumber(analytics.userEngagement.totalReactionsGiven)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <Activity className="h-3.5 w-3.5 text-primary" />
-                    Reactions received
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {formatNumber(analytics.userEngagement.totalReactionsReceived)}
-                  </output>
-                </div>
+                {engagementMetrics?.map((metric) => (
+                  <MetricSummaryCard key={metric.label} {...metric} />
+                ))}
               </div>
             </DashboardCard>
           ) : null}
@@ -961,42 +1034,9 @@ export function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <Users className="h-3.5 w-3.5 text-secondary" />
-                    Users with XP
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {formatNumber(analytics.xpEconomy.totalUsers)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <Star className="h-3.5 w-3.5 text-secondary" />
-                    Total XP Minted
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {formatNumber(analytics.xpEconomy.totalXp)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <Activity className="h-3.5 w-3.5 text-secondary" />
-                    Average Level
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {analytics.xpEconomy.avgLevel.toFixed(1)}
-                  </output>
-                </div>
-                <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    <Star className="h-3.5 w-3.5 text-secondary" />
-                    Highest Level
-                  </div>
-                  <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
-                    {formatNumber(analytics.xpEconomy.maxLevel)}
-                  </output>
-                </div>
+                {xpEconomyMetrics?.map((metric) => (
+                  <MetricSummaryCard key={metric.label} {...metric} />
+                ))}
               </div>
             </DashboardCard>
           ) : null}
