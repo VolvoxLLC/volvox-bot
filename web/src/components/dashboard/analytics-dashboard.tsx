@@ -134,7 +134,7 @@ function AnimatedValue({ value, format }: { value: number; format: (n: number) =
       if (cancelled) return;
       const elapsed = performance.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
+      const eased = 1 - (1 - progress) ** 3;
       setDisplay(start + diff * eased);
       if (progress < 1) {
         requestAnimationFrame(step);
@@ -194,7 +194,10 @@ function LiveActivityFeed() {
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
-      const newLine = { id: idRef.current++, text: SAMPLE_ACTIVITY[index % SAMPLE_ACTIVITY.length] };
+      const newLine = {
+        id: idRef.current++,
+        text: SAMPLE_ACTIVITY[index % SAMPLE_ACTIVITY.length],
+      };
       index++;
       setLines((prev) => [...prev.slice(-3), newLine]);
     }, 2200);
@@ -252,6 +255,17 @@ export function AnalyticsDashboard() {
     ],
     [analytics?.aiUsage.tokens.completion, analytics?.aiUsage.tokens.prompt],
   );
+
+  const sanitizedMessageVolume = useMemo(() => {
+    if (!analytics?.messageVolume) return [];
+    return analytics.messageVolume.map((pt) => ({
+      ...pt,
+      label:
+        !pt.label || pt.label === 'Invalid Date' || pt.label.includes('NaN')
+          ? '—'
+          : pt.label,
+    }));
+  }, [analytics?.messageVolume]);
 
   const topChannels = analytics?.topChannels ?? analytics?.channelActivity ?? [];
   const hasMessageVolumeData = (analytics?.messageVolume?.length ?? 0) > 0;
@@ -569,7 +583,7 @@ export function AnalyticsDashboard() {
             {hasMessageVolumeData ? (
               <div className="h-[340px]">
                 <StableResponsiveContainer>
-                  <LineChart data={analytics?.messageVolume ?? []}>
+                  <LineChart data={sanitizedMessageVolume}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
                     <XAxis
                       dataKey="label"
