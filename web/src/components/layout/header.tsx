@@ -253,7 +253,7 @@ export function Header() {
             <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
 
             {/* Time Range Dropdown */}
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 className={cn(
                   'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
@@ -324,7 +324,7 @@ export function Header() {
             </DropdownMenu>
 
             {/* Actions Menu */}
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 className={cn(
                   'group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-white/10 transition-all hover:bg-white/[0.05] text-muted-foreground/60 hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
@@ -565,7 +565,7 @@ export function Header() {
           )}
 
           {status === 'authenticated' && session?.user && (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 className="group relative flex h-10 w-10 overflow-hidden outline-none items-center justify-center rounded-2xl transition-all shadow-[0_2px_8px_-2px_rgba(0,0,0,0.5)] border border-white/10 hover:border-primary/30"
                 data-testid="header-user-menu"
