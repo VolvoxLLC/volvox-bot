@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 /** Request timeout for the guilds endpoint (10 seconds). */
 const REQUEST_TIMEOUT_MS = 10_000;
 const VALID_ACCESS_LEVELS = new Set(['admin', 'moderator', 'viewer', 'bot-owner']);
+const MAX_ACCESS_LOOKUP_GUILDS = 100;
 
 async function applyAccessLevels(
   guilds: Awaited<ReturnType<typeof getMutualGuilds>>,
@@ -29,45 +30,51 @@ async function applyAccessLevels(
   }
 
   try {
-    const url = new URL(`${botApiBaseUrl}/guilds/access`);
-    url.searchParams.set('userId', userId);
-    url.searchParams.set('guildIds', botGuildIds.join(','));
+    const accessMap = new Map<string, 'admin' | 'moderator' | 'viewer' | 'bot-owner'>();
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'x-api-secret': botApiSecret,
-      },
-      signal,
-      cache: 'no-store',
-    });
+    for (let start = 0; start < botGuildIds.length; start += MAX_ACCESS_LOOKUP_GUILDS) {
+      const guildIdChunk = botGuildIds.slice(start, start + MAX_ACCESS_LOOKUP_GUILDS);
+      const url = new URL(`${botApiBaseUrl}/guilds/access`);
+      url.searchParams.set('userId', userId);
+      url.searchParams.set('guildIds', guildIdChunk.join(','));
 
-    if (!response.ok) {
-      logger.warn('[api/guilds] Failed to fetch bot access levels', {
-        status: response.status,
-        statusText: response.statusText,
+      const response = await fetch(url.toString(), {
+        headers: {
+          'x-api-secret': botApiSecret,
+        },
+        signal,
+        cache: 'no-store',
       });
-      return guilds;
-    }
 
-    const accessEntries: unknown = await response.json();
-    if (!Array.isArray(accessEntries)) {
-      return guilds;
-    }
+      if (!response.ok) {
+        logger.warn('[api/guilds] Failed to fetch bot access levels', {
+          status: response.status,
+          statusText: response.statusText,
+          guildCount: guildIdChunk.length,
+        });
+        return guilds;
+      }
 
-    const accessMap = new Map(
-      accessEntries
-        .filter(
-          (
-            entry,
-          ): entry is { id: string; access: 'admin' | 'moderator' | 'viewer' | 'bot-owner' } =>
-            typeof entry === 'object' &&
-            entry !== null &&
-            typeof (entry as { id?: unknown }).id === 'string' &&
-            typeof (entry as { access?: unknown }).access === 'string' &&
-            VALID_ACCESS_LEVELS.has((entry as { access: string }).access),
-        )
-        .map((entry) => [entry.id, entry.access]),
-    );
+      const accessEntries: unknown = await response.json();
+      if (!Array.isArray(accessEntries)) {
+        return guilds;
+      }
+
+      for (const entry of accessEntries) {
+        if (
+          typeof entry === 'object' &&
+          entry !== null &&
+          typeof (entry as { id?: unknown }).id === 'string' &&
+          typeof (entry as { access?: unknown }).access === 'string' &&
+          VALID_ACCESS_LEVELS.has((entry as { access: string }).access)
+        ) {
+          accessMap.set(
+            (entry as { id: string }).id,
+            (entry as { access: 'admin' | 'moderator' | 'viewer' | 'bot-owner' }).access,
+          );
+        }
+      }
+    }
 
     return guilds.map((guild) => ({
       ...guild,

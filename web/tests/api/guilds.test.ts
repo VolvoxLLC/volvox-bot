@@ -232,4 +232,47 @@ describe("GET /api/guilds", () => {
       }),
     ]);
   });
+
+  it("batches guild access lookups to avoid exceeding the 100-guild API cap", async () => {
+    process.env.BOT_API_SECRET = "bot-secret";
+    mockGetBotApiBaseUrl.mockReturnValue("http://bot.internal/api/v1");
+
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue({
+        ok: true,
+        json: async () => [],
+        status: 200,
+        statusText: "OK",
+      } as Response);
+
+    mockGetToken.mockResolvedValue({
+      sub: "123",
+      id: "discord-user-123",
+      accessToken: "valid-discord-token",
+    });
+    mockGetMutualGuilds.mockResolvedValue(
+      Array.from({ length: 205 }, (_, index) => ({
+        id: String(index + 1),
+        name: `Server ${index + 1}`,
+        icon: null,
+        owner: false,
+        permissions: "0",
+        features: [],
+        botPresent: true,
+      })),
+    );
+
+    const response = await GET(createMockRequest());
+
+    expect(response.status).toBe(200);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+
+    const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(
+      (call) => new URL(call[0] as string),
+    );
+    expect(urls.map((url) => url.searchParams.get("guildIds")?.split(",").length)).toEqual([
+      100, 100, 5,
+    ]);
+  });
 });

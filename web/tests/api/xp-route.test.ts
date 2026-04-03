@@ -187,8 +187,20 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
     });
   });
 
-  it('returns 401 when the Discord user id is unavailable', async () => {
+  it('falls back to token.sub when token.id is unavailable', async () => {
     mockGetToken.mockResolvedValueOnce({ sub: 'nextauth-sub-only' });
+
+    const res = await POST(makeRequest({ amount: 10 }), makeParams());
+
+    expect(res.status).toBe(200);
+    expect(mockProxyToBotApi).toHaveBeenCalled();
+    expect(mockProxyToBotApi.mock.calls[0][4].headers).toMatchObject({
+      'x-discord-user-id': 'nextauth-sub-only',
+    });
+  });
+
+  it('returns 401 when neither token.id nor token.sub is available', async () => {
+    mockGetToken.mockResolvedValueOnce({});
 
     const res = await POST(makeRequest({ amount: 10 }), makeParams());
 
