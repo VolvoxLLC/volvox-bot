@@ -818,7 +818,9 @@ function HeatmapRow({
                   className="h-4 rounded-sm border cursor-default"
                   style={{
                     backgroundColor:
-                      value === 0 ? 'transparent' : hexToRgba(chartPrimary, Number(alpha.toFixed(3))),
+                      value === 0
+                        ? 'transparent'
+                        : hexToRgba(chartPrimary, Number(alpha.toFixed(3))),
                   }}
                 />
               </TooltipTrigger>

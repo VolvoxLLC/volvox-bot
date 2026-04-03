@@ -31,13 +31,13 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGlowCard } from '@/hooks/use-glow-card';
 import { formatNumber, formatUsd } from '@/lib/analytics-utils';
 import { cn } from '@/lib/utils';
 import type { AnalyticsRangePreset } from '@/types/analytics';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DashboardCard } from './dashboard-card';
 import { EmptyState } from './empty-state';
 
@@ -949,7 +949,8 @@ export function AnalyticsDashboard() {
                         />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="text-[11px] font-medium tabular-nums">
-                        {day} {String(hour).padStart(2, '0')}:00 — {value} message{value !== 1 ? 's' : ''}
+                        {day} {String(hour).padStart(2, '0')}:00 — {value} message
+                        {value !== 1 ? 's' : ''}
                       </TooltipContent>
                     </Tooltip>
                   );

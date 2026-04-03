@@ -228,7 +228,7 @@ export default function MembersClient() {
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onLoadMore={handleLoadMore}
-            hasMore={nextAfter !== null}
+            hasMore={!!nextAfter}
             loading={loading}
             onRowClick={handleRowClick}
           />

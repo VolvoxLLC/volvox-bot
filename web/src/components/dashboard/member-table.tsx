@@ -372,7 +372,7 @@ export function MemberTable({
         </Table>
       </div>
 
-      {hasMore && (
+      {hasMore && !loading && members.length > 0 && (
         <div className="flex justify-center pt-1">
           <button
             type="button"
