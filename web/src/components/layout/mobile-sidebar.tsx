@@ -42,7 +42,7 @@ export function MobileSidebar() {
               Browse dashboard navigation and switch workspaces from the control room sidebar.
             </SheetDescription>
           </SheetHeader>
-          <div className="px-4 pb-4 pt-4">
+          <div className="p-4">
             <Sidebar onNavClick={() => setOpen(false)} />
           </div>
         </SheetContent>

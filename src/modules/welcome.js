@@ -72,11 +72,11 @@ export function __resetCommunityActivityState() {
  */
 export function renderWelcomeMessage(messageTemplate, member, guild, dynamicContext) {
   return renderTemplate(messageTemplate, {
+    ...(dynamicContext ?? {}),
     user: `<@${member.id}>`,
     username: member.username || 'Unknown',
     server: guild.name ?? '',
     memberCount: (guild.memberCount ?? 0).toString(),
-    ...(dynamicContext ?? {}),
   });
 }
 
