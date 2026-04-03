@@ -609,7 +609,7 @@ export function CommandUsageCard({
 
 function CommandUsageTable({ items }: { items: Array<{ command: string; uses: number }> }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="max-h-[340px] overflow-y-auto overflow-x-auto">
       <table className="w-full min-w-[320px] text-sm">
         <thead>
           <tr className="border-b text-left text-muted-foreground">
