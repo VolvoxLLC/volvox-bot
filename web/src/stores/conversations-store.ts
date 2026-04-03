@@ -30,8 +30,8 @@ interface ConversationsState {
   currentOpts: ConversationsFetchOpts;
 
   setOpts: (opts: Partial<ConversationsFetchOpts>) => void;
-  fetch: (guildId: string, opts: ConversationsFetchOpts) => Promise<'unauthorized' | void>;
-  refresh: (guildId: string) => Promise<'unauthorized' | void>;
+  fetch: (guildId: string, opts: ConversationsFetchOpts) => Promise<'unauthorized' | undefined>;
+  refresh: (guildId: string) => Promise<'unauthorized' | undefined>;
   reset: () => void;
 }
 

@@ -1,17 +1,20 @@
 'use client';
 
 import {
+  Activity,
+  ArrowDown,
+  ArrowUp,
   Bot,
   Coins,
-  Download,
-  FileText,
+  Heart,
   MessageSquare,
-  RefreshCw,
+  Minus,
+  Star,
   UserPlus,
   Users,
   Zap,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Bar,
   BarChart,
@@ -31,42 +34,87 @@ import { StableResponsiveContainer } from '@/components/ui/stable-responsive-con
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGlowCard } from '@/hooks/use-glow-card';
-import { useGuildSelection } from '@/hooks/use-guild-selection';
-import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
-import {
-  endOfDayIso,
-  formatDateInput,
-  formatLastUpdatedTime,
-  formatNumber,
-  formatUsd,
-  startOfDayIso,
-} from '@/lib/analytics-utils';
+import { formatNumber, formatUsd } from '@/lib/analytics-utils';
 import { cn } from '@/lib/utils';
-import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
-import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
-import {
-  ActivityHeatmapCard,
-  AiUsageCard,
-  ChannelFilterCard,
-  CommandUsageCard,
-  escapeCsvCell,
-  type KpiCard,
-  KpiCardItem,
-  KpiSkeleton,
-  MessageVolumeCard,
-  RealtimeIndicatorsCard,
-  TopChannelsCard,
-  toDeltaPercent,
-  UserEngagementCard,
-  XpEconomyCard,
-} from './analytics-dashboard-sections';
+import type { AnalyticsRangePreset } from '@/types/analytics';
+import { EmptyState } from './empty-state';
 
-const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
+const _RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Today', value: 'today' },
   { label: 'Week', value: 'week' },
   { label: 'Month', value: 'month' },
   { label: 'Custom', value: 'custom' },
 ];
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+type KpiCard = {
+  label: string;
+  value: number | undefined;
+  previous: number | undefined;
+  icon: typeof MessageSquare;
+  format: (value: number) => string;
+};
+
+function _KpiSkeleton() {
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-5 backdrop-blur-3xl">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="h-8 w-8 animate-pulse rounded-xl bg-muted/20" />
+        <div className="h-3 w-20 animate-pulse rounded bg-muted/20" />
+      </div>
+      <div className="flex items-baseline justify-between">
+        <div className="h-8 w-24 animate-pulse rounded bg-muted/20" />
+      </div>
+      <div className="mt-3 flex items-center gap-1.5">
+        <div className="h-3 w-32 animate-pulse rounded bg-muted/20" />
+      </div>
+    </div>
+  );
+}
+
+function escapeCsvCell(value: string | number | null): string {
+  if (value === null) return '';
+  const text = String(value);
+  if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function toDeltaPercent(current: number, previous: number): number | null {
+  if (previous === 0) {
+    return current === 0 ? 0 : null;
+  }
+  return ((current - previous) / previous) * 100;
+}
+
+function formatDeltaPercent(deltaPercent: number | null): string {
+  if (deltaPercent === null) return '—';
+  if (deltaPercent === 0) return '0%';
+  return `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%`;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) {
+    return `rgba(88, 101, 242, ${alpha})`;
+  }
+
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+export function AnalyticsDashboard() {
+  const chart = useChartTheme();
+  const { analytics, loading, error, compareMode, channelFilter, setChannelFilter, refresh } =
+    useAnalytics();
+
+  useGlowCard();
 
   const heatmapLookup = useMemo(() => {
     const map = new Map<string, number>();
@@ -102,6 +150,11 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   );
 
   const topChannels = analytics?.topChannels ?? analytics?.channelActivity ?? [];
+  const hasMessageVolumeData = (analytics?.messageVolume?.length ?? 0) > 0;
+  const hasModelUsageData = modelUsageData.length > 0;
+  const hasTokenUsageData =
+    (analytics?.aiUsage.tokens.prompt ?? 0) > 0 || (analytics?.aiUsage.tokens.completion ?? 0) > 0;
+  const hasTopChannelsData = topChannels.length > 0;
   const canShowNoDataStates = !loading && analytics !== null;
 
   const kpiCards = useMemo<KpiCard[]>(
@@ -145,7 +198,7 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
     [analytics],
   );
 
-  const exportCsv = useCallback(() => {
+  const _exportCsv = useCallback(() => {
     if (!analytics) return;
 
     const rows: string[] = [];
@@ -210,7 +263,6 @@ const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   }, [analytics, compareMode, kpiCards, topChannels]);
 
   const showKpiSkeleton = loading && !analytics;
-  const hasComparison = compareMode && analytics?.comparison != null;
 
   return (
     <div className="space-y-6 overflow-x-hidden">

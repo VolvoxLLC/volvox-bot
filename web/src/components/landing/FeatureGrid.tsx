@@ -1,16 +1,9 @@
 'use client';
 
-import {
-  motion,
-  useInView,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-  useTransform,
-} from 'framer-motion';
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { Activity, BarChart3, Bot, MessageSquare, Shield, Sparkles, Star, Zap } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { Activity, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
+import { useRef } from 'react';
 import { ScrollStage } from './ScrollStage';
 
 interface Feature {

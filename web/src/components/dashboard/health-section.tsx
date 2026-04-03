@@ -79,6 +79,7 @@ export function HealthSection() {
               </p>
             </div>
             <button
+              type="button"
               onClick={() => guildId && void refresh(guildId)}
               className="flex h-10 items-center justify-center gap-2 rounded-xl bg-destructive px-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-destructive/80 active:scale-95 shadow-lg shadow-destructive/20"
             >

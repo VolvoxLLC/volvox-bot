@@ -147,6 +147,7 @@ export default function AuditLogPage() {
     filters.offset,
     fetch,
     router,
+    filters,
   ]);
 
   const toggleRow = useCallback((id: number) => {

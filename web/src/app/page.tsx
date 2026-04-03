@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FeatureGrid, Footer, Hero, InviteButton, Pricing } from '@/components/landing';
@@ -76,19 +77,16 @@ export default function LandingPage() {
       {/* Floating Island Navbar */}
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4">
         <div
-          className={`flex items-center justify-between transition-all duration-500 backdrop-blur-md ${scrolled
-            ? 'nav-island mt-4 w-[90%] max-w-[850px] py-3 px-5 glass-morphism-premium border-white/10 shadow-2xl'
-            : 'w-full max-w-full py-5 px-8 bg-transparent border-b border-transparent'
-            }`}
+          className={`flex items-center justify-between transition-all duration-500 backdrop-blur-md ${
+            scrolled
+              ? 'nav-island mt-4 w-[90%] max-w-[850px] py-3 px-5 glass-morphism-premium border-white/10 shadow-2xl'
+              : 'w-full max-w-full py-5 px-8 bg-transparent border-b border-transparent'
+          }`}
         >
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="relative h-9 w-9 overflow-hidden rounded-xl border border-white/10 shadow-lg">
-              <img 
-                src="/icon-192.png" 
-                alt="Volvox Logo" 
-                className="h-full w-full object-cover"
-              />
+              <Image src="/icon-192.png" alt="Volvox Logo" fill className="object-cover" />
             </div>
             <span className="font-black text-xl tracking-tight text-[hsl(var(--foreground))]">
               Volvox
@@ -97,7 +95,9 @@ export default function LandingPage() {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center">
-            <div className={`flex items-center ${scrolled ? 'nav-links-pill shadow-inner border border-white/5' : 'gap-1'}`}>
+            <div
+              className={`flex items-center ${scrolled ? 'nav-links-pill shadow-inner border border-white/5' : 'gap-1'}`}
+            >
               <button
                 type="button"
                 onClick={() => scrollToSection('features')}

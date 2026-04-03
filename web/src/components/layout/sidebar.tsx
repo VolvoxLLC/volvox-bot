@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  ChevronDown,
   ClipboardList,
   Clock,
   Cog,
@@ -16,11 +15,10 @@ import {
   Sparkles,
   Ticket,
   Users,
-  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ComponentType } from 'react';
+import type { ComponentType } from 'react';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { cn } from '@/lib/utils';
 import { ServerSelector } from './server-selector';

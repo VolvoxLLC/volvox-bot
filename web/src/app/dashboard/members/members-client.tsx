@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { MemberTable } from '@/components/dashboard/member-table';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useMembersStore } from '@/stores/members-store';
@@ -118,7 +117,6 @@ export default function MembersClient() {
       append: true,
     });
   }, [guildId, nextAfter, loading, runFetch, debouncedSearch, sortColumn, sortOrder]);
-
 
   const handleRowClick = useCallback(
     (userId: string) => {

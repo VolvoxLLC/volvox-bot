@@ -4,8 +4,7 @@ import { Hash, Loader2, Megaphone, RotateCcw, Search, StickyNote } from 'lucide-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { inputClasses } from '@/components/dashboard/config-editor-utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { GuildConfig } from '@/lib/config-utils';
 import { cn } from '@/lib/utils';
 import type { ChannelMode } from '@/types/config';
@@ -41,12 +40,10 @@ function ModeSelector({
   mode,
   onChange,
   disabled,
-  isDefault,
 }: {
   mode: ChannelMode;
   onChange: (mode: ChannelMode) => void;
   disabled: boolean;
-  isDefault: boolean;
 }) {
   const modes: { value: ChannelMode; label: string }[] = [
     { value: 'off', label: 'Off' },
@@ -103,7 +100,7 @@ function ChannelIcon({ type }: { type: number }) {
 
 // ── Mode dot indicator ────────────────────────────────────────────────────
 
-function ModeDot({ mode }: { mode: ChannelMode }) {
+function _ModeDot({ mode }: { mode: ChannelMode }) {
   const color =
     mode === 'off' ? 'bg-destructive' : mode === 'vibe' ? 'bg-emerald-500' : 'bg-primary';
   return <span className={cn('inline-block h-1.5 w-1.5 rounded-full shrink-0', color)} />;
@@ -305,12 +302,7 @@ export function ChannelModeSection({
                 Channels without explicit overrides will use this response behavior.
               </p>
             </div>
-            <ModeSelector
-              mode={defaultMode}
-              onChange={onDefaultModeChange}
-              disabled={saving}
-              isDefault={false}
-            />
+            <ModeSelector mode={defaultMode} onChange={onDefaultModeChange} disabled={saving} />
           </div>
         </div>
 
@@ -424,7 +416,6 @@ export function ChannelModeSection({
                             mode={effectiveMode}
                             onChange={(m) => handleChannelMode(ch.id, m)}
                             disabled={saving}
-                            isDefault={!isOverridden}
                           />
                         </div>
                       </div>

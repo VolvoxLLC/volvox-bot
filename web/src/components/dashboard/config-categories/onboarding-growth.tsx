@@ -52,6 +52,128 @@ const TABS = [
   },
 ] as const;
 
+const STATIC_VARIABLE_DEFINITIONS = [
+  { name: 'user', description: 'Mention member', sample: '@johndoe' },
+  { name: 'username', description: 'Plain name', sample: 'johndoe' },
+  { name: 'server', description: 'Server name', sample: 'Volvox' },
+  { name: 'memberCount', description: 'Total members', sample: '142' },
+] as const;
+const DYNAMIC_VARIABLE_DEFINITIONS = [
+  {
+    name: 'greeting',
+    description: 'Time-aware hello',
+    sample: 'Good morning @johndoe! You just joined Volvox.',
+  },
+  {
+    name: 'vibeLine',
+    description: 'Activity context',
+    sample: "Things are moving at a healthy pace in #general, so you'll fit right in.",
+  },
+  {
+    name: 'ctaLine',
+    description: 'Suggested channels call-to-action',
+    sample: 'Start in #general, check out #introductions, and browse #announcements.',
+  },
+  {
+    name: 'milestoneLine',
+    description: 'Member milestone or count line',
+    sample: 'You just rolled in as member #142.',
+  },
+  { name: 'timeOfDay', description: 'Time-of-day label', sample: 'morning' },
+  { name: 'activityLevel', description: 'Server activity level', sample: 'steady' },
+  {
+    name: 'topChannels',
+    description: 'Trending channels',
+    sample: '#general, #projects, #showcase',
+  },
+] as const;
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent className="bg-muted border-border text-foreground text-[10px] max-w-[200px] p-2 leading-relaxed shadow-xl">
+          {text}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+export function OnboardingGrowthCategory() {
+  const { draftConfig, saving, guildId, visibleFeatureIds, updateDraftConfig } = useConfigContext();
+
+  const availableTabs = TABS.filter((t) => visibleFeatureIds.has(t.id as ConfigFeatureId));
+  const [activeTab, setActiveTab] = useState<ConfigFeatureId | null>(
+    (availableTabs[0]?.id as ConfigFeatureId) ?? null,
+  );
+
+  const [dmStepsRaw, setDmStepsRaw] = useState('');
+
+  useEffect(() => {
+    if (draftConfig?.welcome?.dmSequence?.steps) {
+      setDmStepsRaw(draftConfig.welcome.dmSequence.steps.join('\n'));
+    }
+  }, [draftConfig?.welcome?.dmSequence?.steps]);
+
+  useEffect(() => {
+    if (activeTab && !visibleFeatureIds.has(activeTab)) {
+      setActiveTab((availableTabs[0]?.id as ConfigFeatureId) ?? null);
+    }
+  }, [visibleFeatureIds, activeTab, availableTabs]);
+
+  const updateWelcomeField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => ({
+        ...prev,
+        welcome: { ...(prev.welcome ?? {}), [field]: value },
+      }));
+    },
+    [updateDraftConfig],
+  );
+
+  const updateWelcomeDynamic = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => ({
+        ...prev,
+        welcome: {
+          ...(prev.welcome ?? {}),
+          dynamic: { ...(prev.welcome?.dynamic ?? {}), [field]: value },
+        },
+      }));
+    },
+    [updateDraftConfig],
+  );
+
+  const updateWelcomeRoleMenu = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => ({
+        ...prev,
+        welcome: {
+          ...(prev.welcome ?? {}),
+          roleMenu: { ...(prev.welcome?.roleMenu ?? {}), [field]: value },
+        },
+      }));
+    },
+    [updateDraftConfig],
+  );
+
+  const updateWelcomeDmSequence = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => ({
+        ...prev,
+        welcome: {
+          ...(prev.welcome ?? {}),
+          dmSequence: { ...(prev.welcome?.dmSequence ?? {}), [field]: value },
+        },
+      }));
+    },
+    [updateDraftConfig],
+  );
+
   const welcomeVariables = useMemo(
     () =>
       draftConfig?.welcome?.dynamic?.enabled
@@ -87,7 +209,7 @@ const TABS = [
   const currentTabInfo = TABS.find((t) => t.id === activeTab);
 
   let isCurrentFeatureEnabled = false;
-  let handleToggleCurrentFeature = (v: boolean) => {};
+  let handleToggleCurrentFeature = (_v: boolean) => {};
 
   if (activeTab === 'welcome') {
     isCurrentFeatureEnabled = draftConfig.welcome?.enabled ?? false;
@@ -247,9 +369,9 @@ const TABS = [
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-border/40">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                         Rules Channel
-                      </label>
+                      </div>
                       <ChannelSelector
                         guildId={guildId}
                         selected={
@@ -266,9 +388,9 @@ const TABS = [
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                         Verification Role
-                      </label>
+                      </div>
                       <RoleSelector
                         guildId={guildId}
                         selected={
@@ -284,9 +406,9 @@ const TABS = [
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                         Introductions
-                      </label>
+                      </div>
                       <ChannelSelector
                         guildId={guildId}
                         selected={
@@ -328,9 +450,9 @@ const TABS = [
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                           Highlight Channels
-                        </label>
+                        </div>
                         <ChannelSelector
                           guildId={guildId}
                           selected={draftConfig.welcome?.dynamic?.highlightChannels ?? []}
@@ -340,9 +462,9 @@ const TABS = [
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                           Exclude Channels
-                        </label>
+                        </div>
                         <ChannelSelector
                           guildId={guildId}
                           selected={draftConfig.welcome?.dynamic?.excludeChannels ?? []}
@@ -601,7 +723,11 @@ const TABS = [
                         <p className="text-[10px] text-muted-foreground/60">{item.desc}</p>
                       </div>
                       <ToggleSwitch
-                        checked={(draftConfig.engagement as any)?.[item.key] ?? true}
+                        checked={
+                          (draftConfig.engagement as Record<string, boolean | undefined>)?.[
+                            item.key
+                          ] ?? true
+                        }
                         onChange={(v) =>
                           updateDraftConfig((prev) => ({
                             ...prev,
@@ -709,7 +835,7 @@ const TABS = [
                         const vals = e.target.value
                           .split(',')
                           .map((v) => parseInt(v.trim(), 10))
-                          .filter((v) => !isNaN(v));
+                          .filter((v) => !Number.isNaN(v));
                         if (vals.length)
                           updateDraftConfig((prev) => ({
                             ...prev,
@@ -748,9 +874,9 @@ const TABS = [
                       />
                     </div>
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                         Personality Override
-                      </label>
+                      </div>
                       <textarea
                         value={draftConfig.tldr?.systemPrompt ?? ''}
                         onChange={(e) =>
@@ -818,13 +944,16 @@ const TABS = [
                       },
                     ].map((cfg) => (
                       <div key={cfg.key} className="space-y-2">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                           {cfg.label}
-                        </label>
+                        </div>
                         <div className="relative">
                           <input
                             type="number"
-                            value={(draftConfig.tldr as any)?.[cfg.key] ?? 50}
+                            value={
+                              (draftConfig.tldr as Record<string, number | undefined>)?.[cfg.key] ??
+                              50
+                            }
                             onChange={(e) =>
                               updateDraftConfig((p) => ({
                                 ...p,
@@ -850,9 +979,9 @@ const TABS = [
                 <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                         Destination Channel
-                      </label>
+                      </div>
                       <ChannelSelector
                         guildId={guildId}
                         selected={
@@ -872,9 +1001,9 @@ const TABS = [
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                           Post Time
-                        </label>
+                        </div>
                         <input
                           type="text"
                           value={draftConfig.challenges?.postTime ?? '09:00'}
@@ -889,9 +1018,9 @@ const TABS = [
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                           Timezone
-                        </label>
+                        </div>
                         <input
                           type="text"
                           value={draftConfig.challenges?.timezone ?? 'UTC'}

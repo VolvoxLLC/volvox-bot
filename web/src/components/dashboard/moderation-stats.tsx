@@ -1,7 +1,6 @@
 'use client';
 
 import { AlertTriangle, Ban, Clock, Shield, TrendingUp, UserX } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ModStats } from './moderation-types';
 import { ACTION_META } from './moderation-types';

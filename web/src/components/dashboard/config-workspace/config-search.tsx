@@ -2,7 +2,6 @@
 
 import { Search, Settings2, X } from 'lucide-react';
 import { inputClasses } from '@/components/dashboard/config-editor-utils';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getCategoryById } from './config-categories';
 import type { ConfigSearchItem } from './types';

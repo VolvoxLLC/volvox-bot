@@ -3,10 +3,8 @@
 import {
   BookOpen,
   Calendar,
-  ChevronRight,
   Download,
   FileText,
-  LayoutGrid,
   LogOut,
   Moon,
   MoreVertical,
@@ -38,7 +36,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-import { formatDateInput } from '@/lib/analytics-utils';
 import { getDashboardPageTitle } from '@/lib/page-titles';
 import { cn } from '@/lib/utils';
 import { useAuditLogStore } from '@/stores/audit-log-store';
@@ -574,7 +571,7 @@ export function Header() {
                       className="shadow-inner"
                     />
                     <AvatarFallback className="rounded-[14px] bg-background/50 font-black tracking-widest text-[10px] text-muted-foreground/60 shadow-inner">
-                      {session.user.name!.substring(0, 2).toUpperCase()}
+                      {session.user.name?.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </div>

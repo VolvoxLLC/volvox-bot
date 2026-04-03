@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Shield, Trash2 } from 'lucide-react';
+import { Shield, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -101,9 +101,8 @@ export default function TempRolesPage() {
         setConfirmRevoke(null);
       }
     },
-    [guildId, page, router],
+    [guildId, page, router, fetch],
   );
-
 
   const rows = data?.data ?? [];
   const pagination = data?.pagination;

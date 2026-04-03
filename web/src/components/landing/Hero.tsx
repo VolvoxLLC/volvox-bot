@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  AnimatePresence,
   motion,
   useMotionValue,
   useReducedMotion,
@@ -9,9 +8,9 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import { Activity, Bot, MessageSquare, Shield, Sparkles, Terminal, Users, Zap } from 'lucide-react';
+import { Activity, Bot, Shield, Sparkles, Terminal } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { GetStartedButton } from '@/components/ui/get-started-button';
 import { getBotInviteUrl } from '@/lib/discord';
 
@@ -148,9 +147,7 @@ function ModWidget() {
               <span className="text-[11px] font-bold text-foreground">{log.user}</span>
               <span className="text-[9px] text-foreground font-medium">{log.time}</span>
             </div>
-            <span className="text-[10px] text-primary uppercase tracking-widest">
-              {log.action}
-            </span>
+            <span className="text-[10px] text-primary uppercase tracking-widest">{log.action}</span>
           </div>
         ))}
       </div>
@@ -304,7 +301,6 @@ export function Hero() {
             />
           </motion.div>
         </div>
-
       </motion.div>
 
       {/* Spatial Bento Widgets */}

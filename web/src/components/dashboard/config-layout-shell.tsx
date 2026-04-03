@@ -34,7 +34,6 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     changedSections,
     showDiffModal,
     setShowDiffModal,
-    prevSavedConfig,
     executeSave,
     revertSection,
     searchQuery,

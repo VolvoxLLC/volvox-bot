@@ -17,7 +17,6 @@ import { toast } from 'sonner';
 import { ActionBadge } from '@/components/dashboard/action-badge';
 import type { ModAction } from '@/components/dashboard/moderation-types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';

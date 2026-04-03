@@ -58,6 +58,11 @@ const useInternalRipple = (disabled = false) => {
     rippleRef.current.style.width = `${initialSize}px`;
     rippleRef.current.style.height = `${initialSize}px`;
 
+    if (typeof rippleRef.current.animate !== 'function') {
+      rippleRef.current.style.transform = `translate(${endPoint.x}px, ${endPoint.y}px) scale(${scale})`;
+      return;
+    }
+
     growAnimationRef.current = rippleRef.current.animate(
       [
         { transform: `translate(${startPoint.x}px, ${startPoint.y}px) scale(1)` },
@@ -125,9 +130,7 @@ const RippleLayer = React.forwardRef<
 
 // --- 2. SSR COMPATIBLE CINEMATIC STYLES ---
 const M3Styles = () => (
-  <style
-    dangerouslySetInnerHTML={{
-      __html: `
+  <style>{`
     /* --- OPENING SWEEPS --- */
     @keyframes m3-sweep-down { 0% { clip-path: inset(0 0 100% 0 round var(--m3-menu-radius, 24px)); } 100% { clip-path: inset(0 0 0 0 round var(--m3-menu-radius, 24px)); } }
     @keyframes m3-sweep-up { 0% { clip-path: inset(100% 0 0 0 round var(--m3-menu-radius, 24px)); } 100% { clip-path: inset(0 0 0 0 round var(--m3-menu-radius, 24px)); } }
@@ -173,9 +176,7 @@ const M3Styles = () => (
     .m3-content .m3-item-enter:nth-child(3) { animation-delay: 100ms; }
     .m3-content .m3-item-enter:nth-child(4) { animation-delay: 130ms; }
     .m3-content .m3-item-enter:nth-child(n+5) { animation-delay: 160ms; }
-  `,
-    }}
-  />
+  `}</style>
 );
 
 // --- 3. EXPORTED COMPONENTS ---
@@ -272,7 +273,7 @@ const DropdownMenuContent = React.forwardRef<
               ? className.match(/rounded-\[([^\]]+)\]/)?.[1] || '24px'
               : '24px',
             ...props.style,
-          } as any
+          } as React.CSSProperties
         }
         className={cn(
           'm3-content z-50 rounded-3xl bg-popover/95 backdrop-blur-xl text-popover-foreground shadow-[0px_8px_32px_rgba(0,0,0,0.12)] border border-border/20 outline-none overflow-hidden relative py-0',
@@ -300,9 +301,9 @@ const DropdownMenuItem = React.forwardRef<
   return (
     <DropdownMenuPrimitive.Item
       ref={(node) => {
-        (surfaceRef as any).current = node;
+        (surfaceRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
         if (typeof ref === 'function') ref(node);
-        else if (ref) (ref as any).current = node;
+        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={cn(
         'group relative flex cursor-pointer select-none items-stretch px-0 min-h-[48px] text-sm font-medium tracking-[0.01em] outline-none transition-colors',
@@ -344,9 +345,9 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   return (
     <DropdownMenuPrimitive.CheckboxItem
       ref={(node) => {
-        (surfaceRef as any).current = node;
+        (surfaceRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
         if (typeof ref === 'function') ref(node);
-        else if (ref) (ref as any).current = node;
+        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={cn(
         'group relative flex cursor-pointer select-none items-stretch px-0 min-h-[48px] text-sm font-medium tracking-[0.01em] outline-none transition-colors',
@@ -396,9 +397,9 @@ const DropdownMenuRadioItem = React.forwardRef<
   return (
     <DropdownMenuPrimitive.RadioItem
       ref={(node) => {
-        (surfaceRef as any).current = node;
+        (surfaceRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
         if (typeof ref === 'function') ref(node);
-        else if (ref) (ref as any).current = node;
+        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={cn(
         'group relative flex cursor-pointer select-none items-stretch px-0 min-h-[48px] text-sm font-medium tracking-[0.01em] outline-none transition-colors',
@@ -506,9 +507,9 @@ const DropdownMenuPage = React.forwardRef<
   return (
     <div
       ref={(node) => {
-        (localRef as any).current = node;
+        (localRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
         if (typeof ref === 'function') ref(node);
-        else if (ref) (ref as any).current = node;
+        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={cn(
         'w-full absolute top-0 left-0 transition-all duration-350 ease-[cubic-bezier(0.2,0,0,1)] py-0',

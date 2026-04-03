@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -131,7 +130,7 @@ export default function TicketsClient() {
 
   const guildId = useGuildSelection({ onGuildChange });
 
-  const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
+  const _onUnauthorized = useCallback(() => router.replace('/login'), [router]);
 
   // Fetch stats on guild change
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { ChevronDown, Zap } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -96,14 +96,12 @@ export function SettingsFeatureCard({
       {/* Basic Settings Container */}
       <div className="px-7 pb-3 space-y-6">
         <div className="relative p-6 rounded-[24px] bg-muted/20 dark:bg-black/20 border border-border/50 dark:border-white/[0.03] shadow-inner dark:shadow-[inset_0_2px_8px_rgba(0,0,0,0.4)]">
-          <div className="space-y-5" aria-label={`${title} basic settings`}>
-            {basicContent}
-          </div>
+          <div className="space-y-5">{basicContent}</div>
         </div>
 
         {/* Advanced Section */}
         {hasAdvanced && (
-          <div className="py-2" aria-label={`${title} advanced settings`}>
+          <div className="py-2">
             <Button
               type="button"
               variant="ghost"

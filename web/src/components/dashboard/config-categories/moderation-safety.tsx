@@ -206,7 +206,7 @@ export function ModerationSafetyCategory() {
   const currentTabInfo = TABS.find((t) => t.id === activeTab);
 
   let isCurrentFeatureEnabled = false;
-  let handleToggleCurrentFeature = (v: boolean) => {};
+  let handleToggleCurrentFeature = (_v: boolean) => {};
 
   if (activeTab === 'moderation') {
     isCurrentFeatureEnabled = draftConfig.moderation?.enabled ?? false;

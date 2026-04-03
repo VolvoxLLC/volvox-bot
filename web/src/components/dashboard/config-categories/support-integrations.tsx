@@ -1,15 +1,14 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings2, Ticket } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Ticket } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { GithubIcon } from '@/components/ui/github-icon';
 import { RoleSelector } from '@/components/ui/role-selector';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 
@@ -49,7 +48,7 @@ export function SupportIntegrationsCategory() {
   const currentTabInfo = TABS.find((t) => t.id === activeTab);
 
   let isCurrentFeatureEnabled = false;
-  let handleToggleCurrentFeature = (v: boolean) => {};
+  let handleToggleCurrentFeature = (_v: boolean) => {};
 
   if (activeTab === 'tickets') {
     isCurrentFeatureEnabled = draftConfig.tickets?.enabled ?? false;

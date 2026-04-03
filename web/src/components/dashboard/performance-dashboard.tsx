@@ -1,24 +1,13 @@
 'use client';
 
-import { Activity, AlertTriangle, Clock, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, Clock, Cpu, HardDrive, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -177,7 +166,11 @@ export function PerformanceDashboard() {
       const res = await fetch('/api/performance', { cache: 'no-store', signal: ctl.signal });
       if (!res.ok) {
         const json: unknown = await res.json().catch(() => ({}));
-        throw new Error(extractErrorMessage(json, 'Failed to fetch performance data'));
+        const msg =
+          typeof json === 'object' && json !== null && 'error' in json
+            ? String((json as Record<string, unknown>).error)
+            : 'Failed to fetch performance data';
+        throw new Error(msg);
       }
       const json: PerformanceSnapshot = (await res.json()) as PerformanceSnapshot;
       setData(json);
@@ -204,7 +197,7 @@ export function PerformanceDashboard() {
   }, [fetchData]);
 
   useEffect(() => {
-    const id = window.setInterval(() => fetchData(true), AUTO_REFRESH_MS);
+    const id = window.setInterval(() => void fetchData(true), AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
   }, [fetchData]);
 
@@ -225,14 +218,17 @@ export function PerformanceDashboard() {
       });
       if (!res.ok) {
         const json: unknown = await res.json().catch(() => ({}));
-        const msg = extractErrorMessage(json, 'Failed to save thresholds');
+        const msg =
+          typeof json === 'object' && json !== null && 'error' in json
+            ? String((json as Record<string, unknown>).error)
+            : 'Failed to save thresholds';
         setThresholdMsg(`Error: ${msg}`);
         toast.error('Failed to save thresholds', { description: msg });
         return;
       }
       setThresholdMsg('Thresholds saved.');
       toast.success('Thresholds saved', { description: 'Alert thresholds updated successfully.' });
-      fetchData(true);
+      void fetchData(true);
     } catch {
       setThresholdMsg('Error: Network failure');
       toast.error('Failed to save thresholds', { description: 'A network error occurred.' });

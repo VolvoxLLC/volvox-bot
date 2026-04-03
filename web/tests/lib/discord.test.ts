@@ -410,7 +410,8 @@ describe("fetchUserGuilds", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
-    resolveFetch?.({
+    (resolveFetch as ((response: Response) => void) | null)?.({
+
       ok: true,
       status: 200,
       json: () => Promise.resolve(mockGuilds),

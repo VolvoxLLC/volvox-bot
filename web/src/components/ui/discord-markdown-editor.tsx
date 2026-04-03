@@ -273,8 +273,8 @@ export function DiscordMarkdownEditor({
         rafIdsRef.current = rafIdsRef.current.filter((id) => id !== rafId);
         if (textareaRef.current) {
           textareaRef.current.focus();
-          const nextCursorPos = result.cursorPos ?? cursor;
-          textareaRef.current.setSelectionRange(nextCursorPos, nextCursorPos);
+          textareaRef.current.setSelectionRange(result.cursorPos ?? null, result.cursorPos ?? null);
+
         }
       });
       rafIdsRef.current.push(rafId);

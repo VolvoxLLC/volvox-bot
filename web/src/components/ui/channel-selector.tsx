@@ -25,7 +25,6 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 export interface DiscordChannel {
@@ -429,7 +428,9 @@ export function ChannelSelector({
               >
                 {icon && (
                   <span className="text-muted-foreground/60 group-hover/badge:text-primary/60 transition-colors">
-                    {React.cloneElement(icon as React.ReactElement<any>, { className: 'h-3 w-3' })}
+                    {React.cloneElement(icon as React.ReactElement<{ className?: string }>, {
+                      className: 'h-3 w-3',
+                    })}
                   </span>
                 )}
                 <span className="text-[11px] font-bold tracking-tight">#{channel.name}</span>

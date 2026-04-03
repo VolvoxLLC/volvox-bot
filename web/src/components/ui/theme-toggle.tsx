@@ -57,17 +57,17 @@ export function ThemeToggle() {
         <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
           <DropdownMenuRadioItem value="light">
             <Sun className="h-3.5 w-3.5 opacity-60" />
-            <span className="text-xs font-bold tracking-tight">Light Aspect</span>
+            <span className="text-xs font-bold tracking-tight">Light</span>
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="dark">
             <Moon className="h-3.5 w-3.5 opacity-60" />
-            <span className="text-xs font-bold tracking-tight">Dark Protocol</span>
+            <span className="text-xs font-bold tracking-tight">Dark</span>
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system">
             <div className="flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-muted-foreground/20">
               <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
             </div>
-            <span className="text-xs font-bold tracking-tight">System Default</span>
+            <span className="text-xs font-bold tracking-tight">System</span>
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>

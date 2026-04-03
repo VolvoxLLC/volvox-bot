@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, RotateCcw, Save, X } from 'lucide-react';
+import { Loader2, RotateCcw, Save } from 'lucide-react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { cn } from '@/lib/utils';
 import { DiscardChangesButton } from './reset-defaults-button';
@@ -62,6 +62,7 @@ export function FloatingSaveIsland() {
           {/* Undo (only after save with no new changes) */}
           {prevSavedConfig && !hasChanges && (
             <button
+              type="button"
               onClick={undoLastSave}
               disabled={saving}
               className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-background/40 px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.06] hover:text-foreground active:scale-95 backdrop-blur-xl"
@@ -83,6 +84,7 @@ export function FloatingSaveIsland() {
           {/* Save */}
           {hasChanges && (
             <button
+              type="button"
               onClick={openDiffModal}
               disabled={saving || hasValidationErrors}
               className={cn(

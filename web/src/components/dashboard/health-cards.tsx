@@ -6,6 +6,7 @@ import {
   Clock,
   Cpu,
   Globe,
+  type LucideIcon,
   MemoryStick,
   Server,
   Wifi,
@@ -36,7 +37,7 @@ function StatCard({
   title: string;
   value: string;
   subtitle?: string;
-  icon: any;
+  icon: LucideIcon;
   iconColor: string;
   progress?: { value: number; label: string };
   loading?: boolean;
@@ -92,64 +93,6 @@ function StatCard({
       )}
     </div>
   );
-}
-
-interface MetricCardProps {
-  title: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  children: React.ReactNode;
-}
-
-function MetricCard({ title, icon, iconBg, children }: MetricCardProps) {
-  return (
-    <Card className="kpi-card rounded-2xl">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium">
-          <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
-            {icon}
-          </span>
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-function ProgressBar({ percent }: { percent: number }) {
-  return (
-    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-      <div
-        className="h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
-        style={{ width: `${Math.min(percent, 100).toFixed(1)}%` }}
-      />
-    </div>
-  );
-}
-
-function computeHeapMetrics(health: BotHealth) {
-  const heapUsedMb = health.memory.heapUsed / 1_048_576;
-  const heapTotalMb = health.memory.heapTotal / 1_048_576;
-  const heapPct = heapTotalMb > 0 ? (heapUsedMb / heapTotalMb) * 100 : 0;
-  return { heapUsedMb, heapTotalMb, heapPct };
-}
-
-function computeCpuMetrics(health: BotHealth) {
-  const cpuUserSec = health.system.cpuUsage.user / 1_000_000;
-  const cpuSystemSec = health.system.cpuUsage.system / 1_000_000;
-  const cpuTotalSec = cpuUserSec + cpuSystemSec;
-  const rawPct = health.uptime > 0 ? (cpuTotalSec / health.uptime) * 100 : 0;
-  const cpuPct = Math.min(Math.max(rawPct, 0), 100).toFixed(1);
-  return { cpuUserSec, cpuSystemSec, cpuPct };
-}
-
-function formatErrorValue(value: number | null | undefined): string {
-  return value?.toLocaleString() ?? '—';
-}
-
-function errorValueColor(value: number | null | undefined): string {
-  return value != null ? errorColor(value) : '';
 }
 
 export function HealthCards({ health, loading }: HealthCardsProps) {
