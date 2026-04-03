@@ -117,7 +117,6 @@ function DeltaIcon({ delta }: { delta: number | null }) {
 
 export function KpiCardItem({
   card,
-  compareMode: _compareMode,
   hasAnalytics,
   hasComparison,
 }: {

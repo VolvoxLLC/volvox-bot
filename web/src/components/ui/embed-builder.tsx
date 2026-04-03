@@ -13,6 +13,7 @@ import {
   Trash2,
   Type,
 } from 'lucide-react';
+import Image from 'next/image';
 import * as React from 'react';
 import { generateId } from '@/components/dashboard/config-editor-utils';
 import { Button } from '@/components/ui/button';
@@ -253,19 +254,24 @@ function tokenizeMarkdownSegments(line: string): string[] {
 function renderVariablePreview(text: string): React.ReactNode[] {
   if (!text) return [];
 
-  return tokenizeVariableSegments(text).map((part, index) => {
+  let offset = 0;
+
+  return tokenizeVariableSegments(text).map((part) => {
+    const segmentStart = offset;
+    offset += part.length;
+
     if (part.startsWith('{{') && part.endsWith('}}')) {
       const varName = part.slice(2, -2);
       return (
         <span
-          key={`${varName}-${index}`}
+          key={`var-${segmentStart}-${varName}`}
           className="inline-flex items-center rounded bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary"
         >
           {varName}
         </span>
       );
     }
-    return <span key={`text-${index}`}>{part}</span>;
+    return <span key={`text-${segmentStart}`}>{part}</span>;
   });
 }
 
@@ -444,9 +450,12 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
             {config.thumbnailType !== 'none' && (
               <div className="shrink-0">
                 {config.thumbnailType === 'custom' && config.thumbnailUrl ? (
-                  <img
+                  <Image
                     src={config.thumbnailUrl}
                     alt="Thumbnail"
+                    width={64}
+                    height={64}
+                    unoptimized
                     className="h-16 w-16 rounded object-cover"
                   />
                 ) : (
@@ -461,13 +470,13 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           {/* Fields */}
           {config.fields.length > 0 && (
             <div className="grid grid-cols-3 gap-2" data-testid="embed-preview-fields">
-              {config.fields.map((field, i) => {
+              {config.fields.map((field) => {
                 const renderedName = renderVariablePreview(field.name);
                 const renderedValue = renderDiscordMarkdown(field.value);
 
                 return (
                   <div
-                    key={field.id ?? `field-${i}`}
+                    key={field.id ?? `field-${field.name}-${field.value}-${field.inline}`}
                     className={cn(field.inline ? 'col-span-1' : 'col-span-3')}
                   >
                     <div className="text-xs font-semibold text-white">
@@ -485,9 +494,12 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           {/* Image */}
           {config.imageUrl && (
             <div className="mt-2">
-              <img
+              <Image
                 src={config.imageUrl}
                 alt="Embed"
+                width={1024}
+                height={256}
+                unoptimized
                 className="max-h-64 max-w-full rounded object-contain"
               />
             </div>
@@ -500,9 +512,12 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
               data-testid="embed-preview-footer"
             >
               {config.footerIconUrl && (
-                <img
+                <Image
                   src={config.footerIconUrl}
                   alt="Footer icon"
+                  width={20}
+                  height={20}
+                  unoptimized
                   className="h-5 w-5 rounded-full object-cover"
                 />
               )}
@@ -821,7 +836,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
 
           {value.fields.map((field, i) => (
             <div
-              key={field.id ?? `field-editor-${i}`}
+              key={field.id ?? `field-editor-${field.name}-${field.value}-${field.inline}`}
               className="space-y-2 rounded-md border border-border bg-muted/30 p-3"
             >
               <div className="flex items-center justify-between">

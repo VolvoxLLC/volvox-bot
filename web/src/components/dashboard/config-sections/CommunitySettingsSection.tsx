@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_ACTIVITY_BADGES,
   inputClasses,
@@ -71,9 +71,7 @@ function buildLevelUpDmPreviewContext(level?: number): Record<string, string> {
 
 function renderLevelUpDmPreview(template: string, context = LEVEL_UP_DM_PREVIEW_CONTEXT) {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-    return Object.hasOwn(context, key)
-      ? context[key]
-      : match;
+    return Object.hasOwn(context, key) ? context[key] : match;
   });
 }
 
@@ -167,21 +165,18 @@ export function CommunitySettingsSection({
   const [levelUpDmOverrideDrafts, setLevelUpDmOverrideDrafts] = useState<Record<number, string>>(
     {},
   );
-  const levelUpDmOverrideDraftKey = levelUpDmMessages
-    .map((entry) => `${entry.originalIndex}:${entry.message ?? ''}`)
-    .join('|');
+  const levelUpDmOverrideDraftEntries = useMemo(
+    () => levelUpDmMessages.map((entry) => [entry.originalIndex, entry.message ?? ''] as const),
+    [levelUpDmMessages],
+  );
 
   useEffect(() => {
     setLevelUpDmDefaultDraft(levelUpDmDefaultMessage);
   }, [levelUpDmDefaultMessage]);
 
   useEffect(() => {
-    setLevelUpDmOverrideDrafts(
-      Object.fromEntries(
-        levelUpDmMessages.map((entry) => [entry.originalIndex, entry.message ?? '']),
-      ),
-    );
-  }, [levelUpDmOverrideDraftKey]);
+    setLevelUpDmOverrideDrafts(Object.fromEntries(levelUpDmOverrideDraftEntries));
+  }, [levelUpDmOverrideDraftEntries]);
 
   return (
     <>
@@ -921,7 +916,8 @@ export function CommunitySettingsSection({
                                 }))
                               }
                               onBlur={() => {
-                                const draftValue = levelUpDmOverrideDrafts[entry.originalIndex] ?? '';
+                                const draftValue =
+                                  levelUpDmOverrideDrafts[entry.originalIndex] ?? '';
                                 if (!isValidLevelUpDmTemplate(draftValue)) {
                                   return;
                                 }
