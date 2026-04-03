@@ -341,6 +341,10 @@ function formatPreviewTimestamp(date: Date): string {
   }).format(date);
 }
 
+function clampTextToAvailable(text: string, available: number): string {
+  return available <= 0 ? '' : text.slice(0, available);
+}
+
 // ── CharCount indicator ─────────────────────────────────────────────
 
 function CharCount({ current, max }: { current: number; max: number }) {
@@ -542,37 +546,88 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
     }
   }, [value, onChange]);
 
+  const commit = React.useCallback(
+    (next: EmbedConfig) => {
+      if (getTotalCharCount(next) <= CHAR_LIMITS.total) {
+        onChange(next);
+      }
+    },
+    [onChange],
+  );
+
+  const commitFieldPatch = React.useCallback(
+    (index: number, patch: Partial<EmbedField>) => {
+      const fields = [...value.fields];
+      const currentField = fields[index];
+      if (!currentField) {
+        return;
+      }
+
+      const baseConfig = {
+        ...value,
+        fields: fields.map((field, fieldIndex) =>
+          fieldIndex === index
+            ? {
+                ...field,
+                ...(patch.name !== undefined ? { name: '' } : {}),
+                ...(patch.value !== undefined ? { value: '' } : {}),
+              }
+            : field,
+        ),
+      };
+
+      const baseTotal = getTotalCharCount(baseConfig);
+      let available = Math.max(CHAR_LIMITS.total - baseTotal, 0);
+      const nextField = { ...currentField };
+
+      if (patch.name !== undefined) {
+        nextField.name = clampTextToAvailable(patch.name, available);
+        available -= nextField.name.length;
+      }
+
+      if (patch.value !== undefined) {
+        nextField.value = clampTextToAvailable(patch.value, available);
+      }
+
+      if (patch.inline !== undefined) {
+        nextField.inline = patch.inline;
+      }
+
+      fields[index] = nextField;
+      commit({ ...value, fields });
+    },
+    [commit, value],
+  );
+
   const update = React.useCallback(
     (patch: Partial<EmbedConfig>) => {
-      onChange({ ...value, ...patch });
+      commit({ ...value, ...patch });
     },
-    [value, onChange],
+    [commit, value],
   );
 
   const updateField = React.useCallback(
     (index: number, patch: Partial<EmbedField>) => {
-      const fields = [...value.fields];
-      fields[index] = { ...fields[index], ...patch };
-      onChange({ ...value, fields });
+      commitFieldPatch(index, patch);
     },
-    [value, onChange],
+    [commitFieldPatch],
   );
 
   const addField = React.useCallback(() => {
-    onChange({
+    commit({
       ...value,
       fields: [...value.fields, createEmptyField()],
     });
-  }, [value, onChange]);
+  }, [commit, value]);
 
   const removeField = React.useCallback(
     (index: number) => {
-      onChange({
+      commit({
         ...value,
         fields: value.fields.filter((_, i) => i !== index),
       });
     },
-    [value, onChange],
+    [commit, value],
   );
 
   const moveField = React.useCallback(
@@ -581,9 +636,9 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
       const target = direction === 'up' ? index - 1 : index + 1;
       if (target < 0 || target >= fields.length) return;
       [fields[index], fields[target]] = [fields[target], fields[index]];
-      onChange({ ...value, fields });
+      commit({ ...value, fields });
     },
-    [value, onChange],
+    [commit, value],
   );
 
   const totalChars = getTotalCharCount(value);
