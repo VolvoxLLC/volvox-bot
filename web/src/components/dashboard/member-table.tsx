@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Loader2, Users } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Loader2, Users } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -241,7 +241,7 @@ export function MemberTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12" />
+              <TableHead className="w-10" />
               {/* Username & Display Name are not API-sortable, shown as plain headers */}
               <TableHead>Username</TableHead>
               <TableHead>Display Name</TableHead>
@@ -284,7 +284,7 @@ export function MemberTable({
               <TableSkeleton />
             ) : showEmpty ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-20 text-center">
+                <TableCell colSpan={9} className="py-20 text-center">
                   <EmptyState
                     icon={Users}
                     title="No members found"
@@ -297,7 +297,7 @@ export function MemberTable({
               members.map((m) => (
                 <TableRow
                   key={m.id}
-                  className="cursor-pointer"
+                  className="cursor-pointer group/row"
                   tabIndex={0}
                   onClick={() => onRowClick(m.id)}
                   onKeyDown={(e) => handleRowKeyDown(e, m.id, onRowClick)}
@@ -364,6 +364,11 @@ export function MemberTable({
                   {/* Joined (hidden on mobile) */}
                   <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                     {formatDateShort(m.joinedAt)}
+                  </TableCell>
+
+                  {/* View arrow indicator */}
+                  <TableCell className="w-8">
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/30 transition-transform group-hover/row:translate-x-0.5 group-hover/row:text-primary/60" />
                   </TableCell>
                 </TableRow>
               ))
