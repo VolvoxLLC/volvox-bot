@@ -37,8 +37,8 @@ import { useGlowCard } from '@/hooks/use-glow-card';
 import { formatNumber, formatUsd } from '@/lib/analytics-utils';
 import { cn } from '@/lib/utils';
 import type { AnalyticsRangePreset } from '@/types/analytics';
-import { EmptyState } from './empty-state';
 import { DashboardCard } from './dashboard-card';
+import { EmptyState } from './empty-state';
 
 const _RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Today', value: 'today' },
