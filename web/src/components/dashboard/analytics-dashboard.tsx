@@ -260,10 +260,7 @@ export function AnalyticsDashboard() {
     if (!analytics?.messageVolume) return [];
     return analytics.messageVolume.map((pt) => ({
       ...pt,
-      label:
-        !pt.label || pt.label === 'Invalid Date' || pt.label.includes('NaN')
-          ? '—'
-          : pt.label,
+      label: !pt.label || pt.label === 'Invalid Date' || pt.label.includes('NaN') ? '—' : pt.label,
     }));
   }, [analytics?.messageVolume]);
 
