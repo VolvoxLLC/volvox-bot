@@ -65,10 +65,11 @@ export async function handleXpBonus(action, context) {
   activeXpBonusGrants.add(key);
   try {
     const pool = getPool();
-    await pool.query(
-      'UPDATE reputation SET xp = xp + $1 WHERE guild_id = $2 AND user_id = $3',
-      [amount, guildId, userId],
-    );
+    await pool.query('UPDATE reputation SET xp = xp + $1 WHERE guild_id = $2 AND user_id = $3', [
+      amount,
+      guildId,
+      userId,
+    ]);
 
     info('xpBonus granted', { guildId, userId, amount });
   } finally {

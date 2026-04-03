@@ -6,8 +6,8 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-import { handleAddReaction } from '../../../src/modules/actions/addReaction.js';
 import { info, warn } from '../../../src/logger.js';
+import { handleAddReaction } from '../../../src/modules/actions/addReaction.js';
 
 function makeContext({ reactFn } = {}) {
   const react = reactFn ?? vi.fn().mockResolvedValue(undefined);

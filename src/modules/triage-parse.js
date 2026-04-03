@@ -74,7 +74,7 @@ export function parseSDKResult(raw, channelId, label) {
 export function parseClassifyResult(sdkMessage, channelId) {
   const parsed = parseSDKResult(sdkMessage.result, channelId, 'Classifier');
 
-  if (!parsed || !parsed.classification) {
+  if (!parsed?.classification) {
     warn('Classifier result unparseable', {
       channelId,
       resultType: typeof sdkMessage.result,

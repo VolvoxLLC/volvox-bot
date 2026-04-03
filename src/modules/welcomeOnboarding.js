@@ -231,7 +231,7 @@ export async function handleRoleMenuSelection(interaction, config) {
 
   for (const roleId of configuredRoleIds) {
     const role = await fetchRole(interaction.guild, roleId);
-    if (!role || !role.editable) continue;
+    if (!role?.editable) continue;
 
     const hasRole = member.roles.cache.has(role.id);
     if (selectedIds.has(role.id) && !hasRole) addable.push(role);

@@ -13,9 +13,9 @@ import { handleGrantRole } from './actions/grantRole.js';
 import { handleNickPrefix, handleNickSuffix } from './actions/nickPrefix.js';
 import { handleRemoveRole } from './actions/removeRole.js';
 import { checkRoleRateLimit, collectXpManagedRoles } from './actions/roleUtils.js';
+import { handleSendDm } from './actions/sendDm.js';
 import { handleWebhook } from './actions/webhook.js';
 import { handleXpBonus } from './actions/xpBonus.js';
-import { handleSendDm } from './actions/sendDm.js';
 
 /**
  * Action handler registry: action type → async handler function.

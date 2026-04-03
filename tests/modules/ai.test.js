@@ -49,7 +49,8 @@ describe('ai module', () => {
       addToHistory('ch1', 'user', 'hello');
       const history = await getHistoryAsync('ch1');
       expect(history.length).toBe(1);
-      expect(history[0]).toEqual({ role: 'user', content: 'hello' });
+      expect(history[0]).toMatchObject({ role: 'user', content: 'hello' });
+      expect(history[0].timestamp).toEqual(expect.any(Number));
     });
 
     it('should hydrate DB history in-place when concurrent messages are added', async () => {
@@ -74,8 +75,8 @@ describe('ai module', () => {
 
       resolveHydration({
         rows: [
-          { role: 'assistant', content: 'db reply' },
-          { role: 'user', content: 'db message' },
+          { role: 'assistant', content: 'db reply', created_at: '2026-04-01T10:00:01.000Z' },
+          { role: 'user', content: 'db message', created_at: '2026-04-01T10:00:00.000Z' },
         ],
       });
 
@@ -83,11 +84,22 @@ describe('ai module', () => {
       await asyncHistoryPromise;
 
       await vi.waitFor(() => {
-        expect(historyRef).toEqual([
-          { role: 'user', content: 'db message' },
-          { role: 'assistant', content: 'db reply' },
-          { role: 'user', content: 'concurrent message' },
-        ]);
+        expect(historyRef).toHaveLength(3);
+        expect(historyRef[0]).toMatchObject({
+          role: 'user',
+          content: 'db message',
+          timestamp: Date.parse('2026-04-01T10:00:00.000Z'),
+        });
+        expect(historyRef[1]).toMatchObject({
+          role: 'assistant',
+          content: 'db reply',
+          timestamp: Date.parse('2026-04-01T10:00:01.000Z'),
+        });
+        expect(historyRef[2]).toMatchObject({
+          role: 'user',
+          content: 'concurrent message',
+          timestamp: expect.any(Number),
+        });
         expect(getConversationHistory().get('race-channel')).toBe(historyRef);
       });
     });
@@ -107,7 +119,7 @@ describe('ai module', () => {
       expect(history[0].content).toBe('from db');
       expect(history[1].content).toBe('response');
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT role, content FROM conversations'),
+        expect.stringContaining('SELECT role, content, created_at FROM conversations'),
         ['ch-new', 20],
       );
     });

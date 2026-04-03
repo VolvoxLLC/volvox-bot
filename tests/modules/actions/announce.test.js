@@ -14,8 +14,8 @@ vi.mock('../../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { handleAnnounce } from '../../../src/modules/actions/announce.js';
 import { info, warn } from '../../../src/logger.js';
+import { handleAnnounce } from '../../../src/modules/actions/announce.js';
 import { safeSend } from '../../../src/utils/safeSend.js';
 import { renderTemplate } from '../../../src/utils/templateEngine.js';
 
