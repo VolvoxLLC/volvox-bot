@@ -151,7 +151,9 @@ export default function TempRolesPage() {
                 Page
               </p>
               <p className="mt-3 text-lg font-bold md:text-xl">
-                {pagination && pagination.total > 0 ? `${page} of ${pagination.pages}` : '0'}
+                {pagination && pagination.total > 0 && pagination.pages > 0
+                  ? `${pagination.page} of ${pagination.pages}`
+                  : '0'}
               </p>
             </div>
           </div>
