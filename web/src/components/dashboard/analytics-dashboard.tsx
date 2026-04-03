@@ -14,7 +14,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -25,7 +25,7 @@ import {
   LineChart,
   Pie,
   PieChart,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -109,6 +109,108 @@ function hexToRgba(hex: string, alpha: number): string {
   const b = Number.parseInt(normalized.slice(4, 6), 16);
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// ─── Animated value (count-up) ──────────────────────────────────────────────
+
+function AnimatedValue({ value, format }: { value: number; format: (n: number) => string }) {
+  const [display, setDisplay] = useState(0);
+  const prevRef = useRef(0);
+
+  useEffect(() => {
+    const start = prevRef.current;
+    const diff = value - start;
+    if (Math.abs(diff) < 0.01) {
+      setDisplay(value);
+      prevRef.current = value;
+      return;
+    }
+
+    const duration = 1400;
+    const startTime = performance.now();
+    let cancelled = false;
+
+    function step() {
+      if (cancelled) return;
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(start + diff * eased);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        setDisplay(value);
+        prevRef.current = value;
+      }
+    }
+
+    requestAnimationFrame(step);
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+
+  return <>{format(display)}</>;
+}
+
+// ─── Live activity feed (animated preview) ──────────────────────────────────
+
+function FadeInLine({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div
+      className="text-[11px] text-muted-foreground/50 transition-all duration-500 ease-out"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(4px)' }}
+    >
+      <span className="text-primary/30 mr-1.5">›</span>
+      {text}
+    </div>
+  );
+}
+
+const SAMPLE_ACTIVITY = [
+  'User joined #general',
+  'AI handled support ticket',
+  'New ticket #1042 opened',
+  'Config updated by admin',
+  'XP awarded: @alex → Lv.15',
+  'Warning issued to @spam_user',
+  'Welcome message sent',
+  'Level up: @jordan → Lv.22',
+  'Bot responded in #help',
+  'Member milestone reached',
+];
+
+function LiveActivityFeed() {
+  const [lines, setLines] = useState<Array<{ id: number; text: string }>>([]);
+  const idRef = useRef(0);
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      const newLine = { id: idRef.current++, text: SAMPLE_ACTIVITY[index % SAMPLE_ACTIVITY.length] };
+      index++;
+      setLines((prev) => [...prev.slice(-3), newLine]);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="mt-4 space-y-1.5 min-h-[80px]">
+      {lines.length === 0 && (
+        <div className="text-[11px] text-muted-foreground/25 italic">Monitoring activity…</div>
+      )}
+      {lines.map((line) => (
+        <FadeInLine key={line.id} text={line.text} />
+      ))}
+    </div>
+  );
 }
 
 export function AnalyticsDashboard() {
@@ -326,7 +428,11 @@ export function AnalyticsDashboard() {
 
                     <div className="flex items-baseline justify-between mt-1">
                       <span className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60 drop-shadow-sm">
-                        {analytics ? card.format(value) : '\u2014'}
+                        {analytics ? (
+                          <AnimatedValue value={value} format={card.format} />
+                        ) : (
+                          '\u2014'
+                        )}
                       </span>
                     </div>
 
@@ -410,6 +516,7 @@ export function AnalyticsDashboard() {
               </output>
             </div>
           </div>
+          <LiveActivityFeed />
         </DashboardCard>
 
         <DashboardCard>
@@ -479,7 +586,7 @@ export function AnalyticsDashboard() {
                       tickLine={false}
                       dx={-10}
                     />
-                    <Tooltip
+                    <RechartsTooltip
                       contentStyle={{
                         backgroundColor: chart.tooltipBg,
                         borderColor: chart.tooltipBorder,
@@ -557,7 +664,7 @@ export function AnalyticsDashboard() {
                           <Cell key={entry.model} fill={entry.fill} />
                         ))}
                       </Pie>
-                      <Tooltip
+                      <RechartsTooltip
                         contentStyle={{
                           backgroundColor: chart.tooltipBg,
                           borderColor: chart.tooltipBorder,
@@ -600,7 +707,7 @@ export function AnalyticsDashboard() {
                         axisLine={false}
                         tickLine={false}
                       />
-                      <Tooltip
+                      <RechartsTooltip
                         contentStyle={{
                           backgroundColor: chart.tooltipBg,
                           borderColor: chart.tooltipBorder,
@@ -668,7 +775,7 @@ export function AnalyticsDashboard() {
                       axisLine={false}
                       tickLine={false}
                     />
-                    <Tooltip
+                    <RechartsTooltip
                       cursor={{ fill: 'transparent' }}
                       contentStyle={{
                         backgroundColor: chart.tooltipBg,
@@ -740,7 +847,7 @@ export function AnalyticsDashboard() {
                     {analytics.commandUsage.items.map((entry) => (
                       <tr
                         key={entry.command}
-                        className="border-b border-border/40 last:border-0 hover:bg-white/[0.02]"
+                        className="border-b border-border/40 last:border-0 transition-colors hover:bg-muted/30"
                       >
                         <td className="px-4 py-3 font-mono text-xs text-foreground/90">
                           /{entry.command}
