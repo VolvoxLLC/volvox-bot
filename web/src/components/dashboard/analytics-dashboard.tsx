@@ -845,9 +845,7 @@ export function AnalyticsDashboard() {
               <div className="flex items-center gap-2">
                 <span className="status-dot-live shadow-[0_0_8px_hsl(var(--destructive))]" />
                 <span className="text-2xl font-black tracking-tighter text-foreground/90">
-                  {formatNumber(
-                    analytics.commandUsage.items.reduce((sum, e) => sum + e.uses, 0),
-                  )}
+                  {formatNumber(analytics.commandUsage.items.reduce((sum, e) => sum + e.uses, 0))}
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
                   served

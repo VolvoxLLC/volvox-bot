@@ -124,7 +124,10 @@ function XpProgress({
   let pct: number;
   if (nextLevelXp && currentLevelXp != null && nextLevelXp > currentLevelXp) {
     // Correct formula: progress within the current level
-    pct = Math.min(Math.max(((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100, 0), 100);
+    pct = Math.min(
+      Math.max(((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100, 0),
+      100,
+    );
   } else if (nextLevelXp) {
     // Fallback when currentLevelXp is unavailable
     pct = Math.min(Math.max((xp / nextLevelXp) * 100, 0), 100);
@@ -151,9 +154,7 @@ function XpProgress({
       </div>
       <p className="text-[11px] font-medium tabular-nums text-muted-foreground/60">
         {xp.toLocaleString()} XP
-        {nextLevelXp
-          ? ` / ${nextLevelXp.toLocaleString()} · ${Math.round(pct)}%`
-          : ' (max level)'}
+        {nextLevelXp ? ` / ${nextLevelXp.toLocaleString()} · ${Math.round(pct)}%` : ' (max level)'}
       </p>
     </div>
   );
