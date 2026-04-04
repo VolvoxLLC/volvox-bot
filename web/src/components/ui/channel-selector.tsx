@@ -194,6 +194,13 @@ export function ChannelSelector({
   const [error, setError] = React.useState<string | null>(null);
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const hasFetchedRef = React.useRef(false);
+  const prevGuildIdRef = React.useRef(guildId);
+
+  // Reset fetch state when guild changes
+  if (prevGuildIdRef.current !== guildId) {
+    prevGuildIdRef.current = guildId;
+    hasFetchedRef.current = false;
+  }
 
   // Fetch channels when the popover opens, or eagerly on mount when there
   // are pre-selected IDs (so they display names instead of "unknown channel").
