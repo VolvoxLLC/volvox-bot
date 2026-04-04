@@ -108,6 +108,18 @@ describe('queryLogs', () => {
     expect(mockPool.query.mock.calls[0][1]).toEqual(['%database%']);
   });
 
+  it('should filter by guild ID from metadata', async () => {
+    mockPool.query
+      .mockResolvedValueOnce({ rows: [{ total: 1 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await queryLogs({ guildId: 'guild-123' });
+
+    const countQuery = mockPool.query.mock.calls[0][0];
+    expect(countQuery).toContain("metadata->>'guildId' = $1");
+    expect(mockPool.query.mock.calls[0][1]).toEqual(['guild-123']);
+  });
+
   it('should escape ILIKE wildcards in search term', async () => {
     mockPool.query
       .mockResolvedValueOnce({ rows: [{ total: 0 }] })

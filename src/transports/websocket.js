@@ -90,6 +90,18 @@ export class WebSocketTransport extends Transport {
       if (entrySeverity > filterSeverity) return false;
     }
 
+    // Guild filter — only show logs matching the client's guild
+    if (filter.guildId) {
+      const logGuildId = entry.metadata?.guildId || entry.metadata?.guild_id;
+      if (!logGuildId || logGuildId !== filter.guildId) return false;
+    }
+
+    // Channel filter — optionally narrow to specific channels
+    if (filter.channelIds && filter.channelIds.length > 0) {
+      const logChannelId = entry.metadata?.channelId || entry.metadata?.channel_id;
+      if (!logChannelId || !filter.channelIds.includes(logChannelId)) return false;
+    }
+
     // Module filter — match metadata.module
     if (filter.module && entry.module !== filter.module) {
       return false;

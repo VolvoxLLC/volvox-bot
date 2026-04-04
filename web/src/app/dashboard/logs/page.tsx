@@ -1,9 +1,12 @@
 'use client';
 
 import { ScrollText } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
+import { PageHeader } from '@/components/dashboard/page-header';
+import type { DiscordChannel } from '@/components/ui/channel-selector';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
@@ -18,6 +21,67 @@ export default function LogsPage() {
     enabled: Boolean(guildId),
     guildId,
   });
+  const [channels, setChannels] = useState<DiscordChannel[]>([]);
+
+  useEffect(() => {
+    if (!guildId) {
+      setChannels([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const activeGuildId = guildId;
+
+    async function fetchChannels() {
+      try {
+        const response = await fetch(`/api/guilds/${encodeURIComponent(activeGuildId)}/channels`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+          }
+          return;
+        }
+
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) return;
+
+        setChannels(
+          data.filter(
+            (channel): channel is DiscordChannel =>
+              typeof channel === 'object' &&
+              channel !== null &&
+              typeof (channel as Record<string, unknown>).id === 'string' &&
+              typeof (channel as Record<string, unknown>).name === 'string' &&
+              typeof (channel as Record<string, unknown>).type === 'number',
+          ),
+        );
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+
+    void fetchChannels();
+
+    return () => {
+      controller.abort();
+    };
+  }, [guildId]);
+
+  const channelNameById = useMemo(
+    () => new Map(channels.map((channel) => [channel.id, channel.name])),
+    [channels],
+  );
+
+  const resolveChannelName = useCallback(
+    (channelId: string | null | undefined) => {
+      if (!channelId) return null;
+      return channelNameById.get(channelId) ?? null;
+    },
+    [channelNameById],
+  );
 
   return (
     <ErrorBoundary title="Logs failed to load">
@@ -79,11 +143,11 @@ export default function LogsPage() {
             </div>
 
             <div className="relative z-10 border-b border-white/5 bg-white/[0.02] px-8 py-4 backdrop-blur-sm">
-              <LogFilters onFilterChange={sendFilter} disabled={status !== 'connected'} />
+              <LogFilters guildId={guildId} onFilterChange={sendFilter} disabled={status !== 'connected'} />
             </div>
 
             <div className="relative z-10 min-h-[30rem] p-4 bg-black/20">
-              <LogViewer logs={logs} status={status} onClear={clearLogs} />
+              <LogViewer logs={logs} status={status} onClear={clearLogs} resolveChannelName={resolveChannelName} />
             </div>
           </div>
         </HealthSection>
