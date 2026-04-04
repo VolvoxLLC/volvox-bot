@@ -409,4 +409,103 @@ describe('/reactionrole command', () => {
       );
     });
   });
+
+  // ── Emoji trimming (regression: normaliseInputEmoji removed, emojiInput.trim() used) ──
+
+  describe('emoji trimming in add', () => {
+    it('stores trimmed emoji key when emoji has leading/trailing spaces', async () => {
+      makePool();
+      const menu = {
+        id: 9,
+        guild_id: 'guild-1',
+        channel_id: 'ch-1',
+        message_id: 'msg-1',
+        title: 'T',
+        description: null,
+      };
+      findMenuByMessageId.mockResolvedValue(menu);
+      upsertReactionRoleEntry.mockResolvedValue({ id: 1 });
+
+      const role = { id: 'r-1', name: 'Star', position: 5 };
+      const interaction = makeInteraction('add', {
+        strings: { message_id: 'msg-1', emoji: '  ⭐  ' },
+        role,
+      });
+
+      await execute(interaction);
+
+      // Emoji key must be trimmed — not the raw spaced input
+      expect(upsertReactionRoleEntry).toHaveBeenCalledWith(9, '⭐', 'r-1');
+    });
+
+    it('stores emoji unchanged when already trimmed', async () => {
+      makePool();
+      const menu = {
+        id: 10,
+        guild_id: 'guild-1',
+        channel_id: 'ch-1',
+        message_id: 'msg-2',
+        title: 'T',
+        description: null,
+      };
+      findMenuByMessageId.mockResolvedValue(menu);
+      upsertReactionRoleEntry.mockResolvedValue({ id: 2 });
+
+      const role = { id: 'r-2', name: 'Fire', position: 5 };
+      const interaction = makeInteraction('add', {
+        strings: { message_id: 'msg-2', emoji: '🔥' },
+        role,
+      });
+
+      await execute(interaction);
+
+      expect(upsertReactionRoleEntry).toHaveBeenCalledWith(10, '🔥', 'r-2');
+    });
+  });
+
+  describe('emoji trimming in remove', () => {
+    it('removes entry using trimmed emoji key when input has spaces', async () => {
+      makePool();
+      findMenuByMessageId.mockResolvedValue({
+        id: 11,
+        guild_id: 'guild-1',
+        channel_id: 'ch-1',
+        message_id: 'msg-3',
+        title: 'T',
+        description: null,
+      });
+      removeReactionRoleEntry.mockResolvedValue(true);
+
+      const interaction = makeInteraction('remove', {
+        strings: { message_id: 'msg-3', emoji: '  🎉  ' },
+      });
+      await execute(interaction);
+
+      // Key passed to removeReactionRoleEntry must be trimmed
+      expect(removeReactionRoleEntry).toHaveBeenCalledWith(11, '🎉');
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining('Removed') }),
+      );
+    });
+  });
+
+  describe('safeSend usage in create', () => {
+    it('uses safeSend (not channel.send directly) to post the menu message', async () => {
+      const { safeSend } = await import('../../src/utils/safeSend.js');
+      makePool();
+      insertReactionRoleMenu.mockResolvedValue({ id: 5 });
+
+      const interaction = makeInteraction('create', {
+        strings: { title: 'Pick a Role' },
+      });
+
+      await execute(interaction);
+
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'ch-1' }),
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
+    });
+  });
 });

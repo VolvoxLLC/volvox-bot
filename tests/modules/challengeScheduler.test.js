@@ -146,6 +146,7 @@ import {
   selectTodaysChallenge,
 } from '../../src/modules/challengeScheduler.js';
 import { getConfig } from '../../src/modules/config.js';
+import { safeReply, safeSend } from '../../src/utils/safeSend.js';
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -534,6 +535,94 @@ describe('challengeScheduler', () => {
           content: expect.stringContaining('not found'),
           ephemeral: true,
         }),
+      );
+    });
+  });
+
+  // ─── safeReply / safeSend helpers are used ────────────────────────────────
+
+  describe('safeReply helper usage', () => {
+    it('handleSolveButton uses safeReply for out-of-bounds index', async () => {
+      const interaction = {
+        guildId: 'guild-1',
+        user: { id: 'user-1' },
+        message: { id: 'msg-1', embeds: [], components: [], edit: vi.fn() },
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleSolveButton(interaction, 9999);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining('Invalid challenge') }),
+      );
+    });
+
+    it('handleSolveButton uses safeReply when DB unavailable', async () => {
+      getPool.mockReturnValue(null);
+
+      const interaction = {
+        guildId: 'guild-1',
+        user: { id: 'user-1' },
+        message: { id: 'msg-1', embeds: [], components: [], edit: vi.fn() },
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleSolveButton(interaction, 0);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining('Database unavailable') }),
+      );
+    });
+
+    it('handleHintButton uses safeReply for valid hints', async () => {
+      const interaction = {
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleHintButton(interaction, 0);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('Hint 1'),
+          ephemeral: true,
+        }),
+      );
+    });
+
+    it('handleHintButton uses safeReply for challenge-not-found', async () => {
+      const interaction = {
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleHintButton(interaction, 9999);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({
+          content: expect.stringContaining('not found'),
+          ephemeral: true,
+        }),
+      );
+    });
+  });
+
+  describe('safeSend helper usage in postDailyChallenge', () => {
+    it('uses safeSend (not channel.send directly) when posting challenge', async () => {
+      const mockMessage = { id: 'msg-safe', startThread: vi.fn().mockResolvedValue({}) };
+      const mockChannel = { send: vi.fn().mockResolvedValue(mockMessage) };
+      const mockClient = {
+        channels: { fetch: vi.fn().mockResolvedValue(mockChannel) },
+        guilds: { cache: new Map() },
+      };
+
+      await postDailyChallenge(mockClient, 'guild-safe');
+
+      expect(safeSend).toHaveBeenCalledWith(
+        mockChannel,
+        expect.objectContaining({ embeds: expect.any(Array), components: expect.any(Array) }),
       );
     });
   });
