@@ -125,6 +125,8 @@ export async function handleAfkMentions(message) {
       } catch (dmErr) {
         // DMs may be closed; not fatal
         logError('Failed to DM AFK ping summary', {
+          guildId: message.guild?.id,
+          channelId: message.channel?.id,
           userId: message.author.id,
           error: dmErr?.message,
         });

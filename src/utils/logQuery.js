@@ -63,7 +63,9 @@ export async function queryLogs(options = {}) {
 
     // Guild filter (stored in JSON metadata)
     if (options.guildId) {
-      conditions.push(`metadata->>'guildId' = $${paramIndex}`);
+      conditions.push(
+        `(metadata->>'guildId' = $${paramIndex} OR metadata->>'guild_id' = $${paramIndex})`,
+      );
       params.push(options.guildId);
       paramIndex++;
     }

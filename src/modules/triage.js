@@ -151,7 +151,11 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
   }
 
   if (classification.classification === 'ignore') {
-    info('Triage: ignoring channel', { channelId, reasoning: classification.reasoning });
+    info('Triage: ignoring channel', {
+      guildId: snapshot.at(-1)?.guildId,
+      channelId,
+      reasoning: classification.reasoning,
+    });
     return null;
   }
 
@@ -165,6 +169,7 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     confidence < confidenceThreshold
   ) {
     info('Triage: confidence below threshold, skipping', {
+      guildId: snapshot.at(-1)?.guildId,
       channelId,
       confidence,
       threshold: confidenceThreshold,
@@ -876,9 +881,9 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   buf.abortController = abortController;
 
   try {
+    const guildInfo = await fetchChannelCached(evalClient || client, channelId).catch(() => null);
     info('Triage evaluating', {
-      guildId: (await fetchChannelCached(evalClient || client, channelId).catch(() => null))
-        ?.guildId,
+      guildId: guildInfo?.guildId,
       channelId,
       buffered: buf.messages.length,
     });

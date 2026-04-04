@@ -259,6 +259,13 @@ async function handleAuth(ws, msg) {
     return;
   }
 
+  // Reject legacy tickets without guild scope
+  if (!authResult.guildId) {
+    warn('WebSocket auth rejected — guild-scoped ticket required', { reason: 'legacy-ticket' });
+    ws.close(4003, 'Guild-scoped ticket required');
+    return;
+  }
+
   // Check max client limit
   if (authenticatedCount >= MAX_CLIENTS) {
     warn('WebSocket max clients reached', { max: MAX_CLIENTS });
@@ -327,9 +334,10 @@ function handleFilter(ws, msg) {
 
   ws.logFilter = {
     guildId: ws.guildId || null,
-    channelIds: Array.isArray(msg.channelIds)
-      ? msg.channelIds.filter((channelId) => typeof channelId === 'string')
-      : null,
+    channelIds:
+      Array.isArray(msg.channelIds) && msg.channelIds.length > 0
+        ? msg.channelIds.filter((id) => typeof id === 'string')
+        : null,
     level: typeof msg.level === 'string' ? msg.level : null,
     module: typeof msg.module === 'string' ? msg.module : null,
     search: typeof msg.search === 'string' ? msg.search : null,
