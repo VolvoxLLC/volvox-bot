@@ -16,7 +16,7 @@ import {
   updateReviewMessage,
 } from '../modules/reviewHandler.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('review')
@@ -174,7 +174,7 @@ async function handleRequest(interaction, pool, guildConfig) {
   const embed = buildReviewEmbed(review, interaction.user.username);
   const row = buildClaimButton(review.id);
 
-  const message = await targetChannel.send({ embeds: [embed], components: [row] });
+  const message = await safeSend(targetChannel, { embeds: [embed], components: [row] });
 
   // Store message + channel reference for later updates
   await pool.query('UPDATE reviews SET message_id = $1, channel_id = $2 WHERE id = $3', [

@@ -94,7 +94,7 @@ import {
   registerTicketCloseButtonHandler,
   registerTicketModalHandler,
   registerTicketOpenButtonHandler,
-} from '../../src/modules/events.js';
+} from '../../src/modules/events/interactionCreate.js';
 
 function setupClientAndHandler(registerFn) {
   const handlers = new Map();

@@ -27,7 +27,7 @@ import {
   removeReactionRoleEntry,
   upsertReactionRoleEntry,
 } from '../modules/reactionRoles.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('reactionrole')
@@ -147,7 +147,7 @@ async function handleCreate(interaction) {
   const embed = buildReactionRoleEmbed(title, description, []);
   let postedMessage;
   try {
-    postedMessage = await targetChannel.send({ embeds: [embed] });
+    postedMessage = await safeSend(targetChannel, { embeds: [embed] });
   } catch (err) {
     warn('reactionrole create: could not send message', { error: err?.message });
     await safeEditReply(interaction, {
@@ -217,7 +217,7 @@ async function handleAdd(interaction) {
   }
 
   // Normalise emoji to a stable string
-  const emojiKey = normaliseInputEmoji(emojiInput);
+  const emojiKey = emojiInput.trim();
 
   await upsertReactionRoleEntry(menu.id, emojiKey, role.id);
 
@@ -260,7 +260,7 @@ async function handleRemove(interaction) {
     return;
   }
 
-  const emojiKey = normaliseInputEmoji(emojiInput);
+  const emojiKey = emojiInput.trim();
   const removed = await removeReactionRoleEntry(menu.id, emojiKey);
 
   if (!removed) {
@@ -364,19 +364,10 @@ async function refreshMenuEmbed(interaction, menu) {
     if (!msg) return;
 
     await msg.edit({ embeds: [embed] });
-  } catch {
-    // Non-fatal — UI update is cosmetic
+  } catch (err) {
+    warn('Failed to refresh reaction role menu embed', {
+      menuId: menu.id,
+      error: err?.message ?? String(err),
+    });
   }
-}
-
-/**
- * Normalise a user-supplied emoji string.
- * Strips surrounding colons (`:thumbsup:` → emoji literal won't match, but we keep it as-is
- * since Discord custom emojis come in as `<:name:id>` format).
- *
- * @param {string} input
- * @returns {string}
- */
-function normaliseInputEmoji(input) {
-  return input.trim();
 }

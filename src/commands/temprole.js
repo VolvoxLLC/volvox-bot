@@ -236,7 +236,7 @@ async function handleList(interaction) {
       .setFooter({ text: `Showing ${rows.length} of ${total} active assignments` })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    await safeEditReply(interaction, { embeds: [embed] });
   } catch (err) {
     warn('Temprole list failed', { error: err.message, guildId: interaction.guildId });
     await safeEditReply(

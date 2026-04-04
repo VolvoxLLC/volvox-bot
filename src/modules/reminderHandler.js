@@ -11,7 +11,7 @@ import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { getNextCronRun } from '../utils/cronParser.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
-import { safeSend } from '../utils/safeSend.js';
+import { safeReply, safeSend, safeUpdate } from '../utils/safeSend.js';
 
 /** Snooze durations in milliseconds, keyed by button suffix */
 const SNOOZE_DURATIONS = {
@@ -97,8 +97,12 @@ async function sendReminderNotification(client, reminder) {
     await user.send({ embeds: [embed], components });
     info('Reminder sent via DM', { reminderId: reminder.id, userId: reminder.user_id });
     return true;
-  } catch {
-    // DM failed — fall back to channel mention
+  } catch (err) {
+    warn('Reminder DM delivery failed, falling back to channel', {
+      reminderId: reminder.id,
+      userId: reminder.user_id,
+      error: err.message,
+    });
   }
 
   // Fallback: channel mention
@@ -231,7 +235,7 @@ export async function handleReminderSnooze(interaction) {
 
   const pool = getPool();
   if (!pool) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '❌ Database unavailable. Please try again later.',
       ephemeral: true,
     });
@@ -241,7 +245,7 @@ export async function handleReminderSnooze(interaction) {
   const { rows } = await pool.query('SELECT * FROM reminders WHERE id = $1', [reminderId]);
 
   if (rows.length === 0) {
-    await interaction.reply({ content: '❌ Reminder not found.', ephemeral: true });
+    await safeReply(interaction, { content: '❌ Reminder not found.', ephemeral: true });
     return;
   }
 
@@ -249,13 +253,13 @@ export async function handleReminderSnooze(interaction) {
 
   // Verify ownership
   if (reminder.user_id !== interaction.user.id) {
-    await interaction.reply({ content: "❌ This isn't your reminder.", ephemeral: true });
+    await safeReply(interaction, { content: "❌ This isn't your reminder.", ephemeral: true });
     return;
   }
 
   // Guard: do not reactivate already-completed reminders (stale snooze buttons)
   if (reminder.completed) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '❌ This reminder has already been completed.',
       ephemeral: true,
     });
@@ -273,13 +277,13 @@ export async function handleReminderSnooze(interaction) {
 
   // Update the original message to show it was snoozed
   try {
-    await interaction.update({
+    await safeUpdate(interaction, {
       content: `💤 Snoozed for ${labels[duration]}. I'll remind you <t:${Math.floor(newRemindAt.getTime() / 1000)}:R>.`,
       embeds: [],
       components: [],
     });
   } catch {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: `💤 Snoozed for ${labels[duration]}. I'll remind you <t:${Math.floor(newRemindAt.getTime() / 1000)}:R>.`,
       ephemeral: true,
     });
@@ -300,7 +304,7 @@ export async function handleReminderDismiss(interaction) {
   const reminderId = Number.parseInt(match[1], 10);
   const pool = getPool();
   if (!pool) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '❌ Database unavailable. Please try again later.',
       ephemeral: true,
     });
@@ -310,27 +314,27 @@ export async function handleReminderDismiss(interaction) {
   const { rows } = await pool.query('SELECT * FROM reminders WHERE id = $1', [reminderId]);
 
   if (rows.length === 0) {
-    await interaction.reply({ content: '❌ Reminder not found.', ephemeral: true });
+    await safeReply(interaction, { content: '❌ Reminder not found.', ephemeral: true });
     return;
   }
 
   const reminder = rows[0];
 
   if (reminder.user_id !== interaction.user.id) {
-    await interaction.reply({ content: "❌ This isn't your reminder.", ephemeral: true });
+    await safeReply(interaction, { content: "❌ This isn't your reminder.", ephemeral: true });
     return;
   }
 
   await pool.query('UPDATE reminders SET completed = true WHERE id = $1', [reminderId]);
 
   try {
-    await interaction.update({
+    await safeUpdate(interaction, {
       content: '✅ Reminder dismissed.',
       embeds: [],
       components: [],
     });
   } catch {
-    await interaction.reply({ content: '✅ Reminder dismissed.', ephemeral: true });
+    await safeReply(interaction, { content: '✅ Reminder dismissed.', ephemeral: true });
   }
 
   info('Reminder dismissed', { reminderId, userId: interaction.user.id });

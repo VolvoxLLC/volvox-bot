@@ -9,7 +9,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { addAlias, listAliases, removeAlias } from '../modules/commandAliases.js';
-import { safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 /**
  * Discord limits command names to 1–32 lowercase letters, numbers, hyphens, underscores.
@@ -185,7 +185,7 @@ async function handleAdd(interaction, pool) {
       createdBy: interaction.user.tag,
     });
 
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `✅ Created alias \`/${alias}\` → \`/${targetCommand}\`.\nUsers can now use \`/${alias}\` in this server.`,
     });
   } catch (err) {
@@ -195,7 +195,7 @@ async function handleAdd(interaction, pool) {
       guildId: interaction.guildId,
       error: err.message,
     });
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `❌ Failed to create alias: ${err.message}`,
     });
   }
@@ -225,7 +225,7 @@ async function handleRemove(interaction, pool) {
       removedBy: interaction.user.tag,
     });
 
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `✅ Alias \`/${alias}\` has been removed.`,
     });
   } catch (err) {
@@ -234,7 +234,7 @@ async function handleRemove(interaction, pool) {
       guildId: interaction.guildId,
       error: err.message,
     });
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `❌ ${err.message}`,
     });
   }
