@@ -23,7 +23,7 @@ import { queryLogs } from '../../../src/utils/logQuery.js';
 
 const TEST_SECRET = 'test-secret-coverage';
 
-function makeTicket(secret = TEST_SECRET, ttlMs = 60_000, guildId = null) {
+function makeTicket(secret = TEST_SECRET, ttlMs = 60_000, guildId = 'test-guild') {
   const nonce = randomBytes(16).toString('hex');
   const expiry = String(Date.now() + ttlMs);
   const payload = guildId ? `${nonce}.${expiry}.${guildId}` : `${nonce}.${expiry}`;
@@ -105,7 +105,7 @@ describe('logStream coverage', () => {
     return ws;
   }
 
-  async function authenticate(ws, guildId = null) {
+  async function authenticate(ws, guildId = 'test-guild') {
     const messages = [];
     return new Promise((resolve) => {
       let count = 0;

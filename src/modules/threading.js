@@ -329,7 +329,7 @@ export async function getOrCreateThread(message, cleanContent) {
     return await resultPromise;
   } finally {
     // Only delete if it's still our promise (not replaced by another call)
-    if (pendingThreadCreations.get(key) === resultPromise) {
+    if (Object.is(pendingThreadCreations.get(key), resultPromise)) {
       pendingThreadCreations.delete(key);
     }
   }
