@@ -149,7 +149,11 @@ async function handleCreate(interaction) {
   try {
     postedMessage = await targetChannel.send({ embeds: [embed] });
   } catch (err) {
-    warn('reactionrole create: could not send message', { error: err?.message });
+    warn('reactionrole create: could not send message', {
+      guildId: interaction.guildId,
+      channelId: targetChannel.id,
+      error: err?.message,
+    });
     await safeEditReply(interaction, {
       content: `❌ Failed to post the menu in <#${targetChannel.id}>. Make sure I have Send Messages permission there.`,
     });

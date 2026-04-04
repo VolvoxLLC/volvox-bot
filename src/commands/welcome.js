@@ -75,6 +75,7 @@ export async function execute(interaction) {
 
   info('Welcome setup command executed', {
     guildId: interaction.guildId,
+    channelId: interaction.channelId,
     userId: interaction.user.id,
   });
 }

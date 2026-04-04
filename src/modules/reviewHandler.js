@@ -136,7 +136,12 @@ export async function updateReviewMessage(review, client) {
 
     await message.edit({ embeds: [embed], components: [row] });
   } catch (err) {
-    warn('Failed to update review embed', { reviewId: review.id, error: err.message });
+    warn('Failed to update review embed', {
+      reviewId: review.id,
+      guildId: review.guild_id,
+      channelId: review.channel_id,
+      error: err.message,
+    });
   }
 }
 
@@ -225,6 +230,8 @@ export async function handleReviewClaim(interaction) {
   } catch (threadErr) {
     warn('Failed to create review discussion thread', {
       reviewId,
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       error: threadErr.message,
     });
   }

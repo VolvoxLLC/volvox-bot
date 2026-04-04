@@ -210,6 +210,8 @@ export async function getStarCount(message, emoji, selfStarAllowed) {
       }
     } catch (err) {
       debug('Could not fetch reaction users for self-star check', {
+        guildId: message.guild?.id,
+        channelId: message.channel?.id,
         messageId: message.id,
         error: err.message,
       });
@@ -263,7 +265,12 @@ export async function handleReactionAdd(reaction, user, client, config) {
 
   // Prevent self-star if not allowed
   if (!sbConfig.selfStarAllowed && user.id === message.author.id) {
-    debug('Self-star ignored', { userId: user.id, messageId: message.id });
+    debug('Self-star ignored', {
+      guildId: message.guild?.id,
+      channelId: message.channel?.id,
+      userId: user.id,
+      messageId: message.id,
+    });
     return;
   }
 
@@ -299,7 +306,12 @@ export async function handleReactionAdd(reaction, user, client, config) {
         );
         await starboardMessage.edit({ content, embeds: [embed] });
         await updateStarboardPostCount(message.id, starCount);
-        debug('Starboard post updated', { messageId: message.id, starCount });
+        debug('Starboard post updated', {
+          guildId: message.guild?.id,
+          channelId: message.channel?.id,
+          messageId: message.id,
+          starCount,
+        });
       } catch (err) {
         warn('Failed to update starboard message, reposting', { error: err.message });
         // If the starboard message was deleted, repost
@@ -322,7 +334,12 @@ export async function handleReactionAdd(reaction, user, client, config) {
         starboardMessageId: newMsg.id,
         starCount,
       });
-      info('New starboard post', { messageId: message.id, starCount });
+      info('New starboard post', {
+        guildId: message.guild?.id,
+        channelId: message.channel?.id,
+        messageId: message.id,
+        starCount,
+      });
     }
   } catch (err) {
     logError('Starboard handleReactionAdd failed', {
@@ -399,7 +416,12 @@ export async function handleReactionRemove(reaction, _user, client, config) {
         debug('Starboard message already deleted', { error: err.message });
       }
       await deleteStarboardPost(message.id);
-      info('Starboard post removed (below threshold)', { messageId: message.id, starCount });
+      info('Starboard post removed (below threshold)', {
+        guildId: message.guild?.id,
+        channelId: message.channel?.id,
+        messageId: message.id,
+        starCount,
+      });
     } else {
       // Update count
       try {
@@ -410,7 +432,12 @@ export async function handleReactionRemove(reaction, _user, client, config) {
         const content = `${displayEmoji} **${starCount}** | <#${message.channel.id}>`;
         await starboardMessage.edit({ content, embeds: [embed] });
         await updateStarboardPostCount(message.id, starCount);
-        debug('Starboard post updated on reaction remove', { messageId: message.id, starCount });
+        debug('Starboard post updated on reaction remove', {
+          guildId: message.guild?.id,
+          channelId: message.channel?.id,
+          messageId: message.id,
+          starCount,
+        });
       } catch (err) {
         warn('Failed to update starboard message on reaction remove', { error: err.message });
       }

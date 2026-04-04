@@ -80,10 +80,16 @@ async function handleRepeatOffender(message, config, muteDurationMs) {
     info('Rate limit temp-mute applied', {
       userId: message.author.id,
       guildId: message.guild.id,
+      channelId: message.channel.id,
       durationMs: muteDurationMs,
     });
   } catch (err) {
-    warn('Rate limit: failed to apply timeout', { userId: message.author.id, error: err.message });
+    warn('Rate limit: failed to apply timeout', {
+      userId: message.author.id,
+      guildId: message.guild.id,
+      channelId: message.channel.id,
+      error: err.message,
+    });
   }
 
   // Alert mod channel
@@ -196,6 +202,7 @@ export async function checkRateLimit(message, config) {
   // --- Rate limited ---
   const reason = `Exceeded ${maxMessages} messages in ${windowSeconds}s`;
   warn('Rate limit triggered', {
+    guildId: message.guild?.id,
     userId: message.author.id,
     channelId: message.channel.id,
     count: entry.timestamps.length,

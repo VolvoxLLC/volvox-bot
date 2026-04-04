@@ -172,6 +172,7 @@ async function handleSave(interaction) {
 
   info('Snippet saved', {
     guildId: interaction.guild.id,
+    channelId: interaction.channelId,
     name,
     language,
     user: interaction.user.tag,
@@ -333,6 +334,7 @@ async function handleDelete(interaction) {
 
   info('Snippet deleted', {
     guildId: interaction.guild.id,
+    channelId: interaction.channelId,
     name,
     user: interaction.user.tag,
     byModerator: isMod && !isAuthor,

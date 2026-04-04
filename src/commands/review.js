@@ -186,6 +186,7 @@ async function handleRequest(interaction, pool, guildConfig) {
   info('Review request created', {
     reviewId: review.id,
     guildId: interaction.guildId,
+    channelId: targetChannel.id,
     requesterId: interaction.user.id,
     language,
   });
@@ -299,6 +300,8 @@ async function handleComplete(interaction, pool, guildConfig) {
       content: '❌ Only the assigned reviewer can complete this review.',
     });
     warn('Review complete permission denied', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       userId: interaction.user.id,
       reviewId,
       reviewerId: review.reviewer_id,
@@ -338,13 +341,19 @@ async function handleComplete(interaction, pool, guildConfig) {
         xp: xpReward,
       });
     } catch (err) {
-      warn('Failed to award review XP', { error: err.message, reviewId });
+      warn('Failed to award review XP', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
+        error: err.message,
+        reviewId,
+      });
     }
   }
 
   info('Review completed', {
     reviewId,
     guildId: interaction.guildId,
+    channelId: interaction.channelId,
     reviewerId: interaction.user.id,
     hasFeedback: !!feedback,
   });

@@ -255,6 +255,7 @@ export async function openTicket(guild, user, topic, channelId = null) {
   info('Ticket opened', {
     ticketId: ticket.id,
     guildId: guild.id,
+    channelId: ticketChannel.id,
     userId: user.id,
     topic,
     mode: ticketConfig.mode,
@@ -397,7 +398,11 @@ export async function addMember(channel, user) {
   }
 
   await safeSend(channel, { content: `✅ <@${user.id}> has been added to the ticket.` });
-  info('Member added to ticket', { channelId: channel.id, userId: user.id });
+  info('Member added to ticket', {
+    guildId: channel.guildId,
+    channelId: channel.id,
+    userId: user.id,
+  });
 }
 
 /**
@@ -419,7 +424,11 @@ export async function removeMember(channel, user) {
   }
 
   await safeSend(channel, { content: `🚫 <@${user.id}> has been removed from the ticket.` });
-  info('Member removed from ticket', { channelId: channel.id, userId: user.id });
+  info('Member removed from ticket', {
+    guildId: channel.guildId,
+    channelId: channel.id,
+    userId: user.id,
+  });
 }
 
 /**

@@ -217,6 +217,7 @@ async function handleMe(interaction, pool, guildConfig) {
     reminderId: reminder.id,
     userId: interaction.user.id,
     guildId: interaction.guildId,
+    channelId: interaction.channelId,
     remindAt: parsed.date.toISOString(),
   });
 }
@@ -301,6 +302,8 @@ async function handleCancel(interaction, pool) {
         content: '❌ You can only cancel your own reminders.',
       });
       warn('Reminder cancel permission denied', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
         userId: interaction.user.id,
         reminderId,
         ownerId: reminder.user_id,
@@ -314,7 +317,12 @@ async function handleCancel(interaction, pool) {
       content: `✅ Reminder **#${reminderId}** cancelled.`,
     });
 
-    info('Reminder cancelled', { reminderId, userId: interaction.user.id });
+    info('Reminder cancelled', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      reminderId,
+      userId: interaction.user.id,
+    });
   } catch (err) {
     logError('Failed to cancel reminder', {
       reminderId,

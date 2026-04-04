@@ -365,6 +365,8 @@ export async function checkAiAutoMod(message, client, guildConfig) {
 
     info('AI auto-mod: executing action', {
       action: result.action,
+      guildId: message.guild?.id,
+      channelId: message.channel?.id,
       userId: message.author.id,
     });
 

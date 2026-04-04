@@ -275,6 +275,7 @@ export async function handleShowcaseModalSubmit(interaction, pool) {
   info('Showcase submitted', {
     showcaseId: showcase.id,
     guildId,
+    channelId: interaction.channelId,
     name,
     authorId: interaction.user.id,
   });
@@ -497,7 +498,13 @@ export async function execute(interaction) {
       await handleView(interaction, pool);
     }
   } catch (err) {
-    warn('Showcase command failed', { error: err.message, stack: err.stack, subcommand });
+    warn('Showcase command failed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      error: err.message,
+      stack: err.stack,
+      subcommand,
+    });
     await safeEditReply(interaction, { content: '❌ Failed to execute showcase command.' });
   }
 }
@@ -607,13 +614,25 @@ export async function handleShowcaseUpvote(interaction, pool) {
   }
 
   if (removed) {
-    info('Showcase upvote removed', { showcaseId, userId, guildId, newUpvotes });
+    info('Showcase upvote removed', {
+      showcaseId,
+      userId,
+      guildId,
+      channelId: interaction.channelId,
+      newUpvotes,
+    });
     await safeReply(interaction, {
       content: `👎 Removed your upvote from **${showcase.name}**.`,
       ephemeral: true,
     });
   } else {
-    info('Showcase upvoted', { showcaseId, userId, guildId, newUpvotes });
+    info('Showcase upvoted', {
+      showcaseId,
+      userId,
+      guildId,
+      channelId: interaction.channelId,
+      newUpvotes,
+    });
     await safeReply(interaction, { content: `👍 Upvoted **${showcase.name}**!`, ephemeral: true });
   }
 

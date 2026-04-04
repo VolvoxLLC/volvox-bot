@@ -182,6 +182,7 @@ async function handleAdd(interaction, pool) {
       alias,
       targetCommand,
       guildId: interaction.guildId,
+      channelId: interaction.channelId,
       createdBy: interaction.user.tag,
     });
 
@@ -222,6 +223,7 @@ async function handleRemove(interaction, pool) {
     info('Alias removed', {
       alias,
       guildId: interaction.guildId,
+      channelId: interaction.channelId,
       removedBy: interaction.user.tag,
     });
 

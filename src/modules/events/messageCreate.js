@@ -84,7 +84,12 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
 
     // Spam detection
     if (guildConfig.moderation?.enabled && isSpam(message.content)) {
-      warn('Spam detected', { userId: message.author.id, contentPreview: '[redacted]' });
+      warn('Spam detected', {
+        guildId: message.guild.id,
+        channelId: message.channel.id,
+        userId: message.author.id,
+        contentPreview: '[redacted]',
+      });
       try {
         await sendSpamAlert(message, client, guildConfig);
       } catch (alertErr) {
@@ -302,7 +307,11 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
         try {
           await accumulateMessage(message, guildConfig);
         } catch (err) {
-          logError('Triage accumulate error', { error: err?.message });
+          logError('Triage accumulate error', {
+            guildId: message.guild.id,
+            channelId: message.channel.id,
+            error: err?.message,
+          });
         }
       })();
     }

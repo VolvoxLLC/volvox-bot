@@ -246,6 +246,7 @@ async function handleReason(interaction) {
 
   info('Case reason updated', {
     guildId: interaction.guild.id,
+    channelId: interaction.channelId,
     caseNumber: caseId,
     moderator: interaction.user.tag,
   });
@@ -272,6 +273,7 @@ async function handleDelete(interaction) {
 
   info('Case deleted', {
     guildId: interaction.guild.id,
+    channelId: interaction.channelId,
     caseNumber: caseId,
     moderator: interaction.user.tag,
   });

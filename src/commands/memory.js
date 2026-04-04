@@ -158,7 +158,12 @@ async function handleOptOut(interaction, userId) {
     });
   }
 
-  info('Memory opt-out toggled', { userId, optedOut });
+  info('Memory opt-out toggled', {
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
+    userId,
+    optedOut,
+  });
 }
 
 /**
@@ -187,7 +192,13 @@ async function handleView(interaction, userId, username, guildId) {
 
   await safeEditReply(interaction, { content });
 
-  info('Memory view command', { userId, username, count: memories.length });
+  info('Memory view command', {
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
+    userId,
+    username,
+    count: memories.length,
+  });
 }
 
 /**
@@ -232,13 +243,23 @@ async function handleForgetAll(interaction, userId, username, guildId) {
           content: '🧹 Done! All your memories have been cleared. Fresh start!',
           components: [],
         });
-        info('All memories cleared', { userId, username });
+        info('All memories cleared', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
+          userId,
+          username,
+        });
       } else {
         await safeUpdate(buttonInteraction, {
           content: '❌ Failed to clear memories. Please try again later.',
           components: [],
         });
-        warn('Failed to clear memories', { userId, username });
+        warn('Failed to clear memories', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
+          userId,
+          username,
+        });
       }
     } else {
       await safeUpdate(buttonInteraction, {
@@ -302,7 +323,14 @@ async function handleForgetTopic(interaction, userId, username, topic, guildId) 
     await safeEditReply(interaction, {
       content: `🧹 Forgot ${totalDeleted} memor${totalDeleted === 1 ? 'y' : 'ies'} related to "${topic}".`,
     });
-    info('Topic memories cleared', { userId, username, topic, count: totalDeleted });
+    info('Topic memories cleared', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId,
+      username,
+      topic,
+      count: totalDeleted,
+    });
   } else if (totalFound === 0) {
     await safeEditReply(interaction, {
       content: `🔍 No memories found matching "${topic}".`,
@@ -384,6 +412,8 @@ async function handleAdminView(interaction, targetId, targetUsername, guildId) {
   await safeEditReply(interaction, { content });
 
   info('Admin memory view', {
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
     adminId: interaction.user.id,
     targetId,
     targetUsername,
@@ -434,13 +464,25 @@ async function handleAdminClear(interaction, targetId, targetUsername, guildId) 
           content: `🧹 Done! All memories for **${targetUsername}** have been cleared.`,
           components: [],
         });
-        info('Admin cleared all memories', { adminId, targetId, targetUsername });
+        info('Admin cleared all memories', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
+          adminId,
+          targetId,
+          targetUsername,
+        });
       } else {
         await safeUpdate(buttonInteraction, {
           content: `❌ Failed to clear memories for **${targetUsername}**. Please try again later.`,
           components: [],
         });
-        warn('Admin failed to clear memories', { adminId, targetId, targetUsername });
+        warn('Admin failed to clear memories', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
+          adminId,
+          targetId,
+          targetUsername,
+        });
       }
     } else {
       await safeUpdate(buttonInteraction, {

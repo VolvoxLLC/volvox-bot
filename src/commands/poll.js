@@ -195,6 +195,8 @@ async function handleClose(interaction, pool) {
       content: '❌ Only the poll creator or a moderator can close this poll.',
     });
     warn('Poll close permission denied', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       userId: interaction.user.id,
       pollId,
     });
