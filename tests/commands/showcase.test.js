@@ -213,6 +213,7 @@ import {
   handleShowcaseUpvote,
 } from '../../src/commands/showcase.js';
 import { getPool } from '../../src/db.js';
+import { warn } from '../../src/logger.js';
 import { getConfig } from '../../src/modules/config.js';
 
 /** Create a mock slash command interaction. */
@@ -880,6 +881,34 @@ describe('handleShowcaseUpvote', () => {
     await handleShowcaseUpvote(interaction, mockPool);
     expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({ content: expect.stringContaining('server') }),
+    );
+  });
+
+  it('should log warn and continue when message.edit fails (upvote button update)', async () => {
+    const showcase = {
+      id: 5,
+      guild_id: 'guild-123',
+      author_id: 'author-123',
+      name: 'Edit Fail App',
+      upvotes: 2,
+    };
+
+    mockPool = makePool(
+      [{ rows: [showcase] }],
+      [{ rows: [] }, { rows: [] }, { rows: [{ upvotes: 3 }] }],
+    );
+
+    const editError = new Error('Unknown Message');
+    const interaction = createMockButtonInteraction('showcase_upvote_5', 'voter-xyz');
+    interaction.message.edit = vi.fn().mockRejectedValue(editError);
+
+    // Should not throw — catch block swallows the error
+    await expect(handleShowcaseUpvote(interaction, mockPool)).resolves.toBeUndefined();
+
+    // warn() must be called with the error message (not silent swallow any more)
+    expect(warn).toHaveBeenCalledWith(
+      'Failed to update showcase upvote button',
+      expect.objectContaining({ showcaseId: 5, error: editError.message }),
     );
   });
 });

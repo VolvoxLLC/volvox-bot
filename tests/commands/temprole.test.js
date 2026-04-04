@@ -4,7 +4,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn(),
   safeReply: vi.fn(),
   safeFollowUp: vi.fn(),
-  safeEditReply: (t, opts) => t.editReply(opts),
+  safeEditReply: vi.fn((t, opts) => t.editReply(opts)),
 }));
 
 vi.mock('../../src/modules/tempRoleHandler.js', () => ({
@@ -31,6 +31,7 @@ import {
   revokeTempRole,
 } from '../../src/modules/tempRoleHandler.js';
 import { parseDuration } from '../../src/utils/duration.js';
+import { safeEditReply } from '../../src/utils/safeSend.js';
 
 // Minimal Discord mock helpers
 const mockRole = { id: 'role1', name: 'VIP', position: 3 };
@@ -212,6 +213,41 @@ describe('temprole command', () => {
       // editReply called with an embed object (not a string)
       const call = interaction.editReply.mock.calls[0][0];
       expect(call).toHaveProperty('embeds');
+    });
+
+    it('uses safeEditReply (not interaction.editReply directly) for list success', async () => {
+      listTempRoles.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 2,
+            user_id: 'u2',
+            role_id: 'r2',
+            expires_at: new Date(Date.now() + 86400000).toISOString(),
+            reason: 'testing',
+          },
+        ],
+        total: 1,
+      });
+
+      const interaction = createInteraction('list');
+      interaction.options.getUser = vi.fn().mockReturnValue(null);
+      await execute(interaction);
+
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
+    });
+
+    it('uses safeEditReply when no assignments exist', async () => {
+      const interaction = createInteraction('list');
+      interaction.options.getUser = vi.fn().mockReturnValue(null);
+      await execute(interaction);
+
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.stringContaining('No active temporary role'),
+      );
     });
   });
 });

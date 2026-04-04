@@ -31,7 +31,16 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn().mockResolvedValue({}),
+  safeSend: vi.fn(async (target, opts) => {
+    if (typeof target?.send === 'function') return target.send(opts);
+    return {};
+  }),
+  safeReply: vi.fn(async (target, opts) => {
+    if (typeof target?.reply === 'function') return target.reply(opts);
+  }),
+  safeUpdate: vi.fn(async (target, opts) => {
+    if (typeof target?.update === 'function') return target.update(opts);
+  }),
 }));
 
 vi.mock('../../src/utils/cronParser.js', () => ({
@@ -87,6 +96,7 @@ vi.mock('discord.js', () => {
 });
 
 import { getPool } from '../../src/db.js';
+import { warn } from '../../src/logger.js';
 import {
   buildSnoozeButtons,
   checkReminders,
@@ -94,7 +104,7 @@ import {
   handleReminderSnooze,
 } from '../../src/modules/reminderHandler.js';
 import { getNextCronRun } from '../../src/utils/cronParser.js';
-import { safeSend } from '../../src/utils/safeSend.js';
+import { safeReply, safeSend, safeUpdate } from '../../src/utils/safeSend.js';
 
 describe('reminderHandler', () => {
   let mockPool;
@@ -650,6 +660,129 @@ describe('reminderHandler', () => {
       expect(warn).toHaveBeenCalledWith(
         'Reminder channel not found',
         expect.objectContaining({ reminderId: 64 }),
+      );
+    });
+  });
+
+  // ─── safeSend / safeReply / safeUpdate helper usage ──────────────────────
+
+  describe('safeSend/safeReply/safeUpdate helpers are used', () => {
+    it('should use safeSend (not user.send directly) when sending DM reminder', async () => {
+      const mockUser = { send: vi.fn().mockResolvedValue({}) };
+      const mockClient = {
+        users: { fetch: vi.fn().mockResolvedValue(mockUser) },
+      };
+
+      const reminder = {
+        id: 70,
+        guild_id: 'g1',
+        user_id: 'u70',
+        channel_id: 'c1',
+        message: 'Test via safeSend',
+        remind_at: new Date().toISOString(),
+        recurring_cron: null,
+        snoozed_count: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [reminder] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await checkReminders(mockClient);
+
+      expect(safeSend).toHaveBeenCalledWith(mockUser, expect.objectContaining({ embeds: expect.any(Array) }));
+    });
+
+    it('should use safeReply when snooze DB is unavailable', async () => {
+      getPool.mockReturnValue(null);
+
+      const interaction = {
+        customId: 'reminder_snooze_80_15m',
+        user: { id: 'u1' },
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderSnooze(interaction);
+
+      expect(safeReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: expect.stringContaining('Database unavailable') }),
+      );
+    });
+
+    it('should use safeUpdate when snoozing successfully', async () => {
+      const reminder = { id: 81, user_id: 'u1' };
+      mockPool.query.mockResolvedValueOnce({ rows: [reminder] });
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      const interaction = {
+        customId: 'reminder_snooze_81_15m',
+        user: { id: 'u1' },
+        update: vi.fn().mockResolvedValue({}),
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderSnooze(interaction);
+
+      expect(safeUpdate).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ embeds: [], components: [] }),
+      );
+    });
+
+    it('should use safeUpdate when dismissing reminder successfully', async () => {
+      const reminder = { id: 82, user_id: 'u1' };
+      mockPool.query.mockResolvedValueOnce({ rows: [reminder] });
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      const interaction = {
+        customId: 'reminder_dismiss_82',
+        user: { id: 'u1' },
+        update: vi.fn().mockResolvedValue({}),
+        reply: vi.fn().mockResolvedValue({}),
+      };
+
+      await handleReminderDismiss(interaction);
+
+      expect(safeUpdate).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ content: '✅ Reminder dismissed.', embeds: [], components: [] }),
+      );
+    });
+
+    it('should log warn when DM delivery fails (new error logging)', async () => {
+      const mockClient = {
+        users: { fetch: vi.fn().mockRejectedValue(new Error('DMs disabled')) },
+        channels: { fetch: vi.fn().mockResolvedValue({ id: 'c1', send: vi.fn().mockResolvedValue({}) }) },
+      };
+
+      const reminder = {
+        id: 90,
+        guild_id: 'g1',
+        user_id: 'u90',
+        channel_id: 'c1',
+        message: 'DM fail test',
+        remind_at: new Date().toISOString(),
+        recurring_cron: null,
+        snoozed_count: 0,
+        failed_delivery_count: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [reminder] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await checkReminders(mockClient);
+
+      expect(warn).toHaveBeenCalledWith(
+        'Reminder DM delivery failed, falling back to channel',
+        expect.objectContaining({
+          reminderId: 90,
+          userId: 'u90',
+          error: 'DMs disabled',
+        }),
       );
     });
   });

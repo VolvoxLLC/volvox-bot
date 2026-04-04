@@ -44,14 +44,12 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 import { getConfig } from '../../src/modules/config.js';
-import {
-  registerErrorHandlers,
-  registerEventHandlers,
-  registerGuildMemberAddHandler,
-  registerMessageCreateHandler,
-  registerReactionHandlers,
-  registerReadyHandler,
-} from '../../src/modules/events.js';
+import { registerErrorHandlers } from '../../src/modules/events/errors.js';
+import { registerGuildMemberAddHandler } from '../../src/modules/events/guildMemberAdd.js';
+import { registerMessageCreateHandler } from '../../src/modules/events/messageCreate.js';
+import { registerReactionHandlers } from '../../src/modules/events/reactions.js';
+import { registerReadyHandler } from '../../src/modules/events/ready.js';
+import { registerEventHandlers } from '../../src/modules/events.js';
 import { handlePollButton } from '../../src/modules/handlers/pollHandler.js';
 import { isSpam, sendSpamAlert } from '../../src/modules/spam.js';
 import { handleReactionAdd, handleReactionRemove } from '../../src/modules/starboard.js';
@@ -794,6 +792,57 @@ describe('events module', () => {
       expect(on).toHaveBeenCalledWith('error', expect.any(Function));
 
       processOnSpy.mockRestore();
+    });
+  });
+
+  // ── Removed re-exports ──────────────────────────────────────────────────────
+  // The PR removed re-exports of individual handler functions from events.js.
+  // Only registerEventHandlers (the aggregator) should remain exported.
+
+  describe('events.js no longer re-exports individual handlers', () => {
+    it('does not export registerChallengeButtonHandler', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerChallengeButtonHandler).toBeUndefined();
+    });
+
+    it('does not export registerCommandInteractionHandler from events.js', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerCommandInteractionHandler).toBeUndefined();
+    });
+
+    it('does not export registerPollButtonHandler from events.js', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerPollButtonHandler).toBeUndefined();
+    });
+
+    it('does not export registerReminderButtonHandler from events.js', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerReminderButtonHandler).toBeUndefined();
+    });
+
+    it('does not export registerReviewClaimHandler from events.js', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerReviewClaimHandler).toBeUndefined();
+    });
+
+    it('does not export registerShowcaseButtonHandler from events.js', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerShowcaseButtonHandler).toBeUndefined();
+    });
+
+    it('does not export registerTicketOpenButtonHandler from events.js', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerTicketOpenButtonHandler).toBeUndefined();
+    });
+
+    it('does not export registerWelcomeOnboardingHandlers from events.js', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(eventsModule.registerWelcomeOnboardingHandlers).toBeUndefined();
+    });
+
+    it('still exports registerEventHandlers (the main aggregator)', async () => {
+      const eventsModule = await import('../../src/modules/events.js');
+      expect(typeof eventsModule.registerEventHandlers).toBe('function');
     });
   });
 });
