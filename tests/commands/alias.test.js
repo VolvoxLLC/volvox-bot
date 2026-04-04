@@ -30,7 +30,7 @@ vi.mock('../../src/modules/commandAliases.js', () => ({
 import { adminOnly, data, execute } from '../../src/commands/alias.js';
 import { getPool } from '../../src/db.js';
 import { addAlias, listAliases, removeAlias } from '../../src/modules/commandAliases.js';
-import { safeReply } from '../../src/utils/safeSend.js';
+import { safeEditReply, safeReply } from '../../src/utils/safeSend.js';
 
 /** Helper: build a mock interaction */
 function makeInteraction({
@@ -135,7 +135,8 @@ describe('alias command', () => {
           guildId: 'guild-1',
         }),
       );
-      expect(interaction.editReply).toHaveBeenCalledWith(
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
         expect.objectContaining({ content: expect.stringContaining('✅') }),
       );
     });
@@ -204,7 +205,8 @@ describe('alias command', () => {
       const interaction = makeInteraction({ subcommand: 'add', alias: 'w', command: 'warn' });
       await execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
         expect.objectContaining({ content: expect.stringContaining('Failed to create alias') }),
       );
     });
@@ -230,7 +232,8 @@ describe('alias command', () => {
       expect(removeAlias).toHaveBeenCalledWith(
         expect.objectContaining({ alias: 'w', guildId: 'guild-1' }),
       );
-      expect(interaction.editReply).toHaveBeenCalledWith(
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
         expect.objectContaining({ content: expect.stringContaining('✅') }),
       );
     });
@@ -240,7 +243,8 @@ describe('alias command', () => {
       const interaction = makeInteraction({ subcommand: 'remove', alias: 'x' });
       await execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
         expect.objectContaining({ content: expect.stringContaining('not found') }),
       );
     });

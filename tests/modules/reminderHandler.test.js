@@ -31,7 +31,16 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn().mockResolvedValue({}),
+  safeSend: vi.fn(async (target, opts) => {
+    if (typeof target?.send === 'function') return target.send(opts);
+    return {};
+  }),
+  safeReply: vi.fn(async (target, opts) => {
+    if (typeof target?.reply === 'function') return target.reply(opts);
+  }),
+  safeUpdate: vi.fn(async (target, opts) => {
+    if (typeof target?.update === 'function') return target.update(opts);
+  }),
 }));
 
 vi.mock('../../src/utils/cronParser.js', () => ({

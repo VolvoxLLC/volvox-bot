@@ -80,11 +80,9 @@ import { handleShowcaseModalSubmit, handleShowcaseUpvote } from '../../src/comma
 import { handleAfkMentions } from '../../src/modules/afkHandler.js';
 import { handleHintButton, handleSolveButton } from '../../src/modules/challengeScheduler.js';
 import { getConfig } from '../../src/modules/config.js';
-import {
-  registerMessageCreateHandler,
-  registerReactionHandlers,
-  registerReadyHandler,
-} from '../../src/modules/events.js';
+import { registerMessageCreateHandler } from '../../src/modules/events/messageCreate.js';
+import { registerReactionHandlers } from '../../src/modules/events/reactions.js';
+import { registerReadyHandler } from '../../src/modules/events/ready.js';
 import { handleChallengeButton } from '../../src/modules/handlers/challengeHandler.js';
 import { handleReviewButton } from '../../src/modules/handlers/reviewHandler.js';
 import {

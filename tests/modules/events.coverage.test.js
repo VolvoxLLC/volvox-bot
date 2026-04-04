@@ -85,16 +85,16 @@ import { getPool } from '../../src/db.js';
 import { warn } from '../../src/logger.js';
 import { handleHintButton, handleSolveButton } from '../../src/modules/challengeScheduler.js';
 import { getConfig } from '../../src/modules/config.js';
+import { registerErrorHandlers } from '../../src/modules/events/errors.js';
 import {
   registerChallengeButtonHandler,
-  registerErrorHandlers,
-  registerMessageCreateHandler,
-  registerReactionHandlers,
-  registerReadyHandler,
   registerReviewClaimHandler,
   registerShowcaseButtonHandler,
   registerShowcaseModalHandler,
-} from '../../src/modules/events.js';
+} from '../../src/modules/events/interactionCreate.js';
+import { registerMessageCreateHandler } from '../../src/modules/events/messageCreate.js';
+import { registerReactionHandlers } from '../../src/modules/events/reactions.js';
+import { registerReadyHandler } from '../../src/modules/events/ready.js';
 import { checkLinks } from '../../src/modules/linkFilter.js';
 import { checkRateLimit } from '../../src/modules/rateLimit.js';
 import { handleReviewClaim } from '../../src/modules/reviewHandler.js';
