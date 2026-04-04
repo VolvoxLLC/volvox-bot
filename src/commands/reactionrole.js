@@ -220,7 +220,6 @@ async function handleAdd(interaction) {
     return;
   }
 
-  // Normalise emoji to a stable string
   const emojiKey = emojiInput;
 
   await upsertReactionRoleEntry(menu.id, emojiKey, role.id);
