@@ -94,7 +94,7 @@ async function sendReminderNotification(client, reminder) {
   // Try DM first
   try {
     const user = await client.users.fetch(reminder.user_id);
-    await safeSend(user, { embeds: [embed], components });
+    await user.send({ embeds: [embed], components });
     info('Reminder sent via DM', { reminderId: reminder.id, userId: reminder.user_id });
     return true;
   } catch (err) {

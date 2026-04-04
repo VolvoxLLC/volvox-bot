@@ -641,6 +641,9 @@ export async function handleShowcaseUpvote(interaction, pool) {
     const updatedRow = buildUpvoteRow(showcaseId, newUpvotes);
     await interaction.message.edit({ components: [updatedRow] });
   } catch (err) {
-    warn('Failed to update showcase upvote button', { showcaseId, error: err.message });
+    warn('Failed to update showcase upvote button', {
+      showcaseId,
+      error: err?.message ?? String(err),
+    });
   }
 }
