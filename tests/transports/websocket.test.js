@@ -169,6 +169,42 @@ describe('WebSocketTransport', () => {
       expect(transport.passesFilter({ level: 'debug', message: 'test' }, filter)).toBe(false);
     });
 
+    it('should filter by guild ID', () => {
+      const filter = { guildId: 'guild-1' };
+
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { guildId: 'guild-1' } },
+          filter,
+        ),
+      ).toBe(true);
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { guildId: 'guild-2' } },
+          filter,
+        ),
+      ).toBe(false);
+      expect(transport.passesFilter({ level: 'info', message: 'test' }, filter)).toBe(false);
+    });
+
+    it('should filter by channel IDs', () => {
+      const filter = { channelIds: ['channel-1', 'channel-2'] };
+
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { channelId: 'channel-2' } },
+          filter,
+        ),
+      ).toBe(true);
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { channelId: 'channel-9' } },
+          filter,
+        ),
+      ).toBe(false);
+      expect(transport.passesFilter({ level: 'info', message: 'test' }, filter)).toBe(false);
+    });
+
     it('should filter by module', () => {
       const filter = { module: 'api' };
 

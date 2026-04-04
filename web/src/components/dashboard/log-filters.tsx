@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import type { LogFilter, LogLevel } from '@/lib/log-ws';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -16,9 +17,17 @@ const LEVEL_OPTIONS: Array<{ value: LogFilter['level']; label: string }> = [
 
 const DEBOUNCE_MS = 300;
 
+interface FilterState {
+  level: LogFilter['level'];
+  module: string;
+  search: string;
+  channelIds: string[];
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface LogFiltersProps {
+  guildId: string | null;
   onFilterChange: (filter: LogFilter) => void;
   disabled?: boolean;
 }
@@ -26,77 +35,110 @@ interface LogFiltersProps {
 /**
  * Filter bar for the log viewer.
  *
- * Provides level dropdown, module input, and free-text search.
- * Debounces text inputs and sends consolidated filter to WS server.
+ * Provides guild-scoped channel selection, level dropdown, module input,
+ * and free-text search. Text inputs are debounced before sending the
+ * consolidated filter to the WS server.
  */
-export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps) {
+export function LogFilters({ guildId, onFilterChange, disabled = false }: LogFiltersProps) {
   const [level, setLevel] = useState<LogFilter['level']>('all');
   const [module, setModule] = useState('');
   const [search, setSearch] = useState('');
+  const [channelIds, setChannelIds] = useState<string[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onFilterChangeRef = useRef(onFilterChange);
+  const filterStateRef = useRef<FilterState>({
+    level: 'all',
+    module: '',
+    search: '',
+    channelIds: [],
+  });
   onFilterChangeRef.current = onFilterChange;
+  filterStateRef.current = { level, module, search, channelIds };
 
-  // Build and emit filter, debouncing text fields
   const emitFilter = useCallback(
-    (opts: { level: LogFilter['level']; module: string; search: string }) => {
+    (opts: FilterState) => {
       const filter: LogFilter = {};
+      if (guildId) filter.guildId = guildId;
+      if (opts.channelIds.length > 0) filter.channelIds = opts.channelIds;
       if (opts.level && opts.level !== 'all') filter.level = opts.level as LogLevel;
       if (opts.module.trim()) filter.module = opts.module.trim();
       if (opts.search.trim()) filter.search = opts.search.trim();
       onFilterChangeRef.current(filter);
     },
-    [],
+    [guildId],
   );
 
   const scheduleEmit = useCallback(
-    (opts: { level: LogFilter['level']; module: string; search: string }) => {
+    (opts: FilterState) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => emitFilter(opts), DEBOUNCE_MS);
     },
     [emitFilter],
   );
 
-  // Level change is instant (no debounce)
   const handleLevelChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newLevel = e.target.value as LogFilter['level'];
       setLevel(newLevel);
-      // Cancel any pending debounce and emit immediately
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      emitFilter({ level: newLevel, module, search });
+      emitFilter({ level: newLevel, module, search, channelIds });
     },
-    [emitFilter, module, search],
+    [channelIds, emitFilter, module, search],
   );
 
   const handleModuleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
       setModule(val);
-      scheduleEmit({ level, module: val, search });
+      scheduleEmit({ level, module: val, search, channelIds });
     },
-    [level, search, scheduleEmit],
+    [channelIds, level, scheduleEmit, search],
   );
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
       setSearch(val);
-      scheduleEmit({ level, module, search: val });
+      scheduleEmit({ level, module, search: val, channelIds });
     },
-    [level, module, scheduleEmit],
+    [channelIds, level, module, scheduleEmit],
+  );
+
+  const handleChannelChange = useCallback(
+    (nextChannelIds: string[]) => {
+      setChannelIds(nextChannelIds);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      emitFilter({ level, module, search, channelIds: nextChannelIds });
+    },
+    [emitFilter, level, module, search],
   );
 
   const handleClear = useCallback(() => {
     setLevel('all');
     setModule('');
     setSearch('');
+    setChannelIds([]);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    emitFilter({ level: 'all', module: '', search: '' });
+    emitFilter({ level: 'all', module: '', search: '', channelIds: [] });
   }, [emitFilter]);
 
-  // Cleanup debounce on unmount
+  useEffect(() => {
+    const {
+      level: currentLevel,
+      module: currentModule,
+      search: currentSearch,
+    } = filterStateRef.current;
+    setChannelIds([]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    emitFilter({
+      level: currentLevel,
+      module: currentModule,
+      search: currentSearch,
+      channelIds: [],
+    });
+  }, [guildId, emitFilter]);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -109,8 +151,7 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
     ' backdrop-blur-sm transition-all disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Level selector */}
+    <div className="flex flex-wrap items-center gap-2.5">
       <select
         value={level ?? 'all'}
         onChange={handleLevelChange}
@@ -129,7 +170,18 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         ))}
       </select>
 
-      {/* Module filter */}
+      {guildId && (
+        <div className="min-w-[16rem] max-w-sm flex-1">
+          <ChannelSelector
+            guildId={guildId}
+            selected={channelIds}
+            onChange={handleChannelChange}
+            disabled={disabled}
+            placeholder="All channels"
+          />
+        </div>
+      )}
+
       <input
         type="text"
         value={module}
@@ -140,7 +192,6 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         className={`${inputCls} w-40`}
       />
 
-      {/* Search */}
       <input
         type="text"
         value={search}
@@ -151,7 +202,6 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         className={`${inputCls} w-56`}
       />
 
-      {/* Clear */}
       <Button
         size="sm"
         variant="ghost"

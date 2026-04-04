@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ConnectionStatus, LogEntry, LogLevel } from '@/lib/log-ws';
 import { cn } from '@/lib/utils';
@@ -30,16 +31,23 @@ const LEVEL_STYLES: Record<LogLevel, { badge: string; row: string; label: string
   },
 };
 
+function getEntryChannelId(entry: LogEntry): string | null {
+  const value = entry.meta?.channelId ?? entry.meta?.channel_id;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function LogRow({
   entry,
   isExpanded,
   onToggle,
+  resolveChannelName,
 }: {
   entry: LogEntry;
   isExpanded: boolean;
   onToggle: () => void;
+  resolveChannelName?: (channelId: string | null | undefined) => string | null;
 }) {
   const level = LEVEL_STYLES[entry.level];
   const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
@@ -50,6 +58,8 @@ function LogRow({
   });
 
   const hasMeta = entry.meta && Object.keys(entry.meta).length > 0;
+  const channelId = getEntryChannelId(entry);
+  const channelName = resolveChannelName?.(channelId) ?? null;
 
   const rowClassName = cn(
     'group border-b border-border/5 px-4 py-1.5 font-mono text-[11px] transition-colors',
@@ -71,6 +81,14 @@ function LogRow({
         <span className="shrink-0 text-secondary/60 max-w-[100px] truncate text-[10px] font-bold uppercase tracking-wider">
           [{entry.module}]
         </span>
+      )}
+      {channelId && (
+        <Badge
+          variant="outline"
+          className="h-5 shrink-0 rounded-md border-border/70 bg-background/60 px-1.5 font-mono text-[10px]"
+        >
+          #{channelName ?? channelId}
+        </Badge>
       )}
       <span className="text-foreground/80 break-words min-w-0 leading-relaxed">
         {entry.message}
@@ -116,9 +134,10 @@ interface LogViewerProps {
   logs: LogEntry[];
   status: ConnectionStatus;
   onClear: () => void;
+  resolveChannelName?: (channelId: string | null | undefined) => string | null;
 }
 
-export function LogViewer({ logs, status, onClear }: LogViewerProps) {
+export function LogViewer({ logs, status, onClear, resolveChannelName }: LogViewerProps) {
   const [paused, setPaused] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -193,7 +212,6 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
         </div>
       </div>
 
-      {/* Log list */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
@@ -219,6 +237,7 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
                 entry={entry}
                 isExpanded={expandedIds.has(entry.id)}
                 onToggle={() => toggleExpand(entry.id)}
+                resolveChannelName={resolveChannelName}
               />
             ))}
           </div>

@@ -21,6 +21,7 @@ const ALLOWED_LEVELS = ['error', 'warn', 'info', 'debug'];
  * @param {string|Date} [options.until] - Filter logs before this timestamp
  * @param {number} [options.limit=100] - Maximum number of results (max 1000)
  * @param {string} [options.search] - Search term for ILIKE match on message
+ * @param {string} [options.guildId] - Filter by guild ID stored in metadata
  * @param {number} [options.offset=0] - Offset for pagination
  * @returns {Promise<{rows: Array, total: number}>} Log entries and total count
  */
@@ -57,6 +58,13 @@ export async function queryLogs(options = {}) {
     if (options.search) {
       conditions.push(`message ILIKE $${paramIndex}`);
       params.push(`%${escapeIlike(options.search)}%`);
+      paramIndex++;
+    }
+
+    // Guild filter (stored in JSON metadata)
+    if (options.guildId) {
+      conditions.push(`metadata->>'guildId' = $${paramIndex}`);
+      params.push(options.guildId);
       paramIndex++;
     }
 
