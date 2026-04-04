@@ -692,7 +692,9 @@ describe('reminderHandler', () => {
       await checkReminders(mockClient);
 
       // Uses user.send directly (not safeSend) to avoid double-logging on expected DM failures
-      expect(mockUser.send).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
+      expect(mockUser.send).toHaveBeenCalledWith(
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
     });
 
     it('should use safeReply when snooze DB is unavailable', async () => {
@@ -755,7 +757,9 @@ describe('reminderHandler', () => {
     it('should log warn when DM delivery fails (new error logging)', async () => {
       const mockClient = {
         users: { fetch: vi.fn().mockRejectedValue(new Error('DMs disabled')) },
-        channels: { fetch: vi.fn().mockResolvedValue({ id: 'c1', send: vi.fn().mockResolvedValue({}) }) },
+        channels: {
+          fetch: vi.fn().mockResolvedValue({ id: 'c1', send: vi.fn().mockResolvedValue({}) }),
+        },
       };
 
       const reminder = {

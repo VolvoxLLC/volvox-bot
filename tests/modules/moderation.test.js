@@ -67,7 +67,6 @@ import {
   stopTempbanScheduler,
 } from '../../src/modules/moderation.js';
 
-
 describe('moderation module', () => {
   let mockPool;
   let mockConnection;
@@ -945,18 +944,22 @@ describe('moderation module', () => {
       await sendDmNotification(member, 'warn', 'spamming', 'Test Guild');
 
       // Uses member.send directly (not safeSend) to avoid double-logging on expected DM failures
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({ embeds: expect.any(Array) }),
-      );
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
     });
 
     it('silently continues when member.send throws (DMs disabled)', async () => {
-      const member = { send: vi.fn().mockRejectedValue(new Error('Cannot send messages to this user')) };
+      const member = {
+        send: vi.fn().mockRejectedValue(new Error('Cannot send messages to this user')),
+      };
 
       // Should not throw — catch block in sendDmNotification swallows DM errors
-      await expect(sendDmNotification(member, 'ban', 'rule violation', 'Test Guild')).resolves.toBeUndefined();
+      await expect(
+        sendDmNotification(member, 'ban', 'rule violation', 'Test Guild'),
+      ).resolves.toBeUndefined();
 
-      expect(member.send).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
+      expect(member.send).toHaveBeenCalledWith(
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
     });
   });
 });
