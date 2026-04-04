@@ -13,13 +13,14 @@ const TEST_SECRET = 'test-api-secret-for-ws';
 
 /**
  * Generate a valid HMAC ticket for WebSocket auth.
- * Format: nonce.expiry.hmac
+ * Format: nonce.expiry.guildId.hmac (guild-scoped, required)
  */
-function makeTicket(secret = TEST_SECRET, ttlMs = 60_000) {
+function makeTicket(secret = TEST_SECRET, ttlMs = 60_000, guildId = 'test-guild') {
   const nonce = randomBytes(16).toString('hex');
   const expiry = String(Date.now() + ttlMs);
-  const hmac = createHmac('sha256', secret).update(`${nonce}.${expiry}`).digest('hex');
-  return `${nonce}.${expiry}.${hmac}`;
+  const payload = `${nonce}.${expiry}.${guildId}`;
+  const hmac = createHmac('sha256', secret).update(payload).digest('hex');
+  return `${nonce}.${expiry}.${guildId}.${hmac}`;
 }
 
 function createTestServer() {
