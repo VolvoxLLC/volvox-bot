@@ -321,7 +321,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
  * @param {import('discord.js').Message} message - Incoming Discord message to evaluate.
  * @param {import('discord.js').Client} client - Discord client instance used to perform moderation actions.
  * @param {Object} guildConfig - Guild-specific configuration (merged with defaults by the function).
- * @returns {{flagged: boolean, action?: string, categories?: string[]}} An object where `flagged` is `true` if the message triggered moderation; when `flagged` is `true`, `action` is the selected moderation action and `categories` lists the triggered categories.
+ * @returns {Promise<{flagged: boolean, action?: string, categories?: string[]}>} An object where `flagged` is `true` if the message triggered moderation; when `flagged` is `true`, `action` is the selected moderation action and `categories` lists the triggered categories.
  */
 export async function checkAiAutoMod(message, client, guildConfig) {
   const autoModConfig = getAiAutoModConfig(guildConfig);

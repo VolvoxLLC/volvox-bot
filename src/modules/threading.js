@@ -199,7 +199,7 @@ export function buildThreadKey(userId, channelId) {
  * updates its last-active timestamp, and returns it. Stale, missing, archived-but-unrecoverable, or
  * inaccessible entries are removed from the cache and result in `null`.
  * @param {import('discord.js').Message} message - The triggering Discord message used to identify the user and channel.
- * @returns {import('discord.js').ThreadChannel|null} The reusable `ThreadChannel` if found and prepared, `null` otherwise.
+ * @returns {Promise<import('discord.js').ThreadChannel|null>} The reusable `ThreadChannel` if found and prepared, `null` otherwise.
  */
 export async function findExistingThread(message) {
   const threadConfig = getThreadConfig(message.guild?.id);
@@ -340,7 +340,7 @@ export async function getOrCreateThread(message, cleanContent) {
  * @private
  * @param {import('discord.js').Message} message - The Discord message that triggered thread lookup/creation.
  * @param {string} cleanContent - Sanitized message content used to generate a thread name when creating.
- * @returns {{ thread: import('discord.js').ThreadChannel|null, isNew: boolean }} `thread` is the thread channel or `null` if creation failed; `isNew` is `true` when a new thread was created, `false` when an existing thread was reused or creation failed.
+ * @returns {Promise<{ thread: import('discord.js').ThreadChannel|null, isNew: boolean }>} `thread` is the thread channel or `null` if creation failed; `isNew` is `true` when a new thread was created, `false` when an existing thread was reused or creation failed.
  */
 async function _getOrCreateThreadInner(message, cleanContent) {
   // Try to reuse an existing thread

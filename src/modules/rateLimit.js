@@ -150,7 +150,7 @@ async function warnUser(message, maxMessages, windowSeconds) {
  * When the message exceeds configured thresholds the function may delete the message, send a warning, and/or apply a temporary timeout to the author according to guild config.
  * @param {import('discord.js').Message} message - Discord message to evaluate.
  * @param {Object} config - Merged guild configuration object (expects moderation.rateLimit settings).
- * @returns {{ limited: boolean, reason?: string }} `limited` is `true` if the message was rate-limited; `reason` provides a human-readable explanation when present.
+ * @returns {Promise<{ limited: boolean, reason?: string }>} `limited` is `true` if the message was rate-limited; `reason` provides a human-readable explanation when present.
  */
 export async function checkRateLimit(message, config) {
   const rlConfig = config.moderation?.rateLimit ?? {};

@@ -119,7 +119,7 @@ function buildChannelPermissions(guild, userId, supportRoleId) {
  * @param {import('discord.js').User} user - User opening the ticket.
  * @param {string|null} topic - Optional topic/description for the ticket.
  * @param {string|null} channelId - ID of the channel containing the ticket panel (stored for tracking).
- * @returns {{ticket: object, thread: import('discord.js').ThreadChannel|import('discord.js').TextChannel}} The inserted ticket row and the created Discord thread or text channel for the ticket.
+ * @returns {Promise<{ticket: object, thread: import('discord.js').ThreadChannel|import('discord.js').TextChannel}>} The inserted ticket row and the created Discord thread or text channel for the ticket.
  */
 export async function openTicket(guild, user, topic, channelId = null) {
   const pool = getPool();

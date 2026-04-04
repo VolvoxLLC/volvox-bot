@@ -27,8 +27,8 @@ export default function LogsPage() {
   const [channels, setChannels] = useState<DiscordChannel[]>([]);
 
   useEffect(() => {
+    setChannels([]);
     if (!guildId) {
-      setChannels([]);
       return;
     }
 

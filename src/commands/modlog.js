@@ -236,7 +236,11 @@ async function handleDisable(interaction) {
       '✅ Mod logging has been disabled. All log channels have been cleared.',
     );
   } catch (err) {
-    logError('Modlog disable failed', { error: err.message, command: 'modlog' });
+    logError('Modlog disable failed', {
+      error: err.message,
+      command: 'modlog',
+      guildId: interaction.guildId,
+    });
     await safeEditReply(interaction, '❌ Failed to disable mod logging.').catch(() => {});
   }
 }

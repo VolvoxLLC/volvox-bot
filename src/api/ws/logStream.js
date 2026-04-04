@@ -354,12 +354,13 @@ function handleFilter(ws, msg) {
     return;
   }
 
+  const validChannelIds = Array.isArray(msg.channelIds)
+    ? msg.channelIds.filter((id) => typeof id === 'string')
+    : [];
+
   ws.logFilter = {
     guildId: ws.guildId || null,
-    channelIds:
-      Array.isArray(msg.channelIds) && msg.channelIds.length > 0
-        ? msg.channelIds.filter((id) => typeof id === 'string')
-        : null,
+    channelIds: validChannelIds.length > 0 ? validChannelIds : null,
     level: typeof msg.level === 'string' ? msg.level : null,
     module: typeof msg.module === 'string' ? msg.module : null,
     search: typeof msg.search === 'string' ? msg.search : null,
