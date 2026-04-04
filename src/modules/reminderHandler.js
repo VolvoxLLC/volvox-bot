@@ -101,7 +101,7 @@ async function sendReminderNotification(client, reminder) {
     warn('Reminder DM delivery failed, falling back to channel', {
       reminderId: reminder.id,
       userId: reminder.user_id,
-      error: err.message,
+      error: err?.message ?? String(err),
     });
   }
 

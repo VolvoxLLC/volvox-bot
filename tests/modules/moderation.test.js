@@ -935,7 +935,7 @@ describe('moderation module', () => {
     });
   });
 
-  // ── safeSend helper is used for DM notifications ─────────────────────────
+  // ── sendDmNotification uses member.send directly (avoids double-logging) ──
 
   describe('sendDmNotification uses member.send directly', () => {
     it('calls member.send directly when sending DM', async () => {

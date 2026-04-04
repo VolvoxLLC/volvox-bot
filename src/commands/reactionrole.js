@@ -225,7 +225,7 @@ async function handleAdd(interaction) {
   }
 
   // Normalise emoji to a stable string
-  const emojiKey = emojiInput.trim();
+  const emojiKey = emojiInput;
 
   await upsertReactionRoleEntry(menu.id, emojiKey, role.id);
 
@@ -268,7 +268,7 @@ async function handleRemove(interaction) {
     return;
   }
 
-  const emojiKey = emojiInput.trim();
+  const emojiKey = emojiInput;
   const removed = await removeReactionRoleEntry(menu.id, emojiKey);
 
   if (!removed) {
