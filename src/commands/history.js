@@ -64,6 +64,7 @@ export async function execute(interaction) {
 
     info('History viewed', {
       guildId: interaction.guild.id,
+      channelId: interaction.channelId,
       target: user.tag,
       moderator: interaction.user.tag,
       caseCount: rows.length,

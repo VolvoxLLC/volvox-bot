@@ -58,7 +58,11 @@ async function pollScheduledMessages(client) {
         }
 
         await safeSend(channel, { content: msg.content });
-        info('Scheduled message sent', { id: msg.id, channelId: msg.channel_id });
+        info('Scheduled message sent', {
+          id: msg.id,
+          guildId: msg.guild_id,
+          channelId: msg.channel_id,
+        });
 
         if (msg.one_time) {
           await pool.query('UPDATE scheduled_messages SET enabled = false WHERE id = $1', [msg.id]);

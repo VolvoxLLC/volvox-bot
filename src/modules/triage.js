@@ -139,7 +139,10 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     const mentionTag = `<@${botId}>`;
     wasMentioned = snapshot.some((m) => m.content?.includes(mentionTag));
     if (classification.classification === 'ignore' && wasMentioned) {
-      info('Triage: overriding ignore → respond (bot was @mentioned)', { channelId });
+      info('Triage: overriding ignore → respond (bot was @mentioned)', {
+        guildId: snapshot.at(-1)?.guildId,
+        channelId,
+      });
       classification.classification = 'respond';
       classification.targetMessageIds = snapshot
         .filter((m) => m.content?.includes(mentionTag))
@@ -873,7 +876,12 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   buf.abortController = abortController;
 
   try {
-    info('Triage evaluating', { channelId, buffered: buf.messages.length });
+    info('Triage evaluating', {
+      guildId: (await fetchChannelCached(evalClient || client, channelId).catch(() => null))
+        ?.guildId,
+      channelId,
+      buffered: buf.messages.length,
+    });
 
     // Take a snapshot of the buffer for evaluation
     const snapshot = [...buf.messages];

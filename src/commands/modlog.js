@@ -157,6 +157,8 @@ async function handleSetup(interaction) {
       }
     } catch (err) {
       logError('Modlog setup interaction failed', {
+        guildId: interaction.guildId,
+        channelId: i.channelId,
         error: err.message,
         customId: i.customId,
         command: 'modlog',
@@ -220,7 +222,11 @@ async function handleDisable(interaction) {
       await setConfigValue(`moderation.logging.channels.${key}`, null, interaction.guildId);
     }
 
-    info('Mod logging disabled', { moderator: interaction.user.tag, guildId: interaction.guildId });
+    info('Mod logging disabled', {
+      moderator: interaction.user.tag,
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+    });
     await safeEditReply(
       interaction,
       '✅ Mod logging has been disabled. All log channels have been cleared.',

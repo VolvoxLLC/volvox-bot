@@ -53,6 +53,7 @@ export async function execute(interaction) {
 
     info('Warning removed via command', {
       guildId: interaction.guild.id,
+      channelId: interaction.channelId,
       warningId,
       moderator: interaction.user.tag,
       targetUserId: removed.user_id,

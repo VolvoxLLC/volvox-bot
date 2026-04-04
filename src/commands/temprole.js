@@ -138,6 +138,7 @@ async function handleAssign(interaction) {
 
     info('Temp role assigned via command', {
       guildId: interaction.guildId,
+      channelId: interaction.channelId,
       userId: user.id,
       roleId: role.id,
       duration,
@@ -185,6 +186,7 @@ async function handleRevoke(interaction) {
 
     info('Temp role manually revoked', {
       guildId: interaction.guildId,
+      channelId: interaction.channelId,
       userId: user.id,
       roleId: role.id,
       moderator: interaction.user.tag,

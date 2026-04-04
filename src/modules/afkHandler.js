@@ -111,6 +111,7 @@ export async function handleAfkMentions(message) {
 
       info('AFK auto-cleared on message', {
         guildId: message.guild.id,
+        channelId: message.channel.id,
         userId: message.author.id,
       });
 
@@ -178,6 +179,7 @@ export async function handleAfkMentions(message) {
 
       info('AFK ping tracked', {
         guildId: message.guild.id,
+        channelId: message.channel.id,
         afkUserId: userId,
         pingerId: message.author.id,
       });

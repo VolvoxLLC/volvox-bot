@@ -196,7 +196,12 @@ async function handleAdd(interaction) {
     throw err;
   }
 
-  info('Help topic added', { guildId: interaction.guild.id, topic, user: interaction.user.tag });
+  info('Help topic added', {
+    guildId: interaction.guild.id,
+    channelId: interaction.channelId,
+    topic,
+    user: interaction.user.tag,
+  });
   await safeEditReply(interaction, `✅ Help topic \`${topic}\` created.`);
 }
 
@@ -250,7 +255,12 @@ async function handleEdit(interaction) {
     return await safeEditReply(interaction, `❌ No help topic found for \`${topic}\`.`);
   }
 
-  info('Help topic edited', { guildId: interaction.guild.id, topic, user: interaction.user.tag });
+  info('Help topic edited', {
+    guildId: interaction.guild.id,
+    channelId: interaction.channelId,
+    topic,
+    user: interaction.user.tag,
+  });
   await safeEditReply(interaction, `✅ Help topic \`${topic}\` updated.`);
 }
 
@@ -275,7 +285,12 @@ async function handleRemove(interaction) {
     return await safeEditReply(interaction, `❌ No help topic found for \`${topic}\`.`);
   }
 
-  info('Help topic removed', { guildId: interaction.guild.id, topic, user: interaction.user.tag });
+  info('Help topic removed', {
+    guildId: interaction.guild.id,
+    channelId: interaction.channelId,
+    topic,
+    user: interaction.user.tag,
+  });
   await safeEditReply(interaction, `✅ Help topic \`${topic}\` removed.`);
 }
 

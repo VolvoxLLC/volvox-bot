@@ -30,6 +30,8 @@ async function handleAutocomplete(client, interaction) {
     await command.autocomplete(interaction);
   } catch (err) {
     logger.error('Autocomplete error', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       command: interaction.commandName,
       error: getErrorMessage(err),
     });
@@ -51,6 +53,8 @@ async function sendCommandExecutionError(interaction, commandName) {
   if (interaction.replied || interaction.deferred) {
     await safeFollowUp(interaction, errorMessage).catch((replyErr) => {
       logger.debug('Failed to send error follow-up', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
         error: getErrorMessage(replyErr),
         command: commandName,
       });
@@ -60,6 +64,8 @@ async function sendCommandExecutionError(interaction, commandName) {
 
   await safeReply(interaction, errorMessage).catch((replyErr) => {
     logger.debug('Failed to send error reply', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       error: getErrorMessage(replyErr),
       command: commandName,
     });
@@ -82,7 +88,12 @@ export function registerCommandInteractionHandler(client) {
     const { commandName, member } = interaction;
 
     try {
-      logger.info('Slash command received', { command: commandName, user: interaction.user.tag });
+      logger.info('Slash command received', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
+        command: commandName,
+        user: interaction.user.tag,
+      });
 
       const guildConfig = getConfig(interaction.guildId);
       if (!hasPermission(member, commandName, guildConfig)) {
@@ -92,7 +103,12 @@ export function registerCommandInteractionHandler(client) {
           content: getPermissionError(commandName, permLevel),
           ephemeral: true,
         });
-        logger.warn('Permission denied', { user: interaction.user.tag, command: commandName });
+        logger.warn('Permission denied', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
+          user: interaction.user.tag,
+          command: commandName,
+        });
         return;
       }
 
@@ -120,11 +136,15 @@ export function registerCommandInteractionHandler(client) {
         channelId: interaction.channelId,
       }).catch((err) =>
         logger.error('Failed to log command usage', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
           error: getErrorMessage(err),
         }),
       );
     } catch (err) {
       logger.error('Command error', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
         command: commandName,
         error: getErrorMessage(err),
         stack: err instanceof Error ? err.stack : undefined,

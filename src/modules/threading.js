@@ -227,11 +227,15 @@ export async function findExistingThread(message) {
       try {
         await thread.setArchived(false);
         info('Unarchived thread for reuse', {
+          guildId: message.guild?.id,
+          channelId: message.channel.id,
           threadId: thread.id,
           userId: message.author.id,
         });
       } catch (err) {
         warn('Failed to unarchive thread, creating new one', {
+          guildId: message.guild?.id,
+          channelId: message.channel.id,
           threadId: thread.id,
           error: err.message,
         });
@@ -279,6 +283,7 @@ export async function createThread(message, cleanContent) {
   });
 
   info('Created conversation thread', {
+    guildId: message.guild?.id,
     threadId: thread.id,
     threadName,
     userId: message.author.id,
@@ -338,6 +343,7 @@ async function _getOrCreateThreadInner(message, cleanContent) {
   const existingThread = await findExistingThread(message);
   if (existingThread) {
     info('Reusing existing thread', {
+      guildId: message.guild?.id,
       threadId: existingThread.id,
       userId: message.author.id,
       channelId: message.channel.id,

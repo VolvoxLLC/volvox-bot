@@ -49,10 +49,18 @@ export async function execute(interaction) {
   try {
     await loadConfig();
     results.push({ name: 'Config', success: true });
-    info('Reload: config reloaded', { userId: interaction.user.id });
+    info('Reload: config reloaded', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId: interaction.user.id,
+    });
   } catch (err) {
     results.push({ name: 'Config', success: false, error: err.message });
-    logError('Reload: config reload failed', { error: err.message });
+    logError('Reload: config reload failed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      error: err.message,
+    });
   }
 
   // Step 2: Reload commands
@@ -71,12 +79,18 @@ export async function execute(interaction) {
       detail: `${interaction.client.commands.size} loaded`,
     });
     info('Reload: commands reloaded', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       count: interaction.client.commands.size,
       userId: interaction.user.id,
     });
   } catch (err) {
     results.push({ name: 'Commands', success: false, error: err.message });
-    logError('Reload: command reload failed', { error: err.message });
+    logError('Reload: command reload failed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      error: err.message,
+    });
   }
 
   // Step 3: Re-register slash commands with Discord
@@ -84,10 +98,18 @@ export async function execute(interaction) {
     const commands = Array.from(interaction.client.commands.values());
     await registerCommands(commands, interaction.client.user.id, process.env.DISCORD_TOKEN);
     results.push({ name: 'Register', success: true });
-    info('Reload: commands registered with Discord', { userId: interaction.user.id });
+    info('Reload: commands registered with Discord', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId: interaction.user.id,
+    });
   } catch (err) {
     results.push({ name: 'Register', success: false, error: err.message });
-    logError('Reload: command registration failed', { error: err.message });
+    logError('Reload: command registration failed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      error: err.message,
+    });
   }
 
   // Step 4: Restart triage
@@ -97,20 +119,36 @@ export async function execute(interaction) {
     const healthMonitor = HealthMonitor.getInstance();
     await startTriage(interaction.client, freshConfig, healthMonitor);
     results.push({ name: 'Triage', success: true });
-    info('Reload: triage restarted', { userId: interaction.user.id });
+    info('Reload: triage restarted', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId: interaction.user.id,
+    });
   } catch (err) {
     results.push({ name: 'Triage', success: false, error: err.message });
-    logError('Reload: triage restart failed', { error: err.message });
+    logError('Reload: triage restart failed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      error: err.message,
+    });
   }
 
   // Step 5: Reload opt-outs
   try {
     await loadOptOuts();
     results.push({ name: 'Opt-outs', success: true });
-    info('Reload: opt-outs reloaded', { userId: interaction.user.id });
+    info('Reload: opt-outs reloaded', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId: interaction.user.id,
+    });
   } catch (err) {
     results.push({ name: 'Opt-outs', success: false, error: err.message });
-    logError('Reload: opt-out reload failed', { error: err.message });
+    logError('Reload: opt-out reload failed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      error: err.message,
+    });
   }
 
   // Build result embed

@@ -233,7 +233,11 @@ export async function sendWelcomeMessage(member, client, config) {
     const channel = await fetchChannelCached(client, config.welcome.channelId, guildId);
     if (channel) {
       await safeSend(channel, buildMessage(config.welcome.channelId));
-      info('Welcome message sent', { user: member.user.tag, guild: member.guild.name });
+      info('Welcome message sent', {
+        guildId: member.guild.id,
+        channelId: config.welcome.channelId,
+        user: member.user.tag,
+      });
     }
   } catch (err) {
     logError('Welcome error (primary channel)', { error: err.message, stack: err.stack });
@@ -252,8 +256,9 @@ export async function sendWelcomeMessage(member, client, config) {
         const msg = renderWelcomeMessage(template, memberCtx, guildCtx);
         await safeSend(channel, msg);
         info('Welcome message sent (per-channel)', {
-          user: member.user.tag,
+          guildId: member.guild.id,
           channelId: channelCfg.channelId,
+          user: member.user.tag,
         });
       }
     } catch (err) {

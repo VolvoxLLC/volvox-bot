@@ -68,6 +68,7 @@ export async function execute(interaction) {
 
     info('Warning edited via command', {
       guildId: interaction.guild.id,
+      channelId: interaction.channelId,
       warningId,
       moderator: interaction.user.tag,
       updates: Object.keys(updates),

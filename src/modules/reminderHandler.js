@@ -167,6 +167,7 @@ export async function checkReminders(client) {
         if (newCount >= MAX_DELIVERY_RETRIES) {
           warn('Reminder delivery failed max times, marking completed', {
             reminderId: reminder.id,
+            guildId: reminder.guild_id,
             attempts: newCount,
           });
           await pool.query(
@@ -176,6 +177,7 @@ export async function checkReminders(client) {
         } else {
           info('Reminder delivery failed, will retry next poll', {
             reminderId: reminder.id,
+            guildId: reminder.guild_id,
             attempt: newCount,
           });
           await pool.query('UPDATE reminders SET failed_delivery_count = $1 WHERE id = $2', [
@@ -285,7 +287,13 @@ export async function handleReminderSnooze(interaction) {
     });
   }
 
-  info('Reminder snoozed', { reminderId, duration, userId: interaction.user.id });
+  info('Reminder snoozed', {
+    reminderId,
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
+    duration,
+    userId: interaction.user.id,
+  });
 }
 
 /**
@@ -333,5 +341,10 @@ export async function handleReminderDismiss(interaction) {
     await interaction.reply({ content: '✅ Reminder dismissed.', ephemeral: true });
   }
 
-  info('Reminder dismissed', { reminderId, userId: interaction.user.id });
+  info('Reminder dismissed', {
+    reminderId,
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
+    userId: interaction.user.id,
+  });
 }

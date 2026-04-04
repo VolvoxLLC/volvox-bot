@@ -88,6 +88,7 @@ async function handleToday(interaction, challengesCfg) {
   info('/challenge today used', {
     userId: interaction.user.id,
     guildId: interaction.guildId,
+    channelId: interaction.channelId,
     dayNumber,
     challengeTitle: challenge.title,
   });
@@ -235,5 +236,9 @@ async function handleLeaderboard(interaction) {
 
   await safeEditReply(interaction, { embeds: [embed] });
 
-  info('/challenge leaderboard used', { userId: interaction.user.id, guildId });
+  info('/challenge leaderboard used', {
+    userId: interaction.user.id,
+    guildId,
+    channelId: interaction.channelId,
+  });
 }

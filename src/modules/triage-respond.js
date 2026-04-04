@@ -144,7 +144,11 @@ export async function sendModerationLog(
       for (const t of targets) {
         const member = await logChannel.guild.members.fetch(t.userId).catch(() => null);
         if (member && isProtectedTarget(member, logChannel.guild)) {
-          warn('Skipping moderation log for protected role target', { userId: t.userId });
+          warn('Skipping moderation log for protected role target', {
+            guildId,
+            channelId,
+            userId: t.userId,
+          });
           return;
         }
       }
@@ -184,7 +188,7 @@ export async function sendModerationLog(
 
     await safeSend(logChannel, { embeds: [embed] });
   } catch (err) {
-    warn('Failed to send moderation audit log', { channelId, error: err.message });
+    warn('Failed to send moderation audit log', { guildId, channelId, error: err.message });
   }
 }
 

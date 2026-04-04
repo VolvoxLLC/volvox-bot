@@ -105,6 +105,7 @@ export async function execute(interaction) {
 
     info('Warnings viewed', {
       guildId: interaction.guild.id,
+      channelId: interaction.channelId,
       target: user.tag,
       moderator: interaction.user.tag,
       count: warnings.length,

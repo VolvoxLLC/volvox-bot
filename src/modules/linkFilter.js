@@ -136,6 +136,7 @@ export async function checkLinks(message, config) {
   const phishingMatch = matchPhishingPattern(content);
   if (phishingMatch) {
     warn('Link filter: phishing pattern detected', {
+      guildId: message.guild?.id,
       userId: message.author.id,
       channelId: message.channel.id,
       match: phishingMatch,
@@ -166,6 +167,7 @@ export async function checkLinks(message, config) {
 
     if (matchedRule) {
       warn('Link filter: blocked domain detected', {
+        guildId: message.guild?.id,
         userId: message.author.id,
         channelId: message.channel.id,
         hostname,
