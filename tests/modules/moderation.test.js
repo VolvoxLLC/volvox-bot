@@ -937,27 +937,26 @@ describe('moderation module', () => {
 
   // ── safeSend helper is used for DM notifications ─────────────────────────
 
-  describe('sendDmNotification uses safeSend helper', () => {
-    it('calls safeSend (not member.send directly) when sending DM', async () => {
+  describe('sendDmNotification uses member.send directly', () => {
+    it('calls member.send directly when sending DM', async () => {
       const mockSend = vi.fn().mockResolvedValue(undefined);
       const member = { send: mockSend };
 
       await sendDmNotification(member, 'warn', 'spamming', 'Test Guild');
 
-      // safeSend mock delegates to member.send — verify safeSend was called with member as target
-      expect(safeSend).toHaveBeenCalledWith(
-        member,
+      // Uses member.send directly (not safeSend) to avoid double-logging on expected DM failures
+      expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({ embeds: expect.any(Array) }),
       );
     });
 
-    it('safeSend is called even when member.send would throw (DMs disabled)', async () => {
+    it('silently continues when member.send throws (DMs disabled)', async () => {
       const member = { send: vi.fn().mockRejectedValue(new Error('Cannot send messages to this user')) };
 
       // Should not throw — catch block in sendDmNotification swallows DM errors
       await expect(sendDmNotification(member, 'ban', 'rule violation', 'Test Guild')).resolves.toBeUndefined();
 
-      expect(safeSend).toHaveBeenCalledWith(member, expect.objectContaining({ embeds: expect.any(Array) }));
+      expect(member.send).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
     });
   });
 });

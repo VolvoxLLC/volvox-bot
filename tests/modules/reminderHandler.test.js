@@ -667,7 +667,7 @@ describe('reminderHandler', () => {
   // ─── safeSend / safeReply / safeUpdate helper usage ──────────────────────
 
   describe('safeSend/safeReply/safeUpdate helpers are used', () => {
-    it('should use safeSend (not user.send directly) when sending DM reminder', async () => {
+    it('should use user.send directly when sending DM reminder', async () => {
       const mockUser = { send: vi.fn().mockResolvedValue({}) };
       const mockClient = {
         users: { fetch: vi.fn().mockResolvedValue(mockUser) },
@@ -678,7 +678,7 @@ describe('reminderHandler', () => {
         guild_id: 'g1',
         user_id: 'u70',
         channel_id: 'c1',
-        message: 'Test via safeSend',
+        message: 'Test via user.send',
         remind_at: new Date().toISOString(),
         recurring_cron: null,
         snoozed_count: 0,
@@ -691,7 +691,8 @@ describe('reminderHandler', () => {
 
       await checkReminders(mockClient);
 
-      expect(safeSend).toHaveBeenCalledWith(mockUser, expect.objectContaining({ embeds: expect.any(Array) }));
+      // Uses user.send directly (not safeSend) to avoid double-logging on expected DM failures
+      expect(mockUser.send).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
     });
 
     it('should use safeReply when snooze DB is unavailable', async () => {
