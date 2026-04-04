@@ -326,7 +326,11 @@ async function handleList(interaction, pool) {
 }
 
 /**
- * Handle /announce cancel
+ * Cancel an active scheduled announcement by ID for the current guild.
+ *
+ * If the scheduled message exists and the caller is the original author or a moderator, disables the schedule in the database,
+ * logs the cancellation, and confirms the action to the caller. If no active schedule is found, replies with an error.
+ * If the caller is not authorized, replies with an authorization error and logs a warning.
  */
 async function handleCancel(interaction, pool) {
   const id = interaction.options.getInteger('id');

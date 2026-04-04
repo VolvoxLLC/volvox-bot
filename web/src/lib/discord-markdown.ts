@@ -84,11 +84,11 @@ function splitCodeBlockSegments(input: string): MarkdownSegment[] {
 let activeVariables: ReadonlySet<string> | null = null;
 
 /**
- * Parse Discord-flavored markdown to HTML.
+ * Converts Discord-flavored markdown into HTML.
  *
- * @param input - The raw markdown string
- * @param validVariables - When provided, only these names are rendered as variable badges.
- *   Any configured variable token not in the set is left as plain text.
+ * @param input - The raw markdown string to convert
+ * @param validVariables - When provided, only these names are rendered as variable badges; any `{name}` or `{{name}}` not in the list remains plain text
+ * @returns The generated HTML string
  */
 export function parseDiscordMarkdown(input: string, validVariables?: readonly string[]): string {
   activeVariables = validVariables ? new Set(validVariables) : null;

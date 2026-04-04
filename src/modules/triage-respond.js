@@ -110,16 +110,16 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 // ── Moderation audit log ─────────────────────────────────────────────────────
 
 /**
- * Send a structured moderation audit embed to the configured moderation log channel.
+ * Send a moderation audit embed to the configured moderation log channel summarizing the classification and flagged messages.
  *
- * If no moderation log channel is configured or the channel cannot be fetched, the function exits without action.
- * Errors encountered while sending the embed are caught and ignored so they do not interrupt triage flow.
+ * If no moderation log channel is configured or the channel cannot be fetched, the function exits without action. Errors encountered while sending the embed are caught and ignored so the triage flow continues.
  *
  * @param {import('discord.js').Client} client - Discord client used to fetch the log channel.
- * @param {Object} classification - Parsed classifier output containing fields like `recommendedAction`, `violatedRule`, `reasoning`, and `targetMessageIds`.
- * @param {Array<Object>} snapshot - Recent message buffer entries; used to find messages referenced by `classification.targetMessageIds`.
- * @param {string} channelId - ID of the source channel where the violation occurred (used in the embed's Channel field).
- * @param {Object} config - Guild configuration containing `triage.moderationLogChannel`.
+ * @param {Object} classification - Classifier output containing fields such as `recommendedAction`, `violatedRule`, `reasoning`, and `targetMessageIds`.
+ * @param {Array<Object>} snapshot - Recent message buffer entries used to locate messages referenced by `classification.targetMessageIds`.
+ * @param {string} channelId - ID of the source channel where the flagged content originated (included in the embed).
+ * @param {Object} config - Guild configuration containing `triage.moderationLogChannel` and any moderation protections.
+ * @param {string|null} guildId - Guild ID used when resolving the moderation log channel; may be `null` for DMs.
  */
 export async function sendModerationLog(
   client,

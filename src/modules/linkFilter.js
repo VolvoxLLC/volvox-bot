@@ -116,12 +116,11 @@ async function alertModChannel(message, config, matchedDomain, reason) {
 }
 
 /**
- * Check whether a message contains blocked or suspicious links.
- * Deletes the message and alerts the mod channel if a match is found.
+ * Determines whether a message contains blocked or phishing-style links and removes the message and notifies moderators when a match is found.
  *
- * @param {import('discord.js').Message} message - Discord message object
- * @param {Object} config - Bot config (merged guild config)
- * @returns {Promise<{ blocked: boolean, domain?: string }>}
+ * @param {import('discord.js').Message} message - The Discord message to inspect.
+ * @param {Object} config - Merged guild configuration object.
+ * @returns {{ blocked: boolean, domain?: string }} `blocked: true` and the matched domain or pattern in `domain` when a link was blocked; otherwise `{ blocked: false }`.
  */
 export async function checkLinks(message, config) {
   const lfConfig = config.moderation?.linkFilter ?? {};

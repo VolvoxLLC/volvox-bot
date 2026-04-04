@@ -57,10 +57,12 @@ function evictOldest(count = 1) {
 }
 
 /**
- * Send a temp-mute (timeout) to a repeat offender and alert the mod channel.
- * @param {import('discord.js').Message} message
- * @param {Object} config
- * @param {number} muteDurationMs
+ * Applies a temporary timeout to the message author for repeated rate-limit violations and posts an optional mod alert.
+ *
+ * @param {import('discord.js').Message} message - Message whose author will be timed out; requires a resolved GuildMember on `message.member`.
+ * @param {Object} config - Configuration object; reads `config.moderation?.rateLimit` for mute thresholds/windows and `config.moderation?.alertChannelId` for the mod alert destination.
+ * @param {number} muteDurationMs - Duration of the timeout in milliseconds to apply to the member.
+ * @returns {Promise<void>} Resolves after attempting to apply the timeout and send the mod alert (if configured).
  */
 async function handleRepeatOffender(message, config, muteDurationMs) {
   const member = message.member;
@@ -143,12 +145,12 @@ async function warnUser(message, maxMessages, windowSeconds) {
 }
 
 /**
- * Check whether a message triggers the rate limit.
- * Side effects on trigger: deletes excess message, warns user, may temp-mute.
+ * Enforces the per-user-per-channel sliding-window rate limit for a given message and applies configured actions when violated.
  *
- * @param {import('discord.js').Message} message - Discord message object
- * @param {Object} config - Bot config (merged guild config)
- * @returns {Promise<{ limited: boolean, reason?: string }>}
+ * When the message exceeds configured thresholds the function may delete the message, send a warning, and/or apply a temporary timeout to the author according to guild config.
+ * @param {import('discord.js').Message} message - Discord message to evaluate.
+ * @param {Object} config - Merged guild configuration object (expects moderation.rateLimit settings).
+ * @returns {{ limited: boolean, reason?: string }} `limited` is `true` if the message was rate-limited; `reason` provides a human-readable explanation when present.
  */
 export async function checkRateLimit(message, config) {
   const rlConfig = config.moderation?.rateLimit ?? {};

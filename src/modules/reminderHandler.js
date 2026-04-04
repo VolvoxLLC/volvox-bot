@@ -132,10 +132,13 @@ async function sendReminderNotification(client, reminder) {
 }
 
 /**
- * Check for due reminders and fire them.
- * Called by the scheduler every 60s.
+ * Process due reminders from the database, deliver notifications, and update reminder state.
  *
- * @param {import('discord.js').Client} client - Discord client
+ * Queries reminders whose remind_at is due, attempts delivery (DM with channel fallback), increments
+ * failed delivery counts and marks reminders completed after reaching the retry limit, reschedules
+ * recurring reminders, and logs per-reminder errors.
+ *
+ * @param {import('discord.js').Client} client - Discord client used to deliver reminder notifications.
  */
 export async function checkReminders(client) {
   const pool = getPool();
@@ -219,9 +222,11 @@ export async function checkReminders(client) {
 }
 
 /**
- * Handle a reminder snooze button click.
+ * Process a snooze button interaction and reschedule the corresponding reminder.
  *
- * @param {import('discord.js').ButtonInteraction} interaction
+ * Validates the interaction custom ID, checks database availability, verifies reminder existence and ownership, ensures the reminder is not already completed, updates the reminder's next remind time and snooze count, updates or replies to the interaction with a confirmation message, and logs the action.
+ *
+ * @param {import('discord.js').ButtonInteraction} interaction - The button interaction triggered by the user.
  */
 export async function handleReminderSnooze(interaction) {
   const match = interaction.customId.match(/^reminder_snooze_(\d+)_(15m|1h|tomorrow)$/);
@@ -297,9 +302,14 @@ export async function handleReminderSnooze(interaction) {
 }
 
 /**
- * Handle a reminder dismiss button click.
+ * Process a dismiss-button interaction by marking the referenced reminder completed and acknowledging the user.
  *
- * @param {import('discord.js').ButtonInteraction} interaction
+ * Validates the interaction customId, ensures the database and reminder exist, verifies the invoking user owns the reminder,
+ * updates the reminder to `completed = true`, attempts to update the original interaction message to confirm dismissal,
+ * and falls back to an ephemeral reply if the update fails. Emits an informational log with `reminderId`, `guildId`,
+ * `channelId`, and `userId`.
+ *
+ * @param {import('discord.js').ButtonInteraction} interaction - The button interaction representing the dismiss action.
  */
 export async function handleReminderDismiss(interaction) {
   const match = interaction.customId.match(/^reminder_dismiss_(\d+)$/);

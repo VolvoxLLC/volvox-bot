@@ -31,13 +31,52 @@ const LEVEL_STYLES: Record<LogLevel, { badge: string; row: string; label: string
   },
 };
 
+const STATUS_STYLES: Record<ConnectionStatus, { dot: string; label: string }> = {
+  connected: { dot: 'bg-green-500', label: 'Connected' },
+  disconnected: { dot: 'bg-red-500', label: 'Disconnected' },
+  reconnecting: { dot: 'bg-yellow-500 animate-pulse', label: 'Reconnecting…' },
+};
+
+/**
+ * Extracts a channel identifier from a log entry's metadata.
+ *
+ * @param entry - The log entry to inspect
+ * @returns The channel identifier from `entry.meta.channelId` or `entry.meta.channel_id` if it is a non-empty string, `null` otherwise
+ */
 function getEntryChannelId(entry: LogEntry): string | null {
   const value = entry.meta?.channelId ?? entry.meta?.channel_id;
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
+/**
+ * Render a connection status indicator with a colored dot and label.
+ *
+ * @param status - The current connection status used to select the dot color and label text
+ * @returns The UI element displaying a colored status dot and its label
+ */
+function StatusIndicator({ status }: { status: ConnectionStatus }) {
+  const s = STATUS_STYLES[status];
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span className={cn('h-2 w-2 rounded-full shrink-0', s.dot)} />
+      <span>{s.label}</span>
+    </div>
+  );
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+/**
+ * Renders a single log entry row including time, level badge, optional module and channel badges, message, and an expandable metadata panel when metadata is present.
+ *
+ * The row displays a resolved channel name (via `resolveChannelName`) if a channel identifier exists in `entry.meta`. When metadata exists, the main row is rendered as a toggle button that shows or hides a formatted JSON metadata panel based on `isExpanded`.
+ *
+ * @param entry - The log entry to render
+ * @param isExpanded - Whether the entry's metadata panel is currently expanded
+ * @param onToggle - Callback invoked when the user toggles the entry's expanded state
+ * @param resolveChannelName - Optional resolver to convert a channel identifier into a display name
+ * @returns The rendered React element for the log entry row
+ */
 function LogRow({
   entry,
   isExpanded,
@@ -137,6 +176,16 @@ interface LogViewerProps {
   resolveChannelName?: (channelId: string | null | undefined) => string | null;
 }
 
+/**
+ * Render a terminal-style log viewer with auto-scroll, pause/resume, clear, and optional metadata expansion.
+ *
+ * The viewer shows connection status, an entry count, controls to pause/resume auto-scrolling and clear logs,
+ * and a scrollable list of log rows that can expand to reveal JSON metadata. Auto-scrolling is disabled when
+ * paused or when the user has scrolled away from the bottom.
+ *
+ * @param resolveChannelName - Optional function that maps a channel identifier (from a log entry's metadata)
+ *                             to a human-friendly display name; may return `null` to indicate no replacement.
+ */
 export function LogViewer({ logs, status, onClear, resolveChannelName }: LogViewerProps) {
   const [paused, setPaused] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());

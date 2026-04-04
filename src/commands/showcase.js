@@ -187,10 +187,11 @@ async function handleSubmit(interaction) {
 }
 
 /**
- * Handle the showcase_submit_modal submission.
+ * Process a showcase submission modal: validate input, create a showcase record, post its embed with an upvote button, and acknowledge the submitter.
  *
- * @param {import('discord.js').ModalSubmitInteraction} interaction
- * @param {import('pg').Pool} pool
+ * Performs server and feature checks, validates optional URLs, inserts the new showcase into the database, sends the showcase embed to the channel, updates the stored message ID, logs the submission, and replies to the user with the new showcase ID.
+ *
+ * @param {import('discord.js').ModalSubmitInteraction} interaction - The modal submission interaction to process.
  */
 export async function handleShowcaseModalSubmit(interaction, pool) {
   const guildId = interaction.guildId;
@@ -450,9 +451,8 @@ async function handleView(interaction, pool) {
 // ── Execute ────────────────────────────────────────────────────────
 
 /**
- * Execute the /showcase command.
- *
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Route and handle the `/showcase` slash command, validating the guild and feature config, routing to the appropriate subcommand handler, and replying to the interaction.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The incoming slash command interaction to handle.
  */
 export async function execute(interaction) {
   if (!interaction.guildId) {
@@ -510,10 +510,10 @@ export async function execute(interaction) {
 }
 
 /**
- * Handle the showcase upvote button interaction.
+ * Toggle the invoking user's upvote for a showcase, persist the change, send an ephemeral confirmation, and update the message's upvote button.
  *
- * @param {import('discord.js').ButtonInteraction} interaction
- * @param {import('pg').Pool} pool
+ * @param {import('discord.js').ButtonInteraction} interaction - The button interaction triggered by the user.
+ * @param {import('pg').Pool} pool - PostgreSQL connection pool used to read and update showcase and vote records.
  */
 export async function handleShowcaseUpvote(interaction, pool) {
   const showcaseId = parseInt(interaction.customId.replace('showcase_upvote_', ''), 10);

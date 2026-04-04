@@ -15,9 +15,12 @@ function getErrorMessage(err) {
 }
 
 /**
- * Handle autocomplete interactions.
- * @param {import('discord.js').Client} client - Discord client
- * @param {import('discord.js').AutocompleteInteraction} interaction - Autocomplete interaction
+ * Dispatches an autocomplete interaction to the matching command or returns no suggestions.
+ *
+ * If the command is not found or has no `autocomplete` handler, responds with an empty array.
+ * If the handler throws, logs the error with guild and channel context and responds with an empty array.
+ * @param {import('discord.js').Client} client - Discord client instance containing registered commands.
+ * @param {import('discord.js').AutocompleteInteraction} interaction - The autocomplete interaction to handle.
  */
 async function handleAutocomplete(client, interaction) {
   const command = client.commands.get(interaction.commandName);
@@ -40,9 +43,11 @@ async function handleAutocomplete(client, interaction) {
 }
 
 /**
- * Send a safe command execution error response.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction - Command interaction
- * @param {string} commandName - Slash command name
+ * Send an ephemeral error message to the user indicating the command failed; use a follow-up if the interaction was already replied to or deferred.
+ *
+ * If sending the response fails, a debug-level log is recorded with `guildId`, `channelId`, the extracted error message, and the `command` name.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Interaction to respond to.
+ * @param {string} commandName - Command name used for logging context.
  */
 async function sendCommandExecutionError(interaction, commandName) {
   const errorMessage = {
@@ -73,8 +78,9 @@ async function sendCommandExecutionError(interaction, commandName) {
 }
 
 /**
- * Register the interactionCreate handler for slash commands and autocomplete.
- * @param {import('discord.js').Client} client - Discord client
+ * Register an InteractionCreate listener that routes autocomplete interactions and handles chat input (slash) commands.
+ *
+ * The handler enforces per-guild permissions, replies ephemerally for permission denials or missing commands, executes the matched command and records usage, and sends an ephemeral error response if command processing fails.
  */
 export function registerCommandInteractionHandler(client) {
   client.on(Events.InteractionCreate, async (interaction) => {

@@ -62,8 +62,10 @@ export async function execute(interaction) {
 }
 
 /**
- * Handle /modlog setup — interactive channel routing configuration
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Run an interactive configuration flow to map moderation event categories to guild text channels.
+ *
+ * Prompts the command invoker with an ephemeral, menu-driven UI to select an event category and assign a text channel; each mapping is persisted to the guild's configuration. The interaction UI only accepts input from the invoking user and will time out after five minutes.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction that initiated setup.
  */
 async function handleSetup(interaction) {
   const categorySelect = new StringSelectMenuBuilder()
@@ -210,8 +212,10 @@ async function handleView(interaction) {
 }
 
 /**
- * Handle /modlog disable — clear all log channel routing
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Clear all configured moderation log channels for the current guild and confirm the action to the command invoker.
+ *
+ * Clears stored channel routing for moderation events, logs the change with moderator, guild, and channel context, and edits the ephemeral command reply to indicate success or failure.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction that invoked the disable action.
  */
 async function handleDisable(interaction) {
   await interaction.deferReply({ ephemeral: true });

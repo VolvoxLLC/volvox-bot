@@ -137,9 +137,10 @@ export async function execute(interaction) {
 }
 
 /**
- * Handle /memory optout — toggle memory collection for the user
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {string} userId
+ * Toggle whether the bot collects memories for a user and notify them with an ephemeral reply.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction used for replying and context.
+ * @param {string} userId - The ID of the user whose opt-out state will be toggled.
  */
 async function handleOptOut(interaction, userId) {
   const { optedOut } = await toggleOptOut(userId);
@@ -167,11 +168,11 @@ async function handleOptOut(interaction, userId) {
 }
 
 /**
- * Handle /memory view — show all memories for the user
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {string} userId
- * @param {string} username
- * @param {string} [guildId]
+ * Display the stored memories for a user by deferring an ephemeral reply and then editing it with either a message indicating no memories or a formatted, possibly truncated list.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction to reply to.
+ * @param {string} userId - ID of the user whose memories to retrieve.
+ * @param {string} username - Display name used in the reply header.
+ * @param {string} [guildId] - Optional guild ID to scope memory retrieval.
  */
 async function handleView(interaction, userId, username, guildId) {
   await interaction.deferReply({ ephemeral: true });
@@ -202,11 +203,15 @@ async function handleView(interaction, userId, username, guildId) {
 }
 
 /**
- * Handle /memory forget (all) — delete all memories with confirmation
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {string} userId
- * @param {string} username
- * @param {string} [guildId]
+ * Prompt the invoking user to confirm deletion and, if confirmed, delete all memories belonging to that user.
+ *
+ * Sends an ephemeral confirmation message with Confirm/Cancel buttons, waits up to 30 seconds for the same user to respond,
+ * performs the deletion when confirmed, updates the reply with the outcome, and edits the reply to indicate timeout if no response is received.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The original command interaction used to send and update replies.
+ * @param {string} userId - ID of the user whose memories will be deleted if confirmed.
+ * @param {string} username - Display name of the user (used in logs/messages).
+ * @param {string} [guildId] - Optional guild ID to scope the deletion to a specific guild.
  */
 async function handleForgetAll(interaction, userId, username, guildId) {
   const confirmButton = new ButtonBuilder()
@@ -277,12 +282,14 @@ async function handleForgetAll(interaction, userId, username, guildId) {
 }
 
 /**
- * Handle /memory forget <topic> — delete memories matching a topic
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {string} userId
- * @param {string} username
- * @param {string} topic
- * @param {string} [guildId]
+ * Delete a user's stored memories that match a given topic and reply with the outcome.
+ *
+ * Performs deletions in batches until no more matches are found or limits are reached, then informs the command issuer how many memories were forgotten or if none were found.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The interaction that invoked the command.
+ * @param {string} userId - ID of the user whose memories will be searched.
+ * @param {string} username - Display name of the user (used in logging).
+ * @param {string} topic - Topic string to match against stored memories.
+ * @param {string} [guildId] - Optional guild ID to scope the search/delete operations.
  */
 async function handleForgetTopic(interaction, userId, username, topic, guildId) {
   await interaction.deferReply({ ephemeral: true });
@@ -386,11 +393,16 @@ async function handleAdmin(interaction, subcommand) {
 }
 
 /**
- * Handle /memory admin view @user — view a user's memories (mod only)
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {string} targetId
- * @param {string} targetUsername
- * @param {string} [guildId]
+ * Display a target user's stored memories to an administrator in an ephemeral reply.
+ *
+ * Retrieves the target's memories (if any), includes an "(opted out)" marker when applicable,
+ * formats the results for Discord message length limits, edits the deferred ephemeral reply with
+ * the formatted content, and emits an informational log event containing Discord context.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction from the admin.
+ * @param {string} targetId - The Discord ID of the user whose memories are being viewed.
+ * @param {string} targetUsername - The display name used in the reply header for the target user.
+ * @param {string} [guildId] - Optional guild ID to scope memory retrieval; when omitted, global or default storage is used.
  */
 async function handleAdminView(interaction, targetId, targetUsername, guildId) {
   await interaction.deferReply({ ephemeral: true });
@@ -422,11 +434,16 @@ async function handleAdminView(interaction, targetId, targetUsername, guildId) {
 }
 
 /**
- * Handle /memory admin clear @user — clear a user's memories with confirmation (mod only)
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {string} targetId
- * @param {string} targetUsername
- * @param {string} [guildId]
+ * Prompt an administrator to confirm and then clear all stored memories for a target user.
+ *
+ * Sends an ephemeral confirmation message with Confirm/Cancel buttons, waits up to 30 seconds
+ * for the invoking admin's response, deletes the target user's memories if confirmed,
+ * updates the interaction to reflect the result, and emits structured log events.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction from the admin.
+ * @param {string} targetId - The Discord user ID whose memories will be cleared.
+ * @param {string} targetUsername - The display name of the target user (used in replies).
+ * @param {string} [guildId] - Optional guild ID scope for memory deletion.
  */
 async function handleAdminClear(interaction, targetId, targetUsername, guildId) {
   const adminId = interaction.user.id;

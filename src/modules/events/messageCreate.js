@@ -22,19 +22,14 @@ import { clearChannelState } from '../triage-buffer.js';
 import { recordCommunityActivity } from '../welcome.js';
 
 /**
- * Register the MessageCreate event handler that processes incoming messages
- * for spam detection, community activity recording, and triage-based AI routing.
+ * Register a MessageCreate handler that processes incoming messages for moderation, community activity, and AI triage routing.
  *
- * Flow:
- * 1. Ignore bots/DMs
- * 2. Spam detection
- * 3. Community activity tracking
- * 4. @mention/reply → evaluateNow (triage classifies + responds internally)
- * 5. Otherwise → accumulateMessage (buffer for periodic triage eval)
+ * Handles per-guild configuration, AFK mentions, moderation checks (rate limits, link filtering, spam, AI auto-mod), community activity recording,
+ * non-blocking engagement/XP tasks, and AI routing/triage (modes: off, mention, vibe) including immediate evaluation for mentions/replies and periodic accumulation.
  *
- * @param {Client} client - Discord client instance
- * @param {Object} _config - Unused (kept for API compatibility); handler resolves per-guild config via getConfig().
- * @param {Object} healthMonitor - Optional health monitor for metrics
+ * @param {Client} client - Discord client instance.
+ * @param {Object} _config - Unused; kept for API compatibility (per-guild config is resolved internally via getConfig()).
+ * @param {Object} healthMonitor - Optional health monitor used for triage/evaluation metrics. 
  */
 export function registerMessageCreateHandler(client, _config, healthMonitor) {
   client.on(Events.MessageCreate, async (message) => {

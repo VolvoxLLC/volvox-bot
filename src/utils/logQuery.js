@@ -12,18 +12,19 @@ import { escapeIlike } from './escapeIlike.js';
 const ALLOWED_LEVELS = ['error', 'warn', 'info', 'debug'];
 
 /**
- * Query log entries from the PostgreSQL logs table.
- * Fails gracefully if the database is unavailable.
+ * Query log entries from the PostgreSQL `logs` table.
  *
- * @param {Object} [options={}] - Query options
- * @param {string} [options.level] - Filter by exact log level (e.g., 'error', 'warn')
- * @param {string|Date} [options.since] - Filter logs after this timestamp
- * @param {string|Date} [options.until] - Filter logs before this timestamp
- * @param {number} [options.limit=100] - Maximum number of results (max 1000)
- * @param {string} [options.search] - Search term for ILIKE match on message
- * @param {string} [options.guildId] - Filter by guild ID stored in metadata
- * @param {number} [options.offset=0] - Offset for pagination
- * @returns {Promise<{rows: Array, total: number}>} Log entries and total count
+ * Filters and paginates log rows based on provided options. `limit` is clamped to the range 1–1000 and `offset` is forced to be >= 0. `since` and `until` are inclusive; `search` performs a case-insensitive substring match on `message` (escaped and wrapped with `%`); `guildId` matches either `metadata->>'guildId'` or `metadata->>'guild_id'`. If the query fails, an object with an empty `rows` array and `total` 0 is returned.
+ *
+ * @param {Object} [options={}] - Query options.
+ * @param {string} [options.level] - Exact log level filter; applied only when one of `['error','warn','info','debug']`.
+ * @param {string|Date} [options.since] - Lower-bound timestamp (inclusive).
+ * @param {string|Date} [options.until] - Upper-bound timestamp (inclusive).
+ * @param {number} [options.limit=100] - Maximum number of results (will be clamped to 1–1000).
+ * @param {string} [options.search] - Term for case-insensitive substring match against `message`.
+ * @param {string} [options.guildId] - Guild identifier to match in `metadata` JSON (`guildId` or `guild_id`).
+ * @param {number} [options.offset=0] - Pagination offset (forced to be >= 0).
+ * @returns {{rows: Array, total: number}} An object containing the paginated `rows` and the total matching row count; returns `{ rows: [], total: 0 }` on failure.
  */
 export async function queryLogs(options = {}) {
   try {
