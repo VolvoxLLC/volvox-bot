@@ -250,6 +250,8 @@ export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamRes
     unmountedRef.current = false;
 
     if (enabled) {
+      // Clear stale logs from previous guild/filter when scope changes
+      setLogs([]);
       setStatus('reconnecting');
       connect();
     }

@@ -69,6 +69,8 @@ interface ChannelSelectorProps {
   maxSelections?: number;
   filter?: ChannelTypeFilter;
   id?: string;
+  /** Pre-fetched channel list — when provided, skips internal fetch */
+  channels?: DiscordChannel[];
 }
 
 function getChannelIcon(type: number) {
@@ -184,9 +186,10 @@ export function ChannelSelector({
   maxSelections,
   filter = 'all',
   id,
+  channels: externalChannels,
 }: ChannelSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [channels, setChannels] = React.useState<DiscordChannel[]>([]);
+  const [channels, setChannels] = React.useState<DiscordChannel[]>(externalChannels ?? []);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const abortControllerRef = React.useRef<AbortController | null>(null);
@@ -196,6 +199,12 @@ export function ChannelSelector({
   // are pre-selected IDs (so they display names instead of "unknown channel").
   React.useEffect(() => {
     if (!guildId) return;
+    // Skip internal fetch when channels are provided externally
+    if (externalChannels) {
+      setChannels(externalChannels);
+      hasFetchedRef.current = true;
+      return;
+    }
     const needsEagerFetch = selected.length > 0 && !hasFetchedRef.current;
     if (!open && !needsEagerFetch) return;
 
@@ -267,7 +276,7 @@ export function ChannelSelector({
       abortControllerRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selected.length triggers eager fetch once via hasFetchedRef
-  }, [guildId, open, selected.length]);
+  }, [guildId, open, selected.length, externalChannels]);
 
   const filteredChannels = React.useMemo(
     () => filterChannelsByType(channels, filter),

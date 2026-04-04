@@ -29,7 +29,7 @@ import { recordCommunityActivity } from '../welcome.js';
  *
  * @param {Client} client - Discord client instance.
  * @param {Object} _config - Unused; kept for API compatibility (per-guild config is resolved internally via getConfig()).
- * @param {Object} healthMonitor - Optional health monitor used for triage/evaluation metrics. 
+ * @param {Object} healthMonitor - Optional health monitor used for triage/evaluation metrics.
  */
 export function registerMessageCreateHandler(client, _config, healthMonitor) {
   client.on(Events.MessageCreate, async (message) => {

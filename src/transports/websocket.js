@@ -90,7 +90,10 @@ export class WebSocketTransport extends Transport {
       if (entrySeverity > filterSeverity) return false;
     }
 
-    // Guild filter — only show logs matching the client's guild
+    // Guild filter — only show logs matching the client's guild.
+    // Logs without guild context (startup, shutdown, DB ops) are intentionally
+    // dropped when a guild filter is active — per issue #374 requirements,
+    // dashboard users only see their guild's logs.
     if (filter.guildId) {
       const logGuildId = entry.metadata?.guildId || entry.metadata?.guild_id;
       if (!logGuildId || logGuildId !== filter.guildId) return false;
