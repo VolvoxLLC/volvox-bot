@@ -22,7 +22,7 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn().mockResolvedValue({}),
+  safeSend: vi.fn().mockResolvedValue({ id: 'mock-msg-id' }),
   safeReply: vi.fn((t, opts) => t.reply(opts)),
   safeEditReply: vi.fn((t, opts) => t.editReply(opts)),
 }));

@@ -365,6 +365,9 @@ async function refreshMenuEmbed(interaction, menu) {
 
     await msg.edit({ embeds: [embed] });
   } catch (err) {
-    warn('Failed to refresh reaction role menu embed', { menuId: menu.id, error: err.message });
+    warn('Failed to refresh reaction role menu embed', {
+      menuId: menu.id,
+      error: err?.message ?? String(err),
+    });
   }
 }

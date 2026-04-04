@@ -208,7 +208,7 @@ export async function sendDmNotification(member, action, reason, guildName) {
     .setTimestamp();
 
   try {
-    await safeSend(member, { embeds: [embed] });
+    await member.send({ embeds: [embed] });
   } catch {
     // User has DMs disabled — silently continue
   }
