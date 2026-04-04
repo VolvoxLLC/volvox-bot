@@ -66,7 +66,7 @@ import {
   startTempbanScheduler,
   stopTempbanScheduler,
 } from '../../src/modules/moderation.js';
-import { safeSend } from '../../src/utils/safeSend.js';
+
 
 describe('moderation module', () => {
   let mockPool;
