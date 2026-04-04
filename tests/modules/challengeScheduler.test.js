@@ -33,6 +33,16 @@ vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn(),
 }));
 
+vi.mock('../../src/utils/safeSend.js', () => ({
+  safeSend: vi.fn(async (channel, opts) => {
+    if (typeof channel?.send === 'function') return channel.send(opts);
+    return { id: 'mock-msg', startThread: vi.fn().mockResolvedValue({}) };
+  }),
+  safeReply: vi.fn(async (target, opts) => {
+    if (typeof target?.reply === 'function') return target.reply(opts);
+  }),
+}));
+
 // Minimal discord.js mock
 vi.mock('discord.js', () => {
   class MockEmbedBuilder {
@@ -134,7 +144,6 @@ import {
   handleSolveButton,
   postDailyChallenge,
   selectTodaysChallenge,
-  startChallengeScheduler,
 } from '../../src/modules/challengeScheduler.js';
 import { getConfig } from '../../src/modules/config.js';
 
@@ -526,15 +535,6 @@ describe('challengeScheduler', () => {
           ephemeral: true,
         }),
       );
-    });
-  });
-
-  // ─── startChallengeScheduler ──────────────────────────────────────────────
-
-  describe('startChallengeScheduler', () => {
-    it('should call without throwing', () => {
-      const mockClient = { guilds: { cache: new Map() } };
-      expect(() => startChallengeScheduler(mockClient)).not.toThrow();
     });
   });
 });

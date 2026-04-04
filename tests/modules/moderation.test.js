@@ -39,6 +39,13 @@ vi.mock('../../src/modules/config.js', () => ({
   }),
 }));
 
+vi.mock('../../src/utils/safeSend.js', () => ({
+  safeSend: vi.fn(async (target, opts) => {
+    if (typeof target?.send === 'function') return target.send(opts);
+    return {};
+  }),
+}));
+
 vi.mock('../../src/utils/duration.js', () => ({
   parseDuration: vi.fn().mockReturnValue(3600000),
   formatDuration: vi.fn().mockReturnValue('1 hour'),

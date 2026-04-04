@@ -44,14 +44,12 @@ vi.mock('../../src/modules/config.js', () => ({
 }));
 
 import { getConfig } from '../../src/modules/config.js';
-import {
-  registerErrorHandlers,
-  registerEventHandlers,
-  registerGuildMemberAddHandler,
-  registerMessageCreateHandler,
-  registerReactionHandlers,
-  registerReadyHandler,
-} from '../../src/modules/events.js';
+import { registerErrorHandlers } from '../../src/modules/events/errors.js';
+import { registerGuildMemberAddHandler } from '../../src/modules/events/guildMemberAdd.js';
+import { registerMessageCreateHandler } from '../../src/modules/events/messageCreate.js';
+import { registerReactionHandlers } from '../../src/modules/events/reactions.js';
+import { registerReadyHandler } from '../../src/modules/events/ready.js';
+import { registerEventHandlers } from '../../src/modules/events.js';
 import { handlePollButton } from '../../src/modules/handlers/pollHandler.js';
 import { isSpam, sendSpamAlert } from '../../src/modules/spam.js';
 import { handleReactionAdd, handleReactionRemove } from '../../src/modules/starboard.js';

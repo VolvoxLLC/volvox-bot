@@ -322,7 +322,8 @@ describe('/review command', () => {
         expect.stringContaining('INSERT INTO reviews'),
         expect.arrayContaining(['guild-123', 'user-789']),
       );
-      expect(interaction.channel.send).toHaveBeenCalledWith(
+      expect(safeSend).toHaveBeenCalledWith(
+        interaction.channel,
         expect.objectContaining({ embeds: expect.any(Array), components: expect.any(Array) }),
       );
       expect(interaction.editReply).toHaveBeenCalledWith(
@@ -368,7 +369,10 @@ describe('/review command', () => {
       await execute(interaction);
 
       expect(interaction.client.channels.fetch).toHaveBeenCalledWith(reviewChannelId);
-      expect(mockReviewChannel.send).toHaveBeenCalled();
+      expect(safeSend).toHaveBeenCalledWith(
+        mockReviewChannel,
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
     });
   });
 

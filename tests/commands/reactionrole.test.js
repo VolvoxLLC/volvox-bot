@@ -18,6 +18,12 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
+  safeSend: vi.fn(async (channel, opts) => {
+    if (typeof channel?.send === 'function') {
+      return channel.send(opts);
+    }
+    return { id: 'mock-msg' };
+  }),
   safeEditReply: vi.fn(async (interaction, payload) => {
     if (typeof interaction?.editReply === 'function') {
       return interaction.editReply(payload);
