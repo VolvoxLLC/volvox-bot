@@ -48,6 +48,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 }));
 
 import { adminOnly, data, execute } from '../../src/commands/reload.js';
+import * as logger from '../../src/logger.js';
 import { loadConfig } from '../../src/modules/config.js';
 import { loadOptOuts } from '../../src/modules/optout.js';
 import { startTriage, stopTriage } from '../../src/modules/triage.js';
@@ -140,5 +141,19 @@ describe('reload command', () => {
 
     const embedData = safeEditReply.mock.calls[0][1].embeds[0].data;
     expect(embedData.description).toContain('DB timeout');
+  });
+
+  it('should include channelId in info logs for each reload step', async () => {
+    const interaction = { ...mockInteraction(), channelId: 'channel-reload-test' };
+    await execute(interaction);
+
+    // The reload command logs channelId on each step — verify at least the config reload step
+    expect(logger.info).toHaveBeenCalledWith(
+      'Reload: config reloaded',
+      expect.objectContaining({
+        guildId: 'guild-1',
+        channelId: 'channel-reload-test',
+      }),
+    );
   });
 });

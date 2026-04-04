@@ -17,6 +17,7 @@ vi.mock('../../src/modules/config.js', () => ({
 vi.mock('../../src/logger.js', () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 
 import { data, execute, moderatorOnly } from '../../src/commands/editwarn.js';
+import * as logger from '../../src/logger.js';
 import { editWarning } from '../../src/modules/warningEngine.js';
 
 describe('editwarn command', () => {
@@ -70,5 +71,18 @@ describe('editwarn command', () => {
     const interaction = createInteraction();
     await execute(interaction);
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('not found'));
+  });
+
+  it('should include channelId in info log when warning is edited', async () => {
+    const interaction = { ...createInteraction(), channelId: 'channel-editwarn' };
+    await execute(interaction);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'Warning edited via command',
+      expect.objectContaining({
+        guildId: 'guild1',
+        channelId: 'channel-editwarn',
+      }),
+    );
   });
 });

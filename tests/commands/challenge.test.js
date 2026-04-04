@@ -111,6 +111,7 @@ vi.mock('../../src/modules/challengeScheduler.js', () => ({
 
 import { execute } from '../../src/commands/challenge.js';
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 import {
   buildChallengeButtons,
   buildChallengeEmbed,
@@ -324,6 +325,38 @@ describe('/challenge command', () => {
       await execute(interaction);
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('Database unavailable') }),
+      );
+    });
+  });
+
+  // ── channelId logging (PR change) ─────────────────────────────────────────
+
+  describe('channelId included in info logs', () => {
+    it('logs channelId when /challenge today is used', async () => {
+      const interaction = { ...makeInteraction('today'), channelId: 'channel-today-test' };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        '/challenge today used',
+        expect.objectContaining({
+          guildId: 'guild-1',
+          channelId: 'channel-today-test',
+        }),
+      );
+    });
+
+    it('logs channelId when /challenge leaderboard is used', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] });
+
+      const interaction = { ...makeInteraction('leaderboard'), channelId: 'channel-lb-test' };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        '/challenge leaderboard used',
+        expect.objectContaining({
+          guildId: 'guild-1',
+          channelId: 'channel-lb-test',
+        }),
       );
     });
   });

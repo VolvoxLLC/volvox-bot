@@ -24,6 +24,7 @@ import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
+import * as logger from '../../../src/logger.js';
 import { getConfig, setConfigValue } from '../../../src/modules/config.js';
 
 describe('webhooks routes', () => {
@@ -221,6 +222,23 @@ describe('webhooks routes', () => {
         .send({ guildId: 'guild1', path: 'ai.enabled', value: false });
 
       expect(res.status).toBe(200);
+    });
+
+    it('should include guildId in error log when setConfigValue throws', async () => {
+      setConfigValue.mockRejectedValueOnce(new Error('DB error'));
+
+      await request(app)
+        .post('/api/v1/webhooks/config-update')
+        .set('x-api-secret', SECRET)
+        .send({ guildId: 'guild-error-log', path: 'ai.systemPrompt', value: 'x' });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to update config via dashboard webhook',
+        expect.objectContaining({
+          guildId: 'guild-error-log',
+          path: 'ai.systemPrompt',
+        }),
+      );
     });
   });
 });
