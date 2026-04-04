@@ -298,6 +298,9 @@ async function handleAuth(ws, msg) {
   // Send historical logs BEFORE registering for real-time broadcast
   // to prevent race where live logs arrive before history and get overwritten
   try {
+    // NOTE: Historical replay is guild-scoped only — channel filtering from a
+    // subsequent filter message applies to the live stream only. Replaying filtered
+    // history on every channel filter change is not worth the complexity for 100 entries.
     const { rows } = await queryLogs({ limit: HISTORY_LIMIT, guildId: ws.guildId || undefined });
     // Reverse so oldest comes first (queryLogs returns DESC order)
     const logs = rows.reverse().map((row) => {

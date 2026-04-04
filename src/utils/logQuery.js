@@ -62,7 +62,7 @@ export async function queryLogs(options = {}) {
       paramIndex++;
     }
 
-    // Guild filter (stored in JSON metadata)
+    // Guild filter (stored in JSON metadata — the logs table has no dedicated guild_id column)
     if (options.guildId) {
       conditions.push(
         `(metadata->>'guildId' = $${paramIndex} OR metadata->>'guild_id' = $${paramIndex})`,

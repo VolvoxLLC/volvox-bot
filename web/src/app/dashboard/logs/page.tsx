@@ -151,7 +151,7 @@ export default function LogsPage() {
             </div>
 
             <div className="relative z-10 border-b border-white/5 bg-white/[0.02] px-8 py-4 backdrop-blur-sm">
-              <LogFilters guildId={guildId} onFilterChange={sendFilter} disabled={status !== 'connected'} />
+              <LogFilters guildId={guildId} onFilterChange={sendFilter} disabled={status !== 'connected'} channels={channels} />
             </div>
 
             <div className="relative z-10 min-h-[30rem] p-4 bg-black/20">

@@ -142,7 +142,6 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     wasMentioned = snapshot.some((m) => m.content?.includes(mentionTag));
     if (classification.classification === 'ignore' && wasMentioned) {
       info('Triage: overriding ignore → respond (bot was @mentioned)', {
-        guildId: snapshot.at(-1)?.guildId,
         channelId,
       });
       classification.classification = 'respond';
@@ -154,7 +153,6 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
 
   if (classification.classification === 'ignore') {
     info('Triage: ignoring channel', {
-      guildId: snapshot.at(-1)?.guildId,
       channelId,
       reasoning: classification.reasoning,
     });
@@ -171,7 +169,6 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     confidence < confidenceThreshold
   ) {
     info('Triage: confidence below threshold, skipping', {
-      guildId: snapshot.at(-1)?.guildId,
       channelId,
       confidence,
       threshold: confidenceThreshold,
@@ -843,14 +840,19 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   // Check if channel is blocked before processing buffered messages.
   // This guards against the case where a channel is blocked AFTER messages
   // were buffered but BEFORE evaluateNow runs.
+  // Also captures guildId for the evaluation log below (avoiding a second fetch).
   const usedClient = evalClient || client;
+  let cachedGuildId = null;
   try {
     const ch = await fetchChannelCached(usedClient, channelId);
-    const guildId = ch?.guildId ?? null;
+    cachedGuildId = ch?.guildId ?? null;
     // Only check parentId for threads - for regular channels, parentId is the category ID
     const parentId = ch?.isThread?.() ? ch.parentId : null;
-    if (isChannelBlocked(channelId, parentId, guildId)) {
-      debug('evaluateNow skipping blocked channel with buffered messages', { channelId, guildId });
+    if (isChannelBlocked(channelId, parentId, cachedGuildId)) {
+      debug('evaluateNow skipping blocked channel with buffered messages', {
+        channelId,
+        guildId: cachedGuildId,
+      });
       return;
     }
   } catch (err) {
@@ -883,9 +885,8 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   buf.abortController = abortController;
 
   try {
-    const guildInfo = await fetchChannelCached(evalClient || client, channelId).catch(() => null);
     info('Triage evaluating', {
-      guildId: guildInfo?.guildId,
+      guildId: cachedGuildId,
       channelId,
       buffered: buf.messages.length,
     });

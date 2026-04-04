@@ -118,6 +118,11 @@ describe('queryLogs', () => {
     const countQuery = mockPool.query.mock.calls[0][0];
     expect(countQuery).toContain("metadata->>'guildId' = $1");
     expect(mockPool.query.mock.calls[0][1]).toEqual(['guild-123']);
+
+    // Data query (second call) should also have guildId filter
+    const dataQuery = mockPool.query.mock.calls[1][0];
+    expect(dataQuery).toContain("metadata->>'guildId' = $1");
+    expect(mockPool.query.mock.calls[1][1]).toContain('guild-123');
   });
 
   it('should escape ILIKE wildcards in search term', async () => {

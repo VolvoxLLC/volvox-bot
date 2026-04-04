@@ -184,6 +184,19 @@ describe('WebSocketTransport', () => {
           filter,
         ),
       ).toBe(false);
+      // Legacy snake_case key should also be accepted
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { guild_id: 'guild-1' } },
+          filter,
+        ),
+      ).toBe(true);
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { guild_id: 'guild-2' } },
+          filter,
+        ),
+      ).toBe(false);
       expect(transport.passesFilter({ level: 'info', message: 'test' }, filter)).toBe(false);
     });
 
@@ -196,6 +209,19 @@ describe('WebSocketTransport', () => {
           filter,
         ),
       ).toBe(true);
+      // Legacy snake_case key should also be accepted
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { channel_id: 'channel-1' } },
+          filter,
+        ),
+      ).toBe(true);
+      expect(
+        transport.passesFilter(
+          { level: 'info', message: 'test', metadata: { channel_id: 'channel-9' } },
+          filter,
+        ),
+      ).toBe(false);
       expect(
         transport.passesFilter(
           { level: 'info', message: 'test', metadata: { channelId: 'channel-9' } },

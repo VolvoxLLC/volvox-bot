@@ -294,8 +294,8 @@ export async function handleReminderSnooze(interaction) {
 
   info('Reminder snoozed', {
     reminderId,
-    guildId: interaction.guildId,
-    channelId: interaction.channelId,
+    guildId: reminder.guild_id,
+    channelId: reminder.channel_id,
     duration,
     userId: interaction.user.id,
   });
@@ -307,7 +307,7 @@ export async function handleReminderSnooze(interaction) {
  * Validates the interaction customId, ensures the database and reminder exist, verifies the invoking user owns the reminder,
  * updates the reminder to `completed = true`, attempts to update the original interaction message to confirm dismissal,
  * and falls back to an ephemeral reply if the update fails. Emits an informational log with `reminderId`, `guildId`,
- * `channelId`, and `userId`.
+ * `channelId` (from the persisted reminder row, not the interaction), and `userId`.
  *
  * @param {import('discord.js').ButtonInteraction} interaction - The button interaction representing the dismiss action.
  */
@@ -353,8 +353,8 @@ export async function handleReminderDismiss(interaction) {
 
   info('Reminder dismissed', {
     reminderId,
-    guildId: interaction.guildId,
-    channelId: interaction.channelId,
+    guildId: reminder.guild_id,
+    channelId: reminder.channel_id,
     userId: interaction.user.id,
   });
 }
