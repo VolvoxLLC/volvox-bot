@@ -35,6 +35,7 @@ vi.mock('../../src/utils/permissions.js', () => ({
 }));
 
 import { adminOnly, data, execute } from '../../src/commands/modlog.js';
+import * as logger from '../../src/logger.js';
 import { getConfig, setConfigValue } from '../../src/modules/config.js';
 import { hasPermission } from '../../src/utils/permissions.js';
 
@@ -207,6 +208,19 @@ describe('modlog command', () => {
       );
 
       expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('disabled'));
+    });
+
+    it('should include channelId in info log when mod logging is disabled', async () => {
+      const interaction = { ...createInteraction('disable'), channelId: 'channel-modlog-test' };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Mod logging disabled',
+        expect.objectContaining({
+          guildId: 'test-guild',
+          channelId: 'channel-modlog-test',
+        }),
+      );
     });
   });
 

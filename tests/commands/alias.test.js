@@ -29,6 +29,7 @@ vi.mock('../../src/modules/commandAliases.js', () => ({
 
 import { adminOnly, data, execute } from '../../src/commands/alias.js';
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 import { addAlias, listAliases, removeAlias } from '../../src/modules/commandAliases.js';
 import { safeReply } from '../../src/utils/safeSend.js';
 
@@ -242,6 +243,38 @@ describe('alias command', () => {
 
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('not found') }),
+      );
+    });
+  });
+
+  // ── channelId logging (PR change) ─────────────────────────────────────────
+
+  describe('channelId included in info logs', () => {
+    function makeInteractionWithChannel(opts = {}) {
+      const base = makeInteraction({ subcommand: 'add', alias: 'w', command: 'warn', ...opts });
+      return { ...base, channelId: 'channel-abc' };
+    }
+
+    it('logs channelId when alias is successfully created', async () => {
+      const interaction = makeInteractionWithChannel();
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Alias created',
+        expect.objectContaining({ channelId: 'channel-abc' }),
+      );
+    });
+
+    it('logs channelId when alias is successfully removed', async () => {
+      const interaction = {
+        ...makeInteraction({ subcommand: 'remove', alias: 'w' }),
+        channelId: 'channel-xyz',
+      };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Alias removed',
+        expect.objectContaining({ channelId: 'channel-xyz' }),
       );
     });
   });

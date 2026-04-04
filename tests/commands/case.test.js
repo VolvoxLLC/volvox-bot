@@ -22,6 +22,7 @@ vi.mock('../../src/logger.js', () => ({
 
 import { adminOnly, data, execute } from '../../src/commands/case.js';
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 
 const mockCaseRow = {
   id: 1,
@@ -298,5 +299,52 @@ describe('case command', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.stringContaining('Failed to execute'),
     );
+  });
+
+  // ── channelId logging (PR change) ─────────────────────────────────────────
+
+  describe('channelId included in info logs', () => {
+    it('logs channelId when case reason is updated', async () => {
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ ...mockCaseRow, log_message_id: null }] }),
+      };
+      getPool.mockReturnValue(mockPool);
+
+      const interaction = {
+        ...createInteraction('reason'),
+        channelId: 'channel-reason-test',
+      };
+      interaction.options.getString = vi.fn().mockReturnValue('Updated reason');
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Case reason updated',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-reason-test',
+        }),
+      );
+    });
+
+    it('logs channelId when case is deleted', async () => {
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [mockCaseRow] }),
+      };
+      getPool.mockReturnValue(mockPool);
+
+      const interaction = {
+        ...createInteraction('delete'),
+        channelId: 'channel-delete-test',
+      };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Case deleted',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-delete-test',
+        }),
+      );
+    });
   });
 });

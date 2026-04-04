@@ -17,6 +17,7 @@ vi.mock('../../src/logger.js', () => ({
 
 import { adminOnly, data, execute } from '../../src/commands/history.js';
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 
 const mockCaseRows = [
   {
@@ -156,5 +157,21 @@ describe('history command', () => {
 
     // Should include 'N/A' or empty string for reason
     expect(interaction.editReply).toHaveBeenCalled();
+  });
+
+  it('should include channelId in info log when history is viewed', async () => {
+    const mockPool = { query: vi.fn().mockResolvedValue({ rows: mockCaseRows }) };
+    getPool.mockReturnValue(mockPool);
+
+    const interaction = { ...createInteraction(), channelId: 'channel-history-test' };
+    await execute(interaction);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'History viewed',
+      expect.objectContaining({
+        guildId: 'guild1',
+        channelId: 'channel-history-test',
+      }),
+    );
   });
 });

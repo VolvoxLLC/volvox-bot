@@ -455,4 +455,181 @@ describe('WebSocket Log Stream', () => {
       expect(getAuthenticatedClientCount()).toBe(0);
     });
   });
+
+  // ── Tests for PR changes ────────────────────────────────────────────────────
+
+  describe('legacy ticket rejection (guild-scoped tickets required)', () => {
+    /**
+     * Generate a legacy 3-part ticket (nonce.expiry.hmac) without a guildId segment.
+     */
+    function makeLegacyTicket(secret = TEST_SECRET, ttlMs = 60_000) {
+      const nonce = randomBytes(16).toString('hex');
+      const expiry = String(Date.now() + ttlMs);
+      const payload = `${nonce}.${expiry}`;
+      const hmac = createHmac('sha256', secret).update(payload).digest('hex');
+      return `${nonce}.${expiry}.${hmac}`;
+    }
+
+    it('should reject a cryptographically valid legacy (3-part) ticket with code 4003', async () => {
+      const { ws } = await connect();
+      const closePromise = waitForClose(ws);
+      sendJson(ws, { type: 'auth', ticket: makeLegacyTicket() });
+      const code = await closePromise;
+      expect(code).toBe(4003);
+    });
+
+    it('should accept guild-scoped (4-part) ticket and reject legacy (3-part) ticket on same server', async () => {
+      // First: guild-scoped ticket must succeed
+      const { ws: ws1, mq: mq1 } = await connect();
+      sendJson(ws1, { type: 'auth', ticket: makeTicket() });
+      const authOk = await mq1.next();
+      expect(authOk.type).toBe('auth_ok');
+      await mq1.next(); // history
+
+      // Second: legacy ticket must fail
+      const { ws: ws2 } = await connect();
+      const closePromise = waitForClose(ws2);
+      sendJson(ws2, { type: 'auth', ticket: makeLegacyTicket() });
+      const code = await closePromise;
+      expect(code).toBe(4003);
+    });
+  });
+
+  describe('guild-scoped filter validation', () => {
+    it('should reject filter with mismatched guildId', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+
+      // Send filter with a different guildId than the one the ticket was bound to
+      sendJson(ws, { type: 'filter', guildId: 'different-guild-id' });
+      const errMsg = await mq.next();
+      expect(errMsg.type).toBe('error');
+      expect(errMsg.message).toBe('Guild filter does not match authenticated guild');
+    });
+
+    it('should accept filter with matching guildId', async () => {
+      const { ws, mq } = await connect();
+      sendJson(ws, { type: 'auth', ticket: makeTicket(TEST_SECRET, 60_000, 'test-guild') });
+      await mq.next(); // auth_ok
+      await mq.next(); // history
+
+      sendJson(ws, { type: 'filter', guildId: 'test-guild', level: 'info' });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.level).toBe('info');
+    });
+
+    it('should accept filter without guildId field (no mismatch check)', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', level: 'warn' });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.level).toBe('warn');
+    });
+  });
+
+  describe('channelIds filter field', () => {
+    it('should include channelIds in filter_ok response when array of strings is provided', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', channelIds: ['ch-1', 'ch-2'] });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.channelIds).toEqual(['ch-1', 'ch-2']);
+    });
+
+    it('should set channelIds to null when empty array is provided', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', channelIds: [] });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.channelIds).toBeNull();
+    });
+
+    it('should filter out non-string entries from channelIds array', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', channelIds: ['ch-1', 42, null, 'ch-3'] });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.channelIds).toEqual(['ch-1', 'ch-3']);
+    });
+
+    it('should set channelIds to null when field is absent', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', level: 'error' });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.channelIds).toBeNull();
+    });
+
+    it('should set channelIds to null when field is not an array', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+
+      sendJson(ws, { type: 'filter', channelIds: 'not-an-array' });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.channelIds).toBeNull();
+    });
+  });
+
+  describe('filter_ok includes guildId from authenticated session', () => {
+    it('should include guildId in filter_ok response matching the ticket guildId', async () => {
+      const { ws, mq } = await connect();
+      sendJson(ws, { type: 'auth', ticket: makeTicket(TEST_SECRET, 60_000, 'my-guild') });
+      await mq.next(); // auth_ok
+      await mq.next(); // history
+
+      sendJson(ws, { type: 'filter', level: 'info' });
+      const resp = await mq.next();
+      expect(resp.type).toBe('filter_ok');
+      expect(resp.filter.guildId).toBe('my-guild');
+    });
+  });
+
+  describe('ws.guildId lifecycle', () => {
+    it('should clear guildId when authenticated client disconnects', async () => {
+      const { ws, mq } = await connect();
+      await authenticate(ws, mq);
+      expect(getAuthenticatedClientCount()).toBe(1);
+
+      const closed = new Promise((r) => ws.once('close', r));
+      ws.close();
+      await closed;
+      await new Promise((r) => setTimeout(r, 50));
+      expect(getAuthenticatedClientCount()).toBe(0);
+    });
+
+    it('should store different guildIds per client', async () => {
+      const { ws: ws1, mq: mq1 } = await connect();
+      sendJson(ws1, { type: 'auth', ticket: makeTicket(TEST_SECRET, 60_000, 'guild-A') });
+      await mq1.next(); // auth_ok
+      await mq1.next(); // history
+
+      const { ws: ws2, mq: mq2 } = await connect();
+      sendJson(ws2, { type: 'auth', ticket: makeTicket(TEST_SECRET, 60_000, 'guild-B') });
+      await mq2.next(); // auth_ok
+      await mq2.next(); // history
+
+      // Verify each client's filter reflects its own guildId
+      sendJson(ws1, { type: 'filter', level: 'debug' });
+      const resp1 = await mq1.next();
+      expect(resp1.filter.guildId).toBe('guild-A');
+
+      sendJson(ws2, { type: 'filter', level: 'debug' });
+      const resp2 = await mq2.next();
+      expect(resp2.filter.guildId).toBe('guild-B');
+
+      expect(getAuthenticatedClientCount()).toBe(2);
+    });
+  });
 });

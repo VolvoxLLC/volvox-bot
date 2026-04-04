@@ -73,6 +73,7 @@ vi.mock('discord.js', () => {
 });
 
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 import { getConfig } from '../../src/modules/config.js';
 import { safeEditReply } from '../../src/utils/safeSend.js';
 
@@ -374,6 +375,67 @@ describe('remind command', () => {
       expect(safeEditReply).toHaveBeenCalledWith(
         interaction,
         expect.objectContaining({ content: expect.stringContaining('#999') }),
+      );
+    });
+
+    it('should include guildId and channelId in warn log when cancel is denied', async () => {
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 5, user_id: 'other-user' }],
+      });
+
+      const interaction = {
+        guildId: 'g1',
+        channelId: 'channel-remind-deny',
+        user: { id: 'u1' },
+        deferReply: vi.fn().mockResolvedValue(undefined),
+        options: {
+          getSubcommand: () => 'cancel',
+          getString: () => null,
+          getInteger: () => 5,
+        },
+      };
+
+      await execute(interaction);
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Reminder cancel permission denied',
+        expect.objectContaining({
+          guildId: 'g1',
+          channelId: 'channel-remind-deny',
+          userId: 'u1',
+          reminderId: 5,
+        }),
+      );
+    });
+
+    it('should include guildId and channelId in info log on successful cancel', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 5, user_id: 'u1', message: 'test' }],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const interaction = {
+        guildId: 'g1',
+        channelId: 'channel-remind-cancel',
+        user: { id: 'u1' },
+        deferReply: vi.fn().mockResolvedValue(undefined),
+        options: {
+          getSubcommand: () => 'cancel',
+          getString: () => null,
+          getInteger: () => 5,
+        },
+      };
+
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Reminder cancelled',
+        expect.objectContaining({
+          guildId: 'g1',
+          channelId: 'channel-remind-cancel',
+          reminderId: 5,
+        }),
       );
     });
 

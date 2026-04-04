@@ -25,6 +25,7 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 import { adminOnly, data, execute } from '../../src/commands/temprole.js';
+import * as logger from '../../src/logger.js';
 import {
   assignTempRole,
   listTempRoles,
@@ -212,6 +213,36 @@ describe('temprole command', () => {
       // editReply called with an embed object (not a string)
       const call = interaction.editReply.mock.calls[0][0];
       expect(call).toHaveProperty('embeds');
+    });
+  });
+
+  // ── channelId logging (PR change) ─────────────────────────────────────────
+
+  describe('channelId in info logs', () => {
+    it('logs channelId when temp role is assigned', async () => {
+      const interaction = { ...createInteraction('assign'), channelId: 'channel-temprole-assign' };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Temp role assigned via command',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-temprole-assign',
+        }),
+      );
+    });
+
+    it('logs channelId when temp role is revoked', async () => {
+      const interaction = { ...createInteraction('revoke'), channelId: 'channel-temprole-revoke' };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Temp role manually revoked',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-temprole-revoke',
+        }),
+      );
     });
   });
 });
