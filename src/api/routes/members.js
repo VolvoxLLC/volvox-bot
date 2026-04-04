@@ -467,7 +467,7 @@ router.get(
       }
       res.json(response);
     } catch (err) {
-      logError('Failed to fetch enriched members', { error: err.message, guild: req.params.id });
+      logError('Failed to fetch enriched members', { error: err.message, guildId: req.params.id });
       res.status(500).json({ error: 'Failed to fetch members' });
     }
   },
