@@ -209,6 +209,7 @@ describe('WebSocket Log Stream', () => {
           message: 'real-time log',
           timestamp: '2026-01-01T00:00:00Z',
           module: 'test',
+          guildId: 'test-guild',
         },
         vi.fn(),
       );
@@ -241,7 +242,12 @@ describe('WebSocket Log Stream', () => {
       expect(filterOk.filter.level).toBe('error');
 
       transport.log(
-        { level: 'error', message: 'error log', timestamp: '2026-01-01T00:00:00Z' },
+        {
+          level: 'error',
+          message: 'error log',
+          timestamp: '2026-01-01T00:00:00Z',
+          guildId: 'test-guild',
+        },
         vi.fn(),
       );
       const logMsg = await mq.next();
@@ -258,11 +264,21 @@ describe('WebSocket Log Stream', () => {
 
       // Info log should be filtered; send error right after to prove it works
       transport.log(
-        { level: 'info', message: 'filtered', timestamp: '2026-01-01T00:00:00Z' },
+        {
+          level: 'info',
+          message: 'filtered',
+          timestamp: '2026-01-01T00:00:00Z',
+          guildId: 'test-guild',
+        },
         vi.fn(),
       );
       transport.log(
-        { level: 'error', message: 'arrives', timestamp: '2026-01-01T00:00:00Z' },
+        {
+          level: 'error',
+          message: 'arrives',
+          timestamp: '2026-01-01T00:00:00Z',
+          guildId: 'test-guild',
+        },
         vi.fn(),
       );
 

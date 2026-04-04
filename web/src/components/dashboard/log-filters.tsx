@@ -137,6 +137,7 @@ export function LogFilters({
     emitFilter({ level: 'all', module: '', search: '', channelIds: [] });
   }, [emitFilter]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: guildId intentionally triggers channel reset on guild switch
   useEffect(() => {
     const {
       level: currentLevel,
