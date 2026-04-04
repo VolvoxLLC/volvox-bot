@@ -241,10 +241,18 @@ function validateTicket(ticket, secret) {
 }
 
 /**
- * Handle auth message. Validates the ticket and sends historical logs.
+ * Authenticate a WebSocket client using a ticket and deliver recent logs.
  *
- * @param {import('ws').WebSocket} ws
- * @param {Object} msg
+ * Validates `msg.ticket`, enforces guild-scoped tickets and client limits, marks the socket as authenticated,
+ * clears the auth timeout, sends an `auth_ok` acknowledgement, transmits up to `HISTORY_LIMIT` historical log
+ * entries scoped to the authenticated guild, and registers the socket with the real-time transport.
+ *
+ * On invalid or legacy tickets the connection is closed with code 4003; when the server is at capacity the
+ * connection is closed with code 4029. Historical log delivery failures are non-fatal and result in an empty
+ * history being sent.
+ *
+ * @param {import('ws').WebSocket} ws - The WebSocket connection to authenticate; mutated to record authentication state and filters.
+ * @param {Object} msg - The incoming message object; expected to contain a `ticket` string.
  */
 async function handleAuth(ws, msg) {
   if (ws.authenticated) {
@@ -316,10 +324,21 @@ async function handleAuth(ws, msg) {
 }
 
 /**
- * Handle filter message. Updates per-client filter.
+ * Update the client's log filter based on a received filter message.
  *
- * @param {import('ws').WebSocket} ws
- * @param {Object} msg
+ * If the connection is not authenticated the message is rejected. If `msg.guildId`
+ * is present it must match the authenticated guild for the connection; otherwise
+ * the message is rejected. On success the connection's `ws.logFilter` is set to
+ * an object with the following shape and an acknowledgment `{ type: 'filter_ok', filter }`
+ * is sent to the client.
+ *
+ * @param {import('ws').WebSocket} ws - The client's WebSocket connection.
+ * @param {Object} msg - Filter message payload.
+ * @param {string} [msg.guildId] - Optional guild id; if provided must match the authenticated guild.
+ * @param {Array<any>} [msg.channelIds] - Optional array whose string entries become `channelIds`; empty or absent results in `null`.
+ * @param {string} [msg.level] - Optional log level to filter by; non-strings become `null`.
+ * @param {string} [msg.module] - Optional module name to filter by; non-strings become `null`.
+ * @param {string} [msg.search] - Optional search string to filter log messages; non-strings become `null`.
  */
 function handleFilter(ws, msg) {
   if (!ws.authenticated) {
@@ -347,9 +366,9 @@ function handleFilter(ws, msg) {
 }
 
 /**
- * Clean up a disconnecting client.
+ * Perform cleanup for a disconnecting WebSocket client: clear its auth timeout, reset authentication state, decrement the authenticated client count, and unregister it from the broadcast transport.
  *
- * @param {import('ws').WebSocket} ws
+ * @param {import('ws').WebSocket} ws - The client WebSocket being cleaned up.
  */
 function cleanupClient(ws) {
   if (ws.authTimeout) {

@@ -161,7 +161,15 @@ async function handleCreate(interaction, pool) {
 }
 
 /**
- * Handle /poll close
+ * Close an existing poll by ID after validating existence and permissions.
+ *
+ * Validates that the specified poll exists in the guild and is not already closed, verifies
+ * that the invoker is the poll author or a moderator, attempts to close the poll, and edits
+ * the deferred interaction reply with success or failure. When permission to close is denied,
+ * a warning is logged containing `guildId`, `channelId`, `userId`, and `pollId`.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction that invoked the command.
+ * @param {{ query: Function }} pool - Database pool/connection with a `query(text, params)` method.
  */
 async function handleClose(interaction, pool) {
   const pollId = interaction.options.getInteger('id');

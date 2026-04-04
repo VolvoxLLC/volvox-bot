@@ -193,12 +193,13 @@ export function buildThreadKey(userId, channelId) {
 }
 
 /**
- * Locate a previously cached thread for the message author in the same channel and prepare it for reuse.
+ * Locate a cached reusable thread for the message author in the same channel and prepare it for reuse.
  *
- * If a valid, non-expired thread is found it will be returned; the function will update the thread's last-active timestamp
- * and attempt to unarchive the thread if necessary. Stale, missing, or inaccessible entries are removed from the cache.
- * @param {import('discord.js').Message} message - The triggering Discord message (used to identify user and channel).
- * @returns {Promise<import('discord.js').ThreadChannel|null>} `ThreadChannel` if a reusable thread was found and prepared, `null` otherwise.
+ * If a thread is found and still within the configured reuse window, ensures the thread is unarchived,
+ * updates its last-active timestamp, and returns it. Stale, missing, archived-but-unrecoverable, or
+ * inaccessible entries are removed from the cache and result in `null`.
+ * @param {import('discord.js').Message} message - The triggering Discord message used to identify the user and channel.
+ * @returns {import('discord.js').ThreadChannel|null} The reusable `ThreadChannel` if found and prepared, `null` otherwise.
  */
 export async function findExistingThread(message) {
   const threadConfig = getThreadConfig(message.guild?.id);
@@ -335,8 +336,11 @@ export async function getOrCreateThread(message, cleanContent) {
 }
 
 /**
- * Internal implementation of getOrCreateThread (without locking).
+ * Attempt to reuse an existing conversation thread for the given message or create a new one.
  * @private
+ * @param {import('discord.js').Message} message - The Discord message that triggered thread lookup/creation.
+ * @param {string} cleanContent - Sanitized message content used to generate a thread name when creating.
+ * @returns {{ thread: import('discord.js').ThreadChannel|null, isNew: boolean }} `thread` is the thread channel or `null` if creation failed; `isNew` is `true` when a new thread was created, `false` when an existing thread was reused or creation failed.
  */
 async function _getOrCreateThreadInner(message, cleanContent) {
   // Try to reuse an existing thread

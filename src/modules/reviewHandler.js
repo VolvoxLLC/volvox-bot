@@ -115,10 +115,14 @@ export function buildClaimButton(reviewId, disabled = false) {
 }
 
 /**
- * Update the embed for a review (after claim or complete).
+ * Update the Discord message embed and claim button to reflect the review's current state.
  *
- * @param {object} review - Updated review row
- * @param {import('discord.js').Client} client
+ * Updates the message identified by `review.message_id` in `review.channel_id` with a rebuilt embed
+ * and a claim button (disabled when the review is not `open`). If the channel or message cannot be
+ * found the function returns silently. Errors during the update are caught and logged.
+ *
+ * @param {object} review - Review row containing at least `id`, `guild_id`, `channel_id`, `message_id`, and `status`.
+ * @param {import('discord.js').Client} client - Discord client used to fetch channels and edit messages.
  */
 export async function updateReviewMessage(review, client) {
   if (!review.message_id || !review.channel_id) return;
@@ -146,9 +150,11 @@ export async function updateReviewMessage(review, client) {
 }
 
 /**
- * Handle a review_claim_<id> button interaction.
+ * Process a claim button interaction to atomically assign the interacting user as the reviewer and update the review's UI and database state.
  *
- * @param {import('discord.js').ButtonInteraction} interaction
+ * Performs a self-claim check, attempts an atomic database update to set the reviewer and change status to `claimed`, optionally creates and records a discussion thread, updates the original review embed and claim button, and replies ephemerally to the user with the outcome.
+ *
+ * @param {import('discord.js').ButtonInteraction} interaction - Button interaction whose `customId` is expected to be in the form `review_claim_<id>`.
  */
 export async function handleReviewClaim(interaction) {
   const reviewId = Number.parseInt(interaction.customId.replace('review_claim_', ''), 10);

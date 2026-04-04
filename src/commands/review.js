@@ -131,7 +131,13 @@ function isValidUrl(str) {
 }
 
 /**
- * Handle /review request
+ * Create a new review request from the interaction, post its embed to the configured (or current) channel, store the message and channel references in the database, and notify the requester.
+ *
+ * Validates the provided URL and returns an error reply if invalid. Inserts a row into `reviews`, selects the target channel using `guildConfig.review?.channelId` (falls back to the interaction channel if missing or not found), sends the review embed with a claim button, updates the review row with `message_id` and `channel_id`, logs the creation, and edits the deferred reply with a success message.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The command interaction containing options, user, and guild context.
+ * @param {import('pg').Pool} pool - Database connection pool for inserting and updating the review row.
+ * @param {Object} guildConfig - Guild configuration object; used to determine the configured review channel (e.g., `guildConfig.review?.channelId`).
  */
 async function handleRequest(interaction, pool, guildConfig) {
   const url = interaction.options.getString('url');
@@ -253,7 +259,15 @@ async function handleList(interaction, pool) {
 }
 
 /**
- * Handle /review complete
+ * Mark a review request as completed after validating existence, status, and reviewer authorization.
+ *
+ * If the review exists and the invoking user is the assigned reviewer, updates the review row to `completed`,
+ * updates the original review message embed, optionally awards reputation XP according to guild config,
+ * logs outcome details, and edits the interaction reply with success or error messages.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The command interaction invoking the completion.
+ * @param {import('pg').Pool} pool - Database connection pool used to query and update review and reputation rows.
+ * @param {Object} guildConfig - Guild-specific configuration (may contain `review.xpReward` and `reputation.enabled`).
  */
 async function handleComplete(interaction, pool, guildConfig) {
   const reviewId = interaction.options.getInteger('id');

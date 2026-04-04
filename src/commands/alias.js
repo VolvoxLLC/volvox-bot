@@ -114,9 +114,11 @@ async function handleList(interaction) {
 }
 
 /**
- * Add a new alias for the current guild.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {import('pg').Pool} pool
+ * Create a new command alias for the guild.
+ *
+ * Validates the requested alias and target command, persists the alias to the database,
+ * and sends an ephemeral reply indicating success or the reason for failure.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The invoking interaction; must include string options `alias` and `command` and be executed in a guild context.
  */
 async function handleAdd(interaction, pool) {
   const alias = interaction.options.getString('alias').toLowerCase().trim();
@@ -203,9 +205,12 @@ async function handleAdd(interaction, pool) {
 }
 
 /**
- * Remove an alias for the current guild.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {import('pg').Pool} pool
+ * Remove a guild-level command alias and notify the user.
+ *
+ * Attempts to remove the specified alias from the guild's alias store, sends an ephemeral reply
+ * with the result, and records success or failure in structured logs.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction that invoked the removal; used for options, guild context, replying, and actor identity.
+ * @param {import('pg').Pool} pool - PostgreSQL connection pool used to perform the alias removal.
  */
 async function handleRemove(interaction, pool) {
   const alias = interaction.options.getString('alias').toLowerCase().trim();

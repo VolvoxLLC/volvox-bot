@@ -31,10 +31,9 @@ let pollInFlight = false;
 let tickCount = 0;
 
 /**
- * Poll for due scheduled messages and send them.
+ * Polls the database for scheduled messages that are due, sends them to their channels, updates each message's scheduling state (disable one-time messages or compute the next run for cron schedules), and runs related maintenance and housekeeping tasks.
  *
- * @param {import('discord.js').Client} client - Discord client
- */
+ * If a poll is already in progress, the function returns immediately without starting a concurrent poll. Errors encountered while sending individual messages or during maintenance are logged but do not throw. */
 async function pollScheduledMessages(client) {
   if (pollInFlight) return;
   pollInFlight = true;

@@ -26,8 +26,10 @@ export const data = new SlashCommandBuilder()
 export const adminOnly = true;
 
 /**
- * Execute the reload command.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Reloads bot configuration, command modules, Discord slash registrations, triage service, and opt-out data; restricted to bot owners.
+ *
+ * Attempts each reload step in sequence and edits an ephemeral reply with an embed summarizing per-step success/failure and total elapsed time.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The slash command interaction that initiated the reload.
  */
 export async function execute(interaction) {
   const config = getConfig(interaction.guildId);

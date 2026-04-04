@@ -33,11 +33,18 @@ interface LogFiltersProps {
 }
 
 /**
- * Filter bar for the log viewer.
+ * Filter bar for the log viewer that manages and emits consolidated log filters.
  *
- * Provides guild-scoped channel selection, level dropdown, module input,
- * and free-text search. Text inputs are debounced before sending the
- * consolidated filter to the WS server.
+ * Manages local UI state for log level, module name, free-text search, and selected channel IDs.
+ * Shows a guild-scoped ChannelSelector when `guildId` is provided. Debounces changes from text
+ * inputs (`module`, `search`) before invoking `onFilterChange`; changes to level or channel
+ * selection are forwarded immediately. When `guildId` changes the channel selection is cleared
+ * and a filter without channel constraints is emitted.
+ *
+ * @param guildId - Guild identifier used to scope channel selection; when `null` the channel selector is hidden
+ * @param onFilterChange - Callback invoked with a consolidated `LogFilter` object reflecting current UI state
+ * @param disabled - When true, disables all controls in the filter bar
+ * @returns The rendered filter bar JSX element
  */
 export function LogFilters({ guildId, onFilterChange, disabled = false }: LogFiltersProps) {
   const [level, setLevel] = useState<LogFilter['level']>('all');

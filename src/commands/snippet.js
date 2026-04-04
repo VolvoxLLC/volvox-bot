@@ -131,7 +131,16 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-// ── Subcommand handlers ────────────────────────────────────────────
+/**
+ * Save a new code snippet for the guild using values from the interaction.
+ *
+ * Validates snippet name and code length, inserts a row into the `snippets`
+ * database table, replies with a success message on completion, and logs the action.
+ * If a snippet with the same name already exists in the guild, replies with a clear error message.
+ * Re-throws any unexpected database errors.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction supplying options and used to send the reply.
+ */
 
 async function handleSave(interaction) {
   const name = interaction.options.getString('name');
@@ -305,6 +314,14 @@ async function handleList(interaction) {
   await safeEditReply(interaction, { embeds: [embed] });
 }
 
+/**
+ * Delete the named snippet from the guild if the requester is the snippet author or a moderator.
+ *
+ * Deletes the snippet row from storage and replies to the interaction with either an error message
+ * (if not found or not authorized) or a confirmation message on success.
+ *
+ * @param {CommandInteraction} interaction - The slash command interaction containing the `name` option and caller context.
+ */
 async function handleDelete(interaction) {
   const name = interaction.options.getString('name');
   const pool = getPool();

@@ -97,7 +97,13 @@ async function rollbackQuietly(client) {
 }
 
 /**
- * Handle /remind me <when> <message>
+ * Schedule a personal reminder for the invoking user based on the provided time and message.
+ *
+ * Parses the time expression, validates it is in the future, enforces the guild's per-user active reminder limit, persists the reminder to the database, and edits the interaction reply with success or an appropriate error message. On failure it logs an error and returns a user-facing failure response.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction that invoked the command; used to read options and reply.
+ * @param {import('pg').Pool} pool - PostgreSQL pool used to obtain a client and persist the reminder.
+ * @param {Object} guildConfig - Guild-specific configuration object (expects `reminders?.maxPerUser` may be present).
  */
 async function handleMe(interaction, pool, guildConfig) {
   const whenInput = interaction.options.getString('when');
@@ -276,7 +282,15 @@ async function handleList(interaction, pool) {
 }
 
 /**
- * Handle /remind cancel <id>
+ * Cancel an active reminder (by ID) belonging to the invoking user.
+ *
+ * Verifies the reminder exists and is not completed, ensures the invoking user is the owner,
+ * marks the reminder completed in the database, edits the interaction reply with the outcome,
+ * and logs the result. If the reminder does not exist or the user does not own it, an appropriate
+ * ephemeral reply is sent instead.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The slash command interaction; must include integer option `id`.
+ * @param {import('pg').Pool} pool - PostgreSQL connection pool used to query and update the reminders table.
  */
 async function handleCancel(interaction, pool) {
   const reminderId = interaction.options.getInteger('id');

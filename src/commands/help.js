@@ -158,6 +158,11 @@ async function handleView(interaction) {
   await safeEditReply(interaction, { embeds: [embed] });
 }
 
+/**
+ * Create a new help topic for the guild after validating moderator permissions and slug format, then reply with success or an error message.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The command interaction for the `/help add` subcommand, containing options `topic`, `title`, and `content`, and the user/guild context.
+ */
 async function handleAdd(interaction) {
   const config = getConfig(interaction.guildId);
   if (!isModerator(interaction.member, config)) {
@@ -205,6 +210,15 @@ async function handleAdd(interaction) {
   await safeEditReply(interaction, `✅ Help topic \`${topic}\` created.`);
 }
 
+/**
+ * Update an existing guild help topic's title and/or content, replying to the interaction with the result.
+ *
+ * Validates moderator permission and that at least one of `title` or `content` is provided via command options.
+ * If the topic exists, updates the stored topic for the current guild and edits the interaction reply with a success message;
+ * if the topic is missing or the caller lacks permission, edits the interaction reply with an appropriate error message.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The command interaction containing `topic` (required), and optional `title` and `content` options; reply is edited by the handler.
+ */
 async function handleEdit(interaction) {
   const config = getConfig(interaction.guildId);
   if (!isModerator(interaction.member, config)) {
@@ -264,6 +278,14 @@ async function handleEdit(interaction) {
   await safeEditReply(interaction, `✅ Help topic \`${topic}\` updated.`);
 }
 
+/**
+ * Remove a help topic from the guild if the invoking user has moderator permissions.
+ *
+ * Deletes the database row matching the guild and the `topic` option supplied on the interaction.
+ * If the caller is not a moderator or no matching topic exists, an appropriate reply is sent instead.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The `/help remove` command interaction; must include a `topic` string option and provide guild, member, channelId, and user context.
+ */
 async function handleRemove(interaction) {
   const config = getConfig(interaction.guildId);
   if (!isModerator(interaction.member, config)) {

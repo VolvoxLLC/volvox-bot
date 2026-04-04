@@ -167,14 +167,12 @@ export function resolveStarboardConfig(config) {
 }
 
 /**
- * Get the star count for a specific emoji on a message.
- * Handles both unicode and custom emoji matching.
- * When emoji is '*', finds the reaction with the highest count.
+ * Determine how many reactions on a message match a given emoji.
  *
- * @param {import('discord.js').Message} message - The message to check
- * @param {string} emoji - The emoji to count (e.g. '⭐'), or '*' for any emoji
- * @param {boolean} selfStarAllowed - Whether to count the author's own reaction
- * @returns {Promise<{count: number, emoji: string}>} The star count and matched emoji
+ * @param {import('discord.js').Message} message - The message whose reactions will be counted.
+ * @param {string} emoji - The emoji to match (e.g., '⭐'); use '*' to select the reaction with the highest count.
+ * @param {boolean} selfStarAllowed - If false, do not count a reaction from the message author.
+ * @returns {{count: number, emoji: string}} `count` is the number of matching reactions (never less than 0); `emoji` is the matched emoji name or `'⭐'` when no reaction matched.
  */
 export async function getStarCount(message, emoji, selfStarAllowed) {
   let reaction = null;
@@ -222,13 +220,12 @@ export async function getStarCount(message, emoji, selfStarAllowed) {
 }
 
 /**
- * Handle a reaction being added to a message.
- * If the star count meets/exceeds the threshold, post or update the starboard embed.
+ * Process an added reaction and create or update a starboard post when the message's star count meets the configured threshold.
  *
- * @param {import('discord.js').MessageReaction} reaction - The reaction
- * @param {import('discord.js').User} user - The user who reacted
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} config - Guild config
+ * @param {import('discord.js').MessageReaction} reaction - The reaction that was added.
+ * @param {import('discord.js').User} user - The user who added the reaction.
+ * @param {import('discord.js').Client} client - The Discord client.
+ * @param {Object} config - Guild configuration object (starboard settings will be resolved from this).
  */
 export async function handleReactionAdd(reaction, user, client, config) {
   const sbConfig = resolveStarboardConfig(config);
@@ -350,13 +347,14 @@ export async function handleReactionAdd(reaction, user, client, config) {
 }
 
 /**
- * Handle a reaction being removed from a message.
- * Updates the starboard embed count, or removes it if below threshold.
+ * Update or remove a starboard post when a reaction is removed from a message.
  *
- * @param {import('discord.js').MessageReaction} reaction - The reaction
- * @param {import('discord.js').User} _user - The user who removed the reaction (unused, kept for API symmetry)
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} config - Guild config
+ * If the recalculated star count is below the configured threshold, deletes the starboard message and its database record; otherwise updates the starboard message's count and embed.
+ *
+ * @param {import('discord.js').MessageReaction} reaction - The reaction that was removed.
+ * @param {import('discord.js').User} _user - The user who removed the reaction (unused, kept for API symmetry).
+ * @param {import('discord.js').Client} client - Discord client instance.
+ * @param {Object} config - Guild configuration object containing starboard settings.
  */
 export async function handleReactionRemove(reaction, _user, client, config) {
   const sbConfig = resolveStarboardConfig(config);

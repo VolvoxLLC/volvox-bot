@@ -73,8 +73,15 @@ export async function execute(interaction) {
 }
 
 /**
- * Handle the assign subcommand.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Assigns a temporary role to a guild member, records the assignment with an expiry, and replies with confirmation.
+ *
+ * Validates the provided duration format and that the target is a guild member; enforces role hierarchy constraints
+ * (bot and moderator cannot assign roles at or above their highest role). On success, the role is added to the member,
+ * a persistent temporary-role record is created with an expiry timestamp, an informational log entry is emitted, and the
+ * interaction is edited with a confirmation including the relative expiry time. On failure, the interaction is edited
+ * with an appropriate error message.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The slash command interaction for `/temprole assign`.
  */
 async function handleAssign(interaction) {
   try {
@@ -159,8 +166,11 @@ async function handleAssign(interaction) {
 }
 
 /**
- * Handle the revoke subcommand.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Revoke an active temporary role assignment and reply with the outcome.
+ *
+ * Finds and marks an active temporary-role record for the specified user and role, attempts to remove the role from the guild member (best-effort), logs the action, and edits the command reply to confirm success or report that no active assignment existed.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction containing `user` and `role` options and context for the guild and moderator.
  */
 async function handleRevoke(interaction) {
   try {

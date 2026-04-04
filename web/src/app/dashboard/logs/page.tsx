@@ -13,7 +13,10 @@ import { useLogStream } from '@/lib/log-ws';
 import { cn } from '@/lib/utils';
 
 /**
- * /dashboard/logs — Real-time log viewer and health monitoring page.
+ * Dashboard page that streams real-time bot logs and displays health and restart history.
+ *
+ * Selects a guild, opens a guild-scoped log stream, loads channel metadata for name resolution,
+ * and renders health information, log filters, and a terminal-style log viewer inside an error boundary.
  */
 export default function LogsPage() {
   const guildId = useGuildSelection();
@@ -32,6 +35,11 @@ export default function LogsPage() {
     const controller = new AbortController();
     const activeGuildId = guildId;
 
+    /**
+     * Fetches the channel list for the currently active guild and updates the local `channels` state with validated entries.
+     *
+     * On HTTP 401 the browser is redirected to `/login`. The state is updated only when the response is OK and the JSON body is an array of objects that match the `DiscordChannel` shape (`id: string`, `name: string`, `type: number`). An in-flight request aborted via its controller is ignored; other errors do not modify state.
+     */
     async function fetchChannels() {
       try {
         const response = await fetch(`/api/guilds/${encodeURIComponent(activeGuildId)}/channels`, {

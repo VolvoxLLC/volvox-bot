@@ -131,7 +131,11 @@ export async function execute(interaction) {
 // ── Subcommand handlers ───────────────────────────────────────────────────────
 
 /**
- * /reactionrole create
+ * Create a reaction-role menu message in the specified text channel and persist its metadata.
+ *
+ * Posts an embed for a new reaction-role menu to the provided channel (or the current channel if none provided), stores the menu record in the database, and edits the interaction reply to confirm creation or report errors (invalid channel, send failure, etc.).
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction containing options: `title` (required), `description` (optional), and `channel` (optional).
  */
 async function handleCreate(interaction) {
   const title = interaction.options.getString('title');
