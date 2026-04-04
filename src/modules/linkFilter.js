@@ -120,7 +120,7 @@ async function alertModChannel(message, config, matchedDomain, reason) {
  *
  * @param {import('discord.js').Message} message - The Discord message to inspect.
  * @param {Object} config - Merged guild configuration object.
- * @returns {{ blocked: boolean, domain?: string }} `blocked: true` and the matched domain or pattern in `domain` when a link was blocked; otherwise `{ blocked: false }`.
+ * @returns {Promise<{ blocked: boolean, domain?: string }>} `blocked: true` and the matched domain or pattern in `domain` when a link was blocked; otherwise `{ blocked: false }`.
  */
 export async function checkLinks(message, config) {
   const lfConfig = config.moderation?.linkFilter ?? {};

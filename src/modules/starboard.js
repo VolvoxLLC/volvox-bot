@@ -172,7 +172,7 @@ export function resolveStarboardConfig(config) {
  * @param {import('discord.js').Message} message - The message whose reactions will be counted.
  * @param {string} emoji - The emoji to match (e.g., '⭐'); use '*' to select the reaction with the highest count.
  * @param {boolean} selfStarAllowed - If false, do not count a reaction from the message author.
- * @returns {{count: number, emoji: string}} `count` is the number of matching reactions (never less than 0); `emoji` is the matched emoji name or `'⭐'` when no reaction matched.
+ * @returns {Promise<{count: number, emoji: string}>} `count` is the number of matching reactions (never less than 0); `emoji` is the matched emoji name or `'⭐'` when no reaction matched.
  */
 export async function getStarCount(message, emoji, selfStarAllowed) {
   let reaction = null;

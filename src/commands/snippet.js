@@ -320,7 +320,7 @@ async function handleList(interaction) {
  * Deletes the snippet row from storage and replies to the interaction with either an error message
  * (if not found or not authorized) or a confirmation message on success.
  *
- * @param {CommandInteraction} interaction - The slash command interaction containing the `name` option and caller context.
+ * @param {import('discord.js').CommandInteraction} interaction - The slash command interaction containing the `name` option and caller context.
  */
 async function handleDelete(interaction) {
   const name = interaction.options.getString('name');
