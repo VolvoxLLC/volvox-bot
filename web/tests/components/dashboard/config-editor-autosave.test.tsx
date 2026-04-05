@@ -338,6 +338,11 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     await user.clear(firstOverrideTextarea);
     await user.type(firstOverrideTextarea, 'Override text');
 
+    const secondOverrideTextarea = getOverrideTextareas()[1] as HTMLTextAreaElement;
+    await user.click(secondOverrideTextarea);
+    await user.clear(secondOverrideTextarea);
+    await user.type(secondOverrideTextarea, 'Second draft');
+
     await act(async () => {
       await Promise.resolve();
     });
@@ -345,19 +350,18 @@ describe('ConfigEditor workspace integration (new architecture)', () => {
     const refreshedFirstOverrideTextarea = getOverrideTextareas()[0] as HTMLTextAreaElement;
 
     expect(refreshedFirstOverrideTextarea).toBe(firstOverrideTextarea);
-    expect(document.activeElement).toBe(refreshedFirstOverrideTextarea);
     expect(refreshedFirstOverrideTextarea).toHaveValue('Override text');
     expect(screen.getAllByText('Override Preview').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Override text/).length).toBeGreaterThan(0);
 
-    fireEvent.change(levelInputs[1], { target: { value: '10' } });
-    const secondOverrideTextarea = getOverrideTextareas()[1] as HTMLTextAreaElement;
+    fireEvent.change(levelInputs[1], { target: { value: '10.7' } });
     fireEvent.change(secondOverrideTextarea, { target: { value: 'Level {{level}}' } });
     const secondOverrideCard = secondOverrideTextarea.closest('.space-y-3');
     expect(secondOverrideCard).not.toBeNull();
 
     await waitFor(() => {
       expect(levelInputs[1]).toHaveValue(10);
+      expect(getOverrideTextareas()[0]).toHaveValue('Override text');
       const previewParagraph = secondOverrideCard?.querySelector('p.whitespace-pre-wrap');
       expect(previewParagraph?.textContent).toContain('Level 10');
     });

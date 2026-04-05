@@ -871,16 +871,19 @@ export function CommunitySettingsSection({
                                 type="number"
                                 min={1}
                                 max={1000}
+                                step={1}
                                 value={entry.level ?? 1}
                                 onChange={(event) => {
                                   const value = parseNumberInput(event.target.value, 1, 1000);
                                   if (value === undefined) return;
+                                  const normalizedValue = Math.floor(value);
                                   updateDraftConfig((prev) => {
                                     const messages = [...(prev.xp?.levelUpDm?.messages ?? [])];
                                     const targetIndex = entry.originalIndex;
                                     const hasDuplicateLevel = messages.some(
                                       (candidate, index) =>
-                                        index !== targetIndex && candidate?.level === value,
+                                        index !== targetIndex &&
+                                        candidate?.level === normalizedValue,
                                     );
                                     if (hasDuplicateLevel) {
                                       return prev;
@@ -888,7 +891,7 @@ export function CommunitySettingsSection({
                                     if (targetIndex !== -1) {
                                       messages[targetIndex] = {
                                         ...messages[targetIndex],
-                                        level: value,
+                                        level: normalizedValue,
                                       };
                                     }
                                     return {
