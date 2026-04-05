@@ -484,13 +484,13 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           {/* Fields */}
           {config.fields.length > 0 && (
             <div className="grid grid-cols-3 gap-2" data-testid="embed-preview-fields">
-              {config.fields.map((field) => {
+              {config.fields.map((field, index) => {
                 const renderedName = renderVariablePreview(field.name);
                 const renderedValue = renderDiscordMarkdown(field.value);
 
                 return (
                   <div
-                    key={field.id ?? `field-${field.name}-${field.value}-${field.inline}`}
+                    key={field.id ?? `field-${index}`}
                     className={cn(field.inline ? 'col-span-1' : 'col-span-3')}
                   >
                     <div className="text-xs font-semibold text-white">
@@ -848,7 +848,7 @@ function EmbedBuilder({ value, onChange, variables = [], className }: EmbedBuild
 
           {value.fields.map((field, i) => (
             <div
-              key={field.id ?? `field-editor-${field.name}-${field.value}-${field.inline}`}
+              key={field.id ?? `field-editor-${i}`}
               className="space-y-2 rounded-md border border-border bg-muted/30 p-3"
             >
               <div className="flex items-center justify-between">
