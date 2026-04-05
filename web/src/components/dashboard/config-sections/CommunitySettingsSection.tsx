@@ -168,12 +168,12 @@ export function CommunitySettingsSection({
   const levelUpDmDefaultMessage = levelUpDm?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE;
   const nextLevelUpDmOverrideLevel = getNextLevelUpDmOverrideLevel(levelUpDm?.messages ?? []);
   const [levelUpDmDefaultDraft, setLevelUpDmDefaultDraft] = useState(levelUpDmDefaultMessage);
-  const [levelUpDmOverrideDrafts, setLevelUpDmOverrideDrafts] = useState<Record<number, string>>(
-    {},
-  );
   const levelUpDmOverrideDraftEntries = useMemo(
     () => levelUpDmMessages.map((entry) => [entry.originalIndex, entry.message ?? ''] as const),
     [levelUpDmMessages],
+  );
+  const [levelUpDmOverrideDrafts, setLevelUpDmOverrideDrafts] = useState<Record<number, string>>(
+    () => Object.fromEntries(levelUpDmOverrideDraftEntries),
   );
 
   useEffect(() => {
@@ -181,7 +181,26 @@ export function CommunitySettingsSection({
   }, [levelUpDmDefaultMessage]);
 
   useEffect(() => {
-    setLevelUpDmOverrideDrafts(Object.fromEntries(levelUpDmOverrideDraftEntries));
+    setLevelUpDmOverrideDrafts((prev) => {
+      const next = { ...prev };
+      const activeKeys = new Set<number>();
+
+      for (const [originalIndex, message] of levelUpDmOverrideDraftEntries) {
+        activeKeys.add(originalIndex);
+        if (!(originalIndex in next)) {
+          next[originalIndex] = message;
+        }
+      }
+
+      for (const key of Object.keys(next)) {
+        const originalIndex = Number(key);
+        if (!activeKeys.has(originalIndex)) {
+          delete next[originalIndex];
+        }
+      }
+
+      return next;
+    });
   }, [levelUpDmOverrideDraftEntries]);
 
   return (
