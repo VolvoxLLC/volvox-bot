@@ -13,7 +13,6 @@ import {
   Trash2,
   Type,
 } from 'lucide-react';
-import Image from 'next/image';
 import * as React from 'react';
 import { generateId } from '@/components/dashboard/config-editor-utils';
 import { Button } from '@/components/ui/button';
@@ -351,6 +350,22 @@ function clampTextToAvailable(text: string, available: number): string {
   return available <= 0 ? '' : text.slice(0, available);
 }
 
+function PreviewImage({
+  src,
+  alt,
+  width,
+  height,
+  className,
+}: {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  className: string;
+}) {
+  return <img src={src} alt={alt} width={width} height={height} className={className} />;
+}
+
 // ── CharCount indicator ─────────────────────────────────────────────
 
 function CharCount({ current, max }: { current: number; max: number }) {
@@ -450,12 +465,11 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
             {config.thumbnailType !== 'none' && (
               <div className="shrink-0">
                 {config.thumbnailType === 'custom' && config.thumbnailUrl ? (
-                  <Image
+                  <PreviewImage
                     src={config.thumbnailUrl}
                     alt="Thumbnail"
                     width={64}
                     height={64}
-                    unoptimized
                     className="h-16 w-16 rounded object-cover"
                   />
                 ) : (
@@ -494,12 +508,11 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           {/* Image */}
           {config.imageUrl && (
             <div className="mt-2">
-              <Image
+              <PreviewImage
                 src={config.imageUrl}
                 alt="Embed"
                 width={1024}
                 height={256}
-                unoptimized
                 className="max-h-64 max-w-full rounded object-contain"
               />
             </div>
@@ -512,12 +525,11 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
               data-testid="embed-preview-footer"
             >
               {config.footerIconUrl && (
-                <Image
+                <PreviewImage
                   src={config.footerIconUrl}
                   alt="Footer icon"
                   width={20}
                   height={20}
-                  unoptimized
                   className="h-5 w-5 rounded-full object-cover"
                 />
               )}
