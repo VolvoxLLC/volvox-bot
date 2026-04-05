@@ -94,12 +94,12 @@ function isValidLevelUpDmTemplate(template: string) {
   return template.trim().length > 0;
 }
 
-function buildLevelUpDmConfig(
+export function buildLevelUpDmConfig(
   current: XpDraft['levelUpDm'] | undefined,
   updates: Partial<XpLevelUpDmDraft>,
 ) {
   return {
-    enabled: current?.enabled ?? true,
+    enabled: current?.enabled ?? false,
     sendOnEveryLevel: current?.sendOnEveryLevel ?? false,
     defaultMessage: current?.defaultMessage ?? DEFAULT_LEVEL_UP_DM_MESSAGE,
     messages: current?.messages ?? [],
