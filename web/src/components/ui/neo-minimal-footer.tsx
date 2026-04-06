@@ -81,7 +81,13 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
           <div className="col-span-1 md:col-span-5 flex flex-col gap-6">
             <div className="flex items-center gap-2.5">
               <div className="relative h-8 w-8 overflow-hidden rounded-lg border border-white/10 shadow-md">
-                <Image src="/icon-192.png" alt="Volvox Logo" fill className="object-cover" />
+                <Image
+                  src="/icon-192.png"
+                  alt="Volvox Logo"
+                  fill
+                  sizes="32px"
+                  className="object-cover"
+                />
               </div>
               <span className="text-2xl font-black tracking-tighter text-foreground font-[family-name:var(--font-mono)]">
                 Volvox

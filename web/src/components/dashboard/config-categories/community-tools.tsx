@@ -9,41 +9,15 @@ import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
-const TABS = [
-  {
-    id: 'community-tools',
-    label: 'Community Tools',
-    icon: Wrench,
-    desc: 'Enable or disable member-facing commands for this guild.',
-  },
-  {
-    id: 'bot-status',
-    label: 'Bot Presence',
-    icon: Activity,
-    desc: 'Set bot presence and rotate status messages.',
-  },
-] as const;
-
 /**
  * Community Tools category — renders community command toggles and bot presence settings.
  */
 export function CommunityToolsCategory() {
-  const { draftConfig, saving, visibleFeatureIds, updateDraftConfig } = useConfigContext();
-
-  const availableTabs = TABS.filter((t) => visibleFeatureIds.has(t.id as ConfigFeatureId));
-  const [activeTab, setActiveTab] = useState<ConfigFeatureId | null>(
-    (availableTabs[0]?.id as ConfigFeatureId) ?? null,
-  );
-
-  useEffect(() => {
-    if (activeTab && !visibleFeatureIds.has(activeTab)) {
-      setActiveTab((availableTabs[0]?.id as ConfigFeatureId) ?? null);
-    }
-  }, [visibleFeatureIds, activeTab, availableTabs]);
+  const { draftConfig, saving, updateDraftConfig, activeTabId } = useConfigContext();
 
   if (!draftConfig) return null;
+  const activeTab = activeTabId;
   if (!activeTab) return null;
-  if (availableTabs.length === 0) return null;
 
   let hasMasterToggle = false;
   let isCurrentFeatureEnabled = false;
@@ -64,9 +38,7 @@ export function CommunityToolsCategory() {
 
   return (
     <ConfigCategoryLayout
-      tabs={availableTabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
+      featureId={activeTab}
       toggle={
         hasMasterToggle
           ? {

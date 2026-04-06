@@ -17,6 +17,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useConfigContext } from '@/components/dashboard/config-context';
+import { ConfigSearch } from '@/components/dashboard/config-workspace/config-search';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { GithubIcon } from '@/components/ui/github-icon';
@@ -206,11 +208,19 @@ export function Header() {
     }
   }, [session?.error]);
 
+  const {
+    activeCategoryId,
+    searchQuery,
+    searchResults,
+    handleSearchChange,
+    handleSearchSelect,
+  } = useConfigContext();
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-background/20 transition-all duration-300 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.2)]">
       <div className="mx-auto flex h-14 w-full items-center gap-4 px-2 md:px-4">
         <MobileSidebar />
-        <div className="flex min-w-0 items-center gap-3.5">
+        <div className="flex min-w-0 shrink-0 items-center gap-3.5">
           <div className="group relative flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/80 to-secondary/80 p-[1px] shadow-lg shadow-primary/5 transition-all hover:scale-105 active:scale-95">
             <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-background/20 backdrop-blur-sm overflow-hidden">
               <Image
@@ -218,6 +228,7 @@ export function Header() {
                 alt="Volvox Logo"
                 width={192}
                 height={192}
+                sizes="36px"
                 className="h-full w-full drop-shadow-sm"
               />
             </div>
@@ -247,6 +258,18 @@ export function Header() {
             </div>
           </div>
         </div>
+
+        {/* Dynamic Search Bar for Settings */}
+        {activeCategoryId && (
+          <div className="flex-1 max-w-xl mx-auto hidden lg:block">
+            <ConfigSearch
+              value={searchQuery}
+              onChange={handleSearchChange}
+              results={searchResults}
+              onSelect={handleSearchSelect}
+            />
+          </div>
+        )}
 
         {isDashboard && (
           <div className="flex items-center gap-2">
@@ -610,24 +633,13 @@ export function Header() {
 
                     <DropdownMenuItem asChild>
                       <a
-                        href="https://docs.volvox.bot"
+                        href="https://doc.volvox.bot"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2"
                       >
                         <BookOpen className="h-4 w-4 opacity-60" />
                         <span className="text-xs font-bold tracking-tight">Documentation</span>
-                      </a>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <a
-                        href="https://github.com/VolvoxLLC"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2"
-                      >
-                        <GithubIcon className="h-4 w-4 opacity-60" />
-                        <span className="text-xs font-bold tracking-tight">GitHub</span>
                       </a>
                     </DropdownMenuItem>
                   </div>

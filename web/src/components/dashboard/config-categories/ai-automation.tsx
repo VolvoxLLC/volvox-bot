@@ -1,7 +1,7 @@
 'use client';
 
 import { Bot, BrainCircuit, ListChecks, ShieldAlert } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';
@@ -14,62 +14,29 @@ import { SystemPromptEditor } from '../system-prompt-editor';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
-const TABS = [
-  {
-    id: 'ai-chat',
-    label: 'AI Chat',
-    icon: Bot,
-    desc: 'Configure conversational AI models & behavior.',
-  },
-  {
-    id: 'ai-automod',
-    label: 'Content Safety',
-    icon: ShieldAlert,
-    desc: 'Real-time message analysis & mitigation.',
-  },
-  {
-    id: 'triage',
-    label: 'Triage',
-    icon: ListChecks,
-    desc: 'Advanced classifier & responder orchestration.',
-  },
-  {
-    id: 'memory',
-    label: 'Memory',
-    icon: BrainCircuit,
-    desc: 'Configure contextual storage & retrieval.',
-  },
-] as const;
-
+/**
+ * AI & Automation category — managing chat, automod, triage, and memory.
+ */
 export function AiAutomationCategory() {
-  const { draftConfig, saving, guildId, visibleFeatureIds, updateDraftConfig } = useConfigContext();
+  const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
-  const availableTabs = TABS.filter((t) => visibleFeatureIds.has(t.id as ConfigFeatureId));
-  const [activeTab, setActiveTab] = useState<ConfigFeatureId | null>(
-    (availableTabs[0]?.id as ConfigFeatureId) ?? null,
+  const activeTab = activeTabId as ConfigFeatureId | null;
+
+  const updateAiField = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => ({
+        ...prev,
+        ai: { ...prev.ai, [field]: value },
+      }));
+    },
+    [updateDraftConfig],
   );
-
-  useEffect(() => {
-    if (activeTab && !visibleFeatureIds.has(activeTab)) {
-      setActiveTab((availableTabs[0]?.id as ConfigFeatureId) ?? null);
-    }
-  }, [visibleFeatureIds, activeTab, availableTabs]);
 
   const updateSystemPrompt = useCallback(
     (value: string) => {
       updateDraftConfig((prev) => ({
         ...prev,
         ai: { ...prev.ai, systemPrompt: value },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
-  const updateAiEnabled = useCallback(
-    (enabled: boolean) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        ai: { ...prev.ai, enabled },
       }));
     },
     [updateDraftConfig],
@@ -137,16 +104,6 @@ export function AiAutomationCategory() {
     [updateDraftConfig],
   );
 
-  const updateTriageEnabled = useCallback(
-    (enabled: boolean) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        triage: { ...prev.triage, enabled },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
   const updateTriageField = useCallback(
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => ({
@@ -171,25 +128,25 @@ export function AiAutomationCategory() {
   if (!activeTab) return null;
 
   let isCurrentFeatureEnabled = false;
-  if (activeTab === 'ai-chat') isCurrentFeatureEnabled = draftConfig.ai?.enabled ?? false;
-  else if (activeTab === 'ai-automod')
-    isCurrentFeatureEnabled = Boolean(draftConfig.aiAutoMod?.enabled);
-  else if (activeTab === 'triage') isCurrentFeatureEnabled = draftConfig.triage?.enabled ?? false;
-  else if (activeTab === 'memory') isCurrentFeatureEnabled = draftConfig.memory?.enabled ?? false;
+  let handleToggleCurrentFeature = (_v: boolean) => {};
 
-  const handleToggleCurrentFeature = (v: boolean) => {
-    if (activeTab === 'ai-chat') updateAiEnabled(v);
-    else if (activeTab === 'ai-automod') updateAiAutoModField('enabled', v);
-    else if (activeTab === 'triage') updateTriageEnabled(v);
-    else if (activeTab === 'memory') updateMemoryField('enabled', v);
-  };
+  if (activeTab === 'ai-chat') {
+    isCurrentFeatureEnabled = draftConfig.ai?.enabled ?? true;
+    handleToggleCurrentFeature = (v) => updateAiField('enabled', v);
+  } else if (activeTab === 'ai-automod') {
+    isCurrentFeatureEnabled = draftConfig.aiAutoMod?.enabled ?? false;
+    handleToggleCurrentFeature = (v) => updateAiAutoModField('enabled', v);
+  } else if (activeTab === 'triage') {
+    isCurrentFeatureEnabled = draftConfig.triage?.enabled ?? true;
+    handleToggleCurrentFeature = (v) => updateTriageField('enabled', v);
+  } else if (activeTab === 'memory') {
+    isCurrentFeatureEnabled = draftConfig.memory?.enabled ?? true;
+    handleToggleCurrentFeature = (v) => updateMemoryField('enabled', v);
+  }
 
   return (
     <ConfigCategoryLayout
-      tabs={availableTabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      headerTitle={`${availableTabs.find((tab) => tab.id === activeTab)?.label ?? ''} Settings`}
+      featureId={activeTab}
       toggle={{
         checked: isCurrentFeatureEnabled,
         onChange: handleToggleCurrentFeature,

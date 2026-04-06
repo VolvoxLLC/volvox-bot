@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { SettingsTabs } from '@/components/dashboard/settings-tabs';
 import { AnalyticsProvider } from '@/contexts/analytics-context';
 import { DashboardTitleSync } from './dashboard-title-sync';
 import { Header } from './header';
@@ -33,7 +32,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
           <main className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
             <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-8 lg:px-10">
-              <SettingsTabs />
               <div className="dashboard-fade-in pb-12">{children}</div>
             </div>
           </main>

@@ -2,9 +2,8 @@
 
 import { Loader2 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef } from 'react';
-import { ConfigProvider, useConfigContext } from '@/components/dashboard/config-context';
+import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_CATEGORIES } from '@/components/dashboard/config-workspace/config-categories';
-import { ConfigSearch } from '@/components/dashboard/config-workspace/config-search';
 import { Button } from '@/components/ui/button';
 import { ConfigDiffModal } from './config-diff-modal';
 import { FloatingSaveIsland } from './floating-save-island';
@@ -14,11 +13,7 @@ import { FloatingSaveIsland } from './floating-save-island';
  * Wraps children in ConfigProvider and renders persistent save chrome.
  */
 export function ConfigLayoutShell({ children }: { children: ReactNode }) {
-  return (
-    <ConfigProvider>
-      <ConfigLayoutInner>{children}</ConfigLayoutInner>
-    </ConfigProvider>
-  );
+  return <ConfigLayoutInner>{children}</ConfigLayoutInner>;
 }
 
 /** Inner layout that consumes the config context. */
@@ -141,43 +136,11 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
 
   // ── Editor UI ──────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* Category header with search — only on category pages */}
-      {activeCategory && (
-        <div className="relative overflow-hidden rounded-[32px] border border-border bg-muted/10 dark:bg-white/[0.02] p-8 shadow-2xl backdrop-blur-md">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="h-px w-8 bg-primary/40" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
-                  Settings Category
-                </span>
-              </div>
-              <h2 className="text-3xl font-black tracking-tight text-foreground/90">
-                {activeCategory.label}
-              </h2>
-              <p className="text-sm font-medium text-muted-foreground max-w-md leading-relaxed">
-                {activeCategory.description}
-              </p>
-            </div>
-            <div className="w-full md:w-80 lg:w-96">
-              <ConfigSearch
-                value={searchQuery}
-                onChange={handleSearchChange}
-                results={searchResults}
-                onSelect={handleSearchSelect}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Route content — full-width, no sidebar grid */}
-      <div className="space-y-4">{children}</div>
-
-      {/* Floating save island */}
-      <FloatingSaveIsland />
+    <div className="relative px-4 md:px-0">
+      {/* Main Feature Content */}
+      <div className="space-y-8">
+        {children}
+      </div>
 
       {savedConfig && (
         <ConfigDiffModal
@@ -191,6 +154,9 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
           saving={saving}
         />
       )}
+
+      {/* Floating save island */}
+      <FloatingSaveIsland />
     </div>
   );
 }

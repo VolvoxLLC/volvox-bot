@@ -32,7 +32,7 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGlowCard } from '@/hooks/use-glow-card';
@@ -673,7 +673,7 @@ export function AnalyticsDashboard() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <DashboardCard>
+        <DashboardCard className="xl:col-span-6">
           <div className="mb-6">
             <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
               Message Volume
@@ -867,7 +867,7 @@ export function AnalyticsDashboard() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <DashboardCard>
+        <DashboardCard className="xl:col-span-6">
           <div className="mb-6">
             <h2 className="text-sm font-semibold tracking-wide text-foreground/90">Top Channels</h2>
             <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
@@ -937,7 +937,7 @@ export function AnalyticsDashboard() {
           </div>
         </DashboardCard>
 
-        <DashboardCard>
+        <DashboardCard className="xl:col-span-6">
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
@@ -1075,10 +1075,11 @@ export function AnalyticsDashboard() {
           </div>
         </div>
         <div className="overflow-x-auto pb-2">
-          <div
-            className="grid w-full gap-[4px]"
-            style={{ gridTemplateColumns: `32px repeat(24, 1fr)` }}
-          >
+          <TooltipProvider delayDuration={0}>
+            <div
+              className="grid w-full gap-[4px]"
+              style={{ gridTemplateColumns: 'minmax(32px, auto) repeat(24, 1fr)' }}
+            >
             {/* Hour labels row */}
             <div />
             {HOURS.map((hour) => (
@@ -1119,9 +1120,13 @@ export function AnalyticsDashboard() {
                           }
                         />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-[11px] font-medium tabular-nums">
-                        {day} {String(hour).padStart(2, '0')}:00 — {value} message
-                        {value !== 1 ? 's' : ''}
+                      <TooltipContent side="top" className="flex flex-col gap-0.5 px-3 py-1.5 backdrop-blur-xl">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                          {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex]}
+                        </span>
+                        <span className="text-xs font-bold tabular-nums">
+                          {String(hour).padStart(2, '0')}:00 — {formatNumber(value)} message{value !== 1 ? 's' : ''}
+                        </span>
                       </TooltipContent>
                     </Tooltip>
                   );
@@ -1129,8 +1134,9 @@ export function AnalyticsDashboard() {
               </React.Fragment>
             ))}
           </div>
-        </div>
-      </DashboardCard>
+        </TooltipProvider>
+      </div>
+    </DashboardCard>
     </div>
   );
 }

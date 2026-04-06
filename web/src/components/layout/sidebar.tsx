@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  ArrowLeft,
   ClipboardList,
   Clock,
   LayoutDashboard,
@@ -15,9 +16,13 @@ import {
   Ticket,
   Users,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType } from 'react';
+import { useConfigContext } from '@/components/dashboard/config-context';
+import { CONFIG_NAVIGATION } from '@/components/dashboard/config-workspace/navigation';
+import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { cn } from '@/lib/utils';
 import { ServerSelector } from './server-selector';
@@ -116,39 +121,143 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
   const _guildId = useGuildSelection();
+  const { activeCategoryId, activeTabId, setActiveCategoryId, setActiveTabId } = useConfigContext();
+
+  const isSettingsMode = pathname.startsWith('/dashboard/settings');
+
   const isNavItemActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
 
   return (
-    <div className={cn('flex h-full flex-col', className)}>
-      {/* Server Selector Island - Sticky Top */}
+    <div className={cn('flex h-full flex-col overflow-y-auto scrollbar-none', className)}>
       <div className="sticky top-0 z-20 shrink-0 bg-gradient-to-b from-background via-background/90 to-transparent px-4 pt-6 pb-2">
-        <ServerSelector />
+        {isSettingsMode ? (
+          /* Back to Dashboard Button */
+          <Link
+            href="/dashboard"
+            onClick={onNavClick}
+            className="group relative flex h-14 w-full items-center gap-3 overflow-hidden rounded-[20px] px-4 transition-all active:scale-[0.98] bg-card/40 border border-border/40 backdrop-blur-xl shadow-lg hover:bg-card/60 hover:border-primary/30"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:-translate-x-0.5">
+              <ArrowLeft className="h-4 w-4" />
+            </div>
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60 leading-none mb-1">
+                Exit Settings
+              </span>
+              <span className="text-sm font-bold text-foreground leading-none">Dashboard</span>
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Link>
+        ) : (
+          /* Server Selector island */
+          <ServerSelector />
+        )}
       </div>
 
-      <div className="flex-1 px-4 py-4 flex flex-col gap-5">
-        {navGroups.map((group) => (
-          <div
-            key={group.label}
-            className="flex flex-col gap-1.5 rounded-[24px] bg-card/20 border border-border/30 shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.02)] relative overflow-hidden p-2"
-          >
-            <div className="flex items-center gap-2 px-3 pb-1 pt-2 relative z-10">
-              <group.icon className="h-3.5 w-3.5 text-primary/60" />
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">
-                {group.label}
-              </span>
-            </div>
-            <nav className="flex flex-col space-y-0.5 relative z-10">
-              {group.items.map((item) =>
-                renderNavItem(item, isNavItemActive(item.href), onNavClick),
-              )}
-            </nav>
-            {/* Subtle glow behind the island if active item exists inside */}
-            {group.items.some((item) => isNavItemActive(item.href)) && (
-              <div className="absolute top-0 right-0 h-24 w-24 -translate-y-8 translate-x-8 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
-            )}
+      <div className="px-4 py-4 flex flex-col gap-5">
+        {isSettingsMode ? (
+          /* Settings Navigation Tree */
+          <div className="space-y-4 shrink-0">
+            {CONFIG_NAVIGATION.map((category) => {
+              const isActive = activeCategoryId === category.id;
+              const Icon = category.icon;
+
+              return (
+                <div key={category.id} className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCategoryId(category.id);
+                      if (category.tabs.length > 0) {
+                        setActiveTabId(category.tabs[0].id);
+                      }
+                    }}
+                    className={cn(
+                      'group relative flex w-full items-center gap-3 rounded-[18px] p-2 transition-all duration-300',
+                      isActive
+                        ? 'bg-primary/5 text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border border-primary/20'
+                        : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground border border-transparent',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-300',
+                        isActive ? 'bg-primary/20 text-primary shadow-sm' : 'bg-muted/40 text-muted-foreground/60 group-hover:bg-muted/60 group-hover:text-foreground',
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-bold truncate">{category.label}</span>
+                    {isActive && (
+                      <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {isActive && category.tabs.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                        animate={{ opacity: 1, height: 'auto', marginTop: 4 }}
+                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                        transition={{ duration: 0.3, ease: 'circOut' }}
+                        className="overflow-hidden bg-muted/10 rounded-[18px] border border-border/30 mx-1 px-1.5 py-1.5"
+                      >
+                        <div className="flex flex-col gap-1">
+                          {category.tabs.map((tab) => {
+                            const isTabActive = activeTabId === tab.id;
+                            const TabIcon = tab.icon;
+
+                            return (
+                              <button
+                                type="button"
+                                key={tab.id}
+                                onClick={() => setActiveTabId(tab.id as ConfigFeatureId)}
+                                className={cn(
+                                  'flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11.5px] font-semibold transition-all duration-200',
+                                  isTabActive
+                                    ? 'bg-primary/20 text-primary'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
+                                )}
+                              >
+                                <TabIcon className={cn('h-3.5 w-3.5', isTabActive ? 'text-primary' : 'text-muted-foreground/50')} />
+                                <span className={cn('truncate', isTabActive ? 'font-bold' : '')}>{tab.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </div>
-        ))}
+        ) : (
+          /* Standard Navigation Groups */
+          navGroups.map((group) => (
+            <div
+              key={group.label}
+              className="flex flex-col gap-1.5 rounded-[24px] bg-card/20 border border-border/30 shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.02)] relative overflow-hidden p-2 shrink-0"
+            >
+              <div className="flex items-center gap-2 px-3 pb-1 pt-2 relative z-10">
+                <group.icon className="h-3.5 w-3.5 text-primary/60" />
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">
+                  {group.label}
+                </span>
+              </div>
+              <nav className="flex flex-col space-y-0.5 relative z-10">
+                {group.items.map((item) =>
+                  renderNavItem(item, isNavItemActive(item.href), onNavClick),
+                )}
+              </nav>
+              {/* Subtle glow behind the island if active item exists inside */}
+              {group.items.some((item) => isNavItemActive(item.href)) && (
+                <div className="absolute top-0 right-0 h-24 w-24 -translate-y-8 translate-x-8 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       {/* Support Island - Fixed Bottom Solid Button */}

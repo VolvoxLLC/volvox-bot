@@ -11,38 +11,12 @@ import { RoleSelector } from '@/components/ui/role-selector';
 import { cn } from '@/lib/utils';
 import { ConfigCategoryLayout } from './config-category-layout';
 
-const TABS = [
-  {
-    id: 'tickets',
-    label: 'Tickets',
-    icon: Ticket,
-    desc: 'Configure support ticket routing and lifecycle limits.',
-  },
-  {
-    id: 'github-feed',
-    label: 'GitHub Feed',
-    icon: GithubIcon,
-    desc: 'Post repository updates into a Discord channel.',
-  },
-] as const;
-
 export function SupportIntegrationsCategory() {
-  const { draftConfig, saving, guildId, visibleFeatureIds, updateDraftConfig } = useConfigContext();
-
-  const availableTabs = TABS.filter((t) => visibleFeatureIds.has(t.id as ConfigFeatureId));
-  const [activeTab, setActiveTab] = useState<ConfigFeatureId | null>(
-    (availableTabs[0]?.id as ConfigFeatureId) ?? null,
-  );
-
-  useEffect(() => {
-    if (activeTab && !visibleFeatureIds.has(activeTab)) {
-      setActiveTab((availableTabs[0]?.id as ConfigFeatureId) ?? null);
-    }
-  }, [visibleFeatureIds, activeTab, availableTabs]);
+  const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
   if (!draftConfig) return null;
+  const activeTab = activeTabId;
   if (!activeTab) return null;
-  if (availableTabs.length === 0) return null;
 
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};
@@ -65,9 +39,7 @@ export function SupportIntegrationsCategory() {
 
   return (
     <ConfigCategoryLayout
-      tabs={availableTabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
+      featureId={activeTab}
       toggle={{
         checked: isCurrentFeatureEnabled,
         onChange: handleToggleCurrentFeature,

@@ -1,361 +1,269 @@
 'use client';
 
-import {
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-  useTransform,
-} from 'framer-motion';
-import { Activity, Bot, Shield, Sparkles, Terminal } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useRef } from 'react';
-import { GetStartedButton } from '@/components/ui/get-started-button';
+import { useGSAP } from '@gsap/react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Bot, Command } from 'lucide-react';
+import { useMemo, useRef } from 'react';
 import { getBotInviteUrl } from '@/lib/discord';
 
-// ─── 3D Floating Widget Wrapper ──────────────────────────────────────────────
+gsap.registerPlugin(ScrollTrigger);
 
-interface FloatingWidgetProps {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-  depth?: number;
-  floatDuration?: number;
-  floatAmount?: number;
-}
-
-function FloatingWidget({
-  children,
-  className = '',
-  delay = 0,
-  depth = 1,
-  floatDuration = 6,
-  floatAmount = 15,
-}: FloatingWidgetProps) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  // Subtle rotation to avoid "messed up" look
-  const rotateX = useTransform(y, [-500, 500], [8 * depth, -8 * depth]);
-  const rotateY = useTransform(x, [-500, 500], [-8 * depth, 8 * depth]);
-
-  const springConfig = { damping: 30, stiffness: 100, mass: 0.5 };
-  const springRotateX = useSpring(rotateX, springConfig);
-  const springRotateY = useSpring(rotateY, springConfig);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      x.set(e.clientX - window.innerWidth / 2);
-      y.set(e.clientY - window.innerHeight / 2);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [x, y]);
-
+// ─── BACKGROUND ─────────────────────────────────────────
+export function PrismaticBackground() {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: 30 }}
-      animate={{
-        opacity: 1,
-        scale: 1,
-        y: [0, -floatAmount, 0],
-      }}
-      transition={{
-        opacity: { duration: 0.8, delay },
-        scale: { duration: 0.8, delay },
-        y: {
-          duration: floatDuration,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: delay * 0.5,
-        },
-      }}
-      style={{
-        rotateX: springRotateX,
-        rotateY: springRotateY,
-        transformStyle: 'preserve-3d',
-      }}
-      className={`absolute z-20 perspective-1000 ${className}`}
-    >
-      <div className="glass-morphism-premium rounded-3xl p-5 md:p-6 relative overflow-visible group border-white/5 shadow-2xl preserve-3d">
-        <div className="glass-reflection group-hover:translate-x-full transition-transform duration-1000 ease-in-out opacity-30" />
-        <div className="relative z-10 preserve-3d">{children}</div>
-      </div>
-    </motion.div>
-  );
-}
+    <div className="absolute inset-0 -z-10 bg-background overflow-hidden">
+      {/* Prismatic Shard */}
+      <div className="hero-parallax-deep absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] h-[500px] -rotate-12 bg-gradient-to-r from-primary/20 via-secondary/15 to-transparent blur-[120px] opacity-40 dark:opacity-30 pointer-events-none" />
 
-// ─── Sub-Widgets ─────────────────────────────────────────────────────────────
+      {/* Grid Overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
+            linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
 
-function ChatWidget() {
-  return (
-    <div className="w-60 md:w-72 space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--primary))] shadow-[0_0_10px_hsla(var(--primary),0.5)] animate-pulse" />
-        <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[hsl(var(--primary))]/90">
-          Neural Engine
-        </span>
+      {/* Grain Overlay */}
+      <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.08] pointer-events-none mix-blend-overlay">
+        <svg
+          viewBox="0 0 200 200"
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-full h-full opacity-50"
+          aria-hidden="true"
+        >
+          <title>Noise Texture</title>
+          <filter id="noiseFilter">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.65"
+              numOctaves="3"
+              stitchTiles="stitch"
+            />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+        </svg>
       </div>
-      <div className="space-y-3">
-        <div className="flex gap-3 items-start">
-          <div className="w-8 h-8 rounded-xl bg-[hsl(var(--secondary))]/20 flex items-center justify-center shrink-0 border border-[hsl(var(--secondary))]/10">
-            <Sparkles className="w-4 h-4 text-[hsl(var(--secondary))]" />
-          </div>
-          <div className="bg-[hsl(var(--card))]/50 rounded-2xl rounded-tl-none p-3 text-[12px] leading-relaxed text-[hsl(var(--foreground))]/70 border border-[hsl(var(--border))]/30 backdrop-blur-sm">
-            Summarize the raid attempt that happened tonight.
-          </div>
-        </div>
-        <div className="flex gap-3 items-start justify-end">
-          <div className="bg-[hsl(var(--primary))]/10 rounded-2xl rounded-tr-none p-3 text-[12px] leading-relaxed text-[hsl(var(--primary))] border border-[hsl(var(--primary))]/20 backdrop-blur-sm">
-            I've identified 14 accounts involved in spamming. All have been quarantined.
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-[hsl(var(--primary))]/20 flex items-center justify-center shrink-0 border border-[hsl(var(--primary))]/10">
-            <Bot className="w-4 h-4 text-[hsl(var(--primary))]" />
-          </div>
-        </div>
-      </div>
+
+      {/* Vignette */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,hsl(var(--background))_100%)] pointer-events-none" />
     </div>
   );
 }
 
-function ModWidget() {
+// ─── DATA THREADS ──────────────────────────────────────
+function DataThreads() {
+  const threads = useMemo(
+    () =>
+      Array.from({ length: 8 }).map((_, i) => ({
+        id: i,
+        left: `${10 + i * 11.5}%`,
+        delay: Math.random() * 5,
+        duration: 8 + Math.random() * 10,
+      })),
+    [],
+  );
+
   return (
-    <div className="w-64 md:w-80 space-y-4">
-      <div className="flex items-center justify-between border-b border-border/30 pb-3">
-        <div className="flex items-center gap-2.5">
-          <Shield className="w-5 h-5 text-foreground" />
-          <span className="text-sm font-black tracking-tight text-foreground/90 font-[family-name:var(--font-mono)]">
-            SENTRY AUTO-MOD
-          </span>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+      {threads.map((t) => (
+        <div
+          key={`thread-${t.id}`}
+          className="absolute top-0 bottom-0 w-[1px] bg-foreground/[0.03] dark:bg-white/[0.03]"
+          style={{ left: t.left }}
+        >
+          <motion.div
+            initial={{ top: '-10%' }}
+            animate={{ top: '110%' }}
+            transition={{
+              duration: t.duration,
+              repeat: Infinity,
+              ease: 'linear',
+              delay: t.delay,
+            }}
+            className="absolute left-1/2 -translate-x-1/2 w-[2px] h-24 bg-gradient-to-b from-transparent via-primary/40 to-transparent blur-[1px]"
+          />
         </div>
-        <div className="px-2 py-1 text-foreground rounded-lg bg-accent/10 border border-accent/20 text-[10px] text-accent tracking-tighter">
-          ACTIVE
-        </div>
-      </div>
-      <div className="space-y-2.5">
-        {[
-          { user: 'SpamBot#1234', action: 'Banned', time: '2m ago' },
-          { user: 'ToxicUser#99', action: 'Muted', time: '12m ago' },
-        ].map((log) => (
-          <div
-            key={log.user}
-            className="flex items-center justify-between bg-card/60 rounded-xl px-3 py-2.5 border border-border/40 hover:border-primary/30 transition-colors"
-          >
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold text-foreground">{log.user}</span>
-              <span className="text-[9px] text-foreground font-medium">{log.time}</span>
-            </div>
-            <span className="text-[10px] text-primary uppercase tracking-widest">{log.action}</span>
-          </div>
-        ))}
-      </div>
+      ))}
     </div>
   );
 }
 
-function StatsWidget() {
-  return (
-    <div className="w-52 md:w-64">
-      <div className="flex items-center gap-3 mb-6">
-        <Activity className="w-5 h-5 text-[hsl(var(--primary))]" />
-        <span className="text-sm font-black tracking-tight text-[hsl(var(--foreground))]/90">
-          LIVE METRICS
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-6">
-        <div className="space-y-1">
-          <div className="text-[9px] text-[hsl(var(--muted-foreground))] font-black uppercase tracking-widest">
-            Global Reach
-          </div>
-          <div className="text-2xl font-black text-[hsl(var(--foreground))] tracking-tighter">
-            8.2M+
-          </div>
-        </div>
-        <div className="space-y-1">
-          <div className="text-[9px] text-[hsl(var(--muted-foreground))] font-black uppercase tracking-widest">
-            Latency
-          </div>
-          <div className="text-2xl font-black text-[hsl(var(--primary))] tracking-tighter">
-            14ms
-          </div>
-        </div>
-      </div>
-      <div className="mt-6 h-1.5 w-full bg-[hsl(var(--muted))]/30 rounded-full overflow-hidden border border-[hsl(var(--border))]/20">
-        <motion.div
-          className="h-full bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--secondary))]"
-          initial={{ width: 0 }}
-          animate={{ width: '88%' }}
-          transition={{ duration: 2.5, delay: 1, ease: 'circOut' }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Hero ───────────────────────────────────────────────────────────────
-
+// ─── MAIN HERO ───────────────────────────────────────────
 export function Hero() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const sectionRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const botInviteUrl = getBotInviteUrl();
+
   const { scrollYProgress } = useScroll({
-    target: containerRef,
+    target: sectionRef,
     offset: ['start start', 'end start'],
   });
 
   const opacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.4], [1, 0.9]);
-  const y = useTransform(scrollYProgress, [0, 0.4], [0, -100]);
+  const scale = useTransform(scrollYProgress, [0, 0.4], [1, 0.95]);
+
+  useGSAP(
+    () => {
+      // Entrance Sequence
+      const tl = gsap.timeline();
+
+      tl.fromTo(
+        '.hero-char',
+        { y: 120, opacity: 0, filter: 'blur(20px)' },
+        { y: 0, opacity: 1, filter: 'blur(0px)', duration: 1.5, stagger: 0.08, ease: 'expo.out' },
+      );
+
+      tl.fromTo(
+        '.hero-engine',
+        { opacity: 0, letterSpacing: '0.2em' },
+        { opacity: 1, letterSpacing: '1.2em', duration: 1.8, ease: 'power2.out' },
+        '-=1.2',
+      );
+
+      tl.fromTo(
+        '.hero-sub',
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 0.6, duration: 1.2, ease: 'power3.out' },
+        '-=1.4',
+      );
+
+      tl.fromTo(
+        '.hero-console',
+        { scaleX: 0, opacity: 0, filter: 'blur(10px)' },
+        { scaleX: 1, opacity: 1, filter: 'blur(0px)', duration: 1, ease: 'expo.inOut' },
+        '-=0.8',
+      );
+
+      // Parallax
+      gsap.to('.hero-parallax-deep', {
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true,
+        },
+        y: 150,
+        rotate: -5,
+      });
+    },
+    { scope: sectionRef },
+  );
+
+  const brand = 'VOLVOX';
 
   return (
     <section
-      ref={containerRef}
-      className="relative min-h-[110vh] pt-32 md:pt-48 flex flex-col items-center overflow-hidden perspective-1000 bg-[var(--background)]"
+      ref={sectionRef}
+      className="relative min-h-[110vh] bg-background overflow-hidden flex flex-col items-center justify-center pt-20"
     >
-      {/* Immersive Background Atmosphere */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[140vw] h-[100vh] hero-glow opacity-60 blur-[120px]" />
-        <div className="absolute inset-0 noise opacity-[0.04]" />
+      <PrismaticBackground />
+      <DataThreads />
 
-        {/* Animated Orbs */}
-        <motion.div
-          animate={{
-            x: [0, 100, 0],
-            y: [0, 50, 0],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-          className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]"
-        />
-        <motion.div
-          animate={{
-            x: [0, -120, 0],
-            y: [0, 80, 0],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
-          className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[120px]"
-        />
-      </div>
-
+      {/* Hero Content */}
       <motion.div
-        style={{ opacity, scale, y }}
-        className="w-full max-w-7xl mx-auto px-4 relative z-10 flex flex-col items-center flex-1"
+        style={{ opacity, scale }}
+        className="relative z-20 flex flex-col items-center max-w-7xl px-4 w-full"
       >
-        {/* Central Content */}
-        <div className="text-center mb-16 relative z-30 pointer-events-none">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="inline-flex items-center py-2 px-5 rounded-full bg-white/[0.03] text-primary text-[10px] font-black uppercase tracking-[0.3em] mb-10 border border-white/10 backdrop-blur-xl shadow-xl"
-          >
-            Autonomous Community Intelligence
-          </motion.div>
+        {/* Top Label */}
+        <div className="flex items-center gap-4 mb-16 opacity-30 dark:opacity-20">
+          <div className="h-[1px] w-8 bg-foreground/40" />
+          <span className="text-[9px] font-black uppercase tracking-[0.6em] text-foreground">
+            System Architecture v2.4.0
+          </span>
+          <div className="h-[1px] w-8 bg-foreground/40" />
+        </div>
 
-          <motion.h1
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="text-[clamp(4rem,12vw,10rem)] leading-[0.82] font-black tracking-[-0.06em] mb-12 text-foreground"
+        {/* Main Title Group */}
+        <div className="relative mb-8 text-center">
+          <h1
+            ref={titleRef}
+            className="flex flex-wrap justify-center text-[20vw] md:text-[14vw] lg:text-[180px] font-black leading-[0.75] tracking-[-0.07em] text-foreground select-none"
           >
-            <span className="block italic opacity-20 mix-blend-overlay">THE BRAIN</span>
-            <span className="text-aurora block drop-shadow-[0_0_30px_rgba(var(--primary),0.2)]">
-              OF DISCORD.
-            </span>
-          </motion.h1>
+            {brand.split('').map((char, i) => (
+              <span key={`char-${i}`} className="hero-char inline-block">
+                {char}
+              </span>
+            ))}
+          </h1>
+          <div className="hero-engine mt-6 text-[2.5vw] md:text-[1.2vw] lg:text-[14px] font-mono text-primary font-bold uppercase tracking-[1.2em] opacity-0 text-center w-full">
+            BOT
+          </div>
+        </div>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
-            transition={{ duration: 1.2, delay: 0.8 }}
-            className="text-[clamp(1.1rem,1.8vw,1.4rem)] text-foreground/80 leading-relaxed mb-14 max-w-2xl mx-auto font-medium balance pointer-events-auto"
-          >
-            Volvox is an AI-powered command center for modern communities. Moderation, intelligence,
-            and growth — synthesized into one beautiful interface.
-          </motion.p>
+        {/* Subtitle */}
+        <p className="hero-sub text-foreground/70 dark:text-white/70 text-base md:text-lg lg:text-xl max-w-xl text-center font-light leading-relaxed mb-20 tracking-tight">
+          The absolute synthesis of community intelligence, robust moderation, and dynamic
+          architectural scale.
+        </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 1.2 }}
-            className="flex flex-col sm:flex-row gap-5 items-center justify-center pointer-events-auto"
-          >
-            {botInviteUrl && (
-              <GetStartedButton
-                variant="discord"
-                label="Add to Server"
-                href={botInviteUrl}
-                className="rounded-full h-16 px-14 font-black text-xs tracking-[0.2em] uppercase shadow-[0_20px_50px_rgba(var(--primary),0.3)] border border-primary/20 hover:scale-105 transition-transform"
-              />
-            )}
-            <GetStartedButton
-              variant="outline"
-              icon={Terminal}
-              label="Explore Features"
-              href="/#features"
-              internal
-              className="rounded-full h-16 px-10 font-black text-xs tracking-[0.2em] uppercase text-foreground/50 border-white/10 hover:bg-white/5 hover:text-foreground hover:border-white/20 transition-all"
-            />
-          </motion.div>
+        {/* Console CTA */}
+        <div className="hero-console w-full max-w-2xl origin-center">
+          <div className="group relative p-[1px] rounded-2xl overflow-hidden">
+            {/* Border Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-secondary/30 to-primary/30 opacity-40 group-hover:opacity-100 transition-opacity duration-700" />
+
+            <div className="relative bg-card/80 dark:bg-[#0A0A0A]/80 backdrop-blur-3xl rounded-[15px] p-2 flex items-center shadow-2xl border border-border/50">
+              <div className="flex items-center justify-center w-12 h-12 text-primary/40 group-hover:text-primary transition-colors duration-500">
+                <Command className="w-5 h-5" />
+              </div>
+
+              <div className="flex-1 font-mono text-lg sm:text-2xl tracking-tighter pl-2 flex items-center overflow-hidden">
+                <span className="text-primary font-bold mr-3">/summon</span>
+                <span className="text-foreground/60">volvox_</span>
+                <motion.div
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  className="w-[2px] h-6 bg-primary ml-1"
+                />
+              </div>
+
+              {botInviteUrl && (
+                <a
+                  href={botInviteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative group/btn flex items-center gap-2 px-8 h-12 bg-foreground text-background font-black uppercase tracking-widest text-[10px] rounded-xl overflow-hidden transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_20px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                >
+                  <Bot className="w-4 h-4" />
+                  <span className="relative z-10 hidden sm:inline">Add to Server</span>
+                  <span className="relative z-10 sm:hidden">Add</span>
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </motion.div>
 
-      {/* Spatial Bento Widgets */}
-      {!shouldReduceMotion && (
-        <div className="absolute inset-0 pointer-events-none overflow-visible z-20">
-          {/* AI Widget - Floating top right */}
-          <FloatingWidget
-            delay={0.4}
-            depth={1.2}
-            floatAmount={20}
-            floatDuration={7}
-            className="hidden xl:block top-[12%] right-[2%]"
-          >
-            <div className="pointer-events-auto">
-              <ChatWidget />
-            </div>
-          </FloatingWidget>
+      {/* Background Particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <motion.div
+            key={`particle-${i}`}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{
+              opacity: [0, 0.3, 0],
+              scale: [0, 1.2, 0],
+              x: [0, (Math.random() - 0.5) * 600],
+              y: [0, (Math.random() - 0.5) * 600],
+            }}
+            transition={{
+              duration: 15 + Math.random() * 15,
+              repeat: Infinity,
+              delay: Math.random() * 10,
+            }}
+            className="absolute top-1/2 left-1/2 w-1 h-1 bg-foreground/40 dark:bg-white/40 rounded-full blur-[1px]"
+          />
+        ))}
+      </div>
 
-          {/* Mod Widget - Floating middle left */}
-          <FloatingWidget
-            delay={0.6}
-            depth={0.8}
-            floatAmount={15}
-            floatDuration={8}
-            className="hidden xl:block top-[48%] left-[2%]"
-          >
-            <div className="pointer-events-auto">
-              <ModWidget />
-            </div>
-          </FloatingWidget>
-
-          {/* Stats Widget - Floating bottom right */}
-          <FloatingWidget
-            delay={0.8}
-            depth={1.5}
-            floatAmount={25}
-            floatDuration={6}
-            className="hidden xl:block bottom-[10%] right-[5%]"
-          >
-            <div className="pointer-events-auto">
-              <StatsWidget />
-            </div>
-          </FloatingWidget>
-
-          {/* Mobile/Small Tablet Widget - Bottom Centered */}
-          <FloatingWidget delay={1} className="lg:hidden bottom-24 left-1/2 -translate-x-1/2">
-            <div className="pointer-events-auto scale-[0.75] origin-bottom">
-              <StatsWidget />
-            </div>
-          </FloatingWidget>
-        </div>
-      )}
-
-      {/* Deep Atmosphere Transition to next section */}
-      <div className="absolute bottom-0 left-0 right-0 h-[40vh] bg-gradient-to-t from-[var(--background)] to-transparent pointer-events-none z-40" />
+      {/* Bottom Gradient Fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-[35vh] bg-gradient-to-t from-background via-background/80 to-transparent z-30 pointer-events-none" />
     </section>
   );
 }

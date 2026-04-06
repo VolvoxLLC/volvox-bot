@@ -13,33 +13,6 @@ import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
-const TABS = [
-  {
-    id: 'moderation',
-    label: 'Moderation',
-    icon: ShieldAlert,
-    desc: 'Configure moderation alerts, notification behavior, and enforcement rules.',
-  },
-  {
-    id: 'starboard',
-    label: 'Starboard',
-    icon: Star,
-    desc: 'Pin popular messages to a starboard channel.',
-  },
-  {
-    id: 'permissions',
-    label: 'Permissions',
-    icon: Key,
-    desc: 'Configure role-based access and owner overrides.',
-  },
-  {
-    id: 'audit-log',
-    label: 'Audit Log',
-    icon: ScrollText,
-    desc: 'Record admin actions taken via the dashboard.',
-  },
-] as const;
-
 function InfoTip({ text }: { text: string }) {
   return (
     <TooltipProvider>
@@ -56,18 +29,10 @@ function InfoTip({ text }: { text: string }) {
 }
 
 export function ModerationSafetyCategory() {
-  const { draftConfig, saving, guildId, visibleFeatureIds, updateDraftConfig } = useConfigContext();
+  const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
-  const availableTabs = TABS.filter((t) => visibleFeatureIds.has(t.id as ConfigFeatureId));
-  const [activeTab, setActiveTab] = useState<ConfigFeatureId | null>(
-    (availableTabs[0]?.id as ConfigFeatureId) ?? null,
-  );
+  const activeTab = activeTabId;
 
-  useEffect(() => {
-    if (activeTab && !visibleFeatureIds.has(activeTab)) {
-      setActiveTab((availableTabs[0]?.id as ConfigFeatureId) ?? null);
-    }
-  }, [visibleFeatureIds, activeTab, availableTabs]);
 
   // Moderation state updates
   const updateModerationEnabled = useCallback(
@@ -201,7 +166,6 @@ export function ModerationSafetyCategory() {
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
-  if (availableTabs.length === 0) return null;
 
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};
@@ -222,9 +186,7 @@ export function ModerationSafetyCategory() {
 
   return (
     <ConfigCategoryLayout
-      tabs={availableTabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
+      featureId={activeTab}
       toggle={{
         checked: isCurrentFeatureEnabled,
         onChange: handleToggleCurrentFeature,

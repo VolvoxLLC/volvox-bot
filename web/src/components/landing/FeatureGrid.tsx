@@ -1,10 +1,10 @@
 'use client';
 
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { Activity, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
+import { Activity, Cpu, Globe, Lock, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
 import { useRef } from 'react';
-import { ScrollStage } from './ScrollStage';
+import { cn } from '@/lib/utils';
 
 interface Feature {
   readonly icon: LucideIcon;
@@ -12,6 +12,8 @@ interface Feature {
   readonly description: string;
   readonly accentColor: string;
   readonly preview: React.ReactNode;
+  readonly size: 'small' | 'medium' | 'large';
+  readonly className?: string;
 }
 
 const features: readonly Feature[] = [
@@ -21,15 +23,20 @@ const features: readonly Feature[] = [
     description:
       'Multi-turn, context-aware conversations powered by Claude. Synthesis of intelligence directly in your channels.',
     accentColor: 'hsl(var(--primary))',
+    size: 'large',
+    className: 'md:col-span-2 lg:col-span-2',
     preview: (
-      <div className="space-y-2 text-[11px] font-medium leading-relaxed">
-        <div className="flex gap-2 text-[hsl(var(--foreground))]/40">
-          <span>user:</span>
-          <span className="text-[hsl(var(--foreground))]">Summarize the update.</span>
+      <div className="space-y-3 text-[12px] font-medium leading-relaxed">
+        <div className="flex gap-3 text-foreground/40">
+          <span className="font-mono opacity-50">user_</span>
+          <span className="text-foreground/80">Summarize the recent community update.</span>
         </div>
-        <div className="flex gap-2 text-[hsl(var(--primary))] bg-[hsl(var(--primary))]/5 p-2 rounded-lg border border-[hsl(var(--primary))]/10">
-          <Sparkles className="w-3 h-3 shrink-0 mt-0.5" />
-          <span>I've condensed 42 commits into 3 key themes: Stability, UI, and Speed.</span>
+        <div className="flex gap-3 text-primary bg-primary/5 p-4 rounded-2xl border border-primary/10 backdrop-blur-sm">
+          <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+          <span className="text-foreground/90 dark:text-white/90">
+            I've condensed 42 commits into 3 key themes: Stability, UI, and Speed. Engagement is up
+            12% this week.
+          </span>
         </div>
       </div>
     ),
@@ -38,21 +45,23 @@ const features: readonly Feature[] = [
     icon: Shield,
     title: 'Active Sentry',
     description:
-      'Autonomous moderation that identifies and neutralizes raids, toxicity, and spam with surgical precision.',
-    accentColor: 'hsl(var(--accent))',
+      'Autonomous moderation that identifies and neutralizes raids with surgical precision.',
+    accentColor: 'hsl(var(--destructive))',
+    size: 'medium',
+    className: 'md:col-span-1 lg:col-span-1',
     preview: (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] bg-[hsl(var(--accent))]/5 px-2 py-1.5 rounded border border-[hsl(var(--accent))]/10">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-[10px] bg-destructive/5 px-3 py-2 rounded-xl border border-destructive/10">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--accent))] animate-pulse" />
-            <span className="text-[hsl(var(--foreground))]/70 font-bold uppercase tracking-wider">
+            <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+            <span className="text-destructive font-black uppercase tracking-wider font-mono">
               Intercepted
             </span>
           </div>
-          <span className="text-[hsl(var(--foreground))]/40">Just now</span>
+          <span className="text-foreground/20 font-mono">0.02ms</span>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--foreground))]/80 px-2">
-          <Shield className="w-3 h-3 text-[hsl(var(--accent))]" />
+        <div className="flex items-center gap-3 text-[11px] text-foreground/60 px-2">
+          <Lock className="w-3.5 h-3.5 text-destructive/60" />
           <span>Spam cluster quarantined (8 accounts)</span>
         </div>
       </div>
@@ -61,17 +70,19 @@ const features: readonly Feature[] = [
   {
     icon: Activity,
     title: 'Live Insight',
-    description:
-      'Real-time analytics and server health metrics. Visualize community growth and activity trends instantly.',
+    description: 'Real-time analytics and server health metrics visualized instantly.',
     accentColor: 'hsl(var(--secondary))',
+    size: 'medium',
+    className: 'md:col-span-1 lg:col-span-1',
     preview: (
-      <div className="flex items-end gap-1.5 h-10 px-1">
-        {[40, 75, 55, 90, 65, 85].map((h) => (
+      <div className="flex items-end gap-2 h-16 px-2">
+        {[40, 75, 55, 90, 65, 85, 45, 70].map((h, i) => (
           <motion.div
-            key={`bar-${h}`}
+            key={`bar-${i}`}
             initial={{ height: 0 }}
             whileInView={{ height: `${h}%` }}
-            className="flex-1 rounded-t-sm bg-gradient-to-t from-[hsl(var(--secondary))]/10 to-[hsl(var(--secondary))]"
+            transition={{ delay: i * 0.05, duration: 0.8, ease: 'circOut' }}
+            className="flex-1 rounded-t-[2px] bg-gradient-to-t from-secondary/5 via-secondary/40 to-secondary"
           />
         ))}
       </div>
@@ -80,22 +91,41 @@ const features: readonly Feature[] = [
   {
     icon: Zap,
     title: 'Edge Performance',
-    description:
-      'Built for scale. Minimal latency, high availability, and lightning-fast execution across all commands.',
+    description: 'Built for scale. Minimal latency across all global regions.',
     accentColor: 'hsl(var(--primary))',
+    size: 'small',
+    className: 'md:col-span-1 lg:col-span-1',
     preview: (
-      <div className="flex items-center justify-center p-2">
-        <div className="relative w-full h-8 bg-[hsl(var(--muted))]/30 rounded-full border border-[hsl(var(--border))]/20 flex items-center px-3 overflow-hidden">
+      <div className="flex items-center justify-center py-2">
+        <div className="relative w-full h-10 bg-foreground/5 rounded-2xl border border-border flex items-center px-4 overflow-hidden">
           <motion.div
             animate={{ x: ['-100%', '300%'] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-[hsl(var(--primary))]/40 to-transparent"
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+            className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-primary/30 to-transparent"
           />
-          <Zap className="w-3 h-3 text-[hsl(var(--primary))] mr-2" />
-          <span className="text-[10px] font-black tracking-widest text-[hsl(var(--foreground))]/60 uppercase">
-            12ms response
+          <Globe className="w-4 h-4 text-primary/60 mr-3" />
+          <span className="text-[10px] font-black tracking-[0.2em] text-foreground/40 uppercase font-mono">
+            Ping: 12ms
           </span>
         </div>
+      </div>
+    ),
+  },
+  {
+    icon: Cpu,
+    title: 'Core Engine',
+    description: 'Highly optimized architecture designed for 99.99% uptime.',
+    accentColor: 'hsl(var(--primary))',
+    size: 'small',
+    className: 'md:col-span-1 lg:col-span-1',
+    preview: (
+      <div className="grid grid-cols-4 gap-2 opacity-40">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={`core-i-${i}`}
+            className="h-6 rounded-md bg-foreground/10 border border-border"
+          />
+        ))}
       </div>
     ),
   },
@@ -111,123 +141,121 @@ function FeatureCard({
   readonly shouldReduceMotion: boolean;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const rotateX = useTransform(y, [-200, 200], [10, -10]);
-  const rotateY = useTransform(x, [-200, 200], [-10, 10]);
-
-  const springConfig = { damping: 25, stiffness: 150 };
-  const springRotateX = useSpring(rotateX, springConfig);
-  const springRotateY = useSpring(rotateY, springConfig);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    x.set(e.clientX - centerX);
-    y.set(e.clientY - centerY);
+    const { left, top } = cardRef.current.getBoundingClientRect();
+    mouseX.set(e.clientX - left);
+    mouseY.set(e.clientY - top);
   };
 
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
+  const bgImage = useTransform(
+    [mouseX, mouseY],
+    ([x, y]) =>
+      `radial-gradient(600px circle at ${x}px ${y}px, ${feature.accentColor}10, transparent 40%)`,
+  );
 
   return (
     <motion.div
       ref={cardRef}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      initial={shouldReduceMotion ? false : { opacity: 0, y: 30 }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
+      viewport={{ once: true, margin: '-100px' }}
       transition={{
-        duration: 0.6,
+        duration: 0.8,
         delay: shouldReduceMotion ? 0 : index * 0.1,
-        ease: [0.16, 1, 0.3, 1],
+        ease: [0.21, 1.02, 0.47, 0.98],
       }}
-      style={{
-        rotateX: springRotateX,
-        rotateY: springRotateY,
-        transformStyle: 'preserve-3d',
-      }}
-      className="group relative perspective-1000"
+      className={cn(
+        'group relative overflow-hidden rounded-[2.5rem] border border-border bg-card/50 backdrop-blur-xl p-8 lg:p-10 transition-colors hover:border-primary/20 flex flex-col justify-between shadow-sm',
+        feature.className,
+      )}
     >
-      <div className="glass-morphism-premium rounded-[2.5rem] p-8 md:p-10 h-full border-white/5 shadow-2xl overflow-visible flex flex-col preserve-3d">
-        <div className="glass-reflection group-hover:translate-x-full transition-transform duration-1000 ease-in-out opacity-20" />
+      {/* Interactive Glow */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{ background: bgImage }}
+      />
 
-        {/* Glow effect */}
+      {/* Content */}
+      <div className="relative z-10">
         <div
-          className="absolute -inset-2 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl -z-10 pointer-events-none rounded-full"
-          style={{
-            background: `radial-gradient(circle, ${feature.accentColor}10 0%, transparent 70%)`,
-          }}
-        />
-
-        {/* Icon */}
-        <div
-          className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-8 bg-white/[0.03] border border-white/10 shadow-inner group-hover:scale-110 transition-transform"
-          style={{ color: feature.accentColor }}
+          className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-8 bg-muted border border-border shadow-inner group-hover:scale-110 group-hover:bg-primary/10 transition-all duration-500"
+          style={{ color: 'hsl(var(--primary))' }}
         >
-          <feature.icon className="w-7 h-7" aria-hidden="true" />
+          <feature.icon
+            className="w-6 h-6"
+            aria-hidden="true"
+            style={{ color: feature.accentColor }}
+          />
         </div>
 
-        {/* Title + Description */}
-        <h3 className="text-2xl font-black tracking-tight text-[hsl(var(--foreground))] mb-4">
-          {feature.title}
-        </h3>
-        <p className="text-sm leading-relaxed text-[hsl(var(--foreground))]/50 mb-8 font-medium">
+        <h3 className="text-2xl font-black tracking-tight text-foreground mb-4">{feature.title}</h3>
+        <p className="text-sm leading-relaxed text-muted-foreground mb-8 font-medium max-w-sm">
           {feature.description}
         </p>
+      </div>
 
-        {/* Mini-preview inset */}
-        <div className="mt-auto p-5 rounded-3xl bg-black/20 border border-white/5 backdrop-blur-md shadow-inner">
-          {feature.preview}
-        </div>
+      {/* Preview Inset */}
+      <div className="relative z-10 mt-auto overflow-hidden rounded-3xl bg-foreground/[0.02] border border-border p-6 backdrop-blur-md shadow-inner group-hover:bg-foreground/[0.04] transition-colors duration-500">
+        {feature.preview}
       </div>
     </motion.div>
   );
 }
 
 export function FeatureGrid() {
-  const containerRef = useRef(null);
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   return (
-    <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[var(--background)] overflow-hidden">
-      <div className="mx-auto max-w-7xl" ref={containerRef}>
-        <ScrollStage>
-          <div className="flex flex-col items-center text-center mb-24">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              className="px-4 py-1.5 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] text-[10px] font-black uppercase tracking-[0.3em] mb-8 border border-[hsl(var(--primary))]/20"
-            >
-              System Capabilities
-            </motion.div>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-[hsl(var(--foreground))] mb-6 max-w-3xl">
-              Everything you need, <br />
-              <span className="text-gradient-primary">synthesized.</span>
-            </h2>
-            <p className="text-lg text-[hsl(var(--foreground))]/40 max-w-2xl font-medium leading-relaxed">
-              Volvox consolidates your entire community stack into a single, high-performance
-              engine.
-            </p>
-          </div>
+    <section className="relative py-40 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden">
+      {/* Background Ambience */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none opacity-20 dark:opacity-10">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-secondary/10 blur-[120px] rounded-full" />
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 lg:gap-12">
-            {features.map((feature, index) => (
-              <FeatureCard
-                key={feature.title}
-                feature={feature}
-                index={index}
-                shouldReduceMotion={shouldReduceMotion}
-              />
-            ))}
-          </div>
-        </ScrollStage>
+      <div className="mx-auto max-w-7xl relative z-10">
+        {/* Header */}
+        <div className="flex flex-col items-center text-center mb-32">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="flex items-center gap-4 mb-10 opacity-60 dark:opacity-40"
+          >
+            <div className="h-[1px] w-12 bg-foreground/40" />
+            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground">
+              System Protocol
+            </span>
+            <div className="h-[1px] w-12 bg-foreground/40" />
+          </motion.div>
+
+          <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground mb-8 max-w-4xl leading-[0.9]">
+            Everything you need,
+            <br />
+            <span className="text-primary italic">re-engineered.</span>
+          </h2>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl font-light leading-relaxed tracking-tight">
+            Volvox consolidates your entire community stack into a single, high-performance
+            architecture.
+          </p>
+        </div>
+
+        {/* Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          {features.map((feature, index) => (
+            <FeatureCard
+              key={feature.title}
+              feature={feature}
+              index={index}
+              shouldReduceMotion={shouldReduceMotion}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

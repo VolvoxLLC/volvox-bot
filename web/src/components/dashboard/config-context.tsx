@@ -60,6 +60,9 @@ export interface ConfigContextValue {
   handleSearchSelect: (item: ConfigSearchItem) => void;
   handleSearchChange: (value: string) => void;
   activeCategoryId: ConfigCategoryId | null;
+  setActiveCategoryId: (id: ConfigCategoryId | null) => void;
+  activeTabId: ConfigFeatureId | null;
+  setActiveTabId: (id: ConfigFeatureId | null) => void;
 }
 
 const ConfigContext = createContext<ConfigContextValue | null>(null);
@@ -119,11 +122,16 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [focusFeatureId, setFocusFeatureId] = useState<ConfigFeatureId | null>(null);
   const [selectedSearchItemId, setSelectedSearchItemId] = useState<string | null>(null);
+  const [activeTabId, setActiveTabId] = useState<ConfigFeatureId | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
   // Derive active category from URL
   const activeCategoryId = useMemo(() => parseCategoryFromPathname(pathname), [pathname]);
+  const setActiveCategoryId = useCallback((id: ConfigCategoryId | null) => {
+    if (id) router.push(`/dashboard/settings/${id}`);
+    else router.push('/dashboard/settings');
+  }, [router]);
 
   const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
     setDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
@@ -265,6 +273,20 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       activeCategory.featureIds.filter((featureId) => matchedFeatureIds.has(featureId)),
     );
   }, [activeCategory, searchQuery, matchedFeatureIds]);
+
+  // Sync activeTabId with category changes
+  useEffect(() => {
+    if (!activeCategory) {
+      setActiveTabId(null);
+      return;
+    }
+
+    // If current tab is not in the new category, reset to the first visible one
+    if (!activeTabId || !activeCategory.featureIds.includes(activeTabId)) {
+      const firstVisible = activeCategory.featureIds.find((id) => visibleFeatureIds.has(id));
+      setActiveTabId(firstVisible ?? activeCategory.featureIds[0] ?? null);
+    }
+  }, [activeCategory, visibleFeatureIds, activeTabId]);
 
   const selectedSearchItem = useMemo(
     () => searchResults.find((item) => item.id === selectedSearchItemId) ?? null,
@@ -596,6 +618,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       handleSearchSelect,
       handleSearchChange,
       activeCategoryId,
+      activeTabId,
+      setActiveTabId,
+      setActiveCategoryId,
     }),
     [
       guildId,
@@ -625,6 +650,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       handleSearchSelect,
       handleSearchChange,
       activeCategoryId,
+      activeTabId,
+      setActiveTabId,
+      setActiveCategoryId,
     ],
   );
 

@@ -21,14 +21,13 @@ interface GuildDirectoryContextValue {
 const GuildDirectoryContext = createContext<GuildDirectoryContextValue | null>(null);
 
 function isMutualGuild(value: unknown): value is MutualGuild {
+  const g = value as Record<string, unknown>;
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as { id?: unknown }).id === 'string' &&
-    typeof (value as { name?: unknown }).name === 'string' &&
-    typeof (value as { permissions?: unknown }).permissions === 'string' &&
-    typeof (value as { owner?: unknown }).owner === 'boolean' &&
-    typeof (value as { botPresent?: unknown }).botPresent === 'boolean'
+    typeof g.id === 'string' &&
+    typeof g.name === 'string' &&
+    typeof g.botPresent === 'boolean'
   );
 }
 

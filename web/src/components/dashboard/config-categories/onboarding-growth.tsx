@@ -19,39 +19,6 @@ import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
-const TABS = [
-  {
-    id: 'welcome',
-    label: 'Welcome',
-    icon: Handshake,
-    desc: 'Greet and onboard new members with context-aware messages and automated role assignments.',
-  },
-  {
-    id: 'engagement',
-    label: 'Engagement',
-    icon: Target,
-    desc: 'Configure profile activity tiers and engagement tracking behavior.',
-  },
-  {
-    id: 'reputation',
-    label: 'Reputation',
-    icon: Zap,
-    desc: 'Tune XP ranges, cooldowns, and progression thresholds.',
-  },
-  {
-    id: 'tldr-afk',
-    label: 'TL;DR & AFK',
-    icon: MessageSquare,
-    desc: 'Quick toggles for summary and away-state features.',
-  },
-  {
-    id: 'challenges',
-    label: 'Challenges',
-    icon: Swords,
-    desc: 'Auto-post a daily challenge with solve tracking.',
-  },
-] as const;
-
 const STATIC_VARIABLE_DEFINITIONS = [
   { name: 'user', description: 'Mention member', sample: '@johndoe' },
   { name: 'username', description: 'Plain name', sample: 'johndoe' },
@@ -104,12 +71,9 @@ function InfoTip({ text }: { text: string }) {
 }
 
 export function OnboardingGrowthCategory() {
-  const { draftConfig, saving, guildId, visibleFeatureIds, updateDraftConfig } = useConfigContext();
+  const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
-  const availableTabs = TABS.filter((t) => visibleFeatureIds.has(t.id as ConfigFeatureId));
-  const [activeTab, setActiveTab] = useState<ConfigFeatureId | null>(
-    (availableTabs[0]?.id as ConfigFeatureId) ?? null,
-  );
+  const activeTab = activeTabId;
 
   const [dmStepsRaw, setDmStepsRaw] = useState('');
 
@@ -119,11 +83,6 @@ export function OnboardingGrowthCategory() {
     }
   }, [draftConfig?.welcome?.dmSequence?.steps]);
 
-  useEffect(() => {
-    if (activeTab && !visibleFeatureIds.has(activeTab)) {
-      setActiveTab((availableTabs[0]?.id as ConfigFeatureId) ?? null);
-    }
-  }, [visibleFeatureIds, activeTab, availableTabs]);
 
   const updateWelcomeField = useCallback(
     (field: string, value: unknown) => {
@@ -204,7 +163,6 @@ export function OnboardingGrowthCategory() {
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
-  if (availableTabs.length === 0) return null;
 
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};
@@ -248,9 +206,7 @@ export function OnboardingGrowthCategory() {
 
   return (
     <ConfigCategoryLayout
-      tabs={availableTabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
+      featureId={activeTab}
       toggle={{
         checked: isCurrentFeatureEnabled,
         onChange: handleToggleCurrentFeature,
