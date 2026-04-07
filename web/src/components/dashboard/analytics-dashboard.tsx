@@ -540,7 +540,6 @@ export function AnalyticsDashboard() {
               <div
                 key={key}
                 className="h-28 animate-pulse rounded-[20px] bg-muted/20 border border-border/10"
-
               />
             ))
           : kpiCards.map((card) => {
@@ -1080,63 +1079,90 @@ export function AnalyticsDashboard() {
               className="grid w-full gap-[4px]"
               style={{ gridTemplateColumns: 'minmax(32px, auto) repeat(24, 1fr)' }}
             >
-            {/* Hour labels row */}
-            <div />
-            {HOURS.map((hour) => (
-              <div
-                key={`h-${hour}`}
-                className="flex items-end justify-center pb-1.5 text-[10px] font-bold text-muted-foreground/30"
-              >
-                {hour % 3 === 0 ? `${hour}` : ''}
-              </div>
-            ))}
-
-            {/* Day rows */}
-            {DAYS.map((day, dayIndex) => (
-              <React.Fragment key={day}>
-                <div className="flex items-center text-[11px] font-bold text-muted-foreground/40 pr-2">
-                  {day}
+              {/* Hour labels row */}
+              <div />
+              {HOURS.map((hour) => (
+                <div
+                  key={`h-${hour}`}
+                  className="flex items-end justify-center pb-1.5 text-[10px] font-bold text-muted-foreground/30"
+                >
+                  {hour % 3 === 0 ? `${hour}` : ''}
                 </div>
-                {HOURS.map((hour) => {
-                  const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
-                  const ratio = heatmapLookup.max === 0 ? 0 : value / heatmapLookup.max;
-                  const level =
-                    value === 0 ? 0 : ratio <= 0.25 ? 1 : ratio <= 0.5 ? 2 : ratio <= 0.75 ? 3 : 4;
+              ))}
 
-                  return (
-                    <Tooltip key={`${day}-${hour}`}>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            'aspect-square w-full rounded-[4px] border transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:scale-[1.15] hover:z-20 cursor-default',
-                            level === 0
-                              ? 'bg-black/5 border-black/5 dark:bg-white/5 dark:border-white/5'
-                              : 'border-transparent',
-                          )}
-                          style={
-                            level > 0
-                              ? { backgroundColor: hexToRgba(chart.primary, 0.15 + level * 0.2125) }
-                              : undefined
-                          }
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="flex flex-col gap-0.5 px-3 py-1.5 backdrop-blur-xl">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
-                          {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex]}
-                        </span>
-                        <span className="text-xs font-bold tabular-nums">
-                          {String(hour).padStart(2, '0')}:00 — {formatNumber(value)} message{value !== 1 ? 's' : ''}
-                        </span>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </TooltipProvider>
-      </div>
-    </DashboardCard>
+              {/* Day rows */}
+              {DAYS.map((day, dayIndex) => (
+                <React.Fragment key={day}>
+                  <div className="flex items-center text-[11px] font-bold text-muted-foreground/40 pr-2">
+                    {day}
+                  </div>
+                  {HOURS.map((hour) => {
+                    const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
+                    const ratio = heatmapLookup.max === 0 ? 0 : value / heatmapLookup.max;
+                    const level =
+                      value === 0
+                        ? 0
+                        : ratio <= 0.25
+                          ? 1
+                          : ratio <= 0.5
+                            ? 2
+                            : ratio <= 0.75
+                              ? 3
+                              : 4;
+
+                    return (
+                      <Tooltip key={`${day}-${hour}`}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              'aspect-square w-full rounded-[4px] border transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:scale-[1.15] hover:z-20 cursor-default',
+                              level === 0
+                                ? 'bg-black/5 border-black/5 dark:bg-white/5 dark:border-white/5'
+                                : 'border-transparent',
+                            )}
+                            style={
+                              level > 0
+                                ? {
+                                    backgroundColor: hexToRgba(
+                                      chart.primary,
+                                      0.15 + level * 0.2125,
+                                    ),
+                                  }
+                                : undefined
+                            }
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="flex flex-col gap-0.5 px-3 py-1.5 backdrop-blur-xl"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                            {
+                              [
+                                'Sunday',
+                                'Monday',
+                                'Tuesday',
+                                'Wednesday',
+                                'Thursday',
+                                'Friday',
+                                'Saturday',
+                              ][dayIndex]
+                            }
+                          </span>
+                          <span className="text-xs font-bold tabular-nums">
+                            {String(hour).padStart(2, '0')}:00 — {formatNumber(value)} message
+                            {value !== 1 ? 's' : ''}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </TooltipProvider>
+        </div>
+      </DashboardCard>
     </div>
   );
 }

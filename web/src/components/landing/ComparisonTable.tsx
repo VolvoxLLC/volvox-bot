@@ -1,9 +1,8 @@
 'use client';
 
-import { motion, useInView, useReducedMotion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Check, X, Shield, Zap, Info } from 'lucide-react';
-import { useRef, useState, useEffect } from 'react';
-import { SectionHeader } from './SectionHeader';
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
+import { Check, Info, Shield, X, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 type CellValue = true | false | string;
@@ -73,10 +72,12 @@ const comparisonData: readonly ComparisonRowData[] = [
 function CellValueDisplay({ value, isVolvox }: { value: CellValue; isVolvox?: boolean }) {
   if (value === true) {
     return (
-      <div className={cn(
-        "flex items-center justify-center w-6 h-6 rounded-full mx-auto",
-        isVolvox ? "bg-primary/20 text-primary" : "bg-foreground/5 text-foreground/40"
-      )}>
+      <div
+        className={cn(
+          'flex items-center justify-center w-6 h-6 rounded-full mx-auto',
+          isVolvox ? 'bg-primary/20 text-primary' : 'bg-foreground/5 text-foreground/40',
+        )}
+      >
         <Check className="h-4 w-4 stroke-[3px]" />
       </div>
     );
@@ -89,23 +90,25 @@ function CellValueDisplay({ value, isVolvox }: { value: CellValue; isVolvox?: bo
     );
   }
   return (
-    <span className={cn(
-      "text-[11px] font-mono font-bold uppercase tracking-tighter px-2 py-0.5 rounded-md",
-      isVolvox ? "bg-primary/10 text-primary" : "text-muted-foreground"
-    )}>
+    <span
+      className={cn(
+        'text-[11px] font-mono font-bold uppercase tracking-tighter px-2 py-0.5 rounded-md',
+        isVolvox ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
+      )}
+    >
       {value}
     </span>
   );
 }
 
-function ComparisonRow({ 
-  row, 
-  index, 
-  isInView, 
-  shouldReduceMotion 
-}: { 
-  row: ComparisonRowData; 
-  index: number; 
+function ComparisonRow({
+  row,
+  index,
+  isInView: _isInView,
+  shouldReduceMotion,
+}: {
+  row: ComparisonRowData;
+  index: number;
   isInView: boolean;
   shouldReduceMotion: boolean;
 }) {
@@ -129,7 +132,8 @@ function ComparisonRow({
 
   const glowBg = useTransform(
     [mouseX, mouseY, glowOpacity],
-    ([x, y, opacity]) => `radial-gradient(600px circle at ${x}px ${y}px, hsl(var(--primary) / ${0.08 * (opacity as number)}), transparent 80%)`
+    ([x, y, opacity]) =>
+      `radial-gradient(600px circle at ${x}px ${y}px, hsl(var(--primary) / ${0.08 * (opacity as number)}), transparent 80%)`,
   );
 
   return (
@@ -147,12 +151,12 @@ function ComparisonRow({
         ease: [0.22, 1, 0.36, 1],
       }}
       className={cn(
-        "group relative grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] border-b border-border/40 items-center transition-all duration-500 min-w-[700px]",
-        row.highlight ? "bg-primary/[0.02]" : "hover:bg-foreground/[0.01]"
+        'group relative grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] border-b border-border/40 items-center transition-all duration-500 min-w-[700px]',
+        row.highlight ? 'bg-primary/[0.02]' : 'hover:bg-foreground/[0.01]',
       )}
     >
       {/* Integrated Cursor Glow */}
-      <motion.div 
+      <motion.div
         className="absolute inset-0 pointer-events-none -z-10"
         style={{ background: glowBg }}
       />
@@ -199,7 +203,7 @@ export function ComparisonTable() {
     <section className="relative py-32 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden">
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]">
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,hsl(var(--primary))_0%,transparent_70%)] blur-[100px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,hsl(var(--primary))_0%,transparent_70%)] blur-[100px]" />
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10" ref={containerRef}>
@@ -212,13 +216,14 @@ export function ComparisonTable() {
           >
             [BENCHMARK_ANALYSIS]
           </motion.div>
-          
+
           <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground mb-4 leading-[0.95]">
             Engineered for <br />
             <span className="text-aurora">Superiority.</span>
           </h2>
           <p className="text-base text-muted-foreground max-w-xl font-light">
-            Volvox isn't just another bot. It's a complete architectural overhaul of community governance.
+            Volvox isn't just another bot. It's a complete architectural overhaul of community
+            governance.
           </p>
         </div>
 
@@ -232,7 +237,9 @@ export function ComparisonTable() {
               </div>
               <div className="px-3 py-4 text-center border-x border-primary/20 bg-primary/10">
                 <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-[11px] font-mono font-black tracking-widest text-primary uppercase">Volvox</span>
+                  <span className="text-[11px] font-mono font-black tracking-widest text-primary uppercase">
+                    Volvox
+                  </span>
                   <span className="text-[8px] font-mono font-bold text-primary/60">V2.4_READY</span>
                 </div>
               </div>
@@ -250,11 +257,11 @@ export function ComparisonTable() {
             {/* Rows */}
             <div className="flex flex-col">
               {comparisonData.map((row, index) => (
-                <ComparisonRow 
-                  key={row.feature} 
-                  row={row} 
-                  index={index} 
-                  isInView={true} 
+                <ComparisonRow
+                  key={row.feature}
+                  row={row}
+                  index={index}
+                  isInView={true}
                   shouldReduceMotion={shouldReduceMotion}
                 />
               ))}
@@ -267,21 +274,25 @@ export function ComparisonTable() {
                 Validated: {new Date().toLocaleDateString()}
               </div>
               <div className="flex items-center gap-4">
-                 <div className="flex items-center gap-2">
-                   <Zap className="w-2.5 h-2.5 text-primary" />
-                   <span className="text-[8px] font-mono font-black text-primary/40 uppercase">High_Speed</span>
-                 </div>
-                 <div className="flex items-center gap-2">
-                   <Shield className="w-2.5 h-2.5 text-secondary" />
-                   <span className="text-[8px] font-mono font-black text-secondary/40 uppercase">Zero_Trust</span>
-                 </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="w-2.5 h-2.5 text-primary" />
+                  <span className="text-[8px] font-mono font-black text-primary/40 uppercase">
+                    High_Speed
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-2.5 h-2.5 text-secondary" />
+                  <span className="text-[8px] font-mono font-black text-secondary/40 uppercase">
+                    Zero_Trust
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tactical Footnote */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 0.4 }}
           className="mt-12 text-center text-[10px] font-mono uppercase tracking-[0.5em] text-muted-foreground font-bold"

@@ -223,8 +223,10 @@ export default function ConversationsClient() {
                   </TableHeader>
                   <TableBody>
                     {Array.from({ length: 8 }).map((_, i) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: skeleton loader
                       <TableRow key={`sk-${i}`} className="border-border/10">
                         {[28, 32, 8, 16, 48, 20].map((w, j) => (
+                          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton loader
                           <TableCell key={j}>
                             <Skeleton className={`h-4 w-${w}`} />
                           </TableCell>

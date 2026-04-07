@@ -1,7 +1,5 @@
 'use client';
-
-import { Bot, BrainCircuit, ListChecks, ShieldAlert } from 'lucide-react';
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';

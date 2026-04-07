@@ -1,5 +1,6 @@
 'use client';
 
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
   ArrowLeft,
@@ -16,7 +17,6 @@ import {
   Ticket,
   Users,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType } from 'react';
@@ -183,7 +183,9 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
                     <div
                       className={cn(
                         'flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-300',
-                        isActive ? 'bg-primary/20 text-primary shadow-sm' : 'bg-muted/40 text-muted-foreground/60 group-hover:bg-muted/60 group-hover:text-foreground',
+                        isActive
+                          ? 'bg-primary/20 text-primary shadow-sm'
+                          : 'bg-muted/40 text-muted-foreground/60 group-hover:bg-muted/60 group-hover:text-foreground',
                       )}
                     >
                       <Icon className="h-4 w-4" />
@@ -220,8 +222,15 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
                                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
                                 )}
                               >
-                                <TabIcon className={cn('h-3.5 w-3.5', isTabActive ? 'text-primary' : 'text-muted-foreground/50')} />
-                                <span className={cn('truncate', isTabActive ? 'font-bold' : '')}>{tab.label}</span>
+                                <TabIcon
+                                  className={cn(
+                                    'h-3.5 w-3.5',
+                                    isTabActive ? 'text-primary' : 'text-muted-foreground/50',
+                                  )}
+                                />
+                                <span className={cn('truncate', isTabActive ? 'font-bold' : '')}>
+                                  {tab.label}
+                                </span>
                               </button>
                             );
                           })}

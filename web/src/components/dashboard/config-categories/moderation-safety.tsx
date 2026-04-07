@@ -1,11 +1,10 @@
 'use client';
 
-import { Info, Key, ScrollText, ShieldAlert, Star } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Info } from 'lucide-react';
+import { useCallback } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { AuditLogSection } from '@/components/dashboard/config-sections/AuditLogSection';
-import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -32,7 +31,6 @@ export function ModerationSafetyCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
   const activeTab = activeTabId;
-
 
   // Moderation state updates
   const updateModerationEnabled = useCallback(

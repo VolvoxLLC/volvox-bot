@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { type ComponentType, type ReactNode, useMemo } from 'react';
 import { CONFIG_NAVIGATION } from '@/components/dashboard/config-workspace/navigation';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
-import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 
 type TabIcon = ComponentType<{ className?: string }>;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Handshake, Info, MessageSquare, Swords, Target, Zap } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import {
@@ -9,7 +9,6 @@ import {
   inputClasses,
   parseNumberInput,
 } from '@/components/dashboard/config-editor-utils';
-import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
@@ -82,7 +81,6 @@ export function OnboardingGrowthCategory() {
       setDmStepsRaw(draftConfig.welcome.dmSequence.steps.join('\n'));
     }
   }, [draftConfig?.welcome?.dmSequence?.steps]);
-
 
   const updateWelcomeField = useCallback(
     (field: string, value: unknown) => {
@@ -512,6 +510,7 @@ export function OnboardingGrowthCategory() {
               {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
                 (badge: { days?: number; label?: string }, index: number) => (
                   <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholder
                     key={index}
                     className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border/30 hover:border-primary/30 transition-all group"
                   >

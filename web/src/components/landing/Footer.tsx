@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useRef } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { motion } from 'framer-motion'; // Kept only for simple hover/tap interactions
 import { useGSAP } from '@gsap/react';
+import { motion } from 'framer-motion'; // Kept only for simple hover/tap interactions
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowRight, ChevronRight, Activity, Terminal, Zap, Cpu } from 'lucide-react';
+import { Activity, ArrowRight, ChevronRight, Cpu, Terminal, Zap } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRef } from 'react';
 import { siDiscord, siX } from 'simple-icons';
 import { GithubIcon } from '@/components/ui/github-icon';
 import { SimpleIcon } from '@/components/ui/simple-icon';
@@ -97,7 +97,7 @@ export function Footer() {
             start: 'top 85%', // Trigger slightly before it enters the viewport
             toggleActions: 'play none none none',
           },
-        }
+        },
       );
 
       // 2. Parallax Background Effects
@@ -143,7 +143,7 @@ export function Footer() {
         ease: 'sine.inOut',
       });
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   return (
@@ -160,7 +160,7 @@ export function Footer() {
           <div className="glass-morphism-premium group relative overflow-hidden rounded-[3rem] p-10 md:p-24 border-border/60 shadow-2xl">
             {/* Interior Glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-30 pointer-events-none" />
-            
+
             <div className="relative z-10 flex flex-col items-center text-center">
               {/* Tactical Badge */}
               <div className="flex items-center gap-4 mb-8">
@@ -177,7 +177,7 @@ export function Footer() {
               </h2>
 
               <p className="text-base md:text-xl text-muted-foreground max-w-2xl font-medium leading-relaxed mb-12">
-                Deploy the absolute synthesis of AI intelligence and community governance. 
+                Deploy the absolute synthesis of AI intelligence and community governance.
                 Experience the next generation of Discord management.
               </p>
 
@@ -200,7 +200,7 @@ export function Footer() {
                     [OVERSIGHT_LOCKED]
                   </div>
                 )}
-                
+
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Link
                     href="/login"
@@ -229,24 +229,39 @@ export function Footer() {
                 <Image src="/icon-192.png" alt="Volvox" fill className="object-cover" />
               </div>
               <div>
-                <span className="text-2xl font-black tracking-tighter uppercase block leading-none">Volvox</span>
-                <span className="text-[9px] font-mono font-bold tracking-[0.3em] text-primary uppercase">Neural Network</span>
+                <span className="text-2xl font-black tracking-tighter uppercase block leading-none">
+                  Volvox
+                </span>
+                <span className="text-[9px] font-mono font-bold tracking-[0.3em] text-primary uppercase">
+                  Neural Network
+                </span>
               </div>
             </Link>
-            
+
             <p className="text-muted-foreground text-sm leading-relaxed max-w-xs font-medium">
-              Consolidating community architecture through the synthesis of artificial intelligence and robust infrastructure.
+              Consolidating community architecture through the synthesis of artificial intelligence
+              and robust infrastructure.
             </p>
 
             {/* Social Nodes */}
             <div className="flex items-center gap-4">
               {[
-                { icon: GithubIcon, href: "https://github.com/VolvoxLLC" },
-                { icon: (props: any) => <SimpleIcon path={siDiscord.path} {...props} />, href: "https://discord.gg/8ahXACdamN" },
-                { icon: (props: any) => <SimpleIcon path={siX.path} {...props} />, href: "https://x.com/volvoxdev" },
-              ].map((social, i) => (
+                { icon: GithubIcon, href: 'https://github.com/VolvoxLLC' },
+                {
+                  icon: (props: { className?: string }) => (
+                    <SimpleIcon path={siDiscord.path} {...props} />
+                  ),
+                  href: 'https://discord.gg/8ahXACdamN',
+                },
+                {
+                  icon: (props: { className?: string }) => (
+                    <SimpleIcon path={siX.path} {...props} />
+                  ),
+                  href: 'https://x.com/volvoxdev',
+                },
+              ].map((social) => (
                 <Link
-                  key={i}
+                  key={social.href}
                   href={social.href}
                   target="_blank"
                   className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all shadow-sm group/social"
@@ -267,7 +282,7 @@ export function Footer() {
                 <ul className="space-y-4">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      <Link 
+                      <Link
                         href={link.href}
                         className="text-[15px] font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-2 group"
                       >
@@ -291,19 +306,25 @@ export function Footer() {
             <div className="h-[1px] w-6 bg-border/40" />
             <div className="status-indicator flex items-center gap-3 px-4 py-1.5 rounded-xl bg-primary/5 border border-primary/20">
               <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-              <span className="text-[9px] font-mono font-black text-primary uppercase tracking-widest">Status: Nominal</span>
+              <span className="text-[9px] font-mono font-black text-primary uppercase tracking-widest">
+                Status: Nominal
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-8">
-             <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity">
-               <Cpu className="w-4 h-4 text-primary" />
-               <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold">Node_v2.4</span>
-             </div>
-             <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity">
-               <Activity className="w-4 h-4 text-primary" />
-               <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold">Latency: 12ms</span>
-             </div>
+            <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity">
+              <Cpu className="w-4 h-4 text-primary" />
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold">
+                Node_v2.4
+              </span>
+            </div>
+            <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity">
+              <Activity className="w-4 h-4 text-primary" />
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold">
+                Latency: 12ms
+              </span>
+            </div>
           </div>
         </div>
       </div>

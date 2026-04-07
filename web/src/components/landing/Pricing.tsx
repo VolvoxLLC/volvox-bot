@@ -85,6 +85,7 @@ export function Pricing() {
               [MONTHLY_OPS]
             </span>
 
+            {/* biome-ignore lint/a11y/useSemanticElements: toggle switch with motion.div child */}
             <div
               role="button"
               tabIndex={0}
@@ -209,12 +210,13 @@ export function Pricing() {
                   {tier.features.map((feature) => (
                     <div key={feature.name} className="flex items-center gap-4">
                       <div
-                        className={`w-2 h-2 rounded-sm rotate-45 transition-all duration-700 ${feature.enabled
-                          ? tier.popular
-                            ? 'bg-accent shadow-[0_0_12px_hsl(var(--accent)/0.8)]'
-                            : 'bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.8)]'
-                          : 'bg-muted-foreground/10'
-                          }`}
+                        className={`w-2 h-2 rounded-sm rotate-45 transition-all duration-700 ${
+                          feature.enabled
+                            ? tier.popular
+                              ? 'bg-accent shadow-[0_0_12px_hsl(var(--accent)/0.8)]'
+                              : 'bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.8)]'
+                            : 'bg-muted-foreground/10'
+                        }`}
                       />
                       <span
                         className={`text-[13px] font-mono tracking-tight transition-colors duration-300 ${feature.enabled ? 'text-foreground/80' : 'text-muted-foreground/30 line-through'}`}
@@ -228,25 +230,28 @@ export function Pricing() {
                 {/* Modern Minimal Elegant CTA */}
                 <Button
                   className={`group relative w-full h-14 rounded-xl font-bold text-[13px] tracking-wider uppercase transition-all duration-300 overflow-hidden shadow-sm hover:shadow-md active:scale-[0.98]
-                    ${tier.popular 
-                      ? 'bg-accent text-accent-foreground hover:bg-accent/90' 
-                      : 'bg-secondary/10 text-secondary border border-secondary/20 hover:bg-secondary/20'}
+                    ${
+                      tier.popular
+                        ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                        : 'bg-secondary/10 text-secondary border border-secondary/20 hover:bg-secondary/20'
+                    }
                   `}
                   asChild={!!(tier.href || botInviteUrl)}
                 >
-                   {(tier.href || botInviteUrl) ? (
-                    <a href={(tier.href || botInviteUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+                  {tier.href || botInviteUrl ? (
+                    <a
+                      href={(tier.href || botInviteUrl) ?? undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2"
+                    >
                       <span>{tier.cta}</span>
-                      <motion.div
-                        className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
-                      >
+                      <motion.div className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                         <ArrowRight className="w-4 h-4" />
                       </motion.div>
                     </a>
                   ) : (
-                    <span className="flex items-center justify-center gap-2">
-                       {tier.cta}
-                    </span>
+                    <span className="flex items-center justify-center gap-2">{tier.cta}</span>
                   )}
                 </Button>
               </div>

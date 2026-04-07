@@ -128,10 +128,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   // Derive active category from URL
   const activeCategoryId = useMemo(() => parseCategoryFromPathname(pathname), [pathname]);
-  const setActiveCategoryId = useCallback((id: ConfigCategoryId | null) => {
-    if (id) router.push(`/dashboard/settings/${id}`);
-    else router.push('/dashboard/settings');
-  }, [router]);
+  const setActiveCategoryId = useCallback(
+    (id: ConfigCategoryId | null) => {
+      if (id) router.push(`/dashboard/settings/${id}`);
+      else router.push('/dashboard/settings');
+    },
+    [router],
+  );
 
   const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
     setDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
@@ -651,7 +654,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       handleSearchChange,
       activeCategoryId,
       activeTabId,
-      setActiveTabId,
       setActiveCategoryId,
     ],
   );

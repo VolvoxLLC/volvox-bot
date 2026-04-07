@@ -264,7 +264,10 @@ export function ServerSelector({ className }: ServerSelectorProps) {
                         asChild
                         className="rounded-[20px] border border-transparent transition-all hover:bg-muted/40 hover:border-border/40 active:scale-[0.98]"
                       >
-                        <Link href={`/community/${guild.id}`} className="flex items-center gap-3 w-full">
+                        <Link
+                          href={`/community/${guild.id}`}
+                          className="flex items-center gap-3 w-full"
+                        >
                           <GuildRow guild={guild} />
                           <ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-20" />
                         </Link>

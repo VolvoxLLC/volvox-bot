@@ -1,5 +1,5 @@
-import type { LucideIcon } from 'lucide-react';
 import { useReducedMotion } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 import { AnimatedCounter, formatNumber } from '../AnimatedCounter';
 
 interface BentoKpiProps {

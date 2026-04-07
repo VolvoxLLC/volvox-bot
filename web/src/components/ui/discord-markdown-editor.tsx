@@ -274,7 +274,6 @@ export function DiscordMarkdownEditor({
         if (textareaRef.current) {
           textareaRef.current.focus();
           textareaRef.current.setSelectionRange(result.cursorPos ?? null, result.cursorPos ?? null);
-
         }
       });
       rafIdsRef.current.push(rafId);
@@ -315,7 +314,7 @@ export function DiscordMarkdownEditor({
       });
     }
     return renderPreviewContent(html);
-  }, [value, isMounted, variableSamples, variables]);
+  }, [value, isMounted, variableSamples, activeVariables]);
 
   const getCharCountColor = (): string => {
     if (isOverLimit) {
@@ -423,7 +422,6 @@ export function DiscordMarkdownEditor({
           >
             {previewContent}
           </div>
-
         </section>
       </div>
 

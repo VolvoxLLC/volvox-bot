@@ -1,12 +1,8 @@
 'use client';
 
-import { Ticket } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
-import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
-import { GithubIcon } from '@/components/ui/github-icon';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { cn } from '@/lib/utils';
 import { ConfigCategoryLayout } from './config-category-layout';

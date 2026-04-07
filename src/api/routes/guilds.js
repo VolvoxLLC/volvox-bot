@@ -499,6 +499,7 @@ router.get('/', async (req, res) => {
           const access =
             getOAuthDerivedAccessLevel(ug.owner, ug.permissions) ??
             (await getGuildAccessLevel(botGuild, req.user.userId));
+          if (access === 'viewer') return null;
 
           return {
             id: ug.id,

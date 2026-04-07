@@ -21,7 +21,6 @@ import { useConfigContext } from '@/components/dashboard/config-context';
 import { ConfigSearch } from '@/components/dashboard/config-workspace/config-search';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { GithubIcon } from '@/components/ui/github-icon';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -208,13 +207,8 @@ export function Header() {
     }
   }, [session?.error]);
 
-  const {
-    activeCategoryId,
-    searchQuery,
-    searchResults,
-    handleSearchChange,
-    handleSearchSelect,
-  } = useConfigContext();
+  const { activeCategoryId, searchQuery, searchResults, handleSearchChange, handleSearchSelect } =
+    useConfigContext();
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-background/20 transition-all duration-300 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.2)]">

@@ -112,6 +112,7 @@ export default function ConversationDetailPage() {
               <div className="space-y-8">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholder
                     key={`sk-${i}`}
                     className={`flex gap-4 ${i % 2 === 0 ? '' : 'flex-row-reverse'}`}
                   >

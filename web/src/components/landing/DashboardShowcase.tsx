@@ -1,7 +1,10 @@
 'use client';
 
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Globe, Monitor, Terminal, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Globe, Terminal, Users, Monitor } from 'lucide-react';
 import { BentoAIChat } from './bento/BentoAIChat';
 import { BentoChart } from './bento/BentoChart';
 import { BentoConversations } from './bento/BentoConversations';
@@ -9,13 +12,10 @@ import { BentoKpi } from './bento/BentoKpi';
 import { BentoModeration } from './bento/BentoModeration';
 import { SectionHeader } from './SectionHeader';
 
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
-
 gsap.registerPlugin(ScrollTrigger);
 
 import type { DailyActivityPoint } from './bento/bento-data';
+
 export type { DailyActivityPoint } from './bento/bento-data';
 
 interface BotStats {
@@ -142,10 +142,15 @@ export function DashboardShowcase() {
 
   type NumericBotStats = Pick<
     BotStats,
-    'servers' | 'members' | 'commandsServed' | 'activeConversations' | 'uptime' | 'messagesProcessed'
+    | 'servers'
+    | 'members'
+    | 'commandsServed'
+    | 'activeConversations'
+    | 'uptime'
+    | 'messagesProcessed'
   >;
   const kpiValue = (field: keyof NumericBotStats): number | null =>
-    error && !stats ? null : (stats?.[field] as number) ?? null;
+    error && !stats ? null : ((stats?.[field] as number) ?? null);
 
   return (
     <section

@@ -31,15 +31,15 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     setShowDiffModal,
     executeSave,
     revertSection,
-    searchQuery,
-    searchResults,
-    handleSearchChange,
-    handleSearchSelect,
+    searchQuery: _searchQuery,
+    searchResults: _searchResults,
+    handleSearchChange: _handleSearchChange,
+    handleSearchSelect: _handleSearchSelect,
     fetchConfig,
     activeCategoryId,
   } = useConfigContext();
 
-  const activeCategory = useMemo(
+  const _activeCategory = useMemo(
     () =>
       activeCategoryId ? (CONFIG_CATEGORIES.find((c) => c.id === activeCategoryId) ?? null) : null,
     [activeCategoryId],
@@ -138,9 +138,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   return (
     <div className="relative px-4 md:px-0">
       {/* Main Feature Content */}
-      <div className="space-y-8">
-        {children}
-      </div>
+      <div className="space-y-8">{children}</div>
 
       {savedConfig && (
         <ConfigDiffModal
