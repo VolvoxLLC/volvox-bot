@@ -100,6 +100,134 @@ describe('resolveActions', () => {
     const result = resolveActions(1, 1, config);
     expect(result).toEqual([]);
   });
+
+  it('should derive a level-up DM action for a matching override level', () => {
+    const config = {
+      levelActions: [],
+      defaultActions: [],
+      levelUpDm: {
+        enabled: true,
+        sendOnEveryLevel: false,
+        defaultMessage: 'Default {{level}}',
+        messages: [{ level: 5, message: 'Hit {{level}}' }],
+      },
+    };
+
+    const result = resolveActions(4, 5, config);
+    expect(result).toEqual([
+      {
+        level: 5,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Hit {{level}}',
+          rateLimitScope: 'levelUpDm:5',
+        },
+      },
+    ]);
+  });
+
+  it('should derive a default level-up DM action when sendOnEveryLevel is enabled', () => {
+    const config = {
+      levelActions: [],
+      defaultActions: [],
+      levelUpDm: {
+        enabled: true,
+        sendOnEveryLevel: true,
+        defaultMessage: 'Default {{level}}',
+        messages: [],
+      },
+    };
+
+    const result = resolveActions(2, 3, config);
+    expect(result).toEqual([
+      {
+        level: 3,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Default {{level}}',
+          rateLimitScope: 'levelUpDm:3',
+        },
+      },
+    ]);
+  });
+
+  it('should append derived DM actions without replacing configured actions', () => {
+    const config = {
+      levelActions: [{ level: 5, actions: [{ type: 'grantRole', roleId: 'r1' }] }],
+      defaultActions: [],
+      levelUpDm: {
+        enabled: true,
+        sendOnEveryLevel: false,
+        defaultMessage: 'Default {{level}}',
+        messages: [{ level: 5, message: 'Hit {{level}}' }],
+      },
+    };
+
+    const result = resolveActions(4, 5, config);
+    expect(result).toEqual([
+      { level: 5, action: { type: 'grantRole', roleId: 'r1' } },
+      {
+        level: 5,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Hit {{level}}',
+          rateLimitScope: 'levelUpDm:5',
+        },
+      },
+    ]);
+  });
+
+  it('should derive DMs for each crossed level during a level skip', () => {
+    const config = {
+      levelActions: [],
+      defaultActions: [],
+      levelUpDm: {
+        enabled: true,
+        sendOnEveryLevel: true,
+        defaultMessage: 'Default {{level}}',
+        messages: [{ level: 5, message: 'Milestone {{level}}' }],
+      },
+    };
+
+    expect(resolveActions(4, 6, config)).toEqual([
+      {
+        level: 5,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Milestone {{level}}',
+          rateLimitScope: 'levelUpDm:5',
+        },
+      },
+      {
+        level: 6,
+        action: {
+          type: 'sendDm',
+          format: 'text',
+          template: 'Default {{level}}',
+          rateLimitScope: 'levelUpDm:6',
+        },
+      },
+    ]);
+  });
+
+  it('should not derive level-up DM actions when the feature is disabled', () => {
+    const config = {
+      levelActions: [],
+      defaultActions: [],
+      levelUpDm: {
+        enabled: false,
+        sendOnEveryLevel: true,
+        defaultMessage: 'Default {{level}}',
+        messages: [{ level: 5, message: 'Hit {{level}}' }],
+      },
+    };
+
+    expect(resolveActions(4, 5, config)).toEqual([]);
+  });
 });
 
 describe('executeLevelUpPipeline', () => {

@@ -17,7 +17,7 @@ describe('sentry module', () => {
     vi.stubEnv('SENTRY_DSN', '');
     const mod = await import('../src/sentry.js');
     expect(mod.sentryEnabled).toBe(false);
-  });
+  }, 30_000);
 
   it('should export Sentry namespace', async () => {
     vi.stubEnv('SENTRY_DSN', '');

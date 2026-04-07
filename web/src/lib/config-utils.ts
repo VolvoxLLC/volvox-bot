@@ -3,6 +3,37 @@ import type { BotConfig, DeepPartial } from '@/types/config';
 /** Config sections exposed by the API — all fields optional for partial API responses. */
 export type GuildConfig = DeepPartial<BotConfig>;
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasPlainObjectChild(value: Record<string, unknown>): boolean {
+  return Object.values(value).some((entry) => isPlainObject(entry));
+}
+
+function flattenObjectToLeafPatches(
+  obj: Record<string, unknown>,
+  prefix: string,
+): Array<{ path: string; value: unknown }> {
+  const entries = Object.entries(obj);
+  if (entries.length === 0) {
+    return [{ path: prefix, value: {} }];
+  }
+
+  const patches: Array<{ path: string; value: unknown }> = [];
+
+  for (const [key, value] of entries) {
+    const fullPath = `${prefix}.${key}`;
+    if (isPlainObject(value)) {
+      patches.push(...flattenObjectToLeafPatches(value, fullPath));
+    } else {
+      patches.push({ path: fullPath, value });
+    }
+  }
+
+  return patches;
+}
+
 /**
  * Determine whether two JSON-serializable values are deeply equal by recursively comparing primitives, arrays, and plain objects.
  */
@@ -53,18 +84,22 @@ export function computePatches(
 
       if (deepEqual(origVal, modVal)) continue;
 
-      if (
-        typeof origVal === 'object' &&
-        origVal !== null &&
-        !Array.isArray(origVal) &&
-        typeof modVal === 'object' &&
-        modVal !== null &&
-        !Array.isArray(modVal)
-      ) {
+      if (isPlainObject(origVal) && isPlainObject(modVal)) {
+        if (Object.keys(modVal).length === 0 && !hasPlainObjectChild(origVal)) {
+          patches.push({ path: fullPath, value: {} });
+          continue;
+        }
         walk(origVal as Record<string, unknown>, modVal as Record<string, unknown>, fullPath);
+      } else if (!modHasKey || modVal === undefined) {
+        if (isPlainObject(origVal)) {
+          patches.push({ path: fullPath, value: {} });
+        } else {
+          patches.push({ path: fullPath, value: null });
+        }
+      } else if (isPlainObject(modVal)) {
+        patches.push(...flattenObjectToLeafPatches(modVal, fullPath));
       } else {
-        const patchValue = !modHasKey || modVal === undefined ? null : modVal;
-        patches.push({ path: fullPath, value: patchValue });
+        patches.push({ path: fullPath, value: modVal });
       }
     }
   }

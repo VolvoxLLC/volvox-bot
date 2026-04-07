@@ -24,6 +24,10 @@ const DM_RATE_WINDOW_MS = 60_000;
  */
 const dmLimits = new Map();
 
+function getDmLimitKey(guildId, userId, scope = 'default') {
+  return `${guildId}:${userId}:${scope}`;
+}
+
 /**
  * Check whether a DM is allowed under the rate limit.
  *
@@ -31,8 +35,8 @@ const dmLimits = new Map();
  * @param {string} userId
  * @returns {boolean}
  */
-export function checkDmRateLimit(guildId, userId) {
-  const key = `${guildId}:${userId}`;
+export function checkDmRateLimit(guildId, userId, scope = 'default') {
+  const key = getDmLimitKey(guildId, userId, scope);
   const lastSent = dmLimits.get(key);
   if (lastSent && Date.now() - lastSent < DM_RATE_WINDOW_MS) {
     return false;
@@ -46,8 +50,8 @@ export function checkDmRateLimit(guildId, userId) {
  * @param {string} guildId
  * @param {string} userId
  */
-export function recordDmSend(guildId, userId) {
-  dmLimits.set(`${guildId}:${userId}`, Date.now());
+export function recordDmSend(guildId, userId, scope = 'default') {
+  dmLimits.set(getDmLimitKey(guildId, userId, scope), Date.now());
 }
 
 /**
@@ -81,8 +85,9 @@ export function resetDmLimits() {
 export async function handleSendDm(action, context) {
   const { member, guild, templateContext } = context;
   const userId = member.user?.id;
+  const rateLimitScope = action.rateLimitScope ?? 'default';
 
-  if (!checkDmRateLimit(guild.id, userId)) {
+  if (!checkDmRateLimit(guild.id, userId, rateLimitScope)) {
     debug('DM rate-limited — skipping', { guildId: guild.id, userId });
     return;
   }
@@ -91,7 +96,7 @@ export async function handleSendDm(action, context) {
 
   try {
     await safeSend(member.user, payload);
-    recordDmSend(guild.id, userId);
+    recordDmSend(guild.id, userId, rateLimitScope);
     info('Level-up DM sent', { guildId: guild.id, userId });
   } catch (err) {
     // 50007 = Cannot send messages to this user (DMs disabled)

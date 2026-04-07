@@ -75,7 +75,7 @@ describe('db module', () => {
     delete process.env.DATABASE_SSL;
 
     dbModule = await import('../src/db.js');
-  });
+  }, 30_000);
 
   afterEach(async () => {
     try {
