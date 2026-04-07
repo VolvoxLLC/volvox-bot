@@ -493,7 +493,7 @@ router.get('/', async (req, res) => {
         userGuilds,
         ACCESS_LOOKUP_CONCURRENCY,
         async (ug) => {
-        const botGuild = botGuilds.get(ug.id);
+          const botGuild = botGuilds.get(ug.id);
           if (!botGuild) return null;
 
           const access =

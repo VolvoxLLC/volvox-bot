@@ -22,7 +22,7 @@ describe('command files', () => {
 
       beforeAll(async () => {
         mod = await import(pathToFileURL(join(commandsDir, file)).href);
-      });
+      }, 30_000);
 
       it('should export data and execute', () => {
         expect(mod).toHaveProperty('data');

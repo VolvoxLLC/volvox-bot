@@ -166,6 +166,12 @@ describe('checkDmRateLimit', () => {
     expect(checkDmRateLimit('g1', 'u1')).toBe(false);
   });
 
+  it('should track rate limits independently by scope', () => {
+    recordDmSend('g1', 'u1', 'default');
+    expect(checkDmRateLimit('g1', 'u1', 'default')).toBe(false);
+    expect(checkDmRateLimit('g1', 'u1', 'levelUpDm')).toBe(true);
+  });
+
   it('should allow after rate window expires', () => {
     vi.useFakeTimers();
     recordDmSend('g1', 'u1');

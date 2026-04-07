@@ -88,10 +88,7 @@ let activeVariables: ReadonlySet<string> | null = null;
  * @param validVariables - When provided, only these names are rendered as variable badges.
  *   Any `{name}` or `{{name}}` not in the set is left as plain text.
  */
-export function parseDiscordMarkdown(
-  input: string,
-  validVariables?: readonly string[],
-): string {
+export function parseDiscordMarkdown(input: string, validVariables?: readonly string[]): string {
   activeVariables = validVariables ? new Set(validVariables) : null;
   try {
     return splitCodeBlockSegments(input)

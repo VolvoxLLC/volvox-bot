@@ -650,6 +650,7 @@ describe('CLIProcess — long-lived mode', () => {
     const sendP = cli.send('slow');
     const rejection = sendP.catch((error) => error);
 
+    await Promise.resolve();
     await vi.advanceTimersByTimeAsync(3001);
 
     const error = await rejection;

@@ -47,6 +47,36 @@ registerAction('nickPrefix', handleNickPrefix);
 registerAction('nickSuffix', handleNickSuffix);
 registerAction('webhook', handleWebhook);
 
+function getLevelUpDmRateLimitScope(level) {
+  return `levelUpDm:${level}`;
+}
+
+function getLevelUpDmAction(level, config) {
+  const levelUpDm = config.levelUpDm;
+  if (!levelUpDm?.enabled) return null;
+
+  const override = levelUpDm.messages?.find((entry) => entry.level === level);
+  if (override?.message) {
+    return {
+      type: 'sendDm',
+      format: 'text',
+      template: override.message,
+      rateLimitScope: getLevelUpDmRateLimitScope(level),
+    };
+  }
+
+  if (levelUpDm.sendOnEveryLevel && levelUpDm.defaultMessage) {
+    return {
+      type: 'sendDm',
+      format: 'text',
+      template: levelUpDm.defaultMessage,
+      rateLimitScope: getLevelUpDmRateLimitScope(level),
+    };
+  }
+
+  return null;
+}
+
 /**
  * Resolve the ordered list of actions to execute for a level-up.
  * Handles level skips by collecting actions for every crossed level.
@@ -72,6 +102,11 @@ export function resolveActions(previousLevel, newLevel, config) {
 
     for (const action of actions) {
       result.push({ level, action });
+    }
+
+    const dmAction = getLevelUpDmAction(level, config);
+    if (dmAction) {
+      result.push({ level, action: dmAction });
     }
   }
 
