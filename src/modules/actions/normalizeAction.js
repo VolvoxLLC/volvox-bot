@@ -44,10 +44,7 @@ function normalizeEmbed(embed) {
       text: typeof embed.footer.text === 'string' ? embed.footer.text : '',
       iconURL: typeof embed.footer.iconURL === 'string' ? embed.footer.iconURL : undefined,
     };
-  } else if (
-    typeof embed.footerText === 'string' ||
-    typeof embed.footerIconUrl === 'string'
-  ) {
+  } else if (typeof embed.footerText === 'string' || typeof embed.footerIconUrl === 'string') {
     normalized.footer = {
       text: typeof embed.footerText === 'string' ? embed.footerText : '',
       iconURL: typeof embed.footerIconUrl === 'string' ? embed.footerIconUrl : undefined,
@@ -82,11 +79,19 @@ export function normalizeXpAction(action) {
     normalized.template = normalized.message;
   }
 
-  if (normalized.type === 'nickPrefix' && typeof normalized.prefix === 'string' && !normalized.template) {
+  if (
+    normalized.type === 'nickPrefix' &&
+    typeof normalized.prefix === 'string' &&
+    !normalized.template
+  ) {
     normalized.template = normalized.prefix;
   }
 
-  if (normalized.type === 'nickSuffix' && typeof normalized.suffix === 'string' && !normalized.template) {
+  if (
+    normalized.type === 'nickSuffix' &&
+    typeof normalized.suffix === 'string' &&
+    !normalized.template
+  ) {
     normalized.template = normalized.suffix;
   }
 

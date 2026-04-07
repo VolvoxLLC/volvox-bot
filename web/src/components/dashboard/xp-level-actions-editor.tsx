@@ -4,11 +4,7 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
-import {
-  defaultEmbedConfig,
-  EmbedBuilder,
-  type EmbedConfig,
-} from '@/components/ui/embed-builder';
+import { defaultEmbedConfig, EmbedBuilder, type EmbedConfig } from '@/components/ui/embed-builder';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RoleSelector } from '@/components/ui/role-selector';
@@ -22,7 +18,6 @@ import type {
 } from '@/types/config';
 
 type GuildConfig = DeepPartial<BotConfig>;
-type XpDraft = NonNullable<GuildConfig['xp']>;
 
 const ACTION_TYPE_OPTIONS: Array<{ value: XpLevelAction['type']; label: string }> = [
   { value: 'grantRole', label: 'Grant Role' },
@@ -95,7 +90,11 @@ function createAction(type: XpLevelAction['type']): XpLevelAction {
     case 'removeRole':
       return { type, roleId: '' };
     case 'sendDm':
-      return { type, format: 'text', message: '🎉 You reached **Level {{level}}** in **{{server}}**!' };
+      return {
+        type,
+        format: 'text',
+        message: '🎉 You reached **Level {{level}}** in **{{server}}**!',
+      };
     case 'announce':
       return {
         type,
@@ -118,7 +117,9 @@ function createAction(type: XpLevelAction['type']): XpLevelAction {
   }
 }
 
-function normalizeDraftEmbed(embed?: DeepPartial<XpActionEmbedConfig> | null): XpActionEmbedConfig | undefined {
+function normalizeDraftEmbed(
+  embed?: DeepPartial<XpActionEmbedConfig> | null,
+): XpActionEmbedConfig | undefined {
   if (!embed) return undefined;
   return {
     ...embed,
@@ -158,7 +159,10 @@ function fromSingleSelection(values: string[]): string {
   return values[0] ?? '';
 }
 
-function toBuilderConfig(embed?: XpActionEmbedConfig, format?: XpLevelAction['format']): EmbedConfig {
+function toBuilderConfig(
+  embed?: XpActionEmbedConfig,
+  format?: XpLevelAction['format'],
+): EmbedConfig {
   const base = defaultEmbedConfig();
   return {
     ...base,
@@ -191,7 +195,9 @@ function toBuilderConfig(embed?: XpActionEmbedConfig, format?: XpLevelAction['fo
     footerIconUrl:
       typeof embed?.footerIconUrl === 'string'
         ? embed.footerIconUrl
-        : typeof embed?.footer === 'object' && embed.footer && typeof embed.footer.iconURL === 'string'
+        : typeof embed?.footer === 'object' &&
+            embed.footer &&
+            typeof embed.footer.iconURL === 'string'
           ? embed.footer.iconURL
           : '',
     imageUrl:
@@ -235,6 +241,7 @@ interface ActionCardProps {
   guildId: string;
   saving: boolean;
   title: string;
+  actionId: string;
   onChange: (action: XpLevelAction) => void;
   onDelete: () => void;
   onMove: (direction: -1 | 1) => void;
@@ -247,11 +254,14 @@ function ActionCard({
   guildId,
   saving,
   title,
+  actionId,
   onChange,
   onDelete,
   onMove,
 }: ActionCardProps) {
   const format = action.format ?? 'text';
+  const webhookUrlId = `${actionId}-webhook-url`;
+  const webhookPayloadId = `${actionId}-webhook-payload`;
 
   return (
     <div className="space-y-4 rounded-xl border border-border/50 bg-background/60 p-4">
@@ -474,25 +484,27 @@ function ActionCard({
 
       {action.type === 'webhook' && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Webhook URL</span>
+          <div className="space-y-2">
+            <Label htmlFor={webhookUrlId}>Webhook URL</Label>
             <Input
+              id={webhookUrlId}
               value={action.url ?? ''}
               disabled={saving}
               onChange={(event) => onChange({ ...action, url: event.target.value })}
               placeholder="https://example.com/hook"
             />
-          </label>
-          <label className="space-y-2 sm:col-span-2">
-            <span className="text-sm font-medium">Payload Template</span>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor={webhookPayloadId}>Payload Template</Label>
             <Textarea
+              id={webhookPayloadId}
               value={action.payload ?? ''}
               disabled={saving}
               onChange={(event) => onChange({ ...action, payload: event.target.value })}
               rows={4}
               placeholder='{"user":"{{username}}","level":"{{level}}"}'
             />
-          </label>
+          </div>
         </div>
       )}
     </div>
@@ -550,13 +562,14 @@ function ActionGroup({ title, description, actions, guildId, saving, onChange }:
 
       {actions.map((action, actionIndex) => (
         <ActionCard
-          key={`${action.type}-${actionIndex}`}
+          key={`${title.toLowerCase().replace(/\s+/g, '-')}-${action.type}-${action.roleId ?? action.channelId ?? action.url ?? 'action'}-${actionIndex}`}
           action={action}
           actionIndex={actionIndex}
           actionsLength={actions.length}
           guildId={guildId}
           saving={saving}
           title={title}
+          actionId={`${title.toLowerCase().replace(/\s+/g, '-')}-${action.type}-${actionIndex}`}
           onChange={(nextAction) => updateAction(actionIndex, nextAction)}
           onDelete={() => removeAction(actionIndex)}
           onMove={(direction) => moveAction(actionIndex, direction)}
@@ -618,7 +631,9 @@ export function XpLevelActionsEditor({
                   levelActions: [
                     ...(prev.xp?.levelActions ?? []),
                     {
-                      level: getNextUnusedLevel((prev.xp?.levelActions ?? []).map(normalizeDraftEntry)),
+                      level: getNextUnusedLevel(
+                        (prev.xp?.levelActions ?? []).map(normalizeDraftEntry),
+                      ),
                       actions: [],
                     },
                   ],
@@ -633,20 +648,19 @@ export function XpLevelActionsEditor({
         </div>
 
         {levelEntries.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No level-specific action groups yet.
-          </p>
+          <p className="text-sm text-muted-foreground">No level-specific action groups yet.</p>
         )}
 
         {levelEntries.map((entry, entryIndex) => (
           <div
-            key={`level-action-entry-${entryIndex}`}
+            key={`level-action-entry-${entry.level ?? 'new'}-${entry.actions.length}-${entryIndex}`}
             className="space-y-4 rounded-xl border border-border/50 bg-background/70 p-4"
           >
             <div className="flex flex-wrap items-end gap-3">
-              <label className="space-y-2">
-                <span className="text-sm font-medium">Level</span>
+              <div className="space-y-2">
+                <Label htmlFor={`level-entry-${entryIndex}`}>Level</Label>
                 <Input
+                  id={`level-entry-${entryIndex}`}
                   type="number"
                   min={1}
                   max={1000}
@@ -670,7 +684,7 @@ export function XpLevelActionsEditor({
                     })
                   }
                 />
-              </label>
+              </div>
               <div className="ml-auto flex items-center gap-2">
                 <Button
                   type="button"
