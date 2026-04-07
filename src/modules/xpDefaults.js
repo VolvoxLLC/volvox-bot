@@ -8,6 +8,12 @@ export const XP_DEFAULTS = {
   levelThresholds: [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 8500, 12000],
   levelActions: [],
   defaultActions: [],
+  levelUpDm: {
+    enabled: false,
+    sendOnEveryLevel: false,
+    defaultMessage: '🎉 You reached **Level {{level}}** in **{{server}}**! Keep chatting!',
+    messages: [],
+  },
   roleRewards: {
     stackRoles: true,
     removeOnLevelDown: false,

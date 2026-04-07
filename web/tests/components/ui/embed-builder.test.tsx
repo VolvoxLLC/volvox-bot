@@ -496,6 +496,30 @@ describe('EmbedPreview', () => {
     render(<EmbedPreview config={config} />);
     expect(screen.getByText('Avatar')).toBeInTheDocument();
   });
+
+  it('renders custom thumbnail, embed image, and footer icon with plain img tags', () => {
+    const config = {
+      ...defaultEmbedConfig(),
+      title: 'Test',
+      thumbnailType: 'custom' as const,
+      thumbnailUrl: 'https://example.com/thumbnail.png',
+      imageUrl: 'https://example.com/embed.png',
+      footerText: 'Footer',
+      footerIconUrl: 'https://example.com/footer.png',
+    };
+
+    render(<EmbedPreview config={config} />);
+
+    expect(screen.getByAltText('Thumbnail')).toHaveAttribute(
+      'src',
+      'https://example.com/thumbnail.png',
+    );
+    expect(screen.getByAltText('Embed')).toHaveAttribute('src', 'https://example.com/embed.png');
+    expect(screen.getByAltText('Footer icon')).toHaveAttribute(
+      'src',
+      'https://example.com/footer.png',
+    );
+  });
 });
 
 // ── Utility functions ─────────────────────────────────────────────

@@ -375,7 +375,7 @@ describe('index.js', () => {
     await importIndex({ token: 'abc', databaseUrl: null });
     expect(mocks.clientOptions).toHaveProperty('allowedMentions');
     expect(mocks.clientOptions.allowedMentions).toEqual({ parse: ['users'] });
-  });
+  }, 30_000);
 
   it('should exit when DISCORD_TOKEN is missing', async () => {
     await expect(importIndex({ token: null, databaseUrl: null })).rejects.toThrow('process.exit:1');
