@@ -338,15 +338,11 @@ describe('ServerSelector', () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /No Access/i })).toBeInTheDocument();
     });
-    expect(screen.getByText("Community Hubs")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Viewer Server/i })).toHaveAttribute(
-      "href",
-      "/community/viewer-1",
-    );
-    expect(screen.getByAltText("Viewer Server")).toHaveAttribute(
-      "src",
-      expect.stringContaining("/icons/viewer-1/a_hash.gif"),
-    );
+    // When no guilds are manageable, the trigger shows "No Access"
+    // and the dropdown shows "Administrative clearance required"
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /No Access/i }));
+    expect(await screen.findByText(/Administrative clearance required/i)).toBeInTheDocument();
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
   });
 

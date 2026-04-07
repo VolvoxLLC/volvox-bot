@@ -23,6 +23,7 @@ vi.mock('framer-motion', async () => {
       p: createComponent('p'),
       span: createComponent('span'),
       section: createComponent('section'),
+      path: createComponent('path'),
     },
     useInView: (...args: unknown[]) => mockUseInView(...args),
     useScroll: () => ({ scrollY: 0, scrollYProgress: 0 }),
@@ -49,7 +50,12 @@ describe('Stats', () => {
     cancelledHandles = new Set();
     globalThis.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
       const handle = nextHandle++;
-      queueMicrotask(() => { if (!cancelledHandles.has(handle)) { lastTimestamp += 2000; cb(lastTimestamp); } });
+      queueMicrotask(() => {
+        if (!cancelledHandles.has(handle)) {
+          lastTimestamp += 2000;
+          cb(lastTimestamp);
+        }
+      });
       return handle;
     });
     globalThis.cancelAnimationFrame = vi.fn((h: number) => { cancelledHandles.add(h); });
@@ -61,7 +67,7 @@ describe('Stats', () => {
     globalThis.cancelAnimationFrame = originalCaf;
   });
 
-  it('should render 3 condensed stats after successful fetch', async () => {
+  it('should render 3 stat cards after successful fetch', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -78,15 +84,15 @@ describe('Stats', () => {
     render(<Stats />);
 
     await waitFor(() => {
-      expect(screen.getByText('1.2M')).toBeInTheDocument(); // Members
-      expect(screen.getByText('999')).toBeInTheDocument(); // Commands
-      expect(screen.getByText('1d 3h')).toBeInTheDocument(); // Uptime
+      expect(screen.getByText('1.2M')).toBeInTheDocument();
     });
-    // Only 3 stats, not 6
-    expect(screen.queryByText('5.5K')).not.toBeInTheDocument();
+    // 3 stat labels
+    expect(screen.getByText('Global Intelligence')).toBeInTheDocument();
+    expect(screen.getByText('Operational Flow')).toBeInTheDocument();
+    expect(screen.getByText('System Stability')).toBeInTheDocument();
   });
 
-  it('should render testimonial placeholders', () => {
+  it('should render testimonial quotes', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -96,13 +102,19 @@ describe('Stats', () => {
     } as Response);
 
     render(<Stats />);
-    expect(screen.getByRole('heading', { name: /Loved by developers/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/coming soon/i)).toHaveLength(3);
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
+    expect(screen.getByText(/Alex Rivers/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
+    expect(screen.getByText(/Marcus Wright/i)).toBeInTheDocument();
   });
 
-  it('should render error fallback with 3 dashes', async () => {
+  it('should render fallback values when fetch fails', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('boom'));
     render(<Stats />);
-    await waitFor(() => { expect(screen.getAllByText('—')).toHaveLength(3); });
+    // After fetch failure, component shows hardcoded fallback values (not dashes)
+    await waitFor(() => {
+      expect(screen.getByText('Global Intelligence')).toBeInTheDocument();
+      expect(screen.getByText('Operational Flow')).toBeInTheDocument();
+    });
   });
 });

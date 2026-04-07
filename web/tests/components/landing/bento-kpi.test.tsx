@@ -64,6 +64,6 @@ describe('BentoKpi', () => {
       expect(screen.getByText('1.2K')).toBeInTheDocument();
     });
     expect(screen.getByText('Members')).toBeInTheDocument();
-    expect(screen.getByText('live')).toBeInTheDocument();
+    expect(screen.getByText(/live/i)).toBeInTheDocument();
   });
 });

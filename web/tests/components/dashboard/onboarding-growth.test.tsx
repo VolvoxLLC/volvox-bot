@@ -25,6 +25,10 @@ vi.mock('@/components/ui/role-selector', () => ({
   RoleSelector: () => <div data-testid="role-selector" />,
 }));
 
+vi.mock('@/components/dashboard/config-categories/config-category-layout', () => ({
+  ConfigCategoryLayout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock('@/components/dashboard/toggle-switch', () => ({
   ToggleSwitch: ({ label }: { label: string }) => <button type="button">{label}</button>,
 }));
@@ -69,6 +73,7 @@ describe('OnboardingGrowthCategory', () => {
       saving: false,
       guildId: 'guild-1',
       visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
       updateDraftConfig: vi.fn(),
     });
 
@@ -103,6 +108,7 @@ describe('OnboardingGrowthCategory', () => {
       saving: false,
       guildId: 'guild-1',
       visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
       updateDraftConfig: vi.fn(),
     });
 

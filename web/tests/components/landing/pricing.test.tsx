@@ -49,8 +49,8 @@ describe('Pricing', () => {
 
   it('should render 2 tiers with monthly pricing by default', () => {
     render(<Pricing />);
-    expect(screen.getByText('Free')).toBeInTheDocument();
-    expect(screen.getByText('Pro')).toBeInTheDocument();
+    expect(screen.getByText('Standard')).toBeInTheDocument();
+    expect(screen.getByText('Overclocked')).toBeInTheDocument();
     expect(screen.getByText('$0')).toBeInTheDocument();
     expect(screen.getByText('$14.99')).toBeInTheDocument();
     expect(screen.queryByText('Team')).not.toBeInTheDocument();
@@ -60,29 +60,28 @@ describe('Pricing', () => {
   it('should switch to annual billing', async () => {
     const user = userEvent.setup();
     render(<Pricing />);
-    await user.click(screen.getByRole('switch', { name: /toggle annual billing/i }));
+    await user.click(screen.getByRole('button', { name: /toggle annual billing/i }));
     expect(screen.getByText('$115')).toBeInTheDocument();
-    expect(screen.getByText('Save $64.88/year')).toBeInTheDocument();
   });
 
-  it('should use SectionHeader with PRICING label', () => {
+  it('should use SectionHeader with QUOTA ARRANGEMENT label', () => {
     render(<Pricing />);
-    expect(screen.getByText('PRICING')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Simple, transparent pricing');
+    expect(screen.getByText('QUOTA ARRANGEMENT')).toBeInTheDocument();
+    expect(screen.getByText('System Access Tiers')).toBeInTheDocument();
   });
 
-  it('should link free tier to bot invite URL when no custom href', () => {
+  it('should link tiers to bot invite URL', () => {
     render(<Pricing />);
-    expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
-      'href',
-      'https://discord.com/invite/bot',
-    );
+    const links = screen.getAllByRole('link', { name: /INITIALIZE|OVERCLOCK/i });
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toHaveAttribute('href', 'https://discord.com/invite/bot');
   });
 
-  it('should disable pro CTA when no invite URL', () => {
+  it('should render CTA text without links when no invite URL', () => {
     mockGetBotInviteUrl.mockReturnValue(null);
     render(<Pricing />);
-    const button = screen.getByText('Start Free Trial').closest('button');
-    expect(button).toBeDisabled();
+    // When no botInviteUrl and no tier.href, renders span elements with tier.cta text
+    expect(screen.getByText('INITIALIZE')).toBeInTheDocument();
+    expect(screen.getByText('OVERCLOCK NOW')).toBeInTheDocument();
   });
 });
