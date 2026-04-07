@@ -1,0 +1,764 @@
+'use client';
+
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ChannelSelector } from '@/components/ui/channel-selector';
+import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
+import {
+  defaultEmbedConfig,
+  EmbedBuilder,
+  type EmbedConfig,
+} from '@/components/ui/embed-builder';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RoleSelector } from '@/components/ui/role-selector';
+import { Textarea } from '@/components/ui/textarea';
+import type {
+  BotConfig,
+  DeepPartial,
+  XpActionEmbedConfig,
+  XpLevelAction,
+  XpLevelActionEntry,
+} from '@/types/config';
+
+type GuildConfig = DeepPartial<BotConfig>;
+type XpDraft = NonNullable<GuildConfig['xp']>;
+
+const ACTION_TYPE_OPTIONS: Array<{ value: XpLevelAction['type']; label: string }> = [
+  { value: 'grantRole', label: 'Grant Role' },
+  { value: 'removeRole', label: 'Remove Role' },
+  { value: 'sendDm', label: 'Send DM' },
+  { value: 'announce', label: 'Post Announcement' },
+  { value: 'xpBonus', label: 'Grant XP Bonus' },
+  { value: 'addReaction', label: 'Add Reaction' },
+  { value: 'nickPrefix', label: 'Nickname Prefix' },
+  { value: 'nickSuffix', label: 'Nickname Suffix' },
+  { value: 'webhook', label: 'Run Webhook' },
+];
+
+const TEMPLATE_VARIABLES = [
+  'username',
+  'mention',
+  'level',
+  'previousLevel',
+  'xp',
+  'xpToNext',
+  'server',
+  'serverIcon',
+  'memberCount',
+  'channel',
+  'rank',
+  'messages',
+  'roleName',
+  'roleMention',
+  'voiceHours',
+  'daysActive',
+  'joinDate',
+  'avatar',
+  'nextLevel',
+];
+
+const TEMPLATE_SAMPLES: Record<string, string> = {
+  username: 'Ada',
+  mention: '<@1234567890>',
+  level: '10',
+  previousLevel: '9',
+  xp: '4,250',
+  xpToNext: '750',
+  server: 'Volvox',
+  serverIcon: 'https://cdn.discordapp.com/icons/server/icon.png',
+  memberCount: '1,234',
+  channel: '#general',
+  rank: '#12',
+  messages: '523',
+  roleName: 'Regular',
+  roleMention: '<@&234567890>',
+  voiceHours: '42.5',
+  daysActive: '89',
+  joinDate: 'Jan 15, 2025',
+  avatar: 'https://cdn.discordapp.com/avatars/user/avatar.png',
+  nextLevel: '11',
+};
+
+function getNextUnusedLevel(entries: XpLevelActionEntry[] = []) {
+  const levels = new Set(entries.map((entry) => entry.level).filter(Number.isFinite));
+  let candidate = 1;
+  while (levels.has(candidate) && candidate <= 1000) {
+    candidate += 1;
+  }
+  return Math.min(candidate, 1000);
+}
+
+function createAction(type: XpLevelAction['type']): XpLevelAction {
+  switch (type) {
+    case 'grantRole':
+    case 'removeRole':
+      return { type, roleId: '' };
+    case 'sendDm':
+      return { type, format: 'text', message: '🎉 You reached **Level {{level}}** in **{{server}}**!' };
+    case 'announce':
+      return {
+        type,
+        channelMode: 'current',
+        format: 'text',
+        message: '🎉 {{mention}} reached **Level {{level}}**!',
+      };
+    case 'xpBonus':
+      return { type, amount: 100 };
+    case 'addReaction':
+      return { type, emoji: '🎉' };
+    case 'nickPrefix':
+      return { type, prefix: '[Lvl {{level}}] ' };
+    case 'nickSuffix':
+      return { type, suffix: ' [Lvl {{level}}]' };
+    case 'webhook':
+      return { type, url: '', payload: '{"user":"{{username}}","level":"{{level}}"}' };
+    default:
+      return { type };
+  }
+}
+
+function normalizeDraftEmbed(embed?: DeepPartial<XpActionEmbedConfig> | null): XpActionEmbedConfig | undefined {
+  if (!embed) return undefined;
+  return {
+    ...embed,
+    fields: Array.isArray(embed.fields)
+      ? embed.fields.map((field, index) => ({
+          id: field?.id ?? `field-${index}`,
+          name: field?.name ?? '',
+          value: field?.value ?? '',
+          inline: Boolean(field?.inline),
+        }))
+      : undefined,
+  };
+}
+
+function normalizeDraftAction(action?: DeepPartial<XpLevelAction> | null): XpLevelAction {
+  const type = action?.type ?? 'grantRole';
+  return {
+    ...createAction(type),
+    ...action,
+    embed: normalizeDraftEmbed(action?.embed),
+    type,
+  };
+}
+
+function normalizeDraftEntry(entry?: DeepPartial<XpLevelActionEntry> | null): XpLevelActionEntry {
+  return {
+    level: entry?.level ?? 1,
+    actions: Array.isArray(entry?.actions) ? entry.actions.map(normalizeDraftAction) : [],
+  };
+}
+
+function toSingleSelection(value?: string | null): string[] {
+  return value ? [value] : [];
+}
+
+function fromSingleSelection(values: string[]): string {
+  return values[0] ?? '';
+}
+
+function toBuilderConfig(embed?: XpActionEmbedConfig, format?: XpLevelAction['format']): EmbedConfig {
+  const base = defaultEmbedConfig();
+  return {
+    ...base,
+    color: typeof embed?.color === 'string' ? embed.color : base.color,
+    title: typeof embed?.title === 'string' ? embed.title : '',
+    description: typeof embed?.description === 'string' ? embed.description : '',
+    thumbnailType:
+      embed?.thumbnailType === 'user_avatar' ||
+      embed?.thumbnailType === 'server_icon' ||
+      embed?.thumbnailType === 'custom'
+        ? embed.thumbnailType
+        : 'none',
+    thumbnailUrl: typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : '',
+    fields: Array.isArray(embed?.fields)
+      ? embed.fields.map((field, index) => ({
+          id: field.id ?? `field-${index}`,
+          name: field.name ?? '',
+          value: field.value ?? '',
+          inline: Boolean(field.inline),
+        }))
+      : [],
+    footerText:
+      typeof embed?.footer === 'string'
+        ? embed.footer
+        : typeof embed?.footerText === 'string'
+          ? embed.footerText
+          : typeof embed?.footer?.text === 'string'
+            ? embed.footer.text
+            : '',
+    footerIconUrl:
+      typeof embed?.footerIconUrl === 'string'
+        ? embed.footerIconUrl
+        : typeof embed?.footer === 'object' && embed.footer && typeof embed.footer.iconURL === 'string'
+          ? embed.footer.iconURL
+          : '',
+    imageUrl:
+      typeof embed?.imageUrl === 'string'
+        ? embed.imageUrl
+        : typeof embed?.image === 'string'
+          ? embed.image
+          : '',
+    showTimestamp: embed?.showTimestamp === true || embed?.timestamp === true,
+    format: format ?? 'embed',
+  };
+}
+
+function fromBuilderConfig(config: EmbedConfig): XpActionEmbedConfig {
+  return {
+    color: config.color,
+    title: config.title,
+    description: config.description,
+    thumbnailType: config.thumbnailType,
+    thumbnailUrl: config.thumbnailUrl,
+    fields: config.fields.map(({ id, ...field }) => ({ id, ...field })),
+    footerText: config.footerText,
+    footerIconUrl: config.footerIconUrl,
+    imageUrl: config.imageUrl,
+    showTimestamp: config.showTimestamp,
+  };
+}
+
+function reorderItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= items.length) return items;
+  const copy = [...items];
+  [copy[index], copy[nextIndex]] = [copy[nextIndex], copy[index]];
+  return copy;
+}
+
+interface ActionCardProps {
+  action: XpLevelAction;
+  actionIndex: number;
+  actionsLength: number;
+  guildId: string;
+  saving: boolean;
+  title: string;
+  onChange: (action: XpLevelAction) => void;
+  onDelete: () => void;
+  onMove: (direction: -1 | 1) => void;
+}
+
+function ActionCard({
+  action,
+  actionIndex,
+  actionsLength,
+  guildId,
+  saving,
+  title,
+  onChange,
+  onDelete,
+  onMove,
+}: ActionCardProps) {
+  const format = action.format ?? 'text';
+
+  return (
+    <div className="space-y-4 rounded-xl border border-border/50 bg-background/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{title}</p>
+          <p className="text-xs text-muted-foreground">Action {actionIndex + 1}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => onMove(-1)}
+            disabled={saving || actionIndex === 0}
+            aria-label="Move action up"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => onMove(1)}
+            disabled={saving || actionIndex === actionsLength - 1}
+            aria-label="Move action down"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={onDelete}
+            disabled={saving}
+            aria-label="Delete action"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Action Type</Label>
+        <select
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={action.type}
+          disabled={saving}
+          onChange={(event) => onChange(createAction(event.target.value as XpLevelAction['type']))}
+        >
+          {ACTION_TYPE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {(action.type === 'grantRole' || action.type === 'removeRole') && (
+        <div className="space-y-2">
+          <Label>Role</Label>
+          <RoleSelector
+            guildId={guildId}
+            selected={toSingleSelection(action.roleId)}
+            onChange={(selected) => onChange({ ...action, roleId: fromSingleSelection(selected) })}
+            maxSelections={1}
+            disabled={saving}
+            placeholder="Select a role..."
+          />
+        </div>
+      )}
+
+      {(action.type === 'sendDm' || action.type === 'announce') && (
+        <div className="space-y-4">
+          {action.type === 'announce' && (
+            <div className="space-y-2">
+              <Label>Announcement Channel</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={action.channelMode ?? 'current'}
+                disabled={saving}
+                onChange={(event) =>
+                  onChange({
+                    ...action,
+                    channelMode: event.target.value as 'current' | 'specific' | 'none',
+                  })
+                }
+              >
+                <option value="current">Current Channel</option>
+                <option value="specific">Specific Channel</option>
+                <option value="none">No Public Announcement</option>
+              </select>
+              {(action.channelMode ?? 'current') === 'specific' && (
+                <ChannelSelector
+                  guildId={guildId}
+                  selected={toSingleSelection(action.channelId)}
+                  onChange={(selected) =>
+                    onChange({ ...action, channelId: fromSingleSelection(selected) })
+                  }
+                  maxSelections={1}
+                  disabled={saving}
+                  placeholder="Select a channel..."
+                  filter="text"
+                />
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Message Format</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={format}
+              disabled={saving}
+              onChange={(event) =>
+                onChange({
+                  ...action,
+                  format: event.target.value as 'text' | 'embed' | 'both',
+                })
+              }
+            >
+              <option value="text">Text</option>
+              <option value="embed">Embed</option>
+              <option value="both">Text + Embed</option>
+            </select>
+          </div>
+
+          {(format === 'text' || format === 'both') && (
+            <div className="space-y-2">
+              <Label>{action.type === 'sendDm' ? 'DM Message' : 'Announcement Message'}</Label>
+              <DiscordMarkdownEditor
+                value={action.message ?? action.template ?? ''}
+                onChange={(message) => onChange({ ...action, message, template: message })}
+                variables={TEMPLATE_VARIABLES}
+                variableSamples={TEMPLATE_SAMPLES}
+                maxLength={2000}
+                disabled={saving}
+                placeholder="Write a Discord markdown message..."
+              />
+            </div>
+          )}
+
+          {(format === 'embed' || format === 'both') && (
+            <div className="space-y-2">
+              <Label>Embed</Label>
+              <EmbedBuilder
+                value={toBuilderConfig(action.embed, format)}
+                onChange={(embedConfig) =>
+                  onChange({
+                    ...action,
+                    format: embedConfig.format,
+                    embed: fromBuilderConfig(embedConfig),
+                  })
+                }
+                variables={TEMPLATE_VARIABLES}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {action.type === 'xpBonus' && (
+        <div className="space-y-2">
+          <Label>Bonus XP</Label>
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            value={action.amount ?? 100}
+            disabled={saving}
+            onChange={(event) =>
+              onChange({
+                ...action,
+                amount: Math.max(1, Number.parseInt(event.target.value || '0', 10) || 1),
+              })
+            }
+          />
+        </div>
+      )}
+
+      {action.type === 'addReaction' && (
+        <div className="space-y-2">
+          <Label>Reaction Emoji</Label>
+          <Input
+            value={action.emoji ?? ''}
+            disabled={saving}
+            onChange={(event) => onChange({ ...action, emoji: event.target.value })}
+            placeholder="🎉"
+          />
+        </div>
+      )}
+
+      {(action.type === 'nickPrefix' || action.type === 'nickSuffix') && (
+        <div className="space-y-2">
+          <Label>{action.type === 'nickPrefix' ? 'Nickname Prefix' : 'Nickname Suffix'}</Label>
+          <DiscordMarkdownEditor
+            value={
+              action.type === 'nickPrefix'
+                ? (action.prefix ?? action.template ?? '')
+                : (action.suffix ?? action.template ?? '')
+            }
+            onChange={(value) =>
+              onChange(
+                action.type === 'nickPrefix'
+                  ? { ...action, prefix: value, template: value }
+                  : { ...action, suffix: value, template: value },
+              )
+            }
+            variables={TEMPLATE_VARIABLES}
+            variableSamples={TEMPLATE_SAMPLES}
+            maxLength={32}
+            disabled={saving}
+            placeholder={action.type === 'nickPrefix' ? '[Lvl {{level}}] ' : ' [Lvl {{level}}]'}
+          />
+          <p className="text-xs text-muted-foreground">
+            Discord nicknames max out at 32 characters after template rendering.
+          </p>
+        </div>
+      )}
+
+      {action.type === 'webhook' && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-sm font-medium">Webhook URL</span>
+            <Input
+              value={action.url ?? ''}
+              disabled={saving}
+              onChange={(event) => onChange({ ...action, url: event.target.value })}
+              placeholder="https://example.com/hook"
+            />
+          </label>
+          <label className="space-y-2 sm:col-span-2">
+            <span className="text-sm font-medium">Payload Template</span>
+            <Textarea
+              value={action.payload ?? ''}
+              disabled={saving}
+              onChange={(event) => onChange({ ...action, payload: event.target.value })}
+              rows={4}
+              placeholder='{"user":"{{username}}","level":"{{level}}"}'
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ActionGroupProps {
+  title: string;
+  description: string;
+  actions: XpLevelAction[];
+  guildId: string;
+  saving: boolean;
+  onChange: (actions: XpLevelAction[]) => void;
+}
+
+function ActionGroup({ title, description, actions, guildId, saving, onChange }: ActionGroupProps) {
+  const updateAction = (index: number, nextAction: XpLevelAction) => {
+    const next = [...actions];
+    next[index] = nextAction;
+    onChange(next);
+  };
+
+  const removeAction = (index: number) => {
+    onChange(actions.filter((_, candidateIndex) => candidateIndex !== index));
+  };
+
+  const moveAction = (index: number, direction: -1 | 1) => {
+    onChange(reorderItem(actions, index, direction));
+  };
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h4 className="text-sm font-semibold">{title}</h4>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...actions, createAction('grantRole')])}
+          disabled={saving}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          Add Action
+        </Button>
+      </div>
+
+      {actions.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No actions configured yet. Add one to start building the pipeline.
+        </p>
+      )}
+
+      {actions.map((action, actionIndex) => (
+        <ActionCard
+          key={`${action.type}-${actionIndex}`}
+          action={action}
+          actionIndex={actionIndex}
+          actionsLength={actions.length}
+          guildId={guildId}
+          saving={saving}
+          title={title}
+          onChange={(nextAction) => updateAction(actionIndex, nextAction)}
+          onDelete={() => removeAction(actionIndex)}
+          onMove={(direction) => moveAction(actionIndex, direction)}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface XpLevelActionsEditorProps {
+  draftConfig: GuildConfig;
+  guildId: string;
+  saving: boolean;
+  updateDraftConfig: (updater: (prev: GuildConfig) => GuildConfig) => void;
+}
+
+export function XpLevelActionsEditor({
+  draftConfig,
+  guildId,
+  saving,
+  updateDraftConfig,
+}: XpLevelActionsEditorProps) {
+  const levelEntries = (draftConfig.xp?.levelActions ?? []).map(normalizeDraftEntry);
+  const defaultActions = (draftConfig.xp?.defaultActions ?? []).map(normalizeDraftAction);
+
+  return (
+    <div className="space-y-6">
+      <ActionGroup
+        title="Default Actions"
+        description="These run on every level-up unless a specific level has its own action list."
+        actions={defaultActions}
+        guildId={guildId}
+        saving={saving}
+        onChange={(actions) =>
+          updateDraftConfig((prev) => ({
+            ...prev,
+            xp: { ...prev.xp, defaultActions: actions },
+          }))
+        }
+      />
+
+      <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h4 className="text-sm font-semibold">Per-Level Actions</h4>
+            <p className="text-xs text-muted-foreground">
+              Add level-specific pipelines for milestones like 5, 10, and 25.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              updateDraftConfig((prev) => ({
+                ...prev,
+                xp: {
+                  ...prev.xp,
+                  levelActions: [
+                    ...(prev.xp?.levelActions ?? []),
+                    {
+                      level: getNextUnusedLevel((prev.xp?.levelActions ?? []).map(normalizeDraftEntry)),
+                      actions: [],
+                    },
+                  ],
+                },
+              }))
+            }
+            disabled={saving}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add Level
+          </Button>
+        </div>
+
+        {levelEntries.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No level-specific action groups yet.
+          </p>
+        )}
+
+        {levelEntries.map((entry, entryIndex) => (
+          <div
+            key={`level-action-entry-${entryIndex}`}
+            className="space-y-4 rounded-xl border border-border/50 bg-background/70 p-4"
+          >
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="space-y-2">
+                <span className="text-sm font-medium">Level</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  step={1}
+                  value={entry.level ?? 1}
+                  disabled={saving}
+                  onChange={(event) =>
+                    updateDraftConfig((prev) => {
+                      const nextEntries = [...(prev.xp?.levelActions ?? [])];
+                      nextEntries[entryIndex] = {
+                        ...nextEntries[entryIndex],
+                        level: Math.max(
+                          1,
+                          Math.min(1000, Number.parseInt(event.target.value || '1', 10) || 1),
+                        ),
+                      };
+                      return {
+                        ...prev,
+                        xp: { ...prev.xp, levelActions: nextEntries },
+                      };
+                    })
+                  }
+                />
+              </label>
+              <div className="ml-auto flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: {
+                        ...prev.xp,
+                        levelActions: reorderItem(
+                          (prev.xp?.levelActions ?? []).map(normalizeDraftEntry),
+                          entryIndex,
+                          -1,
+                        ),
+                      },
+                    }))
+                  }
+                  disabled={saving || entryIndex === 0}
+                  aria-label="Move level up"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: {
+                        ...prev.xp,
+                        levelActions: reorderItem(
+                          (prev.xp?.levelActions ?? []).map(normalizeDraftEntry),
+                          entryIndex,
+                          1,
+                        ),
+                      },
+                    }))
+                  }
+                  disabled={saving || entryIndex === levelEntries.length - 1}
+                  aria-label="Move level down"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: {
+                        ...prev.xp,
+                        levelActions: (prev.xp?.levelActions ?? []).filter(
+                          (_, candidateIndex) => candidateIndex !== entryIndex,
+                        ),
+                      },
+                    }))
+                  }
+                  disabled={saving}
+                  aria-label="Delete level"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <ActionGroup
+              title={`Level ${entry.level ?? 1}`}
+              description="These actions override the default list when the member reaches this exact level."
+              actions={entry.actions ?? []}
+              guildId={guildId}
+              saving={saving}
+              onChange={(actions) =>
+                updateDraftConfig((prev) => {
+                  const nextEntries = [...(prev.xp?.levelActions ?? [])];
+                  nextEntries[entryIndex] = { ...nextEntries[entryIndex], actions };
+                  return {
+                    ...prev,
+                    xp: { ...prev.xp, levelActions: nextEntries },
+                  };
+                })
+              }
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

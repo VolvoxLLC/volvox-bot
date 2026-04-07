@@ -31,8 +31,34 @@ export function buildPayload(action, templateContext) {
     if (embedConfig.color) embed.setColor(embedConfig.color);
     if (embedConfig.thumbnail)
       embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
-    if (embedConfig.footer)
-      embed.setFooter({ text: renderTemplate(embedConfig.footer, templateContext) });
+    if (Array.isArray(embedConfig.fields) && embedConfig.fields.length > 0) {
+      embed.addFields(
+        embedConfig.fields.map((field) => ({
+          name: renderTemplate(field.name || '\u200b', templateContext).slice(0, 256) || '\u200b',
+          value:
+            renderTemplate(field.value || '\u200b', templateContext).slice(0, 1024) || '\u200b',
+          inline: Boolean(field.inline),
+        })),
+      );
+    }
+    if (embedConfig.footer) {
+      const footerConfig =
+        typeof embedConfig.footer === 'string'
+          ? { text: renderTemplate(embedConfig.footer, templateContext) }
+          : {
+              text: renderTemplate(embedConfig.footer.text ?? '', templateContext),
+              iconURL: embedConfig.footer.iconURL
+                ? renderTemplate(embedConfig.footer.iconURL, templateContext)
+                : undefined,
+            };
+      embed.setFooter(footerConfig);
+    }
+    if (embedConfig.image) {
+      embed.setImage(renderTemplate(embedConfig.image, templateContext));
+    }
+    if (embedConfig.timestamp) {
+      embed.setTimestamp();
+    }
     payload.embeds = [embed];
   }
 

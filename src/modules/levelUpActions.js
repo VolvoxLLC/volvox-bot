@@ -11,6 +11,7 @@ import { handleAddReaction } from './actions/addReaction.js';
 import { handleAnnounce } from './actions/announce.js';
 import { handleGrantRole } from './actions/grantRole.js';
 import { handleNickPrefix, handleNickSuffix } from './actions/nickPrefix.js';
+import { normalizeXpAction } from './actions/normalizeAction.js';
 import { handleRemoveRole } from './actions/removeRole.js';
 import { checkRoleRateLimit, collectXpManagedRoles } from './actions/roleUtils.js';
 import { handleSendDm } from './actions/sendDm.js';
@@ -57,21 +58,21 @@ function getLevelUpDmAction(level, config) {
 
   const override = levelUpDm.messages?.find((entry) => entry.level === level);
   if (override?.message) {
-    return {
+    return normalizeXpAction({
       type: 'sendDm',
       format: 'text',
       template: override.message,
       rateLimitScope: getLevelUpDmRateLimitScope(level),
-    };
+    });
   }
 
   if (levelUpDm.sendOnEveryLevel && levelUpDm.defaultMessage) {
-    return {
+    return normalizeXpAction({
       type: 'sendDm',
       format: 'text',
       template: levelUpDm.defaultMessage,
       rateLimitScope: getLevelUpDmRateLimitScope(level),
-    };
+    });
   }
 
   return null;
@@ -101,7 +102,7 @@ export function resolveActions(previousLevel, newLevel, config) {
       : (config.defaultActions ?? []);
 
     for (const action of actions) {
-      result.push({ level, action });
+      result.push({ level, action: normalizeXpAction(action) });
     }
 
     const dmAction = getLevelUpDmAction(level, config);

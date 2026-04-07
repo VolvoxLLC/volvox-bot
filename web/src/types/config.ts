@@ -284,6 +284,32 @@ export interface ReputationConfig extends ToggleSectionConfig {
 }
 
 /** XP level-up action definition. */
+export interface XpActionEmbedField {
+  id?: string;
+  name: string;
+  value: string;
+  inline: boolean;
+}
+
+export type XpActionEmbedThumbnailType = 'none' | 'user_avatar' | 'server_icon' | 'custom';
+
+export interface XpActionEmbedConfig {
+  color?: string;
+  title?: string;
+  description?: string;
+  thumbnail?: string;
+  thumbnailType?: XpActionEmbedThumbnailType;
+  thumbnailUrl?: string;
+  fields?: XpActionEmbedField[];
+  footer?: string | { text?: string; iconURL?: string };
+  footerText?: string;
+  footerIconUrl?: string;
+  image?: string;
+  imageUrl?: string;
+  timestamp?: boolean;
+  showTimestamp?: boolean;
+}
+
 export interface XpLevelAction {
   type:
     | 'grantRole'
@@ -293,9 +319,11 @@ export interface XpLevelAction {
     | 'xpBonus'
     | 'addReaction'
     | 'nickPrefix'
+    | 'nickSuffix'
     | 'webhook';
   roleId?: string;
   message?: string;
+  template?: string;
   format?: 'text' | 'embed' | 'both';
   channelMode?: 'current' | 'specific' | 'none';
   channelId?: string;
@@ -305,7 +333,7 @@ export interface XpLevelAction {
   suffix?: string;
   url?: string;
   payload?: string;
-  embed?: Record<string, unknown>;
+  embed?: XpActionEmbedConfig;
 }
 
 /** Per-level action configuration. */

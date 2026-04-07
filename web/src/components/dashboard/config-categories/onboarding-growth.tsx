@@ -15,6 +15,7 @@ import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
 import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
+import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
@@ -192,6 +193,13 @@ export function OnboardingGrowthCategory() {
         ...prev,
         reputation: { ...prev.reputation, enabled: v },
         xp: { ...prev.xp, enabled: v },
+      }));
+  } else if (activeTab === 'xp-level-actions') {
+    isCurrentFeatureEnabled = draftConfig.xp?.levelActionsEnabled ?? false;
+    handleToggleCurrentFeature = (v) =>
+      updateDraftConfig((prev) => ({
+        ...prev,
+        xp: { ...prev.xp, levelActionsEnabled: v },
       }));
   } else if (activeTab === 'tldr-afk') {
     isCurrentFeatureEnabled =
@@ -729,6 +737,20 @@ export function OnboardingGrowthCategory() {
                 Define total XP required for each sequential level (L1, L2, L3...).
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Level-Up Actions Layout */}
+      {activeTab === 'xp-level-actions' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+            <XpLevelActionsEditor
+              draftConfig={draftConfig}
+              guildId={guildId}
+              saving={saving}
+              updateDraftConfig={updateDraftConfig}
+            />
           </div>
         </div>
       )}
