@@ -10,11 +10,10 @@ import { BentoChart } from './bento/BentoChart';
 import { BentoConversations } from './bento/BentoConversations';
 import { BentoKpi } from './bento/BentoKpi';
 import { BentoModeration } from './bento/BentoModeration';
+import type { DailyActivityPoint } from './bento/bento-data';
 import { SectionHeader } from './SectionHeader';
 
 gsap.registerPlugin(ScrollTrigger);
-
-import type { DailyActivityPoint } from './bento/bento-data';
 
 export type { DailyActivityPoint } from './bento/bento-data';
 

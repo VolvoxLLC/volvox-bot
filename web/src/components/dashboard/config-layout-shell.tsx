@@ -1,9 +1,8 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
-import { CONFIG_CATEGORIES } from '@/components/dashboard/config-workspace/config-categories';
 import { Button } from '@/components/ui/button';
 import { GUILD_SELECTED_EVENT } from '@/lib/guild-selection';
 import { ConfigDiffModal } from './config-diff-modal';
@@ -32,19 +31,8 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     setShowDiffModal,
     executeSave,
     revertSection,
-    searchQuery: _searchQuery,
-    searchResults: _searchResults,
-    handleSearchChange: _handleSearchChange,
-    handleSearchSelect: _handleSearchSelect,
     fetchConfig,
-    activeCategoryId,
   } = useConfigContext();
-
-  const _activeCategory = useMemo(
-    () =>
-      activeCategoryId ? (CONFIG_CATEGORIES.find((c) => c.id === activeCategoryId) ?? null) : null,
-    [activeCategoryId],
-  );
 
   // ── Route guard: warn user about unsaved changes ────────────────
   const hasChangesRef = useRef(hasChanges);
@@ -58,8 +46,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
         e.returnValue = '';
       }
     }
-    // Push a state entry so we can intercept back navigation
-    window.history.pushState(null, '', window.location.href);
+    window.history.replaceState(null, '', window.location.href);
 
     function onPopState() {
       if (hasChangesRef.current) {
