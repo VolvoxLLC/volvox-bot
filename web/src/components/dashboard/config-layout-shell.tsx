@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_CATEGORIES } from '@/components/dashboard/config-workspace/config-categories';
 import { Button } from '@/components/ui/button';
+import { GUILD_SELECTED_EVENT } from '@/lib/guild-selection';
 import { ConfigDiffModal } from './config-diff-modal';
 import { FloatingSaveIsland } from './floating-save-island';
 
@@ -57,22 +58,40 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
         e.returnValue = '';
       }
     }
-    function onPopState(e: PopStateEvent) {
+    // Push a state entry so we can intercept back navigation
+    window.history.pushState(null, '', window.location.href);
+
+    function onPopState() {
       if (hasChangesRef.current) {
         const confirmed = window.confirm(
           'You have unsaved changes. Are you sure you want to leave?',
         );
         if (!confirmed) {
-          // Push current state back to cancel navigation
-          window.history.pushState(e.state, '', window.location.href);
+          // Re-push to stay on current page
+          window.history.pushState(null, '', window.location.href);
         }
       }
     }
     window.addEventListener('beforeunload', onBeforeUnload);
     window.addEventListener('popstate', onPopState);
+
+    function onGuildSelected(e: Event) {
+      if (hasChangesRef.current) {
+        const confirmed = window.confirm(
+          'You have unsaved changes. Switching guilds will discard them. Continue?',
+        );
+        if (!confirmed) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      }
+    }
+    window.addEventListener(GUILD_SELECTED_EVENT, onGuildSelected, true);
+
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       window.removeEventListener('popstate', onPopState);
+      window.removeEventListener(GUILD_SELECTED_EVENT, onGuildSelected, true);
     };
   }, []);
 

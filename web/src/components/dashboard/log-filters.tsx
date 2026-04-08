@@ -116,7 +116,11 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         onChange={handleLevelChange}
         disabled={disabled}
         aria-label="Filter by log level"
-        className={`${inputCls} font-bold uppercase tracking-wider text-[11px] text-muted-foreground/70 cursor-pointer hover:bg-card/60`}
+        className={[
+          inputCls,
+          'font-bold uppercase tracking-wider text-[11px]',
+          'text-muted-foreground/70 cursor-pointer hover:bg-card/60',
+        ].join(' ')}
       >
         {LEVEL_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value ?? 'all'} className="bg-popover text-foreground">
@@ -153,7 +157,10 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         variant="ghost"
         onClick={handleClear}
         disabled={disabled}
-        className="h-9 rounded-xl px-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50 hover:bg-white/5 hover:text-foreground"
+        className={[
+          'h-9 rounded-xl px-4 text-[11px] font-bold uppercase tracking-widest',
+          'text-muted-foreground/50 hover:bg-white/5 hover:text-foreground',
+        ].join(' ')}
       >
         Reset
       </Button>
