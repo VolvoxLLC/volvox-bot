@@ -82,6 +82,8 @@ export function Footer() {
 
   useGSAP(
     () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
       // 1. Reveal Animation for Main Content
       gsap.fromTo(
         contentRef.current,
@@ -227,7 +229,13 @@ export function Footer() {
           <div className="footer-link-col lg:col-span-5 space-y-8">
             <Link href="/" className="flex items-center gap-4 group w-fit">
               <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-border shadow-xl transition-transform group-hover:rotate-12">
-                <Image src="/icon-192.png" alt="Volvox" fill className="object-cover" />
+                <Image
+                  src="/icon-192.png"
+                  alt="Volvox"
+                  fill
+                  sizes="48px"
+                  className="object-cover"
+                />
               </div>
               <div>
                 <span className="text-2xl font-black tracking-tighter uppercase block leading-none">

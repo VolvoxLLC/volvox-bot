@@ -89,7 +89,14 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
       if (target.target === '_blank' || target.hasAttribute('download')) return;
 
       const href = target.getAttribute('href');
-      if (!href || href.startsWith('#') || href.startsWith('http')) return;
+      if (
+        !href ||
+        href.startsWith('#') ||
+        href.startsWith('http') ||
+        href.startsWith('mailto:') ||
+        href.startsWith('tel:')
+      )
+        return;
 
       // Allow navigation within settings subpages
       if (href.startsWith('/dashboard/settings/')) return;

@@ -13,7 +13,7 @@ import { BentoModeration } from './bento/BentoModeration';
 import type { DailyActivityPoint } from './bento/bento-data';
 import { SectionHeader } from './SectionHeader';
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger);
 
 export type { DailyActivityPoint } from './bento/bento-data';
 
