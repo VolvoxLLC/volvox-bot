@@ -96,6 +96,12 @@ export const CONFIG_NAVIGATION: ConfigCategoryNav[] = [
         desc: 'Tune XP ranges, cooldowns, and progression thresholds.',
       },
       {
+        id: 'xp-level-actions',
+        label: 'Level Actions',
+        icon: Swords,
+        desc: 'Configure automatic rewards when members level up.',
+      },
+      {
         id: 'tldr-afk',
         label: 'TL;DR & AFK',
         icon: MessageSquare,

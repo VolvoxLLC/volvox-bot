@@ -50,7 +50,14 @@ const CHANNEL_TYPES = {
   GUILD_MEDIA: 16,
 } as const;
 
-type ChannelTypeFilter = 'all' | 'text' | 'voice' | 'announcement' | 'thread' | 'forum';
+type ChannelTypeFilter =
+  | 'all'
+  | 'text'
+  | 'voice'
+  | 'announcement'
+  | 'thread'
+  | 'forum'
+  | 'category';
 
 interface ChannelSelectorProps {
   guildId: string;
@@ -142,6 +149,8 @@ function filterChannelsByType(
         return (
           channel.type === CHANNEL_TYPES.GUILD_FORUM || channel.type === CHANNEL_TYPES.GUILD_MEDIA
         );
+      case 'category':
+        return channel.type === CHANNEL_TYPES.GUILD_CATEGORY;
       default:
         return true;
     }

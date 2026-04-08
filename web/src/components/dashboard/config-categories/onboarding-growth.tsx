@@ -12,8 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
+import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
@@ -54,25 +54,10 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
   },
 ] as const;
 
-function InfoTip({ text }: { text: string }) {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-        </TooltipTrigger>
-        <TooltipContent className="bg-muted border-border text-foreground text-[10px] max-w-[200px] p-2 leading-relaxed shadow-xl">
-          {text}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
 export function OnboardingGrowthCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
-  const activeTab = activeTabId;
+  const activeTab = activeTabId === 'xp-level-actions' ? 'reputation' : activeTabId;
 
   const [dmStepsRaw, setDmStepsRaw] = useState('');
 
@@ -158,6 +143,27 @@ export function OnboardingGrowthCategory() {
 
     return samples;
   }, [draftConfig?.welcome?.dynamic?.enabled]);
+
+  const welcomeRoleOptions = useMemo(
+    () =>
+      (draftConfig?.welcome?.roleMenu?.options ?? []).map((option) => ({
+        ...option,
+        id: option.id ?? generateId(),
+      })),
+    [draftConfig?.welcome?.roleMenu?.options],
+  );
+
+  useEffect(() => {
+    if (!draftConfig) return;
+
+    const hasLegacyWelcomeRoleOptions = (draftConfig.welcome?.roleMenu?.options ?? []).some(
+      (option) => !option.id,
+    );
+
+    if (hasLegacyWelcomeRoleOptions) {
+      updateWelcomeRoleMenu('options', welcomeRoleOptions);
+    }
+  }, [draftConfig, updateWelcomeRoleMenu, welcomeRoleOptions]);
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
@@ -403,10 +409,10 @@ export function OnboardingGrowthCategory() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  disabled={saving || (draftConfig.welcome?.roleMenu?.options?.length ?? 0) >= 25}
+                  disabled={saving || welcomeRoleOptions.length >= 25}
                   onClick={() => {
                     const opts = [
-                      ...(draftConfig.welcome?.roleMenu?.options ?? []),
+                      ...welcomeRoleOptions,
                       { id: generateId(), label: '', roleId: '' },
                     ];
                     updateWelcomeRoleMenu('options', opts);
@@ -425,7 +431,7 @@ export function OnboardingGrowthCategory() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {(draftConfig.welcome?.roleMenu?.options ?? []).map((opt, i) => (
+              {welcomeRoleOptions.map((opt, i) => (
                 <div
                   key={opt.id}
                   className="relative p-4 rounded-2xl bg-background border border-border/40 shadow-sm group"
@@ -435,7 +441,7 @@ export function OnboardingGrowthCategory() {
                       type="text"
                       value={opt.label ?? ''}
                       onChange={(e) => {
-                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                        const opts = [...welcomeRoleOptions];
                         opts[i] = { ...opts[i], label: e.target.value };
                         updateWelcomeRoleMenu('options', opts);
                       }}
@@ -446,7 +452,7 @@ export function OnboardingGrowthCategory() {
                       guildId={guildId}
                       selected={opt.roleId ? [opt.roleId] : []}
                       onChange={(s) => {
-                        const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
+                        const opts = [...welcomeRoleOptions];
                         opts[i] = { ...opts[i], roleId: s[0] ?? '' };
                         updateWelcomeRoleMenu('options', opts);
                       }}
@@ -867,10 +873,14 @@ export function OnboardingGrowthCategory() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  <label
+                    htmlFor="challenge-post-time"
+                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1"
+                  >
                     Post Time
-                  </div>
+                  </label>
                   <input
+                    id="challenge-post-time"
                     type="text"
                     value={draftConfig.challenges?.postTime ?? '09:00'}
                     onChange={(e) =>
@@ -884,10 +894,14 @@ export function OnboardingGrowthCategory() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  <label
+                    htmlFor="challenge-timezone"
+                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1"
+                  >
                     Timezone
-                  </div>
+                  </label>
                   <input
+                    id="challenge-timezone"
                     type="text"
                     value={draftConfig.challenges?.timezone ?? 'UTC'}
                     onChange={(e) =>

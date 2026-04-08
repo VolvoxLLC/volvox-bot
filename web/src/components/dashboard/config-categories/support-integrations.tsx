@@ -118,7 +118,7 @@ export function SupportIntegrationsCategory() {
                   disabled={saving}
                   placeholder="Select ticket category"
                   maxSelections={1}
-                  filter="all"
+                  filter="category"
                 />
               </div>
             </div>

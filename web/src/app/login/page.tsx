@@ -184,7 +184,7 @@ function LoginForm() {
                     <Shield
                       className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/60"
                       role="img"
-                      aria-label="Discord"
+                      aria-hidden="true"
                     />
                     Review moderation queues, audit history, and member context.
                   </li>

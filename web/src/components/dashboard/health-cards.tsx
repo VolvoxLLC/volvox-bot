@@ -21,6 +21,15 @@ interface HealthCardsProps {
   loading: boolean;
 }
 
+function getErrorIconColor(
+  errors: { lastHour?: number | null; lastDay?: number | null } | undefined,
+  metric: 'hour' | 'day',
+): string {
+  if (!errors) return 'text-muted-foreground/40';
+  const count = metric === 'hour' ? errors.lastHour : errors.lastDay;
+  if (count == null) return 'text-muted-foreground/40';
+  return count > 0 ? 'text-red-500' : 'text-emerald-500/40';
+}
 function formatBytes(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
@@ -159,13 +168,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         value={health?.errors?.lastHour != null ? health.errors.lastHour.toLocaleString() : '—'}
         subtitle="Recent stability"
         icon={AlertTriangle}
-        iconColor={
-          health?.errors?.lastHour == null
-            ? 'text-muted-foreground/40'
-            : health.errors.lastHour > 0
-              ? 'text-red-500'
-              : 'text-emerald-500/40'
-        }
+        iconColor={getErrorIconColor(health?.errors, 'hour')}
       />
       <StatCard
         loading={loading && !health}
@@ -173,9 +176,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         value={health?.errors ? (health.errors.lastDay?.toLocaleString() ?? '0') : '—'}
         subtitle="Long-term health"
         icon={Activity}
-        iconColor={
-          health && (health.errors?.lastDay || 0) > 0 ? 'text-red-500' : 'text-emerald-500/40'
-        }
+        iconColor={getErrorIconColor(health?.errors, 'day')}
       />
       <StatCard
         loading={loading && !health}

@@ -147,7 +147,15 @@ test.describe('Comparison Table', () => {
   test('renders comparison table with updated rows', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /Engineered for Superiority/i })).toBeVisible();
     const table = page.locator('[role="table"]');
-    for (const feature of ['AI Neural Chat', 'AI Moderation', 'Next-Gen Dashboard', 'Custom Branding', 'Global Analytics', 'Access Model']) {
+    const features = [
+      'AI Neural Chat',
+      'AI Moderation',
+      'Next-Gen Dashboard',
+      'Custom Branding',
+      'Global Analytics',
+      'Access Model',
+    ];
+    for (const feature of features) {
       await expect(table.getByText(feature)).toBeVisible();
     }
   });

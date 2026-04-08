@@ -13,19 +13,18 @@ export function CommunityToolsCategory() {
   const { draftConfig, saving, updateDraftConfig, activeTabId } = useConfigContext();
 
   if (!draftConfig) return null;
-  const activeTab = activeTabId;
-  if (!activeTab) return null;
+  if (!activeTabId) return null;
 
   let hasMasterToggle = false;
   let isCurrentFeatureEnabled = false;
 
-  if (activeTab === 'bot-status') {
+  if (activeTabId === 'bot-status') {
     hasMasterToggle = true;
     isCurrentFeatureEnabled = draftConfig.botStatus?.enabled ?? true;
   }
 
   const handleToggleCurrentFeature = (v: boolean) => {
-    if (activeTab === 'bot-status') {
+    if (activeTabId === 'bot-status') {
       updateDraftConfig((prev) => ({
         ...prev,
         botStatus: { ...prev.botStatus, enabled: v },
@@ -35,7 +34,7 @@ export function CommunityToolsCategory() {
 
   return (
     <ConfigCategoryLayout
-      featureId={activeTab}
+      featureId={activeTabId}
       toggle={
         hasMasterToggle
           ? {
@@ -47,7 +46,7 @@ export function CommunityToolsCategory() {
       }
     >
       {/* Community Tools Layout */}
-      {activeTab === 'community-tools' && (
+      {activeTabId === 'community-tools' && (
         <div className="space-y-6">
           <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
             <div className="mb-4 space-y-1">
@@ -118,7 +117,7 @@ export function CommunityToolsCategory() {
       )}
 
       {/* Bot Presence Layout */}
-      {activeTab === 'bot-status' && (
+      {activeTabId === 'bot-status' && (
         <div className="space-y-6">
           <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <div className="mb-4 space-y-1">

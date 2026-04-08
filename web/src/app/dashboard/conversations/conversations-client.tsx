@@ -155,6 +155,7 @@ export default function ConversationsClient() {
                 {search && (
                   <button
                     type="button"
+                    aria-label="Clear search"
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
                     onClick={() => {
                       setSearch('');

@@ -228,7 +228,9 @@ export function ConversationReplay({
                         isFlagged && 'ring-2 ring-red-500/50 bg-red-500/5',
                       )}
                     >
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                        {msg.content}
+                      </p>
 
                       {/* Flagging actions for assistant messages */}
                       {!isUser && !isFlagged && (

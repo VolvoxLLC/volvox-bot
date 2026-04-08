@@ -187,8 +187,8 @@ export function PerformanceDashboard() {
   }, []);
 
   useEffect(() => {
-    void fetchData();
-    const handleRefresh = () => void fetchData();
+    fetchData().catch(() => {});
+    const handleRefresh = () => fetchData().catch(() => {});
     window.addEventListener('refresh-performance', handleRefresh);
     return () => {
       abortRef.current?.abort();
@@ -197,7 +197,7 @@ export function PerformanceDashboard() {
   }, [fetchData]);
 
   useEffect(() => {
-    const id = window.setInterval(() => void fetchData(true), AUTO_REFRESH_MS);
+    const id = window.setInterval(() => fetchData(true).catch(() => {}), AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
   }, [fetchData]);
 
@@ -228,7 +228,7 @@ export function PerformanceDashboard() {
       }
       setThresholdMsg('Thresholds saved.');
       toast.success('Thresholds saved', { description: 'Alert thresholds updated successfully.' });
-      void fetchData(true);
+      fetchData(true).catch(() => {});
     } catch {
       setThresholdMsg('Error: Network failure');
       toast.error('Failed to save thresholds', { description: 'A network error occurred.' });
@@ -275,7 +275,7 @@ export function PerformanceDashboard() {
             variant="outline"
             size="sm"
             className="ml-4 rounded-xl"
-            onClick={() => void fetchData()}
+            onClick={() => fetchData().catch(() => {})}
           >
             Try again
           </Button>
@@ -611,7 +611,7 @@ export function PerformanceDashboard() {
             {thresholdMsg}
           </p>
           <Button
-            onClick={() => void saveThresholds()}
+            onClick={() => saveThresholds().catch(() => {})}
             disabled={thresholdSaving}
             className="rounded-xl px-8 font-bold uppercase tracking-widest text-[10px] h-11"
           >

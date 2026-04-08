@@ -527,7 +527,7 @@ export function AnalyticsDashboard() {
             <p className="mt-1 text-[11px] text-destructive/80 uppercase tracking-wider">{error}</p>
           </div>
           <div>
-            <Button onClick={() => void refresh()} variant="destructive" size="sm">
+            <Button onClick={() => refresh().catch(() => {})} variant="destructive" size="sm">
               Try again
             </Button>
           </div>

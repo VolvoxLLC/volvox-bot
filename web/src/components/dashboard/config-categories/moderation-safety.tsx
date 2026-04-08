@@ -1,37 +1,15 @@
 'use client';
 
-import { Info } from 'lucide-react';
 import { useCallback } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { AuditLogSection } from '@/components/dashboard/config-sections/AuditLogSection';
 import { ChannelSelector } from '@/components/ui/channel-selector';
+import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
-
-function InfoTip({ text }: { text: string }) {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            aria-label={text}
-            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
-          >
-            <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent className="bg-muted border-border text-foreground text-[10px] max-w-[200px] p-2 leading-relaxed">
-          {text}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 export function ModerationSafetyCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
@@ -174,18 +152,25 @@ export function ModerationSafetyCategory() {
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};
 
-  if (activeTab === 'moderation') {
-    isCurrentFeatureEnabled = draftConfig.moderation?.enabled ?? false;
-    handleToggleCurrentFeature = updateModerationEnabled;
-  } else if (activeTab === 'starboard') {
-    isCurrentFeatureEnabled = draftConfig.starboard?.enabled ?? false;
-    handleToggleCurrentFeature = (v) => updateStarboardField('enabled', v);
-  } else if (activeTab === 'permissions') {
-    isCurrentFeatureEnabled = draftConfig.permissions?.enabled ?? false;
-    handleToggleCurrentFeature = (v) => updatePermissionsField('enabled', v);
-  } else if (activeTab === 'audit-log') {
-    isCurrentFeatureEnabled = draftConfig.auditLog?.enabled ?? true;
-    handleToggleCurrentFeature = (v) => updateAuditLogField('enabled', v);
+  switch (activeTab) {
+    case 'moderation':
+      isCurrentFeatureEnabled = draftConfig.moderation?.enabled ?? false;
+      handleToggleCurrentFeature = updateModerationEnabled;
+      break;
+    case 'starboard':
+      isCurrentFeatureEnabled = draftConfig.starboard?.enabled ?? false;
+      handleToggleCurrentFeature = (v) => updateStarboardField('enabled', v);
+      break;
+    case 'permissions':
+      isCurrentFeatureEnabled = draftConfig.permissions?.enabled ?? false;
+      handleToggleCurrentFeature = (v) => updatePermissionsField('enabled', v);
+      break;
+    case 'audit-log':
+      isCurrentFeatureEnabled = draftConfig.auditLog?.enabled ?? true;
+      handleToggleCurrentFeature = (v) => updateAuditLogField('enabled', v);
+      break;
+    default:
+      break;
   }
 
   return (
