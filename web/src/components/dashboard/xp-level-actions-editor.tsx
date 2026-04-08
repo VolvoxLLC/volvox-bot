@@ -75,45 +75,57 @@ const TEMPLATE_SAMPLES: Record<string, string> = {
   nextLevel: '11',
 };
 
-function getNextUnusedLevel(entries: XpLevelActionEntry[] = []) {
+function createStableId(): string {
+  return crypto.randomUUID();
+}
+
+function toKeySegment(value: string): string {
+  return value.toLowerCase().replaceAll(' ', '-');
+}
+
+function getNextUnusedLevel(entries: XpLevelActionEntry[] = []): number | null {
   const levels = new Set(entries.map((entry) => entry.level).filter(Number.isFinite));
   let candidate = 1;
   while (levels.has(candidate) && candidate <= 1000) {
     candidate += 1;
   }
-  return Math.min(candidate, 1000);
+  return candidate <= 1000 ? candidate : null;
 }
 
 function createAction(type: XpLevelAction['type']): XpLevelAction {
+  const id = createStableId();
+
   switch (type) {
     case 'grantRole':
     case 'removeRole':
-      return { type, roleId: '' };
+      return { id, type, roleId: '' };
     case 'sendDm':
       return {
+        id,
         type,
         format: 'text',
         message: '🎉 You reached **Level {{level}}** in **{{server}}**!',
       };
     case 'announce':
       return {
+        id,
         type,
         channelMode: 'current',
         format: 'text',
         message: '🎉 {{mention}} reached **Level {{level}}**!',
       };
     case 'xpBonus':
-      return { type, amount: 100 };
+      return { id, type, amount: 100 };
     case 'addReaction':
-      return { type, emoji: '🎉' };
+      return { id, type, emoji: '🎉' };
     case 'nickPrefix':
-      return { type, prefix: '[Lvl {{level}}] ' };
+      return { id, type, prefix: '[Lvl {{level}}] ' };
     case 'nickSuffix':
-      return { type, suffix: ' [Lvl {{level}}]' };
+      return { id, type, suffix: ' [Lvl {{level}}]' };
     case 'webhook':
-      return { type, url: '', payload: '{"user":"{{username}}","level":"{{level}}"}' };
+      return { id, type, url: '', payload: '{"user":"{{username}}","level":"{{level}}"}' };
     default:
-      return { type };
+      return { id, type };
   }
 }
 
@@ -124,8 +136,8 @@ function normalizeDraftEmbed(
   return {
     ...embed,
     fields: Array.isArray(embed.fields)
-      ? embed.fields.map((field, index) => ({
-          id: field?.id ?? `field-${index}`,
+      ? embed.fields.map((field) => ({
+          id: field?.id ?? createStableId(),
           name: field?.name ?? '',
           value: field?.value ?? '',
           inline: Boolean(field?.inline),
@@ -139,6 +151,7 @@ function normalizeDraftAction(action?: DeepPartial<XpLevelAction> | null): XpLev
   return {
     ...createAction(type),
     ...action,
+    id: action?.id ?? createStableId(),
     embed: normalizeDraftEmbed(action?.embed),
     type,
   };
@@ -146,6 +159,7 @@ function normalizeDraftAction(action?: DeepPartial<XpLevelAction> | null): XpLev
 
 function normalizeDraftEntry(entry?: DeepPartial<XpLevelActionEntry> | null): XpLevelActionEntry {
   return {
+    id: entry?.id ?? createStableId(),
     level: entry?.level ?? 1,
     actions: Array.isArray(entry?.actions) ? entry.actions.map(normalizeDraftAction) : [],
   };
@@ -159,6 +173,75 @@ function fromSingleSelection(values: string[]): string {
   return values[0] ?? '';
 }
 
+function resolveThumbnailType(embed?: XpActionEmbedConfig): EmbedConfig['thumbnailType'] {
+  if (
+    embed?.thumbnailType === 'user_avatar' ||
+    embed?.thumbnailType === 'server_icon' ||
+    embed?.thumbnailType === 'custom'
+  ) {
+    return embed.thumbnailType;
+  }
+
+  return 'none';
+}
+
+function toBuilderFields(embed?: XpActionEmbedConfig): EmbedConfig['fields'] {
+  if (!Array.isArray(embed?.fields)) {
+    return [];
+  }
+
+  return embed.fields.map((field) => ({
+    id: field.id ?? createStableId(),
+    name: field.name ?? '',
+    value: field.value ?? '',
+    inline: Boolean(field.inline),
+  }));
+}
+
+function resolveFooterText(embed?: XpActionEmbedConfig): string {
+  if (typeof embed?.footer === 'string') {
+    return embed.footer;
+  }
+
+  if (typeof embed?.footerText === 'string') {
+    return embed.footerText;
+  }
+
+  if (typeof embed?.footer?.text === 'string') {
+    return embed.footer.text;
+  }
+
+  return '';
+}
+
+function resolveFooterIconUrl(embed?: XpActionEmbedConfig): string {
+  if (typeof embed?.footerIconUrl === 'string') {
+    return embed.footerIconUrl;
+  }
+
+  if (
+    typeof embed?.footer === 'object' &&
+    embed.footer &&
+    typeof embed.footer.iconURL === 'string'
+  ) {
+    return embed.footer.iconURL;
+  }
+
+  return '';
+}
+
+function resolveImageUrl(embed?: XpActionEmbedConfig): string {
+  if (typeof embed?.imageUrl === 'string') {
+    return embed.imageUrl;
+  }
+
+  if (typeof embed?.image === 'string') {
+    return embed.image;
+  }
+
+  return '';
+}
+
 function toBuilderConfig(
   embed?: XpActionEmbedConfig,
   format?: XpLevelAction['format'],
@@ -169,43 +252,12 @@ function toBuilderConfig(
     color: typeof embed?.color === 'string' ? embed.color : base.color,
     title: typeof embed?.title === 'string' ? embed.title : '',
     description: typeof embed?.description === 'string' ? embed.description : '',
-    thumbnailType:
-      embed?.thumbnailType === 'user_avatar' ||
-      embed?.thumbnailType === 'server_icon' ||
-      embed?.thumbnailType === 'custom'
-        ? embed.thumbnailType
-        : 'none',
+    thumbnailType: resolveThumbnailType(embed),
     thumbnailUrl: typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : '',
-    fields: Array.isArray(embed?.fields)
-      ? embed.fields.map((field, index) => ({
-          id: field.id ?? `field-${index}`,
-          name: field.name ?? '',
-          value: field.value ?? '',
-          inline: Boolean(field.inline),
-        }))
-      : [],
-    footerText:
-      typeof embed?.footer === 'string'
-        ? embed.footer
-        : typeof embed?.footerText === 'string'
-          ? embed.footerText
-          : typeof embed?.footer?.text === 'string'
-            ? embed.footer.text
-            : '',
-    footerIconUrl:
-      typeof embed?.footerIconUrl === 'string'
-        ? embed.footerIconUrl
-        : typeof embed?.footer === 'object' &&
-            embed.footer &&
-            typeof embed.footer.iconURL === 'string'
-          ? embed.footer.iconURL
-          : '',
-    imageUrl:
-      typeof embed?.imageUrl === 'string'
-        ? embed.imageUrl
-        : typeof embed?.image === 'string'
-          ? embed.image
-          : '',
+    fields: toBuilderFields(embed),
+    footerText: resolveFooterText(embed),
+    footerIconUrl: resolveFooterIconUrl(embed),
+    imageUrl: resolveImageUrl(embed),
     showTimestamp: embed?.showTimestamp === true || embed?.timestamp === true,
     format: format ?? 'embed',
   };
@@ -235,16 +287,16 @@ function reorderItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
 }
 
 interface ActionCardProps {
-  action: XpLevelAction;
-  actionIndex: number;
-  actionsLength: number;
-  guildId: string;
-  saving: boolean;
-  title: string;
-  actionId: string;
-  onChange: (action: XpLevelAction) => void;
-  onDelete: () => void;
-  onMove: (direction: -1 | 1) => void;
+  readonly action: XpLevelAction;
+  readonly actionIndex: number;
+  readonly actionsLength: number;
+  readonly guildId: string;
+  readonly saving: boolean;
+  readonly title: string;
+  readonly actionId: string;
+  readonly onChange: (action: XpLevelAction) => void;
+  readonly onDelete: () => void;
+  readonly onMove: (direction: -1 | 1) => void;
 }
 
 function ActionCard({
@@ -310,7 +362,12 @@ function ActionCard({
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={action.type}
           disabled={saving}
-          onChange={(event) => onChange(createAction(event.target.value as XpLevelAction['type']))}
+          onChange={(event) =>
+            onChange({
+              ...createAction(event.target.value as XpLevelAction['type']),
+              id: action.id,
+            })
+          }
         >
           {ACTION_TYPE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -512,15 +569,16 @@ function ActionCard({
 }
 
 interface ActionGroupProps {
-  title: string;
-  description: string;
-  actions: XpLevelAction[];
-  guildId: string;
-  saving: boolean;
-  onChange: (actions: XpLevelAction[]) => void;
+  readonly title: string;
+  readonly description: string;
+  readonly actions: XpLevelAction[];
+  readonly guildId: string;
+  readonly saving: boolean;
+  readonly onChange: (actions: XpLevelAction[]) => void;
 }
 
 function ActionGroup({ title, description, actions, guildId, saving, onChange }: ActionGroupProps) {
+  const titleKey = toKeySegment(title);
   const updateAction = (index: number, nextAction: XpLevelAction) => {
     const next = [...actions];
     next[index] = nextAction;
@@ -562,14 +620,14 @@ function ActionGroup({ title, description, actions, guildId, saving, onChange }:
 
       {actions.map((action, actionIndex) => (
         <ActionCard
-          key={`${title.toLowerCase().replace(/\s+/g, '-')}-${action.type}-${action.roleId ?? action.channelId ?? action.url ?? 'action'}-${actionIndex}`}
+          key={action.id ?? `${titleKey}-action-${actionIndex}`}
           action={action}
           actionIndex={actionIndex}
           actionsLength={actions.length}
           guildId={guildId}
           saving={saving}
           title={title}
-          actionId={`${title.toLowerCase().replace(/\s+/g, '-')}-${action.type}-${actionIndex}`}
+          actionId={`${titleKey}-${action.id ?? `action-${actionIndex}`}`}
           onChange={(nextAction) => updateAction(actionIndex, nextAction)}
           onDelete={() => removeAction(actionIndex)}
           onMove={(direction) => moveAction(actionIndex, direction)}
@@ -580,10 +638,10 @@ function ActionGroup({ title, description, actions, guildId, saving, onChange }:
 }
 
 interface XpLevelActionsEditorProps {
-  draftConfig: GuildConfig;
-  guildId: string;
-  saving: boolean;
-  updateDraftConfig: (updater: (prev: GuildConfig) => GuildConfig) => void;
+  readonly draftConfig: GuildConfig;
+  readonly guildId: string;
+  readonly saving: boolean;
+  readonly updateDraftConfig: (updater: (prev: GuildConfig) => GuildConfig) => void;
 }
 
 export function XpLevelActionsEditor({
@@ -594,6 +652,53 @@ export function XpLevelActionsEditor({
 }: XpLevelActionsEditorProps) {
   const levelEntries = (draftConfig.xp?.levelActions ?? []).map(normalizeDraftEntry);
   const defaultActions = (draftConfig.xp?.defaultActions ?? []).map(normalizeDraftAction);
+  const nextUnusedLevel = getNextUnusedLevel(levelEntries);
+
+  const updateLevelEntries = (updater: (entries: XpLevelActionEntry[]) => XpLevelActionEntry[]) => {
+    updateDraftConfig((prev) => ({
+      ...prev,
+      xp: {
+        ...prev.xp,
+        levelActions: updater((prev.xp?.levelActions ?? []).map(normalizeDraftEntry)),
+      },
+    }));
+  };
+
+  const updateLevelEntry = (
+    entryIndex: number,
+    updater: (entry: XpLevelActionEntry) => XpLevelActionEntry,
+  ) => {
+    updateLevelEntries((entries) => {
+      const nextEntries = [...entries];
+      nextEntries[entryIndex] = updater(nextEntries[entryIndex] ?? normalizeDraftEntry());
+      return nextEntries;
+    });
+  };
+
+  const handleDeleteLevelEntry = (entryIndex: number) => {
+    updateLevelEntries((entries) =>
+      entries.filter((_, candidateIndex) => candidateIndex !== entryIndex),
+    );
+  };
+
+  const handleMoveLevelEntry = (entryIndex: number, direction: -1 | 1) => {
+    updateLevelEntries((entries) => reorderItem(entries, entryIndex, direction));
+  };
+
+  const handleAddLevelEntry = () => {
+    if (nextUnusedLevel == null) {
+      return;
+    }
+
+    updateLevelEntries((entries) => [
+      ...entries,
+      {
+        id: createStableId(),
+        level: nextUnusedLevel,
+        actions: [],
+      },
+    ]);
+  };
 
   return (
     <div className="space-y-6">
@@ -606,7 +711,7 @@ export function XpLevelActionsEditor({
         onChange={(actions) =>
           updateDraftConfig((prev) => ({
             ...prev,
-            xp: { ...prev.xp, defaultActions: actions },
+            xp: { ...prev.xp, defaultActions: actions.map(normalizeDraftAction) },
           }))
         }
       />
@@ -623,24 +728,8 @@ export function XpLevelActionsEditor({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() =>
-              updateDraftConfig((prev) => ({
-                ...prev,
-                xp: {
-                  ...prev.xp,
-                  levelActions: [
-                    ...(prev.xp?.levelActions ?? []),
-                    {
-                      level: getNextUnusedLevel(
-                        (prev.xp?.levelActions ?? []).map(normalizeDraftEntry),
-                      ),
-                      actions: [],
-                    },
-                  ],
-                },
-              }))
-            }
-            disabled={saving}
+            onClick={handleAddLevelEntry}
+            disabled={saving || nextUnusedLevel == null}
           >
             <Plus className="mr-1 h-4 w-4" />
             Add Level
@@ -653,14 +742,14 @@ export function XpLevelActionsEditor({
 
         {levelEntries.map((entry, entryIndex) => (
           <div
-            key={`level-action-entry-${entry.level ?? 'new'}-${entry.actions.length}-${entryIndex}`}
+            key={entry.id ?? `level-action-entry-${entryIndex}`}
             className="space-y-4 rounded-xl border border-border/50 bg-background/70 p-4"
           >
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-2">
-                <Label htmlFor={`level-entry-${entryIndex}`}>Level</Label>
+                <Label htmlFor={`level-entry-${entry.id ?? entryIndex}`}>Level</Label>
                 <Input
-                  id={`level-entry-${entryIndex}`}
+                  id={`level-entry-${entry.id ?? entryIndex}`}
                   type="number"
                   min={1}
                   max={1000}
@@ -668,20 +757,13 @@ export function XpLevelActionsEditor({
                   value={entry.level ?? 1}
                   disabled={saving}
                   onChange={(event) =>
-                    updateDraftConfig((prev) => {
-                      const nextEntries = [...(prev.xp?.levelActions ?? [])];
-                      nextEntries[entryIndex] = {
-                        ...nextEntries[entryIndex],
-                        level: Math.max(
-                          1,
-                          Math.min(1000, Number.parseInt(event.target.value || '1', 10) || 1),
-                        ),
-                      };
-                      return {
-                        ...prev,
-                        xp: { ...prev.xp, levelActions: nextEntries },
-                      };
-                    })
+                    updateLevelEntry(entryIndex, (currentEntry) => ({
+                      ...currentEntry,
+                      level: Math.max(
+                        1,
+                        Math.min(1000, Number.parseInt(event.target.value || '1', 10) || 1),
+                      ),
+                    }))
                   }
                 />
               </div>
@@ -690,19 +772,7 @@ export function XpLevelActionsEditor({
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() =>
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      xp: {
-                        ...prev.xp,
-                        levelActions: reorderItem(
-                          (prev.xp?.levelActions ?? []).map(normalizeDraftEntry),
-                          entryIndex,
-                          -1,
-                        ),
-                      },
-                    }))
-                  }
+                  onClick={() => handleMoveLevelEntry(entryIndex, -1)}
                   disabled={saving || entryIndex === 0}
                   aria-label="Move level up"
                 >
@@ -712,19 +782,7 @@ export function XpLevelActionsEditor({
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() =>
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      xp: {
-                        ...prev.xp,
-                        levelActions: reorderItem(
-                          (prev.xp?.levelActions ?? []).map(normalizeDraftEntry),
-                          entryIndex,
-                          1,
-                        ),
-                      },
-                    }))
-                  }
+                  onClick={() => handleMoveLevelEntry(entryIndex, 1)}
                   disabled={saving || entryIndex === levelEntries.length - 1}
                   aria-label="Move level down"
                 >
@@ -734,17 +792,7 @@ export function XpLevelActionsEditor({
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() =>
-                    updateDraftConfig((prev) => ({
-                      ...prev,
-                      xp: {
-                        ...prev.xp,
-                        levelActions: (prev.xp?.levelActions ?? []).filter(
-                          (_, candidateIndex) => candidateIndex !== entryIndex,
-                        ),
-                      },
-                    }))
-                  }
+                  onClick={() => handleDeleteLevelEntry(entryIndex)}
                   disabled={saving}
                   aria-label="Delete level"
                 >
@@ -760,14 +808,10 @@ export function XpLevelActionsEditor({
               guildId={guildId}
               saving={saving}
               onChange={(actions) =>
-                updateDraftConfig((prev) => {
-                  const nextEntries = [...(prev.xp?.levelActions ?? [])];
-                  nextEntries[entryIndex] = { ...nextEntries[entryIndex], actions };
-                  return {
-                    ...prev,
-                    xp: { ...prev.xp, levelActions: nextEntries },
-                  };
-                })
+                updateLevelEntry(entryIndex, (currentEntry) => ({
+                  ...currentEntry,
+                  actions: actions.map(normalizeDraftAction),
+                }))
               }
             />
           </div>

@@ -62,4 +62,44 @@ describe('normalizeXpAction', () => {
       }),
     );
   });
+
+  it('drops empty footer text when no footer icon is provided', () => {
+    expect(
+      normalizeXpAction({
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          footerText: '',
+        },
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        embed: expect.objectContaining({
+          footer: undefined,
+        }),
+      }),
+    );
+  });
+
+  it('preserves icon-only footers so payload building can add a zero-width space', () => {
+    expect(
+      normalizeXpAction({
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          footerText: '',
+          footerIconUrl: 'https://example.com/footer.png',
+        },
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        embed: expect.objectContaining({
+          footer: {
+            text: '',
+            iconURL: 'https://example.com/footer.png',
+          },
+        }),
+      }),
+    );
+  });
 });

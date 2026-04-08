@@ -1,8 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { warnMock } = vi.hoisted(() => ({
+  warnMock: vi.fn(),
+}));
+
+vi.mock('../../../src/logger.js', () => ({
+  warn: warnMock,
+}));
 
 import { buildPayload } from '../../../src/modules/actions/buildPayload.js';
 
 describe('buildPayload', () => {
+  beforeEach(() => {
+    warnMock.mockReset();
+  });
+
   it('renders rich embed payloads with fields, footer icon, image, and timestamp', () => {
     const payload = buildPayload(
       {
@@ -42,5 +54,66 @@ describe('buildPayload', () => {
     });
     expect(embed.image?.url).toBe('https://example.com/embed.png');
     expect(embed.timestamp).toBeDefined();
+  });
+
+  it("truncates embeds to Discord's 25 field limit and warns", () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          fields: Array.from({ length: 26 }, (_, index) => ({
+            name: `Field ${index + 1}`,
+            value: `Value ${index + 1}`,
+          })),
+        },
+      },
+      {},
+    );
+
+    expect(payload.embeds[0].toJSON().fields).toHaveLength(25);
+    expect(warnMock).toHaveBeenCalledWith(
+      'Level-up action embed fields exceed Discord limit, truncating',
+      expect.objectContaining({
+        fieldCount: 26,
+        maxFields: 25,
+      }),
+    );
+  });
+
+  it('uses a zero-width footer text when only an icon remains after rendering', () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          footer: {
+            text: '',
+            iconURL: 'https://example.com/footer.png',
+          },
+        },
+      },
+      {},
+    );
+
+    expect(payload.embeds[0].toJSON().footer).toEqual({
+      text: '​',
+      icon_url: 'https://example.com/footer.png',
+    });
+  });
+
+  it('skips empty footers when no text or icon remain after rendering', () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          footer: '',
+        },
+      },
+      {},
+    );
+
+    expect(payload.embeds[0].toJSON().footer).toBeUndefined();
   });
 });

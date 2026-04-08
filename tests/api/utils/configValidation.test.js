@@ -416,6 +416,50 @@ describe('configValidation', () => {
       ).toEqual([]);
     });
 
+    it('should accept explicit embed schemas for xp actions', () => {
+      expect(
+        validateSingleValue('xp.defaultActions', [
+          {
+            id: 'action-1',
+            type: 'announce',
+            embed: {
+              title: 'Level {{level}}',
+              thumbnailType: 'user_avatar',
+              fields: [{ id: 'field-1', name: 'XP', value: '{{xp}}', inline: true }],
+              footer: { text: 'Footer', iconURL: 'https://example.com/footer.png' },
+              imageUrl: 'https://example.com/image.png',
+              showTimestamp: true,
+            },
+          },
+        ]),
+      ).toEqual([]);
+    });
+
+    it('should accept level action entry ids in xp.levelActions', () => {
+      expect(
+        validateSingleValue('xp.levelActions', [
+          {
+            id: 'level-1',
+            level: 5,
+            actions: [{ id: 'action-1', type: 'grantRole', roleId: '123' }],
+          },
+        ]),
+      ).toEqual([]);
+    });
+
+    it('should reject unknown xp embed keys now that embed schema is explicit', () => {
+      const errors = validateSingleValue('xp.defaultActions', [
+        {
+          type: 'announce',
+          embed: {
+            unexpected: true,
+          },
+        },
+      ]);
+
+      expect(errors.some((error) => error.includes('unknown config key'))).toBe(true);
+    });
+
     it('should reject defaultActions missing type', () => {
       const errors = validateSingleValue('xp.defaultActions', [{ roleId: '123' }]);
       expect(errors.some((e) => e.includes('missing required key "type"'))).toBe(true);

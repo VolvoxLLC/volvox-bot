@@ -34,6 +34,110 @@ function getCompiledPattern(pattern) {
   return re;
 }
 
+const XP_ACTION_TYPES = [
+  'grantRole',
+  'removeRole',
+  'sendDm',
+  'announce',
+  'xpBonus',
+  'addReaction',
+  'nickPrefix',
+  'nickSuffix',
+  'webhook',
+];
+
+const XP_EMBED_FIELD_SCHEMA = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', nullable: true },
+    name: { type: 'string', nullable: true },
+    value: { type: 'string', nullable: true },
+    inline: { type: 'boolean', nullable: true },
+  },
+};
+
+const XP_EMBED_FOOTER_SCHEMA = {
+  nullable: true,
+  anyOf: [
+    { type: 'string' },
+    {
+      type: 'object',
+      properties: {
+        text: { type: 'string', nullable: true },
+        iconURL: { type: 'string', nullable: true },
+      },
+    },
+  ],
+};
+
+const XP_EMBED_SCHEMA = {
+  type: 'object',
+  nullable: true,
+  properties: {
+    title: { type: 'string', nullable: true },
+    description: { type: 'string', nullable: true },
+    color: { type: 'string', nullable: true },
+    thumbnail: { type: 'string', nullable: true },
+    thumbnailType: {
+      type: 'string',
+      enum: ['none', 'user_avatar', 'server_icon', 'custom'],
+      nullable: true,
+    },
+    thumbnailUrl: { type: 'string', nullable: true },
+    fields: { type: 'array', items: XP_EMBED_FIELD_SCHEMA, nullable: true },
+    footer: XP_EMBED_FOOTER_SCHEMA,
+    footerText: { type: 'string', nullable: true },
+    footerIconUrl: { type: 'string', nullable: true },
+    image: { type: 'string', nullable: true },
+    imageUrl: { type: 'string', nullable: true },
+    timestamp: { type: 'boolean', nullable: true },
+    showTimestamp: { type: 'boolean', nullable: true },
+  },
+};
+
+const XP_ACTION_ITEM_SCHEMA = {
+  type: 'object',
+  required: ['type'],
+  properties: {
+    id: { type: 'string', nullable: true },
+    type: {
+      type: 'string',
+      enum: XP_ACTION_TYPES,
+    },
+    roleId: { type: 'string', nullable: true },
+    message: { type: 'string', nullable: true },
+    template: { type: 'string', nullable: true },
+    format: { type: 'string', enum: ['text', 'embed', 'both'], nullable: true },
+    channelMode: {
+      type: 'string',
+      enum: ['current', 'specific', 'none'],
+      nullable: true,
+    },
+    channelId: { type: 'string', nullable: true },
+    emoji: { type: 'string', nullable: true },
+    amount: { type: 'number', nullable: true },
+    prefix: { type: 'string', nullable: true },
+    suffix: { type: 'string', nullable: true },
+    url: { type: 'string', nullable: true },
+    payload: { type: 'string', nullable: true },
+    embed: XP_EMBED_SCHEMA,
+  },
+  openProperties: true,
+};
+
+const XP_LEVEL_ACTION_ENTRY_SCHEMA = {
+  type: 'object',
+  required: ['level', 'actions'],
+  properties: {
+    id: { type: 'string', nullable: true },
+    level: { type: 'number', min: 1, max: 1000 },
+    actions: {
+      type: 'array',
+      items: XP_ACTION_ITEM_SCHEMA,
+    },
+  },
+};
+
 /**
  * Schema definitions for writable config sections.
  * Used to validate types before persisting changes.
@@ -299,95 +403,11 @@ export const CONFIG_SCHEMA = {
       },
       levelActions: {
         type: 'array',
-        items: {
-          type: 'object',
-          required: ['level', 'actions'],
-          properties: {
-            level: { type: 'number', min: 1, max: 1000 },
-            actions: {
-              type: 'array',
-              items: {
-                type: 'object',
-                required: ['type'],
-                properties: {
-                  type: {
-                    type: 'string',
-                    enum: [
-                      'grantRole',
-                      'removeRole',
-                      'sendDm',
-                      'announce',
-                      'xpBonus',
-                      'addReaction',
-                      'nickPrefix',
-                      'nickSuffix',
-                      'webhook',
-                    ],
-                  },
-                  roleId: { type: 'string', nullable: true },
-                  message: { type: 'string', nullable: true },
-                  template: { type: 'string', nullable: true },
-                  format: { type: 'string', enum: ['text', 'embed', 'both'], nullable: true },
-                  channelMode: {
-                    type: 'string',
-                    enum: ['current', 'specific', 'none'],
-                    nullable: true,
-                  },
-                  channelId: { type: 'string', nullable: true },
-                  emoji: { type: 'string', nullable: true },
-                  amount: { type: 'number', nullable: true },
-                  prefix: { type: 'string', nullable: true },
-                  suffix: { type: 'string', nullable: true },
-                  url: { type: 'string', nullable: true },
-                  payload: { type: 'string', nullable: true },
-                  embed: { type: 'object', openProperties: true, nullable: true },
-                },
-                openProperties: true,
-              },
-            },
-          },
-        },
+        items: XP_LEVEL_ACTION_ENTRY_SCHEMA,
       },
       defaultActions: {
         type: 'array',
-        items: {
-          type: 'object',
-          required: ['type'],
-          properties: {
-            type: {
-              type: 'string',
-              enum: [
-                'grantRole',
-                'removeRole',
-                'sendDm',
-                'announce',
-                'xpBonus',
-                'addReaction',
-                'nickPrefix',
-                'nickSuffix',
-                'webhook',
-              ],
-            },
-            roleId: { type: 'string', nullable: true },
-            message: { type: 'string', nullable: true },
-            template: { type: 'string', nullable: true },
-            format: { type: 'string', enum: ['text', 'embed', 'both'], nullable: true },
-            channelMode: {
-              type: 'string',
-              enum: ['current', 'specific', 'none'],
-              nullable: true,
-            },
-            channelId: { type: 'string', nullable: true },
-            emoji: { type: 'string', nullable: true },
-            amount: { type: 'number', nullable: true },
-            prefix: { type: 'string', nullable: true },
-            suffix: { type: 'string', nullable: true },
-            url: { type: 'string', nullable: true },
-            payload: { type: 'string', nullable: true },
-            embed: { type: 'object', openProperties: true, nullable: true },
-          },
-          openProperties: true,
-        },
+        items: XP_ACTION_ITEM_SCHEMA,
       },
       levelUpDm: {
         type: 'object',
@@ -430,6 +450,15 @@ export const CONFIG_SCHEMA = {
  */
 export function validateValue(value, schema, path) {
   const errors = [];
+
+  if (schema.anyOf) {
+    const results = schema.anyOf.map((candidate) => validateValue(value, candidate, path));
+    const success = results.find((candidateErrors) => candidateErrors.length === 0);
+    if (success) {
+      return success;
+    }
+    return results.flat();
+  }
 
   if (value === null) {
     if (!schema.nullable) {

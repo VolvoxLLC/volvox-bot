@@ -311,6 +311,7 @@ export interface XpActionEmbedConfig {
 }
 
 export interface XpLevelAction {
+  id?: string;
   type:
     | 'grantRole'
     | 'removeRole'
@@ -338,6 +339,7 @@ export interface XpLevelAction {
 
 /** Per-level action configuration. */
 export interface XpLevelActionEntry {
+  id?: string;
   level: number;
   actions: XpLevelAction[];
 }

@@ -4,7 +4,36 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { warn } from '../../logger.js';
 import { renderTemplate } from '../../utils/templateEngine.js';
+
+const MAX_EMBED_FIELDS = 25;
+
+function renderFooter(footer, templateContext) {
+  if (!footer) {
+    return undefined;
+  }
+
+  const footerConfig =
+    typeof footer === 'string'
+      ? { text: renderTemplate(footer, templateContext) }
+      : {
+          text: renderTemplate(footer.text ?? '', templateContext),
+          iconURL: footer.iconURL ? renderTemplate(footer.iconURL, templateContext) : undefined,
+        };
+
+  const hasText = footerConfig.text.trim().length > 0;
+  const hasIconUrl = typeof footerConfig.iconURL === 'string' && footerConfig.iconURL.length > 0;
+
+  if (!hasText && !hasIconUrl) {
+    return undefined;
+  }
+
+  return {
+    ...footerConfig,
+    text: hasText ? footerConfig.text : '​',
+  };
+}
 
 /**
  * Build a Discord message payload from action config and template context.
@@ -32,26 +61,26 @@ export function buildPayload(action, templateContext) {
     if (embedConfig.thumbnail)
       embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
     if (Array.isArray(embedConfig.fields) && embedConfig.fields.length > 0) {
+      if (embedConfig.fields.length > MAX_EMBED_FIELDS) {
+        warn('Level-up action embed fields exceed Discord limit, truncating', {
+          fieldCount: embedConfig.fields.length,
+          maxFields: MAX_EMBED_FIELDS,
+        });
+      }
+
       embed.addFields(
-        embedConfig.fields.map((field) => ({
-          name: renderTemplate(field.name || '\u200b', templateContext).slice(0, 256) || '\u200b',
-          value:
-            renderTemplate(field.value || '\u200b', templateContext).slice(0, 1024) || '\u200b',
+        embedConfig.fields.slice(0, MAX_EMBED_FIELDS).map((field) => ({
+          name: renderTemplate(field.name || '​', templateContext).slice(0, 256) || '​',
+          value: renderTemplate(field.value || '​', templateContext).slice(0, 1024) || '​',
           inline: Boolean(field.inline),
         })),
       );
     }
     if (embedConfig.footer) {
-      const footerConfig =
-        typeof embedConfig.footer === 'string'
-          ? { text: renderTemplate(embedConfig.footer, templateContext) }
-          : {
-              text: renderTemplate(embedConfig.footer.text ?? '', templateContext),
-              iconURL: embedConfig.footer.iconURL
-                ? renderTemplate(embedConfig.footer.iconURL, templateContext)
-                : undefined,
-            };
-      embed.setFooter(footerConfig);
+      const footerConfig = renderFooter(embedConfig.footer, templateContext);
+      if (footerConfig) {
+        embed.setFooter(footerConfig);
+      }
     }
     if (embedConfig.image) {
       embed.setImage(renderTemplate(embedConfig.image, templateContext));
