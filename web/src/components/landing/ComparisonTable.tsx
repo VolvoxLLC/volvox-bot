@@ -69,7 +69,7 @@ const comparisonData: readonly ComparisonRowData[] = [
   },
 ];
 
-function CellValueDisplay({ value, isVolvox }: { value: CellValue; isVolvox?: boolean }) {
+function CellValueDisplay({ value, isVolvox }: Readonly<{ value: CellValue; isVolvox?: boolean }>) {
   if (value === true) {
     return (
       <div
@@ -297,7 +297,7 @@ export function ComparisonTable() {
           whileInView={{ opacity: 0.4 }}
           className="mt-12 text-center text-[10px] font-mono uppercase tracking-[0.5em] text-muted-foreground font-bold"
         >
-          SECURE_MATRIC_ENVIRONMENT [ENCRYPTED]
+          SECURE_MATRIX_ENVIRONMENT [ENCRYPTED]
         </motion.div>
       </div>
     </section>

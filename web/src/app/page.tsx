@@ -134,7 +134,7 @@ export default function LandingPage() {
             <ThemeToggle />
             <Link
               href="/login"
-              className="group relative px-6 py-2 rounded-full overflow-hidden transition-all hover:scale-105 active:scale-95"
+              className="group relative px-6 py-2 rounded-full overflow-hidden transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-secondary/10 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="absolute inset-0 border border-secondary/20 rounded-full group-hover:border-secondary/50 group-hover:shadow-[0_0_15px_rgba(var(--secondary),0.3)] transition-all" />

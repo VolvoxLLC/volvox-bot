@@ -9,6 +9,13 @@ import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useMembersStore } from '@/stores/members-store';
 
+const SORT_COLUMN_LABELS: Record<string, string> = {
+  messages: 'Messages',
+  xp: 'XP',
+  warnings: 'Warnings',
+  joined: 'Joined',
+};
+
 type SummaryCardProps = {
   label: string;
   value: string;
@@ -170,17 +177,7 @@ export default function MembersClient() {
     },
     {
       label: 'Sorted By',
-      value: `${
-        sortColumn === 'messages'
-          ? 'Messages'
-          : sortColumn === 'xp'
-            ? 'XP'
-            : sortColumn === 'warnings'
-              ? 'Warnings'
-              : sortColumn === 'joined'
-                ? 'Joined'
-                : sortColumn
-      } ${sortOrder === 'asc' ? '↑' : '↓'}`,
+      value: `${SORT_COLUMN_LABELS[sortColumn] ?? sortColumn} ${sortOrder === 'asc' ? '↑' : '↓'}`,
     },
   ] as const;
 

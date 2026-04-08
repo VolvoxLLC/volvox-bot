@@ -57,8 +57,23 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
         e.returnValue = '';
       }
     }
+    function onPopState(e: PopStateEvent) {
+      if (hasChangesRef.current) {
+        const confirmed = window.confirm(
+          'You have unsaved changes. Are you sure you want to leave?',
+        );
+        if (!confirmed) {
+          // Push current state back to cancel navigation
+          window.history.pushState(e.state, '', window.location.href);
+        }
+      }
+    }
     window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('popstate', onPopState);
+    };
   }, []);
 
   // Intercept in-app link clicks when there are unsaved changes

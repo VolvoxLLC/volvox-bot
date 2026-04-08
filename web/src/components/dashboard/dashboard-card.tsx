@@ -29,7 +29,8 @@ export function DashboardCard({
   return (
     <Tag
       className={cn(
-        'group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-xl',
+        'group relative overflow-hidden rounded-2xl border border-border/40' +
+          ' bg-muted/20 p-6 backdrop-blur-xl',
         className,
       )}
     >

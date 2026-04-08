@@ -104,7 +104,9 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
   }, []);
 
   const inputCls =
-    'h-9 rounded-xl border border-border/40 bg-card/40 px-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 backdrop-blur-sm transition-all disabled:cursor-not-allowed disabled:opacity-50';
+    'h-9 rounded-xl border border-border/40 bg-card/40 px-3 text-sm text-foreground' +
+    ' placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20' +
+    ' backdrop-blur-sm transition-all disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <div className="flex flex-wrap items-center gap-2">

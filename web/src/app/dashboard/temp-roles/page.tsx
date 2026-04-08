@@ -61,9 +61,11 @@ export default function TempRolesPage() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetch(guildId, page).then((res) => {
-      if (res === 'unauthorized') router.replace('/login');
-    });
+    fetch(guildId, page)
+      .then((res) => {
+        if (res === 'unauthorized') router.replace('/login');
+      })
+      .catch(() => {});
   }, [guildId, page, fetch, router]);
 
   const handleRevoke = useCallback(
@@ -89,9 +91,11 @@ export default function TempRolesPage() {
         toast.success('Temp role revoked', {
           description: `Removed ${record.role_name} from ${record.user_tag}.`,
         });
-        void fetch(guildId, page).then((r) => {
-          if (r === 'unauthorized') router.replace('/login');
-        });
+        fetch(guildId, page)
+          .then((r) => {
+            if (r === 'unauthorized') router.replace('/login');
+          })
+          .catch(() => {});
       } catch {
         toast.error('Failed to revoke temp role', {
           description: 'A network error occurred. Please try again.',

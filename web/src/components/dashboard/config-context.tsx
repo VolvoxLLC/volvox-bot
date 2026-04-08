@@ -284,8 +284,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // If current tab is not in the new category, reset to the first visible one
-    if (!activeTabId || !activeCategory.featureIds.includes(activeTabId)) {
+    // If current tab is not in the new category, or is filtered out by search, reset to first visible
+    if (
+      !activeTabId ||
+      !activeCategory.featureIds.includes(activeTabId) ||
+      !visibleFeatureIds.has(activeTabId)
+    ) {
       const firstVisible = activeCategory.featureIds.find((id) => visibleFeatureIds.has(id));
       setActiveTabId(firstVisible ?? activeCategory.featureIds[0] ?? null);
     }
@@ -340,6 +344,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       router.push(`/dashboard/settings/${item.categoryId}`);
       setFocusFeatureId(item.featureId);
       setSelectedSearchItemId(item.id);
+      setActiveTabId(item.featureId);
     },
     [router],
   );

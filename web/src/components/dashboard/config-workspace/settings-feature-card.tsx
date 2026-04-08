@@ -47,7 +47,6 @@ export function SettingsFeatureCard({
 
   return (
     <motion.div
-      layout
       id={`feature-${featureId}`}
       data-enabled={hasExplicitEnabledState ? isEnabled : undefined}
       initial={{ opacity: 0, y: 10 }}

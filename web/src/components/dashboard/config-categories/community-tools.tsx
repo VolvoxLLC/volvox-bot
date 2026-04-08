@@ -104,7 +104,7 @@ export function CommunityToolsCategory() {
                     onChange={(value) => {
                       updateDraftConfig((prev) => ({
                         ...prev,
-                        [key]: { ...prev[key], enabled: value },
+                        [key]: { ...(prev[key] ?? {}), enabled: value },
                       }));
                     }}
                     disabled={saving}
