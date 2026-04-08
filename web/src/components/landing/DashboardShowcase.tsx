@@ -13,7 +13,7 @@ import { BentoModeration } from './bento/BentoModeration';
 import type { DailyActivityPoint } from './bento/bento-data';
 import { SectionHeader } from './SectionHeader';
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 export type { DailyActivityPoint } from './bento/bento-data';
 
@@ -71,6 +71,10 @@ export function DashboardShowcase() {
 
   useGSAP(
     () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+      }
+
       // Header entrance
       gsap.fromTo(
         '.ds-header',
@@ -108,22 +112,26 @@ export function DashboardShowcase() {
       );
 
       // KPI strip slides in from the right
-      gsap.fromTo(
-        '.ds-kpi-strip',
-        { x: 60, opacity: 0 },
-        {
+      // Use gsap.utils.toArray to target each card individually and clamp x
+      // so they don't fly off-screen on narrow (mobile) viewports.
+      const kpiCards = gsap.utils.toArray<HTMLElement>('.ds-kpi-strip');
+      kpiCards.forEach((card, i) => {
+        // On mobile (<640 px) animate from below instead of from the side
+        const isMobile = window.innerWidth < 640;
+        gsap.fromTo(card, isMobile ? { y: 30, opacity: 0 } : { x: 60, opacity: 0 }, {
           x: 0,
+          y: 0,
           opacity: 1,
-          duration: 0.8,
-          stagger: 0.1,
+          duration: 0.7,
+          delay: i * 0.08,
           ease: 'power3.out',
           scrollTrigger: {
-            trigger: '.ds-kpi-strip',
-            start: 'top 90%',
+            trigger: card,
+            start: 'top 92%',
             toggleActions: 'play reverse play reverse',
           },
-        },
-      );
+        });
+      });
 
       // Gentle parallax on scroll past
       gsap.to('.ds-window', {

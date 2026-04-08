@@ -188,6 +188,7 @@ export function Footer() {
                     <Link
                       href={botInviteUrl}
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="group/btn relative px-10 py-5 rounded-2xl bg-foreground text-background font-black uppercase tracking-widest text-xs shadow-xl flex items-center gap-3 transition-colors"
                     >
                       <Zap className="w-4 h-4 fill-current" />
@@ -264,6 +265,7 @@ export function Footer() {
                   key={social.href}
                   href={social.href}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all shadow-sm group/social"
                 >
                   <social.icon className="w-5 h-5 transition-transform group-hover/social:scale-110" />

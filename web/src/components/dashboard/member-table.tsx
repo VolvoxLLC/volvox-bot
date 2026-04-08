@@ -383,7 +383,7 @@ export function MemberTable({
             type="button"
             onClick={onLoadMore}
             disabled={loading}
-            className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-card/40 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+            className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-card/40 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Load More

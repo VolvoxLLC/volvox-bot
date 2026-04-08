@@ -68,11 +68,17 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
           'You have unsaved changes. Switching guilds will discard them. Continue?',
         );
         if (!confirmed) {
+          // Stop capture-phase listeners from running after this one.
           e.stopImmediatePropagation();
           e.preventDefault();
+          // Set a flag on the event so that bubble-phase listeners (e.g.
+          // config-context) can detect the cancellation and bail out early.
+          (e as Event & { __guildSelectCancelled?: boolean }).__guildSelectCancelled = true;
         }
       }
     }
+    // Register in the capture phase so this guard runs before any bubble-phase
+    // listeners (including the config-context handler that updates guildId).
     window.addEventListener(GUILD_SELECTED_EVENT, onGuildSelected, true);
 
     return () => {

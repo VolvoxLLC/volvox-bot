@@ -104,12 +104,10 @@ function CellValueDisplay({ value, isVolvox }: Readonly<{ value: CellValue; isVo
 function ComparisonRow({
   row,
   index,
-  isInView: _isInView,
   shouldReduceMotion,
 }: {
   row: ComparisonRowData;
   index: number;
-  isInView: boolean;
   shouldReduceMotion: boolean;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -261,7 +259,6 @@ export function ComparisonTable() {
                   key={row.feature}
                   row={row}
                   index={index}
-                  isInView={true}
                   shouldReduceMotion={shouldReduceMotion}
                 />
               ))}

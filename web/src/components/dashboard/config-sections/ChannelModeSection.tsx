@@ -98,14 +98,6 @@ function ChannelIcon({ type }: { type: number }) {
   }
 }
 
-// ── Mode dot indicator ────────────────────────────────────────────────────
-
-function _ModeDot({ mode }: { mode: ChannelMode }) {
-  const color =
-    mode === 'off' ? 'bg-destructive' : mode === 'vibe' ? 'bg-emerald-500' : 'bg-primary';
-  return <span className={cn('inline-block h-1.5 w-1.5 rounded-full shrink-0', color)} />;
-}
-
 // ── Props ─────────────────────────────────────────────────────────────────
 
 export interface ChannelModeSectionProps {
