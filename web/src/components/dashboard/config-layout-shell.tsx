@@ -93,8 +93,14 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
     function handleClick(e: MouseEvent) {
       if (!hasChangesRef.current) return;
 
+      // Skip modifier clicks (cmd/ctrl/shift/alt, middle button)
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+
       const target = (e.target as HTMLElement).closest('a');
       if (!target) return;
+
+      // Skip links with target="_blank" or download
+      if (target.target === '_blank' || target.hasAttribute('download')) return;
 
       const href = target.getAttribute('href');
       if (!href || href.startsWith('#') || href.startsWith('http')) return;

@@ -151,11 +151,10 @@ function FeatureCard({
     mouseY.set(e.clientY - top);
   };
 
-  const bgImage = useTransform(
-    [mouseX, mouseY],
-    ([x, y]) =>
-      `radial-gradient(600px circle at ${x}px ${y}px, ${feature.accentColor}10, transparent 40%)`,
-  );
+  const bgImage = useTransform([mouseX, mouseY], ([x, y]) => {
+    const glowColor = feature.accentColor.replace('hsl(', '').replace(')', '');
+    return `radial-gradient(600px circle at ${x}px ${y}px, hsl(${glowColor}/0.06), transparent 40%)`;
+  });
 
   return (
     <motion.div

@@ -226,7 +226,12 @@ export function ComparisonTable() {
         </div>
 
         {/* Matrix Container */}
-        <div className="rounded-[2rem] border border-border/60 bg-card/30 backdrop-blur-3xl overflow-hidden shadow-xl">
+        {/* biome-ignore lint/a11y/useSemanticElements: comparison grid uses CSS grid for responsive layout; ARIA roles conflict with Biome rules */}
+        <div
+          role="table"
+          aria-label="Feature comparison"
+          className="rounded-[2rem] border border-border/60 bg-card/30 backdrop-blur-3xl overflow-hidden shadow-xl"
+        >
           <div className="overflow-x-auto scrollbar-none">
             {/* Header Row */}
             <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] bg-muted/30 border-b border-border min-w-[700px]">
