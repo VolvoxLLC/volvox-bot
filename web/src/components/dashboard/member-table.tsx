@@ -62,7 +62,9 @@ interface MemberTableProps {
 
 function relativeTime(iso: string | null): string {
   if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
+  const timestamp = new Date(iso).getTime();
+  if (Number.isNaN(timestamp)) return '—';
+  const diff = Date.now() - timestamp;
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) return 'just now';
   const minutes = Math.floor(seconds / 60);
@@ -182,6 +184,9 @@ function TableSkeleton() {
           <TableCell className="hidden md:table-cell">
             <Skeleton className="h-4 w-20" />
           </TableCell>
+          <TableCell>
+            <Skeleton className="ml-auto h-4 w-4" />
+          </TableCell>
         </TableRow>
       ))}
     </>
@@ -276,6 +281,7 @@ export function MemberTable({
                 onSort={onSort}
                 className="hidden md:table-cell"
               />
+              <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
 
@@ -377,7 +383,7 @@ export function MemberTable({
         </Table>
       </div>
 
-      {hasMore && members.length > 0 && (
+      {hasMore && (
         <div className="flex justify-center pt-1">
           <button
             type="button"

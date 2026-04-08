@@ -245,7 +245,7 @@ export function RoleSelector({
                       className={cn(
                         'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 cursor-pointer mb-1',
                         isSelected
-                          ? 'bg-primary/10 text-primary shadow-[inset_0_0_12px_rgba(var(--primary-rgb),0.1)] border border-primary/20'
+                          ? 'bg-primary/10 text-primary shadow-[inset_0_0_12px_hsl(var(--primary)/0.1)] border border-primary/20'
                           : 'text-muted-foreground hover:bg-muted/10 border border-transparent',
                         isDisabled && 'cursor-not-allowed opacity-40',
                       )}
@@ -334,7 +334,7 @@ export function RoleSelector({
         <div className="flex items-center gap-2 px-1">
           <div className="h-1 flex-1 bg-muted/50 rounded-full overflow-hidden shadow-inner">
             <div
-              className="h-full bg-primary/40 transition-all duration-500 shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"
+              className="h-full bg-primary/40 transition-all duration-500 shadow-[0_0_8px_hsl(var(--primary)/0.5)]"
               style={{ width: `${(selected.length / maxSelections) * 100}%` }}
             />
           </div>

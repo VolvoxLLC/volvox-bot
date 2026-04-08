@@ -156,11 +156,15 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
       <StatCard
         loading={loading && !health}
         title="Errors (1h)"
-        value={health?.errors ? (health.errors.lastHour?.toLocaleString() ?? '0') : '—'}
+        value={health?.errors?.lastHour != null ? health.errors.lastHour.toLocaleString() : '—'}
         subtitle="Recent stability"
         icon={AlertTriangle}
         iconColor={
-          health && (health.errors?.lastHour || 0) > 0 ? 'text-red-500' : 'text-emerald-500/40'
+          health?.errors?.lastHour == null
+            ? 'text-muted-foreground/40'
+            : health.errors.lastHour > 0
+              ? 'text-red-500'
+              : 'text-emerald-500/40'
         }
       />
       <StatCard

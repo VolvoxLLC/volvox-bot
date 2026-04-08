@@ -40,10 +40,12 @@ function ModeSelector({
   mode,
   onChange,
   disabled,
+  ariaLabelContext,
 }: {
   mode: ChannelMode;
   onChange: (mode: ChannelMode) => void;
   disabled: boolean;
+  ariaLabelContext: string;
 }) {
   const modes: { value: ChannelMode; label: string }[] = [
     { value: 'off', label: 'Off' },
@@ -77,6 +79,7 @@ function ModeSelector({
             activeClasses(value),
           )}
           aria-pressed={mode === value}
+          aria-label={`${ariaLabelContext} - ${label} mode`}
         >
           {label}
         </button>
@@ -294,7 +297,12 @@ export function ChannelModeSection({
                 Channels without explicit overrides will use this response behavior.
               </p>
             </div>
-            <ModeSelector mode={defaultMode} onChange={onDefaultModeChange} disabled={saving} />
+            <ModeSelector
+              mode={defaultMode}
+              onChange={onDefaultModeChange}
+              disabled={saving}
+              ariaLabelContext="Global fallback"
+            />
           </div>
         </div>
 
@@ -308,6 +316,7 @@ export function ChannelModeSection({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             disabled={saving || loading}
+            aria-label="Search channels by name"
             className={cn(
               inputClasses,
               'pl-11 h-12 bg-muted/10 dark:bg-black/20 focus:bg-muted/20 dark:focus:bg-black/40',
@@ -398,7 +407,7 @@ export function ChannelModeSection({
                             {ch.name}
                           </span>
                           {isOverridden && (
-                            <div className="flex h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" />
+                            <div className="flex h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
                           )}
                         </div>
 
@@ -408,6 +417,7 @@ export function ChannelModeSection({
                             mode={effectiveMode}
                             onChange={(m) => handleChannelMode(ch.id, m)}
                             disabled={saving}
+                            ariaLabelContext={`Channel #${ch.name}`}
                           />
                         </div>
                       </div>

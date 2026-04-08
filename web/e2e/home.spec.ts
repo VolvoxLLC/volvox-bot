@@ -145,9 +145,9 @@ test.describe('Comparison Table', () => {
   });
 
   test('renders comparison table with updated rows', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Compare the alternatives' })).toBeVisible();
-    const table = page.locator('table');
-    for (const feature of ['AI Chat', 'AI Moderation', 'Web Dashboard', 'Starboard', 'Analytics', 'Free Tier']) {
+    await expect(page.getByRole('heading', { name: /Engineered for Superiority/i })).toBeVisible();
+    const table = page.locator('[role="table"]');
+    for (const feature of ['AI Neural Chat', 'AI Moderation', 'Next-Gen Dashboard', 'Custom Branding', 'Global Analytics', 'Access Model']) {
       await expect(table.getByText(feature)).toBeVisible();
     }
   });

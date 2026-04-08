@@ -10,7 +10,7 @@ import { FloatingSaveIsland } from './floating-save-island';
 
 /**
  * Client-side layout shell for the config editor.
- * Wraps children in ConfigProvider and renders persistent save chrome.
+ * Renders the config editor shell and persistent save chrome around the current content.
  */
 export function ConfigLayoutShell({ children }: { children: ReactNode }) {
   return <ConfigLayoutInner>{children}</ConfigLayoutInner>;
@@ -39,28 +39,15 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   hasChangesRef.current = hasChanges;
 
   useEffect(() => {
-    // Handle browser back/forward/close
+    // Handle browser tab close or refresh.
     function onBeforeUnload(e: BeforeUnloadEvent) {
       if (hasChangesRef.current) {
         e.preventDefault();
         e.returnValue = '';
       }
     }
-    window.history.replaceState(null, '', window.location.href);
 
-    function onPopState() {
-      if (hasChangesRef.current) {
-        const confirmed = window.confirm(
-          'You have unsaved changes. Are you sure you want to leave?',
-        );
-        if (!confirmed) {
-          // Re-push to stay on current page
-          window.history.pushState(null, '', window.location.href);
-        }
-      }
-    }
     window.addEventListener('beforeunload', onBeforeUnload);
-    window.addEventListener('popstate', onPopState);
 
     function onGuildSelected(e: Event) {
       if (hasChangesRef.current) {
@@ -83,7 +70,6 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
 
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
-      window.removeEventListener('popstate', onPopState);
       window.removeEventListener(GUILD_SELECTED_EVENT, onGuildSelected, true);
     };
   }, []);
