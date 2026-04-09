@@ -3,8 +3,13 @@
 import { Menu } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ServerSelector } from './server-selector';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Sidebar } from './sidebar';
 
 /**
@@ -33,11 +38,11 @@ export function MobileSidebar() {
         >
           <SheetHeader className="border-b border-border/60 p-4 pb-3 text-left">
             <SheetTitle className="text-base font-semibold tracking-tight">Control Room</SheetTitle>
+            <SheetDescription className="sr-only">
+              Browse dashboard navigation and switch workspaces from the control room sidebar.
+            </SheetDescription>
           </SheetHeader>
-          <div className="p-4 pb-2">
-            <ServerSelector />
-          </div>
-          <div className="px-4 pb-4">
+          <div className="p-4">
             <Sidebar onNavClick={() => setOpen(false)} />
           </div>
         </SheetContent>

@@ -41,8 +41,6 @@ export type DiscordMarkdownEditorProps = Readonly<{
   value: string;
   onChange: (value: string) => void;
   variables?: string[];
-  /** Delimiters wrapping variable names when inserted and displayed. Defaults to `['{{', '}}']`. */
-  variableDelimiters?: readonly [string, string];
   /** Maps variable names to sample values displayed inside the preview badges. */
   variableSamples?: Readonly<Record<string, string>>;
   maxLength?: number;
@@ -205,20 +203,18 @@ const SHORTCUT_MAP: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
-const DEFAULT_DELIMITERS = ['{{', '}}'] as const;
+const EDITOR_PANE_CONTENT_CLASSES = 'w-full px-3 py-2 text-sm leading-relaxed';
 
 export function DiscordMarkdownEditor({
   value,
   onChange,
   variables = [],
-  variableDelimiters = DEFAULT_DELIMITERS,
   variableSamples,
   maxLength = 2000,
   placeholder = 'Enter your message...',
   className,
   disabled = false,
 }: DiscordMarkdownEditorProps) {
-  const [varOpen, varClose] = variableDelimiters;
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const rafIdsRef = React.useRef<number[]>([]);
   const [showVariables, setShowVariables] = React.useState(false);
@@ -277,8 +273,7 @@ export function DiscordMarkdownEditor({
         rafIdsRef.current = rafIdsRef.current.filter((id) => id !== rafId);
         if (textareaRef.current) {
           textareaRef.current.focus();
-          const nextCursorPos = result.cursorPos ?? cursor;
-          textareaRef.current.setSelectionRange(nextCursorPos, nextCursorPos);
+          textareaRef.current.setSelectionRange(result.cursorPos ?? null, result.cursorPos ?? null);
         }
       });
       rafIdsRef.current.push(rafId);
@@ -319,7 +314,8 @@ export function DiscordMarkdownEditor({
       });
     }
     return renderPreviewContent(html);
-  }, [activeVariables, value, isMounted, variableSamples]);
+  }, [value, isMounted, variableSamples, activeVariables]);
+
   const getCharCountColor = (): string => {
     if (isOverLimit) {
       return 'text-red-500';
@@ -388,7 +384,7 @@ export function DiscordMarkdownEditor({
                   onSelect={() => insertVariable(variable)}
                 >
                   <span className="rounded bg-primary/10 px-1 py-0.5 font-mono text-primary">
-                    {`${varOpen}${variable}${varClose}`}
+                    {`{{${variable}}}`}
                   </span>
                   {variable}
                 </DropdownMenuItem>
@@ -398,7 +394,7 @@ export function DiscordMarkdownEditor({
         )}
       </div>
 
-      <div className="grid min-h-[200px] grid-cols-1 md:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="md:border-r md:border-input">
           <textarea
             ref={textareaRef}
@@ -408,13 +404,24 @@ export function DiscordMarkdownEditor({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="min-h-[200px] w-full resize-none bg-transparent px-3 py-2 font-mono text-sm leading-relaxed [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              EDITOR_PANE_CONTENT_CLASSES,
+              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            )}
             aria-label="Markdown editor"
           />
         </div>
 
-        <section className="border-t border-input px-3 py-2 md:border-t-0" aria-label="Preview">
-          <div className="discord-preview max-w-none text-sm leading-relaxed">{previewContent}</div>
+        <section className="border-t border-input md:border-t-0" aria-label="Preview">
+          <div
+            className={cn(
+              EDITOR_PANE_CONTENT_CLASSES,
+              'discord-preview relative -top-[3px] max-w-none',
+              'font-mono md:overflow-x-auto md:overflow-y-hidden md:whitespace-nowrap',
+            )}
+          >
+            {previewContent}
+          </div>
         </section>
       </div>
 

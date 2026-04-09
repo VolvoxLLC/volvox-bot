@@ -1,15 +1,46 @@
 'use client';
 
-import { RefreshCw, Search, Users, X } from 'lucide-react';
+import { Search, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { MemberTable } from '@/components/dashboard/member-table';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useMembersStore } from '@/stores/members-store';
+
+const SORT_COLUMN_LABELS: Record<string, string> = {
+  messages: 'Messages',
+  xp: 'XP',
+  warnings: 'Warnings',
+  joined: 'Joined',
+};
+
+type SummaryCardProps = {
+  label: string;
+  value: string;
+  accentClassName?: string;
+};
+
+function SummaryCard({ label, value, accentClassName }: SummaryCardProps) {
+  return (
+    <div
+      className={[
+        'group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50',
+        accentClassName,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl text-foreground/90">
+        {value}
+      </p>
+    </div>
+  );
+}
 
 /**
  * Renders the Members page with search, sorting, pagination, and a member list table.
@@ -120,19 +151,6 @@ export default function MembersClient() {
     });
   }, [guildId, nextAfter, loading, runFetch, debouncedSearch, sortColumn, sortOrder]);
 
-  const handleRefresh = useCallback(() => {
-    if (!guildId) return;
-    resetPagination();
-    runFetch({
-      guildId,
-      search: debouncedSearch,
-      sortColumn,
-      sortOrder,
-      after: null,
-      append: false,
-    });
-  }, [guildId, runFetch, debouncedSearch, sortColumn, sortOrder, resetPagination]);
-
   const handleRowClick = useCallback(
     (userId: string) => {
       if (!guildId) return;
@@ -146,26 +164,25 @@ export default function MembersClient() {
     setDebouncedSearch('');
   }, [setSearch, setDebouncedSearch]);
 
+  const summaryCards = [
+    {
+      label: 'Total Members',
+      value: total.toLocaleString(),
+      accentClassName: 'bg-gradient-to-br from-primary/12 to-background',
+    },
+    {
+      label: 'Filtered Results',
+      value: (filteredTotal ?? total).toLocaleString(),
+      accentClassName: 'bg-gradient-to-br from-secondary/10 to-background',
+    },
+    {
+      label: 'Sorted By',
+      value: `${SORT_COLUMN_LABELS[sortColumn] ?? sortColumn} ${sortOrder === 'asc' ? '↑' : '↓'}`,
+    },
+  ] as const;
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={Users}
-        title="Members"
-        description="View member activity, XP, levels, and moderation history."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleRefresh}
-            disabled={!guildId || loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        }
-      />
-
       {/* No guild selected */}
       {!guildId && (
         <EmptyState
@@ -179,39 +196,18 @@ export default function MembersClient() {
       {guildId && (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-primary/12 to-background p-4 md:p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Total Members
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                {total.toLocaleString()}
-              </p>
-            </div>
-            <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-secondary/10 to-background p-4 md:p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Filtered Results
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                {(filteredTotal ?? total).toLocaleString()}
-              </p>
-            </div>
-            <div className="dashboard-panel rounded-2xl p-4 md:p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Sort Strategy
-              </p>
-              <p className="mt-3 text-lg font-semibold tracking-tight capitalize md:text-xl">
-                {sortColumn} · {sortOrder}
-              </p>
-            </div>
+            {summaryCards.map((card) => (
+              <SummaryCard key={card.label} {...card} />
+            ))}
           </div>
 
-          {/* Search + stats bar */}
-          <div className="dashboard-panel flex flex-wrap items-center gap-3 rounded-2xl p-4 md:p-5">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          {/* Search + stats bar — compact inline strip */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
               <Input
-                className="h-10 rounded-xl border-border/70 bg-background/70 pl-9 pr-8"
-                placeholder="Search by username or display name..."
+                className="h-9 rounded-xl border-border/40 bg-card/40 pl-8 pr-8 text-sm backdrop-blur-sm"
+                placeholder="Search members..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Search members"
@@ -219,16 +215,16 @@ export default function MembersClient() {
               {search && (
                 <button
                   type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
                   onClick={handleClearSearch}
                   aria-label="Clear search"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
             {total > 0 && (
-              <span className="text-sm text-muted-foreground tabular-nums">
+              <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">
                 {filteredTotal !== null && filteredTotal !== total
                   ? `${filteredTotal.toLocaleString()} of ${total.toLocaleString()} members`
                   : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
@@ -246,14 +242,13 @@ export default function MembersClient() {
             </div>
           )}
 
-          {/* Table */}
           <MemberTable
             members={members}
             onSort={handleSort}
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onLoadMore={handleLoadMore}
-            hasMore={nextAfter !== null}
+            hasMore={!!nextAfter}
             loading={loading}
             onRowClick={handleRowClick}
           />

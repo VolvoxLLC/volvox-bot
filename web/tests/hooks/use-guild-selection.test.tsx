@@ -36,6 +36,26 @@ describe('useGuildSelection', () => {
     expect(onGuildChange).toHaveBeenCalledTimes(1);
   });
 
+  it('ignores duplicate custom events for the currently selected guild', async () => {
+    const onGuildChange = vi.fn();
+    localStorage.setItem(SELECTED_GUILD_KEY, 'guild-2');
+
+    const { result } = renderHook(() => useGuildSelection({ onGuildChange }));
+
+    await waitFor(() => {
+      expect(result.current).toBe('guild-2');
+    });
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(GUILD_SELECTED_EVENT, { detail: 'guild-2' }));
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe('guild-2');
+    });
+    expect(onGuildChange).not.toHaveBeenCalled();
+  });
+
   it('updates the selection for storage events on the selected guild key', async () => {
     const onGuildChange = vi.fn();
     const { result } = renderHook(() => useGuildSelection({ onGuildChange }));

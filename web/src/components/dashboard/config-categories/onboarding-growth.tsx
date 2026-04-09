@@ -1,90 +1,93 @@
 'use client';
 
 import { Info } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
-import { generateId, inputClasses } from '@/components/dashboard/config-editor-utils';
-import { CommunitySettingsSection } from '@/components/dashboard/config-sections/CommunitySettingsSection';
-import { SettingsFeatureCard } from '@/components/dashboard/config-workspace/settings-feature-card';
+import {
+  DEFAULT_ACTIVITY_BADGES,
+  generateId,
+  inputClasses,
+  parseNumberInput,
+} from '@/components/dashboard/config-editor-utils';
+import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
+import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
+import { ConfigCategoryLayout } from './config-category-layout';
 
-/**
- * Inline info icon that shows help text on hover.
- */
-function InfoTip({ text }: { text: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="ml-1 inline-flex cursor-help align-middle text-muted-foreground/60 hover:text-muted-foreground">
-          <Info className="h-3.5 w-3.5" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top">{text}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-const STATIC_VARIABLES = ['user', 'username', 'server', 'memberCount'] as const;
-const DYNAMIC_VARIABLES = [
-  'greeting',
-  'vibeLine',
-  'ctaLine',
-  'milestoneLine',
-  'timeOfDay',
-  'activityLevel',
-  'topChannels',
+const STATIC_VARIABLE_DEFINITIONS = [
+  { name: 'user', description: 'Mention member', sample: '@johndoe' },
+  { name: 'username', description: 'Plain name', sample: 'johndoe' },
+  { name: 'server', description: 'Server name', sample: 'Volvox' },
+  { name: 'memberCount', description: 'Total members', sample: '142' },
 ] as const;
-const SINGLE_BRACE_DELIMITERS = ['{', '}'] as const;
+const DYNAMIC_VARIABLE_DEFINITIONS = [
+  {
+    name: 'greeting',
+    description: 'Time-aware hello',
+    sample: 'Good morning @johndoe! You just joined Volvox.',
+  },
+  {
+    name: 'vibeLine',
+    description: 'Activity context',
+    sample: "Things are moving at a healthy pace in #general, so you'll fit right in.",
+  },
+  {
+    name: 'ctaLine',
+    description: 'Suggested channels call-to-action',
+    sample: 'Start in #general, check out #introductions, and browse #announcements.',
+  },
+  {
+    name: 'milestoneLine',
+    description: 'Member milestone or count line',
+    sample: 'You just rolled in as member #142.',
+  },
+  { name: 'timeOfDay', description: 'Time-of-day label', sample: 'morning' },
+  { name: 'activityLevel', description: 'Server activity level', sample: 'steady' },
+  {
+    name: 'topChannels',
+    description: 'Trending channels',
+    sample: '#general, #projects, #showcase',
+  },
+] as const;
 
-/**
- * Onboarding & Growth category — renders the Welcome feature card directly,
- * then delegates Reputation, Engagement, TL;DR/AFK, and Challenges to
- * CommunitySettingsSection.
- */
 export function OnboardingGrowthCategory() {
-  const {
-    draftConfig,
-    saving,
-    guildId,
-    visibleFeatureIds,
-    forceOpenAdvancedFeatureId,
-    updateDraftConfig,
-  } = useConfigContext();
+  const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
-  const [dmStepsRaw, setDmStepsRaw] = useState(() =>
-    (draftConfig?.welcome?.dmSequence?.steps ?? []).join('\n'),
-  );
+  const activeTab = activeTabId as ConfigFeatureId | null;
 
-  const updateWelcomeEnabled = useCallback(
-    (enabled: boolean) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: { ...prev.welcome, enabled },
-      }));
-    },
-    [updateDraftConfig],
-  );
+  const [dmStepsRaw, setDmStepsRaw] = useState('');
 
-  const updateWelcomeMessage = useCallback(
-    (message: string) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: { ...prev.welcome, message },
-      }));
-    },
-    [updateDraftConfig],
-  );
+  useEffect(() => {
+    if (draftConfig?.welcome?.dmSequence?.steps) {
+      setDmStepsRaw(draftConfig.welcome.dmSequence.steps.join('\n'));
+    } else {
+      setDmStepsRaw('');
+    }
+  }, [draftConfig?.welcome?.dmSequence?.steps]);
 
   const updateWelcomeField = useCallback(
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => ({
         ...prev,
         welcome: { ...(prev.welcome ?? {}), [field]: value },
+      }));
+    },
+    [updateDraftConfig],
+  );
+
+  const updateWelcomeDynamic = useCallback(
+    (field: string, value: unknown) => {
+      updateDraftConfig((prev) => ({
+        ...prev,
+        welcome: {
+          ...(prev.welcome ?? {}),
+          dynamic: { ...(prev.welcome?.dynamic ?? {}), [field]: value },
+        },
       }));
     },
     [updateDraftConfig],
@@ -116,354 +119,808 @@ export function OnboardingGrowthCategory() {
     [updateDraftConfig],
   );
 
-  const updateWelcomeDynamic = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: {
-          ...(prev.welcome ?? {}),
-          dynamic: { ...(prev.welcome?.dynamic ?? {}), [field]: value },
-        },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
   const welcomeVariables = useMemo(
     () =>
       draftConfig?.welcome?.dynamic?.enabled
-        ? [...STATIC_VARIABLES, ...DYNAMIC_VARIABLES]
-        : [...STATIC_VARIABLES],
+        ? [
+            ...STATIC_VARIABLE_DEFINITIONS.map((variable) => variable.name),
+            ...DYNAMIC_VARIABLE_DEFINITIONS.map((variable) => variable.name),
+          ]
+        : STATIC_VARIABLE_DEFINITIONS.map((variable) => variable.name),
     [draftConfig?.welcome?.dynamic?.enabled],
   );
 
   const welcomeVariableSamples = useMemo(() => {
-    const samples: Record<string, string> = {
-      user: '@johndoe',
-      username: 'johndoe',
-      server: 'Volvox',
-      memberCount: '142',
-    };
+    const samples = Object.fromEntries(
+      STATIC_VARIABLE_DEFINITIONS.map((variable) => [variable.name, variable.sample]),
+    ) as Record<string, string>;
 
     if (draftConfig?.welcome?.dynamic?.enabled) {
-      Object.assign(samples, {
-        greeting: 'Good morning @johndoe! You just joined Volvox.',
-        vibeLine: "Things are moving at a healthy pace in #general, so you'll fit right in.",
-        ctaLine: 'Start in #general, check out #introductions, and browse #announcements.',
-        milestoneLine: 'You just rolled in as member #142.',
-        timeOfDay: 'morning',
-        activityLevel: 'steady',
-        topChannels: '#general, #projects, #showcase',
-      });
+      Object.assign(
+        samples,
+        Object.fromEntries(
+          DYNAMIC_VARIABLE_DEFINITIONS.map((variable) => [variable.name, variable.sample]),
+        ),
+      );
     }
 
     return samples;
   }, [draftConfig?.welcome?.dynamic?.enabled]);
 
+  const welcomeRoleOptions = useMemo(
+    () =>
+      (draftConfig?.welcome?.roleMenu?.options ?? []).map((option) => ({
+        ...option,
+        id: option.id ?? generateId(),
+      })),
+    [draftConfig?.welcome?.roleMenu?.options],
+  );
+
+  useEffect(() => {
+    if (!draftConfig) return;
+
+    const hasLegacyWelcomeRoleOptions = (draftConfig.welcome?.roleMenu?.options ?? []).some(
+      (option) => !option.id,
+    );
+
+    if (hasLegacyWelcomeRoleOptions) {
+      updateWelcomeRoleMenu('options', welcomeRoleOptions);
+    }
+  }, [draftConfig, updateWelcomeRoleMenu, welcomeRoleOptions]);
+
   if (!draftConfig) return null;
+  if (!activeTab) return null;
+
+  let isCurrentFeatureEnabled = false;
+  let handleToggleCurrentFeature = (_v: boolean) => {};
+
+  if (activeTab === 'welcome') {
+    isCurrentFeatureEnabled = draftConfig.welcome?.enabled ?? false;
+    handleToggleCurrentFeature = (v) => updateWelcomeField('enabled', v);
+  } else if (activeTab === 'engagement') {
+    isCurrentFeatureEnabled = draftConfig.engagement?.enabled ?? false;
+    handleToggleCurrentFeature = (v) =>
+      updateDraftConfig((prev) => ({
+        ...prev,
+        engagement: { ...prev.engagement, enabled: v },
+      }));
+  } else if (activeTab === 'reputation') {
+    isCurrentFeatureEnabled =
+      (draftConfig.reputation?.enabled ?? false) || (draftConfig.xp?.enabled ?? false);
+    handleToggleCurrentFeature = (v) =>
+      updateDraftConfig((prev) => ({
+        ...prev,
+        reputation: { ...prev.reputation, enabled: v },
+        xp: { ...prev.xp, enabled: v },
+      }));
+  } else if (activeTab === 'tldr-afk') {
+    isCurrentFeatureEnabled =
+      (draftConfig.tldr?.enabled ?? false) || (draftConfig.afk?.enabled ?? false);
+    handleToggleCurrentFeature = (v) =>
+      updateDraftConfig((prev) => ({
+        ...prev,
+        tldr: { ...prev.tldr, enabled: v },
+        afk: { ...prev.afk, enabled: v },
+      }));
+  } else if (activeTab === 'challenges') {
+    isCurrentFeatureEnabled = draftConfig.challenges?.enabled ?? false;
+    handleToggleCurrentFeature = (v) =>
+      updateDraftConfig((prev) => ({
+        ...prev,
+        challenges: { ...prev.challenges, enabled: v },
+      }));
+  }
 
   return (
-    <>
-      {visibleFeatureIds.has('welcome') && (
-        <SettingsFeatureCard
-          featureId="welcome"
-          title="Welcome Messages"
-          description="Greet and onboard new members when they join."
-          enabled={draftConfig.welcome?.enabled ?? false}
-          onEnabledChange={updateWelcomeEnabled}
-          disabled={saving}
-          basicContent={
-            <div className="space-y-4">
+    <ConfigCategoryLayout
+      featureId={activeTab}
+      toggle={{
+        checked: isCurrentFeatureEnabled,
+        onChange: handleToggleCurrentFeature,
+        disabled: saving,
+      }}
+    >
+      {/* Welcome Layout */}
+      {activeTab === 'welcome' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+            <div className="space-y-2">
+              <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                Welcome message
+              </span>
               <DiscordMarkdownEditor
                 value={draftConfig.welcome?.message ?? ''}
-                onChange={updateWelcomeMessage}
+                onChange={(v) => updateWelcomeField('message', v)}
                 variables={welcomeVariables}
-                variableDelimiters={SINGLE_BRACE_DELIMITERS}
                 variableSamples={welcomeVariableSamples}
                 maxLength={2000}
-                placeholder="Welcome message template..."
+                placeholder="Welcome {{user}} to {{server}}!"
                 disabled={saving}
               />
+            </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <label htmlFor="rules-channel-id" className="space-y-2">
-                  <span className="text-sm font-medium">Rules Channel ID</span>
-                  <ChannelSelector
-                    id="rules-channel-id"
-                    guildId={guildId}
-                    selected={
-                      draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []
-                    }
-                    onChange={(selected) => updateWelcomeField('rulesChannel', selected[0] ?? null)}
-                    disabled={saving}
-                    placeholder="Select rules channel"
-                    maxSelections={1}
-                    filter="text"
-                  />
-                </label>
-                <label htmlFor="verified-role-id" className="space-y-2">
-                  <span className="text-sm font-medium">Verified Role ID</span>
-                  <RoleSelector
-                    id="verified-role-id"
-                    guildId={guildId}
-                    selected={
-                      draftConfig.welcome?.verifiedRole ? [draftConfig.welcome.verifiedRole] : []
-                    }
-                    onChange={(selected) => updateWelcomeField('verifiedRole', selected[0] ?? null)}
-                    disabled={saving}
-                    placeholder="Select verified role"
-                    maxSelections={1}
-                  />
-                </label>
-                <label htmlFor="intro-channel-id" className="space-y-2">
-                  <span className="text-sm font-medium">Intro Channel ID</span>
-                  <ChannelSelector
-                    id="intro-channel-id"
-                    guildId={guildId}
-                    selected={
-                      draftConfig.welcome?.introChannel ? [draftConfig.welcome.introChannel] : []
-                    }
-                    onChange={(selected) => updateWelcomeField('introChannel', selected[0] ?? null)}
-                    disabled={saving}
-                    placeholder="Select intro channel"
-                    maxSelections={1}
-                    filter="text"
-                  />
-                </label>
+            <details className="group">
+              <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-2">
+                <span>View Variables Guide</span>
+                <Info className="h-3 w-3" />
+              </summary>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-muted/10 border border-border/30">
+                <div className="space-y-2 text-xs">
+                  <p className="font-bold text-foreground/70 uppercase">Static Variables</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    {STATIC_VARIABLE_DEFINITIONS.map((variable) => (
+                      <li key={variable.name}>
+                        <code>{`{{${variable.name}}}`}</code> - {variable.description}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <p className="font-bold text-foreground/70 uppercase">Dynamic Variables</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    {DYNAMIC_VARIABLE_DEFINITIONS.map((variable) => (
+                      <li key={variable.name}>
+                        <code>{`{{${variable.name}}}`}</code> - {variable.description}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </details>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-border/40">
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  Rules Channel
+                </div>
+                <ChannelSelector
+                  guildId={guildId}
+                  selected={
+                    draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []
+                  }
+                  onChange={(selected) => updateWelcomeField('rulesChannel', selected[0] ?? null)}
+                  disabled={saving}
+                  maxSelections={1}
+                  filter="text"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  Verification Role
+                </div>
+                <RoleSelector
+                  guildId={guildId}
+                  selected={
+                    draftConfig.welcome?.verifiedRole ? [draftConfig.welcome.verifiedRole] : []
+                  }
+                  onChange={(selected) => updateWelcomeField('verifiedRole', selected[0] ?? null)}
+                  disabled={saving}
+                  maxSelections={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  Introductions
+                </div>
+                <ChannelSelector
+                  guildId={guildId}
+                  selected={
+                    draftConfig.welcome?.introChannel ? [draftConfig.welcome.introChannel] : []
+                  }
+                  onChange={(selected) => updateWelcomeField('introChannel', selected[0] ?? null)}
+                  disabled={saving}
+                  maxSelections={1}
+                  filter="text"
+                />
               </div>
             </div>
-          }
-          advancedContent={
-            <div className="space-y-4">
-              <fieldset className="space-y-4 rounded-md border p-3">
-                <legend className="text-sm font-medium">Dynamic Welcome</legend>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Enable dynamic context-aware variables
-                    <InfoTip text="When enabled, your welcome template can use variables like {greeting}, {vibeLine}, {ctaLine}, {milestoneLine}, {timeOfDay}, {activityLevel}, and {topChannels} that change based on time of day, server activity, and channel popularity." />
-                  </span>
-                  <ToggleSwitch
-                    checked={draftConfig.welcome?.dynamic?.enabled ?? false}
-                    onChange={(v) => updateWelcomeDynamic('enabled', v)}
-                    disabled={saving}
-                    label="Dynamic Welcome"
-                  />
-                </div>
+          </div>
 
-                {/* biome-ignore lint/a11y/noLabelWithoutControl: ChannelSelector renders its own input */}
-                <label className="space-y-1 block">
-                  <span className="text-sm font-medium">
+          {/* Advanced Multi-column Setup */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Dynamic Onboarding Toggle */}
+            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold text-foreground/90">Engine Intelligence</h3>
+                  <p className="text-[11px] text-muted-foreground/60 font-medium">
+                    Enable context-aware dynamic variables.
+                  </p>
+                </div>
+                <ToggleSwitch
+                  checked={draftConfig.welcome?.dynamic?.enabled ?? false}
+                  onChange={(v) => updateWelcomeDynamic('enabled', v)}
+                  disabled={saving}
+                  label="Dynamic Welcome"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                     Highlight Channels
-                    <InfoTip text="Channels suggested to new members in the {ctaLine} and {topChannels} variables. If no channels have recent activity, these are used as fallbacks." />
-                  </span>
+                  </div>
                   <ChannelSelector
                     guildId={guildId}
                     selected={draftConfig.welcome?.dynamic?.highlightChannels ?? []}
-                    onChange={(selected) => updateWelcomeDynamic('highlightChannels', selected)}
+                    onChange={(v) => updateWelcomeDynamic('highlightChannels', v)}
                     disabled={saving}
-                    placeholder="Select channels to highlight"
                     filter="text"
                   />
-                </label>
-
-                {/* biome-ignore lint/a11y/noLabelWithoutControl: ChannelSelector renders its own input */}
-                <label className="space-y-1 block">
-                  <span className="text-sm font-medium">
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                     Exclude Channels
-                    <InfoTip text="Channels to ignore when measuring server activity. Messages in these channels won't count toward the activity level." />
-                  </span>
+                  </div>
                   <ChannelSelector
                     guildId={guildId}
                     selected={draftConfig.welcome?.dynamic?.excludeChannels ?? []}
-                    onChange={(selected) => updateWelcomeDynamic('excludeChannels', selected)}
+                    onChange={(v) => updateWelcomeDynamic('excludeChannels', v)}
                     disabled={saving}
-                    placeholder="Select channels to exclude"
                     filter="text"
                   />
-                </label>
+                </div>
+              </div>
+            </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <label className="space-y-1 block">
-                    <span className="text-sm font-medium">
-                      Timezone
-                      <InfoTip text="Used to determine time of day for the {greeting} and {timeOfDay} variables (e.g. morning vs evening greetings)." />
-                    </span>
+            {/* DM Sequence */}
+            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold text-foreground/90">Directed Onboarding</h3>
+                  <p className="text-[11px] text-muted-foreground/60 font-medium">
+                    Sequential DM series for new members.
+                  </p>
+                </div>
+                <ToggleSwitch
+                  checked={draftConfig.welcome?.dmSequence?.enabled ?? false}
+                  onChange={(v) => updateWelcomeDmSequence('enabled', v)}
+                  disabled={saving}
+                  label="DM Sequence"
+                />
+              </div>
+              <textarea
+                value={dmStepsRaw}
+                onChange={(e) => setDmStepsRaw(e.target.value)}
+                onBlur={() => {
+                  const parsed = dmStepsRaw
+                    .split('\n')
+                    .map((l) => l.trim())
+                    .filter(Boolean);
+                  updateWelcomeDmSequence('steps', parsed);
+                  setDmStepsRaw(parsed.join('\n'));
+                }}
+                rows={3}
+                disabled={saving}
+                className={cn(inputClasses, 'resize-none font-mono text-[13px]')}
+                placeholder="One guiding message per line..."
+              />
+            </div>
+          </div>
+
+          {/* Role Menu Setup */}
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="flex items-center justify-between mb-8">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-foreground/90">Self-Assign Tiers</h3>
+                <p className="text-[11px] text-muted-foreground/60 font-medium">
+                  Members pick their own starting roles.
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={saving || welcomeRoleOptions.length >= 25}
+                  onClick={() => {
+                    const opts = [
+                      ...welcomeRoleOptions,
+                      { id: generateId(), label: '', roleId: '' },
+                    ];
+                    updateWelcomeRoleMenu('options', opts);
+                  }}
+                  className="h-8 text-[10px] uppercase tracking-widest font-bold text-primary hover:bg-primary/5 border border-primary/20 rounded-xl"
+                >
+                  + Add Role Option
+                </Button>
+                <ToggleSwitch
+                  checked={draftConfig.welcome?.roleMenu?.enabled ?? false}
+                  onChange={(v) => updateWelcomeRoleMenu('enabled', v)}
+                  disabled={saving}
+                  label="Role Menu"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {welcomeRoleOptions.map((opt, i) => (
+                <div
+                  key={opt.id}
+                  className="relative p-4 rounded-2xl bg-background border border-border/40 shadow-sm group"
+                >
+                  <div className="space-y-4">
                     <input
                       type="text"
-                      value={draftConfig.welcome?.dynamic?.timezone ?? 'America/New_York'}
-                      onChange={(e) => updateWelcomeDynamic('timezone', e.target.value)}
-                      disabled={saving}
-                      className={inputClasses}
-                      placeholder="America/New_York"
+                      value={opt.label ?? ''}
+                      onChange={(e) => {
+                        const opts = [...welcomeRoleOptions];
+                        opts[i] = { ...opts[i], label: e.target.value };
+                        updateWelcomeRoleMenu('options', opts);
+                      }}
+                      className={cn(inputClasses, 'text-xs font-bold')}
+                      placeholder="Display Label"
                     />
-                  </label>
-                  <label className="space-y-1 block">
-                    <span className="text-sm font-medium">
-                      Activity Window
-                      <InfoTip text="How many minutes of recent message history to consider when calculating the {activityLevel} (quiet/light/steady/busy/hype)." />
-                    </span>
-                    <input
-                      type="number"
-                      min={5}
-                      max={10080}
-                      value={draftConfig.welcome?.dynamic?.activityWindowMinutes ?? 45}
-                      onChange={(e) =>
-                        updateWelcomeDynamic('activityWindowMinutes', Number(e.target.value) || 45)
-                      }
-                      disabled={saving}
-                      className={inputClasses}
+                    <RoleSelector
+                      guildId={guildId}
+                      selected={opt.roleId ? [opt.roleId] : []}
+                      onChange={(s) => {
+                        const opts = [...welcomeRoleOptions];
+                        opts[i] = { ...opts[i], roleId: s[0] ?? '' };
+                        updateWelcomeRoleMenu('options', opts);
+                      }}
+                      maxSelections={1}
+                      placeholder="Select Role"
                     />
-                  </label>
-                  <label className="space-y-1 block">
-                    <span className="text-sm font-medium">
-                      Milestone Interval
-                      <InfoTip text="Every Nth member gets a special milestone message in {milestoneLine} (e.g. every 25th member). Notable counts like 100, 500, 1000 always trigger." />
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={10000}
-                      value={draftConfig.welcome?.dynamic?.milestoneInterval ?? 25}
-                      onChange={(e) =>
-                        updateWelcomeDynamic('milestoneInterval', Number(e.target.value) || 25)
-                      }
-                      disabled={saving}
-                      className={inputClasses}
-                    />
-                  </label>
-                </div>
-              </fieldset>
-
-              <fieldset className="space-y-2 rounded-md border p-3">
-                <legend className="text-sm font-medium">Role Menu</legend>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Enable self-assignable role menu
-                  </span>
-                  <ToggleSwitch
-                    checked={draftConfig.welcome?.roleMenu?.enabled ?? false}
-                    onChange={(v) => updateWelcomeRoleMenu('enabled', v)}
-                    disabled={saving}
-                    label="Role Menu"
-                  />
-                </div>
-                <div className="space-y-3">
-                  {(draftConfig.welcome?.roleMenu?.options ?? []).map((opt, i) => (
-                    <div key={opt.id} className="flex flex-col gap-2 rounded-md border p-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={opt.label ?? ''}
-                          onChange={(e) => {
-                            const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
-                            opts[i] = { ...opts[i], label: e.target.value };
-                            updateWelcomeRoleMenu('options', opts);
-                          }}
-                          disabled={saving}
-                          className={`${inputClasses} flex-1`}
-                          placeholder="Label (shown in menu)"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])].filter(
-                              (o) => o.id !== opt.id,
-                            );
-                            updateWelcomeRoleMenu('options', opts);
-                          }}
-                          disabled={saving}
-                          aria-label={`Remove role option ${opt.label || i + 1}`}
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                      <RoleSelector
-                        guildId={guildId}
-                        selected={opt.roleId ? [opt.roleId] : []}
-                        onChange={(selected) => {
-                          const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
-                          opts[i] = { ...opts[i], roleId: selected[0] ?? '' };
-                          updateWelcomeRoleMenu('options', opts);
-                        }}
-                        placeholder="Select role"
-                        disabled={saving}
-                        maxSelections={1}
-                      />
-                      <input
-                        type="text"
-                        value={opt.description ?? ''}
-                        onChange={(e) => {
-                          const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])];
-                          opts[i] = { ...opts[i], description: e.target.value || undefined };
-                          updateWelcomeRoleMenu('options', opts);
-                        }}
-                        disabled={saving}
-                        className={inputClasses}
-                        placeholder="Description (optional)"
-                      />
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </div>
+                  <button
+                    type="button"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive/10 text-destructive border border-destructive/20 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-[10px]"
                     onClick={() => {
-                      const opts = [
-                        ...(draftConfig.welcome?.roleMenu?.options ?? []),
-                        { id: generateId(), label: '', roleId: '' },
-                      ];
+                      const opts = [...(draftConfig.welcome?.roleMenu?.options ?? [])].filter(
+                        (o) => o.id !== opt.id,
+                      );
                       updateWelcomeRoleMenu('options', opts);
                     }}
-                    disabled={saving || (draftConfig.welcome?.roleMenu?.options ?? []).length >= 25}
                   >
-                    + Add Role Option
-                  </Button>
+                    ✕
+                  </button>
                 </div>
-              </fieldset>
-
-              <fieldset className="space-y-2 rounded-md border p-3">
-                <legend className="text-sm font-medium">DM Sequence</legend>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Enable onboarding DMs</span>
-                  <ToggleSwitch
-                    checked={draftConfig.welcome?.dmSequence?.enabled ?? false}
-                    onChange={(v) => updateWelcomeDmSequence('enabled', v)}
-                    disabled={saving}
-                    label="DM Sequence"
-                  />
-                </div>
-                <textarea
-                  value={dmStepsRaw}
-                  onChange={(e) => setDmStepsRaw(e.target.value)}
-                  onBlur={() => {
-                    const parsed = dmStepsRaw
-                      .split('\n')
-                      .map((line) => line.trim())
-                      .filter(Boolean);
-                    updateWelcomeDmSequence('steps', parsed);
-                    setDmStepsRaw(parsed.join('\n'));
-                  }}
-                  rows={4}
-                  disabled={saving}
-                  className={inputClasses}
-                  placeholder="One DM step per line"
-                />
-              </fieldset>
+              ))}
             </div>
-          }
-          forceOpenAdvanced={forceOpenAdvancedFeatureId === 'welcome'}
-        />
+          </div>
+        </div>
       )}
 
-      <CommunitySettingsSection
-        draftConfig={draftConfig}
-        saving={saving}
-        guildId={guildId}
-        updateDraftConfig={updateDraftConfig}
-        activeCategoryId="onboarding-growth"
-        visibleFeatureIds={visibleFeatureIds}
-        forceOpenAdvancedFeatureId={forceOpenAdvancedFeatureId}
-      />
-    </>
+      {/* Engagement Layout */}
+      {activeTab === 'engagement' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-tight">
+                  Active Badge Tiers
+                </h3>
+                <p className="text-[11px] text-muted-foreground/60 font-medium">
+                  Automatic member recognition based on tenure.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const badges = [
+                    ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
+                    { days: 0, label: 'New Badge' },
+                  ];
+                  updateDraftConfig((prev) => ({
+                    ...prev,
+                    engagement: { ...prev.engagement, activityBadges: badges },
+                  }));
+                }}
+                className="h-8 text-[10px] uppercase tracking-widest font-bold text-primary hover:bg-primary/5 border border-primary/20 rounded-xl"
+              >
+                + Add Tier
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES).map(
+                (badge: { days?: number; label?: string }, index: number) => (
+                  <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholder
+                    key={index}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border/30 hover:border-primary/30 transition-all group"
+                  >
+                    <div className="relative w-24 shrink-0">
+                      <input
+                        type="number"
+                        value={badge.days ?? 0}
+                        onChange={(e) => {
+                          const badges = [
+                            ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
+                          ];
+                          badges[index] = {
+                            ...badges[index],
+                            days: parseInt(e.target.value, 10) || 0,
+                          };
+                          updateDraftConfig((prev) => ({
+                            ...prev,
+                            engagement: { ...prev.engagement, activityBadges: badges },
+                          }));
+                        }}
+                        className={cn(inputClasses, 'text-center pr-8')}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground/40">
+                        DAYS
+                      </span>
+                    </div>
+                    <input
+                      value={badge.label ?? ''}
+                      onChange={(e) => {
+                        const badges = [
+                          ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
+                        ];
+                        badges[index] = { ...badges[index], label: e.target.value };
+                        updateDraftConfig((prev) => ({
+                          ...prev,
+                          engagement: { ...prev.engagement, activityBadges: badges },
+                        }));
+                      }}
+                      className={cn(inputClasses, 'flex-1')}
+                      placeholder="Badge Name"
+                    />
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                      onClick={() => {
+                        const badges = [
+                          ...(draftConfig.engagement?.activityBadges ?? DEFAULT_ACTIVITY_BADGES),
+                        ].filter((_, i) => i !== index);
+                        updateDraftConfig((prev) => ({
+                          ...prev,
+                          engagement: { ...prev.engagement, activityBadges: badges },
+                        }));
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {[
+              {
+                key: 'trackMessages',
+                label: 'Monitor Message Activity',
+                desc: 'Used for badge progression and activity lists.',
+              },
+              {
+                key: 'trackReactions',
+                label: 'Reaction Engagement',
+                desc: 'Track emoji usage for community health metrics.',
+              },
+            ].map((item) => (
+              <div
+                key={item.key}
+                className="p-4 rounded-[20px] border border-border/40 bg-muted/20 backdrop-blur-md flex items-center justify-between"
+              >
+                <div className="space-y-0.5 pr-4">
+                  <span className="text-sm font-bold text-foreground/80">{item.label}</span>
+                  <p className="text-[10px] text-muted-foreground/60">{item.desc}</p>
+                </div>
+                <ToggleSwitch
+                  checked={
+                    (draftConfig.engagement as Record<string, boolean | undefined>)?.[item.key] ??
+                    true
+                  }
+                  onChange={(v) =>
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      engagement: { ...prev.engagement, [item.key]: v },
+                    }))
+                  }
+                  label={item.label}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reputation Layout */}
+      {activeTab === 'reputation' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-tight">
+                    XP Velocity
+                  </h3>
+                  <InfoTip text="Random XP awarded per message to discourage botting/spam." />
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      value={draftConfig.reputation?.xpPerMessage?.[0] ?? 5}
+                      onChange={(e) => {
+                        const val = parseNumberInput(e.target.value, 1, 100) ?? 5;
+                        const range = [...(draftConfig.reputation?.xpPerMessage ?? [5, 15])];
+                        range[0] = val;
+                        if (val > range[1]) range[1] = val;
+                        updateDraftConfig((prev) => ({
+                          ...prev,
+                          reputation: { ...prev.reputation, xpPerMessage: range },
+                        }));
+                      }}
+                      className={cn(inputClasses, 'text-center pr-10')}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground/40">
+                      MIN
+                    </span>
+                  </div>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      value={draftConfig.reputation?.xpPerMessage?.[1] ?? 15}
+                      onChange={(e) => {
+                        const val = parseNumberInput(e.target.value, 1, 100) ?? 15;
+                        const range = [...(draftConfig.reputation?.xpPerMessage ?? [5, 15])];
+                        range[1] = val;
+                        if (val < range[0]) range[0] = val;
+                        updateDraftConfig((prev) => ({
+                          ...prev,
+                          reputation: { ...prev.reputation, xpPerMessage: range },
+                        }));
+                      }}
+                      className={cn(inputClasses, 'text-center pr-10')}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground/40">
+                      MAX
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-tight">
+                    Antispam Cooldown
+                  </h3>
+                  <InfoTip text="Seconds between XP gains to prevent flooding." />
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={draftConfig.reputation?.xpCooldownSeconds ?? 60}
+                    onChange={(e) => {
+                      const val = parseNumberInput(e.target.value, 0) ?? 0;
+                      updateDraftConfig((prev) => ({
+                        ...prev,
+                        reputation: { ...prev.reputation, xpCooldownSeconds: val },
+                      }));
+                    }}
+                    className={cn(inputClasses, 'pr-12')}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground/40">
+                    SECONDS
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-8 border-t border-border/40">
+              <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-tight">
+                Progression Steps
+              </h3>
+              <textarea
+                value={(draftConfig.xp?.levelThresholds ?? [100, 300, 600, 1000]).join(', ')}
+                onChange={(e) => {
+                  const vals = e.target.value
+                    .split(',')
+                    .map((v) => parseInt(v.trim(), 10))
+                    .filter((v) => !Number.isNaN(v));
+                  if (vals.length)
+                    updateDraftConfig((prev) => ({
+                      ...prev,
+                      xp: { ...prev.xp, levelThresholds: vals.sort((a, b) => a - b) },
+                    }));
+                }}
+                className={cn(inputClasses, 'min-h-[100px] font-mono leading-relaxed py-4')}
+                placeholder="e.g. 100, 300, 600, 1000"
+              />
+              <p className="text-[10px] text-muted-foreground/60 italic">
+                Define total XP required for each sequential level (L1, L2, L3...).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TL;DR & AFK Layout */}
+      {activeTab === 'tldr-afk' && (
+        <div className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-foreground/90">AI Summaries</h3>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Automatic /tldr channel history.
+                  </p>
+                </div>
+                <ToggleSwitch
+                  checked={draftConfig.tldr?.enabled ?? false}
+                  onChange={(v) =>
+                    updateDraftConfig((p) => ({ ...p, tldr: { ...p.tldr, enabled: v } }))
+                  }
+                  label="TL;DR"
+                />
+              </div>
+              <div className="space-y-3">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                  Personality Override
+                </div>
+                <textarea
+                  value={draftConfig.tldr?.systemPrompt ?? ''}
+                  onChange={(e) =>
+                    updateDraftConfig((p) => ({
+                      ...p,
+                      tldr: { ...p.tldr, systemPrompt: e.target.value },
+                    }))
+                  }
+                  className={cn(inputClasses, 'resize-none h-40')}
+                  placeholder="Define how the AI should tone the summary..."
+                />
+              </div>
+            </div>
+
+            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-foreground/90">AFK Responder</h3>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Automatic /afk status responses.
+                  </p>
+                </div>
+                <ToggleSwitch
+                  checked={draftConfig.afk?.enabled ?? false}
+                  onChange={(v) =>
+                    updateDraftConfig((p) => ({ ...p, afk: { ...p.afk, enabled: v } }))
+                  }
+                  label="AFK"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2 text-xs text-muted-foreground px-2">
+                  <p>
+                    Members can set custom away messages and be automatically notified of mentions
+                    while offline.
+                  </p>
+                  <p className="pt-2 font-bold text-primary/80">Premium integration included.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-tight mb-6">
+              TL;DR Budgeting
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {[
+                {
+                  key: 'defaultMessages',
+                  label: 'Analysis Window',
+                  min: 1,
+                  max: 200,
+                  unit: 'MSG',
+                },
+                { key: 'maxMessages', label: 'Max Capacity', min: 1, max: 500, unit: 'MSG' },
+                {
+                  key: 'cooldownSeconds',
+                  label: 'Cool-down',
+                  min: 5,
+                  max: 3600,
+                  unit: 'SEC',
+                },
+              ].map((cfg) => (
+                <div key={cfg.key} className="space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                    {cfg.label}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={
+                        (draftConfig.tldr as Record<string, number | undefined>)?.[cfg.key] ?? 50
+                      }
+                      onChange={(e) =>
+                        updateDraftConfig((p) => ({
+                          ...p,
+                          tldr: { ...p.tldr, [cfg.key]: parseInt(e.target.value, 10) || 1 },
+                        }))
+                      }
+                      className={cn(inputClasses, 'pr-12 text-center')}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground/30">
+                      {cfg.unit}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Challenges Layout */}
+      {activeTab === 'challenges' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  Destination Channel
+                </div>
+                <ChannelSelector
+                  guildId={guildId}
+                  selected={
+                    draftConfig.challenges?.channelId ? [draftConfig.challenges.channelId] : []
+                  }
+                  onChange={(s) =>
+                    updateDraftConfig((p) => ({
+                      ...p,
+                      challenges: { ...p.challenges, channelId: s[0] ?? null },
+                    }))
+                  }
+                  maxSelections={1}
+                  filter="text"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="challenge-post-time"
+                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1"
+                  >
+                    Post Time
+                  </label>
+                  <input
+                    id="challenge-post-time"
+                    type="text"
+                    value={draftConfig.challenges?.postTime ?? '09:00'}
+                    onChange={(e) =>
+                      updateDraftConfig((p) => ({
+                        ...p,
+                        challenges: { ...p.challenges, postTime: e.target.value },
+                      }))
+                    }
+                    className={cn(inputClasses, 'text-center')}
+                    placeholder="HH:MM"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="challenge-timezone"
+                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1"
+                  >
+                    Timezone
+                  </label>
+                  <input
+                    id="challenge-timezone"
+                    type="text"
+                    value={draftConfig.challenges?.timezone ?? 'UTC'}
+                    onChange={(e) =>
+                      updateDraftConfig((p) => ({
+                        ...p,
+                        challenges: { ...p.challenges, timezone: e.target.value },
+                      }))
+                    }
+                    className={cn(inputClasses, 'text-xs font-mono')}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </ConfigCategoryLayout>
   );
 }

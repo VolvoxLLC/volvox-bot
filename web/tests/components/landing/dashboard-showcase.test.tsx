@@ -28,6 +28,13 @@ vi.mock('framer-motion', async () => {
   };
 });
 
+vi.mock('gsap', () => ({
+  gsap: { registerPlugin: vi.fn(), fromTo: vi.fn(), to: vi.fn() },
+  default: { registerPlugin: vi.fn(), fromTo: vi.fn(), to: vi.fn() },
+}));
+vi.mock('gsap/ScrollTrigger', () => ({ ScrollTrigger: {} }));
+vi.mock('@gsap/react', () => ({ useGSAP: vi.fn() }));
+
 import { DashboardShowcase } from '@/components/landing/DashboardShowcase';
 
 const mockStats = {
@@ -108,7 +115,9 @@ describe('DashboardShowcase', () => {
   it('should render loading skeletons initially', () => {
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<DashboardShowcase />);
-    expect(screen.getByText('Total Members')).toBeInTheDocument();
+    // Loading state shows animate-pulse skeleton divs and the section header
+    expect(screen.getByText('THE PRODUCT')).toBeInTheDocument();
+    expect(screen.getByText('Your server, at a glance')).toBeInTheDocument();
   });
 
   it('should render error fallback dashes on fetch failure', async () => {

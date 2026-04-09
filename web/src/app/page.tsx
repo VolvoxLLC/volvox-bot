@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FeatureGrid, Footer, Hero, InviteButton, Pricing } from '@/components/landing';
@@ -76,25 +77,33 @@ export default function LandingPage() {
       {/* Floating Island Navbar */}
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4">
         <div
-          className={`flex items-center justify-between transition-all duration-500 ${
+          className={`flex items-center justify-between transition-all duration-500 backdrop-blur-md ${
             scrolled
-              ? 'nav-island mt-4 w-[90%] max-w-[850px] py-3 px-5'
+              ? 'nav-island mt-4 w-[90%] max-w-[850px] py-3 px-5 glass-morphism-premium border-white/10 shadow-2xl'
               : 'w-full max-w-full py-5 px-8 bg-transparent border-b border-transparent'
           }`}
         >
           {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold text-sm font-[family-name:var(--font-mono)]">
-              V
+          <div className="flex items-center gap-3">
+            <div className="relative h-9 w-9 overflow-hidden rounded-xl border border-white/10 shadow-lg">
+              <Image
+                src="/icon-192.png"
+                alt="Volvox Logo"
+                fill
+                sizes="36px"
+                className="object-cover"
+              />
             </div>
-            <span className="font-bold text-lg font-[family-name:var(--font-mono)] text-[var(--text-primary)]">
+            <span className="font-black text-xl tracking-tight text-[hsl(var(--foreground))]">
               Volvox
             </span>
           </div>
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center">
-            <div className={`flex items-center ${scrolled ? 'nav-links-pill' : 'gap-1'}`}>
+            <div
+              className={`flex items-center ${scrolled ? 'nav-links-pill shadow-inner border border-white/5' : 'gap-1'}`}
+            >
               <button
                 type="button"
                 onClick={() => scrollToSection('features')}
@@ -129,14 +138,16 @@ export default function LandingPage() {
           {/* Right actions */}
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full border-secondary/25 text-secondary font-semibold hover:bg-secondary hover:text-secondary-foreground hover:border-secondary hover:shadow-[0_0_12px_-3px] hover:shadow-secondary/25 transition-all"
-              asChild
+            <Link
+              href="/login"
+              className="group relative px-6 py-2 rounded-full overflow-hidden transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <Link href="/login">Sign In</Link>
-            </Button>
+              <div className="absolute inset-0 bg-gradient-to-r from-secondary/10 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 border border-secondary/20 rounded-full group-hover:border-secondary/50 group-hover:shadow-[0_0_15px_hsl(var(--secondary)/0.3)] transition-all" />
+              <span className="relative z-10 text-[13px] uppercase tracking-[0.1em] text-primary group-hover:text-foreground transition-colors">
+                Sign In
+              </span>
+            </Link>
             <InviteButton size="sm" />
           </div>
 

@@ -1,22 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildLevelUpDmConfig } from '@/components/dashboard/config-sections/CommunitySettingsSection';
+import { inputClasses } from '@/components/dashboard/config-sections/shared';
 
-describe('buildLevelUpDmConfig', () => {
-  it('defaults enabled to false when missing from a partial config', () => {
-    expect(
-      buildLevelUpDmConfig(
-        {
-          sendOnEveryLevel: true,
-          defaultMessage: 'Level {{level}}',
-          messages: [],
-        },
-        {},
-      ),
-    ).toEqual({
-      enabled: false,
-      sendOnEveryLevel: true,
-      defaultMessage: 'Level {{level}}',
-      messages: [],
-    });
+describe('config-sections shared utilities', () => {
+  it('inputClasses contains expected base classes', () => {
+    expect(inputClasses).toContain('rounded-md');
+    expect(inputClasses).toContain('border');
+    expect(inputClasses).toContain('text-sm');
+    expect(inputClasses).toContain('disabled:opacity-50');
   });
 });

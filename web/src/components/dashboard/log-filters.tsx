@@ -104,20 +104,26 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
   }, []);
 
   const inputCls =
-    'h-10 rounded-xl border border-input/80 bg-background/80 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50';
+    'h-9 rounded-xl border border-border/40 bg-card/40 px-3 text-sm text-foreground' +
+    ' placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20' +
+    ' backdrop-blur-sm transition-all disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
-    <div className="flex flex-wrap items-center gap-2.5">
+    <div className="flex flex-wrap items-center gap-2">
       {/* Level selector */}
       <select
         value={level ?? 'all'}
         onChange={handleLevelChange}
         disabled={disabled}
         aria-label="Filter by log level"
-        className={inputCls}
+        className={[
+          inputCls,
+          'font-bold uppercase tracking-wider text-[11px]',
+          'text-muted-foreground/70 cursor-pointer hover:bg-card/60',
+        ].join(' ')}
       >
         {LEVEL_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value ?? 'all'}>
+          <option key={opt.value} value={opt.value ?? 'all'} className="bg-popover text-foreground">
             {opt.label}
           </option>
         ))}
@@ -129,9 +135,9 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         value={module}
         onChange={handleModuleChange}
         disabled={disabled}
-        placeholder="Module (e.g. triage)"
+        placeholder="Module..."
         aria-label="Filter by module name"
-        className={`${inputCls} w-52`}
+        className={`${inputCls} w-40`}
       />
 
       {/* Search */}
@@ -142,18 +148,21 @@ export function LogFilters({ onFilterChange, disabled = false }: LogFiltersProps
         disabled={disabled}
         placeholder="Search messages…"
         aria-label="Search log messages"
-        className={`${inputCls} w-64`}
+        className={`${inputCls} w-56`}
       />
 
       {/* Clear */}
       <Button
         size="sm"
-        variant="outline"
+        variant="ghost"
         onClick={handleClear}
         disabled={disabled}
-        className="h-10 rounded-xl px-3 text-sm"
+        className={[
+          'h-9 rounded-xl px-4 text-[11px] font-bold uppercase tracking-widest',
+          'text-muted-foreground/50 hover:bg-white/5 hover:text-foreground',
+        ].join(' ')}
       >
-        Clear filters
+        Reset
       </Button>
     </div>
   );

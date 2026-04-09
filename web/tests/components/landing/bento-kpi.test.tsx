@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { Activity } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockUseInView } = vi.hoisted(() => ({
@@ -47,22 +48,22 @@ describe('BentoKpi', () => {
   });
 
   it('should render loading skeleton when loading', () => {
-    const { container } = render(<BentoKpi value={null} label="Members" loading={true} color="primary" />);
+    const { container } = render(<BentoKpi value={null} label="Members" loading={true} color="primary" icon={Activity} />);
     expect(container.querySelector('.animate-pulse')).toBeTruthy();
   });
 
   it('should render dash on error (value=null, not loading)', () => {
-    render(<BentoKpi value={null} label="Members" loading={false} color="primary" />);
+    render(<BentoKpi value={null} label="Members" loading={false} color="primary" icon={Activity} />);
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.getByText('Members')).toBeInTheDocument();
   });
 
   it('should render formatted value and label on success', async () => {
-    render(<BentoKpi value={1247} label="Members" loading={false} color="primary" />);
+    render(<BentoKpi value={1247} label="Members" loading={false} color="primary" icon={Activity} />);
     await waitFor(() => {
       expect(screen.getByText('1.2K')).toBeInTheDocument();
     });
     expect(screen.getByText('Members')).toBeInTheDocument();
-    expect(screen.getByText('live')).toBeInTheDocument();
+    expect(screen.getByText(/live/i)).toBeInTheDocument();
   });
 });
