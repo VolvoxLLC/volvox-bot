@@ -29,6 +29,7 @@ export function broadcastSelectedGuild(guildId: string): void {
   window.dispatchEvent(
     new CustomEvent<string>(GUILD_SELECTED_EVENT, {
       detail: normalizedGuildId,
+      cancelable: true,
     }),
   );
 }

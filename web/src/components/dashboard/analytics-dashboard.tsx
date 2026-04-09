@@ -211,8 +211,14 @@ function FadeInLine({ text }: { text: string }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
-    return () => cancelAnimationFrame(raf);
+    let innerRaf = 0;
+    const raf = requestAnimationFrame(() => {
+      innerRaf = requestAnimationFrame(() => setVisible(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(innerRaf);
+    };
   }, []);
 
   return (
@@ -312,15 +318,19 @@ export function AnalyticsDashboard() {
     if (!analytics?.messageVolume) return [];
     return analytics.messageVolume.map((pt) => ({
       ...pt,
-      label: !pt.label || pt.label === 'Invalid Date' || pt.label.includes('NaN') ? '—' : pt.label,
+      label:
+        !pt.label || pt.label === 'Invalid Date' || pt.label.includes('NaN')
+          ? `Unknown (${pt.label ?? 'no label'})`
+          : pt.label,
     }));
   }, [analytics?.messageVolume]);
 
   const topChannels = analytics?.topChannels ?? analytics?.channelActivity ?? [];
   const hasMessageVolumeData = (analytics?.messageVolume?.length ?? 0) > 0;
-  const hasModelUsageData = modelUsageData.length > 0;
+  const hasModelUsageData = analytics != null && modelUsageData.length > 0;
   const hasTokenUsageData =
-    (analytics?.aiUsage.tokens.prompt ?? 0) > 0 || (analytics?.aiUsage.tokens.completion ?? 0) > 0;
+    analytics != null &&
+    ((analytics.aiUsage.tokens.prompt ?? 0) > 0 || (analytics.aiUsage.tokens.completion ?? 0) > 0);
   const hasTopChannelsData = topChannels.length > 0;
   const canShowNoDataStates = !loading && analytics !== null;
   const realtimeMetrics = [
@@ -622,7 +632,7 @@ export function AnalyticsDashboard() {
                 Real-Time Network
               </h2>
               <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
-                Live stream • 30s interval
+                Recent Activity • 30s interval
               </p>
             </div>
           </div>
@@ -976,7 +986,7 @@ export function AnalyticsDashboard() {
                     {analytics.commandUsage.items.map((entry) => (
                       <tr
                         key={entry.command}
-                        className="border-b border-border/40 last:border-0 transition-colors hover:bg-muted/30"
+                        className="border-b border-border/40 last:border-0 transition-colors hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 font-mono text-xs text-foreground/90">
                           /{entry.command}

@@ -138,7 +138,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         }
         icon={MemoryStick}
         iconColor="text-secondary"
-        progress={{ value: heapPct, label: `${heapPct.toFixed(0)}%` }}
+        progress={health?.memory ? { value: heapPct, label: `${heapPct.toFixed(0)}%` } : undefined}
       />
       <StatCard
         loading={loading && !health}
@@ -173,7 +173,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
       <StatCard
         loading={loading && !health}
         title="Errors (24h)"
-        value={health?.errors ? (health.errors.lastDay?.toLocaleString() ?? '0') : '—'}
+        value={health?.errors?.lastDay != null ? health.errors.lastDay.toLocaleString() : '—'}
         subtitle="Long-term health"
         icon={Activity}
         iconColor={getErrorIconColor(health?.errors, 'day')}
@@ -185,7 +185,7 @@ export function HealthCards({ health, loading }: HealthCardsProps) {
         subtitle={`User ${cpuUserSec.toFixed(1)}s`}
         icon={Cpu}
         iconColor="text-primary/60"
-        progress={{ value: cpuPct, label: `${cpuPct.toFixed(1)}%` }}
+        progress={health ? { value: cpuPct, label: `${cpuPct.toFixed(1)}%` } : undefined}
       />
       <StatCard
         loading={loading && !health}

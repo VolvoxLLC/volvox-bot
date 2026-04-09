@@ -153,7 +153,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     function onGuildSelected(e: Event) {
       // If the config-layout-shell guard cancelled the switch (unsaved changes
       // and the user declined), honour that decision and skip the guild update.
-      if ((e as Event & { __guildSelectCancelled?: boolean }).__guildSelectCancelled) return;
+      if (e.defaultPrevented) return;
       const detail = (e as CustomEvent<string>).detail;
       setGuildId(detail);
     }

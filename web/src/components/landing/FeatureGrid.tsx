@@ -101,7 +101,7 @@ const features: readonly Feature[] = [
           <motion.div
             animate={{ x: ['-100%', '300%'] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-primary/30 to-transparent"
+            className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-primary/30 to-transparent scan-line"
           />
           <Globe className="w-4 h-4 text-primary/60 mr-3" />
           <span className="text-[10px] font-black tracking-[0.2em] text-foreground/40 uppercase font-mono">

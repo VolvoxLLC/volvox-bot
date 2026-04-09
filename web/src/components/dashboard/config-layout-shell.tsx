@@ -57,10 +57,9 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
         if (!confirmed) {
           // Stop capture-phase listeners from running after this one.
           e.stopImmediatePropagation();
+          // Since the event is now cancelable, preventDefault() signals
+          // bubble-phase listeners (e.g. config-context) to skip the switch.
           e.preventDefault();
-          // Set a flag on the event so that bubble-phase listeners (e.g.
-          // config-context) can detect the cancellation and bail out early.
-          (e as Event & { __guildSelectCancelled?: boolean }).__guildSelectCancelled = true;
         }
       }
     }
@@ -82,7 +81,8 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
       // Skip modifier clicks (cmd/ctrl/shift/alt, middle button)
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
 
-      const target = (e.target as HTMLElement).closest('a');
+      if (!(e.target instanceof Element)) return;
+      const target = e.target.closest('a');
       if (!target) return;
 
       // Skip links with target="_blank" or download

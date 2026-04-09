@@ -54,7 +54,14 @@ const PAGE_SIZE = 25;
 
 export default function ConversationsClient() {
   const router = useRouter();
-  const { conversations, total, loading, error, currentOpts, fetch } = useConversationsStore();
+  const {
+    conversations,
+    total,
+    loading,
+    error,
+    currentOpts,
+    fetch: fetchConversations,
+  } = useConversationsStore();
   const [search, setSearch] = useState(currentOpts.search);
   const [channelFilter, setChannelFilter] = useState(currentOpts.channel);
   const [page, setPage] = useState(currentOpts.page);
@@ -93,10 +100,14 @@ export default function ConversationsClient() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetch(guildId, { search: debouncedSearch, channel: channelFilter, page }).then((r) => {
+    void fetchConversations(guildId, {
+      search: debouncedSearch,
+      channel: channelFilter,
+      page,
+    }).then((r) => {
       if (r === 'unauthorized') router.replace('/login');
     });
-  }, [guildId, debouncedSearch, channelFilter, page, fetch, router]);
+  }, [guildId, debouncedSearch, channelFilter, page, fetchConversations, router]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 

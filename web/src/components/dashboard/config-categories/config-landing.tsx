@@ -54,10 +54,10 @@ export function ConfigLandingContent() {
             Overview
           </span>
         </div>
-        <h1 className="text-4xl font-black tracking-tight text-white/90">
+        <h1 className="text-4xl font-black tracking-tight text-foreground/90">
           Server <span className="text-primary/80">Settings</span>
         </h1>
-        <p className="text-sm font-medium text-zinc-500 max-w-lg leading-relaxed">
+        <p className="text-sm font-medium text-muted-foreground max-w-lg leading-relaxed">
           Select a category below to configure your server's specialized features. Use the search
           bar above for quick navigation.
         </p>
@@ -101,10 +101,10 @@ export function ConfigLandingContent() {
                   </div>
 
                   <div className="space-y-1.5 flex-grow">
-                    <h3 className="text-lg font-black tracking-tight text-white/90 group-hover:text-primary transition-colors">
+                    <h3 className="text-lg font-black tracking-tight text-foreground/90 group-hover:text-primary transition-colors">
                       {category.label}
                     </h3>
-                    <p className="text-xs font-medium leading-relaxed text-zinc-500 line-clamp-2">
+                    <p className="text-xs font-medium leading-relaxed text-muted-foreground line-clamp-2">
                       {category.description}
                     </p>
                   </div>

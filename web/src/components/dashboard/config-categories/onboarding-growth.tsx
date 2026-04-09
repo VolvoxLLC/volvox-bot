@@ -9,6 +9,7 @@ import {
   inputClasses,
   parseNumberInput,
 } from '@/components/dashboard/config-editor-utils';
+import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
@@ -57,13 +58,15 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
 export function OnboardingGrowthCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
-  const activeTab = activeTabId === 'xp-level-actions' ? 'reputation' : activeTabId;
+  const activeTab = activeTabId as ConfigFeatureId | null;
 
   const [dmStepsRaw, setDmStepsRaw] = useState('');
 
   useEffect(() => {
     if (draftConfig?.welcome?.dmSequence?.steps) {
       setDmStepsRaw(draftConfig.welcome.dmSequence.steps.join('\n'));
+    } else {
+      setDmStepsRaw('');
     }
   }, [draftConfig?.welcome?.dmSequence?.steps]);
 

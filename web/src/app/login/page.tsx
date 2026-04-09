@@ -183,7 +183,6 @@ function LoginForm() {
                   <li className="flex items-start gap-3 text-xs font-semibold text-muted-foreground/80 leading-relaxed">
                     <Shield
                       className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/60"
-                      role="img"
                       aria-hidden="true"
                     />
                     Review moderation queues, audit history, and member context.
@@ -229,6 +228,7 @@ function LoginForm() {
                 <Link
                   href="https://docs.volvox.bot"
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="text-primary/60 hover:text-primary transition-colors"
                 >
                   System Manuals

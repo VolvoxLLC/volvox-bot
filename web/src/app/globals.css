@@ -778,6 +778,11 @@
   .feature-card:hover {
     transform: none !important;
   }
+
+  .scan-line {
+    animation: none !important;
+    display: none;
+  }
 }
 
 /* ─── Glass morphism utility ──────────────────────────────────────────────── */

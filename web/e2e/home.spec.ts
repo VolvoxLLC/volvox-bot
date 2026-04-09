@@ -173,6 +173,11 @@ test.describe('Stats Section', () => {
     await expect(statsSection.getByText('Commands Served')).toBeVisible({ timeout: 15000 });
     await expect(statsSection.getByText('Uptime', { exact: true })).toBeVisible({ timeout: 15000 });
   });
+
+  test('Bot Config is not in navigation', async ({ page }) => {
+    const nav = page.locator('nav');
+    await expect(nav.getByText('Bot Config')).not.toBeAttached();
+  });
 });
 
 test.describe('Footer', () => {
@@ -195,6 +200,12 @@ test.describe('Footer', () => {
     await expect(footer.getByLabel('Discord')).toBeVisible();
     await expect(footer.getByLabel('X (Twitter)')).toBeVisible();
     await expect(footer.getByLabel('LinkedIn')).toBeVisible();
+  });
+
+  test('has legal footer links', async ({ page }) => {
+    const footer = page.locator('footer');
+    await expect(footer.getByRole('link', { name: /Privacy Policy/i })).toBeVisible();
+    await expect(footer.getByRole('link', { name: /Terms of Service/i })).toBeVisible();
   });
 });
 
