@@ -90,6 +90,7 @@
     --accent: 54 90.6977% 83.1373%;
     --accent-foreground: 56 44.3609% 26.0784%;
     --destructive: 12 67% 39.2157%;
+    --destructive-foreground: 0 0% 100%;
     --border: 86 8.5366% 88.8431%;
     --input: 86 8.5366% 67.8431%;
     --ring: 100 29.5597% 31.1765%;
@@ -132,6 +133,7 @@
     --accent: 54 79.3814% 80.9804%;
     --accent-foreground: 55 46.4567% 24.902%;
     --destructive: 12 93.0636% 66.0784%;
+    --destructive-foreground: 0 0% 100%;
     --border: 93 8.0292% 16.8627%;
     --input: 93 8.0292% 18.8627%;
     --ring: 97 32.3944% 72.1569%;

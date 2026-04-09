@@ -28,6 +28,7 @@ export function useGuildSelection(options?: UseGuildSelectionOptions): string | 
     }
 
     const handleGuildSelect = (event: Event) => {
+      if (event.defaultPrevented) return;
       const selected = (event as CustomEvent<string>).detail;
       if (selected) {
         setGuildId((currentGuildId) => {
