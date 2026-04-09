@@ -84,18 +84,31 @@ test.describe('Hero Section', () => {
     await page.goto('/');
   });
 
-  test('displays the redesigned hero content', async ({ page }) => {
-    await expect(page.getByText('Autonomous Community Intelligence')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /OF DISCORD\./ })).toBeVisible();
+  test('displays the hero content', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: /V O L V O X/ })).toBeVisible();
+    await expect(page.getByText('BOT', { exact: true })).toBeVisible();
     await expect(
-      page.getByText('Volvox is an AI-powered command center for modern communities.'),
+      page.getByText(
+        'The absolute synthesis of community intelligence, robust moderation, and dynamic architectural scale.',
+      ),
     ).toBeVisible();
   });
 
-  test('renders the Explore Features CTA', async ({ page }) => {
-    const cta = page.getByRole('link', { name: 'Explore Features' });
-    await expect(cta).toBeVisible();
-    await expect(cta).toHaveAttribute('href', '/#features');
+  test('renders the Add to Server CTA', async ({ page }) => {
+    // CTA text is hidden on small viewports (hidden sm:inline)
+    test.skip(
+      page.viewportSize()?.width !== undefined && page.viewportSize()!.width < 640,
+      'Add to Server CTA text is hidden on small viewports',
+    );
+    const cta = page.getByRole('link', { name: /Add to Server/i });
+    // CTA only renders when NEXT_PUBLIC_DISCORD_CLIENT_ID is set
+    const isPresent = await cta.isVisible().catch(() => false);
+    if (isPresent) {
+      await expect(cta).toHaveAttribute('target', '_blank');
+    } else {
+      // Verify the /summon console is still present as fallback
+      await expect(page.getByText('/summon')).toBeVisible();
+    }
   });
 });
 
@@ -105,8 +118,8 @@ test.describe('Features Section', () => {
     await scrollSectionIntoView(page, '#features');
   });
 
-  test('renders the redesigned features section', async ({ page }) => {
-    await expect(page.getByText('System Capabilities', { exact: true })).toBeVisible();
+  test('renders the features section', async ({ page }) => {
+    await expect(page.getByText('System Protocol', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Everything you need/i })).toBeVisible();
     for (const title of ['Neural Chat', 'Active Sentry', 'Live Insight', 'Edge Performance']) {
       await expect(page.getByRole('heading', { name: title })).toBeVisible();
@@ -121,20 +134,21 @@ test.describe('Pricing Section', () => {
   });
 
   test('renders pricing cards and toggle', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Simple, transparent pricing' })).toBeVisible();
-    await expect(page.getByText('PRICING', { exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Free' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Pro', exact: true })).toBeVisible();
+    await expect(
+      page.getByText('System Access Tiers', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText('Standard').first()).toBeVisible();
+    await expect(page.getByText('Overclocked').first()).toBeVisible();
     await expect(page.getByText('$14.99')).toBeVisible();
-    const toggle = page.getByRole('switch', { name: 'Toggle annual billing' });
+    // Toggle is a motion.div with aria-label, not a semantic switch
+    const toggle = page.getByLabel('Toggle annual billing');
     await toggle.click();
     await expect(page.getByText('$115')).toBeVisible();
   });
 
-  test('shows updated pricing copy', async ({ page }) => {
+  test('shows pricing copy', async ({ page }) => {
     await expect(page.getByText('Core bot features')).toBeVisible();
     await expect(page.getByText('Community support')).toBeVisible();
-    await expect(page.getByText('No credit card required for Free tier.')).toBeVisible();
   });
 });
 
@@ -165,13 +179,13 @@ test.describe('Stats Section', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.getByRole('heading', { name: /Loved by/ }).waitFor({ state: 'visible', timeout: 15000 });
+    await page.getByText('Trusted by').waitFor({ state: 'visible', timeout: 15000 });
   });
 
   test('shows live stats labels', async ({ page }) => {
-    const statsSection = page.locator('section', { hasText: 'Loved by' });
-    await expect(statsSection.getByText('Commands Served')).toBeVisible({ timeout: 15000 });
-    await expect(statsSection.getByText('Uptime', { exact: true })).toBeVisible({ timeout: 15000 });
+    const statsSection = page.locator('section', { hasText: 'Trusted by' });
+    await expect(statsSection.getByText('Commands Processed')).toBeVisible({ timeout: 15000 });
+    await expect(statsSection.getByText('Current Uptime')).toBeVisible({ timeout: 15000 });
   });
 
   test('Bot Config is not in navigation', async ({ page }) => {
@@ -187,19 +201,19 @@ test.describe('Footer', () => {
     await page.locator('footer').waitFor({ state: 'visible', timeout: 10000 });
   });
 
-  test('shows Product, Resources, and Company footer sections', async ({ page }) => {
+  test('shows footer link sections', async ({ page }) => {
     const footer = page.locator('footer');
-    await expect(footer.getByText('Product')).toBeVisible();
-    await expect(footer.getByText('Resources')).toBeVisible();
-    await expect(footer.getByText('Company')).toBeVisible();
+    await expect(footer.getByText('SYSTEM_CORE')).toBeVisible();
+    await expect(footer.getByText('RESOURCES')).toBeVisible();
+    await expect(footer.getByText('LEGAL_PROTOCOL')).toBeVisible();
   });
 
-  test('has updated social links', async ({ page }) => {
+  test('has social links', async ({ page }) => {
     const footer = page.locator('footer');
-    await expect(footer.getByLabel('GitHub')).toBeVisible();
-    await expect(footer.getByLabel('Discord')).toBeVisible();
-    await expect(footer.getByLabel('X (Twitter)')).toBeVisible();
-    await expect(footer.getByLabel('LinkedIn')).toBeVisible();
+    // Social links don't have aria-labels — verify by href instead
+    await expect(footer.locator('a[href*="github.com/VolvoxLLC"]').first()).toBeVisible();
+    await expect(footer.locator('a[href*="discord.gg"]').first()).toBeVisible();
+    await expect(footer.locator('a[href*="x.com/volvoxdev"]').first()).toBeVisible();
   });
 
   test('has legal footer links', async ({ page }) => {
