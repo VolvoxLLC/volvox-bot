@@ -42,7 +42,7 @@ vi.mock('../../src/modules/config.js', () => ({
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn(async (target, opts) => {
     if (typeof target?.send === 'function') return target.send(opts);
-    return {};
+    throw new Error('safeSend: target has no .send() method');
   }),
 }));
 
@@ -66,6 +66,7 @@ import {
   startTempbanScheduler,
   stopTempbanScheduler,
 } from '../../src/modules/moderation.js';
+import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('moderation module', () => {
   let mockPool;
@@ -945,6 +946,8 @@ describe('moderation module', () => {
 
       // Uses member.send directly (not safeSend) to avoid double-logging on expected DM failures
       expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
+      // Verify safeSend was NOT used — code should call member.send directly
+      expect(safeSend).not.toHaveBeenCalled();
     });
 
     it('silently continues when member.send throws (DMs disabled)', async () => {
@@ -960,6 +963,8 @@ describe('moderation module', () => {
       expect(member.send).toHaveBeenCalledWith(
         expect.objectContaining({ embeds: expect.any(Array) }),
       );
+      // Verify safeSend was NOT used — code should call member.send directly
+      expect(safeSend).not.toHaveBeenCalled();
     });
   });
 });

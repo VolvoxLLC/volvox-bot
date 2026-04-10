@@ -33,13 +33,15 @@ vi.mock('../../src/logger.js', () => ({
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn(async (target, opts) => {
     if (typeof target?.send === 'function') return target.send(opts);
-    return {};
+    throw new Error('safeSend: target has no .send() method');
   }),
   safeReply: vi.fn(async (target, opts) => {
     if (typeof target?.reply === 'function') return target.reply(opts);
+    throw new Error('safeReply: target has no .reply() method');
   }),
   safeUpdate: vi.fn(async (target, opts) => {
     if (typeof target?.update === 'function') return target.update(opts);
+    throw new Error('safeUpdate: target has no .update() method');
   }),
 }));
 
@@ -695,6 +697,8 @@ describe('reminderHandler', () => {
       expect(mockUser.send).toHaveBeenCalledWith(
         expect.objectContaining({ embeds: expect.any(Array) }),
       );
+      // Verify safeSend was NOT used — code should call user.send directly
+      expect(safeSend).not.toHaveBeenCalled();
     });
 
     it('should use safeReply when snooze DB is unavailable', async () => {

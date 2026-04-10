@@ -252,7 +252,6 @@ describe('temprole command', () => {
     });
   });
 
-
   // ── channelId logging (PR change) ─────────────────────────────────────────
 
   describe('channelId in info logs', () => {
@@ -283,4 +282,3 @@ describe('temprole command', () => {
     });
   });
 });
-

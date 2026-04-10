@@ -29,6 +29,20 @@ import {
 } from '../modules/reactionRoles.js';
 import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
+/**
+ * Normalize a raw emoji string from slash-command input into a canonical key.
+ * Custom emojis: `<a:name:id>` or `<:name:id>` → preserve format.
+ * Unicode emojis: return as-is.
+ */
+function canonicalizeEmojiInput(raw) {
+  const customMatch = raw.match(/^<(a?):([\w]+):(\d+)>$/);
+  if (customMatch) {
+    const [, animated, name, id] = customMatch;
+    return animated ? `<a:${name}:${id}>` : `<:${name}:${id}>`;
+  }
+  return raw;
+}
+
 export const data = new SlashCommandBuilder()
   .setName('reactionrole')
   .setDescription('Manage reaction-role menus')
@@ -152,7 +166,7 @@ async function handleCreate(interaction) {
   let postedMessage;
   try {
     postedMessage = await safeSend(targetChannel, { embeds: [embed] });
-  } catch (err) {
+  } catch (_err) {
     // safeSend already logs the error — just reply to the user
     await safeEditReply(interaction, {
       content: `❌ Failed to post the menu in <#${targetChannel.id}>. Make sure I have Send Messages permission there.`,
@@ -220,7 +234,8 @@ async function handleAdd(interaction) {
     return;
   }
 
-  const emojiKey = emojiInput;
+  // Canonicalize the emoji key so custom emoji variants match consistently
+  const emojiKey = canonicalizeEmojiInput(emojiInput);
 
   await upsertReactionRoleEntry(menu.id, emojiKey, role.id);
 
@@ -263,7 +278,8 @@ async function handleRemove(interaction) {
     return;
   }
 
-  const emojiKey = emojiInput;
+  // Canonicalize the emoji key so custom emoji variants match consistently
+  const emojiKey = canonicalizeEmojiInput(emojiInput);
   const removed = await removeReactionRoleEntry(menu.id, emojiKey);
 
   if (!removed) {
