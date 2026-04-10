@@ -27,7 +27,21 @@ import {
   removeReactionRoleEntry,
   upsertReactionRoleEntry,
 } from '../modules/reactionRoles.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { safeEditReply, safeSend } from '../utils/safeSend.js';
+
+/**
+ * Normalize a raw emoji string from slash-command input into a canonical key.
+ * Custom emojis: `<a:name:id>` or `<:name:id>` → preserve format.
+ * Unicode emojis: return as-is.
+ */
+function canonicalizeEmojiInput(raw) {
+  const customMatch = raw.match(/^<(a?):([\w]+):(\d+)>$/);
+  if (customMatch) {
+    const [, animated, name, id] = customMatch;
+    return animated ? `<a:${name}:${id}>` : `<:${name}:${id}>`;
+  }
+  return raw;
+}
 
 export const data = new SlashCommandBuilder()
   .setName('reactionrole')
@@ -151,13 +165,9 @@ async function handleCreate(interaction) {
   const embed = buildReactionRoleEmbed(title, description, []);
   let postedMessage;
   try {
-    postedMessage = await targetChannel.send({ embeds: [embed] });
-  } catch (err) {
-    warn('reactionrole create: could not send message', {
-      guildId: interaction.guildId,
-      channelId: targetChannel.id,
-      error: err?.message,
-    });
+    postedMessage = await safeSend(targetChannel, { embeds: [embed] });
+  } catch (_err) {
+    // safeSend already logs the error — just reply to the user
     await safeEditReply(interaction, {
       content: `❌ Failed to post the menu in <#${targetChannel.id}>. Make sure I have Send Messages permission there.`,
     });
@@ -224,8 +234,8 @@ async function handleAdd(interaction) {
     return;
   }
 
-  // Normalise emoji to a stable string
-  const emojiKey = normaliseInputEmoji(emojiInput);
+  // Canonicalize the emoji key so custom emoji variants match consistently
+  const emojiKey = canonicalizeEmojiInput(emojiInput);
 
   await upsertReactionRoleEntry(menu.id, emojiKey, role.id);
 
@@ -268,7 +278,8 @@ async function handleRemove(interaction) {
     return;
   }
 
-  const emojiKey = normaliseInputEmoji(emojiInput);
+  // Canonicalize the emoji key so custom emoji variants match consistently
+  const emojiKey = canonicalizeEmojiInput(emojiInput);
   const removed = await removeReactionRoleEntry(menu.id, emojiKey);
 
   if (!removed) {
@@ -372,19 +383,10 @@ async function refreshMenuEmbed(interaction, menu) {
     if (!msg) return;
 
     await msg.edit({ embeds: [embed] });
-  } catch {
-    // Non-fatal — UI update is cosmetic
+  } catch (err) {
+    warn('Failed to refresh reaction role menu embed', {
+      menuId: menu.id,
+      error: err?.message ?? String(err),
+    });
   }
-}
-
-/**
- * Normalise a user-supplied emoji string.
- * Strips surrounding colons (`:thumbsup:` → emoji literal won't match, but we keep it as-is
- * since Discord custom emojis come in as `<:name:id>` format).
- *
- * @param {string} input
- * @returns {string}
- */
-function normaliseInputEmoji(input) {
-  return input.trim();
 }

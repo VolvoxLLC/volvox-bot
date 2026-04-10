@@ -39,6 +39,13 @@ vi.mock('../../src/modules/config.js', () => ({
   }),
 }));
 
+vi.mock('../../src/utils/safeSend.js', () => ({
+  safeSend: vi.fn(async (target, opts) => {
+    if (typeof target?.send === 'function') return target.send(opts);
+    throw new Error('safeSend: target has no .send() method');
+  }),
+}));
+
 vi.mock('../../src/utils/duration.js', () => ({
   parseDuration: vi.fn().mockReturnValue(3600000),
   formatDuration: vi.fn().mockReturnValue('1 hour'),
@@ -59,6 +66,7 @@ import {
   startTempbanScheduler,
   stopTempbanScheduler,
 } from '../../src/modules/moderation.js';
+import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('moderation module', () => {
   let mockPool;
@@ -924,6 +932,39 @@ describe('moderation module', () => {
       );
 
       stopTempbanScheduler();
+    });
+  });
+
+  // ── sendDmNotification uses member.send directly (avoids double-logging) ──
+
+  describe('sendDmNotification uses member.send directly', () => {
+    it('calls member.send directly when sending DM', async () => {
+      const mockSend = vi.fn().mockResolvedValue(undefined);
+      const member = { send: mockSend };
+
+      await sendDmNotification(member, 'warn', 'spamming', 'Test Guild');
+
+      // Uses member.send directly (not safeSend) to avoid double-logging on expected DM failures
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
+      // Verify safeSend was NOT used — code should call member.send directly
+      expect(safeSend).not.toHaveBeenCalled();
+    });
+
+    it('silently continues when member.send throws (DMs disabled)', async () => {
+      const member = {
+        send: vi.fn().mockRejectedValue(new Error('Cannot send messages to this user')),
+      };
+
+      // Should not throw — catch block in sendDmNotification swallows DM errors
+      await expect(
+        sendDmNotification(member, 'ban', 'rule violation', 'Test Guild'),
+      ).resolves.toBeUndefined();
+
+      expect(member.send).toHaveBeenCalledWith(
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
+      // Verify safeSend was NOT used — code should call member.send directly
+      expect(safeSend).not.toHaveBeenCalled();
     });
   });
 });

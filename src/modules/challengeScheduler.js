@@ -11,6 +11,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'disc
 import { getPool } from '../db.js';
 import { info, error as logError, warn as logWarn } from '../logger.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
+import { safeReply, safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
 
 const require = createRequire(import.meta.url);
@@ -202,7 +203,7 @@ export async function postDailyChallenge(client, guildId) {
   const embed = buildChallengeEmbed(challenge, dayNumber, 0);
   const buttons = buildChallengeButtons(index);
 
-  const message = await channel.send({ embeds: [embed], components: [buttons] });
+  const message = await safeSend(channel, { embeds: [embed], components: [buttons] });
 
   // Create a discussion thread on the message
   try {
@@ -295,12 +296,12 @@ export async function checkDailyChallenge(client) {
 export async function handleSolveButton(interaction, challengeIndex) {
   // Bounds validation — prevents out-of-range indices from causing DB errors
   if (challengeIndex < 0 || challengeIndex >= CHALLENGES.length) {
-    return interaction.reply({ content: '❌ Invalid challenge.', flags: 64 });
+    return safeReply(interaction, { content: '❌ Invalid challenge.', flags: 64 });
   }
 
   const pool = getPool();
   if (!pool) {
-    await interaction.reply({ content: '❌ Database unavailable.', ephemeral: true });
+    await safeReply(interaction, { content: '❌ Database unavailable.', ephemeral: true });
     return;
   }
 
@@ -354,7 +355,7 @@ export async function handleSolveButton(interaction, challengeIndex) {
     });
   }
 
-  await interaction.reply({
+  await safeReply(interaction, {
     content: `✅ Marked as solved! You've solved **${totalSolves}** challenge${totalSolves !== 1 ? 's' : ''} total. Nice work! 🎉`,
     ephemeral: true,
   });
@@ -372,13 +373,13 @@ export async function handleSolveButton(interaction, challengeIndex) {
 export async function handleHintButton(interaction, challengeIndex) {
   const challenge = CHALLENGES[challengeIndex];
   if (!challenge) {
-    await interaction.reply({ content: '❌ Challenge not found.', ephemeral: true });
+    await safeReply(interaction, { content: '❌ Challenge not found.', ephemeral: true });
     return;
   }
 
   const hints = challenge.hints ?? [];
   if (hints.length === 0) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '🤷 No hints available for this challenge.',
       ephemeral: true,
     });
@@ -386,7 +387,7 @@ export async function handleHintButton(interaction, challengeIndex) {
   }
 
   const hintLines = hints.map((h, i) => `**Hint ${i + 1}:** ${h}`).join('\n');
-  await interaction.reply({
+  await safeReply(interaction, {
     content: `💡 **Hints for "${challenge.title}":**\n\n${hintLines}`,
     ephemeral: true,
   });
@@ -399,15 +400,4 @@ export async function handleHintButton(interaction, challengeIndex) {
  */
 export function getChallenges() {
   return CHALLENGES;
-}
-
-/**
- * Start the challenge scheduler — just a no-op now since we plug into
- * the existing 60s scheduler loop via checkDailyChallenge.
- * Kept for a clean startup log.
- *
- * @param {import('discord.js').Client} client - Discord client
- */
-export function startChallengeScheduler(_client) {
-  info('Daily challenge scheduler ready (integrated into main poll loop)');
 }
