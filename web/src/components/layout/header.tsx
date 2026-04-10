@@ -48,6 +48,18 @@ import { useTempRolesStore } from '@/stores/temp-roles-store';
 import { useTicketsStore } from '@/stores/tickets-store';
 import { MobileSidebar } from './mobile-sidebar';
 
+// ─── Shared compact button classes ──────────────────────────────────────────
+// Extracted from the repeated inline Tailwind strings across ~8 dashboard
+// refresh-button sections (CodeRabbit PRRT_kwDORICdSM56CdQO).
+
+const COMPACT_BTN_BASE =
+  COMPACT_BTN_BASE;
+
+const COMPACT_BTN_OVERLAY =
+  COMPACT_BTN_OVERLAY;
+
+const COMPACT_BTN_DISABLED = COMPACT_BTN_DISABLED;
+
 /**
  * Renders the top navigation header for the Volvox.Bot Dashboard, including branding, a theme toggle, and a session-aware user menu.
  *
@@ -273,8 +285,8 @@ export function Header() {
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 className={cn(
-                  'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
-                  'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                  COMPACT_BTN_BASE,
+                  COMPACT_BTN_OVERLAY,
                   rangePreset === 'custom' && 'text-primary border-primary/20',
                 )}
               >
@@ -345,7 +357,7 @@ export function Header() {
               <DropdownMenuTrigger
                 className={cn(
                   'group relative flex h-8 w-8 md:h-10 md:w-10 items-center justify-center overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 transition-all hover:bg-white/[0.05] text-muted-foreground/60 hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
-                  'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                  COMPACT_BTN_OVERLAY,
                 )}
               >
                 <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -401,10 +413,10 @@ export function Header() {
               onClick={handleModerationRefresh}
               disabled={!guildId || statsLoading || casesLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
                 (!guildId || statsLoading || casesLoading) &&
-                  'opacity-50 cursor-not-allowed active:scale-100',
+                  COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -426,9 +438,9 @@ export function Header() {
               onClick={handleMembersRefresh}
               disabled={!guildId || membersLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
-                (!guildId || membersLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
+                (!guildId || membersLoading) && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -447,9 +459,9 @@ export function Header() {
               onClick={handleTicketsRefresh}
               disabled={!guildId || ticketsLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
-                (!guildId || ticketsLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
+                (!guildId || ticketsLoading) && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -468,10 +480,10 @@ export function Header() {
               onClick={handleConversationsRefresh}
               disabled={!guildId || conversationsLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
                 (!guildId || conversationsLoading) &&
-                  'opacity-50 cursor-not-allowed active:scale-100',
+                  COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -490,9 +502,9 @@ export function Header() {
               onClick={handleAuditLogRefresh}
               disabled={!guildId || auditLogLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
-                (!guildId || auditLogLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
+                (!guildId || auditLogLoading) && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -511,9 +523,9 @@ export function Header() {
               onClick={handleTempRolesRefresh}
               disabled={!guildId || tempRolesLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
-                (!guildId || tempRolesLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
+                (!guildId || tempRolesLoading) && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -532,9 +544,9 @@ export function Header() {
               onClick={handlePerformanceRefresh}
               disabled={performanceLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
-                performanceLoading && 'opacity-50 cursor-not-allowed active:scale-100',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
+                performanceLoading && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -553,9 +565,9 @@ export function Header() {
               onClick={handleHealthRefresh}
               disabled={!guildId || healthLoading}
               className={cn(
-                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
-                'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
-                (!guildId || healthLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
+                COMPACT_BTN_BASE + ' bg-transparent ',
+                COMPACT_BTN_OVERLAY,
+                (!guildId || healthLoading) && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw

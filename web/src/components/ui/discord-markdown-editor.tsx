@@ -286,7 +286,8 @@ export function DiscordMarkdownEditor({
       const rafId = requestAnimationFrame(() => {
         rafIdsRef.current = rafIdsRef.current.filter((id) => id !== rafId);
         if (textareaRef.current) {
-          const cursorPos = result.cursorPos ?? cursor;
+          const { cursorPos: _cursorPos } = result;
+          void _cursorPos;
           textareaRef.current.focus();
           textareaRef.current.setSelectionRange(result.cursorPos ?? null, result.cursorPos ?? null);
         }

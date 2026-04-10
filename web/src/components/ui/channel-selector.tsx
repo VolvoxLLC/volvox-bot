@@ -196,6 +196,7 @@ export function ChannelSelector({
   const hasFetchedRef = React.useRef(false);
 
   // Reset fetch state when guild changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally re-run on guild change
   React.useEffect(() => {
     hasFetchedRef.current = false;
   }, [guildId]);

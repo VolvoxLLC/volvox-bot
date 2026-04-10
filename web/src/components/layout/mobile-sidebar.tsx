@@ -7,7 +7,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Sidebar } from './sidebar';
@@ -35,6 +34,7 @@ export function MobileSidebar() {
           side="left"
           className="flex h-full w-[min(21.5rem,90vw)] flex-col border-r border-border/70 bg-gradient-to-b from-card via-card/90 to-background p-0"
         >
+          <SheetTitle className="sr-only">Dashboard Navigation</SheetTitle>
           <SheetDescription className="sr-only">
             Browse dashboard navigation and switch workspaces from the control room sidebar.
           </SheetDescription>
