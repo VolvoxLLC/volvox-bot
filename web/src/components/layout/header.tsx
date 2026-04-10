@@ -53,12 +53,12 @@ import { MobileSidebar } from './mobile-sidebar';
 // refresh-button sections (CodeRabbit PRRT_kwDORICdSM56CdQO).
 
 const COMPACT_BTN_BASE =
-  COMPACT_BTN_BASE;
+  'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]';
 
 const COMPACT_BTN_OVERLAY =
-  COMPACT_BTN_OVERLAY;
+  'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60';
 
-const COMPACT_BTN_DISABLED = COMPACT_BTN_DISABLED;
+const COMPACT_BTN_DISABLED = 'opacity-50 cursor-not-allowed active:scale-100';
 
 /**
  * Renders the top navigation header for the Volvox.Bot Dashboard, including branding, a theme toggle, and a session-aware user menu.
