@@ -39,7 +39,11 @@ export function EngagementSection({
           active days.
         </p>
         {badges.map((badge, i) => (
-          <div key={`${badge.days ?? 0}-${badge.label ?? ''}-${i}`} className="flex items-center gap-2">
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: badges have no stable unique id; index is last resort
+            key={`${badge.days ?? 0}-${badge.label ?? ''}-${i}`}
+            className="flex items-center gap-2"
+          >
             <Input
               className="w-20"
               type="number"
