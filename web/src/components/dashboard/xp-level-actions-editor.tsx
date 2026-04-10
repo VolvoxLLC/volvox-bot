@@ -1,6 +1,8 @@
 'use client';
 
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { useMemo } from 'react';
+import { generateId } from '@/components/dashboard/config-editor-utils';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
@@ -76,7 +78,7 @@ const TEMPLATE_SAMPLES: Record<string, string> = {
 };
 
 function createStableId(): string {
-  return crypto.randomUUID();
+  return generateId();
 }
 
 function toKeySegment(value: string): string {
@@ -247,13 +249,14 @@ function toBuilderConfig(
   format?: XpLevelAction['format'],
 ): EmbedConfig {
   const base = defaultEmbedConfig();
+  const legacyThumbnail = typeof embed?.thumbnail === 'string' ? embed.thumbnail : undefined;
   return {
     ...base,
     color: typeof embed?.color === 'string' ? embed.color : base.color,
     title: typeof embed?.title === 'string' ? embed.title : '',
     description: typeof embed?.description === 'string' ? embed.description : '',
-    thumbnailType: resolveThumbnailType(embed),
-    thumbnailUrl: typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : '',
+    thumbnailType: legacyThumbnail ? 'custom' : resolveThumbnailType(embed),
+    thumbnailUrl: legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : ''),
     fields: toBuilderFields(embed),
     footerText: resolveFooterText(embed),
     footerIconUrl: resolveFooterIconUrl(embed),
@@ -357,9 +360,10 @@ function ActionCard({
       </div>
 
       <div className="space-y-2">
-        <Label>Action Type</Label>
-        <select
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          <Label htmlFor={`${actionId}-type`}>Action Type</Label>
+          <select
+            id={`${actionId}-type`}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={action.type}
           disabled={saving}
           onChange={(event) =>
@@ -379,8 +383,9 @@ function ActionCard({
 
       {(action.type === 'grantRole' || action.type === 'removeRole') && (
         <div className="space-y-2">
-          <Label>Role</Label>
+          <Label htmlFor={`${actionId}-role`}>Role</Label>
           <RoleSelector
+            id={`${actionId}-role`}
             guildId={guildId}
             selected={toSingleSelection(action.roleId)}
             onChange={(selected) => onChange({ ...action, roleId: fromSingleSelection(selected) })}
@@ -395,8 +400,9 @@ function ActionCard({
         <div className="space-y-4">
           {action.type === 'announce' && (
             <div className="space-y-2">
-              <Label>Announcement Channel</Label>
+              <Label htmlFor={`${actionId}-channel-mode`}>Announcement Channel</Label>
               <select
+                id={`${actionId}-channel-mode`}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={action.channelMode ?? 'current'}
                 disabled={saving}
@@ -428,8 +434,9 @@ function ActionCard({
           )}
 
           <div className="space-y-2">
-            <Label>Message Format</Label>
+            <Label htmlFor={`${actionId}-format`}>Message Format</Label>
             <select
+              id={`${actionId}-format`}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={format}
               disabled={saving}
@@ -482,8 +489,9 @@ function ActionCard({
 
       {action.type === 'xpBonus' && (
         <div className="space-y-2">
-          <Label>Bonus XP</Label>
+          <Label htmlFor={`${actionId}-bonus-xp`}>Bonus XP</Label>
           <Input
+            id={`${actionId}-bonus-xp`}
             type="number"
             min={1}
             step={1}
@@ -501,8 +509,9 @@ function ActionCard({
 
       {action.type === 'addReaction' && (
         <div className="space-y-2">
-          <Label>Reaction Emoji</Label>
+          <Label htmlFor={`${actionId}-emoji`}>Reaction Emoji</Label>
           <Input
+            id={`${actionId}-emoji`}
             value={action.emoji ?? ''}
             disabled={saving}
             onChange={(event) => onChange({ ...action, emoji: event.target.value })}
@@ -650,8 +659,13 @@ export function XpLevelActionsEditor({
   saving,
   updateDraftConfig,
 }: XpLevelActionsEditorProps) {
-  const levelEntries = (draftConfig.xp?.levelActions ?? []).map(normalizeDraftEntry);
-  const defaultActions = (draftConfig.xp?.defaultActions ?? []).map(normalizeDraftAction);
+  const rawLevelActions = draftConfig.xp?.levelActions ?? [];
+  const rawDefaultActions = draftConfig.xp?.defaultActions ?? [];
+  const levelEntries = useMemo(() => rawLevelActions.map(normalizeDraftEntry), [rawLevelActions]);
+  const defaultActions = useMemo(
+    () => rawDefaultActions.map(normalizeDraftAction),
+    [rawDefaultActions],
+  );
   const nextUnusedLevel = getNextUnusedLevel(levelEntries);
 
   const updateLevelEntries = (updater: (entries: XpLevelActionEntry[]) => XpLevelActionEntry[]) => {
