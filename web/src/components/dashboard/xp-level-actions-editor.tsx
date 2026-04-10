@@ -250,14 +250,27 @@ function toBuilderConfig(
 ): EmbedConfig {
   const base = defaultEmbedConfig();
   const legacyThumbnail = typeof embed?.thumbnail === 'string' ? embed.thumbnail : undefined;
+  const thumbnailType =
+    legacyThumbnail === '{{avatar}}'
+      ? 'user_avatar'
+      : legacyThumbnail === '{{serverIcon}}'
+        ? 'server_icon'
+        : legacyThumbnail
+          ? 'custom'
+          : resolveThumbnailType(embed);
+
   return {
     ...base,
     color: typeof embed?.color === 'string' ? embed.color : base.color,
     title: typeof embed?.title === 'string' ? embed.title : '',
     description: typeof embed?.description === 'string' ? embed.description : '',
-    thumbnailType: legacyThumbnail ? 'custom' : resolveThumbnailType(embed),
+    thumbnailType,
     thumbnailUrl:
-      legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : ''),
+      thumbnailType === 'custom'
+        ? legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : '')
+        : typeof embed?.thumbnailUrl === 'string'
+          ? embed.thumbnailUrl
+          : '',
     fields: toBuilderFields(embed),
     footerText: resolveFooterText(embed),
     footerIconUrl: resolveFooterIconUrl(embed),
@@ -771,15 +784,22 @@ export function XpLevelActionsEditor({
                   step={1}
                   value={entry.level ?? 1}
                   disabled={saving}
-                  onChange={(event) =>
-                    updateLevelEntry(entryIndex, (currentEntry) => ({
-                      ...currentEntry,
-                      level: Math.max(
-                        1,
-                        Math.min(1000, Number.parseInt(event.target.value || '1', 10) || 1),
-                      ),
-                    }))
-                  }
+                  onChange={(event) => {
+                    const nextLevel = Math.max(
+                      1,
+                      Math.min(1000, Number.parseInt(event.target.value || '1', 10) || 1),
+                    );
+                    const alreadyUsed = levelEntries.some(
+                      (candidate, candidateIndex) =>
+                        candidateIndex !== entryIndex && candidate.level === nextLevel,
+                    );
+                    if (!alreadyUsed) {
+                      updateLevelEntry(entryIndex, (currentEntry) => ({
+                        ...currentEntry,
+                        level: nextLevel,
+                      }));
+                    }
+                  }}
                 />
               </div>
               <div className="ml-auto flex items-center gap-2">

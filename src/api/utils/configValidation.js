@@ -451,15 +451,6 @@ export const CONFIG_SCHEMA = {
 export function validateValue(value, schema, path) {
   const errors = [];
 
-  if (schema.anyOf) {
-    const results = schema.anyOf.map((candidate) => validateValue(value, candidate, path));
-    const success = results.find((candidateErrors) => candidateErrors.length === 0);
-    if (success) {
-      return success;
-    }
-    return results.flat();
-  }
-
   if (value === null) {
     if (!schema.nullable) {
       errors.push(`${path}: must not be null`);
@@ -469,6 +460,15 @@ export function validateValue(value, schema, path) {
 
   if (value === undefined) {
     return errors;
+  }
+
+  if (schema.anyOf) {
+    const results = schema.anyOf.map((candidate) => validateValue(value, candidate, path));
+    const success = results.find((candidateErrors) => candidateErrors.length === 0);
+    if (success) {
+      return success;
+    }
+    return results.flat();
   }
 
   switch (schema.type) {

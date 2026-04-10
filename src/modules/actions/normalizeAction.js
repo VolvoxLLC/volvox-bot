@@ -107,7 +107,7 @@ function normalizeEmbed(embed) {
  * @returns {Object}
  */
 export function normalizeXpAction(action) {
-  if (!action || typeof action !== 'object') {
+  if (!action || typeof action !== 'object' || Array.isArray(action)) {
     return action;
   }
 
