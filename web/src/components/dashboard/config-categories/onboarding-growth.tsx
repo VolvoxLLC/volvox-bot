@@ -10,12 +10,12 @@ import {
   parseNumberInput,
 } from '@/components/dashboard/config-editor-utils';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
+import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
 import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
-import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';

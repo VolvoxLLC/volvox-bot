@@ -256,7 +256,8 @@ function toBuilderConfig(
     title: typeof embed?.title === 'string' ? embed.title : '',
     description: typeof embed?.description === 'string' ? embed.description : '',
     thumbnailType: legacyThumbnail ? 'custom' : resolveThumbnailType(embed),
-    thumbnailUrl: legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : ''),
+    thumbnailUrl:
+      legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : ''),
     fields: toBuilderFields(embed),
     footerText: resolveFooterText(embed),
     footerIconUrl: resolveFooterIconUrl(embed),
@@ -360,10 +361,10 @@ function ActionCard({
       </div>
 
       <div className="space-y-2">
-          <Label htmlFor={`${actionId}-type`}>Action Type</Label>
-          <select
-            id={`${actionId}-type`}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        <Label htmlFor={`${actionId}-type`}>Action Type</Label>
+        <select
+          id={`${actionId}-type`}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={action.type}
           disabled={saving}
           onChange={(event) =>
