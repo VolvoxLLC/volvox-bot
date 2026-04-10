@@ -212,11 +212,11 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-background/20 transition-all duration-300 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.2)]">
-      <div className="mx-auto flex h-14 w-full items-center gap-4 px-2 md:px-4">
+      <div className="mx-auto flex h-12 md:h-14 w-full items-center gap-2 md:gap-4 px-2 md:px-4">
         <MobileSidebar />
-        <div className="flex min-w-0 shrink-0 items-center gap-3.5">
-          <div className="group relative flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/80 to-secondary/80 p-[1px] shadow-lg shadow-primary/5 transition-all hover:scale-105 active:scale-95">
-            <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-background/20 backdrop-blur-sm overflow-hidden">
+        <div className="flex min-w-0 shrink-0 items-center gap-2 md:gap-3.5">
+          <div className="group relative flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/80 to-secondary/80 p-[1px] shadow-lg shadow-primary/5 transition-all hover:scale-105 active:scale-95">
+            <div className="flex h-full w-full items-center justify-center rounded-[11px] md:rounded-[15px] bg-background/20 backdrop-blur-sm overflow-hidden">
               <Image
                 src="/icon-192.png"
                 alt="Volvox Logo"
@@ -230,7 +230,7 @@ export function Header() {
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-black tracking-tight text-foreground/90">
+              <h2 className="text-xs md:text-sm font-black tracking-tight text-foreground/90">
                 <span className="sm:hidden">Volvox</span>
                 <span className="hidden sm:inline italic">VOLVOX</span>
               </h2>
@@ -239,7 +239,7 @@ export function Header() {
                 Control Room
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[10px]">
+            <div className="hidden sm:flex items-center gap-2 text-[10px]">
               <div className="flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-bold uppercase tracking-widest text-primary ring-1 ring-primary/20">
                 <span className="status-dot-live h-1 w-1" />
                 Live
@@ -273,12 +273,12 @@ export function Header() {
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 className={cn(
-                  'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
+                  'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
                   'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                   rangePreset === 'custom' && 'text-primary border-primary/20',
                 )}
               >
-                <Calendar className="h-3.5 w-3.5 opacity-60" />
+                <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5 opacity-60" />
                 <span>{rangePreset === 'custom' ? 'Custom Range' : rangePreset}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -344,11 +344,11 @@ export function Header() {
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 className={cn(
-                  'group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-white/10 transition-all hover:bg-white/[0.05] text-muted-foreground/60 hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
+                  'group relative flex h-8 w-8 md:h-10 md:w-10 items-center justify-center overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 transition-all hover:bg-white/[0.05] text-muted-foreground/60 hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)]',
                   'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 )}
               >
-                <MoreVertical className="h-4 w-4" />
+                <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
@@ -401,7 +401,7 @@ export function Header() {
               onClick={handleModerationRefresh}
               disabled={!guildId || statsLoading || casesLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 (!guildId || statsLoading || casesLoading) &&
                   'opacity-50 cursor-not-allowed active:scale-100',
@@ -409,7 +409,7 @@ export function Header() {
             >
               <RefreshCw
                 className={cn(
-                  'h-3.5 w-3.5 opacity-60',
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
                   (statsLoading || casesLoading) && 'animate-spin',
                 )}
               />
@@ -426,13 +426,13 @@ export function Header() {
               onClick={handleMembersRefresh}
               disabled={!guildId || membersLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 (!guildId || membersLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
               )}
             >
               <RefreshCw
-                className={cn('h-3.5 w-3.5 opacity-60', membersLoading && 'animate-spin')}
+                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', membersLoading && 'animate-spin')}
               />
               <span>Refresh Members</span>
             </button>
@@ -447,13 +447,13 @@ export function Header() {
               onClick={handleTicketsRefresh}
               disabled={!guildId || ticketsLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 (!guildId || ticketsLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
               )}
             >
               <RefreshCw
-                className={cn('h-3.5 w-3.5 opacity-60', ticketsLoading && 'animate-spin')}
+                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', ticketsLoading && 'animate-spin')}
               />
               <span>Refresh Tickets</span>
             </button>
@@ -468,14 +468,14 @@ export function Header() {
               onClick={handleConversationsRefresh}
               disabled={!guildId || conversationsLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 (!guildId || conversationsLoading) &&
                   'opacity-50 cursor-not-allowed active:scale-100',
               )}
             >
               <RefreshCw
-                className={cn('h-3.5 w-3.5 opacity-60', conversationsLoading && 'animate-spin')}
+                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', conversationsLoading && 'animate-spin')}
               />
               <span>Refresh Conversations</span>
             </button>
@@ -490,13 +490,13 @@ export function Header() {
               onClick={handleAuditLogRefresh}
               disabled={!guildId || auditLogLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 (!guildId || auditLogLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
               )}
             >
               <RefreshCw
-                className={cn('h-3.5 w-3.5 opacity-60', auditLogLoading && 'animate-spin')}
+                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', auditLogLoading && 'animate-spin')}
               />
               <span>Refresh Audit Log</span>
             </button>
@@ -511,13 +511,13 @@ export function Header() {
               onClick={handleTempRolesRefresh}
               disabled={!guildId || tempRolesLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 (!guildId || tempRolesLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
               )}
             >
               <RefreshCw
-                className={cn('h-3.5 w-3.5 opacity-60', tempRolesLoading && 'animate-spin')}
+                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', tempRolesLoading && 'animate-spin')}
               />
               <span>Refresh Temp Roles</span>
             </button>
@@ -532,13 +532,13 @@ export function Header() {
               onClick={handlePerformanceRefresh}
               disabled={performanceLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 performanceLoading && 'opacity-50 cursor-not-allowed active:scale-100',
               )}
             >
               <RefreshCw
-                className={cn('h-3.5 w-3.5 opacity-60', performanceLoading && 'animate-spin')}
+                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', performanceLoading && 'animate-spin')}
               />
               <span>Refresh Metrics</span>
             </button>
@@ -553,20 +553,20 @@ export function Header() {
               onClick={handleHealthRefresh}
               disabled={!guildId || healthLoading}
               className={cn(
-                'group relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
+                'group relative flex h-8 md:h-10 items-center justify-center gap-1.5 md:gap-2 overflow-hidden rounded-[14px] md:rounded-2xl border border-white/10 px-2.5 md:px-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.05] hover:text-foreground active:scale-95 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.5)] bg-transparent',
                 'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.12] before:to-transparent before:pointer-events-none before:opacity-60',
                 (!guildId || healthLoading) && 'opacity-50 cursor-not-allowed active:scale-100',
               )}
             >
               <RefreshCw
-                className={cn('h-3.5 w-3.5 opacity-60', healthLoading && 'animate-spin')}
+                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', healthLoading && 'animate-spin')}
               />
               <span>Refresh Health</span>
             </button>
           </div>
         )}
 
-        <div className="ml-auto flex items-center gap-1.5 md:gap-2">
+        <div className="ml-auto flex items-center gap-1 md:gap-2">
           {status === 'loading' && (
             <Skeleton className="h-8 w-8 rounded-full bg-white/5" data-testid="header-skeleton" />
           )}
@@ -584,18 +584,18 @@ export function Header() {
           {status === 'authenticated' && session?.user && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
-                className="group relative flex h-10 w-10 overflow-hidden outline-none items-center justify-center rounded-2xl transition-all shadow-[0_2px_8px_-2px_rgba(0,0,0,0.5)] border border-white/10 hover:border-primary/30"
+                className="group relative flex h-8 w-8 md:h-10 md:w-10 overflow-hidden outline-none items-center justify-center rounded-xl md:rounded-2xl transition-all shadow-[0_2px_8px_-2px_rgba(0,0,0,0.5)] border border-white/10 hover:border-primary/30"
                 data-testid="header-user-menu"
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] to-transparent pointer-events-none" />
                 <div className="relative z-10 w-full h-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                  <Avatar className="h-[34px] w-[34px] rounded-[14px]">
+                  <Avatar className="h-7 w-7 md:h-[34px] md:w-[34px] rounded-[10px] md:rounded-[14px]">
                     <AvatarImage
                       src={session.user.image ?? ''}
                       alt={session.user.name ?? ''}
                       className="shadow-inner"
                     />
-                    <AvatarFallback className="rounded-[14px] bg-background/50 font-black tracking-widest text-[10px] text-muted-foreground/60 shadow-inner">
+                    <AvatarFallback className="rounded-[10px] md:rounded-[14px] bg-background/50 font-black tracking-widest text-[9px] md:text-[10px] text-muted-foreground/60 shadow-inner">
                       {session.user.name?.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
