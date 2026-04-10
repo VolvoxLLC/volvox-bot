@@ -413,7 +413,7 @@ export function Header() {
               onClick={handleModerationRefresh}
               disabled={!guildId || statsLoading || casesLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 (!guildId || statsLoading || casesLoading) &&
                   COMPACT_BTN_DISABLED,
@@ -438,7 +438,7 @@ export function Header() {
               onClick={handleMembersRefresh}
               disabled={!guildId || membersLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 (!guildId || membersLoading) && COMPACT_BTN_DISABLED,
               )}
@@ -459,7 +459,7 @@ export function Header() {
               onClick={handleTicketsRefresh}
               disabled={!guildId || ticketsLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 (!guildId || ticketsLoading) && COMPACT_BTN_DISABLED,
               )}
@@ -480,7 +480,7 @@ export function Header() {
               onClick={handleConversationsRefresh}
               disabled={!guildId || conversationsLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 (!guildId || conversationsLoading) &&
                   COMPACT_BTN_DISABLED,
@@ -502,7 +502,7 @@ export function Header() {
               onClick={handleAuditLogRefresh}
               disabled={!guildId || auditLogLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 (!guildId || auditLogLoading) && COMPACT_BTN_DISABLED,
               )}
@@ -523,7 +523,7 @@ export function Header() {
               onClick={handleTempRolesRefresh}
               disabled={!guildId || tempRolesLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 (!guildId || tempRolesLoading) && COMPACT_BTN_DISABLED,
               )}
@@ -544,7 +544,7 @@ export function Header() {
               onClick={handlePerformanceRefresh}
               disabled={performanceLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 performanceLoading && COMPACT_BTN_DISABLED,
               )}
@@ -565,7 +565,7 @@ export function Header() {
               onClick={handleHealthRefresh}
               disabled={!guildId || healthLoading}
               className={cn(
-                COMPACT_BTN_BASE + ' bg-transparent ',
+                `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
                 (!guildId || healthLoading) && COMPACT_BTN_DISABLED,
               )}

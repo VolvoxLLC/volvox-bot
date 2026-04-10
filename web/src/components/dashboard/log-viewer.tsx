@@ -31,11 +31,7 @@ const LEVEL_STYLES: Record<LogLevel, { badge: string; row: string; label: string
   },
 };
 
-const STATUS_STYLES: Record<ConnectionStatus, { dot: string; label: string }> = {
-  connected: { dot: 'bg-green-500', label: 'Connected' },
-  disconnected: { dot: 'bg-red-500', label: 'Disconnected' },
-  reconnecting: { dot: 'bg-yellow-500 animate-pulse', label: 'Reconnecting…' },
-};
+// StatusIndicator removed — status rendering is handled inline by the parent page.
 
 /**
  * Extracts a channel identifier from a log entry's metadata.
