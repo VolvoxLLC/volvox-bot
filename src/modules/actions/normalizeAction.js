@@ -91,7 +91,7 @@ function normalizeEmbed(embed) {
   return {
     title: typeof embed.title === 'string' ? embed.title : '',
     description: typeof embed.description === 'string' ? embed.description : '',
-    color: typeof embed.color === 'number' ? embed.color : undefined,
+    color: embed.color != null ? embed.color : undefined,
     thumbnail: normalizeThumbnail(embed),
     fields: normalizeEmbedFields(embed.fields),
     footer: normalizeFooter(embed),
