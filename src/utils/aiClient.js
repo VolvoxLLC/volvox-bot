@@ -14,7 +14,7 @@
 import { createHash } from 'node:crypto';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateText, stepCountIs, streamText } from 'ai';
-import { debug, error as logError, warn } from '../logger.js';
+import { error as logError, warn } from '../logger.js';
 import { calculateCost } from './aiCost.js';
 import { AIClientError, isRetryable } from './errors.js';
 
@@ -45,12 +45,18 @@ async function withRetry(fn, opts = {}) {
       if (!isRetryable(err, { statusCode: err.statusCode })) throw err;
 
       // Calculate delay: min(1000 * 2^attempt, 15_000) + jitter
-      const retryAfter = err.statusCode === 429 ? (parseFloat(err.headers?.['retry-after']) || 0) * 1000 : 0;
+      const retryAfter =
+        err.statusCode === 429 ? (parseFloat(err.headers?.['retry-after']) || 0) * 1000 : 0;
       const exponential = Math.min(1000 * 2 ** attempt, 15_000);
       const jitter = Math.random() * 1000;
       const delay = Math.max(exponential + jitter, retryAfter);
 
-      warn('Retrying AI request', { attempt: attempt + 1, maxRetries, delayMs: Math.round(delay), reason: err.message });
+      warn('Retrying AI request', {
+        attempt: attempt + 1,
+        maxRetries,
+        delayMs: Math.round(delay),
+        reason: err.message,
+      });
 
       await new Promise((resolve, reject) => {
         const timer = setTimeout(resolve, delay);
@@ -67,6 +73,17 @@ async function withRetry(fn, opts = {}) {
 
   throw lastError;
 }
+
+// ── Provider defaults ───────────────────────────────────────────────────────
+
+/**
+ * Default base URLs for known providers.
+ * Providers not listed here require a `<PROVIDER>_BASE_URL` env var or
+ * a per-model `baseUrl` override in config.
+ */
+const KNOWN_BASE_URLS = {
+  minimax: 'https://api.minimax.io/anthropic',
+};
 
 // ── Provider cache ──────────────────────────────────────────────────────────
 
@@ -96,17 +113,30 @@ function resolveModel(modelString, overrides = {}) {
   const cacheKey = `${providerName}:${keyHash}:${overrides.baseUrl ?? 'default'}`;
 
   if (!providerCache.has(cacheKey)) {
-    if (providerName === 'anthropic') {
-      providerCache.set(
-        cacheKey,
-        createAnthropic({
-          apiKey: overrides.apiKey || process.env.ANTHROPIC_API_KEY,
-          ...(overrides.baseUrl && { baseURL: overrides.baseUrl }),
-        }),
-      );
-    } else {
-      throw new AIClientError(`Unsupported AI provider: ${providerName}`, 'api');
-    }
+    // Resolve credentials by convention. Anthropic uses its own env var
+    // directly; other providers follow the <PROVIDER>_API_KEY /
+    // <PROVIDER>_BASE_URL convention, falling back to ANTHROPIC_API_KEY.
+    const isAnthropic = providerName === 'anthropic';
+    const envPrefix = providerName.toUpperCase();
+
+    const apiKey =
+      overrides.apiKey ||
+      (isAnthropic ? process.env.ANTHROPIC_API_KEY : undefined) ||
+      process.env[`${envPrefix}_API_KEY`] ||
+      process.env.ANTHROPIC_API_KEY;
+
+    const baseUrl =
+      overrides.baseUrl ||
+      (isAnthropic ? undefined : process.env[`${envPrefix}_BASE_URL`]) ||
+      KNOWN_BASE_URLS[providerName];
+
+    providerCache.set(
+      cacheKey,
+      createAnthropic({
+        apiKey,
+        ...(baseUrl && { baseURL: baseUrl }),
+      }),
+    );
   }
 
   const factory = providerCache.get(cacheKey);
@@ -117,13 +147,18 @@ function resolveModel(modelString, overrides = {}) {
 
 /**
  * Build provider-specific options (e.g. thinking tokens).
- * @param {string} providerName
+ *
+ * Currently all providers route through the Anthropic SDK, so options are
+ * keyed as `anthropic`. When non-Anthropic SDK providers are added, this
+ * function should map provider names to their SDK option keys.
+ *
+ * @param {string} _providerName - Logical provider name (unused for now)
  * @param {number} [thinking] - Thinking token budget (0 = disabled)
  * @returns {Object}
  */
-function buildProviderOptions(providerName, thinking) {
+function buildProviderOptions(_providerName, thinking) {
   if (!thinking || thinking <= 0) return {};
-  return { [providerName]: { thinking: { type: 'enabled', budgetTokens: thinking } } };
+  return { anthropic: { thinking: { type: 'enabled', budgetTokens: thinking } } };
 }
 
 /**
@@ -140,7 +175,7 @@ function buildTools(toolNames, providerName, factory) {
   if (!toolNames?.length) return tools;
 
   const knownTools = ['WebSearch'];
-  const unknown = toolNames.filter(t => !knownTools.includes(t));
+  const unknown = toolNames.filter((t) => !knownTools.includes(t));
   if (unknown.length) {
     warn('Unknown tool names ignored', { unknown });
   }
@@ -308,7 +343,10 @@ export async function stream(opts) {
             if (chunk.type === 'tool-call' && userOnChunk) {
               try {
                 const cbResult = userOnChunk(chunk.toolName, chunk.args);
-                if (cbResult?.catch) cbResult.catch(err => logError('onChunk callback error', { error: err.message }));
+                if (cbResult?.catch)
+                  cbResult.catch((err) =>
+                    logError('onChunk callback error', { error: err.message }),
+                  );
               } catch (err) {
                 logError('onChunk callback error (sync)', { error: err.message });
               }

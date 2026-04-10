@@ -125,10 +125,110 @@ describe('generate', () => {
     expect(mockCreateAnthropic).toHaveBeenCalled();
   });
 
-  it('should throw for unsupported providers', async () => {
-    await expect(
-      generate({ model: 'unknown-provider:some-model', prompt: 'test' }),
-    ).rejects.toThrow(AIClientError);
+  it('should resolve unknown providers via env var convention', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'https://api.minimax.io/anthropic',
+      }),
+    );
+  });
+
+  it('should pick up <PROVIDER>_API_KEY env var for non-anthropic providers', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    process.env.CODEX_API_KEY = 'codex-key-123';
+
+    try {
+      await generate({ model: 'codex:some-model', prompt: 'test' });
+
+      expect(mockCreateAnthropic).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: 'codex-key-123' }),
+      );
+    } finally {
+      delete process.env.CODEX_API_KEY;
+    }
+  });
+
+  it('should pick up <PROVIDER>_BASE_URL env var for non-anthropic providers', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    process.env.CODEX_API_KEY = 'codex-key';
+    process.env.CODEX_BASE_URL = 'https://codex.example.com/v1';
+
+    try {
+      await generate({ model: 'codex:some-model', prompt: 'test' });
+
+      expect(mockCreateAnthropic).toHaveBeenCalledWith({
+        apiKey: 'codex-key',
+        baseURL: 'https://codex.example.com/v1',
+      });
+    } finally {
+      delete process.env.CODEX_API_KEY;
+      delete process.env.CODEX_BASE_URL;
+    }
+  });
+
+  it('should fall back to ANTHROPIC_API_KEY for providers without their own key', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    process.env.ANTHROPIC_API_KEY = 'fallback-key';
+
+    try {
+      await generate({ model: 'newprovider:a-model', prompt: 'test' });
+
+      expect(mockCreateAnthropic).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: 'fallback-key' }),
+      );
+    } finally {
+      delete process.env.ANTHROPIC_API_KEY;
+    }
+  });
+
+  it('should use known base URL default for minimax when no env var set', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'https://api.minimax.io/anthropic',
+      }),
+    );
+  });
+
+  it('should NOT include WebSearch tools for non-anthropic providers', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({
+      model: 'minimax:MiniMax-M2.7',
+      prompt: 'search',
+      tools: ['WebSearch'],
+    });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.tools).toBeUndefined();
+  });
+
+  it('should use anthropic SDK key in providerOptions for non-anthropic providers', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'think', thinking: 2048 });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.providerOptions).toEqual({
+      anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } },
+    });
+    expect(call.providerOptions).not.toHaveProperty('minimax');
+  });
+
+  it('should cache non-anthropic providers separately from anthropic', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test1' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test2' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledTimes(2);
   });
 
   it('should cache provider instances by config tuple', async () => {
